@@ -9,7 +9,6 @@ export const metadata = {
   url: "https://github.com/kudzujs/kudzu",
   image: "https://raw.githubusercontent.com/kudzujs/kudzu/main/public/og-image.png",
   imageAlt: "Kudzu HTML-first TSX framework",
-  twitterImage: "https://raw.githubusercontent.com/kudzujs/kudzu/main/public/twitter-card.png",
   themeColor: "#8d52ff",
   icon: "/favicon.ico",
   appleTouchIcon: "/apple-touch-icon.png",
@@ -32,7 +31,7 @@ export default function HomePage() {
     <>
       <header className="site-header">
         <a className="brand" href="/">
-          <img src="/icon-128.png" alt="" />
+          <img src="/icon-64.png" alt="" />
           <span>kudzu</span>
         </a>
         <nav>
@@ -96,7 +95,7 @@ export default function HomePage() {
       </main>
 
       <footer>
-        <a className="brand" href="/"><img src="/icon-128.png" alt="" /><span>kudzu</span></a>
+        <a className="brand" href="/"><img src="/icon-64.png" alt="" /><span>kudzu</span></a>
         <p>A framework that grows only where it needs to.</p>
         <span>MIT · 2026</span>
       </footer>
