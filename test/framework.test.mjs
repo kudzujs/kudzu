@@ -15,7 +15,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
 
-  assert.match(html, /Grow from/)
+  assert.match(html, /Build like React/)
   assert.match(html, /property="og:image"/)
   assert.match(html, /rel="icon" href="\/favicon\.ico"/)
   assert.match(html, /data-k-on-click/)

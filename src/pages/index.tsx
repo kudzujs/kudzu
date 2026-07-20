@@ -31,8 +31,7 @@ export default function HomePage() {
     <>
       <header className="site-header">
         <a className="brand" href="/">
-          <img src="/icon-64.png" alt="" />
-          <span>kudzu</span>
+          <img src="/icon-128.png" alt="Kudzu" />
         </a>
         <nav>
           <a href="#model">Model</a>
@@ -45,23 +44,39 @@ export default function HomePage() {
         <section className="hero">
           <div className="hero-copy">
             <p className="eyebrow"><span>v0.1</span> HTML-FIRST TSX FRAMEWORK</p>
-            <h1>Grow from<br /><em>HTML.</em></h1>
+            <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">
-              <a className="primary-action" href="https://www.npmjs.com/package/@kudzujs/core">npm i @kudzujs/core</a>
-              <a className="secondary-action" href="https://github.com/kudzujs/kudzu">Read the source ↗</a>
+              <a className="primary-action" href="https://github.com/kudzujs/kudzu#quick-start">Get started</a>
+              <a className="secondary-action" href="https://github.com/kudzujs/kudzu">Explore GitHub ↗</a>
             </div>
+            <div className="install-command"><span>$</span><code>npm i @kudzujs/core</code></div>
           </div>
-          <div className="hero-mark" aria-hidden="true">
-            <div className="orbit"></div>
-            <img src="/icon-512.png" alt="" />
+          <div className="hero-code" aria-label="Kudzu code example">
+            <div className="code-toolbar">
+              <span className="window-dots">● ● ●</span>
+              <span>counter.tsx</span>
+            </div>
+            <div className="code-body">
+              <div><i>01</i><code><b>import</b> &#123; useState &#125; <b>from</b> <q>@kudzujs/core</q></code></div>
+              <div><i>02</i><code></code></div>
+              <div><i>03</i><code><b>export default function</b> Counter() &#123;</code></div>
+              <div><i>04</i><code>  <b>const</b> [count, setCount] = useState(0)</code></div>
+              <div><i>05</i><code></code></div>
+              <div><i>06</i><code>  <b>return</b> &lt;button onClick=&#123;() =&gt;</code></div>
+              <div><i>07</i><code>    setCount(count + 1)&#125;&gt;</code></div>
+              <div><i>08</i><code>    Grown &#123;count&#125; times</code></div>
+              <div><i>09</i><code>  &lt;/button&gt;</code></div>
+              <div><i>10</i><code>&#125;</code></div>
+            </div>
+            <div className="compiled-note"><span>COMPILED OUTPUT</span><strong>HTML + needed JS</strong></div>
           </div>
         </section>
 
         <section className="signals" aria-label="Framework highlights">
           <div><strong>0</strong><span>Virtual DOM</span></div>
           <div><strong>0 B</strong><span>Static page JS</span></div>
-          <div><strong>581 B</strong><span>Counter JS gzip</span></div>
+          <div><strong>direct</strong><span>DOM patches</span></div>
           <div><strong>sync</strong><span>State semantics</span></div>
         </section>
 
@@ -95,7 +110,7 @@ export default function HomePage() {
       </main>
 
       <footer>
-        <a className="brand" href="/"><img src="/icon-64.png" alt="" /><span>kudzu</span></a>
+        <a className="brand" href="/"><img src="/icon-128.png" alt="Kudzu" /></a>
         <p>A framework that grows only where it needs to.</p>
         <span>MIT · 2026</span>
       </footer>
