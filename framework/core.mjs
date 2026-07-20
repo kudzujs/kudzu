@@ -88,6 +88,7 @@ export async function renderPage(component, metadata = {}) {
   try {
     const body = await renderNode({ type: component, props: {} })
     const title = escapeHtml(metadata.title ?? "Kudzu")
+    const head = renderMetadata(metadata)
     const styles = metadata.styles === false
       ? ""
       : '<link rel="stylesheet" href="/assets/style.css">'
@@ -99,7 +100,7 @@ export async function renderPage(component, metadata = {}) {
       : ""
 
     return {
-      html: `<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${styles}\n</head>\n<body>\n${body}\n${runtime}\n${nativeRuntime}\n</body>\n</html>\n`,
+      html: `<!doctype html>\n<html lang="${escapeAttribute(metadata.lang ?? "en")}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${head}${styles}\n</head>\n<body>\n${body}\n${runtime}\n${nativeRuntime}\n</body>\n</html>\n`,
       hasBehaviors: renderContext.hasBehaviors,
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
@@ -109,6 +110,39 @@ export async function renderPage(component, metadata = {}) {
   } finally {
     renderContext = undefined
   }
+}
+
+function renderMetadata(metadata) {
+  const tags = []
+  const meta = (name, content, property = false) => {
+    if (content) tags.push(`<meta ${property ? "property" : "name"}="${escapeAttribute(name)}" content="${escapeAttribute(content)}">`)
+  }
+
+  if (metadata.description) meta("description", metadata.description)
+  if (metadata.themeColor) meta("theme-color", metadata.themeColor)
+  if (metadata.url) tags.push(`<link rel="canonical" href="${escapeAttribute(metadata.url)}">`)
+  if (metadata.icon) tags.push(`<link rel="icon" href="${escapeAttribute(metadata.icon)}">`)
+  if (metadata.appleTouchIcon) tags.push(`<link rel="apple-touch-icon" href="${escapeAttribute(metadata.appleTouchIcon)}">`)
+  if (metadata.manifest) tags.push(`<link rel="manifest" href="${escapeAttribute(metadata.manifest)}">`)
+
+  meta("og:title", metadata.title, true)
+  meta("og:description", metadata.description, true)
+  meta("og:type", metadata.type ?? "website", true)
+  meta("og:url", metadata.url, true)
+  meta("og:image", metadata.image, true)
+  if (metadata.image) {
+    meta("og:image:width", "1200", true)
+    meta("og:image:height", "630", true)
+    meta("og:image:alt", metadata.imageAlt ?? metadata.title, true)
+  }
+  meta("og:site_name", metadata.siteName, true)
+  meta("og:locale", metadata.locale, true)
+  meta("twitter:card", metadata.twitterCard ?? (metadata.image ? "summary_large_image" : undefined))
+  meta("twitter:title", metadata.title)
+  meta("twitter:description", metadata.description)
+  meta("twitter:image", metadata.twitterImage ?? metadata.image)
+
+  return tags.length ? `${tags.join("\n")}\n` : ""
 }
 
 async function renderNode(node) {

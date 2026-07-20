@@ -1,15 +1,5 @@
 node_modules/
 dist/
 .kudzu/
-benchmarks/results/
-benchmarks/*/dist/
-benchmarks/next/.next/
-benchmarks/next/out/
-benchmarks/astro/.astro/
-benchmarks/blog/*/dist/
-benchmarks/blog/*/.kudzu/
-benchmarks/blog/next/.next/
-benchmarks/blog/next/out/
-benchmarks/blog/astro/.astro/
 test/fixtures/**/.kudzu/
 test/fixtures/**/dist/

@@ -8,3 +8,5 @@
 - `*.d.ts`: public TypeScript and JSX declarations.
 
 Static routes do not receive either browser runtime. Command-only routes receive `runtime.js`; native handlers add `native-runtime.js` and generated modules under `dist/assets/handlers/`.
+
+Page `metadata` can emit description, canonical, favicon, manifest, Open Graph, and Twitter Card tags without a client runtime.

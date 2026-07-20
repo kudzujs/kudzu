@@ -1,0 +1,27 @@
+{
+  "name": "Kudzu",
+  "short_name": "Kudzu",
+  "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#01020c",
+  "theme_color": "#8d52ff",
+  "icons": [
+    {
+      "src": "/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

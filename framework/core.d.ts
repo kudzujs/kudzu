@@ -7,7 +7,24 @@ export function nativeBehavior(module: string, handler: string, states: Array<[s
 
 export function renderPage(
   component: (props: Record<string, never>) => unknown | Promise<unknown>,
-  metadata?: { title?: string; styles?: boolean }
+  metadata?: {
+    title?: string
+    description?: string
+    lang?: string
+    locale?: string
+    siteName?: string
+    type?: string
+    url?: string
+    image?: string
+    imageAlt?: string
+    twitterCard?: string
+    twitterImage?: string
+    themeColor?: string
+    icon?: string
+    appleTouchIcon?: string
+    manifest?: string
+    styles?: boolean
+  }
 ): Promise<{
   html: string
   hasBehaviors: boolean

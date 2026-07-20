@@ -1,6 +1,12 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kudzujs/kudzu/main/public/icon-128.png" width="96" alt="Kudzu logo">
+</p>
+
 # Kudzu
 
 HTML-first TSX framework with synchronous state semantics and no virtual DOM.
+
+Brand assets, favicons, manifest icons, and the 1200×630 social preview live in [`public/`](./public).
 
 Kudzu keeps the familiar function-component, props, children, event-handler, and `useState` shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers compile to external ESM.
 
@@ -175,14 +181,7 @@ Same content and CSS across every fixture; build is the median of three clean ru
 | React CSR | No | 59.8 KB | 192.3 KB | 1053 ms |
 | Next.js | Yes | 182.6 KB | 663.6 KB | 3054 ms |
 
-Reproduce locally:
-
-```bash
-npm run benchmark
-npm run benchmark:blog
-```
-
-Qwik fixtures use a client entry and therefore do not exercise Qwik's SSR resumability advantage. Build times vary by hardware and filesystem cache.
+Benchmark snapshot collected on July 20, 2026 from equivalent production fixtures on the same machine. Qwik used a client entry and therefore did not exercise its SSR resumability advantage. Build times vary by hardware and filesystem cache.
 
 ## Development
 
