@@ -48,9 +48,14 @@
     "dev": "node ./bin/kudzu.mjs dev",
     "check": "tsc --noEmit && node ./bin/kudzu.mjs build",
     "test": "node --test",
-    "prepublishOnly": "npm run check && npm test"
+    "prepublishOnly": "npm run check && npm test",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "dependencies": {
     "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.112.0"
   }
 }
