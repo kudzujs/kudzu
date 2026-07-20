@@ -3,3 +3,10 @@ dist/
 .kudzu/
 test/fixtures/**/.kudzu/
 test/fixtures/**/dist/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
