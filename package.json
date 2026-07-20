@@ -1,0 +1,75 @@
+{
+  "name": "@kudzujs/core",
+  "version": "0.1.0",
+  "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kudzujs/kudzu.git"
+  },
+  "homepage": "https://github.com/kudzujs/kudzu#readme",
+  "bugs": "https://github.com/kudzujs/kudzu/issues",
+  "keywords": [
+    "tsx",
+    "framework",
+    "html-first",
+    "compiler",
+    "ssg",
+    "no-vdom"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "bin/",
+    "framework/",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "kudzu": "./bin/kudzu.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./framework/core.d.ts",
+      "default": "./framework/core.mjs"
+    },
+    "./jsx-runtime": {
+      "types": "./framework/jsx-runtime.d.ts",
+      "default": "./framework/jsx-runtime.mjs"
+    }
+  },
+  "scripts": {
+    "build": "node ./bin/kudzu.mjs build",
+    "dev": "node ./bin/kudzu.mjs dev",
+    "benchmark": "node ./benchmarks/run.mjs",
+    "benchmark:blog": "node ./benchmarks/run.mjs blog",
+    "check": "tsc --noEmit && node ./bin/kudzu.mjs build",
+    "test": "node --test",
+    "prepublishOnly": "npm run check && npm test"
+  },
+  "dependencies": {
+    "typescript": "^5.9.2"
+  },
+  "devDependencies": {
+    "@builder.io/qwik": "^1.20.0",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "astro": "^7.1.1",
+    "next": "^16.2.10",
+    "postcss": "^8.5.20",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "svelte": "^5.56.6",
+    "vite": "^7.3.6",
+    "vue": "^3.5.40"
+  },
+  "overrides": {
+    "postcss": "^8.5.20"
+  }
+}

@@ -1,0 +1,22 @@
+export type StateSetter<T> = (value: T | ((previous: T) => T)) => void
+
+export function useState<T>(initialValue: T): [T, StateSetter<T>]
+
+export function behavior(commands: Array<["add" | "set" | "log", unknown, unknown]>): unknown
+export function nativeBehavior(module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
+
+export function renderPage(
+  component: (props: Record<string, never>) => unknown | Promise<unknown>,
+  metadata?: { title?: string; styles?: boolean }
+): Promise<{
+  html: string
+  hasBehaviors: boolean
+  plan: {
+    states: Array<{ id: string; name: string; initialValue: unknown }>
+    events: Array<{
+      event: string
+      commands?: Array<[string, string, unknown]>
+      native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
+    }>
+  }
+}>

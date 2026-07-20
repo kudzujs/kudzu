@@ -1,0 +1,52 @@
+:root {
+  color: #171a12;
+  background: #f2f0e8;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+main {
+  width: min(920px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 15vh 0;
+}
+
+.eyebrow {
+  color: #536532;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: .14em;
+}
+
+h1 {
+  margin: 20px 0;
+  font-family: Georgia, serif;
+  font-size: clamp(48px, 8vw, 92px);
+  font-weight: 400;
+  letter-spacing: -.055em;
+  line-height: .95;
+}
+
+.intro { font-size: 20px; }
+.intro code { font-family: ui-monospace, monospace; }
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 42px;
+  padding: 10px;
+  border: 1px solid currentColor;
+  background: #dfff43;
+}
+
+.counter button {
+  min-height: 44px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+}
+
+.counter strong { min-width: 30px; text-align: center; }

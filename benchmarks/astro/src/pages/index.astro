@@ -1,0 +1,17 @@
+<main>
+  <h1>Counter</h1>
+  <button data-change="-1">-</button>
+  <strong>Count: <span>7</span></strong>
+  <button data-change="1">+</button>
+</main>
+
+<script>
+  let count = 7
+  const output = document.querySelector("strong span")
+  for (const button of document.querySelectorAll("button")) {
+    button.addEventListener("click", () => {
+      count += Number(button.dataset.change)
+      output.textContent = String(count)
+    })
+  }
+</script>
