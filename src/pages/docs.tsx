@@ -39,7 +39,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.2.1</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.2.2</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -139,6 +139,9 @@ dist/
 └── assets/
     ├── style.css
     ├── kudzu.js
+    ├── kudzu-binding.js (when used)
+    ├── kudzu-native.js (when used)
+    ├── kudzu-serialization.js (when used)
     └── handlers/`}</code></pre>
             <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use.</p>
           </section>

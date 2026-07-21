@@ -4,13 +4,15 @@ import { spawnSync } from "node:child_process"
 import test from "node:test"
 import { build } from "../framework/build.mjs"
 import { nativeBehavior } from "../framework/core.mjs"
-import { applyCommands, patchBinding } from "../framework/runtime.js"
+import { applyCommands } from "../framework/runtime.js"
+import { patchBinding } from "../framework/binding-runtime.js"
 import { createNativeContext } from "../framework/native-runtime.js"
 
 test("builds TSX into HTML and behavior commands without React", async () => {
   await build({ quiet: true })
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
+  const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -24,6 +26,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
   assert.match(component, /__kBehavior\(\[\["add", count, 1\]\]\)/)
   assert.match(runtime, /textContent = value/)
+  assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
+  assert.doesNotMatch(html, /kudzu-binding\.js/)
+  assert.doesNotMatch(docs, /<script type="module"/)
   assert.equal(home.states[0].name, "count")
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
@@ -73,6 +78,9 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
 
   const html = await readFile(new URL("./fixtures/bindings/dist/index.html", import.meta.url), "utf8")
   const bindings = await readFile(new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const commandRuntime = await readFile(new URL("./fixtures/bindings/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const bindingRuntime = await readFile(new URL("./fixtures/bindings/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
+  const serialization = await readFile(new URL("./fixtures/bindings/dist/assets/kudzu-serialization.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/bindings/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /class="idle" data-k-bind-class=/)
   assert.match(html, /disabled data-k-bind-disabled=/)
@@ -84,7 +92,11 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
   assert.match(html, /class="nested-idle" data-k-bind-class=.*>Nested/)
   assert.match(html, /class="off">Shadowed/)
   assert.match(html, /<body data-k-state=/)
+  assert.match(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-native\.js/)
+  assert.doesNotMatch(commandRuntime, /patchBinding|data-k-bind/)
+  assert.match(bindingRuntime, /patchBinding|data-k-bind/)
+  assert.match(serialization, /export function deserialize/)
   assert.match(bindings, /export function binding0/)
   assert.match(bindings, /__k\.get\("active"\)/)
   assert.match(bindings, /__k\.scope\("activeClass"\)/)
@@ -144,10 +156,12 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   const handlerSource = await readFile(new URL("./fixtures/native/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const commandRuntime = await readFile(new URL("./fixtures/native/dist/assets/kudzu.js", import.meta.url), "utf8")
   const nativeRuntime = await readFile(new URL("./fixtures/native/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  const serialization = await readFile(new URL("./fixtures/native/dist/assets/kudzu-serialization.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/native/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const native = plan.routes[0].events[0].native
   assert.match(html, /data-k-native-click/)
   assert.match(html, /kudzu-native\.js/)
+  assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.match(handlerSource, /export async function handler0/)
   assert.match(handlerSource, /Math\.max/)
   assert.match(handlerSource, /Promise\.resolve/)
@@ -157,6 +171,7 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   assert.match(handlerSource, /__k\.scope\("increment"\)/)
   assert.doesNotMatch(commandRuntime, /createNativeContext|data-k-native/)
   assert.match(nativeRuntime, /createNativeContext/)
+  assert.match(serialization, /export function deserialize/)
   assert.doesNotMatch(handlerSource, /\beval\b|new Function/)
   assert.equal(native.scope.step, 2)
   assert.equal(native.scope.increment, 1)

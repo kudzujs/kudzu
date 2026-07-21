@@ -30,6 +30,7 @@ export async function build({ quiet = false } = {}) {
   if (!pageFiles.length) throw new Error("No pages found in src/pages/")
 
   let behaviorCount = 0
+  let bindingCount = 0
   const plans = []
   const hasStyles = await exists(join(sourceDirectory, "style.css"))
 
@@ -48,13 +49,24 @@ export async function build({ quiet = false } = {}) {
     await writeFile(join(routeDirectory, "index.html"), result.html)
     plans.push({ route: `/${route}`, ...result.plan })
     if (result.hasBehaviors) behaviorCount++
+    if (result.hasBindings) bindingCount++
   }
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
   if (behaviorCount) await cp(new URL("./runtime.js", import.meta.url), join(assetsDirectory, "kudzu.js"))
-  if (handlerModules.some(module => module.hasNativeHandlers)) {
-    const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8")).replace('"./runtime.js"', '"./kudzu.js"')
+  const hasNativeHandlers = handlerModules.some(module => module.hasNativeHandlers)
+  if (bindingCount || hasNativeHandlers) await cp(new URL("./serialization.js", import.meta.url), join(assetsDirectory, "kudzu-serialization.js"))
+  if (bindingCount) {
+    const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
+      .replace('"./runtime.js"', '"./kudzu.js"')
+      .replace('"./serialization.js"', '"./kudzu-serialization.js"')
+    await writeFile(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime)
+  }
+  if (hasNativeHandlers) {
+    const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
+      .replace('"./runtime.js"', '"./kudzu.js"')
+      .replace('"./serialization.js"', '"./kudzu-serialization.js"')
     await writeFile(join(assetsDirectory, "kudzu-native.js"), nativeRuntime)
   }
   for (const handlerModule of handlerModules) {

@@ -116,7 +116,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, states: {}, events: [], bindings: [], hasBehaviors: false, hasNativeBehaviors: false }
+  renderContext = { nextState: 0, states: {}, events: [], bindings: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -131,13 +131,17 @@ export async function renderPage(component, metadata = {}) {
     const nativeRuntime = renderContext.hasNativeBehaviors
       ? '<script type="module" src="/assets/kudzu-native.js"></script>'
       : ""
+    const bindingRuntime = renderContext.hasBindings
+      ? '<script type="module" src="/assets/kudzu-binding.js"></script>'
+      : ""
     const state = renderContext.hasBehaviors
       ? ` data-k-state="${escapeAttribute(JSON.stringify(Object.entries(renderContext.states).map(([id, entry]) => [id, entry.initialValue])))}"`
       : ""
 
     return {
-      html: `<!doctype html>\n<html lang="${escapeAttribute(metadata.lang ?? "en")}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${head}${styles}\n</head>\n<body${state}>\n${body}\n${runtime}\n${nativeRuntime}\n</body>\n</html>\n`,
+      html: `<!doctype html>\n<html lang="${escapeAttribute(metadata.lang ?? "en")}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${head}${styles}\n</head>\n<body${state}>\n${body}\n${runtime}\n${bindingRuntime}\n${nativeRuntime}\n</body>\n</html>\n`,
       hasBehaviors: renderContext.hasBehaviors,
+      hasBindings: renderContext.hasBindings,
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
         events: renderContext.events,
@@ -244,6 +248,7 @@ async function renderNode(node) {
       attributes += ` data-k-bind-${target}="${escapeAttribute(JSON.stringify(descriptor))}"`
       renderContext.bindings.push({ target, ...descriptor })
       renderContext.hasBehaviors = true
+      renderContext.hasBindings = true
       continue
     }
 

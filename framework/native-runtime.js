@@ -1,4 +1,5 @@
-import { browserState, commitDom, deserialize } from "./runtime.js"
+import { browserState, commitDom } from "./runtime.js"
+import { deserialize } from "./serialization.js"
 
 export function createNativeContext(state, stateIds, commit, serializedScope = {}) {
   const changed = new Set()
