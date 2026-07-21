@@ -34,6 +34,7 @@ export default function HomePage() {
           <img src="/icon-128.png" alt="Kudzu" />
         </a>
         <nav>
+          <a href="#quick-start">Start</a>
           <a href="#model">Model</a>
           <a href="https://www.npmjs.com/package/@kudzujs/core">npm</a>
           <a className="github-link" href="https://github.com/kudzujs/kudzu">GitHub ↗</a>
@@ -43,11 +44,11 @@ export default function HomePage() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.1</span> HTML-FIRST TSX FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.2</span> HTML-FIRST TSX FRAMEWORK</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">
-              <a className="primary-action" href="https://github.com/kudzujs/kudzu#quick-start">Get started</a>
+              <a className="primary-action" href="#quick-start">Get started</a>
               <a className="secondary-action" href="https://github.com/kudzujs/kudzu">Explore GitHub ↗</a>
             </div>
             <div className="install-command"><span>$</span><code>npm i @kudzujs/core</code></div>
@@ -78,6 +79,19 @@ export default function HomePage() {
           <div><strong>0 B</strong><span>Static page JS</span></div>
           <div><strong>direct</strong><span>DOM patches</span></div>
           <div><strong>sync</strong><span>State semantics</span></div>
+        </section>
+
+        <section className="quick-start" id="quick-start">
+          <div>
+            <p className="eyebrow">QUICK START</p>
+            <h2>From zero to HTML.</h2>
+            <p>Create a project, enter the directory, and start growing. No framework setup required.</p>
+          </div>
+          <div className="terminal" aria-label="Installation commands">
+            <div><span>01</span><code>npm create kudzu@latest my-app</code></div>
+            <div><span>02</span><code>cd my-app</code></div>
+            <div><span>03</span><code>npm run dev</code></div>
+          </div>
         </section>
 
         <section className="model" id="model">

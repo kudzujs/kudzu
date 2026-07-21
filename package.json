@@ -1,6 +1,6 @@
 {
   "name": "@kudzujs/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM",
   "type": "module",
   "license": "MIT",

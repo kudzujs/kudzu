@@ -10,7 +10,7 @@ Brand assets, favicons, manifest icons, and the 1200×630 social preview live in
 
 Kudzu keeps the familiar function-component, props, children, event-handler, and `useState` shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers compile to external ESM.
 
-> Experimental `0.1.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.2.x`: the compiler API and supported TSX surface may change.
 
 ## Install
 
