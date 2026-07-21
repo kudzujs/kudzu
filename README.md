@@ -14,6 +14,16 @@ Kudzu keeps the familiar function-component, props, children, event-handler, and
 
 ## Install
 
+Create a new project:
+
+```bash
+npm create kudzu@latest my-app
+cd my-app
+npm run dev
+```
+
+Or add Kudzu to an existing project:
+
 ```bash
 npm install @kudzujs/core
 ```

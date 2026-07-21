@@ -1,0 +1,34 @@
+{
+  "name": "create-kudzu",
+  "version": "0.1.0",
+  "description": "Create a Kudzu project",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kudzujs/kudzu.git",
+    "directory": "packages/create-kudzu"
+  },
+  "homepage": "https://kudzujs.cloud",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "create-kudzu": "./index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test ../../test/create-kudzu.test.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": [
+    "kudzu",
+    "tsx",
+    "starter",
+    "scaffold"
+  ]
+}
