@@ -139,6 +139,14 @@ footer > span { font-family: var(--mono); }
 .docs-table span { color: var(--violet); text-align: center; }
 .docs-callout { display: flex; gap: 20px; padding: 20px; color: var(--muted); border-left: 2px solid var(--violet); background: rgba(141, 82, 255, .08); }
 .docs-callout strong { color: var(--lavender); font-family: var(--mono); font-size: 11px; }
+.conditional-demo { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 34px 0; padding: 22px; border: 1px solid var(--line); background: var(--panel); }
+.conditional-demo span { color: var(--violet); font-family: var(--mono); font-size: 9px; letter-spacing: .13em; }
+.conditional-demo p { margin: 7px 0 0; color: var(--muted); }
+.conditional-demo button { padding: 12px 18px; color: var(--ink); border: 1px solid var(--violet); background: transparent; border-radius: 8px; cursor: pointer; }
+.conditional-demo button:hover { background: var(--violet); }
+.docs-menu { display: flex; gap: 1px; margin-bottom: 34px; border: 1px solid var(--line); background: var(--line); }
+.docs-menu a { flex: 1; padding: 18px; color: var(--ink); background: var(--panel); text-align: center; text-decoration: none; }
+.docs-menu a:hover { color: var(--lavender); background: rgba(141, 82, 255, .08); }
 .attribute-grid, .docs-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 34px; background: var(--line); border: 1px solid var(--line); }
 .attribute-grid div, .docs-columns div { padding: 24px; background: var(--panel); }
 .attribute-grid p, .docs-columns p { color: var(--muted); font-size: 13px; line-height: 1.7; }
@@ -168,6 +176,8 @@ footer > span { font-family: var(--mono); }
   .docs-content { padding-left: 0; }
   .docs-intro { padding: 80px 0; }
   .attribute-grid { grid-template-columns: 1fr; }
+  .conditional-demo { align-items: stretch; flex-direction: column; }
+  .docs-menu { flex-direction: column; }
 }
 
 @media (max-width: 480px) {

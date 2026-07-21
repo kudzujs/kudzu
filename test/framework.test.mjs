@@ -4,7 +4,7 @@ import { readFile, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import test from "node:test"
 import { build } from "../framework/build.mjs"
-import { conditional, nativeBehavior, renderPage, useState } from "../framework/core.mjs"
+import { behavior, conditional, nativeBehavior, renderPage, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -32,7 +32,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /data-k-state=/)
-  assert.doesNotMatch(docs, /<script type="module"/)
+  assert.match(docs, /data-k-if=/)
+  assert.match(docs, /kudzu-binding\.js/)
+  assert.match(docs, /Open menu/)
   assert.equal(home.states[0].name, "count")
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
@@ -67,6 +69,14 @@ test("does not serialize unused state on static pages", async () => {
   }, { styles: false })
   assert.doesNotMatch(result.html, /data-k-state/)
   assert.equal(result.hasBehaviors, false)
+})
+
+test("escapes compact JSON attributes", async () => {
+  const result = await renderPage(() => {
+    const [value] = useState("it's <&")
+    return jsx("button", { onClick: behavior([["set", value, "it's <&"]]), children: "Set" })
+  }, { styles: false })
+  assert.match(result.html, /data-k-on-click='\[\["set","s0","it&#39;s &lt;&amp;"\]\]'/)
 })
 
 test("rejects reactive conditionals in foreign namespaces", async () => {

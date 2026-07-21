@@ -6,11 +6,9 @@
 
 HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
-Brand assets, favicons, manifest icons, and the 1200×630 social preview live in [`public/`](./public).
-
 Kudzu keeps the familiar function-component, props, children, event-handler, and `useState` shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers compile to external ESM.
 
-> Experimental `0.2.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.3.x`: the compiler API and supported TSX surface may change.
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
@@ -55,6 +53,8 @@ Configure TypeScript:
   }
 }
 ```
+
+Make sure application TSX files are included by this `tsconfig.json`. Files outside its `include` may fall into an editor-inferred React project and incorrectly report a missing `react/jsx-runtime` or React event-type errors.
 
 Create `src/pages/index.tsx`:
 
@@ -112,11 +112,19 @@ Kudzu compiles derived expressions to external ESM and patches only the bound DO
 
 ## Conditional DOM
 
-Inline child `&&` and ternary expressions insert and remove bounded DOM ranges directly:
+Inline child `&&` and ternary expressions insert and remove bounded DOM ranges directly. A menu bar needs only state setters:
 
 ```tsx
-{open && <Dialog />}
-{open ? <p>Open</p> : <p>Closed</p>}
+function MenuBar() {
+  return <nav><a href="/docs">Docs</a></nav>
+}
+
+const [open, setOpen] = useState(false)
+
+{open
+  ? <button onClick={() => setOpen(false)}>Close menu</button>
+  : <button onClick={() => setOpen(true)}>Open menu</button>}
+{open && <MenuBar />}
 ```
 
 Logical state persists across branch switches, while uncontrolled DOM state resets on remount. Both branches are materialized in inert templates at build time, so conditional rendering is not an authorization boundary and dormant branches must not contain secrets.
@@ -149,7 +157,8 @@ Primitive values, arrays, plain objects, and destructured props can be captured 
 TSX
 ├─ static component      → HTML
 ├─ ordered state setter  → behavior command
-└─ normal JS handler     → route handler ESM
+├─ conditional child     → bounded DOM range
+└─ normal JS handler     → external ESM
 ```
 
 - Static pages ship no client JavaScript.
@@ -196,13 +205,13 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | 563 B | 1.7 KB | **378 ms** |
-| Astro | Yes | **158 B** | **365 B** | 899 ms |
-| Svelte CSR | No | 10.5 KB | 26.9 KB | 889 ms |
-| Qwik CSR | No | 20.6 KB | 57.8 KB | 632 ms |
-| Vue CSR | No | 24.0 KB | 60.3 KB | 808 ms |
+| Kudzu | Yes | 487 B | 1.4 KB | **385 ms** |
+| Astro | Yes | **158 B** | **365 B** | 948 ms |
+| Svelte CSR | No | 10.5 KB | 26.9 KB | 885 ms |
+| Qwik CSR | No | 20.6 KB | 57.8 KB | 622 ms |
+| Vue CSR | No | 24.0 KB | 60.3 KB | 822 ms |
 | React CSR | No | 59.2 KB | 189.0 KB | 1084 ms |
-| Next.js | Yes | 182.1 KB | 652.2 KB | 3032 ms |
+| Next.js | Yes | 182.1 KB | 652.2 KB | 3074 ms |
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 

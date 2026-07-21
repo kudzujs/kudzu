@@ -1,3 +1,5 @@
+import { useState } from "@kudzujs/core"
+
 export const metadata = {
   title: "Kudzu Docs — HTML-first TSX",
   description: "Kudzu installation, components, state semantics, reactive attributes, event handlers, routing, and build reference.",
@@ -13,7 +15,19 @@ export const metadata = {
   manifest: "/site.webmanifest"
 }
 
+function MenuBar() {
+  return (
+    <nav className="docs-menu" aria-label="Example navigation">
+      <a href="#components">Components</a>
+      <a href="#state">State</a>
+      <a href="#conditionals">Conditional DOM</a>
+    </nav>
+  )
+}
+
 export default function DocsPage() {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
     <>
       <header className="site-header docs-header">
@@ -40,7 +54,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.2.4</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.3.0</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -113,12 +127,28 @@ return <>
           <section className="docs-section" id="conditionals">
             <div className="docs-heading"><span>06</span><div><p>CORE · NEW</p><h2>Conditional DOM</h2></div></div>
             <p>Child <code>&amp;&amp;</code> and ternary expressions compile to bounded DOM ranges. Kudzu inserts or removes only that range and does not rerun a browser component tree.</p>
-            <pre><code>{`const [open, setOpen] = useState(false)
+            <pre><code>{`function MenuBar() {
+  return <nav>
+    <a href="/docs">Docs</a>
+    <a href="/about">About</a>
+  </nav>
+}
+
+const [open, setOpen] = useState(false)
 
 return <>
-  {open && <Dialog />}
-  {open ? <p>Open</p> : <p>Closed</p>}
+  {open
+    ? <button onClick={() => setOpen(false)}>Close menu</button>
+    : <button onClick={() => setOpen(true)}>Open menu</button>}
+  {open && <MenuBar />}
 </>`}</code></pre>
+            <div className="conditional-demo">
+              <div><span>LIVE EXAMPLE</span><p>{menuOpen ? "Menu mounted" : "Menu dormant"}</p></div>
+              {menuOpen
+                ? <button onClick={() => setMenuOpen(false)}>Close menu</button>
+                : <button onClick={() => setMenuOpen(true)}>Open menu</button>}
+            </div>
+            {menuOpen && <MenuBar />}
             <div className="docs-callout"><strong>State</strong><span>Logical Kudzu state persists across branch switches. Uncontrolled input values, focus, selection, and imperative DOM mutations reset when a branch is remounted.</span></div>
             <p>Both branches are rendered into inert templates at build time. Conditional rendering is a UI mechanism, not an authorization boundary: do not place secrets or access-controlled content in a dormant branch, and avoid build-time side effects in branch components.</p>
           </section>

@@ -145,11 +145,11 @@ export async function renderPage(component, metadata = {}) {
       ? Object.entries(renderContext.states).filter(([id]) => !renderContext.textStates.has(id) || renderContext.conditionStates.has(id)).map(([id, entry]) => [id, entry.initialValue])
       : []
     const state = initialState.length
-      ? ` data-k-state="${escapeAttribute(JSON.stringify(initialState))}"`
+      ? ` data-k-state='${escapeJsonAttribute(initialState)}'`
       : ""
 
     return {
-      html: `<!doctype html>\n<html lang="${escapeAttribute(metadata.lang ?? "en")}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${head}${styles}\n</head>\n<body${state}>\n${body}\n${runtime}\n${bindingRuntime}\n${nativeRuntime}\n</body>\n</html>\n`,
+      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}>${body}${runtime}${bindingRuntime}${nativeRuntime}</body></html>`,
       hasBehaviors: renderContext.hasBehaviors,
       hasBindings: renderContext.hasBindings,
       hasStateSeed: initialState.length > 0,
@@ -180,7 +180,7 @@ function renderMetadata(metadata) {
 
   meta("og:title", metadata.title, true)
   meta("og:description", metadata.description, true)
-  meta("og:type", metadata.type ?? "website", true)
+  if (metadata.type || metadata.title || metadata.description || metadata.url || metadata.image || metadata.siteName || metadata.locale) meta("og:type", metadata.type ?? "website", true)
   meta("og:url", metadata.url, true)
   meta("og:image", metadata.image, true)
   if (metadata.image) {
@@ -195,7 +195,7 @@ function renderMetadata(metadata) {
   meta("twitter:description", metadata.description)
   meta("twitter:image", metadata.twitterImage ?? metadata.image)
 
-  return tags.length ? `${tags.join("\n")}\n` : ""
+  return tags.join("")
 }
 
 async function renderNode(node, namespace) {
@@ -208,7 +208,7 @@ async function renderNode(node, namespace) {
   if (node?.[signalMarker]) {
     renderContext.textStates.add(node.id)
     if (renderContext.conditionDepth) renderContext.conditionStates.add(node.id)
-    return `<span data-k-text="${node.id}" data-k-value="${escapeAttribute(JSON.stringify(node.value))}">${escapeHtml(node.value)}</span>`
+    return `<span data-k-text="${node.id}" data-k-value='${escapeJsonAttribute(node.value)}'>${escapeHtml(node.value)}</span>`
   }
   if (typeof node === "string" || typeof node === "number" || typeof node === "bigint") {
     return escapeHtml(node)
@@ -230,9 +230,9 @@ async function renderNode(node, namespace) {
     renderContext.conditions.push(metadata)
     renderContext.hasBehaviors = true
     renderContext.hasBindings = true
-    const encoded = escapeAttribute(JSON.stringify(metadata))
+    const encoded = escapeJsonAttribute(metadata)
     const current = node.value ? truthy : node.kind === "and" ? await renderNode(node.value) : falsy
-    return `<template data-k-if="${encoded}"><template data-k-true>${truthy}</template><template data-k-false>${falsy}</template></template>${current}<template data-k-if-end="${id}"></template>`
+    return `<template data-k-if='${encoded}'><template data-k-true>${truthy}</template><template data-k-false>${falsy}</template></template>${current}<template data-k-if-end="${id}"></template>`
   }
   if (!node || typeof node !== "object" || !("type" in node)) {
     throw new Error(`Cannot render ${String(node)}`)
@@ -255,11 +255,11 @@ async function renderNode(node, namespace) {
       const event = rawName.slice(2).toLowerCase()
       if (value?.[behaviorMarker]) {
         const commands = JSON.stringify(value.commands)
-        attributes += ` data-k-on-${event}="${escapeAttribute(commands)}"`
+        attributes += ` data-k-on-${event}='${escapeJsonAttribute(value.commands)}'`
         renderContext.events.push({ event, commands: value.commands })
       } else if (value?.[nativeBehaviorMarker]) {
         const native = { module: value.module, handler: value.handler, states: value.states, scope: value.scope }
-        attributes += ` data-k-native-${event}="${escapeAttribute(JSON.stringify(native))}"`
+        attributes += ` data-k-native-${event}='${escapeJsonAttribute(native)}'`
         renderContext.events.push({ event, native })
         renderContext.hasNativeBehaviors = true
       } else {
@@ -282,7 +282,7 @@ async function renderNode(node, namespace) {
         ? { state: value.id }
         : bindingDescriptor(value)
       attributes += renderAttribute(name, initialValue)
-      attributes += ` data-k-bind-${target}="${escapeAttribute(JSON.stringify(descriptor))}"`
+      attributes += ` data-k-bind-${target}='${escapeJsonAttribute(descriptor)}'`
       renderContext.bindings.push({ target, ...descriptor })
       if (renderContext.conditionDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
       renderContext.hasBehaviors = true
@@ -332,6 +332,10 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replaceAll("'", "&#39;")
+}
+
+function escapeJsonAttribute(value) {
+  return JSON.stringify(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("'", "&#39;")
 }
 
 function toKebabCase(value) {
