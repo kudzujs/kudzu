@@ -1,19 +1,19 @@
 import { useState } from "@kudzujs/core"
 
-type Item = { id: number; name: string; tone: string }
+type Item = { id: number; name: string; tone: string; done: boolean; type: string }
 
 export default function ListPage() {
   const [items, setItems] = useState<Item[]>([
-    { id: 1, name: "Oak", tone: "warm" },
-    { id: 2, name: "Pine", tone: "cool" }
+    { id: 1, name: "Oak", tone: "warm", done: false, type: "undefined" },
+    { id: 2, name: "Pine", tone: "cool", done: true, type: "undefined" }
   ])
 
   function add() {
-    setItems([...items, { id: 3, name: "Elm", tone: "green" }])
+    setItems([...items, { id: 3, name: "Elm", tone: "green", done: false, type: "undefined" }])
   }
 
   function rename() {
-    setItems(items.map(item => item.id === 1 ? { ...item, name: "Red oak", tone: "hot" } : item))
+    setItems(items.map(item => item.id === 1 ? { ...item, name: "Red oak", tone: "hot", done: true } : item))
   }
 
   function reorder() {
@@ -35,7 +35,10 @@ export default function ListPage() {
     <button data-action="remove" onClick={remove}>Remove</button>
     <button data-action="duplicate" onClick={duplicate}>Duplicate</button>
     <ul data-list>
-      {items.map(item => <li key={item.id} data-id={item.id} className={item.tone}><span>{item.name} tree</span><input data-uncontrolled /></li>)}
+      {items.map(item => <li key={item.id} data-id={item.id} className={item.done ? "done" : "active"} aria-label={`${item.name} item`}>
+        <span>{item.name.toUpperCase()} tree</span><small>{item.name}</small><input data-uncontrolled />
+        <button data-remove onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
+      </li>)}
     </ul>
     <table><tbody>
       {items.map(item => <tr key={item.id} data-row={item.id}><td>{item.name}</td></tr>)}

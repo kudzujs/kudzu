@@ -5,6 +5,8 @@ const bindingMarker = Symbol("kudzu.binding")
 const conditionalMarker = Symbol("kudzu.conditional")
 const listMarker = Symbol("kudzu.list")
 const listFieldMarker = Symbol("kudzu.listField")
+const listExpressionMarker = Symbol("kudzu.listExpression")
+const listItemMarker = Symbol("kudzu.listItem")
 const noSelectValue = Symbol("kudzu.no-select-value")
 
 let renderContext
@@ -79,13 +81,27 @@ export function list(items, keyField, render) {
   return { [listMarker]: true, items, keyField, render }
 }
 
+export function listField(read, field) {
+  return { [listFieldMarker]: true, field, value: renderContext?.listTemplate ? undefined : read() }
+}
+
+export function listExpression(read, module, handler) {
+  const value = renderContext?.listTemplate ? undefined : read()
+  if (value && typeof value.then === "function") throw new Error("Derived keyed list item expressions must return synchronous values")
+  return { [listExpressionMarker]: true, module, handler, value }
+}
+
+export function listItem() {
+  return { [listItemMarker]: true }
+}
+
 function validListKey(key) {
   return typeof key === "string" || typeof key === "number" && Number.isFinite(key)
 }
 
 function assertListItem(item) {
   const prototype = item && typeof item === "object" ? Object.getPrototypeOf(item) : undefined
-  if (!item || Array.isArray(item) || prototype !== Object.prototype && prototype !== null) throw new Error("Keyed list items must be plain objects")
+  if (!item || Array.isArray(item) || prototype !== Object.prototype) throw new Error("Keyed list items must be ordinary plain objects")
 }
 
 function assertListValue(value, seen) {
@@ -93,7 +109,7 @@ function assertListValue(value, seen) {
   if (!value || typeof value !== "object") throw new Error(`Keyed list items must contain only JSON-safe values`)
   if (seen.has(value)) throw new Error("Keyed list items must not contain cycles")
   const prototype = Object.getPrototypeOf(value)
-  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) throw new Error("Keyed list items must contain only arrays and plain objects")
+  if (!Array.isArray(value) && prototype !== Object.prototype) throw new Error("Keyed list items must contain only arrays and ordinary plain objects")
   if (Object.getOwnPropertySymbols(value).length) throw new Error("Keyed list items must not contain symbols")
   seen.add(value)
   const descriptors = Object.getOwnPropertyDescriptors(value)
@@ -139,6 +155,7 @@ function bindingDescriptor(value) {
 }
 
 function serializeCapture(name, value, seen) {
+  if (value?.[listItemMarker]) return { type: "list-item" }
   if (value === null || typeof value === "string" || typeof value === "boolean") return value
   if (typeof value === "number") {
     return Number.isFinite(value) && !Object.is(value, -0) ? value : { type: "number", value: String(value) }
@@ -170,7 +187,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false }
+  renderContext = { nextState: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -290,6 +307,10 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (node?.[listFieldMarker]) {
     return `<template data-k-list-text="${escapeAttribute(node.field)}"></template>${escapeHtml(node.value ?? "")}<template data-k-list-text-end></template>`
   }
+  if (node?.[listExpressionMarker]) {
+    const descriptor = { module: node.module, handler: node.handler }
+    return `<template data-k-list-expression='${escapeJsonAttribute(descriptor)}'></template>${escapeHtml(node.value ?? "")}<template data-k-list-expression-end></template>`
+  }
   if (!node || typeof node !== "object" || !("type" in node)) {
     throw new Error(`Cannot render ${String(node)}`)
   }
@@ -308,6 +329,8 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   let attributes = ""
   const attributeBindings = []
   const listAttributes = []
+  const listExpressionAttributes = []
+  const listEvents = []
 
   if (renderContext.listRoot) {
     const root = renderContext.listRoot
@@ -327,15 +350,17 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
 
     if (/^on[A-Z]/.test(rawName)) {
-      const event = rawName.slice(2).toLowerCase()
+        const event = rawName.slice(2).toLowerCase()
       if (value?.[behaviorMarker]) {
         const commands = JSON.stringify(value.commands)
         attributes += ` data-k-on-${event}='${escapeJsonAttribute(value.commands)}'`
         renderContext.events.push({ event, commands: value.commands })
       } else if (value?.[nativeBehaviorMarker]) {
-        const native = { module: value.module, handler: value.handler, states: value.states, scope: value.scope }
+        const template = { module: value.module, handler: value.handler, states: value.states, scope: value.scope }
+        const native = template
         attributes += ` data-k-native-${event}='${escapeJsonAttribute(native)}'`
         renderContext.events.push({ event, native })
+        if (renderContext.listDepth && Object.values(template.scope).some(entry => entry?.type === "list-item")) listEvents.push([event, template])
         renderContext.hasNativeBehaviors = true
       } else {
         throw new Error(`${rawName} must reference a compilable event handler`)
@@ -349,6 +374,11 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (value?.[listFieldMarker]) {
       attributes += renderAttribute(name, value.value)
       listAttributes.push([name, value.field])
+      continue
+    }
+    if (value?.[listExpressionMarker]) {
+      attributes += renderAttribute(name, value.value)
+      listExpressionAttributes.push([name, value.module, value.handler])
       continue
     }
     if (value?.[signalMarker] || value?.[bindingMarker]) {
@@ -382,6 +412,8 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 
   if (attributeBindings.length) attributes += ` data-k-bind-attrs='${escapeJsonAttribute(attributeBindings)}'`
   if (listAttributes.length) attributes += ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
+  if (listExpressionAttributes.length) attributes += ` data-k-list-expression-attrs='${escapeJsonAttribute(listExpressionAttributes)}'`
+  if (listEvents.length) attributes += ` data-k-list-events='${escapeJsonAttribute(listEvents)}'`
 
   if (tag === "option" && selectValue !== noSelectValue && String(optionValue(props)) === (selectValue == null ? "" : String(selectValue))) attributes += " selected"
 
@@ -394,17 +426,16 @@ async function renderList(node, namespace, selectValue) {
   if (namespace) throw new Error(`Reactive keyed lists are not supported inside ${namespace}`)
   const id = `l${renderContext.nextList++}`
   const descriptor = { id, state: node.items.id, key: node.keyField }
-  const itemProxy = value => new Proxy({}, {
-    get: (_, field) => ({ [listFieldMarker]: true, field: String(field), value: value?.[field] })
-  })
   renderContext.listDepth++
   try {
+    renderContext.listTemplate = true
     renderContext.listRoot = { id, template: true }
-    const template = await renderNode(node.render(itemProxy(undefined)), namespace, selectValue)
+    const template = await renderNode(node.render({}), namespace, selectValue)
     let current = ""
+    renderContext.listTemplate = false
     for (const item of node.items.value) {
       renderContext.listRoot = { id, key: item[node.keyField], template: false }
-      current += await renderNode(node.render(itemProxy(item)), namespace, selectValue)
+      current += await renderNode(node.render(item), namespace, selectValue)
     }
     renderContext.lists.push(descriptor)
     renderContext.hasBehaviors = true
@@ -412,6 +443,7 @@ async function renderList(node, namespace, selectValue) {
     return `<template data-k-list='${escapeJsonAttribute(descriptor)}'>${template}</template>${current}<template data-k-list-end="${id}"></template>`
   } finally {
     renderContext.listRoot = undefined
+    renderContext.listTemplate = false
     renderContext.listDepth--
   }
 }

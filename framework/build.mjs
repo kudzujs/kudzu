@@ -150,6 +150,7 @@ async function compile(file) {
   const source = await readFile(file, "utf8")
   const nativeHandlers = []
   const reactiveBindings = []
+  const listExpressions = []
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
   const result = ts.transpileModule(source, {
     fileName: file,
@@ -159,7 +160,7 @@ async function compile(file) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, `/assets/${handlerPath}`)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, `/assets/${handlerPath}`)] },
     reportDiagnostics: true
   })
 
@@ -172,10 +173,11 @@ async function compile(file) {
   await mkdir(resolve(output, ".."), { recursive: true })
   await writeFile(output, result.outputText)
 
-  if (!nativeHandlers.length && !reactiveBindings.length) return undefined
+  if (!nativeHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
   const moduleSource = [
     ...nativeHandlers.map(handler => printNativeHandler(handler)),
-    ...reactiveBindings.map(entry => printReactiveBinding(entry))
+    ...reactiveBindings.map(entry => printReactiveBinding(entry)),
+    ...listExpressions.map(entry => printListExpression(entry))
   ].join("\n")
   const moduleResult = ts.transpileModule(moduleSource, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
@@ -186,12 +188,13 @@ async function compile(file) {
   return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0 }
 }
 
-function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
+function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, handlerUrl) {
   return context => sourceFile => {
     const factory = context.factory
     const settersByFunction = new Map()
     const functions = new Map()
-    const listFieldExpressions = new WeakSet()
+    const listValues = new WeakMap()
+    const listEventItems = new WeakMap()
     let usesBehavior = false
     let usesBinding = false
     let usesConditional = false
@@ -237,13 +240,20 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, initializer)
       }
 
+      if (ts.isJsxExpression(node) && node.expression && listValues.has(node.expression)) {
+        return factory.updateJsxExpression(node, compileListValue(node.expression, listValues.get(node.expression), factory, listExpressions, handlerUrl))
+      }
+
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && listValues.has(node.initializer.expression)) {
+        return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compileListValue(node.initializer.expression, listValues.get(node.initializer.expression), factory, listExpressions, handlerUrl)))
+      }
+
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
         const listParts = keyedListParts(node.expression, settersForNode(node, settersByFunction))
         if (listParts) {
           if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
-          validateKeyedList(listParts, sourceFile, listFieldExpressions)
+          validateKeyedList(listParts, sourceFile, settersForNode(node, settersByFunction), listValues, listEventItems)
           usesBehavior = true
-          usesBinding = true
           usesList = true
           return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, [
             listParts.state,
@@ -269,7 +279,6 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !/^on/i.test(node.name.getText()) && !["style", "key", "ref", "dangerouslysetinnerhtml"].includes(node.name.getText().toLowerCase())) {
         const expression = node.initializer.expression
-        if (listFieldExpressions.has(expression)) return node
         const setters = settersForNode(node, settersByFunction)
         const usedStates = referencedStateNames(expression, setters)
         const captures = captureNames(expression, expression, setters)
@@ -283,7 +292,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.getText())) {
         const setters = settersForNode(node, settersByFunction)
-        const event = compileEvent(node.initializer.expression, setters, functions, factory, nativeHandlers, handlerUrl)
+        const event = compileEvent(node.initializer.expression, setters, functions, factory, nativeHandlers, handlerUrl, listEventItems.get(node))
         if (event) {
           usesBehavior = true
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, event))
@@ -302,7 +311,12 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
     if (nativeHandlers.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("nativeBehavior"), factory.createIdentifier("__kNativeBehavior")))
     if (usesBinding) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
     if (usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("conditional"), factory.createIdentifier("__kConditional")))
-    if (usesList) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("list"), factory.createIdentifier("__kList")))
+    if (usesList) {
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("list"), factory.createIdentifier("__kList")))
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listExpression"), factory.createIdentifier("__kListExpression")))
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listField"), factory.createIdentifier("__kListField")))
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
+    }
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
@@ -331,7 +345,7 @@ function keyedListParts(expression, setters) {
   return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
 }
 
-function validateKeyedList(parts, sourceFile, listFieldExpressions) {
+function validateKeyedList(parts, sourceFile, setters, listValues, listEventItems) {
   const fail = (node, message) => {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
     throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
@@ -341,25 +355,110 @@ function validateKeyedList(parts, sourceFile, listFieldExpressions) {
     if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
   }
   const visit = node => {
+    if (ts.isJsxFragment(node)) fail(node, "Fragments are not supported in keyed lists")
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
-    if (node !== parts.root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map") fail(node, "Nested keyed lists are not supported")
+    if (node !== parts.root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, "Nested keyed lists are not supported")
     if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, parts.item)) fail(node, "Keyed list item spreads are not supported")
-    if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.getText())) fail(node, "Item-local handlers are not supported in keyed lists")
+    if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.getText())) {
+      listEventItems.set(node, parts.item)
+      return
+    }
     if (ts.isJsxExpression(node) && node.expression) {
       const expression = unwrapExpression(node.expression)
+      if (conditionalParts(expression) && containsJsx(expression)) fail(node, "Nested reactive conditions are not supported in keyed lists")
       const field = directProperty(expression, parts.item)
-      const isRootKey = node.parent?.parent === parts.root && ts.isJsxAttribute(node.parent) && node.parent.name.getText() === "key"
+      const isRootKey = ts.isJsxAttribute(node.parent) && node.parent.name.getText() === "key"
+      if (field && ["__proto__", "constructor", "prototype"].includes(field)) fail(node, `Keyed list item property "${field}" is not supported`)
       if (field && ts.isJsxAttribute(node.parent) && ["style", "ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
-      if (isRootKey || field) {
-        if (field) listFieldExpressions.add(node.expression)
+      if (isRootKey) return
+      if (field) {
+        listValues.set(node.expression, { field })
         return
       }
-      if (conditionalParts(expression)) fail(node, "Nested reactive conditions are not supported in keyed lists")
-      if (referencesIdentifier(expression, parts.item)) fail(node, `Keyed list item expressions must be direct ${parts.item}.<field> reads`)
+      if (referencesIdentifier(expression, parts.item)) {
+        validateListExpression(expression, parts.item, node, fail)
+        if (ts.isJsxAttribute(node.parent) && ["style", "ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
+        listValues.set(node.expression, { item: parts.item })
+        return
+      }
     }
     ts.forEachChild(node, visit)
   }
   visit(parts.root)
+}
+
+const pureListMethods = new Set(["at", "charAt", "charCodeAt", "concat", "endsWith", "includes", "indexOf", "join", "lastIndexOf", "padEnd", "padStart", "repeat", "replace", "replaceAll", "slice", "startsWith", "substring", "toLowerCase", "toUpperCase", "trim", "trimEnd", "trimStart"])
+const mutatingListMethods = new Set(["copyWithin", "fill", "pop", "push", "reverse", "shift", "sort", "splice", "unshift"])
+const pureMathMethods = new Set(["abs", "ceil", "floor", "max", "min", "pow", "round", "sign", "sqrt", "trunc"])
+const pureListGlobals = new Set(["Boolean", "Infinity", "Math", "NaN", "Number", "String", "undefined"])
+const assignmentOperators = new Set([
+  ts.SyntaxKind.EqualsToken, ts.SyntaxKind.PlusEqualsToken, ts.SyntaxKind.MinusEqualsToken,
+  ts.SyntaxKind.AsteriskEqualsToken, ts.SyntaxKind.AsteriskAsteriskEqualsToken, ts.SyntaxKind.SlashEqualsToken,
+  ts.SyntaxKind.PercentEqualsToken, ts.SyntaxKind.LessThanLessThanEqualsToken, ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,
+  ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ts.SyntaxKind.AmpersandEqualsToken, ts.SyntaxKind.BarEqualsToken,
+  ts.SyntaxKind.CaretEqualsToken, ts.SyntaxKind.BarBarEqualsToken, ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+  ts.SyntaxKind.QuestionQuestionEqualsToken
+])
+
+function validateListExpression(expression, item, source, fail) {
+  const visit = node => {
+    if (ts.isElementAccessExpression(node) && referencesIdentifier(node.expression, item)) {
+      const key = node.argumentExpression
+      if (!ts.isStringLiteral(key) && !ts.isNumericLiteral(key)) fail(source, "Derived keyed list item computed properties require a direct string or numeric literal key")
+      if (ts.isStringLiteral(key) && ["__proto__", "constructor", "prototype"].includes(key.text)) fail(source, `Derived keyed list item property "${key.text}" is not supported`)
+    }
+    if (ts.isPropertyAccessExpression(node) && ["__proto__", "constructor", "prototype"].includes(node.name.text) || ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression) && ["__proto__", "constructor", "prototype"].includes(node.argumentExpression.text)) {
+      fail(source, "Derived keyed list item expressions cannot read __proto__, prototype, or constructor")
+    }
+    if (ts.isBinaryExpression(node) && assignmentOperators.has(node.operatorToken.kind) || ts.isPostfixUnaryExpression(node) || ts.isPrefixUnaryExpression(node) && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator)) {
+      fail(source, "Derived keyed list item expressions must be pure; assignments and updates are not supported")
+    }
+    if (ts.isDeleteExpression(node) || ts.isAwaitExpression(node) || ts.isNewExpression(node) || ts.isYieldExpression(node)) {
+      fail(source, "Derived keyed list item expressions must be synchronous and side-effect free; delete, await, yield, and new are not supported")
+    }
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isTaggedTemplateExpression(node)) {
+      fail(source, "Derived keyed list item expressions cannot create or invoke arbitrary functions")
+    }
+    if (ts.isCallExpression(node)) {
+      if (ts.isPropertyAccessExpression(node.expression)) {
+        const method = node.expression.name.text
+        if (mutatingListMethods.has(method)) fail(source, `Derived keyed list item expressions cannot call mutating method "${method}"`)
+        const receiver = node.expression.expression
+        const mathCall = ts.isIdentifier(receiver) && receiver.text === "Math" && pureMathMethods.has(method)
+        if (!mathCall && !pureListMethods.has(method)) fail(source, `Derived keyed list item expressions cannot call arbitrary method "${method}"`)
+      } else if (!ts.isIdentifier(node.expression) || !["Boolean", "Number", "String"].includes(node.expression.text)) {
+        fail(source, "Derived keyed list item expressions cannot call arbitrary functions")
+      }
+    }
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && node.text !== item && !pureListGlobals.has(node.text)) {
+      fail(source, `Derived keyed list item expression identifier "${node.text}" is not allowed`)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(expression)
+}
+
+function containsJsx(root) {
+  let found = false
+  const visit = node => {
+    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) found = true
+    if (!found) ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return found
+}
+
+function compileListExpression(read, expression, item, factory, listExpressions, handlerUrl) {
+  const exportName = `listExpression${listExpressions.length}`
+  listExpressions.push({ exportName, expression, item })
+  return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)])
+}
+
+function compileListValue(expression, entry, factory, listExpressions, handlerUrl) {
+  const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expression)
+  return entry.field
+    ? factory.createCallExpression(factory.createIdentifier("__kListField"), undefined, [read, factory.createStringLiteral(entry.field)])
+    : compileListExpression(read, expression, entry.item, factory, listExpressions, handlerUrl)
 }
 
 function directProperty(expression, objectName) {
@@ -454,10 +553,11 @@ function factoryNull() {
   return ts.factory.createNull()
 }
 
-function compileEvent(expression, setters, functions, factory, nativeHandlers, handlerUrl) {
+function compileEvent(expression, setters, functions, factory, nativeHandlers, handlerUrl, listItem) {
   if (ts.isIdentifier(expression)) expression = functions.get(expression.text)
   if (!expression || (!ts.isArrowFunction(expression) && !ts.isFunctionExpression(expression) && !ts.isFunctionDeclaration(expression))) return undefined
 
+  rejectNativeEventControls(expression)
   const optimized = compileOptimizedEvent(expression, setters, factory)
   if (optimized) return optimized
 
@@ -469,16 +569,43 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
     factory.createStringLiteral(name),
     factory.createIdentifier(name)
   ]))
-  const scope = [...captures].map(name => factory.createArrayLiteralExpression([
-    factory.createStringLiteral(name),
-    factory.createIdentifier(name)
-  ]))
   return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
     factory.createStringLiteral(handlerUrl),
     factory.createStringLiteral(exportName),
     factory.createArrayLiteralExpression(states),
-    factory.createArrayLiteralExpression(scope)
+    factory.createArrayLiteralExpression([...captures].map(name => factory.createArrayLiteralExpression([
+      factory.createStringLiteral(name),
+      name === listItem ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, []) : factory.createIdentifier(name)
+    ])))
   ])
+}
+
+function rejectNativeEventControls(expression) {
+  const controls = new Set(["preventDefault", "stopPropagation", "stopImmediatePropagation"])
+  const found = new Set()
+  const eventAliases = new Set()
+  const parameter = expression.parameters[0]?.name
+  if (parameter && ts.isIdentifier(parameter)) eventAliases.add(parameter.text)
+  const visit = node => {
+    if (ts.isIdentifier(node) && controls.has(node.text)) found.add(node.text)
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isIdentifier(unwrapEventAlias(node.initializer)) && eventAliases.has(unwrapEventAlias(node.initializer).text)) {
+      eventAliases.add(node.name.text)
+    }
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(node.left) && ts.isIdentifier(unwrapEventAlias(node.right)) && eventAliases.has(unwrapEventAlias(node.right).text)) eventAliases.add(node.left.text)
+    if (ts.isElementAccessExpression(node) && ts.isIdentifier(unwrapEventAlias(node.expression)) && eventAliases.has(unwrapEventAlias(node.expression).text)) {
+      if (ts.isStringLiteral(node.argumentExpression) && controls.has(node.argumentExpression.text)) found.add(node.argumentExpression.text)
+      else if (!ts.isStringLiteral(node.argumentExpression)) for (const control of controls) found.add(control)
+    }
+    ts.forEachChild(node, visit)
+  }
+  for (const parameter of expression.parameters) visit(parameter)
+  visit(expression.body)
+  if (found.size) throw new Error(`Delegated native handlers do not support event control methods: ${[...found].sort().join(", ")}`)
+}
+
+function unwrapEventAlias(node) {
+  if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node) || ts.isSatisfiesExpression(node)) return unwrapEventAlias(node.expression)
+  return node
 }
 
 function nativeStateNames(expression, setters) {
@@ -679,6 +806,19 @@ function printReactiveBinding({ exportName, expression, captures, states }) {
   } finally {
     transformed.dispose()
   }
+}
+
+function printListExpression({ exportName, expression, item }) {
+  const declaration = ts.factory.createFunctionDeclaration(
+    [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+    undefined,
+    exportName,
+    undefined,
+    [ts.factory.createParameterDeclaration(undefined, undefined, item)],
+    undefined,
+    ts.factory.createBlock([ts.factory.createReturnStatement(expression)], true)
+  )
+  return ts.createPrinter().printNode(ts.EmitHint.Unspecified, declaration, expression.getSourceFile())
 }
 
 function scopeRead(factory, name) {

@@ -39,19 +39,38 @@ if (typeof document !== "undefined") {
   const eventNames = ["click", "input", "change", "submit", "keydown", "keyup"]
   for (const eventName of eventNames) {
     document.addEventListener(eventName, event => {
-      const target = event.target.closest(`[data-k-native-${eventName}]`)
-      if (!target) return
-
-      const native = JSON.parse(target.dataset[`kNative${capitalize(eventName)}`])
-      let modulePromise = modules.get(native.module)
-      if (!modulePromise) {
-        modulePromise = import(native.module)
-        modules.set(native.module, modulePromise)
+      try {
+        dispatchNative(event, snapshotNativeTargets(event, eventName), modules).catch(error => console.error(error))
+      } catch (error) {
+        console.error(error)
       }
-      modulePromise
-        .then(module => module[native.handler](createNativeContext(browserState, native.states, commitDom, native.scope), delegatedEvent(event, target)))
-        .catch(error => console.error(error))
-    }, true)
+    })
+  }
+}
+
+function snapshotNativeTargets(event, eventName) {
+  const selector = `[data-k-native-${eventName}]`
+  const targets = []
+  for (let target = event.target.closest(selector); target; target = target.parentElement?.closest(selector)) {
+    targets.push({ target, native: JSON.parse(target.dataset[`kNative${capitalize(eventName)}`]) })
+  }
+  return targets
+}
+
+async function dispatchNative(event, targets, modules) {
+  for (const { target, native } of targets) {
+    let modulePromise = modules.get(native.module)
+    if (!modulePromise) {
+      modulePromise = import(native.module)
+      modules.set(native.module, modulePromise)
+    }
+    try {
+      const module = await modulePromise
+      const result = module[native.handler](createNativeContext(browserState, native.states, commitDom, native.scope), delegatedEvent(event, target))
+      if (result && typeof result.then === "function") result.catch(error => console.error(error))
+    } catch (error) {
+      console.error(error)
+    }
   }
 }
 

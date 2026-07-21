@@ -56,7 +56,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.0</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.1</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -174,26 +174,35 @@ return <>
             <div className="docs-heading"><span>07</span><div><p>CORE · NEW</p><h2>Keyed lists</h2></div></div>
             <p>Map local array state directly to one keyed intrinsic element. Initial items are static HTML; browser updates add, remove, update, and move existing keyed elements without a VDOM or remount.</p>
             <pre><code>{`const [items, setItems] = useState([
-  { id: 1, name: "Oak" },
-  { id: 2, name: "Pine" }
+  { id: 1, name: "Oak", done: false },
+  { id: 2, name: "Pine", done: true }
 ])
 
 return <ul>
   {items.map(item =>
-    <li key={item.id} data-id={item.id}>{item.name}</li>
+    <li
+      key={item.id}
+      className={item.done ? "done" : "active"}
+      aria-label={\`\${item.name} item\`}
+    >
+      {item.name.toUpperCase()}
+      <button onClick={() =>
+        setItems(items.filter(entry => entry.id !== item.id))
+      }>Remove</button>
+    </li>
   )}
 </ul>`}</code></pre>
             <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-            <p>Each item must be a plain object containing JSON-safe values. The MVP accepts one identifier callback parameter, one intrinsic JSX root, <code>key={`{item.<field>}`}</code>, and direct item-property text or attributes. Item-derived expressions, item-local handlers, nested conditions or lists, component tags, and fragments are rejected at build time. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. Direct item-property reads use compact markers. Derived item text and normal attributes compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Delegated item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, item spreads, component tags, fragments, and reactive <code>style</code>, <code>ref</code>, or <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
           </section>
 
           <section className="docs-section" id="events">
             <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
             <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
-            <pre><code>{`async function submit(event: SubmitEvent) {
-  event.preventDefault()
+            <p>Delegated native handlers run after normal event bubbling, from the event target toward matching Kudzu ancestors in deterministic order with the correct <code>currentTarget</code>. They cannot call or reference <code>preventDefault()</code>, <code>stopPropagation()</code>, or <code>stopImmediatePropagation()</code>; the compiler rejects those methods because external ESM cannot apply them with correct synchronous DOM semantics.</p>
+            <pre><code>{`async function loadStatus() {
   setLoading(true)
-  const response = await fetch("/api/save", { method: "POST" })
+  const response = await fetch("/api/status")
   setLoading(false)
 }`}</code></pre>
           </section>
@@ -230,7 +239,7 @@ dist/
             <ul className="docs-limits">
               <li>Reactive <code>style</code>, <code>ref</code>, and <code>dangerouslySetInnerHTML</code> are not supported.</li>
               <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
-              <li>Keyed lists support only direct local-state maps, intrinsic roots, and direct item-property text or attributes.</li>
+              <li>Keyed lists require direct local-state maps and intrinsic roots; nested dynamic JSX, item spreads, and derived-expression captures remain unsupported.</li>
               <li>Generalized JSX-valued locals are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
               <li>Imported client helpers and non-serializable captures are rejected at build time.</li>

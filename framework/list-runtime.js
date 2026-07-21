@@ -3,6 +3,8 @@ import { browserState, mountDom, registerCommitter, registerMountHook, registerU
 const listTargets = new Map()
 const listRegistrations = new WeakMap()
 const mountedLists = new WeakSet()
+const imports = new Map()
+const revisions = new WeakMap()
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -97,20 +99,62 @@ function updateList(list) {
 }
 
 function fillListItem(root, item) {
+  const revision = (revisions.get(root) ?? 0) + 1
+  revisions.set(root, revision)
   for (const marker of matching(root, "template[data-k-list-text]")) {
-    const value = item?.[marker.dataset.kListText]
-    let end = marker.nextSibling
-    while (end && !(end.nodeType === Node.ELEMENT_NODE && end.matches("template[data-k-list-text-end]"))) end = end.nextSibling
-    if (!end) throw new Error("Keyed list text marker has no end")
-    const range = marker.ownerDocument.createRange()
-    range.setStartAfter(marker)
-    range.setEndBefore(end)
-    range.deleteContents()
-    end.before(marker.ownerDocument.createTextNode(value == null ? "" : String(value)))
+    patchListText(marker, "template[data-k-list-text-end]", item?.[marker.dataset.kListText])
   }
   for (const node of matching(root, "[data-k-list-attrs]")) {
     for (const [target, field] of JSON.parse(node.dataset.kListAttrs)) patchBinding(node, target, item?.[field])
   }
+  for (const node of matching(root, "[data-k-list-events]")) {
+    for (const [event, native] of JSON.parse(node.dataset.kListEvents)) {
+      native.scope = Object.fromEntries(Object.entries(native.scope).map(([name, value]) => [name, value?.type === "list-item" ? serializeItem(item) : value]))
+      node.dataset[`kNative${capitalize(event)}`] = JSON.stringify(native)
+    }
+  }
+  for (const marker of matching(root, "template[data-k-list-expression]")) {
+    evaluate(JSON.parse(marker.dataset.kListExpression), item).then(value => {
+      if (revisions.get(root) === revision && root.isConnected) patchListText(marker, "template[data-k-list-expression-end]", value)
+    }).catch(error => console.error(error))
+  }
+  for (const node of matching(root, "[data-k-list-expression-attrs]")) {
+    for (const [target, module, handler] of JSON.parse(node.dataset.kListExpressionAttrs)) {
+      evaluate({ module, handler }, item).then(value => {
+        if (revisions.get(root) === revision && root.isConnected) patchBinding(node, target, value)
+      }).catch(error => console.error(error))
+    }
+  }
+}
+
+function patchListText(marker, endSelector, value) {
+  let end = marker.nextSibling
+  while (end && !(end.nodeType === Node.ELEMENT_NODE && end.matches(endSelector))) end = end.nextSibling
+  if (!end) throw new Error("Keyed list text marker has no end")
+  const range = marker.ownerDocument.createRange()
+  range.setStartAfter(marker)
+  range.setEndBefore(end)
+  range.deleteContents()
+  end.before(marker.ownerDocument.createTextNode(value == null ? "" : String(value)))
+}
+
+function evaluate(descriptor, item) {
+  let module = imports.get(descriptor.module)
+  if (!module) {
+    module = import(descriptor.module)
+    imports.set(descriptor.module, module)
+  }
+  return module.then(exports => {
+    const value = exports[descriptor.handler](item)
+    if (value && typeof value.then === "function") throw new Error("Derived keyed list item expressions must return synchronous values")
+    return value
+  })
+}
+
+function serializeItem(value) {
+  if (value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number") return value
+  if (Array.isArray(value)) return { type: "array", value: value.map(serializeItem) }
+  return { type: "object", nullPrototype: false, value: Object.entries(value).map(([key, entry]) => [key, serializeItem(entry)]) }
 }
 
 function patchBinding(node, target, value) {
@@ -142,7 +186,7 @@ function validListKey(key) {
 
 function assertListItem(item) {
   const prototype = item && typeof item === "object" ? Object.getPrototypeOf(item) : undefined
-  if (!item || Array.isArray(item) || prototype !== Object.prototype && prototype !== null) throw new Error("Keyed list items must be plain objects")
+  if (!item || Array.isArray(item) || prototype !== Object.prototype) throw new Error("Keyed list items must be ordinary plain objects")
 }
 
 function assertListValue(value, seen) {
@@ -150,7 +194,7 @@ function assertListValue(value, seen) {
   if (!value || typeof value !== "object") throw new Error("Keyed list items must contain only JSON-safe values")
   if (seen.has(value)) throw new Error("Keyed list items must not contain cycles")
   const prototype = Object.getPrototypeOf(value)
-  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) throw new Error("Keyed list items must contain only arrays and plain objects")
+  if (!Array.isArray(value) && prototype !== Object.prototype) throw new Error("Keyed list items must contain only arrays and ordinary plain objects")
   if (Object.getOwnPropertySymbols(value).length) throw new Error("Keyed list items must not contain symbols")
   seen.add(value)
   const descriptors = Object.getOwnPropertyDescriptors(value)
@@ -182,4 +226,8 @@ function matching(root, selector) {
 
 function isStringBooleanAttribute(name) {
   return name.startsWith("aria-") || name.startsWith("data-")
+}
+
+function capitalize(value) {
+  return value[0].toUpperCase() + value.slice(1)
 }

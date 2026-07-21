@@ -119,13 +119,22 @@ test("rejects non-serializable keyed list data", async () => {
     item.name = "array"
     const [items] = useState([item])
     return list(items, "id", entry => jsx("p", { children: entry.name }))
-  }, { styles: false }), /must be plain objects/)
+  }, { styles: false }), /must be ordinary plain objects/)
   await assert.rejects(renderPage(() => {
     const item = { name: "hidden key" }
     Object.defineProperty(item, "id", { value: 1 })
     const [items] = useState([item])
     return list(items, "id", entry => jsx("p", { children: entry.name }))
   }, { styles: false }), /non-enumerable properties/)
+  await assert.rejects(renderPage(() => {
+    const item = Object.assign(Object.create(null), { id: 1, name: "Oak" })
+    const [items] = useState([item])
+    return list(items, "id", entry => jsx("p", { children: entry.name }))
+  }, { styles: false }), /ordinary plain objects/)
+  await assert.rejects(renderPage(() => {
+    const [items] = useState([{ id: 1, nested: Object.assign(Object.create(null), { name: "Oak" }) }])
+    return list(items, "id", entry => jsx("p", { children: entry.id }))
+  }, { styles: false }), /ordinary plain objects/)
 })
 
 test("seeds text state used only by an empty keyed list template", async () => {
@@ -306,20 +315,49 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   const handlers = await readFile(new URL("./fixtures/lists/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(component, /__kList\(items, "id"/)
+  assert.match(component, /__kListExpression/)
+  assert.match(component, /__kListItem/)
   assert.match(html, /<li data-k-list-item=.*data-id="1".*>.*Oak/)
   assert.match(html, /<tr data-k-list-item=.*data-row="2"/)
   assert.match(html, /data-k-list-text="name"/)
   assert.match(html, /data-k-list-attrs=/)
+  assert.match(html, /class="active" aria-label="Oak item"/)
+  assert.match(html, /OAK<template data-k-list-expression-end><\/template> tree/)
+  assert.match(html, /data-k-list-expression=/)
+  assert.match(html, /data-k-list-expression-attrs=/)
+  assert.match(html, /data-k-list-events=/)
+  assert.match(html, /data-k-native-click=/)
   assert.match(html, /kudzu-list\.js/)
+  assert.match(html, /kudzu-native\.js/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
-  assert.match(runtime, /updateList|fillListItem/)
+  assert.match(runtime, /updateList|fillListItem|evaluate/)
   assert.doesNotMatch(runtime, /\beval\b|new Function/)
   assert.match(handlers, /export function handler/)
+  assert.match(handlers, /export function listExpression/)
+  assert.match(handlers, /__k\.scope\("item"\)/)
+  assert.doesNotMatch(handlers, /\beval\b|new Function/)
   assert.equal(plan.lists.length, 2)
   assert.equal(plan.lists[0].state, "s0")
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runListBrowserTest(fixture, chrome)
+})
+
+test("emits only list capabilities for derived list expressions without handlers", async t => {
+  const fixture = new URL("./fixtures/list-expressions", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/list-expressions/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/list-expressions/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/list-expressions/dist/index.html", import.meta.url), "utf8")
+  const handlers = await readFile(new URL("./fixtures/list-expressions/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  assert.match(html, /kudzu-list\.js/)
+  assert.doesNotMatch(html, /kudzu-binding\.js|kudzu-native\.js|kudzu-serialization\.js/)
+  assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-native.js", import.meta.url)), false)
+  assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-serialization.js", import.meta.url)), false)
+  assert.match(handlers, /export function listExpression/)
 })
 
 test("shares lifecycle cleanup between conditional and list capabilities", async t => {
@@ -344,8 +382,22 @@ test("shares lifecycle cleanup between conditional and list capabilities", async
 
 test("rejects unsupported keyed list expressions and duplicate initial keys", () => {
   for (const [fixture, message] of [
-    ["list-invalid-shape", /must be direct item\.<field> reads/],
+    ["list-invalid-shape", /must use intrinsic JSX elements/],
+    ["list-invalid-condition", /Nested reactive conditions are not supported/],
+    ["list-invalid-browser", /identifier "window" is not allowed/],
+    ["list-invalid-capture", /identifier "suffix" is not allowed/],
+    ["list-invalid-computed-key", /require a direct string or numeric literal key/],
+    ["list-invalid-concatenated-key", /require a direct string or numeric literal key/],
     ["list-invalid-duplicate", /Duplicate keyed list key: same/],
+    ["list-invalid-fragment", /Fragments are not supported/],
+    ["list-invalid-nested", /Nested keyed lists are not supported/],
+    ["list-invalid-mutation", /assignments and updates are not supported/],
+    ["list-invalid-mutating-method", /mutating method "sort"/],
+    ["list-invalid-promise", /arbitrary method "resolve"/],
+    ["list-invalid-prototype", /property "constructor" is not supported|cannot read __proto__/],
+    ["list-invalid-prototype-key", /property "__proto__" is not supported/],
+    ["list-invalid-spread", /item spreads are not supported/],
+    ["list-invalid-style", /item style is not supported/],
     ["list-invalid-table", /must be wrapped in <tbody>/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
@@ -403,6 +455,35 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   await Promise.resolve()
   assert.equal(state.get("s0"), 5)
   assert.deepEqual(commits, [["s0", 4], ["s0", 5]])
+})
+
+test("delegates native handlers through ancestors in deterministic module order", async t => {
+  const fixture = new URL("./fixtures/native-bubbling", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/native-bubbling/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/native-bubbling/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/native-bubbling/dist/index.html", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/native-bubbling/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  assert.doesNotMatch(html, /"flags":/)
+  assert.match(runtime, /async function dispatchNative/)
+  assert.match(runtime, /snapshotNativeTargets/)
+  assert.match(runtime, /targets\.push\(\{ target, native: JSON\.parse/)
+  assert.match(runtime, /const module = await modulePromise/)
+  assert.doesNotMatch(runtime, /addEventListener\(eventName,[\s\S]*, true\)/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNativeBubblingBrowserTest(fixture, chrome)
+})
+
+test("rejects delegated native event propagation and default controls", () => {
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
+    cwd: new URL("./fixtures/native-invalid-controls", import.meta.url),
+    encoding: "utf8"
+  })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /do not support event control methods: preventDefault, stopImmediatePropagation, stopPropagation/)
 })
 
 test("rejects non-serializable component-scope captures by name", () => {
@@ -499,21 +580,28 @@ try {
   const click = action => document.querySelector('[data-action="' + action + '"]').click()
   let runtimeError = ""
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  const initialOak = document.querySelector('[data-id="1"]')
+  if (initialOak.querySelector("span").textContent !== "OAK tree" || initialOak.className !== "active" || initialOak.getAttribute("aria-label") !== "Oak item") throw new Error("initial-derived")
   click("add")
   await wait()
-  if (document.querySelectorAll("[data-list] > li").length !== 3 || !document.body.textContent.includes("Elm") || document.querySelectorAll("tbody > tr").length !== 3) throw new Error("add")
+  if (document.querySelectorAll("[data-list] > li").length !== 3 || !document.body.textContent.includes("ELM tree") || document.querySelectorAll("tbody > tr").length !== 3) throw new Error("add")
   click("rename")
   await wait()
   const oak = document.querySelector('[data-id="1"]')
-  if (oak.querySelector("span").textContent !== "Red oak tree" || oak.className !== "hot" || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
+  if (oak.querySelector("span").textContent !== "RED OAK tree" || oak.querySelector("small").textContent !== "Red oak" || oak.className !== "done" || oak.getAttribute("aria-label") !== "Red oak item" || !oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
   oak.querySelector("input").value = "preserved"
   click("reorder")
   await wait()
   const ordered = [...document.querySelectorAll("[data-list] > li")]
   if (ordered.map(node => node.dataset.id).join(",") !== "3,2,1" || ordered[2] !== oak || oak.querySelector("input").value !== "preserved") throw new Error("move")
-  click("remove")
+  oak.querySelector("[data-remove]").click()
   await wait()
-  if (document.querySelector('[data-id="2"]') || document.querySelector('[data-row="2"]') || document.querySelectorAll("[data-list] > li").length !== 2) throw new Error("remove")
+  if (document.querySelector('[data-id="1"]') || document.querySelector('[data-row="1"]') || document.querySelectorAll("[data-list] > li").length !== 2) throw new Error("item-remove")
+  document.querySelector('[data-id="3"] [data-remove]').click()
+  await wait()
+  if (document.querySelector('[data-id="3"]') || document.querySelectorAll("[data-list] > li").length !== 1) throw new Error("new-item-handler")
+  click("add")
+  await wait()
   click("duplicate")
   await wait()
   const beforeDuplicate = [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",")
@@ -566,8 +654,46 @@ try {
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
 }
+
 `)
   const port = 41000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNativeBubblingBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  document.querySelector("#inner").click()
+  await wait()
+  if (document.body.dataset.order !== "inner,parent" || document.querySelector("#parent")) throw new Error("snapshot-order-currentTarget")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 42000 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])

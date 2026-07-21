@@ -6,7 +6,7 @@
 - `runtime.js`: command-only runtime for direct state-to-text patches.
 - `shared-runtime.js`: command runtime with capability commit and DOM lifecycle hooks, emitted only when needed.
 - `binding-runtime.js`: optional generic attributes, form properties, and conditional range patches.
-- `list-runtime.js`: optional keyed list validation, updates, moves, and cleanup.
+- `list-runtime.js`: optional keyed list validation, external item-expression evaluation, dynamic item-handler scopes, moves, and cleanup.
 - `serialization.js`: capture deserialization shared by binding and native handlers.
 - `native-runtime.js`: optional runtime for normal synchronous and asynchronous ESM handlers.
 - `*.d.ts`: public TypeScript and JSX declarations.
