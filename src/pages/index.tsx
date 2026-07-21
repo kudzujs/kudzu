@@ -51,7 +51,7 @@ export default function HomePage() {
               <a className="primary-action" href="#quick-start">Get started</a>
               <a className="secondary-action" href="https://github.com/kudzujs/kudzu">Explore GitHub ↗</a>
             </div>
-            <div className="install-command"><span>$</span><code>npm i @kudzujs/core</code></div>
+            <div className="install-command"><span>$</span><code>npm create kudzu@latest my-app</code></div>
           </div>
           <div className="hero-code" aria-label="Kudzu code example">
             <div className="code-toolbar">
