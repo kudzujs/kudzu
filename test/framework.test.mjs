@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process"
 import test from "node:test"
 import { build } from "../framework/build.mjs"
 import { nativeBehavior } from "../framework/core.mjs"
-import { applyCommands } from "../framework/runtime.js"
+import { applyCommands, patchBinding } from "../framework/runtime.js"
 import { createNativeContext } from "../framework/native-runtime.js"
 
 test("builds TSX into HTML and behavior commands without React", async () => {
@@ -57,6 +57,75 @@ test("produces the same execution plan for the same input", async () => {
   await build({ quiet: true })
   const second = await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8")
   assert.equal(second, first)
+})
+
+test("patches reactive className, disabled, and value without a VDOM", async t => {
+  const fixture = new URL("./fixtures/bindings", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/bindings/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/bindings/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
+    cwd: fixture,
+    encoding: "utf8"
+  })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const html = await readFile(new URL("./fixtures/bindings/dist/index.html", import.meta.url), "utf8")
+  const bindings = await readFile(new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/bindings/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /class="idle" data-k-bind-class=/)
+  assert.match(html, /disabled data-k-bind-disabled=/)
+  assert.match(html, /value="Kudzu" data-k-bind-value=/)
+  assert.match(html, /value="Kudzu!" data-k-bind-value=/)
+  assert.match(html, /value="false" data-k-bind-value=/)
+  assert.match(html, /class="prop-active">Static prop/)
+  assert.match(html, /class="prop-idle" data-k-bind-class=.*>Static prop/)
+  assert.match(html, /class="nested-idle" data-k-bind-class=.*>Nested/)
+  assert.match(html, /class="off">Shadowed/)
+  assert.match(html, /<body data-k-state=/)
+  assert.doesNotMatch(html, /kudzu-native\.js/)
+  assert.match(bindings, /export function binding0/)
+  assert.match(bindings, /__k\.get\("active"\)/)
+  assert.match(bindings, /__k\.scope\("activeClass"\)/)
+  assert.doesNotMatch(bindings, /\beval\b|new Function/)
+  assert.equal(plan.bindings.length, 9)
+  assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
+
+  const evaluators = await import(`${new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
+  const context = {
+    get: name => name === "active" ? true : name === "name" ? "Kudzu" : undefined,
+    scope: name => name === "active" ? true : name === "activeClass" ? "is-active" : name === "item" ? 1 : name === "value" ? "Kudzu!" : undefined
+  }
+  assert.equal(evaluators.binding0(context), "prop-active")
+  assert.equal(evaluators.binding1(context), "Kudzu!")
+  assert.equal(evaluators.binding2(context), "is-active")
+  assert.equal(evaluators.binding3(context), JSON.stringify({ active: true }))
+  assert.equal(evaluators.binding4(context), "nested-1")
+  assert.equal(evaluators.binding5(context), false)
+  assert.equal(evaluators.binding6(context), "Kudzu!")
+
+  const attributes = new Map()
+  let value = "old"
+  const node = {
+    get value() { return value },
+    set value(next) { value = next },
+    setAttribute: (name, entry) => attributes.set(name, entry),
+    removeAttribute: name => attributes.delete(name),
+    toggleAttribute: (name, enabled) => enabled ? attributes.set(name, "") : attributes.delete(name)
+  }
+  patchBinding(node, "class", "ready")
+  assert.equal(attributes.get("class"), "ready")
+  patchBinding(node, "class", false)
+  assert.equal(attributes.has("class"), false)
+  patchBinding(node, "disabled", true)
+  assert.equal(attributes.has("disabled"), true)
+  patchBinding(node, "disabled", false)
+  assert.equal(attributes.has("disabled"), false)
+  patchBinding(node, "value", "next")
+  assert.equal(node.value, "next")
+  patchBinding(node, "value", false)
+  assert.equal(node.value, "false")
 })
 
 test("compiles normal async JavaScript handlers to external ESM", async t => {

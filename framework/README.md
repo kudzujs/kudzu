@@ -3,7 +3,7 @@
 - `build.mjs`: TSX compilation, file routes, behavior extraction, static HTML output, and the development server.
 - `core.mjs`: server-side JSX rendering, state slots, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.
-- `runtime.js`: command-only browser runtime for direct state-to-text patches.
+- `runtime.js`: command and reactive attribute runtime for direct DOM patches.
 - `native-runtime.js`: optional runtime for normal synchronous and asynchronous ESM handlers.
 - `*.d.ts`: public TypeScript and JSX declarations.
 

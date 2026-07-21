@@ -4,6 +4,8 @@ export function useState<T>(initialValue: T): [T, StateSetter<T>]
 
 export function behavior(commands: Array<["add" | "set" | "log", unknown, unknown]>): unknown
 export function nativeBehavior(module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
+export function binding(value: unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
+export function bindingValue(value: unknown): unknown
 
 export function renderPage(
   component: (props: Record<string, never>) => unknown | Promise<unknown>,
@@ -34,6 +36,16 @@ export function renderPage(
       event: string
       commands?: Array<[string, string, unknown]>
       native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
+    }>
+    bindings: Array<{
+      target: "class" | "disabled" | "value"
+      state?: string
+      module?: string
+      handler?: string
+      states?: Record<string, string>
+      scope?: Record<string, unknown>
+      scopeStates?: Record<string, string>
+      scopeBindings?: Record<string, unknown>
     }>
   }
 }>

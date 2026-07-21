@@ -36,6 +36,7 @@ export default function HomePage() {
         <nav>
           <a href="#quick-start">Start</a>
           <a href="#model">Model</a>
+          <a href="/docs">Docs</a>
           <a href="https://www.npmjs.com/package/@kudzujs/core">npm</a>
           <a className="github-link" href="https://github.com/kudzujs/kudzu">GitHub ↗</a>
         </nav>
@@ -44,7 +45,7 @@ export default function HomePage() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.2</span> HTML-FIRST TSX FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.2.1</span> HTML-FIRST TSX FRAMEWORK</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">

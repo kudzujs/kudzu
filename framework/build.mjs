@@ -53,7 +53,7 @@ export async function build({ quiet = false } = {}) {
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
   if (behaviorCount) await cp(new URL("./runtime.js", import.meta.url), join(assetsDirectory, "kudzu.js"))
-  if (handlerModules.length) {
+  if (handlerModules.some(module => module.hasNativeHandlers)) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8")).replace('"./runtime.js"', '"./kudzu.js"')
     await writeFile(join(assetsDirectory, "kudzu-native.js"), nativeRuntime)
   }
@@ -110,6 +110,7 @@ export async function dev() {
 async function compile(file) {
   const source = await readFile(file, "utf8")
   const nativeHandlers = []
+  const reactiveBindings = []
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
   const result = ts.transpileModule(source, {
     fileName: file,
@@ -119,7 +120,7 @@ async function compile(file) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, `/assets/${handlerPath}`)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, `/assets/${handlerPath}`)] },
     reportDiagnostics: true
   })
 
@@ -132,21 +133,24 @@ async function compile(file) {
   await mkdir(resolve(output, ".."), { recursive: true })
   await writeFile(output, result.outputText)
 
-  if (!nativeHandlers.length) return undefined
-  const moduleSource = nativeHandlers.map(handler => printNativeHandler(handler)).join("\n")
+  if (!nativeHandlers.length && !reactiveBindings.length) return undefined
+  const moduleSource = [
+    ...nativeHandlers.map(handler => printNativeHandler(handler)),
+    ...reactiveBindings.map(entry => printReactiveBinding(entry))
+  ].join("\n")
   const moduleResult = ts.transpileModule(moduleSource, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
     reportDiagnostics: true
   })
   const moduleErrors = moduleResult.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
-  return { path: handlerPath, code: moduleResult.outputText }
+  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0 }
 }
 
-function createKudzuTransformer(nativeHandlers, handlerUrl) {
+function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
   return context => sourceFile => {
     const factory = context.factory
-    const setters = new Map()
+    const settersByFunction = new Map()
     const functions = new Map()
     let usesBehavior = false
 
@@ -155,7 +159,12 @@ function createKudzuTransformer(nativeHandlers, handlerUrl) {
         const callName = ts.isIdentifier(node.initializer.expression) ? node.initializer.expression.text : ""
         const [stateElement, setterElement] = node.name.elements
         if (callName === "useState" && stateElement && setterElement && ts.isBindingElement(stateElement) && ts.isBindingElement(setterElement) && ts.isIdentifier(stateElement.name) && ts.isIdentifier(setterElement.name)) {
-          setters.set(setterElement.name.text, stateElement.name.text)
+          const owner = nearestFunction(node)
+          if (owner) {
+            const setters = settersByFunction.get(owner) ?? new Map()
+            setters.set(setterElement.name.text, stateElement.name.text)
+            settersByFunction.set(owner, setters)
+          }
         }
       }
       if (ts.isFunctionDeclaration(node) && node.name) functions.set(node.name.text, node)
@@ -185,7 +194,20 @@ function createKudzuTransformer(nativeHandlers, handlerUrl) {
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, initializer)
       }
 
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && ["className", "disabled", "value"].includes(node.name.getText())) {
+        const expression = node.initializer.expression
+        const setters = settersForNode(node, settersByFunction)
+        const usedStates = referencedStateNames(expression, setters)
+        const captures = captureNames(expression, expression, setters)
+        if ((usedStates.size || captures.size) && !ts.isIdentifier(expression)) {
+          usesBehavior = true
+          const compiled = compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl)
+          return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compiled))
+        }
+      }
+
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.getText())) {
+        const setters = settersForNode(node, settersByFunction)
         const event = compileEvent(node.initializer.expression, setters, functions, factory, nativeHandlers, handlerUrl)
         if (event) {
           usesBehavior = true
@@ -203,6 +225,8 @@ function createKudzuTransformer(nativeHandlers, handlerUrl) {
 
     const behaviorImports = [factory.createImportSpecifier(false, factory.createIdentifier("behavior"), factory.createIdentifier("__kBehavior"))]
     if (nativeHandlers.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("nativeBehavior"), factory.createIdentifier("__kNativeBehavior")))
+    if (reactiveBindings.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
+    if (reactiveBindings.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
       factory.createImportClause(false, undefined, factory.createNamedImports(behaviorImports)),
@@ -210,6 +234,44 @@ function createKudzuTransformer(nativeHandlers, handlerUrl) {
     )
     return factory.updateSourceFile(transformed, [behaviorImport, ...transformed.statements])
   }
+}
+
+function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl) {
+  const usedStates = referencedStateNames(expression, setters)
+  const captures = captureNames(expression, expression, setters)
+  const exportName = `binding${reactiveBindings.length}`
+  reactiveBindings.push({ exportName, expression, captures, states: usedStates })
+  const states = [...usedStates].map(name => factory.createArrayLiteralExpression([
+    factory.createStringLiteral(name),
+    factory.createIdentifier(name)
+  ]))
+  const scope = [...captures].map(name => factory.createArrayLiteralExpression([
+    factory.createStringLiteral(name),
+    factory.createIdentifier(name)
+  ]))
+  const stateNames = new Set(usedStates)
+  const rewriteInitial = node => {
+    if (ts.isShorthandPropertyAssignment(node) && stateNames.has(node.name.text)) {
+      return factory.createPropertyAssignment(node.name, factory.createPropertyAccessExpression(node.name, "value"))
+    }
+    if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
+      return factory.createPropertyAccessExpression(node, "value")
+    }
+    if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text)) {
+      return factory.createPropertyAssignment(node.name, factory.createCallExpression(factory.createIdentifier("__kBindingValue"), undefined, [node.name]))
+    }
+    if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node)) {
+      return factory.createCallExpression(factory.createIdentifier("__kBindingValue"), undefined, [node])
+    }
+    return ts.visitEachChild(node, rewriteInitial, context)
+  }
+  return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, [
+    ts.visitNode(expression, rewriteInitial),
+    factory.createStringLiteral(handlerUrl),
+    factory.createStringLiteral(exportName),
+    factory.createArrayLiteralExpression(states),
+    factory.createArrayLiteralExpression(scope)
+  ])
 }
 
 function compileEvent(expression, setters, functions, factory, nativeHandlers, handlerUrl) {
@@ -240,14 +302,18 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
 }
 
 function nativeStateNames(expression, setters) {
+  return referencedStateNames(expression.body, setters, expression)
+}
+
+function referencedStateNames(root, setters, scopeRoot = root) {
   const stateNames = new Set(setters.values())
   const used = new Set()
   const visit = node => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text)) used.add(setters.get(node.expression.text))
-    if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node)) used.add(node.text)
+    if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, scopeRoot)) used.add(node.text)
     ts.forEachChild(node, visit)
   }
-  visit(expression.body)
+  visit(root)
   return used
 }
 
@@ -267,6 +333,10 @@ const nativeGlobals = new Set([
 ])
 
 function nativeCaptureNames(expression, setters) {
+  return captureNames(expression, expression.body, setters)
+}
+
+function captureNames(declarationRoot, referenceRoot, setters) {
   const local = new Set()
   const collectDeclarations = node => {
     if (ts.isVariableDeclaration(node)) for (const name of bindingNames(node.name)) local.add(name)
@@ -274,7 +344,7 @@ function nativeCaptureNames(expression, setters) {
     if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) && node.name) local.add(node.name.text)
     ts.forEachChild(node, collectDeclarations)
   }
-  collectDeclarations(expression)
+  collectDeclarations(declarationRoot)
 
   const stateNames = new Set(setters.values())
   const captures = new Set()
@@ -285,7 +355,7 @@ function nativeCaptureNames(expression, setters) {
     }
     ts.forEachChild(node, visit)
   }
-  visit(expression.body)
+  visit(referenceRoot)
   return captures
 }
 
@@ -308,6 +378,30 @@ function isReferenceIdentifier(node) {
   return true
 }
 
+function nearestFunction(node) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) return current
+  }
+  return undefined
+}
+
+function isShadowedByParameter(node, scopeRoot) {
+  for (let current = node.parent; current; current = current.parent) {
+    if ((ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) && current.parameters.some(parameter => bindingNames(parameter.name).includes(node.text))) return true
+    if (current === scopeRoot) break
+  }
+  return false
+}
+
+function settersForNode(node, settersByFunction) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (!ts.isFunctionDeclaration(current) && !ts.isFunctionExpression(current) && !ts.isArrowFunction(current)) continue
+    const setters = settersByFunction.get(current)
+    if (setters) return setters
+  }
+  return new Map()
+}
+
 function printNativeHandler({ exportName, expression, captures, setters }) {
   const factory = ts.factory
   const stateNames = new Set(setters.values())
@@ -320,7 +414,7 @@ function printNativeHandler({ exportName, expression, captures, setters }) {
           [factory.createStringLiteral(setters.get(node.expression.text)), ...node.arguments.map(argument => ts.visitNode(argument, visitor))]
         )
       }
-      if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node)) {
+      if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
         return factory.createCallExpression(
           factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"),
           undefined,
@@ -352,6 +446,54 @@ function printNativeHandler({ exportName, expression, captures, setters }) {
       [factory.createParameterDeclaration(undefined, undefined, "__k"), ...expression.parameters],
       undefined,
       body
+    )
+    return ts.createPrinter().printNode(ts.EmitHint.Unspecified, declaration, expression.getSourceFile())
+  } finally {
+    transformed.dispose()
+  }
+}
+
+function printReactiveBinding({ exportName, expression, captures, states }) {
+  const factory = ts.factory
+  const transformer = context => root => {
+    const visitor = node => {
+      if (ts.isShorthandPropertyAssignment(node) && states.has(node.name.text)) {
+        return factory.createPropertyAssignment(
+          node.name,
+          factory.createCallExpression(
+            factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"),
+            undefined,
+            [factory.createStringLiteral(node.name.text)]
+          )
+        )
+      }
+      if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
+        return factory.createCallExpression(
+          factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"),
+          undefined,
+          [factory.createStringLiteral(node.text)]
+        )
+      }
+      if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text)) {
+        return factory.createPropertyAssignment(node.name, scopeRead(factory, node.name.text))
+      }
+      if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node)) {
+        return scopeRead(factory, node.text)
+      }
+      return ts.visitEachChild(node, visitor, context)
+    }
+    return ts.visitNode(root, visitor)
+  }
+  const transformed = ts.transform(expression, [transformer])
+  try {
+    const declaration = factory.createFunctionDeclaration(
+      [factory.createModifier(ts.SyntaxKind.ExportKeyword)],
+      undefined,
+      exportName,
+      undefined,
+      [factory.createParameterDeclaration(undefined, undefined, "__k")],
+      undefined,
+      factory.createBlock([factory.createReturnStatement(transformed.transformed[0])], true)
     )
     return ts.createPrinter().printNode(ts.EmitHint.Unspecified, declaration, expression.getSourceFile())
   } finally {

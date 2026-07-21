@@ -1,6 +1,7 @@
 const signalMarker = Symbol("kudzu.signal")
 const behaviorMarker = Symbol("kudzu.behavior")
 const nativeBehaviorMarker = Symbol("kudzu.nativeBehavior")
+const bindingMarker = Symbol("kudzu.binding")
 
 let renderContext
 
@@ -51,6 +52,38 @@ export function nativeBehavior(module, handler, states, scope) {
   }
 }
 
+export function binding(value, module, handler, states, scope) {
+  const scopeStates = {}
+  const serializedScope = {}
+  const scopeBindings = {}
+  for (const [name, entry] of scope) {
+    if (entry?.[signalMarker]) scopeStates[name] = entry.id
+    else if (entry?.[bindingMarker]) scopeBindings[name] = bindingDescriptor(entry)
+    else serializedScope[name] = serializeCapture(name, entry, new Set())
+  }
+  return {
+    [bindingMarker]: true,
+    value,
+    module,
+    handler,
+    states: Object.fromEntries(states.map(([name, signal]) => {
+      if (!signal?.[signalMarker]) throw new Error("A reactive binding must target framework state")
+      return [name, signal.id]
+    })),
+    scope: serializedScope,
+    scopeStates,
+    scopeBindings
+  }
+}
+
+export function bindingValue(value) {
+  return value?.[signalMarker] || value?.[bindingMarker] ? value.value : value
+}
+
+function bindingDescriptor(value) {
+  return { module: value.module, handler: value.handler, states: value.states, scope: value.scope, scopeStates: value.scopeStates, scopeBindings: value.scopeBindings }
+}
+
 function serializeCapture(name, value, seen) {
   if (value === null || typeof value === "string" || typeof value === "boolean") return value
   if (typeof value === "number") {
@@ -83,7 +116,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, states: {}, events: [], hasBehaviors: false, hasNativeBehaviors: false }
+  renderContext = { nextState: 0, states: {}, events: [], bindings: [], hasBehaviors: false, hasNativeBehaviors: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -98,13 +131,17 @@ export async function renderPage(component, metadata = {}) {
     const nativeRuntime = renderContext.hasNativeBehaviors
       ? '<script type="module" src="/assets/kudzu-native.js"></script>'
       : ""
+    const state = renderContext.hasBehaviors
+      ? ` data-k-state="${escapeAttribute(JSON.stringify(Object.entries(renderContext.states).map(([id, entry]) => [id, entry.initialValue])))}"`
+      : ""
 
     return {
-      html: `<!doctype html>\n<html lang="${escapeAttribute(metadata.lang ?? "en")}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${head}${styles}\n</head>\n<body>\n${body}\n${runtime}\n${nativeRuntime}\n</body>\n</html>\n`,
+      html: `<!doctype html>\n<html lang="${escapeAttribute(metadata.lang ?? "en")}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${head}${styles}\n</head>\n<body${state}>\n${body}\n${runtime}\n${nativeRuntime}\n</body>\n</html>\n`,
       hasBehaviors: renderContext.hasBehaviors,
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
-        events: renderContext.events
+        events: renderContext.events,
+        bindings: renderContext.bindings
       }
     }
   } finally {
@@ -171,7 +208,7 @@ async function renderNode(node) {
   let attributes = ""
 
   for (const [rawName, value] of Object.entries(props)) {
-    if (rawName === "children" || rawName === "key" || value == null || value === false) continue
+    if (rawName === "children" || rawName === "key") continue
 
     if (/^on[A-Z]/.test(rawName)) {
       const event = rawName.slice(2).toLowerCase()
@@ -192,6 +229,25 @@ async function renderNode(node) {
     }
 
     const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : rawName
+    const target = name === "class" || name === "disabled" || name === "value" ? name : undefined
+    if (target && (value?.[signalMarker] || value?.[bindingMarker])) {
+      const initialValue = value[signalMarker] ? value.value : value.value
+      const reactive = value[signalMarker] || Object.keys(value.states).length > 0 || Object.keys(value.scopeStates).length > 0 || Object.keys(value.scopeBindings).length > 0
+      if (!reactive) {
+        attributes += renderAttribute(name, initialValue)
+        continue
+      }
+      const descriptor = value[signalMarker]
+        ? { state: value.id }
+        : bindingDescriptor(value)
+      attributes += renderAttribute(name, initialValue)
+      attributes += ` data-k-bind-${target}="${escapeAttribute(JSON.stringify(descriptor))}"`
+      renderContext.bindings.push({ target, ...descriptor })
+      renderContext.hasBehaviors = true
+      continue
+    }
+
+    if (value == null || value === false) continue
     if (value === true) {
       attributes += ` ${name}`
     } else if (name === "style" && typeof value === "object") {
@@ -205,6 +261,13 @@ async function renderNode(node) {
   const voidElements = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"])
   if (voidElements.has(tag)) return `<${tag}${attributes}>`
   return `<${tag}${attributes}>${await renderNode(props.children)}</${tag}>`
+}
+
+function renderAttribute(name, value) {
+  if (name === "disabled") return value ? " disabled" : ""
+  if (name === "value") return value == null ? "" : ` value="${escapeAttribute(value)}"`
+  if (value == null || value === false) return ""
+  return ` ${name}="${escapeAttribute(value)}"`
 }
 
 function escapeHtml(value) {

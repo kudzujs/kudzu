@@ -12,6 +12,8 @@ Kudzu keeps the familiar function-component, props, children, event-handler, and
 
 > Experimental `0.2.x`: the compiler API and supported TSX surface may change.
 
+Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
+
 ## Install
 
 Create a new project:
@@ -96,6 +98,18 @@ function increaseTwice() {
 
 The handler above increments by two and patches its bound DOM once. Inspect the generated plan at `.kudzu/kudzu-plan.json`.
 
+## Reactive Attributes
+
+`className`, `disabled`, and controlled `value` accept normal state-dependent TSX expressions:
+
+```tsx
+<div className={active ? "active" : "idle"} />
+<button disabled={loading}>Save</button>
+<input value={name} onInput={event => setName(event.currentTarget.value)} />
+```
+
+Kudzu compiles derived expressions to external ESM and patches only the bound DOM attribute or property.
+
 ## Normal JavaScript
 
 Command-only setters use the smallest optimized path. Conditions, local variables, browser globals, events, and `async`/`await` compile to external ESM without `eval`, `new Function`, or inline executable code.
@@ -149,10 +163,10 @@ Supported:
 - Synchronous and async event handlers
 - Serializable component-local captures
 - Direct text DOM patches
+- Reactive `className`, `disabled`, and controlled `value` patches
 
 Not implemented yet:
 
-- Reactive attributes, classes, and controlled inputs
 - Conditional DOM patches and keyed lists
 - Server actions and request-time SSR
 - Imported client helpers and React package islands
