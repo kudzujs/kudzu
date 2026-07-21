@@ -116,7 +116,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, states: {}, events: [], bindings: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false }
+  renderContext = { nextState: 0, states: {}, textStates: new Set(), events: [], bindings: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -134,14 +134,18 @@ export async function renderPage(component, metadata = {}) {
     const bindingRuntime = renderContext.hasBindings
       ? '<script type="module" src="/assets/kudzu-binding.js"></script>'
       : ""
-    const state = renderContext.hasBehaviors
-      ? ` data-k-state="${escapeAttribute(JSON.stringify(Object.entries(renderContext.states).map(([id, entry]) => [id, entry.initialValue])))}"`
+    const initialState = renderContext.hasBehaviors
+      ? Object.entries(renderContext.states).filter(([id]) => !renderContext.textStates.has(id)).map(([id, entry]) => [id, entry.initialValue])
+      : []
+    const state = initialState.length
+      ? ` data-k-state="${escapeAttribute(JSON.stringify(initialState))}"`
       : ""
 
     return {
       html: `<!doctype html>\n<html lang="${escapeAttribute(metadata.lang ?? "en")}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${title}</title>\n${head}${styles}\n</head>\n<body${state}>\n${body}\n${runtime}\n${bindingRuntime}\n${nativeRuntime}\n</body>\n</html>\n`,
       hasBehaviors: renderContext.hasBehaviors,
       hasBindings: renderContext.hasBindings,
+      hasStateSeed: initialState.length > 0,
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
         events: renderContext.events,
@@ -194,6 +198,7 @@ async function renderNode(node) {
     return html
   }
   if (node?.[signalMarker]) {
+    renderContext.textStates.add(node.id)
     return `<span data-k-text="${node.id}" data-k-value="${escapeAttribute(JSON.stringify(node.value))}">${escapeHtml(node.value)}</span>`
   }
   if (typeof node === "string" || typeof node === "number" || typeof node === "bigint") {

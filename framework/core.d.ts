@@ -31,6 +31,7 @@ export function renderPage(
   html: string
   hasBehaviors: boolean
   hasBindings: boolean
+  hasStateSeed: boolean
   plan: {
     states: Array<{ id: string; name: string; initialValue: unknown }>
     events: Array<{

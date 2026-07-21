@@ -36,7 +36,8 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
 if (typeof document !== "undefined") {
   const modules = new Map()
 
-  for (const eventName of ["click", "input", "change", "submit", "keydown", "keyup"]) {
+  const eventNames = ["click", "input", "change", "submit", "keydown", "keyup"]
+  for (const eventName of eventNames) {
     document.addEventListener(eventName, event => {
       const target = event.target.closest(`[data-k-native-${eventName}]`)
       if (!target) return

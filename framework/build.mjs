@@ -31,6 +31,7 @@ export async function build({ quiet = false } = {}) {
 
   let behaviorCount = 0
   let bindingCount = 0
+  let stateSeedCount = 0
   const plans = []
   const hasStyles = await exists(join(sourceDirectory, "style.css"))
 
@@ -50,16 +51,23 @@ export async function build({ quiet = false } = {}) {
     plans.push({ route: `/${route}`, ...result.plan })
     if (result.hasBehaviors) behaviorCount++
     if (result.hasBindings) bindingCount++
+    if (result.hasStateSeed) stateSeedCount++
   }
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
-  if (behaviorCount) await cp(new URL("./runtime.js", import.meta.url), join(assetsDirectory, "kudzu.js"))
+  const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
+  const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
+  if (behaviorCount) {
+    const runtimeFile = bindingCount ? "./shared-runtime.js" : "./runtime.js"
+    const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, stateSeedCount > 0)
+    await writeFile(join(assetsDirectory, "kudzu.js"), runtime)
+  }
   const hasNativeHandlers = handlerModules.some(module => module.hasNativeHandlers)
   if (bindingCount || hasNativeHandlers) await cp(new URL("./serialization.js", import.meta.url), join(assetsDirectory, "kudzu-serialization.js"))
   if (bindingCount) {
     const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
-      .replace('"./runtime.js"', '"./kudzu.js"')
+      .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
     await writeFile(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime)
   }
@@ -67,7 +75,7 @@ export async function build({ quiet = false } = {}) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
       .replace('"./runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
-    await writeFile(join(assetsDirectory, "kudzu-native.js"), nativeRuntime)
+    await writeFile(join(assetsDirectory, "kudzu-native.js"), specializeEvents(nativeRuntime, nativeEvents))
   }
   for (const handlerModule of handlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
@@ -79,6 +87,18 @@ export async function build({ quiet = false } = {}) {
   if (await exists(join(root, "public"))) await cp(join(root, "public"), outputDirectory, { recursive: true })
 
   if (!quiet) console.log(`Built ${pageFiles.length} page(s), ${behaviorCount} interactive page(s) into dist/`)
+}
+
+function specializeEvents(source, events) {
+  return source.replace(/const eventNames = \[[^\n]+\]/, `const eventNames = ${JSON.stringify(events)}`)
+}
+
+function specializeRuntime(source, events, hasStateSeed) {
+  const specialized = specializeEvents(source, events)
+  if (hasStateSeed) return specialized
+  return specialized
+    .replace("  const initialState = document.body.dataset.kState\n", "")
+    .replace("  if (initialState) for (const [id, value] of JSON.parse(initialState)) browserState.set(id, value)\n", "")
 }
 
 export async function dev() {

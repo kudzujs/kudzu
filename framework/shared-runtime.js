@@ -15,9 +15,15 @@ export function applyCommands(state, commands, commit, log = console.log) {
 }
 
 export const browserState = new Map()
+const committers = []
+
+export function registerCommitter(commit) {
+  committers.push(commit)
+}
 
 export function commitDom(id, value) {
   for (const node of document.querySelectorAll(`[data-k-text="${id}"]`)) node.textContent = value
+  for (const commit of committers) commit(id)
 }
 
 if (typeof document !== "undefined") {

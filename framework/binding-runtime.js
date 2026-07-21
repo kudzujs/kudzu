@@ -1,4 +1,4 @@
-import { browserState, registerCommitter } from "./runtime.js"
+import { browserState, registerCommitter } from "./shared-runtime.js"
 import { deserialize } from "./serialization.js"
 
 const bindingTargets = new Map()

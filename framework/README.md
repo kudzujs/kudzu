@@ -4,6 +4,7 @@
 - `core.mjs`: server-side JSX rendering, state slots, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.
 - `runtime.js`: command-only runtime for direct state-to-text patches.
+- `shared-runtime.js`: command runtime with binding commit hooks, emitted only when needed.
 - `binding-runtime.js`: optional reactive `className`, `disabled`, and `value` patches.
 - `serialization.js`: capture deserialization shared by binding and native handlers.
 - `native-runtime.js`: optional runtime for normal synchronous and asynchronous ESM handlers.

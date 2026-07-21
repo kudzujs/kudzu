@@ -3,7 +3,7 @@ import { readFile, rm } from "node:fs/promises"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
 import { build } from "../framework/build.mjs"
-import { nativeBehavior } from "../framework/core.mjs"
+import { nativeBehavior, renderPage, useState } from "../framework/core.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
 import { createNativeContext } from "../framework/native-runtime.js"
@@ -26,8 +26,10 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
   assert.match(component, /__kBehavior\(\[\["add", count, 1\]\]\)/)
   assert.match(runtime, /textContent = value/)
+  assert.match(runtime, /eventNames = \["click"\]/)
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
+  assert.doesNotMatch(html, /data-k-state=/)
   assert.doesNotMatch(docs, /<script type="module"/)
   assert.equal(home.states[0].name, "count")
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
@@ -54,6 +56,15 @@ test("applies setters immediately in source order and commits once", () => {
   assert.equal(state.get("s0"), 9)
   assert.deepEqual(logs, [["first", 10], ["second", 11]])
   assert.deepEqual(commits, [["s0", 9]])
+})
+
+test("does not serialize unused state on static pages", async () => {
+  const result = await renderPage(() => {
+    useState(1n)
+    return "static"
+  }, { styles: false })
+  assert.doesNotMatch(result.html, /data-k-state/)
+  assert.equal(result.hasBehaviors, false)
 })
 
 test("produces the same execution plan for the same input", async () => {
@@ -95,6 +106,8 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
   assert.match(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-native\.js/)
   assert.doesNotMatch(commandRuntime, /patchBinding|data-k-bind/)
+  assert.match(commandRuntime, /registerCommitter/)
+  assert.match(commandRuntime, /eventNames = \["change","click"\]/)
   assert.match(bindingRuntime, /patchBinding|data-k-bind/)
   assert.match(serialization, /export function deserialize/)
   assert.match(bindings, /export function binding0/)
@@ -170,7 +183,9 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   assert.match(handlerSource, /__k\.scope\("step"\)/)
   assert.match(handlerSource, /__k\.scope\("increment"\)/)
   assert.doesNotMatch(commandRuntime, /createNativeContext|data-k-native/)
+  assert.match(commandRuntime, /eventNames = \[\]/)
   assert.match(nativeRuntime, /createNativeContext/)
+  assert.match(nativeRuntime, /eventNames = \["click"\]/)
   assert.match(serialization, /export function deserialize/)
   assert.doesNotMatch(handlerSource, /\beval\b|new Function/)
   assert.equal(native.scope.step, 2)
