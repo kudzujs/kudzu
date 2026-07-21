@@ -41,7 +41,7 @@ export function renderPage(
       native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
     }>
     bindings: Array<{
-      target: "class" | "disabled" | "value"
+      target: "class" | "disabled" | "value" | "checked"
       state?: string
       module?: string
       handler?: string

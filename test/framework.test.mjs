@@ -95,7 +95,7 @@ test("produces the same execution plan for the same input", async () => {
   assert.equal(second, first)
 })
 
-test("patches reactive className, disabled, and value without a VDOM", async t => {
+test("patches reactive attributes and form properties without a VDOM", async t => {
   const fixture = new URL("./fixtures/bindings", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/bindings/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -118,6 +118,9 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
   assert.match(html, /value="Kudzu" data-k-bind-value=/)
   assert.match(html, /value="Kudzu!" data-k-bind-value=/)
   assert.match(html, /value="false" data-k-bind-value=/)
+  assert.match(html, /type="checkbox" data-k-bind-checked=/)
+  assert.match(html, /type="radio" checked data-k-bind-checked=/)
+  assert.match(html, /<select data-k-bind-value=.*<option>Kudzu<\/option><option selected>Grown<\/option><\/select>/)
   assert.match(html, /class="prop-active">Static prop/)
   assert.match(html, /class="prop-idle" data-k-bind-class=.*>Static prop/)
   assert.match(html, /class="nested-idle" data-k-bind-class=.*>Nested/)
@@ -134,7 +137,7 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
   assert.match(bindings, /__k\.get\("active"\)/)
   assert.match(bindings, /__k\.scope\("activeClass"\)/)
   assert.doesNotMatch(bindings, /\beval\b|new Function/)
-  assert.equal(plan.bindings.length, 9)
+  assert.equal(plan.bindings.length, 12)
   assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
 
   const evaluators = await import(`${new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
@@ -152,9 +155,12 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
 
   const attributes = new Map()
   let value = "old"
+  let checked = false
   const node = {
     get value() { return value },
     set value(next) { value = next },
+    get checked() { return checked },
+    set checked(next) { checked = next },
     setAttribute: (name, entry) => attributes.set(name, entry),
     removeAttribute: name => attributes.delete(name),
     toggleAttribute: (name, enabled) => enabled ? attributes.set(name, "") : attributes.delete(name)
@@ -171,6 +177,10 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
   assert.equal(node.value, "next")
   patchBinding(node, "value", false)
   assert.equal(node.value, "false")
+  patchBinding(node, "checked", true)
+  assert.equal(node.checked, true)
+  patchBinding(node, "checked", 0)
+  assert.equal(node.checked, false)
 })
 
 test("compiles conditional DOM branches with nested behavior", async t => {
@@ -206,7 +216,7 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   assert.match(nativeRuntime, /eventNames = \["click"\]/)
   assert.match(evaluators, /export function binding/)
   assert.doesNotMatch(evaluators, /\beval\b|new Function/)
-  assert.equal(plan.conditions.length, 7)
+  assert.equal(plan.conditions.length, 8)
   assert.ok(plan.events.some(event => event.native))
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runConditionalBrowserTest(fixture, chrome)
@@ -298,11 +308,11 @@ try {
   control("open").click()
   await wait()
   let section = document.querySelector("main > section")
-  if (!section || section.className !== "new" || section.querySelector("input").value !== "0" || section.querySelector("u").textContent !== "1" || !document.body.textContent.includes("Child open") || !document.body.textContent.includes("Visible text") || document.querySelector("td").textContent !== "Open row") throw new Error("open")
+  if (!section || section.className !== "new" || section.querySelector("input").value !== "0" || section.querySelector("select").value !== "zero" || section.querySelector("u").textContent !== "1" || !document.body.textContent.includes("Child open") || !document.body.textContent.includes("Visible text") || document.querySelector("td").textContent !== "Open row") throw new Error("open")
   section.querySelectorAll("button")[0].click()
   await wait()
   section = document.querySelector("main > section")
-  if (section.className !== "grown" || section.querySelector("span").textContent !== "1" || !section.textContent.includes("Positive")) throw new Error("grow")
+  if (section.className !== "grown" || section.querySelector("span").textContent !== "1" || section.querySelector("select").value !== "positive" || !section.textContent.includes("Positive")) throw new Error("grow")
   if (!section.querySelector("mark")) throw new Error("and")
   section.querySelector("[data-uncontrolled]").value = "changed"
   control("close").click()

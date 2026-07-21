@@ -12,6 +12,7 @@ export default function BindingPage() {
   const [active, setActive] = useState(false)
   const [name, setName] = useState("Kudzu")
   const [flag, setFlag] = useState(false)
+  const [choice] = useState("Grown")
   const activeClass = "is-active"
 
   return (
@@ -27,6 +28,9 @@ export default function BindingPage() {
       <input value={name} onChange={() => setName("Grown")} />
       <input value={flag} onChange={() => setFlag(true)} />
       <Field value={name + "!"} />
+      <input type="checkbox" checked={active} />
+      <input type="radio" checked={!active} />
+      <select value={choice}><option>Kudzu</option><option>Grown</option></select>
     </main>
   )
 }

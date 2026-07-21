@@ -147,7 +147,7 @@ footer > span { font-family: var(--mono); }
 .docs-menu { display: flex; gap: 1px; margin-bottom: 34px; border: 1px solid var(--line); background: var(--line); }
 .docs-menu a { flex: 1; padding: 18px; color: var(--ink); background: var(--panel); text-align: center; text-decoration: none; }
 .docs-menu a:hover { color: var(--lavender); background: rgba(141, 82, 255, .08); }
-.attribute-grid, .docs-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 34px; background: var(--line); border: 1px solid var(--line); }
+.attribute-grid, .docs-columns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin-top: 34px; background: var(--line); border: 1px solid var(--line); }
 .attribute-grid div, .docs-columns div { padding: 24px; background: var(--panel); }
 .attribute-grid p, .docs-columns p { color: var(--muted); font-size: 13px; line-height: 1.7; }
 .docs-columns { grid-template-columns: 1fr 1fr; }

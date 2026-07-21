@@ -100,12 +100,14 @@ The handler above increments by two and patches its bound DOM once. Inspect the 
 
 ## Reactive Attributes
 
-`className`, `disabled`, and controlled `value` accept normal state-dependent TSX expressions:
+`className`, `disabled`, controlled `value`, and controlled `checked` accept normal state-dependent TSX expressions. The same `value` binding works for inputs and selects:
 
 ```tsx
 <div className={active ? "active" : "idle"} />
 <button disabled={loading}>Save</button>
 <input value={name} onInput={event => setName(event.currentTarget.value)} />
+<input type="checkbox" checked={subscribed} onChange={event => setSubscribed(event.currentTarget.checked)} />
+<select value={theme} onChange={event => setTheme(event.currentTarget.value)} />
 ```
 
 Kudzu compiles derived expressions to external ESM and patches only the bound DOM attribute or property.
@@ -185,7 +187,7 @@ Supported:
 - Synchronous and async event handlers
 - Serializable component-local captures
 - Direct text DOM patches
-- Reactive `className`, `disabled`, and controlled `value` patches
+- Reactive `className`, `disabled`, controlled `value`, and controlled `checked` patches
 - Conditional child `&&` and ternary DOM patches
 
 Not implemented yet:

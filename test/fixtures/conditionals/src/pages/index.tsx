@@ -28,6 +28,9 @@ export default function ConditionalPage() {
           <button onClick={growAsync}>Grow async</button>
           {count === 0 ? <i>Zero</i> : <b>Positive</b>}
           {count && <mark>Has count</mark>}
+          <select value={count === 0 ? "zero" : "positive"}>
+            {count === 0 ? <option value="zero">Zero</option> : <option value="positive">Positive</option>}
+          </select>
           <input data-uncontrolled />
         </section>
       )}

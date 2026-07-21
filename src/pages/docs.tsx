@@ -104,10 +104,11 @@ function growTwice() {
 
           <section className="docs-section" id="attributes">
             <div className="docs-heading"><span>05</span><div><p>CORE · NEW</p><h2>Reactive attributes</h2></div></div>
-            <p>State-dependent <code>className</code>, <code>disabled</code>, and <code>value</code> use normal React-shaped expressions. Kudzu compiles each expression into an external ESM evaluator and patches only its DOM target.</p>
+            <p>State-dependent <code>className</code>, <code>disabled</code>, <code>value</code>, and <code>checked</code> use normal React-shaped expressions. Kudzu compiles each expression into an external ESM evaluator and patches only its DOM target.</p>
             <pre><code>{`const [active, setActive] = useState(false)
 const [loading, setLoading] = useState(false)
 const [name, setName] = useState("Kudzu")
+const [subscribed, setSubscribed] = useState(false)
 
 return <>
   <div className={active ? "active" : "idle"} />
@@ -116,11 +117,18 @@ return <>
     value={name}
     onInput={event => setName(event.currentTarget.value)}
   />
+  <input
+    type="checkbox"
+    checked={subscribed}
+    onChange={event => setSubscribed(event.currentTarget.checked)}
+  />
+  <select value={name} onChange={event => setName(event.currentTarget.value)} />
 </>`}</code></pre>
             <div className="attribute-grid">
               <div><code>className</code><p>Sets or removes the element's live <code>class</code> attribute.</p></div>
               <div><code>disabled</code><p>Toggles the boolean attribute and native disabled property.</p></div>
-              <div><code>value</code><p>Updates the live form value property for controlled inputs.</p></div>
+              <div><code>value</code><p>Updates the live value property for controlled inputs and selects.</p></div>
+              <div><code>checked</code><p>Updates the live boolean property for controlled checkboxes and radios.</p></div>
             </div>
           </section>
 
@@ -193,7 +201,7 @@ dist/
           <section className="docs-section" id="limits">
             <div className="docs-heading"><span>10</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
             <ul className="docs-limits">
-              <li>State bindings currently target text, <code>className</code>, <code>disabled</code>, and <code>value</code>.</li>
+              <li>State bindings currently target text, <code>className</code>, <code>disabled</code>, <code>value</code>, and <code>checked</code>.</li>
               <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
               <li>Keyed lists and generalized JSX-valued locals are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>

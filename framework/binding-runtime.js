@@ -8,10 +8,14 @@ const mountedBindings = new WeakSet()
 const mountedConditions = new WeakSet()
 const bindingRegistrations = new WeakMap()
 const conditionRegistrations = new WeakMap()
+const bindingTypes = ["class", "disabled", "value", "checked"]
+const bindingSelector = bindingTypes.map(target => `[data-k-bind-${target}]`).join(",")
 
 export function patchBinding(node, target, value) {
   if (target === "disabled") {
     node.toggleAttribute("disabled", Boolean(value))
+  } else if (target === "checked") {
+    node.checked = Boolean(value)
   } else if (target === "value") {
     const next = value == null ? "" : String(value)
     if (node.value !== next) node.value = next
@@ -52,7 +56,7 @@ function mountDom(root) {
 }
 
 function mountBindings(root) {
-  for (const target of ["class", "disabled", "value"]) {
+  for (const target of bindingTypes) {
     for (const node of matching(root, `[data-k-bind-${target}]`)) {
       if (mountedBindings.has(node)) continue
       mountedBindings.add(node)
@@ -117,10 +121,14 @@ function updateCondition(condition) {
   condition.end.parentNode.insertBefore(fragment, condition.end)
   condition.current = next
   for (const node of nodes) mountDom(node)
+  const select = condition.start.closest("select[data-k-bind-value]")
+  for (const binding of new Set((bindingRegistrations.get(select) ?? []).map(([, entry]) => entry))) {
+    patchBinding(binding.node, binding.target, binding.read())
+  }
 }
 
 function unmountDom(root) {
-  for (const node of matching(root, "[data-k-bind-class],[data-k-bind-disabled],[data-k-bind-value]")) {
+  for (const node of matching(root, bindingSelector)) {
     for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
     bindingRegistrations.delete(node)
     mountedBindings.delete(node)
@@ -138,7 +146,7 @@ function removeConditionRange(start, end) {
   range.setStartAfter(start)
   range.setEndBefore(end)
   const root = range.commonAncestorContainer
-  for (const node of matching(root, "[data-k-bind-class],[data-k-bind-disabled],[data-k-bind-value],template[data-k-if]")) {
+  for (const node of matching(root, `${bindingSelector},template[data-k-if]`)) {
     if (range.comparePoint(node, 0) === 0) unmountDom(node)
   }
   range.deleteContents()

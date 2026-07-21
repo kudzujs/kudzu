@@ -245,7 +245,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
         }
       }
 
-      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && ["className", "disabled", "value"].includes(node.name.getText())) {
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && ["className", "disabled", "value", "checked"].includes(node.name.getText())) {
         const expression = node.initializer.expression
         const setters = settersForNode(node, settersByFunction)
         const usedStates = referencedStateNames(expression, setters)

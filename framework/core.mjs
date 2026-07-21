@@ -3,6 +3,7 @@ const behaviorMarker = Symbol("kudzu.behavior")
 const nativeBehaviorMarker = Symbol("kudzu.nativeBehavior")
 const bindingMarker = Symbol("kudzu.binding")
 const conditionalMarker = Symbol("kudzu.conditional")
+const noSelectValue = Symbol("kudzu.no-select-value")
 
 let renderContext
 
@@ -198,11 +199,11 @@ function renderMetadata(metadata) {
   return tags.join("")
 }
 
-async function renderNode(node, namespace) {
+async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (node == null || node === false || node === true) return ""
   if (Array.isArray(node)) {
     let html = ""
-    for (const child of node) html += await renderNode(child, namespace)
+    for (const child of node) html += await renderNode(child, namespace, selectValue)
     return html
   }
   if (node?.[signalMarker]) {
@@ -213,17 +214,17 @@ async function renderNode(node, namespace) {
   if (typeof node === "string" || typeof node === "number" || typeof node === "bigint") {
     return escapeHtml(node)
   }
-  if (node instanceof Promise) return renderNode(await node, namespace)
+  if (node instanceof Promise) return renderNode(await node, namespace, selectValue)
   if (node?.[conditionalMarker]) {
     const descriptor = bindingDescriptor(node)
     const stateIds = reactiveStateIds(descriptor)
-    if (!stateIds.size) return renderNode(node.value ? node.truthy() : node.falsy(), namespace)
+    if (!stateIds.size) return renderNode(node.value ? node.truthy() : node.falsy(), namespace, selectValue)
     if (namespace) throw new Error(`Reactive conditional DOM is not supported inside ${namespace}`)
 
     const id = `c${renderContext.nextCondition++}`
     renderContext.conditionDepth++
-    const truthy = await renderNode(node.truthy())
-    const falsy = await renderNode(node.falsy())
+    const truthy = await renderNode(node.truthy(), namespace, selectValue)
+    const falsy = await renderNode(node.falsy(), namespace, selectValue)
     renderContext.conditionDepth--
     const metadata = { id, kind: node.kind, initial: node.value, ...descriptor }
     for (const stateId of stateIds) renderContext.conditionStates.add(stateId)
@@ -231,18 +232,21 @@ async function renderNode(node, namespace) {
     renderContext.hasBehaviors = true
     renderContext.hasBindings = true
     const encoded = escapeJsonAttribute(metadata)
-    const current = node.value ? truthy : node.kind === "and" ? await renderNode(node.value) : falsy
+    const current = node.value ? truthy : node.kind === "and" ? await renderNode(node.value, namespace, selectValue) : falsy
     return `<template data-k-if='${encoded}'><template data-k-true>${truthy}</template><template data-k-false>${falsy}</template></template>${current}<template data-k-if-end="${id}"></template>`
   }
   if (!node || typeof node !== "object" || !("type" in node)) {
     throw new Error(`Cannot render ${String(node)}`)
   }
 
-  if (node.type === Symbol.for("kudzu.fragment")) return renderNode(node.props.children, namespace)
-  if (typeof node.type === "function") return renderNode(await node.type(node.props), namespace)
+  if (node.type === Symbol.for("kudzu.fragment")) return renderNode(node.props.children, namespace, selectValue)
+  if (typeof node.type === "function") return renderNode(await node.type(node.props), namespace, selectValue)
 
   const tag = node.type
   const props = node.props ?? {}
+  const childSelectValue = tag === "select"
+    ? Object.hasOwn(props, "value") ? bindingValue(props.value) : noSelectValue
+    : selectValue
   const childNamespace = tag === "svg" || tag === "math"
     ? tag
     : namespace === "svg" && tag === "foreignObject" ? undefined : namespace
@@ -250,6 +254,7 @@ async function renderNode(node, namespace) {
 
   for (const [rawName, value] of Object.entries(props)) {
     if (rawName === "children" || rawName === "key") continue
+    if (rawName === "selected" && selectValue !== noSelectValue) continue
 
     if (/^on[A-Z]/.test(rawName)) {
       const event = rawName.slice(2).toLowerCase()
@@ -270,18 +275,18 @@ async function renderNode(node, namespace) {
     }
 
     const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : rawName
-    const target = name === "class" || name === "disabled" || name === "value" ? name : undefined
+    const target = name === "class" || name === "disabled" || name === "value" || name === "checked" ? name : undefined
     if (target && (value?.[signalMarker] || value?.[bindingMarker])) {
       const initialValue = value[signalMarker] ? value.value : value.value
       const reactive = value[signalMarker] || Object.keys(value.states).length > 0 || Object.keys(value.scopeStates).length > 0 || Object.keys(value.scopeBindings).length > 0
       if (!reactive) {
-        attributes += renderAttribute(name, initialValue)
+        if (tag !== "select" || name !== "value") attributes += renderAttribute(name, initialValue)
         continue
       }
       const descriptor = value[signalMarker]
         ? { state: value.id }
         : bindingDescriptor(value)
-      attributes += renderAttribute(name, initialValue)
+      if (tag !== "select" || name !== "value") attributes += renderAttribute(name, initialValue)
       attributes += ` data-k-bind-${target}='${escapeJsonAttribute(descriptor)}'`
       renderContext.bindings.push({ target, ...descriptor })
       if (renderContext.conditionDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
@@ -290,6 +295,7 @@ async function renderNode(node, namespace) {
       continue
     }
 
+    if (tag === "select" && name === "value") continue
     if (value == null || value === false) continue
     if (value === true) {
       attributes += ` ${name}`
@@ -301,9 +307,16 @@ async function renderNode(node, namespace) {
     }
   }
 
+  if (tag === "option" && selectValue !== noSelectValue && String(optionValue(props)) === (selectValue == null ? "" : String(selectValue))) attributes += " selected"
+
   const voidElements = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"])
   if (voidElements.has(tag)) return `<${tag}${attributes}>`
-  return `<${tag}${attributes}>${await renderNode(props.children, childNamespace)}</${tag}>`
+  return `<${tag}${attributes}>${await renderNode(props.children, childNamespace, childSelectValue)}</${tag}>`
+}
+
+function optionValue(props) {
+  if (props.value != null) return bindingValue(props.value)
+  return Array.isArray(props.children) ? props.children.join("") : props.children ?? ""
 }
 
 function reactiveStateIds(descriptor) {
@@ -316,7 +329,7 @@ function reactiveStateIds(descriptor) {
 }
 
 function renderAttribute(name, value) {
-  if (name === "disabled") return value ? " disabled" : ""
+  if (name === "disabled" || name === "checked") return value ? ` ${name}` : ""
   if (name === "value") return value == null ? "" : ` value="${escapeAttribute(value)}"`
   if (value == null || value === false) return ""
   return ` ${name}="${escapeAttribute(value)}"`
