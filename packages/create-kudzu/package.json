@@ -1,6 +1,6 @@
 {
   "name": "create-kudzu",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Create a Kudzu project",
   "type": "module",
   "license": "MIT",

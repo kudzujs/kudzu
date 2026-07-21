@@ -1,9 +1,11 @@
 import assert from "node:assert/strict"
-import { readFile, rm } from "node:fs/promises"
-import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
+import { readFile, rm, writeFile } from "node:fs/promises"
+import { spawn, spawnSync } from "node:child_process"
 import test from "node:test"
 import { build } from "../framework/build.mjs"
-import { nativeBehavior, renderPage, useState } from "../framework/core.mjs"
+import { conditional, nativeBehavior, renderPage, useState } from "../framework/core.mjs"
+import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
 import { createNativeContext } from "../framework/native-runtime.js"
@@ -65,6 +67,14 @@ test("does not serialize unused state on static pages", async () => {
   }, { styles: false })
   assert.doesNotMatch(result.html, /data-k-state/)
   assert.equal(result.hasBehaviors, false)
+})
+
+test("rejects reactive conditionals in foreign namespaces", async () => {
+  await assert.rejects(renderPage(() => {
+    const [open] = useState(true)
+    const branch = conditional("and", true, () => jsx("circle", {}), () => null, "/binding.js", "binding0", [["open", open]], [])
+    return jsx("svg", { children: branch })
+  }, { styles: false }), /Reactive conditional DOM is not supported inside svg/)
 })
 
 test("produces the same execution plan for the same input", async () => {
@@ -153,6 +163,45 @@ test("patches reactive className, disabled, and value without a VDOM", async t =
   assert.equal(node.value, "false")
 })
 
+test("compiles conditional DOM branches with nested behavior", async t => {
+  const fixture = new URL("./fixtures/conditionals", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/conditionals/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/conditionals/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
+    cwd: fixture,
+    encoding: "utf8"
+  })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const html = await readFile(new URL("./fixtures/conditionals/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/conditionals/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const evaluators = await readFile(new URL("./fixtures/conditionals/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/conditionals/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
+  const commandRuntime = await readFile(new URL("./fixtures/conditionals/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const nativeRuntime = await readFile(new URL("./fixtures/conditionals/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/conditionals/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+
+  assert.match(component, /__kConditional/)
+  assert.match(html, /data-k-if=/)
+  assert.match(html, /data-k-if-end="c0"/)
+  assert.match(html, /Closed state/)
+  assert.match(html, /Static condition/)
+  assert.match(html, /data-k-state=/)
+  assert.match(html, /kudzu-binding\.js/)
+  assert.match(html, /kudzu-native\.js/)
+  assert.match(runtime, /mountConditions|updateCondition/)
+  assert.match(commandRuntime, /eventNames = \["click"\]/)
+  assert.match(nativeRuntime, /eventNames = \["click"\]/)
+  assert.match(evaluators, /export function binding/)
+  assert.doesNotMatch(evaluators, /\beval\b|new Function/)
+  assert.equal(plan.conditions.length, 7)
+  assert.ok(plan.events.some(event => event.native))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runConditionalBrowserTest(fixture, chrome)
+})
+
 test("compiles normal async JavaScript handlers to external ESM", async t => {
   const fixture = new URL("./fixtures/native", import.meta.url)
   t.after(async () => {
@@ -224,3 +273,61 @@ test("rejects every unsupported native capture shape", () => {
     assert.throws(() => nativeBehavior("module", "handler", [], [["capture", value]]), new RegExp(`Native capture "capture" is not serializable: ${reason}`))
   }
 })
+
+async function runConditionalBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  const control = action => document.querySelector('[data-action="' + action + '"]')
+  control("hidden").click()
+  await wait()
+  control("open").click()
+  await wait()
+  let section = document.querySelector("main > section")
+  if (!section || section.className !== "new" || section.querySelector("input").value !== "0" || section.querySelector("u").textContent !== "1" || !document.body.textContent.includes("Child open") || !document.body.textContent.includes("Visible text") || document.querySelector("td").textContent !== "Open row") throw new Error("open")
+  section.querySelectorAll("button")[0].click()
+  await wait()
+  section = document.querySelector("main > section")
+  if (section.className !== "grown" || section.querySelector("span").textContent !== "1" || !section.textContent.includes("Positive")) throw new Error("grow")
+  if (!section.querySelector("mark")) throw new Error("and")
+  section.querySelector("[data-uncontrolled]").value = "changed"
+  control("close").click()
+  await wait()
+  if (document.querySelector("main > section") || !document.body.textContent.includes("Closed state")) throw new Error("close")
+  control("open").click()
+  await wait()
+  section = document.querySelector("main > section")
+  if (section.querySelector("span").textContent !== "1" || section.querySelector("[data-uncontrolled]").value !== "") throw new Error("persist")
+  section.querySelectorAll("button")[1].click()
+  await wait()
+  if (document.querySelector("main > section span").textContent !== "2") throw new Error("async")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+
+  const port = 39000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}

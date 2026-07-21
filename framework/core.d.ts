@@ -6,6 +6,7 @@ export function behavior(commands: Array<["add" | "set" | "log", unknown, unknow
 export function nativeBehavior(module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
 export function binding(value: unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
 export function bindingValue(value: unknown): unknown
+export function conditional(kind: "and" | "ternary", value: unknown, truthy: () => unknown, falsy: () => unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
 
 export function renderPage(
   component: (props: Record<string, never>) => unknown | Promise<unknown>,
@@ -49,5 +50,6 @@ export function renderPage(
       scopeStates?: Record<string, string>
       scopeBindings?: Record<string, unknown>
     }>
+    conditions: Array<Record<string, unknown>>
   }
 }>

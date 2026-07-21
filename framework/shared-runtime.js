@@ -26,10 +26,18 @@ export function commitDom(id, value) {
   for (const commit of committers) commit(id)
 }
 
+export function mountText(root) {
+  for (const node of matching(root, "[data-k-text]")) {
+    const id = node.dataset.kText
+    if (browserState.has(id)) node.textContent = browserState.get(id)
+    else browserState.set(id, JSON.parse(node.dataset.kValue))
+  }
+}
+
 if (typeof document !== "undefined") {
   const initialState = document.body.dataset.kState
   if (initialState) for (const [id, value] of JSON.parse(initialState)) browserState.set(id, value)
-  for (const node of document.querySelectorAll("[data-k-text]")) browserState.set(node.dataset.kText, JSON.parse(node.dataset.kValue))
+  mountText(document)
 
   const eventNames = ["click", "input", "change"]
   for (const eventName of eventNames) {
@@ -40,6 +48,10 @@ if (typeof document !== "undefined") {
       applyCommands(browserState, JSON.parse(commands), commitDom)
     })
   }
+}
+
+function matching(root, selector) {
+  return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
 }
 
 function capitalize(value) {

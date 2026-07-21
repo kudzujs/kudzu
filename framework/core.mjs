@@ -2,6 +2,7 @@ const signalMarker = Symbol("kudzu.signal")
 const behaviorMarker = Symbol("kudzu.behavior")
 const nativeBehaviorMarker = Symbol("kudzu.nativeBehavior")
 const bindingMarker = Symbol("kudzu.binding")
+const conditionalMarker = Symbol("kudzu.conditional")
 
 let renderContext
 
@@ -53,6 +54,14 @@ export function nativeBehavior(module, handler, states, scope) {
 }
 
 export function binding(value, module, handler, states, scope) {
+  return { [bindingMarker]: true, value, ...reactiveDescriptor(module, handler, states, scope) }
+}
+
+export function conditional(kind, value, truthy, falsy, module, handler, states, scope) {
+  return { [conditionalMarker]: true, kind, value, truthy, falsy, ...reactiveDescriptor(module, handler, states, scope) }
+}
+
+function reactiveDescriptor(module, handler, states, scope) {
   const scopeStates = {}
   const serializedScope = {}
   const scopeBindings = {}
@@ -62,8 +71,6 @@ export function binding(value, module, handler, states, scope) {
     else serializedScope[name] = serializeCapture(name, entry, new Set())
   }
   return {
-    [bindingMarker]: true,
-    value,
     module,
     handler,
     states: Object.fromEntries(states.map(([name, signal]) => {
@@ -116,7 +123,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, states: {}, textStates: new Set(), events: [], bindings: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false }
+  renderContext = { nextState: 0, nextCondition: 0, conditionDepth: 0, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -135,7 +142,7 @@ export async function renderPage(component, metadata = {}) {
       ? '<script type="module" src="/assets/kudzu-binding.js"></script>'
       : ""
     const initialState = renderContext.hasBehaviors
-      ? Object.entries(renderContext.states).filter(([id]) => !renderContext.textStates.has(id)).map(([id, entry]) => [id, entry.initialValue])
+      ? Object.entries(renderContext.states).filter(([id]) => !renderContext.textStates.has(id) || renderContext.conditionStates.has(id)).map(([id, entry]) => [id, entry.initialValue])
       : []
     const state = initialState.length
       ? ` data-k-state="${escapeAttribute(JSON.stringify(initialState))}"`
@@ -149,7 +156,8 @@ export async function renderPage(component, metadata = {}) {
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
         events: renderContext.events,
-        bindings: renderContext.bindings
+        bindings: renderContext.bindings,
+        conditions: renderContext.conditions
       }
     }
   } finally {
@@ -190,30 +198,54 @@ function renderMetadata(metadata) {
   return tags.length ? `${tags.join("\n")}\n` : ""
 }
 
-async function renderNode(node) {
+async function renderNode(node, namespace) {
   if (node == null || node === false || node === true) return ""
   if (Array.isArray(node)) {
     let html = ""
-    for (const child of node) html += await renderNode(child)
+    for (const child of node) html += await renderNode(child, namespace)
     return html
   }
   if (node?.[signalMarker]) {
     renderContext.textStates.add(node.id)
+    if (renderContext.conditionDepth) renderContext.conditionStates.add(node.id)
     return `<span data-k-text="${node.id}" data-k-value="${escapeAttribute(JSON.stringify(node.value))}">${escapeHtml(node.value)}</span>`
   }
   if (typeof node === "string" || typeof node === "number" || typeof node === "bigint") {
     return escapeHtml(node)
   }
-  if (node instanceof Promise) return renderNode(await node)
+  if (node instanceof Promise) return renderNode(await node, namespace)
+  if (node?.[conditionalMarker]) {
+    const descriptor = bindingDescriptor(node)
+    const stateIds = reactiveStateIds(descriptor)
+    if (!stateIds.size) return renderNode(node.value ? node.truthy() : node.falsy(), namespace)
+    if (namespace) throw new Error(`Reactive conditional DOM is not supported inside ${namespace}`)
+
+    const id = `c${renderContext.nextCondition++}`
+    renderContext.conditionDepth++
+    const truthy = await renderNode(node.truthy())
+    const falsy = await renderNode(node.falsy())
+    renderContext.conditionDepth--
+    const metadata = { id, kind: node.kind, initial: node.value, ...descriptor }
+    for (const stateId of stateIds) renderContext.conditionStates.add(stateId)
+    renderContext.conditions.push(metadata)
+    renderContext.hasBehaviors = true
+    renderContext.hasBindings = true
+    const encoded = escapeAttribute(JSON.stringify(metadata))
+    const current = node.value ? truthy : node.kind === "and" ? await renderNode(node.value) : falsy
+    return `<template data-k-if="${encoded}"><template data-k-true>${truthy}</template><template data-k-false>${falsy}</template></template>${current}<template data-k-if-end="${id}"></template>`
+  }
   if (!node || typeof node !== "object" || !("type" in node)) {
     throw new Error(`Cannot render ${String(node)}`)
   }
 
-  if (node.type === Symbol.for("kudzu.fragment")) return renderNode(node.props.children)
-  if (typeof node.type === "function") return renderNode(await node.type(node.props))
+  if (node.type === Symbol.for("kudzu.fragment")) return renderNode(node.props.children, namespace)
+  if (typeof node.type === "function") return renderNode(await node.type(node.props), namespace)
 
   const tag = node.type
   const props = node.props ?? {}
+  const childNamespace = tag === "svg" || tag === "math"
+    ? tag
+    : namespace === "svg" && tag === "foreignObject" ? undefined : namespace
   let attributes = ""
 
   for (const [rawName, value] of Object.entries(props)) {
@@ -252,6 +284,7 @@ async function renderNode(node) {
       attributes += renderAttribute(name, initialValue)
       attributes += ` data-k-bind-${target}="${escapeAttribute(JSON.stringify(descriptor))}"`
       renderContext.bindings.push({ target, ...descriptor })
+      if (renderContext.conditionDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
       renderContext.hasBehaviors = true
       renderContext.hasBindings = true
       continue
@@ -270,7 +303,16 @@ async function renderNode(node) {
 
   const voidElements = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"])
   if (voidElements.has(tag)) return `<${tag}${attributes}>`
-  return `<${tag}${attributes}>${await renderNode(props.children)}</${tag}>`
+  return `<${tag}${attributes}>${await renderNode(props.children, childNamespace)}</${tag}>`
+}
+
+function reactiveStateIds(descriptor) {
+  if (descriptor.state) return new Set([descriptor.state])
+  return new Set([
+    ...Object.values(descriptor.states),
+    ...Object.values(descriptor.scopeStates),
+    ...Object.values(descriptor.scopeBindings).flatMap(entry => [...reactiveStateIds(entry)])
+  ])
 }
 
 function renderAttribute(name, value) {

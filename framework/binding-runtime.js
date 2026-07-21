@@ -1,7 +1,13 @@
-import { browserState, registerCommitter } from "./shared-runtime.js"
+import { browserState, mountText, registerCommitter } from "./shared-runtime.js"
 import { deserialize } from "./serialization.js"
 
+const imports = new Map()
 const bindingTargets = new Map()
+const conditionTargets = new Map()
+const mountedBindings = new WeakSet()
+const mountedConditions = new WeakSet()
+const bindingRegistrations = new WeakMap()
+const conditionRegistrations = new WeakMap()
 
 export function patchBinding(node, target, value) {
   if (target === "disabled") {
@@ -17,54 +23,168 @@ export function patchBinding(node, target, value) {
 }
 
 function commitBindings(id) {
-  for (const binding of bindingTargets.get(id) ?? []) patchBinding(binding.node, binding.target, binding.read())
+  const bindings = bindingTargets.get(id)
+  if (!bindings) return
+  for (const binding of bindings) {
+    if (!binding.node.isConnected) bindings.delete(binding)
+    else patchBinding(binding.node, binding.target, binding.read())
+  }
+}
+
+function commitConditions(id) {
+  const conditions = conditionTargets.get(id)
+  if (!conditions) return
+  for (const condition of conditions) {
+    if (!condition.start.isConnected) conditions.delete(condition)
+    else updateCondition(condition)
+  }
 }
 
 registerCommitter(commitBindings)
+registerCommitter(commitConditions)
 
-if (typeof document !== "undefined") {
-  const imports = new Map()
-  const registrations = []
+if (typeof document !== "undefined") mountDom(document)
+
+function mountDom(root) {
+  mountText(root)
+  mountBindings(root)
+  mountConditions(root)
+}
+
+function mountBindings(root) {
   for (const target of ["class", "disabled", "value"]) {
-    for (const node of document.querySelectorAll(`[data-k-bind-${target}]`)) {
+    for (const node of matching(root, `[data-k-bind-${target}]`)) {
+      if (mountedBindings.has(node)) continue
+      mountedBindings.add(node)
       const descriptor = JSON.parse(node.dataset[`kBind${capitalize(target)}`])
       if (descriptor.state) {
-        registerBinding(descriptor.state, { node, target, read: () => browserState.get(descriptor.state) })
+        const binding = { node, target, read: () => browserState.get(descriptor.state) }
+        register(bindingTargets, descriptor.state, binding)
+        bindingRegistrations.set(node, [[descriptor.state, binding]])
+        patchBinding(node, target, binding.read())
         continue
       }
-      let modulePromise = imports.get(descriptor.module)
-      if (!modulePromise) {
-        modulePromise = import(descriptor.module)
-        imports.set(descriptor.module, modulePromise)
-      }
-      registrations.push(modulePromise.then(async module => {
-        const context = await createBindingContext(descriptor, imports)
-        const binding = { node, target, read: () => module[descriptor.handler](context) }
-        for (const id of bindingStateIds(descriptor)) registerBinding(id, binding)
+      loadEvaluator(descriptor).then(evaluator => {
+        if (!node.isConnected) return
+        const binding = { node, target, read: evaluator.read }
+        const registrations = []
+        for (const id of evaluator.stateIds) {
+          register(bindingTargets, id, binding)
+          registrations.push([id, binding])
+        }
+        bindingRegistrations.set(node, registrations)
         patchBinding(node, target, binding.read())
-      }))
+      }).catch(error => console.error(error))
     }
   }
-  Promise.all(registrations).catch(error => console.error(error))
 }
 
-function registerBinding(id, binding) {
-  const bindings = bindingTargets.get(id) ?? []
-  bindings.push(binding)
-  bindingTargets.set(id, bindings)
+function mountConditions(root) {
+  for (const start of matching(root, "template[data-k-if]")) {
+    if (mountedConditions.has(start)) continue
+    mountedConditions.add(start)
+    const descriptor = JSON.parse(start.dataset.kIf)
+    const end = findEnd(start, descriptor.id)
+    const truthy = start.content.querySelector("template[data-k-true]")
+    const falsy = start.content.querySelector("template[data-k-false]")
+    if (!end || !truthy || !falsy) continue
+    const condition = { start, end, truthy, falsy, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial) }
+    loadEvaluator(descriptor).then(evaluator => {
+      if (!start.isConnected) return
+      condition.read = evaluator.read
+      const registrations = []
+      for (const id of evaluator.stateIds) {
+        register(conditionTargets, id, condition)
+        registrations.push([id, condition])
+      }
+      conditionRegistrations.set(start, { condition, registrations })
+      updateCondition(condition)
+    }).catch(error => console.error(error))
+  }
 }
 
-async function createBindingContext(descriptor, imports) {
+function updateCondition(condition) {
+  const value = condition.read()
+  const next = conditionKey(condition.kind, value)
+  if (next === condition.current) return
+  removeConditionRange(condition.start, condition.end)
+  const truthy = Boolean(value)
+  const falseText = condition.kind === "and" && !truthy ? renderFalsy(value) : ""
+  const fragment = falseText
+    ? textFragment(condition.end.ownerDocument, falseText)
+    : (truthy ? condition.truthy : condition.falsy).content.cloneNode(true)
+  const nodes = [...fragment.childNodes]
+  condition.end.parentNode.insertBefore(fragment, condition.end)
+  condition.current = next
+  for (const node of nodes) mountDom(node)
+}
+
+function unmountDom(root) {
+  for (const node of matching(root, "[data-k-bind-class],[data-k-bind-disabled],[data-k-bind-value]")) {
+    for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
+    bindingRegistrations.delete(node)
+    mountedBindings.delete(node)
+  }
+  for (const start of matching(root, "template[data-k-if]")) {
+    const registration = conditionRegistrations.get(start)
+    for (const [id, condition] of registration?.registrations ?? []) conditionTargets.get(id)?.delete(condition)
+    conditionRegistrations.delete(start)
+    mountedConditions.delete(start)
+  }
+}
+
+function removeConditionRange(start, end) {
+  const range = start.ownerDocument.createRange()
+  range.setStartAfter(start)
+  range.setEndBefore(end)
+  const root = range.commonAncestorContainer
+  for (const node of matching(root, "[data-k-bind-class],[data-k-bind-disabled],[data-k-bind-value],template[data-k-if]")) {
+    if (range.comparePoint(node, 0) === 0) unmountDom(node)
+  }
+  range.deleteContents()
+}
+
+function conditionKey(kind, value) {
+  return value ? "true" : kind === "and" ? `false:${renderFalsy(value)}` : "false"
+}
+
+function renderFalsy(value) {
+  return value === false || value == null || value === true ? "" : String(value)
+}
+
+function textFragment(document, value) {
+  const fragment = document.createDocumentFragment()
+  fragment.append(document.createTextNode(value))
+  return fragment
+}
+
+function findEnd(start, id) {
+  return [...start.ownerDocument.querySelectorAll("template[data-k-if-end]")]
+    .find(node => node.dataset.kIfEnd === id)
+}
+
+function register(targets, id, entry) {
+  const entries = targets.get(id) ?? new Set()
+  entries.add(entry)
+  targets.set(id, entries)
+}
+
+async function loadEvaluator(descriptor) {
+  let modulePromise = imports.get(descriptor.module)
+  if (!modulePromise) {
+    modulePromise = import(descriptor.module)
+    imports.set(descriptor.module, modulePromise)
+  }
+  const [module, context] = await Promise.all([modulePromise, createBindingContext(descriptor)])
+  return { read: () => module[descriptor.handler](context), stateIds: bindingStateIds(descriptor) }
+}
+
+async function createBindingContext(descriptor) {
   const scope = Object.fromEntries(Object.entries(descriptor.scope).map(([name, value]) => [name, deserialize(value)]))
   const nested = {}
   await Promise.all(Object.entries(descriptor.scopeBindings).map(async ([name, binding]) => {
-    let modulePromise = imports.get(binding.module)
-    if (!modulePromise) {
-      modulePromise = import(binding.module)
-      imports.set(binding.module, modulePromise)
-    }
-    const [module, context] = await Promise.all([modulePromise, createBindingContext(binding, imports)])
-    nested[name] = () => module[binding.handler](context)
+    const evaluator = await loadEvaluator(binding)
+    nested[name] = evaluator.read
   }))
   return {
     get: name => browserState.get(descriptor.states[name]),
@@ -78,6 +198,10 @@ function bindingStateIds(descriptor) {
     ...Object.values(descriptor.scopeStates),
     ...Object.values(descriptor.scopeBindings).flatMap(binding => [...bindingStateIds(binding)])
   ])
+}
+
+function matching(root, selector) {
+  return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
 }
 
 function capitalize(value) {

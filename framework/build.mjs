@@ -185,6 +185,8 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
     const settersByFunction = new Map()
     const functions = new Map()
     let usesBehavior = false
+    let usesBinding = false
+    let usesConditional = false
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -226,6 +228,23 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, initializer)
       }
 
+      if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
+        const parts = conditionalParts(node.expression)
+        if (parts) {
+          const setters = settersForNode(node, settersByFunction)
+          const usedStates = referencedStateNames(parts.condition, setters)
+          const captures = captureNames(parts.condition, parts.condition, setters)
+          if (usedStates.size || captures.size) {
+            usesBehavior = true
+            usesConditional = true
+            const truthy = ts.visitNode(parts.truthy, visitor)
+            const falsy = ts.visitNode(parts.falsy, visitor)
+            const compiled = compileConditional(parts.kind, parts.condition, truthy, falsy, setters, factory, context, reactiveBindings, handlerUrl)
+            return factory.updateJsxExpression(node, compiled)
+          }
+        }
+      }
+
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && ["className", "disabled", "value"].includes(node.name.getText())) {
         const expression = node.initializer.expression
         const setters = settersForNode(node, settersByFunction)
@@ -233,6 +252,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
         const captures = captureNames(expression, expression, setters)
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression)) {
           usesBehavior = true
+          usesBinding = true
           const compiled = compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl)
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compiled))
         }
@@ -257,8 +277,9 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
 
     const behaviorImports = [factory.createImportSpecifier(false, factory.createIdentifier("behavior"), factory.createIdentifier("__kBehavior"))]
     if (nativeHandlers.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("nativeBehavior"), factory.createIdentifier("__kNativeBehavior")))
-    if (reactiveBindings.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
-    if (reactiveBindings.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
+    if (usesBinding) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
+    if (usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("conditional"), factory.createIdentifier("__kConditional")))
+    if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
       factory.createImportClause(false, undefined, factory.createNamedImports(behaviorImports)),
@@ -269,6 +290,16 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
 }
 
 function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl) {
+  return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl))
+}
+
+function compileConditional(kind, expression, truthy, falsy, setters, factory, context, reactiveBindings, handlerUrl) {
+  const [initial, ...descriptor] = compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl)
+  const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
+  return factory.createCallExpression(factory.createIdentifier("__kConditional"), undefined, [factory.createStringLiteral(kind), initial, thunk(truthy), thunk(falsy), ...descriptor])
+}
+
+function compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl) {
   const usedStates = referencedStateNames(expression, setters)
   const captures = captureNames(expression, expression, setters)
   const exportName = `binding${reactiveBindings.length}`
@@ -297,13 +328,29 @@ function compileReactiveBinding(expression, setters, factory, context, reactiveB
     }
     return ts.visitEachChild(node, rewriteInitial, context)
   }
-  return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, [
+  return [
     ts.visitNode(expression, rewriteInitial),
     factory.createStringLiteral(handlerUrl),
     factory.createStringLiteral(exportName),
     factory.createArrayLiteralExpression(states),
     factory.createArrayLiteralExpression(scope)
-  ])
+  ]
+}
+
+function conditionalParts(expression) {
+  const unwrap = node => ts.isParenthesizedExpression(node) ? unwrap(node.expression) : node
+  const value = unwrap(expression)
+  if (ts.isBinaryExpression(value) && value.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+    return { kind: "and", condition: value.left, truthy: unwrap(value.right), falsy: factoryNull() }
+  }
+  if (ts.isConditionalExpression(value)) {
+    return { kind: "ternary", condition: value.condition, truthy: unwrap(value.whenTrue), falsy: unwrap(value.whenFalse) }
+  }
+  return undefined
+}
+
+function factoryNull() {
+  return ts.factory.createNull()
 }
 
 function compileEvent(expression, setters, functions, factory, nativeHandlers, handlerUrl) {

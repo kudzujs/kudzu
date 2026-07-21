@@ -5,7 +5,7 @@
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.
 - `runtime.js`: command-only runtime for direct state-to-text patches.
 - `shared-runtime.js`: command runtime with binding commit hooks, emitted only when needed.
-- `binding-runtime.js`: optional reactive `className`, `disabled`, and `value` patches.
+- `binding-runtime.js`: optional reactive attributes and conditional DOM range patches.
 - `serialization.js`: capture deserialization shared by binding and native handlers.
 - `native-runtime.js`: optional runtime for normal synchronous and asynchronous ESM handlers.
 - `*.d.ts`: public TypeScript and JSX declarations.

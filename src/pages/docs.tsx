@@ -30,6 +30,7 @@ export default function DocsPage() {
           <a href="#components">Components</a>
           <a href="#state">State semantics</a>
           <a href="#attributes">Reactive attributes</a>
+          <a href="#conditionals">Conditional DOM</a>
           <a href="#events">Event handlers</a>
           <a href="#captures">Client captures</a>
           <p>REFERENCE</p>
@@ -39,7 +40,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.2.3</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.2.4</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -109,8 +110,21 @@ return <>
             </div>
           </section>
 
+          <section className="docs-section" id="conditionals">
+            <div className="docs-heading"><span>06</span><div><p>CORE · NEW</p><h2>Conditional DOM</h2></div></div>
+            <p>Child <code>&amp;&amp;</code> and ternary expressions compile to bounded DOM ranges. Kudzu inserts or removes only that range and does not rerun a browser component tree.</p>
+            <pre><code>{`const [open, setOpen] = useState(false)
+
+return <>
+  {open && <Dialog />}
+  {open ? <p>Open</p> : <p>Closed</p>}
+</>`}</code></pre>
+            <div className="docs-callout"><strong>State</strong><span>Logical Kudzu state persists across branch switches. Uncontrolled input values, focus, selection, and imperative DOM mutations reset when a branch is remounted.</span></div>
+            <p>Both branches are rendered into inert templates at build time. Conditional rendering is a UI mechanism, not an authorization boundary: do not place secrets or access-controlled content in a dormant branch, and avoid build-time side effects in branch components.</p>
+          </section>
+
           <section className="docs-section" id="events">
-            <div className="docs-heading"><span>06</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
+            <div className="docs-heading"><span>07</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
             <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
             <pre><code>{`async function submit(event: SubmitEvent) {
   event.preventDefault()
@@ -121,7 +135,7 @@ return <>
           </section>
 
           <section className="docs-section" id="captures">
-            <div className="docs-heading"><span>07</span><div><p>CORE</p><h2>Client captures</h2></div></div>
+            <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Client captures</h2></div></div>
             <p>Handlers and reactive expressions may capture serializable component locals and destructured props.</p>
             <div className="docs-columns">
               <div><strong>Supported</strong><p>Strings, booleans, numbers, arrays, plain objects, and destructured props.</p></div>
@@ -130,7 +144,7 @@ return <>
           </section>
 
           <section className="docs-section" id="build">
-            <div className="docs-heading"><span>08</span><div><p>REFERENCE</p><h2>Build output</h2></div></div>
+            <div className="docs-heading"><span>09</span><div><p>REFERENCE</p><h2>Build output</h2></div></div>
             <pre><code>{`npm run build
 
 dist/
@@ -147,10 +161,11 @@ dist/
           </section>
 
           <section className="docs-section" id="limits">
-            <div className="docs-heading"><span>09</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
+            <div className="docs-heading"><span>10</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
             <ul className="docs-limits">
               <li>State bindings currently target text, <code>className</code>, <code>disabled</code>, and <code>value</code>.</li>
-              <li>Conditional DOM insertion and keyed lists are not implemented.</li>
+              <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
+              <li>Keyed lists and generalized JSX-valued locals are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
               <li>Imported client helpers and non-serializable captures are rejected at build time.</li>
             </ul>
