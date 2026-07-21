@@ -31,7 +31,7 @@
     "access": "public"
   },
   "bin": {
-    "kudzu": "./bin/kudzu.mjs"
+    "kudzu": "bin/kudzu.mjs"
   },
   "exports": {
     ".": {

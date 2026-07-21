@@ -14,7 +14,7 @@
     "node": ">=22"
   },
   "bin": {
-    "create-kudzu": "./index.mjs"
+    "create-kudzu": "index.mjs"
   },
   "files": [
     "index.mjs",
