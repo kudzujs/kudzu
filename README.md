@@ -174,7 +174,7 @@ Not implemented yet:
 
 ## Benchmarks
 
-Measurements below were produced on the same machine from production builds. They compare build artifacts, not ecosystem maturity or full application performance.
+Measurements below were produced on the same machine from production builds. Each framework received one warm-up followed by seven clean builds in rotating order; the table reports the median. Initial JavaScript includes inline scripts, root script references, and their static import graph, compressed file-by-file with gzip level 9. Total output is the raw size of every deploy artifact.
 
 ### Interactive Counter
 
@@ -182,30 +182,31 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | **581 B** | 1.7 KB | **371 ms** |
-| Astro | Yes | 158 B | **365 B** | 953 ms |
+| Kudzu | Yes | 563 B | 1.7 KB | **384 ms** |
+| Astro | Yes | **158 B** | **365 B** | 911 ms |
 | Svelte CSR | No | 10.5 KB | 26.9 KB | 910 ms |
-| Qwik CSR | No | 20.6 KB | 57.8 KB | 633 ms |
-| React CSR | No | 59.2 KB | 189.0 KB | 1010 ms |
-| Next.js | Yes | 182.1 KB | 652.2 KB | 3074 ms |
+| Qwik CSR | No | 20.6 KB | 57.8 KB | 627 ms |
+| Vue CSR | No | 24.0 KB | 60.3 KB | 814 ms |
+| React CSR | No | 59.2 KB | 189.0 KB | 1052 ms |
+| Next.js | Yes | 182.1 KB | 652.2 KB | 2985 ms |
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 
 ### Static Journal Page
 
-Same content and CSS across every fixture; build is the median of three clean runs:
+Same content and CSS across every fixture:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | **0 B** | 3.1 KB | **383 ms** |
-| Astro | Yes | **0 B** | **3.0 KB** | 1022 ms |
-| Svelte CSR | No | 10.2 KB | 27.2 KB | 907 ms |
-| Qwik CSR | No | 20.2 KB | 59.6 KB | 619 ms |
-| Vue CSR | No | 24.2 KB | 62.3 KB | 719 ms |
-| React CSR | No | 59.8 KB | 192.3 KB | 1053 ms |
-| Next.js | Yes | 182.6 KB | 663.6 KB | 3054 ms |
+| Kudzu | Yes | **0 B** | 3.2 KB | **478 ms** |
+| Astro | Yes | **0 B** | **3.0 KB** | 1253 ms |
+| Svelte CSR | No | 10.2 KB | 27.2 KB | 1018 ms |
+| Qwik CSR | No | 20.2 KB | 59.6 KB | 784 ms |
+| Vue CSR | No | 24.2 KB | 62.3 KB | 960 ms |
+| React CSR | No | 59.8 KB | 192.3 KB | 1253 ms |
+| Next.js | Yes | 182.6 KB | 663.6 KB | 3880 ms |
 
-Benchmark snapshot collected on July 20, 2026 from equivalent production fixtures on the same machine. Qwik used a client entry and therefore did not exercise its SSR resumability advantage. Build times vary by hardware and filesystem cache.
+Benchmark snapshot collected on July 21, 2026 with Node 24.14.0 on an Intel i5-9500. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 
 ## Development
 
