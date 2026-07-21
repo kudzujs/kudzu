@@ -1,4 +1,4 @@
-import { browserState, mountText, registerCommitter } from "./shared-runtime.js"
+import { browserState, mountDom, registerCommitter, registerMountHook, registerUnmountHook, unmountDom } from "./shared-runtime.js"
 import { deserialize } from "./serialization.js"
 
 const imports = new Map()
@@ -9,7 +9,7 @@ const mountedConditions = new WeakSet()
 const bindingRegistrations = new WeakMap()
 const conditionRegistrations = new WeakMap()
 const bindingTypes = ["class", "disabled", "value", "checked"]
-const bindingSelector = bindingTypes.map(target => `[data-k-bind-${target}]`).join(",")
+const bindingSelector = [...bindingTypes.map(target => `[data-k-bind-${target}]`), "[data-k-bind-attrs]"].join(",")
 
 export function patchBinding(node, target, value) {
   if (target === "disabled") {
@@ -19,10 +19,14 @@ export function patchBinding(node, target, value) {
   } else if (target === "value") {
     const next = value == null ? "" : String(value)
     if (node.value !== next) node.value = next
-  } else if (value == null || value === false) {
+  } else if (target === "class" && (value == null || value === false)) {
     node.removeAttribute("class")
-  } else {
+  } else if (target === "class") {
     node.setAttribute("class", String(value))
+  } else if (value == null || (value === false && !isStringBooleanAttribute(target))) {
+    node.removeAttribute(target)
+  } else {
+    node.setAttribute(target, value === true && !isStringBooleanAttribute(target) ? "" : String(value))
   }
 }
 
@@ -46,37 +50,38 @@ function commitConditions(id) {
 
 registerCommitter(commitBindings)
 registerCommitter(commitConditions)
+registerMountHook(mountBindings)
+registerMountHook(mountConditions)
+registerUnmountHook(unmountBindings)
+registerUnmountHook(unmountConditions)
 
 if (typeof document !== "undefined") mountDom(document)
 
-function mountDom(root) {
-  mountText(root)
-  mountBindings(root)
-  mountConditions(root)
-}
-
 function mountBindings(root) {
-  for (const target of bindingTypes) {
-    for (const node of matching(root, `[data-k-bind-${target}]`)) {
-      if (mountedBindings.has(node)) continue
-      mountedBindings.add(node)
-      const descriptor = JSON.parse(node.dataset[`kBind${capitalize(target)}`])
+  for (const node of matching(root, bindingSelector)) {
+    if (mountedBindings.has(node)) continue
+    mountedBindings.add(node)
+    const registrations = []
+    bindingRegistrations.set(node, registrations)
+    const descriptors = bindingTypes.flatMap(target => node.hasAttribute(`data-k-bind-${target}`)
+      ? [[target, JSON.parse(node.dataset[`kBind${capitalize(target)}`])]]
+      : [])
+    if (node.dataset.kBindAttrs) descriptors.push(...JSON.parse(node.dataset.kBindAttrs).map(({ target, ...descriptor }) => [target, descriptor]))
+    for (const [target, descriptor] of descriptors) {
       if (descriptor.state) {
         const binding = { node, target, read: () => browserState.get(descriptor.state) }
         register(bindingTargets, descriptor.state, binding)
-        bindingRegistrations.set(node, [[descriptor.state, binding]])
+        registrations.push([descriptor.state, binding])
         patchBinding(node, target, binding.read())
         continue
       }
       loadEvaluator(descriptor).then(evaluator => {
         if (!node.isConnected) return
         const binding = { node, target, read: evaluator.read }
-        const registrations = []
         for (const id of evaluator.stateIds) {
           register(bindingTargets, id, binding)
           registrations.push([id, binding])
         }
-        bindingRegistrations.set(node, registrations)
         patchBinding(node, target, binding.read())
       }).catch(error => console.error(error))
     }
@@ -127,12 +132,15 @@ function updateCondition(condition) {
   }
 }
 
-function unmountDom(root) {
+function unmountBindings(root) {
   for (const node of matching(root, bindingSelector)) {
     for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
     bindingRegistrations.delete(node)
     mountedBindings.delete(node)
   }
+}
+
+function unmountConditions(root) {
   for (const start of matching(root, "template[data-k-if]")) {
     const registration = conditionRegistrations.get(start)
     for (const [id, condition] of registration?.registrations ?? []) conditionTargets.get(id)?.delete(condition)
@@ -146,9 +154,8 @@ function removeConditionRange(start, end) {
   range.setStartAfter(start)
   range.setEndBefore(end)
   const root = range.commonAncestorContainer
-  for (const node of matching(root, `${bindingSelector},template[data-k-if]`)) {
-    if (range.comparePoint(node, 0) === 0) unmountDom(node)
-  }
+  const nodes = matching(root, "*").filter(node => range.comparePoint(node, 0) === 0)
+  for (const node of nodes) if (!nodes.some(parent => parent !== node && parent.contains(node))) unmountDom(node)
   range.deleteContents()
 }
 
@@ -214,4 +221,8 @@ function matching(root, selector) {
 
 function capitalize(value) {
   return value[0].toUpperCase() + value.slice(1)
+}
+
+function isStringBooleanAttribute(name) {
+  return name.startsWith("aria-") || name.startsWith("data-")
 }

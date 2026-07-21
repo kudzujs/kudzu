@@ -7,6 +7,7 @@ export function nativeBehavior(module: string, handler: string, states: Array<[s
 export function binding(value: unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
 export function bindingValue(value: unknown): unknown
 export function conditional(kind: "and" | "ternary", value: unknown, truthy: () => unknown, falsy: () => unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
+export function list(items: unknown, keyField: string, render: (item: unknown) => unknown): unknown
 
 export function renderPage(
   component: (props: Record<string, never>) => unknown | Promise<unknown>,
@@ -32,6 +33,7 @@ export function renderPage(
   html: string
   hasBehaviors: boolean
   hasBindings: boolean
+  hasLists: boolean
   hasStateSeed: boolean
   plan: {
     states: Array<{ id: string; name: string; initialValue: unknown }>
@@ -41,7 +43,7 @@ export function renderPage(
       native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
     }>
     bindings: Array<{
-      target: "class" | "disabled" | "value" | "checked"
+      target: string
       state?: string
       module?: string
       handler?: string
@@ -51,5 +53,6 @@ export function renderPage(
       scopeBindings?: Record<string, unknown>
     }>
     conditions: Array<Record<string, unknown>>
+    lists: Array<Record<string, unknown>>
   }
 }>

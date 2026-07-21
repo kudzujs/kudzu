@@ -16,9 +16,19 @@ export function applyCommands(state, commands, commit, log = console.log) {
 
 export const browserState = new Map()
 const committers = []
+const mountHooks = []
+const unmountHooks = []
 
 export function registerCommitter(commit) {
   committers.push(commit)
+}
+
+export function registerMountHook(mount) {
+  mountHooks.push(mount)
+}
+
+export function registerUnmountHook(unmount) {
+  unmountHooks.push(unmount)
 }
 
 export function commitDom(id, value) {
@@ -32,6 +42,15 @@ export function mountText(root) {
     if (browserState.has(id)) node.textContent = browserState.get(id)
     else browserState.set(id, JSON.parse(node.dataset.kValue))
   }
+}
+
+export function mountDom(root) {
+  mountText(root)
+  for (const mount of mountHooks) mount(root)
+}
+
+export function unmountDom(root) {
+  for (const unmount of unmountHooks) unmount(root)
 }
 
 if (typeof document !== "undefined") {

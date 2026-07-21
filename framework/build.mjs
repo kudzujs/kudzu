@@ -31,6 +31,7 @@ export async function build({ quiet = false } = {}) {
 
   let behaviorCount = 0
   let bindingCount = 0
+  let listCount = 0
   let stateSeedCount = 0
   const plans = []
   const hasStyles = await exists(join(sourceDirectory, "style.css"))
@@ -51,6 +52,7 @@ export async function build({ quiet = false } = {}) {
     plans.push({ route: `/${route}`, ...result.plan })
     if (result.hasBehaviors) behaviorCount++
     if (result.hasBindings) bindingCount++
+    if (result.hasLists) listCount++
     if (result.hasStateSeed) stateSeedCount++
   }
 
@@ -59,7 +61,7 @@ export async function build({ quiet = false } = {}) {
   const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
   if (behaviorCount) {
-    const runtimeFile = bindingCount ? "./shared-runtime.js" : "./runtime.js"
+    const runtimeFile = bindingCount || listCount ? "./shared-runtime.js" : "./runtime.js"
     const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, stateSeedCount > 0)
     await writeFile(join(assetsDirectory, "kudzu.js"), runtime)
   }
@@ -70,6 +72,11 @@ export async function build({ quiet = false } = {}) {
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
     await writeFile(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime)
+  }
+  if (listCount) {
+    const listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
+      .replace('"./shared-runtime.js"', '"./kudzu.js"')
+    await writeFile(join(assetsDirectory, "kudzu-list.js"), listRuntime)
   }
   if (hasNativeHandlers) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
@@ -184,9 +191,11 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
     const factory = context.factory
     const settersByFunction = new Map()
     const functions = new Map()
+    const listFieldExpressions = new WeakSet()
     let usesBehavior = false
     let usesBinding = false
     let usesConditional = false
+    let usesList = false
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -229,6 +238,19 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
       }
 
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
+        const listParts = keyedListParts(node.expression, settersForNode(node, settersByFunction))
+        if (listParts) {
+          if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
+          validateKeyedList(listParts, sourceFile, listFieldExpressions)
+          usesBehavior = true
+          usesBinding = true
+          usesList = true
+          return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, [
+            listParts.state,
+            factory.createStringLiteral(listParts.keyField),
+            ts.visitNode(listParts.callback, visitor)
+          ]))
+        }
         const parts = conditionalParts(node.expression)
         if (parts) {
           const setters = settersForNode(node, settersByFunction)
@@ -245,8 +267,9 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
         }
       }
 
-      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && ["className", "disabled", "value", "checked"].includes(node.name.getText())) {
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !/^on/i.test(node.name.getText()) && !["style", "key", "ref", "dangerouslysetinnerhtml"].includes(node.name.getText().toLowerCase())) {
         const expression = node.initializer.expression
+        if (listFieldExpressions.has(expression)) return node
         const setters = settersForNode(node, settersByFunction)
         const usedStates = referencedStateNames(expression, setters)
         const captures = captureNames(expression, expression, setters)
@@ -279,6 +302,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
     if (nativeHandlers.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("nativeBehavior"), factory.createIdentifier("__kNativeBehavior")))
     if (usesBinding) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
     if (usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("conditional"), factory.createIdentifier("__kConditional")))
+    if (usesList) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("list"), factory.createIdentifier("__kList")))
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
@@ -287,6 +311,83 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, handlerUrl) {
     )
     return factory.updateSourceFile(transformed, [behaviorImport, ...transformed.statements])
   }
+}
+
+function keyedListParts(expression, setters) {
+  const value = unwrapExpression(expression)
+  if (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map" || !ts.isIdentifier(value.expression.expression)) return undefined
+  const state = value.expression.expression
+  if (![...setters.values()].includes(state.text)) return undefined
+  const callback = value.arguments[0]
+  if (!ts.isArrowFunction(callback) || callback.parameters.length !== 1 || !ts.isIdentifier(callback.parameters[0].name)) {
+    throw new Error("Keyed list map callback must be an arrow function with one identifier parameter")
+  }
+  const root = unwrapExpression(callback.body)
+  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) throw new Error("Keyed list map callback must return one JSX element")
+  const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
+  const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && attribute.name.getText() === "key")
+  const field = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression && directProperty(key.initializer.expression, callback.parameters[0].name.text)
+  if (!field) throw new Error(`Keyed list root must have key={${callback.parameters[0].name.text}.<field>}`)
+  return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
+}
+
+function validateKeyedList(parts, sourceFile, listFieldExpressions) {
+  const fail = (node, message) => {
+    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
+    throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+  }
+  const validateElement = node => {
+    const tag = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName
+    if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
+  }
+  const visit = node => {
+    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
+    if (node !== parts.root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map") fail(node, "Nested keyed lists are not supported")
+    if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, parts.item)) fail(node, "Keyed list item spreads are not supported")
+    if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.getText())) fail(node, "Item-local handlers are not supported in keyed lists")
+    if (ts.isJsxExpression(node) && node.expression) {
+      const expression = unwrapExpression(node.expression)
+      const field = directProperty(expression, parts.item)
+      const isRootKey = node.parent?.parent === parts.root && ts.isJsxAttribute(node.parent) && node.parent.name.getText() === "key"
+      if (field && ts.isJsxAttribute(node.parent) && ["style", "ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
+      if (isRootKey || field) {
+        if (field) listFieldExpressions.add(node.expression)
+        return
+      }
+      if (conditionalParts(expression)) fail(node, "Nested reactive conditions are not supported in keyed lists")
+      if (referencesIdentifier(expression, parts.item)) fail(node, `Keyed list item expressions must be direct ${parts.item}.<field> reads`)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(parts.root)
+}
+
+function directProperty(expression, objectName) {
+  const value = unwrapExpression(expression)
+  if (!ts.isPropertyAccessExpression(value) || !ts.isIdentifier(value.expression)) return undefined
+  if (objectName !== undefined && value.expression.text !== objectName) return undefined
+  return value.name.text
+}
+
+function keyedListParentTag(node) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (ts.isJsxElement(current)) return current.openingElement.tagName.getText().toLowerCase()
+  }
+  return undefined
+}
+
+function referencesIdentifier(root, name) {
+  let found = false
+  const visit = node => {
+    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node)) found = true
+    if (!found) ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return found
+}
+
+function unwrapExpression(node) {
+  return ts.isParenthesizedExpression(node) ? unwrapExpression(node.expression) : node
 }
 
 function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl) {

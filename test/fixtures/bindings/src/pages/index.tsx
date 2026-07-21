@@ -31,6 +31,15 @@ export default function BindingPage() {
       <input type="checkbox" checked={active} />
       <input type="radio" checked={!active} />
       <select value={choice}><option>Kudzu</option><option>Grown</option></select>
+      <input
+        type="checkbox"
+        className={active ? "ready" : "waiting"}
+        checked={active}
+        aria-checked={active}
+        data-state={active ? "open" : "closed"}
+        hidden={!active}
+        title={active ? "Active" : "Inactive"}
+      />
     </main>
   )
 }

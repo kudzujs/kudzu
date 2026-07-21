@@ -20,7 +20,7 @@ export default function ConditionalPage() {
       <button data-action="close" onClick={() => setOpen(false)}>Close</button>
       <button data-action="hidden" onClick={() => setHidden(hidden + 1)}>Increment hidden</button>
       {open && (
-        <section className={count > 0 ? "grown" : "new"}>
+        <section className={count > 0 ? "grown" : "new"} data-count={count} aria-live={count > 0 ? "polite" : "off"}>
           <span>{count}</span>
           <u>{hidden}</u>
           <input value={count} disabled={!open} />

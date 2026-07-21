@@ -21,6 +21,7 @@ function MenuBar() {
       <a href="#components">Components</a>
       <a href="#state">State</a>
       <a href="#conditionals">Conditional DOM</a>
+      <a href="#lists">Keyed lists</a>
     </nav>
   )
 }
@@ -45,6 +46,7 @@ export default function DocsPage() {
           <a href="#state">State semantics</a>
           <a href="#attributes">Reactive attributes</a>
           <a href="#conditionals">Conditional DOM</a>
+          <a href="#lists">Keyed lists</a>
           <a href="#events">Event handlers</a>
           <a href="#captures">Client captures</a>
           <p>REFERENCE</p>
@@ -54,7 +56,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.3.0</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.0</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -123,12 +125,19 @@ return <>
     onChange={event => setSubscribed(event.currentTarget.checked)}
   />
   <select value={name} onChange={event => setName(event.currentTarget.value)} />
+  <button
+    aria-expanded={active}
+    data-state={active ? "open" : "closed"}
+    hidden={!active}
+    title={active ? "Active" : "Inactive"}
+  />
 </>`}</code></pre>
             <div className="attribute-grid">
               <div><code>className</code><p>Sets or removes the element's live <code>class</code> attribute.</p></div>
               <div><code>disabled</code><p>Toggles the boolean attribute and native disabled property.</p></div>
               <div><code>value</code><p>Updates the live value property for controlled inputs and selects.</p></div>
               <div><code>checked</code><p>Updates the live boolean property for controlled checkboxes and radios.</p></div>
+              <div><code>any attribute</code><p>Patches standard, <code>aria-*</code>, and <code>data-*</code> attributes without a compiler allowlist.</p></div>
             </div>
           </section>
 
@@ -161,8 +170,25 @@ return <>
             <p>Both branches are rendered into inert templates at build time. Conditional rendering is a UI mechanism, not an authorization boundary: do not place secrets or access-controlled content in a dormant branch, and avoid build-time side effects in branch components.</p>
           </section>
 
+          <section className="docs-section" id="lists">
+            <div className="docs-heading"><span>07</span><div><p>CORE · NEW</p><h2>Keyed lists</h2></div></div>
+            <p>Map local array state directly to one keyed intrinsic element. Initial items are static HTML; browser updates add, remove, update, and move existing keyed elements without a VDOM or remount.</p>
+            <pre><code>{`const [items, setItems] = useState([
+  { id: 1, name: "Oak" },
+  { id: 2, name: "Pine" }
+])
+
+return <ul>
+  {items.map(item =>
+    <li key={item.id} data-id={item.id}>{item.name}</li>
+  )}
+</ul>`}</code></pre>
+            <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
+            <p>Each item must be a plain object containing JSON-safe values. The MVP accepts one identifier callback parameter, one intrinsic JSX root, <code>key={`{item.<field>}`}</code>, and direct item-property text or attributes. Item-derived expressions, item-local handlers, nested conditions or lists, component tags, and fragments are rejected at build time. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+          </section>
+
           <section className="docs-section" id="events">
-            <div className="docs-heading"><span>07</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
+            <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
             <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
             <pre><code>{`async function submit(event: SubmitEvent) {
   event.preventDefault()
@@ -173,7 +199,7 @@ return <>
           </section>
 
           <section className="docs-section" id="captures">
-            <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Client captures</h2></div></div>
+            <div className="docs-heading"><span>09</span><div><p>CORE</p><h2>Client captures</h2></div></div>
             <p>Handlers and reactive expressions may capture serializable component locals and destructured props.</p>
             <div className="docs-columns">
               <div><strong>Supported</strong><p>Strings, booleans, numbers, arrays, plain objects, and destructured props.</p></div>
@@ -182,7 +208,7 @@ return <>
           </section>
 
           <section className="docs-section" id="build">
-            <div className="docs-heading"><span>09</span><div><p>REFERENCE</p><h2>Build output</h2></div></div>
+            <div className="docs-heading"><span>10</span><div><p>REFERENCE</p><h2>Build output</h2></div></div>
             <pre><code>{`npm run build
 
 dist/
@@ -192,6 +218,7 @@ dist/
     ├── style.css
     ├── kudzu.js
     ├── kudzu-binding.js (when used)
+    ├── kudzu-list.js (when used)
     ├── kudzu-native.js (when used)
     ├── kudzu-serialization.js (when used)
     └── handlers/`}</code></pre>
@@ -199,11 +226,12 @@ dist/
           </section>
 
           <section className="docs-section" id="limits">
-            <div className="docs-heading"><span>10</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
+            <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
             <ul className="docs-limits">
-              <li>State bindings currently target text, <code>className</code>, <code>disabled</code>, <code>value</code>, and <code>checked</code>.</li>
+              <li>Reactive <code>style</code>, <code>ref</code>, and <code>dangerouslySetInnerHTML</code> are not supported.</li>
               <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
-              <li>Keyed lists and generalized JSX-valued locals are not implemented.</li>
+              <li>Keyed lists support only direct local-state maps, intrinsic roots, and direct item-property text or attributes.</li>
+              <li>Generalized JSX-valued locals are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
               <li>Imported client helpers and non-serializable captures are rejected at build time.</li>
             </ul>

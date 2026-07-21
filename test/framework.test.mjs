@@ -4,7 +4,7 @@ import { readFile, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import test from "node:test"
 import { build } from "../framework/build.mjs"
-import { behavior, conditional, nativeBehavior, renderPage, useState } from "../framework/core.mjs"
+import { behavior, conditional, list, nativeBehavior, renderPage, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -31,9 +31,11 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(runtime, /eventNames = \["click"\]/)
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
+  assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.doesNotMatch(html, /data-k-state=/)
   assert.match(docs, /data-k-if=/)
   assert.match(docs, /kudzu-binding\.js/)
+  assert.doesNotMatch(docs, /<script[^>]+kudzu-list\.js/)
   assert.match(docs, /Open menu/)
   assert.equal(home.states[0].name, "count")
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
@@ -87,6 +89,54 @@ test("rejects reactive conditionals in foreign namespaces", async () => {
   }, { styles: false }), /Reactive conditional DOM is not supported inside svg/)
 })
 
+test("rejects unsafe or reserved reactive attributes", async () => {
+  await assert.rejects(renderPage(() => jsx("button", { onclick: "alert(1)" }), { styles: false }), /onclick must use a camelCase event handler/)
+  await assert.rejects(renderPage(() => jsx("div", { "data-k-bind-class": "user" }), { styles: false }), /reserved data-k-\* prefix/)
+  await assert.rejects(renderPage(() => jsx("div", { "DATA-K-BIND-CLASS": "user" }), { styles: false }), /reserved data-k-\* prefix/)
+  await assert.rejects(renderPage(() => {
+    const [style] = useState("color:red")
+    return jsx("div", { style })
+  }, { styles: false }), /Reactive style is not supported/)
+  await assert.rejects(renderPage(() => {
+    const [style] = useState("color:red")
+    return jsx("div", { STYLE: style })
+  }, { styles: false }), /Reactive STYLE is not supported/)
+})
+
+test("rejects non-serializable keyed list data", async () => {
+  for (const [key, value, message] of [
+    [NaN, "value", /finite number/],
+    [1, undefined, /JSON-safe values/]
+  ]) {
+    await assert.rejects(renderPage(() => {
+      const [items] = useState([{ id: key, name: value }])
+      return list(items, "id", item => jsx("p", { children: item.name }))
+    }, { styles: false }), message)
+  }
+  await assert.rejects(renderPage(() => {
+    const item = []
+    item.id = 1
+    item.name = "array"
+    const [items] = useState([item])
+    return list(items, "id", entry => jsx("p", { children: entry.name }))
+  }, { styles: false }), /must be plain objects/)
+  await assert.rejects(renderPage(() => {
+    const item = { name: "hidden key" }
+    Object.defineProperty(item, "id", { value: 1 })
+    const [items] = useState([item])
+    return list(items, "id", entry => jsx("p", { children: entry.name }))
+  }, { styles: false }), /non-enumerable properties/)
+})
+
+test("seeds text state used only by an empty keyed list template", async () => {
+  const result = await renderPage(() => {
+    const [items] = useState([])
+    const [count] = useState(7)
+    return list(items, "id", () => jsx("p", { children: count }))
+  }, { styles: false })
+  assert.match(result.html, /data-k-state='\[\["s0",\[\]\],\["s1",7\]\]'/)
+})
+
 test("produces the same execution plan for the same input", async () => {
   await build({ quiet: true })
   const first = await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8")
@@ -121,12 +171,15 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(html, /type="checkbox" data-k-bind-checked=/)
   assert.match(html, /type="radio" checked data-k-bind-checked=/)
   assert.match(html, /<select data-k-bind-value=.*<option>Kudzu<\/option><option selected>Grown<\/option><\/select>/)
+  assert.match(html, /class="waiting" data-k-bind-class=.*aria-checked="false" data-state="closed" hidden title="Inactive" data-k-bind-attrs=/)
   assert.match(html, /class="prop-active">Static prop/)
   assert.match(html, /class="prop-idle" data-k-bind-class=.*>Static prop/)
   assert.match(html, /class="nested-idle" data-k-bind-class=.*>Nested/)
   assert.match(html, /class="off">Shadowed/)
   assert.match(html, /<body data-k-state=/)
   assert.match(html, /kudzu-binding\.js/)
+  assert.doesNotMatch(html, /kudzu-list\.js/)
+  assert.equal(existsSync(new URL("./fixtures/bindings/dist/assets/kudzu-list.js", import.meta.url)), false)
   assert.doesNotMatch(html, /kudzu-native\.js/)
   assert.doesNotMatch(commandRuntime, /patchBinding|data-k-bind/)
   assert.match(commandRuntime, /registerCommitter/)
@@ -137,7 +190,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(bindings, /__k\.get\("active"\)/)
   assert.match(bindings, /__k\.scope\("activeClass"\)/)
   assert.doesNotMatch(bindings, /\beval\b|new Function/)
-  assert.equal(plan.bindings.length, 12)
+  assert.equal(plan.bindings.length, 18)
   assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
 
   const evaluators = await import(`${new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
@@ -181,6 +234,18 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.equal(node.checked, true)
   patchBinding(node, "checked", 0)
   assert.equal(node.checked, false)
+  patchBinding(node, "aria-expanded", false)
+  assert.equal(attributes.get("aria-expanded"), "false")
+  patchBinding(node, "data-state", false)
+  assert.equal(attributes.get("data-state"), "false")
+  patchBinding(node, "hidden", true)
+  assert.equal(attributes.get("hidden"), "")
+  patchBinding(node, "hidden", false)
+  assert.equal(attributes.has("hidden"), false)
+  patchBinding(node, "title", "Ready")
+  assert.equal(attributes.get("title"), "Ready")
+  patchBinding(node, "title", null)
+  assert.equal(attributes.has("title"), false)
 })
 
 test("compiles conditional DOM branches with nested behavior", async t => {
@@ -210,6 +275,7 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   assert.match(html, /Static condition/)
   assert.match(html, /data-k-state=/)
   assert.match(html, /kudzu-binding\.js/)
+  assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.match(html, /kudzu-native\.js/)
   assert.match(runtime, /mountConditions|updateCondition/)
   assert.match(commandRuntime, /eventNames = \["click"\]/)
@@ -220,6 +286,75 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   assert.ok(plan.events.some(event => event.native))
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runConditionalBrowserTest(fixture, chrome)
+})
+
+test("compiles and patches keyed reactive lists without remounting existing keys", async t => {
+  const fixture = new URL("./fixtures/lists", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lists/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lists/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
+    cwd: fixture,
+    encoding: "utf8"
+  })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const html = await readFile(new URL("./fixtures/lists/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/lists/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const handlers = await readFile(new URL("./fixtures/lists/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(component, /__kList\(items, "id"/)
+  assert.match(html, /<li data-k-list-item=.*data-id="1".*>.*Oak/)
+  assert.match(html, /<tr data-k-list-item=.*data-row="2"/)
+  assert.match(html, /data-k-list-text="name"/)
+  assert.match(html, /data-k-list-attrs=/)
+  assert.match(html, /kudzu-list\.js/)
+  assert.doesNotMatch(html, /kudzu-binding\.js/)
+  assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
+  assert.match(runtime, /updateList|fillListItem/)
+  assert.doesNotMatch(runtime, /\beval\b|new Function/)
+  assert.match(handlers, /export function handler/)
+  assert.equal(plan.lists.length, 2)
+  assert.equal(plan.lists[0].state, "s0")
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runListBrowserTest(fixture, chrome)
+})
+
+test("shares lifecycle cleanup between conditional and list capabilities", async t => {
+  const fixture = new URL("./fixtures/list-bindings", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/list-bindings/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/list-bindings/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
+    cwd: fixture,
+    encoding: "utf8"
+  })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/list-bindings/dist/index.html", import.meta.url), "utf8")
+  const shared = await readFile(new URL("./fixtures/list-bindings/dist/assets/kudzu.js", import.meta.url), "utf8")
+  assert.match(html, /kudzu-binding\.js/)
+  assert.match(html, /kudzu-list\.js/)
+  assert.match(shared, /registerMountHook|registerUnmountHook/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runListBindingsBrowserTest(fixture, chrome)
+})
+
+test("rejects unsupported keyed list expressions and duplicate initial keys", () => {
+  for (const [fixture, message] of [
+    ["list-invalid-shape", /must be direct item\.<field> reads/],
+    ["list-invalid-duplicate", /Duplicate keyed list key: same/],
+    ["list-invalid-table", /must be wrapped in <tbody>/]
+  ]) {
+    const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
+      cwd: new URL(`./fixtures/${fixture}`, import.meta.url),
+      encoding: "utf8"
+    })
+    assert.notEqual(result.status, 0)
+    assert.match(`${result.stdout}\n${result.stderr}`, message)
+  }
 })
 
 test("compiles normal async JavaScript handlers to external ESM", async t => {
@@ -308,11 +443,11 @@ try {
   control("open").click()
   await wait()
   let section = document.querySelector("main > section")
-  if (!section || section.className !== "new" || section.querySelector("input").value !== "0" || section.querySelector("select").value !== "zero" || section.querySelector("u").textContent !== "1" || !document.body.textContent.includes("Child open") || !document.body.textContent.includes("Visible text") || document.querySelector("td").textContent !== "Open row") throw new Error("open")
+  if (!section || section.className !== "new" || section.dataset.count !== "0" || section.getAttribute("aria-live") !== "off" || section.querySelector("input").value !== "0" || section.querySelector("select").value !== "zero" || section.querySelector("u").textContent !== "1" || !document.body.textContent.includes("Child open") || !document.body.textContent.includes("Visible text") || document.querySelector("td").textContent !== "Open row") throw new Error("open")
   section.querySelectorAll("button")[0].click()
   await wait()
   section = document.querySelector("main > section")
-  if (section.className !== "grown" || section.querySelector("span").textContent !== "1" || section.querySelector("select").value !== "positive" || !section.textContent.includes("Positive")) throw new Error("grow")
+  if (section.className !== "grown" || section.dataset.count !== "1" || section.getAttribute("aria-live") !== "polite" || section.querySelector("span").textContent !== "1" || section.querySelector("select").value !== "positive" || !section.textContent.includes("Positive")) throw new Error("grow")
   if (!section.querySelector("mark")) throw new Error("and")
   section.querySelector("[data-uncontrolled]").value = "changed"
   control("close").click()
@@ -321,7 +456,7 @@ try {
   control("open").click()
   await wait()
   section = document.querySelector("main > section")
-  if (section.querySelector("span").textContent !== "1" || section.querySelector("[data-uncontrolled]").value !== "") throw new Error("persist")
+  if (section.querySelector("span").textContent !== "1" || section.dataset.count !== "1" || section.querySelector("[data-uncontrolled]").value !== "") throw new Error("persist")
   section.querySelectorAll("button")[1].click()
   await wait()
   if (document.querySelector("main > section span").textContent !== "2") throw new Error("async")
@@ -329,9 +464,110 @@ try {
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
 }
+
 `)
 
   const port = 39000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runListBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  const click = action => document.querySelector('[data-action="' + action + '"]').click()
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  click("add")
+  await wait()
+  if (document.querySelectorAll("[data-list] > li").length !== 3 || !document.body.textContent.includes("Elm") || document.querySelectorAll("tbody > tr").length !== 3) throw new Error("add")
+  click("rename")
+  await wait()
+  const oak = document.querySelector('[data-id="1"]')
+  if (oak.querySelector("span").textContent !== "Red oak tree" || oak.className !== "hot" || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
+  oak.querySelector("input").value = "preserved"
+  click("reorder")
+  await wait()
+  const ordered = [...document.querySelectorAll("[data-list] > li")]
+  if (ordered.map(node => node.dataset.id).join(",") !== "3,2,1" || ordered[2] !== oak || oak.querySelector("input").value !== "preserved") throw new Error("move")
+  click("remove")
+  await wait()
+  if (document.querySelector('[data-id="2"]') || document.querySelector('[data-row="2"]') || document.querySelectorAll("[data-list] > li").length !== 2) throw new Error("remove")
+  click("duplicate")
+  await wait()
+  const beforeDuplicate = [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",")
+  if (!runtimeError.includes("Duplicate keyed list key: 1") || [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",") !== beforeDuplicate) throw new Error("duplicate")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+
+`)
+  const port = 40000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runListBindingsBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  const click = action => document.querySelector('[data-action="' + action + '"]').click()
+  click("toggle")
+  await wait()
+  if (document.querySelector("li")) throw new Error("remove")
+  click("add")
+  await wait()
+  click("toggle")
+  await wait()
+  if ([...document.querySelectorAll("li")].map(node => node.textContent).join(",") !== "Oak,Pine") throw new Error("remount")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 41000 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])

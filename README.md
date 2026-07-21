@@ -8,7 +8,7 @@ HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
 Kudzu keeps the familiar function-component, props, children, event-handler, and `useState` shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers compile to external ESM.
 
-> Experimental `0.3.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.4.x`: the compiler API and supported TSX surface may change.
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
@@ -110,7 +110,18 @@ The handler above increments by two and patches its bound DOM once. Inspect the 
 <select value={theme} onChange={event => setTheme(event.currentTarget.value)} />
 ```
 
-Kudzu compiles derived expressions to external ESM and patches only the bound DOM attribute or property.
+Regular attributes use the same expressions without an allowlist:
+
+```tsx
+<button
+  aria-expanded={open}
+  data-state={open ? "open" : "closed"}
+  hidden={!visible}
+  title={open ? "Close menu" : "Open menu"}
+/>
+```
+
+Kudzu compiles derived expressions to external ESM and patches only the bound DOM attribute or property. `aria-*` and `data-*` boolean values serialize as `"true"` or `"false"`; ordinary false values remove the attribute. Reactive `style`, `ref`, and `dangerouslySetInnerHTML` remain unsupported.
 
 ## Conditional DOM
 
@@ -132,6 +143,23 @@ const [open, setOpen] = useState(false)
 Logical state persists across branch switches, while uncontrolled DOM state resets on remount. Both branches are materialized in inert templates at build time, so conditional rendering is not an authorization boundary and dormant branches must not contain secrets.
 
 Reactive conditional DOM currently targets the HTML namespace and is rejected inside SVG or MathML.
+
+## Keyed Lists
+
+Map local array state directly to one keyed JSX element per item:
+
+```tsx
+const [items, setItems] = useState([
+  { id: 1, name: "Oak" },
+  { id: 2, name: "Pine" }
+])
+
+<ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+```
+
+Kudzu emits initial items as static HTML, then adds, removes, updates, and moves keyed elements directly. Existing keys move without remounting, preserving uncontrolled descendant state. Each item must be a plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, plain objects, and primitive values.
+
+The MVP requires a direct local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. Item data may appear only as direct `item.<field>` text or attributes. Item-derived expressions, item-local handlers, nested conditions or lists, component tags, and fragments are rejected at build time. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 ## Normal JavaScript
 
@@ -160,6 +188,7 @@ TSX
 ├─ static component      → HTML
 ├─ ordered state setter  → behavior command
 ├─ conditional child     → bounded DOM range
+├─ keyed state map       → keyed DOM moves
 └─ normal JS handler     → external ESM
 ```
 
@@ -187,12 +216,14 @@ Supported:
 - Synchronous and async event handlers
 - Serializable component-local captures
 - Direct text DOM patches
-- Reactive `className`, `disabled`, controlled `value`, and controlled `checked` patches
+- Reactive standard, `aria-*`, and `data-*` attributes
+- Controlled `value` and `checked` form properties
 - Conditional child `&&` and ternary DOM patches
+- Direct keyed local-state lists
 
 Not implemented yet:
 
-- Keyed lists and generalized JSX-valued locals
+- Generalized JSX-valued locals and non-direct list item expressions
 - Server actions and request-time SSR
 - Imported client helpers and React package islands
 - HMR and framework DevTools
@@ -207,13 +238,13 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | 487 B | 1.4 KB | **385 ms** |
-| Astro | Yes | **158 B** | **365 B** | 948 ms |
-| Svelte CSR | No | 10.5 KB | 26.9 KB | 885 ms |
-| Qwik CSR | No | 20.6 KB | 57.8 KB | 622 ms |
-| Vue CSR | No | 24.0 KB | 60.3 KB | 822 ms |
-| React CSR | No | 59.2 KB | 189.0 KB | 1084 ms |
-| Next.js | Yes | 182.1 KB | 652.2 KB | 3074 ms |
+| Kudzu | Yes | 487 B | 1.4 KB | **373 ms** |
+| Astro | Yes | **158 B** | **365 B** | 877 ms |
+| Svelte CSR | No | 10.5 KB | 26.9 KB | 837 ms |
+| Qwik CSR | No | 20.6 KB | 57.8 KB | 626 ms |
+| Vue CSR | No | 24.0 KB | 60.3 KB | 778 ms |
+| React CSR | No | 59.2 KB | 189.0 KB | 1049 ms |
+| Next.js | Yes | 182.1 KB | 652.2 KB | 3099 ms |
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 
