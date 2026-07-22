@@ -29,7 +29,7 @@ const files = {
       build: "kudzu build"
     },
     dependencies: {
-      "@kudzujs/core": "^0.4.10"
+      "@kudzujs/core": "^0.4.11"
     }
   }, null, 2)}\n`,
   "tsconfig.json": `${JSON.stringify({

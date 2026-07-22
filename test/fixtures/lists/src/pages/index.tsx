@@ -28,6 +28,12 @@ export default function ListPage() {
     setItems(items.map(item => ({ ...item, id: 1 })))
   }
 
+  const rows = items.map(item => <li key={item.id} data-id={item.id} className={item.done ? "done" : "active"} aria-label={`${item.name} item`} style={{ opacity: item.done ? 0.5 : 1, borderWidth: item.done ? 2 : 1, "--tone": item.tone }}>
+    <span>{item.name.toUpperCase()} tree</span><small style={item.style}>{item.name}</small><input data-uncontrolled />
+    <button data-remove onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
+  </li>)
+  const unusedRows = items.map(item => <p key={item.id}>{item.name}</p>)
+
   return <main>
     <button data-action="add" onClick={add}>Add</button>
     <button data-action="rename" onClick={rename}>Rename</button>
@@ -35,10 +41,7 @@ export default function ListPage() {
     <button data-action="remove" onClick={remove}>Remove</button>
     <button data-action="duplicate" onClick={duplicate}>Duplicate</button>
     <ul data-list>
-      {items.map(item => <li key={item.id} data-id={item.id} className={item.done ? "done" : "active"} aria-label={`${item.name} item`} style={{ opacity: item.done ? 0.5 : 1, borderWidth: item.done ? 2 : 1, "--tone": item.tone }}>
-        <span>{item.name.toUpperCase()} tree</span><small style={item.style}>{item.name}</small><input data-uncontrolled />
-        <button data-remove onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
-      </li>)}
+      {rows}
     </ul>
     <table><tbody>
       {items.map(item => <tr key={item.id} data-row={item.id}><td>{item.name}</td></tr>)}

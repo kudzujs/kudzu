@@ -347,6 +347,8 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   const handlers = await readFile(new URL("./fixtures/lists/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(component, /__kList\(items, "id"/)
+  assert.match(component, /const rows = undefined/)
+  assert.match(component, /const unusedRows = undefined/)
   assert.match(component, /__kListExpression/)
   assert.match(component, /__kListItem/)
   assert.match(html, /<li data-id="1".*>.*Oak/)
@@ -436,6 +438,8 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-prototype-key", /property "__proto__" is not supported/],
     ["list-invalid-spread", /item spreads are not supported/],
     ["list-invalid-style", /style must be an object/],
+    ["list-invalid-alias-reuse", /Keyed list local "rows" must be rendered exactly once/],
+    ["list-invalid-alias-use", /Keyed list local "rows" may only be used as a JSX child/],
     ["list-invalid-table", /must be wrapped in <tbody>/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {

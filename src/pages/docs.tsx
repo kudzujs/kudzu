@@ -85,7 +85,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.10</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.11</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -140,6 +140,13 @@ function growTwice() {
 const [loading, setLoading] = useState(false)
 const [name, setName] = useState("Kudzu")
 const [subscribed, setSubscribed] = useState(false)
+
+const rows = items.map(item => <li key={item.id} style={{ opacity: item.id % 2 ? 1 : 0.7 }}>
+  <span>{item.name}</span>
+  <button onClick={() =>
+    setItems(items.filter(entry => entry.id !== item.id))
+  }>Remove</button>
+</li>)
 
 return <>
   <div className={active ? "active" : "idle"} />
@@ -233,14 +240,7 @@ return <>
   <button onClick={create}>Create</button>
   <button onClick={add}>Add</button>
   <button onClick={reverse}>Reverse</button>
-  <ul>
-    {items.map(item => <li key={item.id} style={{ opacity: item.id % 2 ? 1 : 0.7 }}>
-      <span>{item.name}</span>
-      <button onClick={() =>
-        setItems(items.filter(entry => entry.id !== item.id))
-      }>Remove</button>
-    </li>)}
-  </ul>
+  <ul>{rows}</ul>
 </>`} />
             <div className="list-demo">
               <div className="list-demo-actions">
@@ -258,7 +258,7 @@ return <>
               </ul>
             </div>
             <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. Direct item-property reads use compact markers. Derived item text, attributes, and object styles compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, item spreads, component tags, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. The map may be direct JSX or one top-level immutable local rendered once as a JSX child. Direct item-property reads use compact markers. Derived item text, attributes, and object styles compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, reusable aliases, item spreads, component tags, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
           </section>
 
           <section className="docs-section" id="events">
@@ -308,44 +308,44 @@ dist/
 
           <section className="docs-section" id="benchmarks">
             <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-            <p>Production builds ran after one warm-up in seven rotating rounds on Node 24.14.0 and an Intel i5-9500. Browser list operations are medians from seven fresh headless Chrome runs.</p>
+            <p>Production builds ran after one warm-up in seven rotating rounds on Node 24.14.0 and an Intel i5-9500. Browser list operations are medians from seven fresh headless Chrome runs, measured when a DOM observer sees each expected result rather than at the next animation frame.</p>
             <h3>Interactive counter</h3>
             <BenchmarkTable
               columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]}
               rows={[
-                ["Kudzu", "Yes", "393 B", "1.1 KB", "383 ms"],
-                ["Astro", "Yes", "158 B", "365 B", "914 ms"],
-                ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "606 ms"],
-                ["Vue CSR", "No", "24.0 KB", "60.3 KB", "815 ms"],
-                ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "892 ms"],
-                ["React CSR", "No", "59.2 KB", "189.0 KB", "1044 ms"],
-                ["Next.js", "Yes", "182.1 KB", "652.2 KB", "3030 ms"]
+                ["Kudzu", "Yes", "393 B", "1.1 KB", "429 ms"],
+                ["Astro", "Yes", "158 B", "365 B", "942 ms"],
+                ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "686 ms"],
+                ["Vue CSR", "No", "24.0 KB", "60.3 KB", "875 ms"],
+                ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "850 ms"],
+                ["React CSR", "No", "59.2 KB", "189.0 KB", "1150 ms"],
+                ["Next.js", "Yes", "182.1 KB", "652.2 KB", "3203 ms"]
               ]}
             />
             <h3>Static journal</h3>
             <BenchmarkTable
               columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]}
               rows={[
-                ["Kudzu", "Yes", "0 B", "3.2 KB", "409 ms"],
-                ["Astro", "Yes", "0 B", "3.0 KB", "1053 ms"],
-                ["Qwik CSR", "No", "20.2 KB", "59.6 KB", "611 ms"],
-                ["Vue CSR", "No", "24.2 KB", "62.3 KB", "782 ms"],
-                ["Svelte CSR", "No", "10.2 KB", "27.2 KB", "863 ms"],
-                ["React CSR", "No", "59.8 KB", "192.3 KB", "1062 ms"],
-                ["Next.js", "Yes", "182.6 KB", "663.6 KB", "3118 ms"]
+                ["Kudzu", "Yes", "0 B", "3.2 KB", "395 ms"],
+                ["Astro", "Yes", "0 B", "3.0 KB", "1048 ms"],
+                ["Qwik CSR", "No", "20.2 KB", "59.6 KB", "608 ms"],
+                ["Vue CSR", "No", "24.2 KB", "62.3 KB", "801 ms"],
+                ["Svelte CSR", "No", "10.2 KB", "27.2 KB", "897 ms"],
+                ["React CSR", "No", "59.8 KB", "192.3 KB", "1097 ms"],
+                ["Next.js", "Yes", "182.6 KB", "663.6 KB", "3085 ms"]
               ]}
             />
             <h3>1,000-item keyed list</h3>
             <BenchmarkTable
               columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
               rows={[
-                ["Astro", "324 B", "43.6 KB", "862 ms", "3.5 ms", "24.8 ms", "8.4 ms", "17.9 ms", "54.6 ms"],
-                ["Kudzu", "5.0 KB", "60.3 KB", "435 ms", "6.1 ms", "29.0 ms", "12.8 ms", "19.5 ms", "67.4 ms"],
-                ["Vue CSR", "24.3 KB", "61.3 KB", "789 ms", "9.3 ms", "32.1 ms", "10.6 ms", "18.6 ms", "70.6 ms"],
-                ["React CSR", "59.3 KB", "189.4 KB", "1049 ms", "8.8 ms", "34.7 ms", "13.5 ms", "18.2 ms", "75.2 ms"],
-                ["Next.js", "182.2 KB", "695.2 KB", "3029 ms", "7.0 ms", "37.2 ms", "12.9 ms", "21.9 ms", "79.0 ms"],
-                ["Qwik CSR", "22.2 KB", "64.1 KB", "623 ms", "13.4 ms", "21.7 ms", "33.6 ms", "28.9 ms", "97.6 ms"],
-                ["Svelte CSR", "12.9 KB", "33.1 KB", "870 ms", "5.6 ms", "61.3 ms", "15.6 ms", "18.3 ms", "100.8 ms"]
+                ["Astro", "324 B", "43.6 KB", "843 ms", "4.7 ms", "4.4 ms", "1.6 ms", "3.6 ms", "14.3 ms"],
+                ["Kudzu", "5.0 KB", "60.3 KB", "432 ms", "8.0 ms", "8.0 ms", "2.1 ms", "7.8 ms", "25.9 ms"],
+                ["Vue CSR", "24.3 KB", "61.3 KB", "776 ms", "12.0 ms", "10.8 ms", "4.6 ms", "7.4 ms", "34.8 ms"],
+                ["React CSR", "59.3 KB", "189.4 KB", "1032 ms", "11.9 ms", "14.5 ms", "4.7 ms", "6.5 ms", "37.6 ms"],
+                ["Next.js", "182.2 KB", "695.2 KB", "2988 ms", "8.6 ms", "15.8 ms", "5.1 ms", "8.5 ms", "38.0 ms"],
+                ["Svelte CSR", "12.9 KB", "33.1 KB", "858 ms", "6.6 ms", "48.5 ms", "5.2 ms", "7.3 ms", "67.6 ms"],
+                ["Qwik CSR", "22.2 KB", "64.1 KB", "618 ms", "11.4 ms", "27.5 ms", "37.9 ms", "22.8 ms", "99.6 ms"]
               ]}
             />
             <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>
@@ -356,8 +356,8 @@ dist/
             <ul className="docs-limits">
               <li>Callback refs, mutable value refs, keyed-list refs, and reactive <code>dangerouslySetInnerHTML</code> are not supported.</li>
               <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
-              <li>Keyed lists require direct local-state maps and intrinsic roots; nested dynamic JSX, item spreads, and derived-expression captures remain unsupported.</li>
-              <li>Block-scoped or reassigned JSX locals and non-direct keyed-list aliases are not implemented.</li>
+              <li>Keyed lists require local-state maps and intrinsic roots; reusable aliases, nested dynamic JSX, item spreads, and derived-expression captures remain unsupported.</li>
+              <li>Block-scoped or reassigned JSX locals are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
               <li>Imported client helpers and non-serializable captures are rejected at build time.</li>
             </ul>

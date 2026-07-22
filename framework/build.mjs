@@ -324,6 +324,8 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     const functions = new Map()
     const jsxLocalDeclarations = new Map()
     const jsxLocalsByFunction = new Map()
+    const listLocalDeclarations = new WeakSet()
+    const listLocalUses = new WeakMap()
     const listValues = new WeakMap()
     const listEventItems = new WeakMap()
     let usesBehavior = false
@@ -351,7 +353,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isTopLevelConst(node)) {
         const owner = nearestFunction(node)
         const declarations = jsxLocalDeclarations.get(owner) ?? new Map()
-        declarations.set(node.name.text, node.initializer)
+        declarations.set(node.name.text, { node, initializer: node.initializer })
         jsxLocalDeclarations.set(owner, declarations)
       }
       ts.forEachChild(node, collect)
@@ -362,7 +364,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       let changed = true
       while (changed) {
         changed = false
-        for (const [name, initializer] of declarations) {
+        for (const [name, { initializer }] of declarations) {
           if (!names.has(name) && isJsxLocalValue(initializer, names)) {
             names.add(name)
             changed = true
@@ -370,6 +372,25 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         }
       }
       jsxLocalsByFunction.set(owner, names)
+    }
+    for (const [owner, declarations] of jsxLocalDeclarations) {
+      const setters = settersByFunction.get(owner) ?? new Map()
+      for (const [name, declaration] of declarations) {
+        const parts = keyedListParts(declaration.initializer, setters)
+        if (!parts) continue
+        const uses = []
+        const collectUses = node => {
+          if (ts.isJsxExpression(node) && node.initializer === undefined && ts.isIdentifier(node.expression) && node.expression.text === name && nearestFunction(node) === owner) uses.push(node)
+          ts.forEachChild(node, collectUses)
+        }
+        collectUses(owner.body)
+        const references = identifierReferenceCount(owner.body, name)
+        const position = sourceFile.getLineAndCharacterOfPosition(declaration.node.getStart(sourceFile))
+        if (uses.length > 1) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" must be rendered exactly once`)
+        if (references !== uses.length) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" may only be used as a JSX child`)
+        listLocalDeclarations.add(declaration.node)
+        if (uses.length) listLocalUses.set(uses[0], parts)
+      }
     }
 
     const visitor = node => {
@@ -389,6 +410,10 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
           factory.createStringLiteral(stateElement.name.text)
         ])
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, initializer)
+      }
+
+      if (ts.isVariableDeclaration(node) && listLocalDeclarations.has(node)) {
+        return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createIdentifier("undefined"))
       }
 
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && jsxLocalsByFunction.get(nearestFunction(node))?.has(node.name.text) && referencesIdentifier(nearestFunction(node).body, node.name.text)) {
@@ -415,7 +440,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       }
 
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const listParts = keyedListParts(node.expression, settersForNode(node, settersByFunction))
+        const listParts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction))
         if (listParts) {
           if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
           validateKeyedList(listParts, sourceFile, settersForNode(node, settersByFunction), listValues, listEventItems)
@@ -649,6 +674,16 @@ function referencesIdentifier(root, name) {
   }
   visit(root)
   return found
+}
+
+function identifierReferenceCount(root, name) {
+  let count = 0
+  const visit = node => {
+    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node)) count++
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return count
 }
 
 function unwrapExpression(node) {

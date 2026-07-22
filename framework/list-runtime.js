@@ -105,15 +105,12 @@ function updateList(list) {
     next.push([token, node])
     values.set(token, value)
   }
-  const removals = parent.ownerDocument.createDocumentFragment()
   for (const [token, node] of list.roots) {
     if (keys.has(token)) continue
     if (list.descriptor.mount) {
       unmountDom(node)
       node.remove()
-    } else {
-      removals.append(node)
-    }
+    } else node.remove()
   }
   if (added) {
     if (list.descriptor.mount) mountDom(additions)

@@ -181,7 +181,7 @@ const [items, setItems] = useState([
   { id: 2, name: "Pine", done: true }
 ])
 
-<ul>{items.map(item =>
+const rows = items.map(item =>
   <li
     key={item.id}
     className={item.done ? "done" : "active"}
@@ -191,12 +191,14 @@ const [items, setItems] = useState([
     {item.name.toUpperCase()}
     <button onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
   </li>
-)}</ul>
+)
+
+return <ul>{rows}</ul>
 ```
 
-Kudzu emits initial items as static HTML, then adds, removes, updates, styles, and moves keyed elements directly. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
+Kudzu emits initial items as static HTML, then adds, removes, updates, styles, and moves keyed elements directly. The map may appear directly in JSX or in one top-level immutable `const` rendered once as a JSX child. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
 
-Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a direct local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested conditions or lists, item spreads, component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
+Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested conditions or lists, item spreads, component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 ## Normal JavaScript
 
@@ -266,7 +268,7 @@ Supported:
 
 Not implemented yet:
 
-- Block-scoped JSX locals and non-direct list item expressions
+- Block-scoped JSX locals and reusable keyed-list aliases
 - Server actions and request-time SSR
 - Imported client helpers and React package islands
 - HMR and framework DevTools
@@ -281,13 +283,13 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | 393 B | 1.1 KB | **383 ms** |
-| Astro | Yes | **158 B** | **365 B** | 914 ms |
-| Svelte CSR | No | 10.5 KB | 26.9 KB | 892 ms |
-| Qwik CSR | No | 20.6 KB | 57.8 KB | 606 ms |
-| Vue CSR | No | 24.0 KB | 60.3 KB | 815 ms |
-| React CSR | No | 59.2 KB | 189.0 KB | 1044 ms |
-| Next.js | Yes | 182.1 KB | 652.2 KB | 3030 ms |
+| Kudzu | Yes | 393 B | 1.1 KB | **429 ms** |
+| Astro | Yes | **158 B** | **365 B** | 942 ms |
+| Svelte CSR | No | 10.5 KB | 26.9 KB | 850 ms |
+| Qwik CSR | No | 20.6 KB | 57.8 KB | 686 ms |
+| Vue CSR | No | 24.0 KB | 60.3 KB | 875 ms |
+| React CSR | No | 59.2 KB | 189.0 KB | 1150 ms |
+| Next.js | Yes | 182.1 KB | 652.2 KB | 3203 ms |
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 
@@ -297,29 +299,29 @@ Same content and CSS across every fixture:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | **0 B** | 3.2 KB | **409 ms** |
-| Astro | Yes | **0 B** | **3.0 KB** | 1053 ms |
-| Svelte CSR | No | 10.2 KB | 27.2 KB | 863 ms |
-| Qwik CSR | No | 20.2 KB | 59.6 KB | 611 ms |
-| Vue CSR | No | 24.2 KB | 62.3 KB | 782 ms |
-| React CSR | No | 59.8 KB | 192.3 KB | 1062 ms |
-| Next.js | Yes | 182.6 KB | 663.6 KB | 3118 ms |
+| Kudzu | Yes | **0 B** | 3.2 KB | **395 ms** |
+| Astro | Yes | **0 B** | **3.0 KB** | 1048 ms |
+| Svelte CSR | No | 10.2 KB | 27.2 KB | 897 ms |
+| Qwik CSR | No | 20.2 KB | 59.6 KB | 608 ms |
+| Vue CSR | No | 24.2 KB | 62.3 KB | 801 ms |
+| React CSR | No | 59.8 KB | 192.3 KB | 1097 ms |
+| Next.js | Yes | 182.6 KB | 663.6 KB | 3085 ms |
 
 ### 1,000-item Keyed List
 
-The list starts with 1,000 keyed items, then updates every label, reverses the order, removes odd IDs, and adds 500 items. Browser timings are medians from seven fresh headless Chrome runs.
+The list starts with 1,000 keyed items, then updates every label, reverses the order, removes odd IDs, and adds 500 items. Browser timings are medians from seven fresh headless Chrome runs, measured when a DOM observer sees each expected result rather than at the next animation frame.
 
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro | Yes | **324 B** | **43.6 KB** | 862 ms | **3.5 ms** | 24.8 ms | **8.4 ms** | **17.9 ms** | **54.6 ms** |
-| Kudzu | Yes | 5.0 KB | 60.3 KB | **435 ms** | 6.1 ms | 29.0 ms | 12.8 ms | 19.5 ms | 67.4 ms |
-| Vue CSR | No | 24.3 KB | 61.3 KB | 789 ms | 9.3 ms | 32.1 ms | 10.6 ms | 18.6 ms | 70.6 ms |
-| React CSR | No | 59.3 KB | 189.4 KB | 1049 ms | 8.8 ms | 34.7 ms | 13.5 ms | 18.2 ms | 75.2 ms |
-| Next.js | Yes | 182.2 KB | 695.2 KB | 3029 ms | 7.0 ms | 37.2 ms | 12.9 ms | 21.9 ms | 79.0 ms |
-| Qwik CSR | No | 22.2 KB | 64.1 KB | 623 ms | 13.4 ms | **21.7 ms** | 33.6 ms | 28.9 ms | 97.6 ms |
-| Svelte CSR | No | 12.9 KB | 33.1 KB | 870 ms | 5.6 ms | 61.3 ms | 15.6 ms | 18.3 ms | 100.8 ms |
+| Astro | Yes | **324 B** | **43.6 KB** | 843 ms | **4.7 ms** | **4.4 ms** | **1.6 ms** | **3.6 ms** | **14.3 ms** |
+| Kudzu | Yes | 5.0 KB | 60.3 KB | **432 ms** | 8.0 ms | 8.0 ms | 2.1 ms | 7.8 ms | 25.9 ms |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 776 ms | 12.0 ms | 10.8 ms | 4.6 ms | 7.4 ms | 34.8 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1032 ms | 11.9 ms | 14.5 ms | 4.7 ms | 6.5 ms | 37.6 ms |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 2988 ms | 8.6 ms | 15.8 ms | 5.1 ms | 8.5 ms | 38.0 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 858 ms | 6.6 ms | 48.5 ms | 5.2 ms | 7.3 ms | 67.6 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 618 ms | 11.4 ms | 27.5 ms | 37.9 ms | 22.8 ms | 99.6 ms |
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. In this run Kudzu's keyed-list operations total 67.4 ms, 12.8 ms behind Astro and 7.8 ms ahead of React across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 25.9 ms, 11.6 ms behind the hand-authored Astro baseline and 11.7 ms ahead of React across all four operations.
 
 Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 
