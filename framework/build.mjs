@@ -322,6 +322,8 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     const factory = context.factory
     const settersByFunction = new Map()
     const functions = new Map()
+    const jsxLocalDeclarations = new Map()
+    const jsxLocalsByFunction = new Map()
     const listValues = new WeakMap()
     const listEventItems = new WeakMap()
     let usesBehavior = false
@@ -346,9 +348,29 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
         functions.set(node.name.text, node.initializer)
       }
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isTopLevelConst(node)) {
+        const owner = nearestFunction(node)
+        const declarations = jsxLocalDeclarations.get(owner) ?? new Map()
+        declarations.set(node.name.text, node.initializer)
+        jsxLocalDeclarations.set(owner, declarations)
+      }
       ts.forEachChild(node, collect)
     }
     collect(sourceFile)
+    for (const [owner, declarations] of jsxLocalDeclarations) {
+      const names = new Set()
+      let changed = true
+      while (changed) {
+        changed = false
+        for (const [name, initializer] of declarations) {
+          if (!names.has(name) && isJsxLocalValue(initializer, names)) {
+            names.add(name)
+            changed = true
+          }
+        }
+      }
+      jsxLocalsByFunction.set(owner, names)
+    }
 
     const visitor = node => {
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
@@ -367,6 +389,21 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
           factory.createStringLiteral(stateElement.name.text)
         ])
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, initializer)
+      }
+
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && jsxLocalsByFunction.get(nearestFunction(node))?.has(node.name.text) && referencesIdentifier(nearestFunction(node).body, node.name.text)) {
+        const parts = conditionalParts(node.initializer)
+        if (parts) {
+          const setters = settersForNode(node, settersByFunction)
+          const usedStates = referencedStateNames(parts.condition, setters)
+          const captures = captureNames(parts.condition, parts.condition, setters)
+          if (usedStates.size || captures.size) {
+            usesBehavior = true
+            usesConditional = true
+            const compiled = compileConditional(parts.kind, parts.condition, ts.visitNode(parts.truthy, visitor), ts.visitNode(parts.falsy, visitor), setters, factory, context, reactiveBindings, handlerUrl)
+            return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, compiled)
+          }
+        }
       }
 
       if (ts.isJsxExpression(node) && node.expression && listValues.has(node.expression)) {
@@ -616,6 +653,21 @@ function referencesIdentifier(root, name) {
 
 function unwrapExpression(node) {
   return ts.isParenthesizedExpression(node) ? unwrapExpression(node.expression) : node
+}
+
+function isTopLevelConst(node) {
+  const list = node.parent
+  const statement = list?.parent
+  const owner = nearestFunction(node)
+  return ts.isVariableDeclarationList(list) && (list.flags & ts.NodeFlags.Const) !== 0 && ts.isVariableStatement(statement) && statement.parent === owner?.body
+}
+
+function isJsxLocalValue(expression, known) {
+  const value = unwrapExpression(expression)
+  if (ts.isJsxElement(value) || ts.isJsxSelfClosingElement(value) || ts.isJsxFragment(value)) return true
+  if (ts.isIdentifier(value)) return known.has(value.text)
+  const parts = conditionalParts(value)
+  return Boolean(parts && (isJsxLocalValue(parts.truthy, known) || isJsxLocalValue(parts.falsy, known)))
 }
 
 function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl) {

@@ -85,7 +85,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.9</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.10</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -198,6 +198,11 @@ return <>
             </div>
             {menuOpen && <MenuBar />}
             <div className="docs-callout"><strong>State</strong><span>Logical Kudzu state persists across branch switches. Uncontrolled input values, focus, selection, and imperative DOM mutations reset when a branch is remounted.</span></div>
+            <p>Top-level immutable <code>const</code> values can hold static JSX, state-dependent branches, aliases, and nested JSX locals. Kudzu compiles their initializers to the same bounded ranges as inline conditions.</p>
+            <CodeBlock code={`const menu = open ? <MenuBar /> : <p>Menu dormant</p>
+const content = open && menu
+
+return <main>{content}</main>`} />
             <p>Both branches are rendered into inert templates at build time. Conditional rendering is a UI mechanism, not an authorization boundary: do not place secrets or access-controlled content in a dormant branch, and avoid build-time side effects in branch components.</p>
           </section>
 
@@ -308,39 +313,39 @@ dist/
             <BenchmarkTable
               columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]}
               rows={[
-                ["Kudzu", "Yes", "393 B", "1.1 KB", "431 ms"],
-                ["Astro", "Yes", "158 B", "365 B", "974 ms"],
-                ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "660 ms"],
-                ["Vue CSR", "No", "24.0 KB", "60.3 KB", "859 ms"],
-                ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "961 ms"],
-                ["React CSR", "No", "59.2 KB", "189.0 KB", "1133 ms"],
-                ["Next.js", "Yes", "182.1 KB", "652.2 KB", "3269 ms"]
+                ["Kudzu", "Yes", "393 B", "1.1 KB", "383 ms"],
+                ["Astro", "Yes", "158 B", "365 B", "914 ms"],
+                ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "606 ms"],
+                ["Vue CSR", "No", "24.0 KB", "60.3 KB", "815 ms"],
+                ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "892 ms"],
+                ["React CSR", "No", "59.2 KB", "189.0 KB", "1044 ms"],
+                ["Next.js", "Yes", "182.1 KB", "652.2 KB", "3030 ms"]
               ]}
             />
             <h3>Static journal</h3>
             <BenchmarkTable
               columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]}
               rows={[
-                ["Kudzu", "Yes", "0 B", "3.2 KB", "385 ms"],
-                ["Astro", "Yes", "0 B", "3.0 KB", "970 ms"],
-                ["Qwik CSR", "No", "20.2 KB", "59.6 KB", "634 ms"],
-                ["Vue CSR", "No", "24.2 KB", "62.3 KB", "767 ms"],
-                ["Svelte CSR", "No", "10.2 KB", "27.2 KB", "829 ms"],
-                ["React CSR", "No", "59.8 KB", "192.3 KB", "1098 ms"],
-                ["Next.js", "Yes", "182.6 KB", "663.6 KB", "3217 ms"]
+                ["Kudzu", "Yes", "0 B", "3.2 KB", "409 ms"],
+                ["Astro", "Yes", "0 B", "3.0 KB", "1053 ms"],
+                ["Qwik CSR", "No", "20.2 KB", "59.6 KB", "611 ms"],
+                ["Vue CSR", "No", "24.2 KB", "62.3 KB", "782 ms"],
+                ["Svelte CSR", "No", "10.2 KB", "27.2 KB", "863 ms"],
+                ["React CSR", "No", "59.8 KB", "192.3 KB", "1062 ms"],
+                ["Next.js", "Yes", "182.6 KB", "663.6 KB", "3118 ms"]
               ]}
             />
             <h3>1,000-item keyed list</h3>
             <BenchmarkTable
               columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
               rows={[
-                ["Astro", "324 B", "43.6 KB", "889 ms", "3.9 ms", "27.6 ms", "7.9 ms", "18.1 ms", "57.5 ms"],
-                ["Kudzu", "5.0 KB", "60.3 KB", "447 ms", "6.3 ms", "31.0 ms", "7.3 ms", "20.7 ms", "65.3 ms"],
-                ["Vue CSR", "24.3 KB", "61.3 KB", "805 ms", "10.9 ms", "36.4 ms", "12.2 ms", "21.0 ms", "80.5 ms"],
-                ["Next.js", "182.2 KB", "695.2 KB", "3081 ms", "7.9 ms", "40.2 ms", "9.4 ms", "23.5 ms", "81.0 ms"],
-                ["React CSR", "59.3 KB", "189.4 KB", "1075 ms", "10.8 ms", "40.6 ms", "11.0 ms", "21.0 ms", "83.4 ms"],
-                ["Qwik CSR", "22.2 KB", "64.1 KB", "655 ms", "11.9 ms", "25.1 ms", "40.7 ms", "22.6 ms", "100.3 ms"],
-                ["Svelte CSR", "12.9 KB", "33.1 KB", "895 ms", "6.1 ms", "69.9 ms", "11.2 ms", "20.8 ms", "108.0 ms"]
+                ["Astro", "324 B", "43.6 KB", "862 ms", "3.5 ms", "24.8 ms", "8.4 ms", "17.9 ms", "54.6 ms"],
+                ["Kudzu", "5.0 KB", "60.3 KB", "435 ms", "6.1 ms", "29.0 ms", "12.8 ms", "19.5 ms", "67.4 ms"],
+                ["Vue CSR", "24.3 KB", "61.3 KB", "789 ms", "9.3 ms", "32.1 ms", "10.6 ms", "18.6 ms", "70.6 ms"],
+                ["React CSR", "59.3 KB", "189.4 KB", "1049 ms", "8.8 ms", "34.7 ms", "13.5 ms", "18.2 ms", "75.2 ms"],
+                ["Next.js", "182.2 KB", "695.2 KB", "3029 ms", "7.0 ms", "37.2 ms", "12.9 ms", "21.9 ms", "79.0 ms"],
+                ["Qwik CSR", "22.2 KB", "64.1 KB", "623 ms", "13.4 ms", "21.7 ms", "33.6 ms", "28.9 ms", "97.6 ms"],
+                ["Svelte CSR", "12.9 KB", "33.1 KB", "870 ms", "5.6 ms", "61.3 ms", "15.6 ms", "18.3 ms", "100.8 ms"]
               ]}
             />
             <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>
@@ -352,7 +357,7 @@ dist/
               <li>Callback refs, mutable value refs, keyed-list refs, and reactive <code>dangerouslySetInnerHTML</code> are not supported.</li>
               <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
               <li>Keyed lists require direct local-state maps and intrinsic roots; nested dynamic JSX, item spreads, and derived-expression captures remain unsupported.</li>
-              <li>Generalized JSX-valued locals are not implemented.</li>
+              <li>Block-scoped or reassigned JSX locals and non-direct keyed-list aliases are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
               <li>Imported client helpers and non-serializable captures are rejected at build time.</li>
             </ul>

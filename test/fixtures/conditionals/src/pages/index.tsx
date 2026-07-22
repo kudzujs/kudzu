@@ -14,6 +14,12 @@ export default function ConditionalPage() {
     setCount(count + 1);
   }
 
+  const staticLocal = <aside>Static local</aside>;
+  const localState = open ? <strong data-local>Local open</strong> : <em data-local>Local closed</em>;
+  const localAlias = localState;
+  const nestedLocal = open && localAlias;
+  const unusedLocal = open ? <span>Unused open</span> : <span>Unused closed</span>;
+
   return (
     <main>
       <button data-action="open" onClick={() => setOpen(true)}>Open</button>
@@ -39,6 +45,8 @@ export default function ConditionalPage() {
       {open ? "Visible text" : "Hidden text"}
       <Child open={open} />
       {true && <aside>Static condition</aside>}
+      {staticLocal}
+      {nestedLocal}
     </main>
   );
 }

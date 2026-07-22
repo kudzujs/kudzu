@@ -160,6 +160,17 @@ Logical state persists across branch switches, while uncontrolled DOM state rese
 
 Reactive conditional DOM currently targets the HTML namespace and is rejected inside SVG or MathML.
 
+Top-level immutable JSX locals can hold static or state-dependent branches:
+
+```tsx
+const menu = open ? <MenuBar /> : <p>Menu dormant</p>
+const content = open && menu
+
+return <main>{content}</main>
+```
+
+Kudzu compiles the local initializer to the same bounded DOM ranges as an inline condition. Reassigned, block-scoped, and keyed-list alias locals remain unsupported.
+
 ## Keyed Lists
 
 Map local array state directly to one keyed JSX element per item:
@@ -250,11 +261,12 @@ Supported:
 - Object DOM refs in native event handlers
 - Controlled `value` and `checked` form properties
 - Conditional child `&&` and ternary DOM patches
+- Top-level immutable JSX locals
 - Direct keyed local-state lists
 
 Not implemented yet:
 
-- Generalized JSX-valued locals and non-direct list item expressions
+- Block-scoped JSX locals and non-direct list item expressions
 - Server actions and request-time SSR
 - Imported client helpers and React package islands
 - HMR and framework DevTools
@@ -269,13 +281,13 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | 393 B | 1.1 KB | **431 ms** |
-| Astro | Yes | **158 B** | **365 B** | 974 ms |
-| Svelte CSR | No | 10.5 KB | 26.9 KB | 961 ms |
-| Qwik CSR | No | 20.6 KB | 57.8 KB | 660 ms |
-| Vue CSR | No | 24.0 KB | 60.3 KB | 859 ms |
-| React CSR | No | 59.2 KB | 189.0 KB | 1133 ms |
-| Next.js | Yes | 182.1 KB | 652.2 KB | 3269 ms |
+| Kudzu | Yes | 393 B | 1.1 KB | **383 ms** |
+| Astro | Yes | **158 B** | **365 B** | 914 ms |
+| Svelte CSR | No | 10.5 KB | 26.9 KB | 892 ms |
+| Qwik CSR | No | 20.6 KB | 57.8 KB | 606 ms |
+| Vue CSR | No | 24.0 KB | 60.3 KB | 815 ms |
+| React CSR | No | 59.2 KB | 189.0 KB | 1044 ms |
+| Next.js | Yes | 182.1 KB | 652.2 KB | 3030 ms |
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 
@@ -285,13 +297,13 @@ Same content and CSS across every fixture:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | **0 B** | 3.2 KB | **385 ms** |
-| Astro | Yes | **0 B** | **3.0 KB** | 970 ms |
-| Svelte CSR | No | 10.2 KB | 27.2 KB | 829 ms |
-| Qwik CSR | No | 20.2 KB | 59.6 KB | 634 ms |
-| Vue CSR | No | 24.2 KB | 62.3 KB | 767 ms |
-| React CSR | No | 59.8 KB | 192.3 KB | 1098 ms |
-| Next.js | Yes | 182.6 KB | 663.6 KB | 3217 ms |
+| Kudzu | Yes | **0 B** | 3.2 KB | **409 ms** |
+| Astro | Yes | **0 B** | **3.0 KB** | 1053 ms |
+| Svelte CSR | No | 10.2 KB | 27.2 KB | 863 ms |
+| Qwik CSR | No | 20.2 KB | 59.6 KB | 611 ms |
+| Vue CSR | No | 24.2 KB | 62.3 KB | 782 ms |
+| React CSR | No | 59.8 KB | 192.3 KB | 1062 ms |
+| Next.js | Yes | 182.6 KB | 663.6 KB | 3118 ms |
 
 ### 1,000-item Keyed List
 
@@ -299,15 +311,15 @@ The list starts with 1,000 keyed items, then updates every label, reverses the o
 
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro | Yes | **324 B** | **43.6 KB** | 889 ms | **3.9 ms** | 27.6 ms | 7.9 ms | **18.1 ms** | **57.5 ms** |
-| Kudzu | Yes | 5.0 KB | 60.3 KB | **447 ms** | 6.3 ms | 31.0 ms | **7.3 ms** | 20.7 ms | 65.3 ms |
-| Vue CSR | No | 24.3 KB | 61.3 KB | 805 ms | 10.9 ms | 36.4 ms | 12.2 ms | 21.0 ms | 80.5 ms |
-| Next.js | Yes | 182.2 KB | 695.2 KB | 3081 ms | 7.9 ms | 40.2 ms | 9.4 ms | 23.5 ms | 81.0 ms |
-| React CSR | No | 59.3 KB | 189.4 KB | 1075 ms | 10.8 ms | 40.6 ms | 11.0 ms | 21.0 ms | 83.4 ms |
-| Qwik CSR | No | 22.2 KB | 64.1 KB | 655 ms | 11.9 ms | **25.1 ms** | 40.7 ms | 22.6 ms | 100.3 ms |
-| Svelte CSR | No | 12.9 KB | 33.1 KB | 895 ms | 6.1 ms | 69.9 ms | 11.2 ms | 20.8 ms | 108.0 ms |
+| Astro | Yes | **324 B** | **43.6 KB** | 862 ms | **3.5 ms** | 24.8 ms | **8.4 ms** | **17.9 ms** | **54.6 ms** |
+| Kudzu | Yes | 5.0 KB | 60.3 KB | **435 ms** | 6.1 ms | 29.0 ms | 12.8 ms | 19.5 ms | 67.4 ms |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 789 ms | 9.3 ms | 32.1 ms | 10.6 ms | 18.6 ms | 70.6 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1049 ms | 8.8 ms | 34.7 ms | 13.5 ms | 18.2 ms | 75.2 ms |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 3029 ms | 7.0 ms | 37.2 ms | 12.9 ms | 21.9 ms | 79.0 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 623 ms | 13.4 ms | **21.7 ms** | 33.6 ms | 28.9 ms | 97.6 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 870 ms | 5.6 ms | 61.3 ms | 15.6 ms | 18.3 ms | 100.8 ms |
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. In this run Kudzu's keyed-list operations total 65.3 ms, 7.8 ms behind Astro and 18.1 ms ahead of React across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. In this run Kudzu's keyed-list operations total 67.4 ms, 12.8 ms behind Astro and 7.8 ms ahead of React across all four operations.
 
 Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 
