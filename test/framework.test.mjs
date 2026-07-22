@@ -364,6 +364,7 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(component, /const rows = undefined/)
   assert.match(component, /const unusedRows = undefined/)
   assert.match(component, /__kListExpression/)
+  assert.match(component, /__kListConditional/)
   assert.match(component, /__kListItem/)
   assert.match(html, /<li data-id="1".*>.*Oak/)
   assert.match(html, /<tr data-row="2"/)
@@ -376,6 +377,8 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(html, /OAK<template data-k-list-expression-end><\/template> tree/)
   assert.match(html, /data-k-list-expression=/)
   assert.match(html, /data-k-list-expression-attrs=/)
+  assert.match(html, /data-k-list-condition=/)
+  assert.match(html, /data-k-list-condition-end/)
   assert.match(html, /data-k-list-events=/)
   assert.match(html, /data-k-native-click=/)
   assert.match(html, /kudzu-list\.js/)
@@ -437,7 +440,7 @@ test("shares lifecycle cleanup between conditional and list capabilities", async
 test("rejects unsupported keyed list expressions and duplicate initial keys", () => {
   for (const [fixture, message] of [
     ["list-invalid-shape", /must use intrinsic JSX elements/],
-    ["list-invalid-condition", /Nested reactive conditions are not supported/],
+    ["list-invalid-condition", /Keyed list item conditions must read the item/],
     ["list-invalid-browser", /identifier "window" is not allowed/],
     ["list-invalid-capture", /identifier "suffix" is not allowed/],
     ["list-invalid-computed-key", /require a direct string or numeric literal key/],
@@ -527,6 +530,7 @@ test("mounts direct native handlers with browser event semantics", async t => {
   assert.doesNotMatch(html, /"flags":/)
   assert.match(runtime, /addEventListener/)
   assert.match(runtime, /removeEventListener/)
+  assert.match(html, /id="object-state"><span data-k-bind-text=.*28<\/span>° <span data-k-bind-text=.*Warm<\/span><\/p>/)
   assert.match(runtime, /\/assets\/handlers\/Parent\.js/)
   assert.match(runtime, /\/assets\/handlers\/pages\/index\.js/)
   assert.match(html, /id="focus-target" data-k-ref="r0"/)
@@ -691,9 +695,13 @@ try {
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
   const initialOak = document.querySelector('[data-id="1"]')
   if (initialOak.querySelector("span").textContent !== "OAK tree" || initialOak.className !== "active" || initialOak.getAttribute("aria-label") !== "Oak item" || initialOak.style.opacity !== "1" || initialOak.style.borderWidth !== "1px" || initialOak.style.getPropertyValue("--tone") !== "warm" || initialOak.querySelector("small").style.color !== "brown") throw new Error("initial-derived")
+  if (!initialOak.querySelector("[data-finish]") || initialOak.querySelector("[data-and]") || document.querySelector('[data-id="2"] [data-status]').textContent !== "Pine complete" || !document.querySelector('[data-id="2"] [data-and]')) throw new Error("initial-condition")
   click("add")
   await wait()
   if (document.querySelectorAll("[data-list] > li").length !== 3 || !document.body.textContent.includes("ELM tree") || document.querySelectorAll("tbody > tr").length !== 3) throw new Error("add")
+  document.querySelector('[data-id="3"] [data-finish]').click()
+  await wait()
+  if (document.querySelector('[data-id="3"] [data-status]').textContent !== "Elm complete") throw new Error("new-condition-handler")
   let movedOnUpdate = false
   const observer = new MutationObserver(() => { movedOnUpdate = true })
   observer.observe(document.querySelector("[data-list]"), { childList: true })
@@ -701,7 +709,11 @@ try {
   await wait()
   observer.disconnect()
   const oak = document.querySelector('[data-id="1"]')
-  if (movedOnUpdate || oak.querySelector("span").textContent !== "RED OAK tree" || oak.querySelector("small").textContent !== "Red oak" || oak.className !== "done" || oak.getAttribute("aria-label") !== "Red oak item" || oak.style.opacity !== "0.5" || oak.style.borderWidth !== "2px" || oak.style.getPropertyValue("--tone") !== "hot" || oak.querySelector("small").style.color !== "brown" || !oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
+  if (movedOnUpdate) throw new Error("update-moved")
+  if (oak.querySelector("span").textContent !== "RED OAK tree") throw new Error("update-text")
+  if (oak.querySelector("small").textContent !== "Red oak" || oak.querySelector("[data-status]").textContent !== "Red oak complete" || !oak.querySelector("[data-and]")) throw new Error("update-branch")
+  if (oak.className !== "done" || oak.getAttribute("aria-label") !== "Red oak item" || oak.style.opacity !== "0.5" || oak.style.borderWidth !== "2px" || oak.style.getPropertyValue("--tone") !== "hot" || oak.querySelector("small").style.color !== "brown") throw new Error("update-attributes")
+  if (!oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update-metadata")
   oak.querySelector("input").value = "preserved"
   click("reorder")
   await wait()
@@ -802,6 +814,10 @@ try {
   document.querySelector("#focus-ref").click()
   await wait()
   if (document.activeElement?.id !== "focus-target" || document.body.dataset.ref !== "focus-target") throw new Error("object-ref")
+  if (document.querySelector("#object-state").textContent !== "28° Warm") throw new Error("object-state-initial")
+  document.querySelector("#update-object").click()
+  await wait()
+  if (document.querySelector("#object-state").textContent !== "21° Cool") throw new Error("object-state-update")
   let lateListenerCalled = false
   document.querySelector("#controls").addEventListener("click", () => { lateListenerCalled = true })
   document.querySelector("#controls").click()

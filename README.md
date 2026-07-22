@@ -98,6 +98,14 @@ function increaseTwice() {
 
 The handler above increments by two and patches its bound DOM once. Inspect the generated plan at `.kudzu/kudzu-plan.json`.
 
+State may also hold serializable plain objects. Property expressions in JSX text update directly:
+
+```tsx
+const [weather, setWeather] = useState({ temperature: 28, label: "Warm" })
+
+return <p>{weather.temperature}° {weather.label}</p>
+```
+
 ## Reactive Attributes
 
 `className`, `disabled`, controlled `value`, and controlled `checked` accept normal state-dependent TSX expressions. The same `value` binding works for inputs and selects:
@@ -209,6 +217,7 @@ const rows = items.map(item =>
     style={{ opacity: item.done ? 0.5 : 1 }}
   >
     {item.name.toUpperCase()}
+    {item.done ? <strong>Complete</strong> : <span>Pending</span>}
     <button onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
   </li>
 )
@@ -216,9 +225,9 @@ const rows = items.map(item =>
 return <ul>{rows}</ul>
 ```
 
-Kudzu emits initial items as static HTML, then adds, removes, updates, styles, and moves keyed elements directly. The map may appear directly in JSX or in one top-level immutable `const` rendered once as a JSX child. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
+Kudzu emits initial items as static HTML, then adds, removes, updates, styles, conditional branches, and moves keyed elements directly. The map may appear directly in JSX or in one top-level immutable `const` rendered once as a JSX child. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Single-level item-local `&&` and ternary JSX conditions patch only their bounded branch and mount or unmount its handlers. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
 
-Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested conditions or lists, item spreads, component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
+Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested item conditions or lists, item spreads, component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 ## Normal JavaScript
 
@@ -335,14 +344,14 @@ The list starts with 1,000 keyed items, then updates every label, reverses the o
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Astro | Yes | **324 B** | **43.6 KB** | 826 ms | **4.1 ms** | **3.7 ms** | **1.4 ms** | **3.3 ms** | **12.5 ms** |
-| Kudzu | Yes | 5.0 KB | 60.3 KB | **452 ms** | 7.1 ms | 7.5 ms | 1.9 ms | 7.0 ms | 23.5 ms |
+| Kudzu | Yes | 5.4 KB | 61.6 KB | **448 ms** | 8.6 ms | 8.3 ms | 2.4 ms | 8.6 ms | 27.9 ms |
 | Next.js | Yes | 182.2 KB | 695.2 KB | 3002 ms | 7.5 ms | 12.3 ms | 4.1 ms | 7.8 ms | 31.7 ms |
 | Vue CSR | No | 24.3 KB | 61.3 KB | 765 ms | 11.4 ms | 9.8 ms | 4.4 ms | 7.0 ms | 32.6 ms |
 | React CSR | No | 59.3 KB | 189.4 KB | 1039 ms | 9.9 ms | 13.4 ms | 4.7 ms | 6.1 ms | 34.1 ms |
 | Svelte CSR | No | 12.9 KB | 33.1 KB | 845 ms | 6.2 ms | 42.9 ms | 4.6 ms | 6.2 ms | 59.9 ms |
 | Qwik CSR | No | 22.2 KB | 64.1 KB | 630 ms | 10.7 ms | 27.5 ms | 39.2 ms | 22.2 ms | 99.6 ms |
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 23.5 ms, 11.0 ms behind the hand-authored Astro baseline and 10.6 ms ahead of React across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 27.9 ms, 15.4 ms behind the hand-authored Astro baseline and 6.2 ms ahead of React across all four operations.
 
 Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 

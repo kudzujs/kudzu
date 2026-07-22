@@ -6,7 +6,8 @@ const mountedLists = new WeakSet()
 const imports = new Map()
 const revisions = new WeakMap()
 const itemParts = new WeakMap()
-const itemPartsSelector = "[data-k-list-text],[data-k-list-attrs],[data-k-list-events],[data-k-list-expression],[data-k-list-expression-attrs]"
+const conditionOwners = new WeakMap()
+const itemPartsSelector = "[data-k-list-text],[data-k-list-attrs],[data-k-list-events],[data-k-list-expression],[data-k-list-expression-attrs],[data-k-list-condition]"
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -32,7 +33,7 @@ function mountLists(root) {
     const roots = listRoots(start, end)
     const templateRoot = start.content.firstElementChild
     const parts = listItemPartPlan(templateRoot)
-    for (const root of roots) mapListItemParts(parts, root)
+    for (const root of roots) descriptor.conditions ? listItemParts(root) : mapListItemParts(parts, root)
     if (descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
     const items = browserState.get(descriptor.state)
     const list = {
@@ -144,6 +145,10 @@ function fillListItem(root, item) {
   const revision = (revisions.get(root) ?? 0) + 1
   revisions.set(root, revision)
   const parts = listItemParts(root)
+  fillListParts(root, parts, item, revision)
+}
+
+function fillListParts(root, parts, item, revision) {
   for (const [node, field] of parts.directTexts) {
     const text = item?.[field]
     const value = text == null ? "" : String(text)
@@ -178,18 +183,27 @@ function fillListItem(root, item) {
       }).catch(error => console.error(error))
     }
   }
+  for (const [marker, descriptor] of parts.conditions) {
+    evaluate(descriptor, item).then(value => {
+      if (revisions.get(root) === revision && root.isConnected) updateListCondition(marker, descriptor.kind, value, item)
+    }).catch(error => console.error(error))
+  }
 }
 
 function listItemParts(root) {
   let parts = itemParts.get(root)
   if (parts) return parts
-  parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [] }
+  parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [], conditions: [] }
   for (const node of matching(root, itemPartsSelector)) {
     if (node.hasAttribute("data-k-list-text")) (node.tagName === "TEMPLATE" ? parts.texts : parts.directTexts).push([node, node.dataset.kListText])
     if (node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, JSON.parse(node.dataset.kListAttrs)])
     if (node.hasAttribute("data-k-list-events")) parts.events.push([node, node.dataset.kListEvents])
     if (node.hasAttribute("data-k-list-expression")) parts.expressions.push([node, JSON.parse(node.dataset.kListExpression)])
     if (node.hasAttribute("data-k-list-expression-attrs")) parts.expressionAttributes.push([node, JSON.parse(node.dataset.kListExpressionAttrs)])
+    if (node.hasAttribute("data-k-list-condition")) {
+      parts.conditions.push([node, JSON.parse(node.dataset.kListCondition)])
+      conditionOwners.set(node, root)
+    }
   }
   itemParts.set(root, parts)
   return parts
@@ -205,7 +219,8 @@ function listItemPartPlan(template) {
     attributes: parts.attributes.map(([node, attributes]) => [indexes.get(node), attributes]),
     events: parts.events.map(([node, events]) => [indexes.get(node), events]),
     expressions: parts.expressions.map(([node, descriptor]) => [indexes.get(node), descriptor]),
-    expressionAttributes: parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes])
+    expressionAttributes: parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes]),
+    conditions: parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor])
   }
 }
 
@@ -217,8 +232,48 @@ function mapListItemParts(parts, root) {
     attributes: parts.attributes.map(([index, attributes]) => [target[index], attributes]),
     events: parts.events.map(([index, events]) => [target[index], events]),
     expressions: parts.expressions.map(([index, descriptor]) => [target[index], descriptor]),
-    expressionAttributes: parts.expressionAttributes.map(([index, attributes]) => [target[index], attributes])
+    expressionAttributes: parts.expressionAttributes.map(([index, attributes]) => [target[index], attributes]),
+    conditions: parts.conditions.map(([index, descriptor]) => {
+      conditionOwners.set(target[index], root)
+      return [target[index], descriptor]
+    })
   })
+}
+
+function updateListCondition(marker, kind, value, item) {
+  const current = listConditionKey(kind, value)
+  if (marker.dataset.kListCurrent === current) return
+  let end = marker.nextSibling
+  while (end && !(end.nodeType === Node.ELEMENT_NODE && end.matches("template[data-k-list-condition-end]"))) end = end.nextSibling
+  if (!end) throw new Error("Keyed list condition marker has no end")
+  for (let node = marker.nextSibling; node && node !== end;) {
+    const next = node.nextSibling
+    unmountDom(node)
+    node.remove()
+    node = next
+  }
+  const falseText = kind === "and" && !value ? renderFalsy(value) : ""
+  const fragment = falseText
+    ? marker.ownerDocument.createDocumentFragment()
+    : marker.content.querySelector(value ? "template[data-k-list-true]" : "template[data-k-list-false]").content.cloneNode(true)
+  if (falseText) fragment.append(marker.ownerDocument.createTextNode(falseText))
+  const nodes = [...fragment.childNodes]
+  const revision = (revisions.get(marker) ?? 0) + 1
+  revisions.set(marker, revision)
+  fillListParts(marker, listItemParts(fragment), item, revision)
+  end.parentNode.insertBefore(fragment, end)
+  marker.dataset.kListCurrent = current
+  const owner = conditionOwners.get(marker)
+  if (owner) itemParts.delete(owner)
+  for (const node of nodes) mountDom(node)
+}
+
+function listConditionKey(kind, value) {
+  return value ? "true" : kind === "and" ? `false:${renderFalsy(value)}` : "false"
+}
+
+function renderFalsy(value) {
+  return value === false || value == null || value === true ? "" : String(value)
 }
 
 function listRoots(start, end) {

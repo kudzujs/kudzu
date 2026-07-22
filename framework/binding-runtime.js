@@ -9,11 +9,14 @@ const mountedBindings = new WeakSet()
 const mountedConditions = new WeakSet()
 const bindingRegistrations = new WeakMap()
 const conditionRegistrations = new WeakMap()
-const bindingTypes = ["class", "disabled", "value", "checked", "style"]
+const bindingTypes = ["text", "class", "disabled", "value", "checked", "style"]
 const bindingSelector = [...bindingTypes.map(target => `[data-k-bind-${target}]`), "[data-k-bind-attrs]"].join(",")
 
 export function patchBinding(node, target, value) {
-  if (target === "disabled") {
+  if (target === "text") {
+    const next = value == null ? "" : String(value)
+    if (node.textContent !== next) node.textContent = next
+  } else if (target === "disabled") {
     node.toggleAttribute("disabled", Boolean(value))
   } else if (target === "checked") {
     node.checked = Boolean(value)

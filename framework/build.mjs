@@ -328,6 +328,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     const listLocalUses = new WeakMap()
     const listValues = new WeakMap()
     const listEventItems = new WeakMap()
+    const listConditions = new WeakMap()
     let usesBehavior = false
     let usesBinding = false
     let usesConditional = false
@@ -431,6 +432,15 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         }
       }
 
+      if (ts.isJsxExpression(node) && node.expression && listConditions.has(node.expression)) {
+        const entry = listConditions.get(node.expression)
+        return factory.updateJsxExpression(node, compileListConditional({
+          ...entry,
+          truthy: ts.visitNode(entry.truthy, visitor),
+          falsy: ts.visitNode(entry.falsy, visitor)
+        }, factory, listExpressions, handlerUrl))
+      }
+
       if (ts.isJsxExpression(node) && node.expression && listValues.has(node.expression)) {
         return factory.updateJsxExpression(node, compileListValue(node.expression, listValues.get(node.expression), factory, listExpressions, handlerUrl))
       }
@@ -443,7 +453,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         const listParts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction))
         if (listParts) {
           if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
-          validateKeyedList(listParts, sourceFile, settersForNode(node, settersByFunction), listValues, listEventItems)
+          validateKeyedList(listParts, sourceFile, settersForNode(node, settersByFunction), listValues, listEventItems, listConditions)
           usesBehavior = true
           usesList = true
           return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, [
@@ -465,6 +475,14 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
             const compiled = compileConditional(parts.kind, parts.condition, truthy, falsy, setters, factory, context, reactiveBindings, handlerUrl)
             return factory.updateJsxExpression(node, compiled)
           }
+        }
+        const setters = settersForNode(node, settersByFunction)
+        const usedStates = referencedStateNames(node.expression, setters)
+        const captures = captureNames(node.expression, node.expression, setters)
+        if ((usedStates.size || captures.size) && !ts.isIdentifier(node.expression) && !containsJsx(node.expression)) {
+          usesBehavior = true
+          usesBinding = true
+          return factory.updateJsxExpression(node, compileReactiveBinding(node.expression, setters, factory, context, reactiveBindings, handlerUrl))
         }
       }
 
@@ -507,6 +525,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listExpression"), factory.createIdentifier("__kListExpression")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listField"), factory.createIdentifier("__kListField")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listConditional"), factory.createIdentifier("__kListConditional")))
     }
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
@@ -536,7 +555,7 @@ function keyedListParts(expression, setters) {
   return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
 }
 
-function validateKeyedList(parts, sourceFile, setters, listValues, listEventItems) {
+function validateKeyedList(parts, sourceFile, setters, listValues, listEventItems, listConditions) {
   const fail = (node, message) => {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
     throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
@@ -545,6 +564,7 @@ function validateKeyedList(parts, sourceFile, setters, listValues, listEventItem
     const tag = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName
     if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
   }
+  let conditionDepth = 0
   const visit = node => {
     if (ts.isJsxFragment(node)) fail(node, "Fragments are not supported in keyed lists")
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
@@ -556,7 +576,18 @@ function validateKeyedList(parts, sourceFile, setters, listValues, listEventItem
     }
     if (ts.isJsxExpression(node) && node.expression) {
       const expression = unwrapExpression(node.expression)
-      if (conditionalParts(expression) && containsJsx(expression)) fail(node, "Nested reactive conditions are not supported in keyed lists")
+      const condition = conditionalParts(expression)
+      if (condition && containsJsx(expression)) {
+        if (conditionDepth) fail(node, "Nested item conditions are not supported in keyed lists")
+        if (!referencesIdentifier(condition.condition, parts.item)) fail(node, "Keyed list item conditions must read the item")
+        validateListExpression(condition.condition, parts.item, node, fail)
+        listConditions.set(node.expression, { ...condition, item: parts.item })
+        conditionDepth++
+        visit(condition.truthy)
+        visit(condition.falsy)
+        conditionDepth--
+        return
+      }
       const field = directProperty(expression, parts.item)
       const isRootKey = ts.isJsxAttribute(node.parent) && node.parent.name.getText() === "key"
       if (field && ["__proto__", "constructor", "prototype"].includes(field)) fail(node, `Keyed list item property "${field}" is not supported`)
@@ -643,6 +674,16 @@ function compileListExpression(read, expression, item, factory, listExpressions,
   const exportName = `listExpression${listExpressions.length}`
   listExpressions.push({ exportName, expression, item })
   return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)])
+}
+
+function compileListConditional(entry, factory, listExpressions, handlerUrl) {
+  const exportName = `listExpression${listExpressions.length}`
+  listExpressions.push({ exportName, expression: entry.condition, item: entry.item })
+  const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), entry.condition)
+  const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
+  return factory.createCallExpression(factory.createIdentifier("__kListConditional"), undefined, [
+    factory.createStringLiteral(entry.kind), read, thunk(entry.truthy), thunk(entry.falsy), factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)
+  ])
 }
 
 function compileListValue(expression, entry, factory, listExpressions, handlerUrl) {

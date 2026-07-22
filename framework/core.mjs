@@ -9,6 +9,7 @@ const listMarker = Symbol("kudzu.list")
 const listFieldMarker = Symbol("kudzu.listField")
 const listExpressionMarker = Symbol("kudzu.listExpression")
 const listItemMarker = Symbol("kudzu.listItem")
+const listConditionalMarker = Symbol("kudzu.listConditional")
 const refMarker = Symbol("kudzu.ref")
 const contextMarker = Symbol("kudzu.context")
 const contextProviderMarker = Symbol("kudzu.contextProvider")
@@ -123,6 +124,10 @@ export function listItem() {
   return { [listItemMarker]: true }
 }
 
+export function listConditional(kind, read, truthy, falsy, module, handler) {
+  return { [listConditionalMarker]: true, kind, value: renderContext?.listTemplate ? undefined : read(), truthy, falsy, module, handler }
+}
+
 function validListKey(key) {
   return typeof key === "string" || typeof key === "number" && Number.isFinite(key)
 }
@@ -216,7 +221,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -348,14 +353,43 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
   if (node?.[listMarker]) return renderList(node, namespace, selectValue)
   if (node?.[listFieldMarker]) {
-    if (renderContext.listTemplate) renderContext.listFields?.add(node.field)
-    const marker = renderContext.listTemplate ? ` data-k-list-text="${escapeAttribute(node.field)}"` : ""
+    if (renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) renderContext.listFields?.add(node.field)
+    const marker = renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch ? ` data-k-list-text="${escapeAttribute(node.field)}"` : ""
     return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-text-end></template>`
   }
   if (node?.[listExpressionMarker]) {
     const descriptor = { module: node.module, handler: node.handler }
-    const marker = renderContext.listTemplate ? ` data-k-list-expression='${escapeJsonAttribute(descriptor)}'` : ""
+    const marker = renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch ? ` data-k-list-expression='${escapeJsonAttribute(descriptor)}'` : ""
     return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-expression-end></template>`
+  }
+  if (node?.[bindingMarker]) {
+    const descriptor = bindingDescriptor(node)
+    const reactive = Object.keys(node.states).length > 0 || Object.keys(node.scopeStates).length > 0 || Object.keys(node.scopeBindings).length > 0
+    if (!reactive) return renderNode(node.value, namespace, selectValue)
+    renderContext.bindings.push({ target: "text", ...descriptor })
+    if (renderContext.conditionDepth || renderContext.listDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
+    renderContext.hasBehaviors = true
+    renderContext.hasBindings = true
+    return `<span data-k-bind-text='${escapeJsonAttribute(descriptor)}'>${escapeHtml(node.value ?? "")}</span>`
+  }
+  if (node?.[listConditionalMarker]) {
+    const descriptor = { kind: node.kind, module: node.module, handler: node.handler }
+    const previousBranch = renderContext.listConditionalBranch
+    renderContext.listConditionalBranch = true
+    let truthy
+    let falsy
+    try {
+      truthy = await renderNode(node.truthy(), namespace, selectValue)
+      falsy = await renderNode(node.falsy(), namespace, selectValue)
+    } finally {
+      renderContext.listConditionalBranch = previousBranch
+    }
+    const key = conditionKey(node.kind, node.value)
+    const current = renderContext.listTemplate
+      ? ""
+      : node.kind === "and" && !node.value ? escapeHtml(renderFalsy(node.value)) : node.value ? truthy : falsy
+    const initial = renderContext.listTemplate ? "" : ` data-k-list-current="${escapeAttribute(key)}"`
+    return `<template data-k-list-condition='${escapeJsonAttribute(descriptor)}'${initial}><template data-k-list-true>${truthy}</template><template data-k-list-false>${falsy}</template></template>${current}<template data-k-list-condition-end></template>`
   }
   if (!node || typeof node !== "object" || !("type" in node)) {
     throw new Error(`Cannot render ${String(node)}`)
@@ -459,10 +493,10 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
 
   if (attributeBindings.length) attributes += ` data-k-bind-attrs='${escapeJsonAttribute(attributeBindings)}'`
-  if (renderContext.listTemplate && listAttributes.length) attributes += ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
-  if (renderContext.listTemplate && listExpressionAttributes.length) attributes += ` data-k-list-expression-attrs='${escapeJsonAttribute(listExpressionAttributes)}'`
-  if (renderContext.listTemplate && listEvents.length) attributes += ` data-k-list-events='${escapeJsonAttribute(listEvents)}'`
-  if (renderContext.listTemplate && directListText) {
+  if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && listAttributes.length) attributes += ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
+  if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && listExpressionAttributes.length) attributes += ` data-k-list-expression-attrs='${escapeJsonAttribute(listExpressionAttributes)}'`
+  if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && listEvents.length) attributes += ` data-k-list-events='${escapeJsonAttribute(listEvents)}'`
+  if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && directListText) {
     renderContext.listFields?.add(directListText.field)
     attributes += ` data-k-list-text="${escapeAttribute(directListText.field)}"`
   }
@@ -487,10 +521,12 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listRoot = { id, template: true }
     const template = await renderNode(node.render({}), namespace, selectValue)
     if (template.includes("data-k-native-")) descriptor.mount = true
+    if (template.includes("data-k-list-condition")) descriptor.conditions = true
     const seed = listSeed(node.items.value, renderContext.listFields)
     if (seed) descriptor.seed = seed
     let current = ""
     renderContext.listTemplate = false
+    renderContext.listInitialMarkers = Boolean(descriptor.conditions)
     for (const item of node.items.value) {
       renderContext.listRoot = { id, key: item[node.keyField], template: false }
       current += await renderNode(node.render(item), namespace, selectValue)
@@ -502,6 +538,7 @@ async function renderList(node, namespace, selectValue) {
   } finally {
     renderContext.listRoot = undefined
     renderContext.listTemplate = false
+    renderContext.listInitialMarkers = false
     renderContext.listFields = previousListFields
     renderContext.listDepth--
   }
@@ -510,6 +547,14 @@ async function renderList(node, namespace, selectValue) {
 function optionValue(props) {
   if (props.value != null) return bindingValue(props.value)
   return Array.isArray(props.children) ? props.children.join("") : props.children ?? ""
+}
+
+function conditionKey(kind, value) {
+  return value ? "true" : kind === "and" ? `false:${renderFalsy(value)}` : "false"
+}
+
+function renderFalsy(value) {
+  return value === false || value == null || value === true ? "" : String(value)
 }
 
 function reactiveStateIds(descriptor) {

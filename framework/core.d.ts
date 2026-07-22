@@ -24,6 +24,7 @@ export function list(items: unknown, keyField: string, render: (item: unknown) =
 export function listField(read: () => unknown, field: string): unknown
 export function listExpression(read: () => unknown, module: string, handler: string): unknown
 export function listItem(): unknown
+export function listConditional(kind: "and" | "ternary", read: () => unknown, truthy: () => unknown, falsy: () => unknown, module: string, handler: string): unknown
 
 export function renderPage(
   component: (props: Record<string, never>) => unknown | Promise<unknown>,

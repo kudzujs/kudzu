@@ -86,7 +86,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.12</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.13</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -124,13 +124,17 @@ export default function Page() {
 
           <section className="docs-section" id="state">
             <div className="docs-heading"><span>04</span><div><p>CORE</p><h2>State semantics</h2></div></div>
-            <p>Declare local primitive state with the same syntax as React. Setters update logical state immediately and DOM writes batch at the end of the synchronous turn.</p>
+            <p>Declare local state with the same syntax as React. State may contain primitives or serializable plain objects. Setters update logical state immediately and DOM writes batch at the end of the synchronous turn.</p>
             <CodeBlock code={`const [count, setCount] = useState(0)
 
 function growTwice() {
   setCount(count + 1)
   setCount(count + 1)
-}`} />
+}
+
+const [weather, setWeather] = useState({ temperature: 28, label: "Warm" })
+
+return <p>{weather.temperature}° {weather.label}</p>`} />
             <div className="docs-callout"><strong>Result</strong><span>Logical state increases by 2. Bound DOM nodes patch once.</span></div>
             <h3 id="context">Context</h3>
             <p>Context passes default, nested, or direct state values through component layers without retaining a browser component tree.</p>
@@ -248,6 +252,7 @@ function reverse() {
 
 const rows = items.map(item => <li key={item.id} style={{ opacity: item.id % 2 ? 1 : 0.7 }}>
   <span>{item.name}</span>
+  {item.id % 2 ? <strong>Odd</strong> : <small>Even</small>}
   <button onClick={() =>
     setItems(items.filter(entry => entry.id !== item.id))
   }>Remove</button>
@@ -269,13 +274,14 @@ return <>
               <ul>
                 {demoTrees.map(item => <li key={item.id} data-id={item.id} style={{ opacity: item.id % 2 ? 1 : 0.7 }}>
                   <span>{item.name}</span>
+                  {item.id % 2 ? <strong>Odd</strong> : <small>Even</small>}
                   <code>#{item.id}</code>
                   <button onClick={() => setDemoTrees(demoTrees.filter(entry => entry.id !== item.id))}>Remove</button>
                 </li>)}
               </ul>
             </div>
             <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. The map may be direct JSX or one top-level immutable local rendered once as a JSX child. Direct item-property reads use compact markers. Derived item text, attributes, and object styles compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, reusable aliases, item spreads, component tags, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. The map may be direct JSX or one top-level immutable local rendered once as a JSX child. Direct item-property reads use compact markers. Derived item text, attributes, object styles, and single-level <code>&amp;&amp;</code> or ternary JSX conditions compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Conditional branches patch only their bounded DOM and mount or unmount their handlers. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested item conditions or lists, reusable aliases, item spreads, component tags, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
           </section>
 
           <section className="docs-section" id="events">
@@ -357,7 +363,7 @@ dist/
               columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
               rows={[
                 ["Astro", "324 B", "43.6 KB", "826 ms", "4.1 ms", "3.7 ms", "1.4 ms", "3.3 ms", "12.5 ms"],
-                ["Kudzu", "5.0 KB", "60.3 KB", "452 ms", "7.1 ms", "7.5 ms", "1.9 ms", "7.0 ms", "23.5 ms"],
+                ["Kudzu", "5.4 KB", "61.6 KB", "448 ms", "8.6 ms", "8.3 ms", "2.4 ms", "8.6 ms", "27.9 ms"],
                 ["Next.js", "182.2 KB", "695.2 KB", "3002 ms", "7.5 ms", "12.3 ms", "4.1 ms", "7.8 ms", "31.7 ms"],
                 ["Vue CSR", "24.3 KB", "61.3 KB", "765 ms", "11.4 ms", "9.8 ms", "4.4 ms", "7.0 ms", "32.6 ms"],
                 ["React CSR", "59.3 KB", "189.4 KB", "1039 ms", "9.9 ms", "13.4 ms", "4.7 ms", "6.1 ms", "34.1 ms"],

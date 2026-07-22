@@ -30,6 +30,8 @@ export default function ListPage() {
 
   const rows = items.map(item => <li key={item.id} data-id={item.id} className={item.done ? "done" : "active"} aria-label={`${item.name} item`} style={{ opacity: item.done ? 0.5 : 1, borderWidth: item.done ? 2 : 1, "--tone": item.tone }}>
     <span>{item.name.toUpperCase()} tree</span><small style={item.style}>{item.name}</small><input data-uncontrolled />
+    {item.done ? <strong data-status>{item.name} complete</strong> : <button data-finish onClick={() => setItems(items.map(entry => entry.id === item.id ? { ...entry, done: true } : entry))}>Finish {item.name}</button>}
+    {item.done && <em data-and>Done</em>}
     <button data-remove onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
   </li>)
   const unusedRows = items.map(item => <p key={item.id}>{item.name}</p>)
