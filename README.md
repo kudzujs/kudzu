@@ -166,7 +166,7 @@ const [items, setItems] = useState([
 )}</ul>
 ```
 
-Kudzu emits initial items as static HTML, then adds, removes, updates, and moves keyed elements directly. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Item-local handlers use delegated events and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
+Kudzu emits initial items as static HTML, then adds, removes, updates, and moves keyed elements directly. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
 
 Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a direct local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested conditions or lists, item spreads, component tags, fragments, and reactive `style`, `ref`, or `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
@@ -190,7 +190,7 @@ async function load() {
 
 Primitive values, arrays, plain objects, and destructured props can be captured by client handlers. Functions, symbols, bigints, cycles, class instances, and imported helper functions are not yet supported as captures.
 
-Native handlers are delegated after normal event bubbling and run from the target toward matching Kudzu ancestors in deterministic order. Delegated handlers cannot call or reference `preventDefault`, `stopPropagation`, or `stopImmediatePropagation`; the compiler rejects those methods because external ESM cannot apply them with correct synchronous DOM semantics.
+Native handlers use direct DOM listeners with normal `currentTarget`, bubbling, default-action, and propagation semantics. Handler modules load before listener registration, so `preventDefault`, `stopPropagation`, and `stopImmediatePropagation` work synchronously as expected.
 
 ## Rendering
 

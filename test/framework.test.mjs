@@ -458,7 +458,7 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   assert.deepEqual(commits, [["s0", 4], ["s0", 5]])
 })
 
-test("delegates native handlers through ancestors in deterministic module order", async t => {
+test("mounts direct native handlers with browser event semantics", async t => {
   const fixture = new URL("./fixtures/native-bubbling", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/native-bubbling/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -469,22 +469,14 @@ test("delegates native handlers through ancestors in deterministic module order"
   const html = await readFile(new URL("./fixtures/native-bubbling/dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("./fixtures/native-bubbling/dist/assets/kudzu-native.js", import.meta.url), "utf8")
   assert.doesNotMatch(html, /"flags":/)
-  assert.match(runtime, /async function dispatchNative/)
-  assert.match(runtime, /snapshotNativeTargets/)
-  assert.match(runtime, /targets\.push\(\{ target, native: JSON\.parse/)
-  assert.match(runtime, /const module = await modulePromise/)
-  assert.doesNotMatch(runtime, /addEventListener\(eventName,[\s\S]*, true\)/)
+  assert.match(runtime, /registerMountHook\(mount\)/)
+  assert.match(runtime, /registerUnmountHook\(unmountNative\)/)
+  assert.match(runtime, /node\.addEventListener\(eventName, listener\)/)
+  assert.match(runtime, /import \* as __kNativeModule0 from "\/assets\/handlers\/Parent\.js"/)
+  assert.match(runtime, /import \* as __kNativeModule1 from "\/assets\/handlers\/pages\/index\.js"/)
+  assert.doesNotMatch(runtime, /document\.addEventListener|new Proxy|dispatchNative|snapshotNativeTargets/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runNativeBubblingBrowserTest(fixture, chrome)
-})
-
-test("rejects delegated native event propagation and default controls", () => {
-  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
-    cwd: new URL("./fixtures/native-invalid-controls", import.meta.url),
-    encoding: "utf8"
-  })
-  assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /do not support event control methods: preventDefault, stopImmediatePropagation, stopPropagation/)
 })
 
 test("rejects non-serializable component-scope captures by name", () => {
@@ -686,6 +678,12 @@ async function runNativeBubblingBrowserTest(fixture, chrome) {
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
+  await wait()
+  let lateListenerCalled = false
+  document.querySelector("#controls").addEventListener("click", () => { lateListenerCalled = true })
+  document.querySelector("#controls").click()
+  await wait()
+  if (document.body.dataset.controls !== "controls" || document.body.dataset.order || location.hash || lateListenerCalled) throw new Error("event-controls")
   document.querySelector("#inner").click()
   await wait()
   if (document.body.dataset.order !== "inner,parent" || document.querySelector("#parent")) throw new Error("snapshot-order-currentTarget")

@@ -64,12 +64,13 @@ export async function build({ quiet = false } = {}) {
   await mkdir(assetsDirectory, { recursive: true })
   const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
+  const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => `/assets/${module.path}`)
+  const hasNativeHandlers = nativeModules.length > 0
   if (behaviorCount) {
-    const runtimeFile = bindingCount || listCount ? "./shared-runtime.js" : "./runtime.js"
+    const runtimeFile = bindingCount || listCount || hasNativeHandlers ? "./shared-runtime.js" : "./runtime.js"
     const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, stateSeedCount > 0)
     await writeFile(join(assetsDirectory, "kudzu.js"), runtime)
   }
-  const hasNativeHandlers = handlerModules.some(module => module.hasNativeHandlers)
   if (bindingCount || hasNativeHandlers) await cp(new URL("./serialization.js", import.meta.url), join(assetsDirectory, "kudzu-serialization.js"))
   if (bindingCount) {
     const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
@@ -84,9 +85,9 @@ export async function build({ quiet = false } = {}) {
   }
   if (hasNativeHandlers) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
-      .replace('"./runtime.js"', '"./kudzu.js"')
+      .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
-    await writeFile(join(assetsDirectory, "kudzu-native.js"), specializeEvents(nativeRuntime, nativeEvents))
+    await writeFile(join(assetsDirectory, "kudzu-native.js"), specializeNativeRuntime(nativeRuntime, nativeEvents, nativeModules))
   }
   for (const handlerModule of handlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
@@ -102,6 +103,12 @@ export async function build({ quiet = false } = {}) {
 
 function specializeEvents(source, events) {
   return source.replace(/const eventNames = \[[^\n]+\]/, `const eventNames = ${JSON.stringify(events)}`)
+}
+
+function specializeNativeRuntime(source, events, modules) {
+  const imports = modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
+  const entries = modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
+  return `${imports}\n${specializeEvents(source, events).replace(/const modules = new Map\(\[[^\n]*\]\)/, `const modules = new Map([${entries}])`)}`
 }
 
 function specializeRuntime(source, events, hasStateSeed) {
@@ -661,7 +668,6 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
   if (ts.isIdentifier(expression)) expression = functions.get(expression.text)
   if (!expression || (!ts.isArrowFunction(expression) && !ts.isFunctionExpression(expression) && !ts.isFunctionDeclaration(expression))) return undefined
 
-  rejectNativeEventControls(expression)
   const optimized = compileOptimizedEvent(expression, setters, factory)
   if (optimized) return optimized
 
@@ -682,34 +688,6 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
       name === listItem ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, []) : factory.createIdentifier(name)
     ])))
   ])
-}
-
-function rejectNativeEventControls(expression) {
-  const controls = new Set(["preventDefault", "stopPropagation", "stopImmediatePropagation"])
-  const found = new Set()
-  const eventAliases = new Set()
-  const parameter = expression.parameters[0]?.name
-  if (parameter && ts.isIdentifier(parameter)) eventAliases.add(parameter.text)
-  const visit = node => {
-    if (ts.isIdentifier(node) && controls.has(node.text)) found.add(node.text)
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isIdentifier(unwrapEventAlias(node.initializer)) && eventAliases.has(unwrapEventAlias(node.initializer).text)) {
-      eventAliases.add(node.name.text)
-    }
-    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(node.left) && ts.isIdentifier(unwrapEventAlias(node.right)) && eventAliases.has(unwrapEventAlias(node.right).text)) eventAliases.add(node.left.text)
-    if (ts.isElementAccessExpression(node) && ts.isIdentifier(unwrapEventAlias(node.expression)) && eventAliases.has(unwrapEventAlias(node.expression).text)) {
-      if (ts.isStringLiteral(node.argumentExpression) && controls.has(node.argumentExpression.text)) found.add(node.argumentExpression.text)
-      else if (!ts.isStringLiteral(node.argumentExpression)) for (const control of controls) found.add(control)
-    }
-    ts.forEachChild(node, visit)
-  }
-  for (const parameter of expression.parameters) visit(parameter)
-  visit(expression.body)
-  if (found.size) throw new Error(`Delegated native handlers do not support event control methods: ${[...found].sort().join(", ")}`)
-}
-
-function unwrapEventAlias(node) {
-  if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node) || ts.isSatisfiesExpression(node)) return unwrapEventAlias(node.expression)
-  return node
 }
 
 function nativeStateNames(expression, setters) {

@@ -56,7 +56,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.3</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.4</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -193,13 +193,13 @@ return <ul>
   )}
 </ul>`}</code></pre>
             <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. Direct item-property reads use compact markers. Derived item text and normal attributes compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Delegated item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, item spreads, component tags, fragments, and reactive <code>style</code>, <code>ref</code>, or <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. Direct item-property reads use compact markers. Derived item text and normal attributes compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, item spreads, component tags, fragments, and reactive <code>style</code>, <code>ref</code>, or <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
           </section>
 
           <section className="docs-section" id="events">
             <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
             <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
-            <p>Delegated native handlers run after normal event bubbling, from the event target toward matching Kudzu ancestors in deterministic order with the correct <code>currentTarget</code>. They cannot call or reference <code>preventDefault()</code>, <code>stopPropagation()</code>, or <code>stopImmediatePropagation()</code>; the compiler rejects those methods because external ESM cannot apply them with correct synchronous DOM semantics.</p>
+            <p>Native handlers use direct DOM listeners with normal <code>currentTarget</code>, bubbling, default-action, and propagation semantics. Handler modules load before listener registration, so <code>preventDefault()</code>, <code>stopPropagation()</code>, and <code>stopImmediatePropagation()</code> work synchronously as expected.</p>
             <pre><code>{`async function loadStatus() {
   setLoading(true)
   const response = await fetch("/api/status")
