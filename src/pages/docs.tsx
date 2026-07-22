@@ -85,7 +85,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.8</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.9</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -229,7 +229,7 @@ return <>
   <button onClick={add}>Add</button>
   <button onClick={reverse}>Reverse</button>
   <ul>
-    {items.map(item => <li key={item.id}>
+    {items.map(item => <li key={item.id} style={{ opacity: item.id % 2 ? 1 : 0.7 }}>
       <span>{item.name}</span>
       <button onClick={() =>
         setItems(items.filter(entry => entry.id !== item.id))
@@ -245,7 +245,7 @@ return <>
                 <button onClick={reverseTrees}>Reverse</button>
               </div>
               <ul>
-                {demoTrees.map(item => <li key={item.id} data-id={item.id}>
+                {demoTrees.map(item => <li key={item.id} data-id={item.id} style={{ opacity: item.id % 2 ? 1 : 0.7 }}>
                   <span>{item.name}</span>
                   <code>#{item.id}</code>
                   <button onClick={() => setDemoTrees(demoTrees.filter(entry => entry.id !== item.id))}>Remove</button>
@@ -253,7 +253,7 @@ return <>
               </ul>
             </div>
             <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. Direct item-property reads use compact markers. Derived item text and normal attributes compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, item spreads, component tags, fragments, dynamic <code>style</code>, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. Direct item-property reads use compact markers. Derived item text, attributes, and object styles compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, item spreads, component tags, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
           </section>
 
           <section className="docs-section" id="events">
@@ -334,13 +334,13 @@ dist/
             <BenchmarkTable
               columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
               rows={[
-                ["Astro", "324 B", "43.6 KB", "869 ms", "3.9 ms", "29.4 ms", "13.9 ms", "18.3 ms", "65.5 ms"],
-                ["Kudzu", "5.0 KB", "60.3 KB", "437 ms", "7.0 ms", "31.7 ms", "6.7 ms", "22.0 ms", "67.4 ms"],
-                ["Vue CSR", "24.3 KB", "61.3 KB", "813 ms", "11.3 ms", "37.5 ms", "10.1 ms", "21.4 ms", "80.3 ms"],
-                ["Next.js", "182.2 KB", "695.2 KB", "3069 ms", "7.8 ms", "40.6 ms", "9.8 ms", "22.2 ms", "80.4 ms"],
-                ["React CSR", "59.3 KB", "189.4 KB", "1073 ms", "10.5 ms", "40.2 ms", "9.9 ms", "21.4 ms", "82.0 ms"],
-                ["Qwik CSR", "22.2 KB", "64.1 KB", "625 ms", "13.3 ms", "25.4 ms", "37.1 ms", "24.4 ms", "100.2 ms"],
-                ["Svelte CSR", "12.9 KB", "33.1 KB", "905 ms", "6.5 ms", "72.3 ms", "9.2 ms", "22.3 ms", "110.3 ms"]
+                ["Astro", "324 B", "43.6 KB", "889 ms", "3.9 ms", "27.6 ms", "7.9 ms", "18.1 ms", "57.5 ms"],
+                ["Kudzu", "5.0 KB", "60.3 KB", "447 ms", "6.3 ms", "31.0 ms", "7.3 ms", "20.7 ms", "65.3 ms"],
+                ["Vue CSR", "24.3 KB", "61.3 KB", "805 ms", "10.9 ms", "36.4 ms", "12.2 ms", "21.0 ms", "80.5 ms"],
+                ["Next.js", "182.2 KB", "695.2 KB", "3081 ms", "7.9 ms", "40.2 ms", "9.4 ms", "23.5 ms", "81.0 ms"],
+                ["React CSR", "59.3 KB", "189.4 KB", "1075 ms", "10.8 ms", "40.6 ms", "11.0 ms", "21.0 ms", "83.4 ms"],
+                ["Qwik CSR", "22.2 KB", "64.1 KB", "655 ms", "11.9 ms", "25.1 ms", "40.7 ms", "22.6 ms", "100.3 ms"],
+                ["Svelte CSR", "12.9 KB", "33.1 KB", "895 ms", "6.1 ms", "69.9 ms", "11.2 ms", "20.8 ms", "108.0 ms"]
               ]}
             />
             <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>

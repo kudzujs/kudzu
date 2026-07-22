@@ -353,6 +353,8 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(html, /data-k-list-text="name"/)
   assert.match(html, /data-k-list-attrs=/)
   assert.match(html, /class="active" aria-label="Oak item"/)
+  assert.match(html, /style="opacity:1;border-width:1px;--tone:warm"/)
+  assert.match(html, /style="color:brown"/)
   assert.match(html, /OAK<template data-k-list-expression-end><\/template> tree/)
   assert.match(html, /data-k-list-expression=/)
   assert.match(html, /data-k-list-expression-attrs=/)
@@ -360,6 +362,8 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(html, /data-k-native-click=/)
   assert.match(html, /kudzu-list\.js/)
   assert.match(html, /kudzu-native\.js/)
+  assert.match(runtime, /kudzu-style\.js/)
+  assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-style.js", import.meta.url)), true)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
   assert.match(runtime, /Keyed list state must remain an array/)
@@ -388,6 +392,7 @@ test("emits only list capabilities for derived list expressions without handlers
   assert.doesNotMatch(html, /kudzu-binding\.js|kudzu-native\.js|kudzu-serialization\.js/)
   assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-native.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-serialization.js", import.meta.url)), false)
+  assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-style.js", import.meta.url)), false)
   assert.match(handlers, /as listExpression/)
 })
 
@@ -428,7 +433,7 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-prototype", /property "constructor" is not supported|cannot read __proto__/],
     ["list-invalid-prototype-key", /property "__proto__" is not supported/],
     ["list-invalid-spread", /item spreads are not supported/],
-    ["list-invalid-style", /item style is not supported/],
+    ["list-invalid-style", /style must be an object/],
     ["list-invalid-table", /must be wrapped in <tbody>/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
@@ -655,7 +660,7 @@ try {
   let runtimeError = ""
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
   const initialOak = document.querySelector('[data-id="1"]')
-  if (initialOak.querySelector("span").textContent !== "OAK tree" || initialOak.className !== "active" || initialOak.getAttribute("aria-label") !== "Oak item") throw new Error("initial-derived")
+  if (initialOak.querySelector("span").textContent !== "OAK tree" || initialOak.className !== "active" || initialOak.getAttribute("aria-label") !== "Oak item" || initialOak.style.opacity !== "1" || initialOak.style.borderWidth !== "1px" || initialOak.style.getPropertyValue("--tone") !== "warm" || initialOak.querySelector("small").style.color !== "brown") throw new Error("initial-derived")
   click("add")
   await wait()
   if (document.querySelectorAll("[data-list] > li").length !== 3 || !document.body.textContent.includes("ELM tree") || document.querySelectorAll("tbody > tr").length !== 3) throw new Error("add")
@@ -666,7 +671,7 @@ try {
   await wait()
   observer.disconnect()
   const oak = document.querySelector('[data-id="1"]')
-  if (movedOnUpdate || oak.querySelector("span").textContent !== "RED OAK tree" || oak.querySelector("small").textContent !== "Red oak" || oak.className !== "done" || oak.getAttribute("aria-label") !== "Red oak item" || !oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
+  if (movedOnUpdate || oak.querySelector("span").textContent !== "RED OAK tree" || oak.querySelector("small").textContent !== "Red oak" || oak.className !== "done" || oak.getAttribute("aria-label") !== "Red oak item" || oak.style.opacity !== "0.5" || oak.style.borderWidth !== "2px" || oak.style.getPropertyValue("--tone") !== "hot" || oak.querySelector("small").style.color !== "brown" || !oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
   oak.querySelector("input").value = "preserved"
   click("reorder")
   await wait()

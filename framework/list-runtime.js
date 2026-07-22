@@ -290,6 +290,7 @@ function serializeItem(value) {
 }
 
 function patchBinding(node, target, value) {
+  /* list-style */
   if (target === "disabled") {
     node.toggleAttribute("disabled", Boolean(value))
   } else if (target === "checked") {

@@ -175,6 +175,7 @@ const [items, setItems] = useState([
     key={item.id}
     className={item.done ? "done" : "active"}
     aria-label={`${item.name} item`}
+    style={{ opacity: item.done ? 0.5 : 1 }}
   >
     {item.name.toUpperCase()}
     <button onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
@@ -182,9 +183,9 @@ const [items, setItems] = useState([
 )}</ul>
 ```
 
-Kudzu emits initial items as static HTML, then adds, removes, updates, and moves keyed elements directly. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
+Kudzu emits initial items as static HTML, then adds, removes, updates, styles, and moves keyed elements directly. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
 
-Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a direct local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested conditions or lists, item spreads, component tags, dynamic styles, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
+Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a direct local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested conditions or lists, item spreads, component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 ## Normal JavaScript
 
@@ -298,15 +299,15 @@ The list starts with 1,000 keyed items, then updates every label, reverses the o
 
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro | Yes | **324 B** | **43.6 KB** | 869 ms | **3.9 ms** | 29.4 ms | 13.9 ms | **18.3 ms** | **65.5 ms** |
-| Kudzu | Yes | 5.0 KB | 60.3 KB | **437 ms** | 7.0 ms | 31.7 ms | **6.7 ms** | 22.0 ms | 67.4 ms |
-| Vue CSR | No | 24.3 KB | 61.3 KB | 813 ms | 11.3 ms | 37.5 ms | 10.1 ms | 21.4 ms | 80.3 ms |
-| Next.js | Yes | 182.2 KB | 695.2 KB | 3069 ms | 7.8 ms | 40.6 ms | 9.8 ms | 22.2 ms | 80.4 ms |
-| React CSR | No | 59.3 KB | 189.4 KB | 1073 ms | 10.5 ms | 40.2 ms | 9.9 ms | 21.4 ms | 82.0 ms |
-| Qwik CSR | No | 22.2 KB | 64.1 KB | 625 ms | 13.3 ms | **25.4 ms** | 37.1 ms | 24.4 ms | 100.2 ms |
-| Svelte CSR | No | 12.9 KB | 33.1 KB | 905 ms | 6.5 ms | 72.3 ms | 9.2 ms | 22.3 ms | 110.3 ms |
+| Astro | Yes | **324 B** | **43.6 KB** | 889 ms | **3.9 ms** | 27.6 ms | 7.9 ms | **18.1 ms** | **57.5 ms** |
+| Kudzu | Yes | 5.0 KB | 60.3 KB | **447 ms** | 6.3 ms | 31.0 ms | **7.3 ms** | 20.7 ms | 65.3 ms |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 805 ms | 10.9 ms | 36.4 ms | 12.2 ms | 21.0 ms | 80.5 ms |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 3081 ms | 7.9 ms | 40.2 ms | 9.4 ms | 23.5 ms | 81.0 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1075 ms | 10.8 ms | 40.6 ms | 11.0 ms | 21.0 ms | 83.4 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 655 ms | 11.9 ms | **25.1 ms** | 40.7 ms | 22.6 ms | 100.3 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 895 ms | 6.1 ms | 69.9 ms | 11.2 ms | 20.8 ms | 108.0 ms |
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. In this run Kudzu's keyed-list operations total 67.4 ms, 1.9 ms behind Astro and 14.6 ms ahead of React across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. In this run Kudzu's keyed-list operations total 65.3 ms, 7.8 ms behind Astro and 18.1 ms ahead of React across all four operations.
 
 Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 

@@ -197,7 +197,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false }
+  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -235,6 +235,7 @@ export async function renderPage(component, metadata = {}) {
       hasBehaviors: renderContext.hasBehaviors,
       hasBindings: renderContext.hasBindings,
       hasLists: renderContext.hasLists,
+      hasListStyles: renderContext.hasListStyles,
       hasStateSeed: initialState.length > 0,
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
@@ -397,11 +398,13 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (value?.[listFieldMarker]) {
       attributes += renderAttribute(name, value.value)
       listAttributes.push([name, value.field])
+      if (name === "style") renderContext.hasListStyles = true
       continue
     }
     if (value?.[listExpressionMarker]) {
       attributes += renderAttribute(name, value.value)
       listExpressionAttributes.push([name, value.module, value.handler])
+      if (name === "style") renderContext.hasListStyles = true
       continue
     }
     if (value?.[signalMarker] || value?.[bindingMarker]) {

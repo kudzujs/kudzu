@@ -43,6 +43,7 @@ export function renderPage(
   hasBehaviors: boolean
   hasBindings: boolean
   hasLists: boolean
+  hasListStyles: boolean
   hasStateSeed: boolean
   plan: {
     states: Array<{ id: string; name: string; initialValue: unknown }>

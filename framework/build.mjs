@@ -37,6 +37,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   let behaviorCount = 0
   let bindingCount = 0
   let listCount = 0
+  let listStyleCount = 0
   let stateSeedCount = 0
   const plans = []
   const hasStyles = await exists(join(sourceDirectory, "style.css"))
@@ -58,6 +59,7 @@ export async function build({ quiet = false, minify = true } = {}) {
     if (result.hasBehaviors) behaviorCount++
     if (result.hasBindings) bindingCount++
     if (result.hasLists) listCount++
+    if (result.hasListStyles) listStyleCount++
     if (result.hasStateSeed) stateSeedCount++
   }
 
@@ -73,8 +75,8 @@ export async function build({ quiet = false, minify = true } = {}) {
     await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
   }
   if (bindingCount || hasNativeHandlers) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify)
+  if (bindingCount || listStyleCount) await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
   if (bindingCount) {
-    await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
     const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
@@ -82,8 +84,16 @@ export async function build({ quiet = false, minify = true } = {}) {
     await writeJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify)
   }
   if (listCount) {
-    const listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
+    let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
+    const stylePatch = `  if (target === "style") {
+    const style = serializeStyle(value)
+    if (style) node.setAttribute("style", style)
+    else node.removeAttribute("style")
+    return
+  }`
+    listRuntime = listRuntime.replace("  /* list-style */", listStyleCount ? stylePatch : "")
+    if (listStyleCount) listRuntime = `import { serializeStyle } from "./kudzu-style.js"\n${listRuntime}`
     await writeJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify)
   }
   if (hasNativeHandlers) {
@@ -488,7 +498,7 @@ function validateKeyedList(parts, sourceFile, setters, listValues, listEventItem
       const field = directProperty(expression, parts.item)
       const isRootKey = ts.isJsxAttribute(node.parent) && node.parent.name.getText() === "key"
       if (field && ["__proto__", "constructor", "prototype"].includes(field)) fail(node, `Keyed list item property "${field}" is not supported`)
-      if (field && ts.isJsxAttribute(node.parent) && ["style", "ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
+      if (field && ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
       if (isRootKey) return
       if (field) {
         listValues.set(node.expression, { field })
@@ -496,7 +506,7 @@ function validateKeyedList(parts, sourceFile, setters, listValues, listEventItem
       }
       if (referencesIdentifier(expression, parts.item)) {
         validateListExpression(expression, parts.item, node, fail)
-        if (ts.isJsxAttribute(node.parent) && ["style", "ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
+        if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
         listValues.set(node.expression, { item: parts.item })
         return
       }
