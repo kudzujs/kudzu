@@ -249,13 +249,13 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | 487 B | 1.4 KB | **373 ms** |
-| Astro | Yes | **158 B** | **365 B** | 877 ms |
-| Svelte CSR | No | 10.5 KB | 26.9 KB | 837 ms |
-| Qwik CSR | No | 20.6 KB | 57.8 KB | 626 ms |
-| Vue CSR | No | 24.0 KB | 60.3 KB | 778 ms |
-| React CSR | No | 59.2 KB | 189.0 KB | 1049 ms |
-| Next.js | Yes | 182.1 KB | 652.2 KB | 3099 ms |
+| Kudzu | Yes | 487 B | 1.4 KB | **363 ms** |
+| Astro | Yes | **158 B** | **365 B** | 851 ms |
+| Svelte CSR | No | 10.5 KB | 26.9 KB | 827 ms |
+| Qwik CSR | No | 20.6 KB | 57.8 KB | 598 ms |
+| Vue CSR | No | 24.0 KB | 60.3 KB | 762 ms |
+| React CSR | No | 59.2 KB | 189.0 KB | 1018 ms |
+| Next.js | Yes | 182.1 KB | 652.2 KB | 2989 ms |
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 
@@ -265,15 +265,31 @@ Same content and CSS across every fixture:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | **0 B** | 3.2 KB | **478 ms** |
-| Astro | Yes | **0 B** | **3.0 KB** | 1253 ms |
-| Svelte CSR | No | 10.2 KB | 27.2 KB | 1018 ms |
-| Qwik CSR | No | 20.2 KB | 59.6 KB | 784 ms |
-| Vue CSR | No | 24.2 KB | 62.3 KB | 960 ms |
-| React CSR | No | 59.8 KB | 192.3 KB | 1253 ms |
-| Next.js | Yes | 182.6 KB | 663.6 KB | 3880 ms |
+| Kudzu | Yes | **0 B** | 3.2 KB | **380 ms** |
+| Astro | Yes | **0 B** | **3.0 KB** | 965 ms |
+| Svelte CSR | No | 10.2 KB | 27.2 KB | 824 ms |
+| Qwik CSR | No | 20.2 KB | 59.6 KB | 594 ms |
+| Vue CSR | No | 24.2 KB | 62.3 KB | 755 ms |
+| React CSR | No | 59.8 KB | 192.3 KB | 1041 ms |
+| Next.js | Yes | 182.6 KB | 663.6 KB | 2975 ms |
 
-Benchmark snapshot collected on July 21, 2026 with Node 24.14.0 on an Intel i5-9500. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
+### 1,000-item Keyed List
+
+The list starts with 1,000 keyed items, then updates every label, reverses the order, removes odd IDs, and adds 500 items. Browser timings are medians from seven fresh headless Chrome runs.
+
+| Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Astro | Yes | **324 B** | **43.6 KB** | 867 ms | **3.5 ms** | **25.4 ms** | 10.7 ms | **18.0 ms** | **57.6 ms** |
+| Kudzu | Yes | 5.7 KB | 180.8 KB | **417 ms** | 8.3 ms | 28.5 ms | **10.2 ms** | 20.5 ms | **67.5 ms** |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 771 ms | 9.7 ms | 31.3 ms | 9.4 ms | 18.1 ms | 68.5 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1024 ms | 8.7 ms | 32.3 ms | 12.4 ms | 18.1 ms | 71.5 ms |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 3049 ms | 6.7 ms | 35.0 ms | 16.3 ms | 19.4 ms | 77.4 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 602 ms | 14.5 ms | 19.9 ms | 31.3 ms | 18.9 ms | 84.6 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 859 ms | 5.2 ms | 65.4 ms | 10.7 ms | 19.9 ms | 101.2 ms |
+
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 67.5 ms, ahead of the React fixture's 71.5 ms and within 9.9 ms of Astro across all four operations.
+
+Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 
 ## Development
 

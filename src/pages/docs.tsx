@@ -26,6 +26,13 @@ function MenuBar() {
   )
 }
 
+function BenchmarkTable({ columns, rows }: { columns: string[]; rows: string[][] }) {
+  return <div className="benchmark-table"><table>
+    <thead><tr>{columns.map(column => <th>{column}</th>)}</tr></thead>
+    <tbody>{rows.map(row => <tr>{row.map(value => <td>{value}</td>)}</tr>)}</tbody>
+  </table></div>
+}
+
 export default function DocsPage() {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -51,6 +58,7 @@ export default function DocsPage() {
           <a href="#captures">Client captures</a>
           <p>REFERENCE</p>
           <a href="#build">Build output</a>
+          <a href="#benchmarks">Benchmarks</a>
           <a href="#limits">Current limits</a>
         </aside>
 
@@ -234,8 +242,53 @@ dist/
             <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use.</p>
           </section>
 
+          <section className="docs-section" id="benchmarks">
+            <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
+            <p>Production builds ran after one warm-up in seven rotating rounds on Node 24.14.0 and an Intel i5-9500. Browser list operations are medians from seven fresh headless Chrome runs.</p>
+            <h3>Interactive counter</h3>
+            <BenchmarkTable
+              columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]}
+              rows={[
+                ["Kudzu", "Yes", "487 B", "1.4 KB", "363 ms"],
+                ["Astro", "Yes", "158 B", "365 B", "851 ms"],
+                ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "598 ms"],
+                ["Vue CSR", "No", "24.0 KB", "60.3 KB", "762 ms"],
+                ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "827 ms"],
+                ["React CSR", "No", "59.2 KB", "189.0 KB", "1018 ms"],
+                ["Next.js", "Yes", "182.1 KB", "652.2 KB", "2989 ms"]
+              ]}
+            />
+            <h3>Static journal</h3>
+            <BenchmarkTable
+              columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]}
+              rows={[
+                ["Kudzu", "Yes", "0 B", "3.2 KB", "380 ms"],
+                ["Astro", "Yes", "0 B", "3.0 KB", "965 ms"],
+                ["Qwik CSR", "No", "20.2 KB", "59.6 KB", "594 ms"],
+                ["Vue CSR", "No", "24.2 KB", "62.3 KB", "755 ms"],
+                ["Svelte CSR", "No", "10.2 KB", "27.2 KB", "824 ms"],
+                ["React CSR", "No", "59.8 KB", "192.3 KB", "1041 ms"],
+                ["Next.js", "Yes", "182.6 KB", "663.6 KB", "2975 ms"]
+              ]}
+            />
+            <h3>1,000-item keyed list</h3>
+            <BenchmarkTable
+              columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
+              rows={[
+                ["Astro", "324 B", "43.6 KB", "867 ms", "3.5 ms", "25.4 ms", "10.7 ms", "18.0 ms", "57.6 ms"],
+                ["Kudzu", "5.7 KB", "180.8 KB", "417 ms", "8.3 ms", "28.5 ms", "10.2 ms", "20.5 ms", "67.5 ms"],
+                ["Vue CSR", "24.3 KB", "61.3 KB", "771 ms", "9.7 ms", "31.3 ms", "9.4 ms", "18.1 ms", "68.5 ms"],
+                ["React CSR", "59.3 KB", "189.4 KB", "1024 ms", "8.7 ms", "32.3 ms", "12.4 ms", "18.1 ms", "71.5 ms"],
+                ["Next.js", "182.2 KB", "695.2 KB", "3049 ms", "6.7 ms", "35.0 ms", "16.3 ms", "19.4 ms", "77.4 ms"],
+                ["Qwik CSR", "22.2 KB", "64.1 KB", "602 ms", "14.5 ms", "19.9 ms", "31.3 ms", "18.9 ms", "84.6 ms"],
+                ["Svelte CSR", "12.9 KB", "33.1 KB", "859 ms", "5.2 ms", "65.4 ms", "10.7 ms", "19.9 ms", "101.2 ms"]
+              ]}
+            />
+            <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>
+          </section>
+
           <section className="docs-section" id="limits">
-            <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
+            <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
             <ul className="docs-limits">
               <li>Reactive <code>style</code>, <code>ref</code>, and <code>dangerouslySetInnerHTML</code> are not supported.</li>
               <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>

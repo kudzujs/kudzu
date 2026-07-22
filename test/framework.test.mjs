@@ -578,10 +578,14 @@ try {
   click("add")
   await wait()
   if (document.querySelectorAll("[data-list] > li").length !== 3 || !document.body.textContent.includes("ELM tree") || document.querySelectorAll("tbody > tr").length !== 3) throw new Error("add")
+  let movedOnUpdate = false
+  const observer = new MutationObserver(() => { movedOnUpdate = true })
+  observer.observe(document.querySelector("[data-list]"), { childList: true })
   click("rename")
   await wait()
+  observer.disconnect()
   const oak = document.querySelector('[data-id="1"]')
-  if (oak.querySelector("span").textContent !== "RED OAK tree" || oak.querySelector("small").textContent !== "Red oak" || oak.className !== "done" || oak.getAttribute("aria-label") !== "Red oak item" || !oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
+  if (movedOnUpdate || oak.querySelector("span").textContent !== "RED OAK tree" || oak.querySelector("small").textContent !== "Red oak" || oak.className !== "done" || oak.getAttribute("aria-label") !== "Red oak item" || !oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update")
   oak.querySelector("input").value = "preserved"
   click("reorder")
   await wait()

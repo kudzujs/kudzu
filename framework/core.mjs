@@ -320,6 +320,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 
   const tag = node.type
   const props = node.props ?? {}
+  const directListText = props.children?.[listFieldMarker] ? props.children : undefined
   const childSelectValue = tag === "select"
     ? Object.hasOwn(props, "value") ? bindingValue(props.value) : noSelectValue
     : selectValue
@@ -414,12 +415,14 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (listAttributes.length) attributes += ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
   if (listExpressionAttributes.length) attributes += ` data-k-list-expression-attrs='${escapeJsonAttribute(listExpressionAttributes)}'`
   if (listEvents.length) attributes += ` data-k-list-events='${escapeJsonAttribute(listEvents)}'`
+  if (directListText) attributes += ` data-k-list-text="${escapeAttribute(directListText.field)}"`
 
   if (tag === "option" && selectValue !== noSelectValue && String(optionValue(props)) === (selectValue == null ? "" : String(selectValue))) attributes += " selected"
 
   const voidElements = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"])
   if (voidElements.has(tag)) return `<${tag}${attributes}>`
-  return `<${tag}${attributes}>${await renderNode(props.children, childNamespace, childSelectValue)}</${tag}>`
+  const children = directListText ? escapeHtml(directListText.value ?? "") : await renderNode(props.children, childNamespace, childSelectValue)
+  return `<${tag}${attributes}>${children}</${tag}>`
 }
 
 async function renderList(node, namespace, selectValue) {

@@ -134,6 +134,13 @@ footer > span { font-family: var(--mono); }
 .docs-heading p { margin: 2px 0 12px; }
 .docs-heading h2 { margin: 0; font-size: clamp(38px, 5vw, 64px); letter-spacing: -.055em; }
 .docs-section pre { margin: 34px 0; padding: 26px; overflow-x: auto; color: #ddd6e9; border: 1px solid var(--line); background: #050612; border-radius: 12px; font-size: 12px; line-height: 1.9; }
+.docs-section h3 { margin: 44px 0 16px; color: var(--lavender); font-size: 18px; }
+.benchmark-table { margin: 0 0 32px; overflow-x: auto; border: 1px solid var(--line); }
+.benchmark-table table { width: 100%; border-collapse: collapse; white-space: nowrap; font-family: var(--mono); font-size: 11px; }
+.benchmark-table th, .benchmark-table td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: right; }
+.benchmark-table th { color: var(--violet); background: #050612; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.benchmark-table th:first-child, .benchmark-table td:first-child { position: sticky; left: 0; color: var(--ink); background: var(--panel); text-align: left; }
+.benchmark-table tbody tr:last-child td { border-bottom: 0; }
 .docs-table { display: grid; grid-template-columns: minmax(0, 1fr) 30px minmax(0, .5fr); gap: 1px; margin-top: 32px; border: 1px solid var(--line); background: var(--line); }
 .docs-table > * { padding: 17px; background: var(--panel); }
 .docs-table span { color: var(--violet); text-align: center; }
