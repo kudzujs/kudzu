@@ -30,6 +30,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(runtime, /textContent = value/)
   assert.match(runtime, /eventNames = \["click"\]/)
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
+  assert.doesNotMatch([html, docs, runtime].join("\n"), /sessionStorage|__kudzu_state|snapshotState|restoreState|__kudzu_dev/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.doesNotMatch(html, /data-k-state=/)
