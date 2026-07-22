@@ -1,4 +1,21 @@
-import { useState } from "@kudzujs/core";
+import { createContext, useContext, useState } from "@kudzujs/core";
+
+const ThemeContext = createContext("default");
+
+function ThemeValue({ label }: { label: string }) {
+  const theme = useContext(ThemeContext);
+  return <span data-theme={label} className={`theme-${theme}`}>{theme}</span>;
+}
+
+function ThemeButton() {
+  const theme = useContext(ThemeContext);
+
+  function readTheme() {
+    document.body.dataset.theme = String(theme);
+  }
+
+  return <button data-context className={`theme-${theme}`} onClick={readTheme}>{theme}</button>;
+}
 
 function Child({ open }: { open: boolean }) {
   return <>{open && <small>Child open</small>}</>;
@@ -8,6 +25,7 @@ export default function ConditionalPage() {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [hidden, setHidden] = useState(0);
+  const [theme, setTheme] = useState("light");
 
   async function growAsync() {
     await Promise.resolve();
@@ -25,6 +43,12 @@ export default function ConditionalPage() {
       <button data-action="open" onClick={() => setOpen(true)}>Open</button>
       <button data-action="close" onClick={() => setOpen(false)}>Close</button>
       <button data-action="hidden" onClick={() => setHidden(hidden + 1)}>Increment hidden</button>
+      <button data-action="theme" onClick={() => setTheme("dark")}>Dark theme</button>
+      <ThemeContext.Provider value={theme}>
+        <ThemeButton />
+        <ThemeContext.Provider value="nested"><ThemeValue label="nested" /></ThemeContext.Provider>
+      </ThemeContext.Provider>
+      <ThemeValue label="default" />
       {open && (
         <section className={count > 0 ? "grown" : "new"} data-count={count} aria-live={count > 0 ? "polite" : "off"}>
           <span>{count}</span>

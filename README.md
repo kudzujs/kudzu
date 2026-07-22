@@ -139,6 +139,26 @@ return <>
 
 Kudzu resolves `current` when the handler reads it, so removed conditional elements return `null` without a component runtime. Refs must initialize with `null`; callback refs, mutable value refs, and refs inside keyed lists are not supported.
 
+## Context
+
+Create a context to pass static or reactive values through component layers without prop drilling:
+
+```tsx
+const ThemeContext = createContext("light")
+
+function Toolbar() {
+  const theme = useContext(ThemeContext)
+  return <button className={`theme-${theme}`}>{theme}</button>
+}
+
+function App() {
+  const [theme] = useState("dark")
+  return <ThemeContext.Provider value={theme}><Toolbar /></ThemeContext.Provider>
+}
+```
+
+The default value applies outside a Provider, nested Providers override their parent, and native handlers read the latest direct state value. Static Provider values must be serializable. Reactive Provider values must be a direct `useState` value; setters and objects containing reactive values are not supported.
+
 ## Conditional DOM
 
 Inline child `&&` and ternary expressions insert and remove bounded DOM ranges directly. A menu bar needs only state setters:
@@ -261,6 +281,7 @@ Supported:
 - Reactive standard, `aria-*`, and `data-*` attributes
 - Reactive object `style` attributes
 - Object DOM refs in native event handlers
+- Default, nested, and reactive context providers
 - Controlled `value` and `checked` form properties
 - Conditional child `&&` and ternary DOM patches
 - Top-level immutable JSX locals
@@ -283,13 +304,13 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | 393 B | 1.1 KB | **429 ms** |
-| Astro | Yes | **158 B** | **365 B** | 942 ms |
-| Svelte CSR | No | 10.5 KB | 26.9 KB | 850 ms |
-| Qwik CSR | No | 20.6 KB | 57.8 KB | 686 ms |
-| Vue CSR | No | 24.0 KB | 60.3 KB | 875 ms |
-| React CSR | No | 59.2 KB | 189.0 KB | 1150 ms |
-| Next.js | Yes | 182.1 KB | 652.2 KB | 3203 ms |
+| Kudzu | Yes | 393 B | 1.1 KB | **409 ms** |
+| Astro | Yes | **158 B** | **365 B** | 893 ms |
+| Svelte CSR | No | 10.5 KB | 26.9 KB | 867 ms |
+| Qwik CSR | No | 20.6 KB | 57.8 KB | 600 ms |
+| Vue CSR | No | 24.0 KB | 60.3 KB | 785 ms |
+| React CSR | No | 59.2 KB | 189.0 KB | 1032 ms |
+| Next.js | Yes | 182.1 KB | 652.2 KB | 3082 ms |
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 
@@ -299,13 +320,13 @@ Same content and CSS across every fixture:
 
 | Framework | Initial content | Initial JS gzip | Total output | Clean build |
 |---|---:|---:|---:|---:|
-| Kudzu | Yes | **0 B** | 3.2 KB | **395 ms** |
-| Astro | Yes | **0 B** | **3.0 KB** | 1048 ms |
-| Svelte CSR | No | 10.2 KB | 27.2 KB | 897 ms |
-| Qwik CSR | No | 20.2 KB | 59.6 KB | 608 ms |
-| Vue CSR | No | 24.2 KB | 62.3 KB | 801 ms |
-| React CSR | No | 59.8 KB | 192.3 KB | 1097 ms |
-| Next.js | Yes | 182.6 KB | 663.6 KB | 3085 ms |
+| Kudzu | Yes | **0 B** | 3.2 KB | **422 ms** |
+| Astro | Yes | **0 B** | **3.0 KB** | 1081 ms |
+| Svelte CSR | No | 10.2 KB | 27.2 KB | 902 ms |
+| Qwik CSR | No | 20.2 KB | 59.6 KB | 633 ms |
+| Vue CSR | No | 24.2 KB | 62.3 KB | 810 ms |
+| React CSR | No | 59.8 KB | 192.3 KB | 1110 ms |
+| Next.js | Yes | 182.6 KB | 663.6 KB | 3126 ms |
 
 ### 1,000-item Keyed List
 
@@ -313,15 +334,15 @@ The list starts with 1,000 keyed items, then updates every label, reverses the o
 
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro | Yes | **324 B** | **43.6 KB** | 843 ms | **4.7 ms** | **4.4 ms** | **1.6 ms** | **3.6 ms** | **14.3 ms** |
-| Kudzu | Yes | 5.0 KB | 60.3 KB | **432 ms** | 8.0 ms | 8.0 ms | 2.1 ms | 7.8 ms | 25.9 ms |
-| Vue CSR | No | 24.3 KB | 61.3 KB | 776 ms | 12.0 ms | 10.8 ms | 4.6 ms | 7.4 ms | 34.8 ms |
-| React CSR | No | 59.3 KB | 189.4 KB | 1032 ms | 11.9 ms | 14.5 ms | 4.7 ms | 6.5 ms | 37.6 ms |
-| Next.js | Yes | 182.2 KB | 695.2 KB | 2988 ms | 8.6 ms | 15.8 ms | 5.1 ms | 8.5 ms | 38.0 ms |
-| Svelte CSR | No | 12.9 KB | 33.1 KB | 858 ms | 6.6 ms | 48.5 ms | 5.2 ms | 7.3 ms | 67.6 ms |
-| Qwik CSR | No | 22.2 KB | 64.1 KB | 618 ms | 11.4 ms | 27.5 ms | 37.9 ms | 22.8 ms | 99.6 ms |
+| Astro | Yes | **324 B** | **43.6 KB** | 826 ms | **4.1 ms** | **3.7 ms** | **1.4 ms** | **3.3 ms** | **12.5 ms** |
+| Kudzu | Yes | 5.0 KB | 60.3 KB | **452 ms** | 7.1 ms | 7.5 ms | 1.9 ms | 7.0 ms | 23.5 ms |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 3002 ms | 7.5 ms | 12.3 ms | 4.1 ms | 7.8 ms | 31.7 ms |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 765 ms | 11.4 ms | 9.8 ms | 4.4 ms | 7.0 ms | 32.6 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1039 ms | 9.9 ms | 13.4 ms | 4.7 ms | 6.1 ms | 34.1 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 845 ms | 6.2 ms | 42.9 ms | 4.6 ms | 6.2 ms | 59.9 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 630 ms | 10.7 ms | 27.5 ms | 39.2 ms | 22.2 ms | 99.6 ms |
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 25.9 ms, 11.6 ms behind the hand-authored Astro baseline and 11.7 ms ahead of React across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 23.5 ms, 11.0 ms behind the hand-authored Astro baseline and 10.6 ms ahead of React across all four operations.
 
 Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 

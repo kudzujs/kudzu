@@ -8,6 +8,13 @@ export interface RefObject<T> {
 
 export function useRef<T>(initialValue: null): RefObject<T>
 
+export interface Context<T> {
+  Provider: (props: { value: T; children?: unknown }) => unknown
+}
+
+export function createContext<T>(defaultValue: T): Context<T>
+export function useContext<T>(context: Context<T>): T
+
 export function behavior(commands: Array<["add" | "set" | "log", unknown, unknown]>): unknown
 export function nativeBehavior(module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
 export function binding(value: unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown

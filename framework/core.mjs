@@ -10,6 +10,8 @@ const listFieldMarker = Symbol("kudzu.listField")
 const listExpressionMarker = Symbol("kudzu.listExpression")
 const listItemMarker = Symbol("kudzu.listItem")
 const refMarker = Symbol("kudzu.ref")
+const contextMarker = Symbol("kudzu.context")
+const contextProviderMarker = Symbol("kudzu.contextProvider")
 const noSelectValue = Symbol("kudzu.no-select-value")
 
 let renderContext
@@ -44,6 +46,23 @@ export function useRef(initialValue) {
   return { [refMarker]: true, id: `r${renderContext.nextRef++}`, current: null }
 }
 
+export function createContext(defaultValue) {
+  const context = { [contextMarker]: true, defaultValue }
+  context.Provider = function Provider({ value, children }) {
+    return { [contextProviderMarker]: true, context, value, children }
+  }
+  return context
+}
+
+export function useContext(context) {
+  if (!renderContext) throw new Error("useContext() can only run while rendering a Kudzu component")
+  if (!context?.[contextMarker]) throw new Error("useContext() requires a Kudzu context")
+  for (let index = renderContext.contexts.length - 1; index >= 0; index--) {
+    if (renderContext.contexts[index][0] === context) return renderContext.contexts[index][1]
+  }
+  return context.defaultValue
+}
+
 export function behavior(commands) {
   return {
     [behaviorMarker]: true,
@@ -63,7 +82,7 @@ export function nativeBehavior(module, handler, states, scope) {
       if (!signal?.[signalMarker]) throw new Error("A native behavior must target framework state")
       return [name, signal.id]
     })),
-    scope: Object.fromEntries(scope.map(([name, value]) => [name, serializeCapture(name, value, new Set())]))
+    scope: Object.fromEntries(scope.map(([name, value]) => [name, value?.[signalMarker] ? { type: "state", id: value.id } : serializeCapture(name, value, new Set())]))
   }
 }
 
@@ -197,7 +216,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -299,6 +318,14 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     return escapeHtml(node)
   }
   if (node instanceof Promise) return renderNode(await node, namespace, selectValue)
+  if (node?.[contextProviderMarker]) {
+    renderContext.contexts.push([node.context, node.value])
+    try {
+      return await renderNode(node.children, namespace, selectValue)
+    } finally {
+      renderContext.contexts.pop()
+    }
+  }
   if (node?.[conditionalMarker]) {
     const descriptor = bindingDescriptor(node)
     const stateIds = reactiveStateIds(descriptor)

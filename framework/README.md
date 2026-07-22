@@ -1,7 +1,7 @@
 # Framework Internals
 
 - `build.mjs`: TSX compilation, file routes, behavior extraction, static HTML output, and the development server.
-- `core.mjs`: server-side JSX rendering, state slots, behavior metadata, and serializable capture validation.
+- `core.mjs`: server-side JSX rendering, state slots, context providers, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.
 - `runtime.js`: command-only runtime for direct state-to-text patches.
 - `shared-runtime.js`: command runtime with capability commit and DOM lifecycle hooks, emitted only when needed.

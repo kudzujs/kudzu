@@ -4,7 +4,7 @@ import { readFile, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import test from "node:test"
 import { build, specializeRuntime } from "../framework/build.mjs"
-import { behavior, conditional, list, nativeBehavior, renderPage, useRef, useState } from "../framework/core.mjs"
+import { behavior, conditional, createContext, list, nativeBehavior, renderPage, useContext, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -124,6 +124,17 @@ test("renders object refs and rejects unsupported ref shapes", async () => {
     const [items] = useState([{ id: 1 }])
     return list(items, "id", () => jsx("input", { ref: inputRef }))
   }, { styles: false }), /Refs are not supported in keyed lists/)
+})
+
+test("renders context defaults and nested providers", async () => {
+  const Theme = createContext("default")
+  const Value = () => jsx("span", { children: useContext(Theme) })
+  const result = await renderPage(() => jsx(Symbol.for("kudzu.fragment"), { children: [
+    jsx(Value, {}),
+    jsx(Theme.Provider, { value: "outer", children: [jsx(Value, {}), jsx(Theme.Provider, { value: "inner", children: jsx(Value, {}) })] })
+  ] }), { styles: false })
+  assert.match(result.html, /<span>default<\/span><span>outer<\/span><span>inner<\/span>/)
+  await assert.rejects(renderPage(() => useContext({}), { styles: false }), /requires a Kudzu context/)
 })
 
 test("rejects non-serializable keyed list data", async () => {
@@ -314,6 +325,9 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   assert.match(html, /Static condition/)
   assert.match(html, /Static local/)
   assert.match(html, /Local closed/)
+  assert.match(html, /data-context="true" class="theme-light"/)
+  assert.match(html, /data-theme="nested" class="theme-nested">nested/)
+  assert.match(html, /data-theme="default" class="theme-default">default/)
   assert.match(html, /data-k-state=/)
   assert.match(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
@@ -604,6 +618,16 @@ async function runConditionalBrowserTest(fixture, chrome) {
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
   const control = action => document.querySelector('[data-action="' + action + '"]')
+  const context = document.querySelector("[data-context]")
+  context.click()
+  await wait()
+  if (document.body.dataset.theme !== "light") throw new Error("context-handler-initial")
+  control("theme").click()
+  await wait()
+  if (context.textContent !== "dark" || context.className !== "theme-dark" || document.querySelector('[data-theme="nested"]').textContent !== "nested" || document.querySelector('[data-theme="default"]').textContent !== "default") throw new Error("context-update")
+  context.click()
+  await wait()
+  if (document.body.dataset.theme !== "dark") throw new Error("context-handler-update")
   control("hidden").click()
   await wait()
   control("open").click()

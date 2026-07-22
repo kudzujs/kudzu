@@ -20,7 +20,7 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
       return state.get(stateIds[name])
     },
     scope(name) {
-      return scope[name]
+      return serializedScope[name]?.type === "state" ? state.get(serializedScope[name].id) : scope[name]
     },
     set(name, value) {
       const id = stateIds[name]
