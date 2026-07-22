@@ -1,3 +1,5 @@
+import { serializeStyle } from "./style.js"
+
 const signalMarker = Symbol("kudzu.signal")
 const behaviorMarker = Symbol("kudzu.behavior")
 const nativeBehaviorMarker = Symbol("kudzu.nativeBehavior")
@@ -352,7 +354,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (rawName === "selected" && selectValue !== noSelectValue) continue
     if (/^on/i.test(rawName) && !/^on[A-Z]/.test(rawName)) throw new Error(`${rawName} must use a camelCase event handler`)
     if (rawName.toLowerCase().startsWith("data-k-")) throw new Error(`${rawName} uses Kudzu's reserved data-k-* prefix`)
-    if (["style", "ref", "dangerouslysetinnerhtml"].includes(rawName.toLowerCase()) && (value?.[signalMarker] || value?.[bindingMarker])) {
+    if (["ref", "dangerouslysetinnerhtml"].includes(rawName.toLowerCase()) && (value?.[signalMarker] || value?.[bindingMarker])) {
       throw new Error(`Reactive ${rawName} is not supported`)
     }
 
@@ -377,7 +379,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
 
     const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : rawName
-    const propertyTarget = name === "class" || name === "disabled" || name === "value" || name === "checked"
+    const propertyTarget = name === "class" || name === "disabled" || name === "value" || name === "checked" || name === "style"
     if (value?.[listFieldMarker]) {
       attributes += renderAttribute(name, value.value)
       listAttributes.push([name, value.field])
@@ -409,12 +411,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
 
     if (tag === "select" && name === "value") continue
-    if (name === "style" && value && typeof value === "object") {
-      const style = Object.entries(value).map(([property, entry]) => `${toKebabCase(property)}:${entry}`).join(";")
-      attributes += ` style="${escapeAttribute(style)}"`
-    } else {
-      attributes += renderAttribute(name, value)
-    }
+    attributes += renderAttribute(name, value)
   }
 
   if (attributeBindings.length) attributes += ` data-k-bind-attrs='${escapeJsonAttribute(attributeBindings)}'`
@@ -481,6 +478,10 @@ function reactiveStateIds(descriptor) {
 }
 
 function renderAttribute(name, value) {
+  if (name === "style") {
+    const style = serializeStyle(value)
+    return style ? ` style="${escapeAttribute(style)}"` : ""
+  }
   if (name === "disabled" || name === "checked") return value ? ` ${name}` : ""
   if (name === "value") return value == null ? "" : ` value="${escapeAttribute(value)}"`
   if (value == null || (value === false && !isStringBooleanAttribute(name))) return ""
@@ -524,8 +525,4 @@ function listSeed(items, fields) {
     seed[field] = [...types][0]
   }
   return seed
-}
-
-function toKebabCase(value) {
-  return value.replace(/[A-Z]/g, character => `-${character.toLowerCase()}`)
 }

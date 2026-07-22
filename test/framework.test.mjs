@@ -100,11 +100,7 @@ test("rejects unsafe or reserved reactive attributes", async () => {
   await assert.rejects(renderPage(() => {
     const [style] = useState("color:red")
     return jsx("div", { style })
-  }, { styles: false }), /Reactive style is not supported/)
-  await assert.rejects(renderPage(() => {
-    const [style] = useState("color:red")
-    return jsx("div", { STYLE: style })
-  }, { styles: false }), /Reactive STYLE is not supported/)
+  }, { styles: false }), /style must be an object/)
 })
 
 test("rejects non-serializable keyed list data", async () => {
@@ -185,6 +181,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(html, /type="radio" checked data-k-bind-checked=/)
   assert.match(html, /<select data-k-bind-value=.*<option>Kudzu<\/option><option selected>Grown<\/option><\/select>/)
   assert.match(html, /class="waiting" data-k-bind-class=.*aria-checked="false" data-state="closed" hidden title="Inactive" data-k-bind-attrs=/)
+  assert.match(html, /style="color:red;width:8px;opacity:0.5;--accent:1" data-k-bind-style=/)
   assert.match(html, /class="prop-active">Static prop/)
   assert.match(html, /class="prop-idle" data-k-bind-class=.*>Static prop/)
   assert.match(html, /class="nested-idle" data-k-bind-class=.*>Nested/)
@@ -198,12 +195,14 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(commandRuntime, /registerCommitter/)
   assert.match(commandRuntime, /eventNames = \["change","click"\]/)
   assert.match(bindingRuntime, /patchBinding|data-k-bind/)
+  assert.match(bindingRuntime, /kudzu-style\.js/)
+  assert.equal(existsSync(new URL("./fixtures/bindings/dist/assets/kudzu-style.js", import.meta.url)), true)
   assert.match(serialization, /export function deserialize/)
   assert.match(bindings, /export function binding0/)
   assert.match(bindings, /__k\.get\("active"\)/)
   assert.match(bindings, /__k\.scope\("activeClass"\)/)
   assert.doesNotMatch(bindings, /\beval\b|new Function/)
-  assert.equal(plan.bindings.length, 18)
+  assert.equal(plan.bindings.length, 19)
   assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
 
   const evaluators = await import(`${new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
@@ -259,6 +258,10 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.equal(attributes.get("title"), "Ready")
   patchBinding(node, "title", null)
   assert.equal(attributes.has("title"), false)
+  patchBinding(node, "style", { marginTop: 12, opacity: 0.5, "--gap": 2 })
+  assert.equal(attributes.get("style"), "margin-top:12px;opacity:0.5;--gap:2")
+  patchBinding(node, "style", null)
+  assert.equal(attributes.has("style"), false)
 })
 
 test("compiles conditional DOM branches with nested behavior", async t => {

@@ -1,5 +1,6 @@
 import { browserState, mountDom, registerCommitter, registerMountHook, registerUnmountHook, unmountDom } from "./shared-runtime.js"
 import { deserialize } from "./serialization.js"
+import { serializeStyle } from "./style.js"
 
 const imports = new Map()
 const bindingTargets = new Map()
@@ -8,7 +9,7 @@ const mountedBindings = new WeakSet()
 const mountedConditions = new WeakSet()
 const bindingRegistrations = new WeakMap()
 const conditionRegistrations = new WeakMap()
-const bindingTypes = ["class", "disabled", "value", "checked"]
+const bindingTypes = ["class", "disabled", "value", "checked", "style"]
 const bindingSelector = [...bindingTypes.map(target => `[data-k-bind-${target}]`), "[data-k-bind-attrs]"].join(",")
 
 export function patchBinding(node, target, value) {
@@ -19,6 +20,10 @@ export function patchBinding(node, target, value) {
   } else if (target === "value") {
     const next = value == null ? "" : String(value)
     if (node.value !== next) node.value = next
+  } else if (target === "style") {
+    const style = serializeStyle(value)
+    if (style) node.setAttribute("style", style)
+    else node.removeAttribute("style")
   } else if (target === "class" && (value == null || value === false)) {
     node.removeAttribute("class")
   } else if (target === "class") {

@@ -73,9 +73,11 @@ export async function build({ quiet = false } = {}) {
   }
   if (bindingCount || hasNativeHandlers) await cp(new URL("./serialization.js", import.meta.url), join(assetsDirectory, "kudzu-serialization.js"))
   if (bindingCount) {
+    await cp(new URL("./style.js", import.meta.url), join(assetsDirectory, "kudzu-style.js"))
     const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
+      .replace('"./style.js"', '"./kudzu-style.js"')
     await writeFile(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime)
   }
   if (listCount) {
@@ -388,7 +390,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         }
       }
 
-      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !/^on/i.test(node.name.getText()) && !["style", "key", "ref", "dangerouslysetinnerhtml"].includes(node.name.getText().toLowerCase())) {
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !/^on/i.test(node.name.getText()) && !["key", "ref", "dangerouslysetinnerhtml"].includes(node.name.getText().toLowerCase())) {
         const expression = node.initializer.expression
         const setters = settersForNode(node, settersByFunction)
         const usedStates = referencedStateNames(expression, setters)

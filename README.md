@@ -108,6 +108,7 @@ The handler above increments by two and patches its bound DOM once. Inspect the 
 <input value={name} onInput={event => setName(event.currentTarget.value)} />
 <input type="checkbox" checked={subscribed} onChange={event => setSubscribed(event.currentTarget.checked)} />
 <select value={theme} onChange={event => setTheme(event.currentTarget.value)} />
+<div style={{ opacity: open ? 1 : 0, width: open ? 240 : 0 }} />
 ```
 
 Regular attributes use the same expressions without an allowlist:
@@ -121,7 +122,7 @@ Regular attributes use the same expressions without an allowlist:
 />
 ```
 
-Kudzu compiles derived expressions to external ESM and patches only the bound DOM attribute or property. `aria-*` and `data-*` boolean values serialize as `"true"` or `"false"`; ordinary false values remove the attribute. Reactive `style`, `ref`, and `dangerouslySetInnerHTML` remain unsupported.
+Kudzu compiles derived expressions to external ESM and patches only the bound DOM attribute or property. `aria-*` and `data-*` boolean values serialize as `"true"` or `"false"`; ordinary false values remove the attribute. Object `style` values use React-shaped camelCase properties, add `px` to nonzero dimensional numbers, and preserve unitless properties and CSS custom properties. Reactive `ref` and `dangerouslySetInnerHTML` remain unsupported.
 
 ## Conditional DOM
 
@@ -228,6 +229,7 @@ Supported:
 - Serializable component-local captures
 - Direct text DOM patches
 - Reactive standard, `aria-*`, and `data-*` attributes
+- Reactive object `style` attributes
 - Controlled `value` and `checked` form properties
 - Conditional child `&&` and ternary DOM patches
 - Direct keyed local-state lists

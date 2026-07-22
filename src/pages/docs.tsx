@@ -85,7 +85,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.6</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.7</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -135,7 +135,7 @@ function growTwice() {
 
           <section className="docs-section" id="attributes">
             <div className="docs-heading"><span>05</span><div><p>CORE · NEW</p><h2>Reactive attributes</h2></div></div>
-            <p>State-dependent <code>className</code>, <code>disabled</code>, <code>value</code>, and <code>checked</code> use normal React-shaped expressions. Kudzu compiles each expression into an external ESM evaluator and patches only its DOM target.</p>
+            <p>State-dependent <code>className</code>, <code>style</code>, <code>disabled</code>, <code>value</code>, and <code>checked</code> use normal React-shaped expressions. Kudzu compiles each expression into an external ESM evaluator and patches only its DOM target.</p>
             <CodeBlock code={`const [active, setActive] = useState(false)
 const [loading, setLoading] = useState(false)
 const [name, setName] = useState("Kudzu")
@@ -143,6 +143,7 @@ const [subscribed, setSubscribed] = useState(false)
 
 return <>
   <div className={active ? "active" : "idle"} />
+  <div style={{ opacity: active ? 1 : 0, width: active ? 240 : 0 }} />
   <button disabled={loading}>Save</button>
   <input
     value={name}
@@ -163,6 +164,7 @@ return <>
 </>`} />
             <div className="attribute-grid">
               <div><code>className</code><p>Sets or removes the element's live <code>class</code> attribute.</p></div>
+              <div><code>style</code><p>Serializes camelCase object properties, dimensional numbers, unitless values, and CSS custom properties.</p></div>
               <div><code>disabled</code><p>Toggles the boolean attribute and native disabled property.</p></div>
               <div><code>value</code><p>Updates the live value property for controlled inputs and selects.</p></div>
               <div><code>checked</code><p>Updates the live boolean property for controlled checkboxes and radios.</p></div>

@@ -40,6 +40,7 @@ export default function BindingPage() {
         hidden={!active}
         title={active ? "Active" : "Inactive"}
       />
+      <div style={{ color: active ? "green" : "red", width: active ? 12 : 8, opacity: active ? 1 : 0.5, "--accent": active ? 2 : 1 }}>Styled</div>
     </main>
   )
 }
