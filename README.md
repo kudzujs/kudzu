@@ -77,7 +77,7 @@ export default function HomePage() {
 npm run dev
 ```
 
-Pages live in `src/pages`; `index.tsx` maps to `/`. Production output is written to `dist/`.
+Pages live in `src/pages`; `index.tsx` maps to `/`. `npm run dev` serves locally on `127.0.0.1`, reloads the browser after successful rebuilds, and shows build failures in an error overlay. Set `PORT` to change the default port of `3000`. The development client is injected only by the dev server; production output in `dist/` is unaffected.
 
 ## State Semantics
 

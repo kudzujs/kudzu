@@ -11,6 +11,6 @@
 - `native-runtime.js`: optional runtime for normal synchronous and asynchronous ESM handlers.
 - `*.d.ts`: public TypeScript and JSX declarations.
 
-Static routes receive no browser runtime. Command routes receive `runtime.js`; reactive attributes and conditions add `binding-runtime.js`; keyed lists add `list-runtime.js`; native handlers add `native-runtime.js`. Capability runtimes share state and lifecycle hooks through `shared-runtime.js`. Generated evaluators live under `dist/assets/handlers/`.
+Static routes receive no browser runtime. Command routes receive `runtime.js`; reactive attributes and conditions add `binding-runtime.js`; keyed lists add `list-runtime.js`; native handlers add `native-runtime.js`. Capability runtimes share state and lifecycle hooks through `shared-runtime.js`. Generated evaluators live under `dist/assets/handlers/`. The dev server injects its SSE reload and build-error client into responses only, never into `dist/`.
 
 Page `metadata` can emit description, canonical, favicon, manifest, Open Graph, and Twitter Card tags without a client runtime.

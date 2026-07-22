@@ -1,4 +1,5 @@
 import { createServer } from "node:http"
+import { randomUUID } from "node:crypto"
 import { cp, mkdir, readFile, readdir, rm, stat, watch, writeFile } from "node:fs/promises"
 import { extname, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -10,6 +11,8 @@ const sourceDirectory = join(root, "src")
 const pagesDirectory = join(sourceDirectory, "pages")
 const workDirectory = join(root, ".kudzu")
 const outputDirectory = join(root, "dist")
+
+const devClient = (session, revision) => `<script>(()=>{const show=event=>{let box=document.getElementById("__kudzu_error");if(!box){box=document.createElement("div");box.id="__kudzu_error";box.setAttribute("role","alert");box.setAttribute("aria-live","assertive");box.style.cssText="position:fixed;inset:0;z-index:2147483647;overflow:auto;padding:2rem;background:#200;color:#fff;font:16px/1.5 ui-monospace,monospace";const title=document.createElement("strong"),text=document.createElement("pre");title.textContent="Kudzu build error";text.style.whiteSpace="pre-wrap";box.append(title,text);document.body.append(box)}box.querySelector("pre").textContent=event.data};const events=new EventSource("/__kudzu_reload?session=${session}&revision=${revision}");events.addEventListener("reload",()=>location.reload());events.addEventListener("build-error",show)})()</script>`
 
 export async function build({ quiet = false } = {}) {
   await rm(workDirectory, { recursive: true, force: true })
@@ -108,42 +111,123 @@ function specializeRuntime(source, events, hasStateSeed) {
     .replace("  if (initialState) for (const [id, value] of JSON.parse(initialState)) browserState.set(id, value)\n", "")
 }
 
-export async function dev() {
-  await build()
+export function parseDevPort(value) {
+  if (value === undefined || value.trim() === "") return 3000
+  if (!/^\d+$/.test(value)) throw new Error(`Invalid dev server port: ${value}`)
+  const port = Number(value)
+  if (port > 65535) throw new Error(`Invalid dev server port: ${value}`)
+  return port
+}
+
+export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
+  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid dev server port: ${port}`)
+
+  let buildError
+  let revision = 0
+  const session = randomUUID()
+  try {
+    await build()
+    revision++
+  } catch (error) {
+    buildError = errorText(error)
+    console.error(error)
+  }
+
+  const clients = new Set()
 
   const server = createServer(async (request, response) => {
     try {
-      const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname)
+      const url = new URL(request.url, "http://localhost")
+      const pathname = decodeURIComponent(url.pathname)
+      if (pathname === "/__kudzu_reload") {
+        response.writeHead(200, {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-cache, no-transform",
+          connection: "keep-alive"
+        })
+        response.write(": connected\n\n")
+        clients.add(response)
+        request.on("close", () => clients.delete(response))
+        if (buildError) sendEvent(response, "build-error", buildError)
+        else if (url.searchParams.get("session") !== session || url.searchParams.get("revision") !== String(revision)) sendEvent(response, "reload")
+        return
+      }
+
       const relativePath = pathname.replace(/^\/+/, "")
       let file = resolve(outputDirectory, relativePath)
       if (!file.startsWith(`${outputDirectory}${sep}`) && file !== outputDirectory) throw new Error("Invalid path")
 
       if ((await exists(file)) && (await stat(file)).isDirectory()) file = join(file, "index.html")
       if (!(await exists(file)) && !extname(file)) file = join(file, "index.html")
-      const content = await readFile(file)
-      response.writeHead(200, { "content-type": contentType(file) })
+      const isHtml = extname(file) === ".html"
+      const content = isHtml
+        ? injectDevClient(buildError ? errorPage(buildError) : await readFile(file, "utf8"), session, revision)
+        : await readFile(file)
+      response.writeHead(200, {
+        "content-type": contentType(file),
+        "cache-control": "no-store"
+      })
       response.end(content)
     } catch {
-      response.writeHead(404, { "content-type": "text/plain; charset=utf-8" })
+      response.writeHead(404, { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" })
       response.end("Not found")
     }
   })
 
-  server.listen(3000, () => console.log("Kudzu dev server: http://localhost:3000"))
+  server.listen(port, "127.0.0.1", () => console.log(`Kudzu dev server: http://127.0.0.1:${server.address().port}`))
 
   let timer
-  const watcher = watch(sourceDirectory, { recursive: true })
-  for await (const event of watcher) {
-    clearTimeout(timer)
-    timer = setTimeout(async () => {
+  let rebuilding = false
+  let pending = false
+  let changedFile
+  const rebuild = async () => {
+    if (rebuilding) {
+      pending = true
+      return
+    }
+    rebuilding = true
+    do {
+      pending = false
       try {
         await build({ quiet: true })
-        console.log(`Rebuilt after ${event.filename ?? "source change"}`)
+        buildError = undefined
+        revision++
+        console.log(`Rebuilt after ${changedFile ?? "source change"}`)
+        for (const client of clients) sendEvent(client, "reload")
       } catch (error) {
+        buildError = errorText(error)
         console.error(error)
+        for (const client of clients) sendEvent(client, "build-error", buildError)
       }
-    }, 80)
+    } while (pending)
+    rebuilding = false
   }
+  const watcher = watch(sourceDirectory, { recursive: true })
+  for await (const event of watcher) {
+    changedFile = event.filename
+    clearTimeout(timer)
+    timer = setTimeout(rebuild, 80)
+  }
+}
+
+function injectDevClient(html, session, revision) {
+  return `${html}${devClient(session, revision)}`
+}
+
+function errorPage(error) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Kudzu build error</title></head><body><div id="__kudzu_error" role="alert" aria-live="assertive" style="position:fixed;inset:0;overflow:auto;padding:2rem;background:#200;color:#fff;font:16px/1.5 ui-monospace,monospace"><strong>Kudzu build error</strong><pre style="white-space:pre-wrap">${escapeHtml(error)}</pre></div></body></html>`
+}
+
+function errorText(error) {
+  return String(error?.message ?? error)
+}
+
+function sendEvent(response, event, data = "") {
+  response.write(`event: ${event}\n${String(data).replaceAll("\r", "").split("\n").map(line => `data: ${line}\n`).join("")}\n`)
+}
+
+function escapeHtml(value) {
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 }
 
 async function compile(file) {
