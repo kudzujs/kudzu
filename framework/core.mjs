@@ -187,7 +187,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false }
+  renderContext = { nextState: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -208,8 +208,13 @@ export async function renderPage(component, metadata = {}) {
     const listRuntime = renderContext.hasLists
       ? '<script type="module" src="/assets/kudzu-list.js"></script>'
       : ""
+    const listStates = new Set(renderContext.lists.map(list => list.state))
+    const seededListStates = new Set(renderContext.lists.filter(list => list.seed && !renderContext.textStates.has(list.state) && !renderContext.conditionStates.has(list.state)).map(list => list.state))
     const initialState = renderContext.hasBehaviors
-      ? Object.entries(renderContext.states).filter(([id]) => !renderContext.textStates.has(id) || renderContext.conditionStates.has(id)).map(([id, entry]) => [id, entry.initialValue])
+      ? Object.entries(renderContext.states).filter(([id]) => (!renderContext.textStates.has(id) || renderContext.conditionStates.has(id)) && !seededListStates.has(id)).map(([id, entry]) => {
+        const compact = listStates.has(id) && compactListState(entry.initialValue)
+        return compact ? [id, compact, 1] : [id, entry.initialValue]
+      })
       : []
     const state = initialState.length
       ? ` data-k-state='${escapeJsonAttribute(initialState)}'`
@@ -305,11 +310,14 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
   if (node?.[listMarker]) return renderList(node, namespace, selectValue)
   if (node?.[listFieldMarker]) {
-    return `<template data-k-list-text="${escapeAttribute(node.field)}"></template>${escapeHtml(node.value ?? "")}<template data-k-list-text-end></template>`
+    if (renderContext.listTemplate) renderContext.listFields?.add(node.field)
+    const marker = renderContext.listTemplate ? ` data-k-list-text="${escapeAttribute(node.field)}"` : ""
+    return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-text-end></template>`
   }
   if (node?.[listExpressionMarker]) {
     const descriptor = { module: node.module, handler: node.handler }
-    return `<template data-k-list-expression='${escapeJsonAttribute(descriptor)}'></template>${escapeHtml(node.value ?? "")}<template data-k-list-expression-end></template>`
+    const marker = renderContext.listTemplate ? ` data-k-list-expression='${escapeJsonAttribute(descriptor)}'` : ""
+    return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-expression-end></template>`
   }
   if (!node || typeof node !== "object" || !("type" in node)) {
     throw new Error(`Cannot render ${String(node)}`)
@@ -336,9 +344,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (renderContext.listRoot) {
     const root = renderContext.listRoot
     renderContext.listRoot = undefined
-    attributes += root.template
-      ? ` data-k-list-root="${root.id}"`
-      : ` data-k-list-item='${escapeJsonAttribute([root.id, root.key])}'`
+    if (root.template) attributes += ` data-k-list-root="${root.id}"`
   }
 
   for (const [rawName, value] of Object.entries(props)) {
@@ -412,10 +418,13 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
 
   if (attributeBindings.length) attributes += ` data-k-bind-attrs='${escapeJsonAttribute(attributeBindings)}'`
-  if (listAttributes.length) attributes += ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
-  if (listExpressionAttributes.length) attributes += ` data-k-list-expression-attrs='${escapeJsonAttribute(listExpressionAttributes)}'`
-  if (listEvents.length) attributes += ` data-k-list-events='${escapeJsonAttribute(listEvents)}'`
-  if (directListText) attributes += ` data-k-list-text="${escapeAttribute(directListText.field)}"`
+  if (renderContext.listTemplate && listAttributes.length) attributes += ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
+  if (renderContext.listTemplate && listExpressionAttributes.length) attributes += ` data-k-list-expression-attrs='${escapeJsonAttribute(listExpressionAttributes)}'`
+  if (renderContext.listTemplate && listEvents.length) attributes += ` data-k-list-events='${escapeJsonAttribute(listEvents)}'`
+  if (renderContext.listTemplate && directListText) {
+    renderContext.listFields?.add(directListText.field)
+    attributes += ` data-k-list-text="${escapeAttribute(directListText.field)}"`
+  }
 
   if (tag === "option" && selectValue !== noSelectValue && String(optionValue(props)) === (selectValue == null ? "" : String(selectValue))) attributes += " selected"
 
@@ -428,12 +437,17 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 async function renderList(node, namespace, selectValue) {
   if (namespace) throw new Error(`Reactive keyed lists are not supported inside ${namespace}`)
   const id = `l${renderContext.nextList++}`
-  const descriptor = { id, state: node.items.id, key: node.keyField }
+  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.items.value.map(item => item[node.keyField]) }
   renderContext.listDepth++
+  const previousListFields = renderContext.listFields
   try {
     renderContext.listTemplate = true
+    renderContext.listFields = new Set([node.keyField])
     renderContext.listRoot = { id, template: true }
     const template = await renderNode(node.render({}), namespace, selectValue)
+    if (template.includes("data-k-native-")) descriptor.mount = true
+    const seed = listSeed(node.items.value, renderContext.listFields)
+    if (seed) descriptor.seed = seed
     let current = ""
     renderContext.listTemplate = false
     for (const item of node.items.value) {
@@ -447,6 +461,7 @@ async function renderList(node, namespace, selectValue) {
   } finally {
     renderContext.listRoot = undefined
     renderContext.listTemplate = false
+    renderContext.listFields = previousListFields
     renderContext.listDepth--
   }
 }
@@ -491,6 +506,24 @@ function escapeAttribute(value) {
 
 function escapeJsonAttribute(value) {
   return JSON.stringify(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("'", "&#39;")
+}
+
+function compactListState(value) {
+  if (!Array.isArray(value) || !value.length) return undefined
+  const fields = Object.keys(value[0])
+  if (!fields.length || !value.every(item => Object.keys(item).length === fields.length && fields.every(field => Object.hasOwn(item, field)))) return undefined
+  return [fields, value.map(item => fields.map(field => item[field]))]
+}
+
+function listSeed(items, fields) {
+  if (!items.length || !items.every(item => Object.keys(item).length === fields.size && Object.keys(item).every(field => fields.has(field)))) return undefined
+  const seed = {}
+  for (const field of fields) {
+    const types = new Set(items.map(item => item[field] === null ? "null" : typeof item[field]))
+    if (types.size !== 1 || !["string", "number", "boolean", "null"].includes([...types][0])) return undefined
+    seed[field] = [...types][0]
+  }
+  return seed
 }
 
 function toKebabCase(value) {

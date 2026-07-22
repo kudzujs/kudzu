@@ -116,7 +116,7 @@ function specializeRuntime(source, events, hasStateSeed) {
   if (hasStateSeed) return specialized
   return specialized
     .replace("  const initialState = document.body.dataset.kState\n", "")
-    .replace("  if (initialState) for (const [id, value] of JSON.parse(initialState)) browserState.set(id, value)\n", "")
+    .replace("  if (initialState) for (const [id, value, compact] of JSON.parse(initialState)) browserState.set(id, compact ? value[1].map(row => Object.fromEntries(value[0].map((field, index) => [field, row[index]]))) : value)\n", "")
 }
 
 export function parseDevPort(value) {

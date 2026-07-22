@@ -1,4 +1,5 @@
 import { useState } from "@kudzujs/core"
+import { CodeBlock } from "../components/CodeBlock"
 
 export const metadata = {
   title: "Kudzu Docs — HTML-first TSX",
@@ -35,6 +36,26 @@ function BenchmarkTable({ columns, rows }: { columns: string[]; rows: string[][]
 
 export default function DocsPage() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [demoTrees, setDemoTrees] = useState([
+    { id: 1, name: "Oak" },
+    { id: 2, name: "Pine" }
+  ])
+
+  function createTrees() {
+    setDemoTrees([
+      { id: 1, name: "Oak" },
+      { id: 2, name: "Pine" }
+    ])
+  }
+
+  function addTree() {
+    const id = Math.max(0, ...demoTrees.map(item => item.id)) + 1
+    setDemoTrees([...demoTrees, { id, name: `Vine ${id}` }])
+  }
+
+  function reverseTrees() {
+    setDemoTrees([...demoTrees].reverse())
+  }
 
   return (
     <>
@@ -64,7 +85,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.5</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.6</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -72,9 +93,9 @@ export default function DocsPage() {
           <section className="docs-section" id="install">
             <div className="docs-heading"><span>01</span><div><p>GETTING STARTED</p><h2>Installation</h2></div></div>
             <p>Create a project and start the development server:</p>
-            <pre><code>{`npm create kudzu@latest my-app
+            <CodeBlock language="shell" code={`npm create kudzu@latest my-app
 cd my-app
-npm run dev`}</code></pre>
+npm run dev`} />
             <p>To add Kudzu to an existing project, install <code>@kudzujs/core</code> and configure TypeScript with <code>jsxImportSource: "@kudzujs/core"</code>.</p>
           </section>
 
@@ -91,31 +112,31 @@ npm run dev`}</code></pre>
           <section className="docs-section" id="components">
             <div className="docs-heading"><span>03</span><div><p>CORE</p><h2>Components</h2></div></div>
             <p>Use function components, props, children, and fragments. Components run at build time and do not remain as a browser-side tree.</p>
-            <pre><code>{`function Greeting({ name }: { name: string }) {
+            <CodeBlock code={`function Greeting({ name }: { name: string }) {
   return <h1>Hello {name}</h1>
 }
 
 export default function Page() {
   return <Greeting name="Kudzu" />
-}`}</code></pre>
+}`} />
           </section>
 
           <section className="docs-section" id="state">
             <div className="docs-heading"><span>04</span><div><p>CORE</p><h2>State semantics</h2></div></div>
             <p>Declare local primitive state with the same syntax as React. Setters update logical state immediately and DOM writes batch at the end of the synchronous turn.</p>
-            <pre><code>{`const [count, setCount] = useState(0)
+            <CodeBlock code={`const [count, setCount] = useState(0)
 
 function growTwice() {
   setCount(count + 1)
   setCount(count + 1)
-}`}</code></pre>
+}`} />
             <div className="docs-callout"><strong>Result</strong><span>Logical state increases by 2. Bound DOM nodes patch once.</span></div>
           </section>
 
           <section className="docs-section" id="attributes">
             <div className="docs-heading"><span>05</span><div><p>CORE · NEW</p><h2>Reactive attributes</h2></div></div>
             <p>State-dependent <code>className</code>, <code>disabled</code>, <code>value</code>, and <code>checked</code> use normal React-shaped expressions. Kudzu compiles each expression into an external ESM evaluator and patches only its DOM target.</p>
-            <pre><code>{`const [active, setActive] = useState(false)
+            <CodeBlock code={`const [active, setActive] = useState(false)
 const [loading, setLoading] = useState(false)
 const [name, setName] = useState("Kudzu")
 const [subscribed, setSubscribed] = useState(false)
@@ -139,7 +160,7 @@ return <>
     hidden={!active}
     title={active ? "Active" : "Inactive"}
   />
-</>`}</code></pre>
+</>`} />
             <div className="attribute-grid">
               <div><code>className</code><p>Sets or removes the element's live <code>class</code> attribute.</p></div>
               <div><code>disabled</code><p>Toggles the boolean attribute and native disabled property.</p></div>
@@ -152,7 +173,7 @@ return <>
           <section className="docs-section" id="conditionals">
             <div className="docs-heading"><span>06</span><div><p>CORE · NEW</p><h2>Conditional DOM</h2></div></div>
             <p>Child <code>&amp;&amp;</code> and ternary expressions compile to bounded DOM ranges. Kudzu inserts or removes only that range and does not rerun a browser component tree.</p>
-            <pre><code>{`function MenuBar() {
+            <CodeBlock code={`function MenuBar() {
   return <nav>
     <a href="/docs">Docs</a>
     <a href="/about">About</a>
@@ -166,7 +187,7 @@ return <>
     ? <button onClick={() => setOpen(false)}>Close menu</button>
     : <button onClick={() => setOpen(true)}>Open menu</button>}
   {open && <MenuBar />}
-</>`}</code></pre>
+</>`} />
             <div className="conditional-demo">
               <div><span>LIVE EXAMPLE</span><p>{menuOpen ? "Menu mounted" : "Menu dormant"}</p></div>
               {menuOpen
@@ -181,25 +202,54 @@ return <>
           <section className="docs-section" id="lists">
             <div className="docs-heading"><span>07</span><div><p>CORE · NEW</p><h2>Keyed lists</h2></div></div>
             <p>Map local array state directly to one keyed intrinsic element. Initial items are static HTML; browser updates add, remove, update, and move existing keyed elements without a VDOM or remount.</p>
-            <pre><code>{`const [items, setItems] = useState([
-  { id: 1, name: "Oak", done: false },
-  { id: 2, name: "Pine", done: true }
+            <CodeBlock code={`type Tree = { id: number; name: string }
+
+const [items, setItems] = useState<Tree[]>([
+  { id: 1, name: "Oak" },
+  { id: 2, name: "Pine" }
 ])
 
-return <ul>
-  {items.map(item =>
-    <li
-      key={item.id}
-      className={item.done ? "done" : "active"}
-      aria-label={\`\${item.name} item\`}
-    >
-      {item.name.toUpperCase()}
+function create() {
+  setItems([{ id: 1, name: "Oak" }, { id: 2, name: "Pine" }])
+}
+
+function add() {
+  const id = Math.max(0, ...items.map(item => item.id)) + 1
+  setItems([...items, { id, name: \`Vine \${id}\` }])
+}
+
+function reverse() {
+  setItems([...items].reverse())
+}
+
+return <>
+  <button onClick={create}>Create</button>
+  <button onClick={add}>Add</button>
+  <button onClick={reverse}>Reverse</button>
+  <ul>
+    {items.map(item => <li key={item.id}>
+      <span>{item.name}</span>
       <button onClick={() =>
         setItems(items.filter(entry => entry.id !== item.id))
       }>Remove</button>
-    </li>
-  )}
-</ul>`}</code></pre>
+    </li>)}
+  </ul>
+</>`} />
+            <div className="list-demo">
+              <div className="list-demo-actions">
+                <span>LIVE KEYED LIST</span>
+                <button onClick={createTrees}>Create</button>
+                <button onClick={addTree}>Add</button>
+                <button onClick={reverseTrees}>Reverse</button>
+              </div>
+              <ul>
+                {demoTrees.map(item => <li key={item.id} data-id={item.id}>
+                  <span>{item.name}</span>
+                  <code>#{item.id}</code>
+                  <button onClick={() => setDemoTrees(demoTrees.filter(entry => entry.id !== item.id))}>Remove</button>
+                </li>)}
+              </ul>
+            </div>
             <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
             <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. Direct item-property reads use compact markers. Derived item text and normal attributes compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested conditions or lists, item spreads, component tags, fragments, and reactive <code>style</code>, <code>ref</code>, or <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
           </section>
@@ -208,11 +258,11 @@ return <ul>
             <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
             <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
             <p>Native handlers use direct DOM listeners with normal <code>currentTarget</code>, bubbling, default-action, and propagation semantics. Handler modules load before listener registration, so <code>preventDefault()</code>, <code>stopPropagation()</code>, and <code>stopImmediatePropagation()</code> work synchronously as expected.</p>
-            <pre><code>{`async function loadStatus() {
+            <CodeBlock code={`async function loadStatus() {
   setLoading(true)
   const response = await fetch("/api/status")
   setLoading(false)
-}`}</code></pre>
+}`} />
           </section>
 
           <section className="docs-section" id="captures">
@@ -226,7 +276,7 @@ return <ul>
 
           <section className="docs-section" id="build">
             <div className="docs-heading"><span>10</span><div><p>REFERENCE</p><h2>Build output</h2></div></div>
-            <pre><code>{`npm run build
+            <CodeBlock language="text" code={`npm run build
 
 dist/
 ├── index.html
@@ -238,7 +288,7 @@ dist/
     ├── kudzu-list.js (when used)
     ├── kudzu-native.js (when used)
     ├── kudzu-serialization.js (when used)
-    └── handlers/`}</code></pre>
+    └── handlers/`} />
             <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use.</p>
           </section>
 
@@ -275,13 +325,13 @@ dist/
             <BenchmarkTable
               columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
               rows={[
-                ["Astro", "324 B", "43.6 KB", "867 ms", "3.5 ms", "25.4 ms", "10.7 ms", "18.0 ms", "57.6 ms"],
-                ["Kudzu", "5.7 KB", "180.8 KB", "417 ms", "8.3 ms", "28.5 ms", "10.2 ms", "20.5 ms", "67.5 ms"],
-                ["Vue CSR", "24.3 KB", "61.3 KB", "771 ms", "9.7 ms", "31.3 ms", "9.4 ms", "18.1 ms", "68.5 ms"],
-                ["React CSR", "59.3 KB", "189.4 KB", "1024 ms", "8.7 ms", "32.3 ms", "12.4 ms", "18.1 ms", "71.5 ms"],
-                ["Next.js", "182.2 KB", "695.2 KB", "3049 ms", "6.7 ms", "35.0 ms", "16.3 ms", "19.4 ms", "77.4 ms"],
-                ["Qwik CSR", "22.2 KB", "64.1 KB", "602 ms", "14.5 ms", "19.9 ms", "31.3 ms", "18.9 ms", "84.6 ms"],
-                ["Svelte CSR", "12.9 KB", "33.1 KB", "859 ms", "5.2 ms", "65.4 ms", "10.7 ms", "19.9 ms", "101.2 ms"]
+                ["Astro", "324 B", "43.6 KB", "852 ms", "3.5 ms", "25.8 ms", "15.8 ms", "17.9 ms", "63.0 ms"],
+                ["Kudzu", "6.3 KB", "69.3 KB", "406 ms", "6.0 ms", "28.5 ms", "14.7 ms", "19.1 ms", "68.3 ms"],
+                ["Next.js", "182.2 KB", "695.2 KB", "2950 ms", "6.8 ms", "34.1 ms", "9.0 ms", "19.3 ms", "69.2 ms"],
+                ["React CSR", "59.3 KB", "189.4 KB", "1028 ms", "9.5 ms", "35.3 ms", "10.1 ms", "17.8 ms", "72.7 ms"],
+                ["Vue CSR", "24.3 KB", "61.3 KB", "759 ms", "10.2 ms", "33.9 ms", "9.3 ms", "19.7 ms", "73.1 ms"],
+                ["Qwik CSR", "22.2 KB", "64.1 KB", "604 ms", "15.6 ms", "20.0 ms", "30.4 ms", "18.1 ms", "84.1 ms"],
+                ["Svelte CSR", "12.9 KB", "33.1 KB", "845 ms", "5.4 ms", "64.4 ms", "11.2 ms", "19.1 ms", "100.1 ms"]
               ]}
             />
             <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>

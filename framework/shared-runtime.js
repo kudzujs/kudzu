@@ -55,7 +55,7 @@ export function unmountDom(root) {
 
 if (typeof document !== "undefined") {
   const initialState = document.body.dataset.kState
-  if (initialState) for (const [id, value] of JSON.parse(initialState)) browserState.set(id, value)
+  if (initialState) for (const [id, value, compact] of JSON.parse(initialState)) browserState.set(id, compact ? value[1].map(row => Object.fromEntries(value[0].map((field, index) => [field, row[index]]))) : value)
   mountText(document)
 
   const eventNames = ["click", "input", "change"]

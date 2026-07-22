@@ -36,11 +36,14 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html, /data-k-state=/)
   assert.match(docs, /data-k-if=/)
   assert.match(docs, /kudzu-binding\.js/)
-  assert.doesNotMatch(docs, /<script[^>]+kudzu-list\.js/)
+  assert.match(docs, /<script[^>]+kudzu-list\.js/)
+  assert.match(docs, /LIVE KEYED LIST/)
   assert.match(docs, /Open menu/)
   assert.equal(home.states[0].name, "count")
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runDocsListBrowserTest(chrome)
 })
 
 test("applies setters immediately in source order and commits once", () => {
@@ -318,8 +321,9 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(component, /__kList\(items, "id"/)
   assert.match(component, /__kListExpression/)
   assert.match(component, /__kListItem/)
-  assert.match(html, /<li data-k-list-item=.*data-id="1".*>.*Oak/)
-  assert.match(html, /<tr data-k-list-item=.*data-row="2"/)
+  assert.match(html, /<li data-id="1".*>.*Oak/)
+  assert.match(html, /<tr data-row="2"/)
+  assert.doesNotMatch(html, /data-k-list-item/)
   assert.match(html, /data-k-list-text="name"/)
   assert.match(html, /data-k-list-attrs=/)
   assert.match(html, /class="active" aria-label="Oak item"/)
@@ -502,6 +506,56 @@ test("rejects every unsupported native capture shape", () => {
     assert.throws(() => nativeBehavior("module", "handler", [], [["capture", value]]), new RegExp(`Native capture "capture" is not serializable: ${reason}`))
   }
 })
+
+async function runDocsListBrowserTest(chrome) {
+  const output = new URL("../dist/", import.meta.url)
+  const htmlUrl = new URL("docs/index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/docs-test.js"></script></body>'))
+  await writeFile(new URL("docs-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  await wait()
+  const items = () => [...document.querySelectorAll(".list-demo li")]
+  const action = label => [...document.querySelectorAll(".list-demo-actions button")].find(button => button.textContent === label)
+  action("Add").click()
+  await wait()
+  if (items().map(item => item.dataset.id).join(",") !== "1,2,3" || !items()[2].textContent.includes("Vine 3")) throw new Error("add")
+  action("Reverse").click()
+  await wait()
+  if (items().map(item => item.dataset.id).join(",") !== "3,2,1") throw new Error("reverse")
+  items()[0].querySelector("button").click()
+  await wait()
+  if (items().map(item => item.dataset.id).join(",") !== "2,1") throw new Error("remove")
+  action("Create").click()
+  await wait()
+  if (items().map(item => item.dataset.id).join(",") !== "1,2" || items().map(item => item.querySelector("span").textContent).join(",") !== "Oak,Pine") throw new Error("create")
+  document.body.dataset.docsListTest = "pass"
+} catch (error) {
+  document.body.dataset.docsListTest = "fail-" + error.message
+}
+`)
+  const port = 43000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url === "/docs/" ? "docs/index.html" : request.url.slice(1)
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/docs/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-docs-list-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
 
 async function runConditionalBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)

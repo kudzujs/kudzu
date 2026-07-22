@@ -28,16 +28,22 @@ function mountLists(root) {
     if (mountedLists.has(start)) continue
     mountedLists.add(start)
     const descriptor = JSON.parse(start.dataset.kList)
-    const roots = [...start.ownerDocument.querySelectorAll("[data-k-list-item]")].filter(node => JSON.parse(node.dataset.kListItem)[0] === descriptor.id)
+    const end = findEnd(start, descriptor.id)
+    const roots = listRoots(start, end)
+    const templateRoot = start.content.firstElementChild
+    const parts = listItemPartPlan(templateRoot)
+    for (const root of roots) mapListItemParts(parts, root)
+    if (descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
     const items = browserState.get(descriptor.state)
-    for (const root of roots) listItemParts(root)
     const list = {
       start,
       descriptor,
-      roots: new Map(roots.map(node => [keyToken(JSON.parse(node.dataset.kListItem)[1]), node])),
-      values: new Map(items.map(item => [keyToken(item[descriptor.key]), JSON.stringify(item)])),
+      parts,
+      seedFields: descriptor.seed && Object.keys(descriptor.seed),
+      roots: new Map(roots.map((node, index) => [keyToken(descriptor.keys[index]), node])),
+      values: new Map(),
       container: roots[0]?.parentNode,
-      boundary: roots.length ? roots.at(-1).nextSibling : findEnd(start, descriptor.id)
+      boundary: end
     }
     register(listTargets, descriptor.state, list)
     listRegistrations.set(start, { state: descriptor.state, list })
@@ -70,11 +76,12 @@ function updateList(list) {
     const key = item?.[list.descriptor.key]
     if (!validListKey(key)) throw new Error(`Keyed list key "${list.descriptor.key}" must be a string or finite number`)
     assertListItem(item)
-    assertListValue(item, seen, true)
+    const seededValue = list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed)
+    if (seededValue === undefined) assertListValue(item, seen, true)
     const token = keyToken(key)
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
     keys.add(token)
-    entries.push({ item, key, token, value: JSON.stringify(item) })
+    entries.push({ item, key, token, value: seededValue ?? JSON.stringify(item) })
   }
   const next = []
   const values = new Map()
@@ -88,7 +95,7 @@ function updateList(list) {
       if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
       if (!node) throw new Error("Keyed list template has no root element")
       node.removeAttribute("data-k-list-root")
-      node.dataset.kListItem = JSON.stringify([list.descriptor.id, key])
+      mapListItemParts(list.parts, node)
       fillListItem(node, item)
       additions.append(node)
       added = true
@@ -98,13 +105,18 @@ function updateList(list) {
     next.push([token, node])
     values.set(token, value)
   }
+  const removals = parent.ownerDocument.createDocumentFragment()
   for (const [token, node] of list.roots) {
     if (keys.has(token)) continue
-    unmountDom(node)
-    node.remove()
+    if (list.descriptor.mount) {
+      unmountDom(node)
+      node.remove()
+    } else {
+      removals.append(node)
+    }
   }
   if (added) {
-    mountDom(additions)
+    if (list.descriptor.mount) mountDom(additions)
     parent.insertBefore(additions, list.boundary)
     list.container ??= parent
   }
@@ -135,8 +147,8 @@ function fillListItem(root, item) {
   const revision = (revisions.get(root) ?? 0) + 1
   revisions.set(root, revision)
   const parts = listItemParts(root)
-  for (const node of parts.directTexts) {
-    const text = item?.[node.dataset.kListText]
+  for (const [node, field] of parts.directTexts) {
+    const text = item?.[field]
     const value = text == null ? "" : String(text)
     const current = node.firstChild
     if (current?.nodeType === Node.TEXT_NODE && !current.nextSibling) {
@@ -145,14 +157,14 @@ function fillListItem(root, item) {
       node.textContent = value
     }
   }
-  for (const marker of parts.texts) {
-    patchListText(marker, "template[data-k-list-text-end]", item?.[marker.dataset.kListText])
+  for (const [marker, field] of parts.texts) {
+    patchListText(marker, "template[data-k-list-text-end]", item?.[field])
   }
   for (const [node, attributes] of parts.attributes) {
     for (const [target, field] of attributes) patchBinding(node, target, item?.[field])
   }
-  for (const node of parts.events) {
-    for (const [event, native] of JSON.parse(node.dataset.kListEvents)) {
+  for (const [node, events] of parts.events) {
+    for (const [event, native] of JSON.parse(events)) {
       native.scope = Object.fromEntries(Object.entries(native.scope).map(([name, value]) => [name, value?.type === "list-item" ? serializeItem(item) : value]))
       node.dataset[`kNative${capitalize(event)}`] = JSON.stringify(native)
     }
@@ -176,14 +188,69 @@ function listItemParts(root) {
   if (parts) return parts
   parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [] }
   for (const node of matching(root, itemPartsSelector)) {
-    if (node.hasAttribute("data-k-list-text")) (node.tagName === "TEMPLATE" ? parts.texts : parts.directTexts).push(node)
+    if (node.hasAttribute("data-k-list-text")) (node.tagName === "TEMPLATE" ? parts.texts : parts.directTexts).push([node, node.dataset.kListText])
     if (node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, JSON.parse(node.dataset.kListAttrs)])
-    if (node.hasAttribute("data-k-list-events")) parts.events.push(node)
+    if (node.hasAttribute("data-k-list-events")) parts.events.push([node, node.dataset.kListEvents])
     if (node.hasAttribute("data-k-list-expression")) parts.expressions.push([node, JSON.parse(node.dataset.kListExpression)])
     if (node.hasAttribute("data-k-list-expression-attrs")) parts.expressionAttributes.push([node, JSON.parse(node.dataset.kListExpressionAttrs)])
   }
   itemParts.set(root, parts)
   return parts
+}
+
+function listItemPartPlan(template) {
+  const source = [template, ...template.querySelectorAll("*")]
+  const indexes = new Map(source.map((node, index) => [node, index]))
+  const parts = listItemParts(template)
+  return {
+    directTexts: parts.directTexts.map(([node, field]) => [indexes.get(node), field]),
+    texts: parts.texts.map(([node, field]) => [indexes.get(node), field]),
+    attributes: parts.attributes.map(([node, attributes]) => [indexes.get(node), attributes]),
+    events: parts.events.map(([node, events]) => [indexes.get(node), events]),
+    expressions: parts.expressions.map(([node, descriptor]) => [indexes.get(node), descriptor]),
+    expressionAttributes: parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes])
+  }
+}
+
+function mapListItemParts(parts, root) {
+  const target = [root, ...root.querySelectorAll("*")]
+  itemParts.set(root, {
+    directTexts: parts.directTexts.map(([index, field]) => [target[index], field]),
+    texts: parts.texts.map(([index, field]) => [target[index], field]),
+    attributes: parts.attributes.map(([index, attributes]) => [target[index], attributes]),
+    events: parts.events.map(([index, events]) => [target[index], events]),
+    expressions: parts.expressions.map(([index, descriptor]) => [target[index], descriptor]),
+    expressionAttributes: parts.expressionAttributes.map(([index, attributes]) => [target[index], attributes])
+  })
+}
+
+function listRoots(start, end) {
+  const roots = []
+  for (let node = start.nextSibling; node && node !== end; node = node.nextSibling) {
+    if (node.nodeType === Node.ELEMENT_NODE) roots.push(node)
+  }
+  return roots
+}
+
+function seedListItem(root, descriptor, index) {
+  const item = { [descriptor.key]: descriptor.keys[index] }
+  const parts = itemParts.get(root)
+  for (const [node, field] of parts.directTexts) item[field] = seedValue(node.textContent, descriptor.seed[field])
+  for (const [marker, field] of parts.texts) item[field] = seedValue(rangeText(marker, "template[data-k-list-text-end]"), descriptor.seed[field])
+  return item
+}
+
+function seedValue(value, type) {
+  if (type === "number") return Number(value)
+  if (type === "boolean") return value === "true"
+  if (type === "null") return null
+  return value
+}
+
+function rangeText(marker, endSelector) {
+  let value = ""
+  for (let node = marker.nextSibling; node && !(node.nodeType === Node.ELEMENT_NODE && node.matches(endSelector)); node = node.nextSibling) value += node.textContent
+  return value
 }
 
 function patchListText(marker, endSelector, value) {
@@ -252,6 +319,22 @@ function validListKey(key) {
 function assertListItem(item) {
   const prototype = item && typeof item === "object" ? Object.getPrototypeOf(item) : undefined
   if (!item || Array.isArray(item) || prototype !== Object.prototype) throw new Error("Keyed list items must be ordinary plain objects")
+}
+
+function seededListValue(item, fields, seed) {
+  const keys = Reflect.ownKeys(item)
+  if (keys.length !== fields.length || keys.some(key => typeof key !== "string" || !fields.includes(key))) return undefined
+  const values = []
+  for (const field of fields) {
+    const descriptor = Object.getOwnPropertyDescriptor(item, field)
+    if (!descriptor.enumerable) throw new Error("Keyed list items must not contain non-enumerable properties")
+    if (!("value" in descriptor)) throw new Error("Keyed list items must not contain accessors")
+    const value = descriptor.value
+    const type = value === null ? "null" : typeof value
+    if (type !== seed[field] || type === "number" && (!Number.isFinite(value) || Object.is(value, -0))) return undefined
+    values.push(value)
+  }
+  return JSON.stringify(values)
 }
 
 function assertListValue(value, seen, root = false) {

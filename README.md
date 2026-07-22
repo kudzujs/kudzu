@@ -279,15 +279,15 @@ The list starts with 1,000 keyed items, then updates every label, reverses the o
 
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro | Yes | **324 B** | **43.6 KB** | 867 ms | **3.5 ms** | **25.4 ms** | 10.7 ms | **18.0 ms** | **57.6 ms** |
-| Kudzu | Yes | 5.7 KB | 180.8 KB | **417 ms** | 8.3 ms | 28.5 ms | **10.2 ms** | 20.5 ms | **67.5 ms** |
-| Vue CSR | No | 24.3 KB | 61.3 KB | 771 ms | 9.7 ms | 31.3 ms | 9.4 ms | 18.1 ms | 68.5 ms |
-| React CSR | No | 59.3 KB | 189.4 KB | 1024 ms | 8.7 ms | 32.3 ms | 12.4 ms | 18.1 ms | 71.5 ms |
-| Next.js | Yes | 182.2 KB | 695.2 KB | 3049 ms | 6.7 ms | 35.0 ms | 16.3 ms | 19.4 ms | 77.4 ms |
-| Qwik CSR | No | 22.2 KB | 64.1 KB | 602 ms | 14.5 ms | 19.9 ms | 31.3 ms | 18.9 ms | 84.6 ms |
-| Svelte CSR | No | 12.9 KB | 33.1 KB | 859 ms | 5.2 ms | 65.4 ms | 10.7 ms | 19.9 ms | 101.2 ms |
+| Astro | Yes | **324 B** | **43.6 KB** | 852 ms | **3.5 ms** | 25.8 ms | 15.8 ms | **17.9 ms** | **63.0 ms** |
+| Kudzu | Yes | 6.3 KB | 69.3 KB | **406 ms** | 6.0 ms | 28.5 ms | 14.7 ms | 19.1 ms | **68.3 ms** |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 2950 ms | 6.8 ms | 34.1 ms | **9.0 ms** | 19.3 ms | 69.2 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1028 ms | 9.5 ms | 35.3 ms | 10.1 ms | **17.8 ms** | 72.7 ms |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 759 ms | 10.2 ms | 33.9 ms | 9.3 ms | 19.7 ms | 73.1 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 604 ms | 15.6 ms | **20.0 ms** | 30.4 ms | 18.1 ms | 84.1 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 845 ms | 5.4 ms | 64.4 ms | 11.2 ms | 19.1 ms | 100.1 ms |
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 67.5 ms, ahead of the React fixture's 71.5 ms and within 9.9 ms of Astro across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 68.3 ms, ahead of the React fixture's 72.7 ms and within 5.3 ms of Astro across all four operations.
 
 Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 
