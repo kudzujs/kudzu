@@ -1,4 +1,5 @@
 import { useState } from "@kudzujs/core"
+import { CodeBlock } from "../components/CodeBlock"
 
 export const metadata = {
   title: "Kudzu — HTML-first TSX framework",
@@ -45,7 +46,7 @@ export default function HomePage() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.4.7</span> HTML-FIRST TSX FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.4.8</span> HTML-FIRST TSX FRAMEWORK</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">
@@ -59,18 +60,15 @@ export default function HomePage() {
               <span className="window-dots">● ● ●</span>
               <span>counter.tsx</span>
             </div>
-            <div className="code-body">
-              <div><i>01</i><code><b>import</b> &#123; useState &#125; <b>from</b> <q>@kudzujs/core</q></code></div>
-              <div><i>02</i><code></code></div>
-              <div><i>03</i><code><b>export default function</b> Counter() &#123;</code></div>
-              <div><i>04</i><code>  <b>const</b> [count, setCount] = useState(0)</code></div>
-              <div><i>05</i><code></code></div>
-              <div><i>06</i><code>  <b>return</b> &lt;button onClick=&#123;() =&gt;</code></div>
-              <div><i>07</i><code>    setCount(count + 1)&#125;&gt;</code></div>
-              <div><i>08</i><code>    Grown &#123;count&#125; times</code></div>
-              <div><i>09</i><code>  &lt;/button&gt;</code></div>
-              <div><i>10</i><code>&#125;</code></div>
-            </div>
+            <div className="code-body"><CodeBlock code={`import { useState } from "@kudzujs/core"
+
+export default function Counter() {
+  const [count, setCount] = useState(0)
+
+  return <button onClick={() => setCount(count + 1)}>
+    Grown {count} times
+  </button>
+}`} /></div>
             <div className="compiled-note"><span>COMPILED OUTPUT</span><strong>HTML + needed JS</strong></div>
           </div>
         </section>

@@ -3,8 +3,8 @@ import { existsSync } from "node:fs"
 import { readFile, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import test from "node:test"
-import { build } from "../framework/build.mjs"
-import { behavior, conditional, list, nativeBehavior, renderPage, useState } from "../framework/core.mjs"
+import { build, specializeRuntime } from "../framework/build.mjs"
+import { behavior, conditional, list, nativeBehavior, renderPage, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -24,11 +24,13 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /rel="icon" href="\/favicon\.ico"/)
   assert.match(html, /data-k-on-click/)
   assert.match(html, /data-k-text="s0"/)
+  assert.match(html, /hero-code.*tok-keyword/s)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
   assert.match(component, /__kBehavior\(\[\["add", count, 1\]\]\)/)
-  assert.match(runtime, /textContent = value/)
-  assert.match(runtime, /eventNames = \["click"\]/)
+  assert.match(runtime, /textContent=/)
+  assert.match(runtime, /\["click"\]/)
+  assert.equal(runtime.trim().split("\n").length, 1)
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
   assert.doesNotMatch([html, docs, runtime].join("\n"), /sessionStorage|__kudzu_state|snapshotState|restoreState|__kudzu_dev/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
@@ -44,6 +46,13 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runDocsListBrowserTest(chrome)
+})
+
+test("removes unused initial state bootstrapping from both runtimes", async () => {
+  for (const file of ["runtime.js", "shared-runtime.js"]) {
+    const source = await readFile(new URL(`../framework/${file}`, import.meta.url), "utf8")
+    assert.doesNotMatch(specializeRuntime(source, [], false), /initialState/)
+  }
 })
 
 test("applies setters immediately in source order and commits once", () => {
@@ -101,6 +110,20 @@ test("rejects unsafe or reserved reactive attributes", async () => {
     const [style] = useState("color:red")
     return jsx("div", { style })
   }, { styles: false }), /style must be an object/)
+})
+
+test("renders object refs and rejects unsupported ref shapes", async () => {
+  const result = await renderPage(() => {
+    const inputRef = useRef(null)
+    return jsx("input", { ref: inputRef })
+  }, { styles: false })
+  assert.match(result.html, /<input data-k-ref="r0">/)
+  await assert.rejects(renderPage(() => jsx("input", { ref: { current: null } }), { styles: false }), /ref must be created by useRef/)
+  await assert.rejects(renderPage(() => {
+    const inputRef = useRef(null)
+    const [items] = useState([{ id: 1 }])
+    return list(items, "id", () => jsx("input", { ref: inputRef }))
+  }, { styles: false }), /Refs are not supported in keyed lists/)
 })
 
 test("rejects non-serializable keyed list data", async () => {
@@ -193,14 +216,14 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.doesNotMatch(html, /kudzu-native\.js/)
   assert.doesNotMatch(commandRuntime, /patchBinding|data-k-bind/)
   assert.match(commandRuntime, /registerCommitter/)
-  assert.match(commandRuntime, /eventNames = \["change","click"\]/)
+  assert.match(commandRuntime, /\["change","click"\]/)
   assert.match(bindingRuntime, /patchBinding|data-k-bind/)
   assert.match(bindingRuntime, /kudzu-style\.js/)
   assert.equal(existsSync(new URL("./fixtures/bindings/dist/assets/kudzu-style.js", import.meta.url)), true)
-  assert.match(serialization, /export function deserialize/)
-  assert.match(bindings, /export function binding0/)
-  assert.match(bindings, /__k\.get\("active"\)/)
-  assert.match(bindings, /__k\.scope\("activeClass"\)/)
+  assert.match(serialization, /as deserialize/)
+  assert.match(bindings, /as binding0/)
+  assert.match(bindings, /\.get\("active"\)/)
+  assert.match(bindings, /\.scope\("activeClass"\)/)
   assert.doesNotMatch(bindings, /\beval\b|new Function/)
   assert.equal(plan.bindings.length, 19)
   assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
@@ -293,10 +316,10 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   assert.match(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.match(html, /kudzu-native\.js/)
-  assert.match(runtime, /mountConditions|updateCondition/)
-  assert.match(commandRuntime, /eventNames = \["click"\]/)
-  assert.match(nativeRuntime, /eventNames = \["click"\]/)
-  assert.match(evaluators, /export function binding/)
+  assert.match(runtime, /template\[data-k-if\]/)
+  assert.match(commandRuntime, /\["click"\]/)
+  assert.match(nativeRuntime, /\["click"\]/)
+  assert.match(evaluators, /as binding/)
   assert.doesNotMatch(evaluators, /\beval\b|new Function/)
   assert.equal(plan.conditions.length, 8)
   assert.ok(plan.events.some(event => event.native))
@@ -339,11 +362,11 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(html, /kudzu-native\.js/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
-  assert.match(runtime, /updateList|fillListItem|evaluate/)
+  assert.match(runtime, /Keyed list state must remain an array/)
   assert.doesNotMatch(runtime, /\beval\b|new Function/)
-  assert.match(handlers, /export function handler/)
-  assert.match(handlers, /export function listExpression/)
-  assert.match(handlers, /__k\.scope\("item"\)/)
+  assert.match(handlers, /as handler/)
+  assert.match(handlers, /as listExpression/)
+  assert.match(handlers, /\.scope\("item"\)/)
   assert.doesNotMatch(handlers, /\beval\b|new Function/)
   assert.equal(plan.lists.length, 2)
   assert.equal(plan.lists[0].state, "s0")
@@ -365,7 +388,7 @@ test("emits only list capabilities for derived list expressions without handlers
   assert.doesNotMatch(html, /kudzu-binding\.js|kudzu-native\.js|kudzu-serialization\.js/)
   assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-native.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-serialization.js", import.meta.url)), false)
-  assert.match(handlers, /export function listExpression/)
+  assert.match(handlers, /as listExpression/)
 })
 
 test("shares lifecycle cleanup between conditional and list capabilities", async t => {
@@ -439,18 +462,19 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   assert.match(html, /data-k-native-click/)
   assert.match(html, /kudzu-native\.js/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
-  assert.match(handlerSource, /export async function handler0/)
+  assert.match(handlerSource, /async function/)
+  assert.match(handlerSource, /as handler0/)
   assert.match(handlerSource, /Math\.max/)
   assert.match(handlerSource, /Promise\.resolve/)
-  assert.match(handlerSource, /__k\.get\("count"\)/)
-  assert.match(handlerSource, /__k\.set\("count"/)
-  assert.match(handlerSource, /__k\.scope\("step"\)/)
-  assert.match(handlerSource, /__k\.scope\("increment"\)/)
+  assert.match(handlerSource, /\.get\("count"\)/)
+  assert.match(handlerSource, /\.set\("count"/)
+  assert.match(handlerSource, /\.scope\("step"\)/)
+  assert.match(handlerSource, /\.scope\("increment"\)/)
   assert.doesNotMatch(commandRuntime, /createNativeContext|data-k-native/)
-  assert.match(commandRuntime, /eventNames = \[\]/)
+  assert.doesNotMatch(commandRuntime, /\["click"\]/)
   assert.match(nativeRuntime, /createNativeContext/)
-  assert.match(nativeRuntime, /eventNames = \["click"\]/)
-  assert.match(serialization, /export function deserialize/)
+  assert.match(nativeRuntime, /\["click"\]/)
+  assert.match(serialization, /as deserialize/)
   assert.doesNotMatch(handlerSource, /\beval\b|new Function/)
   assert.equal(native.scope.step, 2)
   assert.equal(native.scope.increment, 1)
@@ -476,11 +500,11 @@ test("mounts direct native handlers with browser event semantics", async t => {
   const html = await readFile(new URL("./fixtures/native-bubbling/dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("./fixtures/native-bubbling/dist/assets/kudzu-native.js", import.meta.url), "utf8")
   assert.doesNotMatch(html, /"flags":/)
-  assert.match(runtime, /registerMountHook\(mount\)/)
-  assert.match(runtime, /registerUnmountHook\(unmountNative\)/)
-  assert.match(runtime, /node\.addEventListener\(eventName, listener\)/)
-  assert.match(runtime, /import \* as __kNativeModule0 from "\/assets\/handlers\/Parent\.js"/)
-  assert.match(runtime, /import \* as __kNativeModule1 from "\/assets\/handlers\/pages\/index\.js"/)
+  assert.match(runtime, /addEventListener/)
+  assert.match(runtime, /removeEventListener/)
+  assert.match(runtime, /\/assets\/handlers\/Parent\.js/)
+  assert.match(runtime, /\/assets\/handlers\/pages\/index\.js/)
+  assert.match(html, /id="focus-target" data-k-ref="r0"/)
   assert.doesNotMatch(runtime, /document\.addEventListener|new Proxy|dispatchNative|snapshotNativeTargets/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runNativeBubblingBrowserTest(fixture, chrome)
@@ -740,6 +764,9 @@ async function runNativeBubblingBrowserTest(fixture, chrome) {
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
   await wait()
+  document.querySelector("#focus-ref").click()
+  await wait()
+  if (document.activeElement?.id !== "focus-target" || document.body.dataset.ref !== "focus-target") throw new Error("object-ref")
   let lateListenerCalled = false
   document.querySelector("#controls").addEventListener("click", () => { lateListenerCalled = true })
   document.querySelector("#controls").click()

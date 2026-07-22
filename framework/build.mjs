@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto"
 import { cp, mkdir, readFile, readdir, rm, stat, watch, writeFile } from "node:fs/promises"
 import { extname, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
+import { transform } from "esbuild"
 import ts from "typescript"
 import { renderPage } from "./core.mjs"
 import { stateSchema } from "./dev-state.js"
@@ -15,7 +16,7 @@ const outputDirectory = join(root, "dist")
 
 const devClient = (session, revision, schema) => `<script>(()=>{const show=event=>{let box=document.getElementById("__kudzu_error");if(!box){box=document.createElement("div");box.id="__kudzu_error";box.setAttribute("role","alert");box.setAttribute("aria-live","assertive");box.style.cssText="position:fixed;inset:0;z-index:2147483647;overflow:auto;padding:2rem;background:#200;color:#fff;font:16px/1.5 ui-monospace,monospace";const title=document.createElement("strong"),text=document.createElement("pre");title.textContent="Kudzu build error";text.style.whiteSpace="pre-wrap";box.append(title,text);document.body.append(box)}box.querySelector("pre").textContent=event.data};const schema=${inlineJson(schema)},route=location.pathname+location.search+location.hash,urls=[...document.querySelectorAll('script[type="module"][src]')].map(node=>node.src).filter(url=>/\\/assets\\/kudzu(?:-(?:binding|list|native))?\\.js$/.test(new URL(url).pathname));const devImport=import("/__kudzu_dev.js"),runtimeImports=Promise.allSettled(urls.map(url=>import(url)));const ready=(async()=>{const dev=await devImport,modules=await runtimeImports,runtime=modules.find(result=>result.status==="fulfilled"&&result.value.browserState instanceof Map&&typeof result.value.commitDom==="function")?.value;try{dev.restoreState(sessionStorage,route,runtime?.browserState,schema,runtime?.commitDom)}catch{}return{dev,runtime}})().catch(()=>({}));const events=new EventSource("/__kudzu_reload?session=${session}&revision=${revision}");let reloading=false;events.addEventListener("reload",async()=>{if(reloading)return;reloading=true;try{const{dev,runtime}=await ready;dev?.snapshotState(sessionStorage,route,runtime?.browserState,schema)}catch{}location.reload()});events.addEventListener("build-error",show)})()</script>`
 
-export async function build({ quiet = false } = {}) {
+export async function build({ quiet = false, minify = true } = {}) {
   await rm(workDirectory, { recursive: true, force: true })
   await rm(outputDirectory, { recursive: true, force: true })
   await mkdir(workDirectory, { recursive: true })
@@ -69,32 +70,32 @@ export async function build({ quiet = false } = {}) {
   if (behaviorCount) {
     const runtimeFile = bindingCount || listCount || hasNativeHandlers ? "./shared-runtime.js" : "./runtime.js"
     const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, stateSeedCount > 0)
-    await writeFile(join(assetsDirectory, "kudzu.js"), runtime)
+    await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
   }
-  if (bindingCount || hasNativeHandlers) await cp(new URL("./serialization.js", import.meta.url), join(assetsDirectory, "kudzu-serialization.js"))
+  if (bindingCount || hasNativeHandlers) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify)
   if (bindingCount) {
-    await cp(new URL("./style.js", import.meta.url), join(assetsDirectory, "kudzu-style.js"))
+    await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
     const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
       .replace('"./style.js"', '"./kudzu-style.js"')
-    await writeFile(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime)
+    await writeJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify)
   }
   if (listCount) {
     const listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
-    await writeFile(join(assetsDirectory, "kudzu-list.js"), listRuntime)
+    await writeJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify)
   }
   if (hasNativeHandlers) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
-    await writeFile(join(assetsDirectory, "kudzu-native.js"), specializeNativeRuntime(nativeRuntime, nativeEvents, nativeModules))
+    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), specializeNativeRuntime(nativeRuntime, nativeEvents, nativeModules), minify)
   }
   for (const handlerModule of handlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
     await mkdir(resolve(output, ".."), { recursive: true })
-    await writeFile(output, handlerModule.code)
+    await writeJavaScript(output, handlerModule.code, minify)
   }
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans }, null, 2))
   if (hasStyles) await cp(join(sourceDirectory, "style.css"), join(assetsDirectory, "style.css"))
@@ -113,12 +114,17 @@ function specializeNativeRuntime(source, events, modules) {
   return `${imports}\n${specializeEvents(source, events).replace(/const modules = new Map\(\[[^\n]*\]\)/, `const modules = new Map([${entries}])`)}`
 }
 
-function specializeRuntime(source, events, hasStateSeed) {
+export function specializeRuntime(source, events, hasStateSeed) {
   const specialized = specializeEvents(source, events)
   if (hasStateSeed) return specialized
   return specialized
     .replace("  const initialState = document.body.dataset.kState\n", "")
-    .replace("  if (initialState) for (const [id, value, compact] of JSON.parse(initialState)) browserState.set(id, compact ? value[1].map(row => Object.fromEntries(value[0].map((field, index) => [field, row[index]]))) : value)\n", "")
+    .replace(/^  if \(initialState\).*\n/m, "")
+}
+
+async function writeJavaScript(file, source, minify) {
+  const code = minify ? (await transform(source, { format: "esm", legalComments: "none", minify: true, target: "es2022" })).code : source
+  await writeFile(file, code)
 }
 
 export function parseDevPort(value) {
@@ -136,7 +142,7 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
   let revision = 0
   const session = randomUUID()
   try {
-    await build()
+    await build({ minify: false })
     revision++
   } catch (error) {
     buildError = errorText(error)
@@ -204,7 +210,7 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
     do {
       pending = false
       try {
-        await build({ quiet: true })
+        await build({ quiet: true, minify: false })
         buildError = undefined
         revision++
         console.log(`Rebuilt after ${changedFile ?? "source change"}`)

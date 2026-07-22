@@ -9,6 +9,7 @@ const listMarker = Symbol("kudzu.list")
 const listFieldMarker = Symbol("kudzu.listField")
 const listExpressionMarker = Symbol("kudzu.listExpression")
 const listItemMarker = Symbol("kudzu.listItem")
+const refMarker = Symbol("kudzu.ref")
 const noSelectValue = Symbol("kudzu.no-select-value")
 
 let renderContext
@@ -35,6 +36,12 @@ export function useState(initialValue, name) {
   return [signal, () => {
     throw new Error("State setters are compiled into ordered browser behaviors")
   }]
+}
+
+export function useRef(initialValue) {
+  if (!renderContext) throw new Error("useRef() can only run while rendering a Kudzu component")
+  if (initialValue !== null) throw new Error("Kudzu DOM refs must initialize with null")
+  return { [refMarker]: true, id: `r${renderContext.nextRef++}`, current: null }
 }
 
 export function behavior(commands) {
@@ -158,6 +165,7 @@ function bindingDescriptor(value) {
 
 function serializeCapture(name, value, seen) {
   if (value?.[listItemMarker]) return { type: "list-item" }
+  if (value?.[refMarker]) return { type: "ref", id: value.id }
   if (value === null || typeof value === "string" || typeof value === "boolean") return value
   if (typeof value === "number") {
     return Number.isFinite(value) && !Object.is(value, -0) ? value : { type: "number", value: String(value) }
@@ -189,7 +197,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false }
+  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listFields: undefined, states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false }
 
   try {
     const body = await renderNode({ type: component, props: {} })
@@ -351,6 +359,12 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 
   for (const [rawName, value] of Object.entries(props)) {
     if (rawName === "children" || rawName === "key") continue
+    if (rawName === "ref") {
+      if (!value?.[refMarker]) throw new Error("ref must be created by useRef(null)")
+      if (renderContext.listDepth) throw new Error("Refs are not supported in keyed lists")
+      attributes += ` data-k-ref="${value.id}"`
+      continue
+    }
     if (rawName === "selected" && selectValue !== noSelectValue) continue
     if (/^on/i.test(rawName) && !/^on[A-Z]/.test(rawName)) throw new Error(`${rawName} must use a camelCase event handler`)
     if (rawName.toLowerCase().startsWith("data-k-")) throw new Error(`${rawName} uses Kudzu's reserved data-k-* prefix`)

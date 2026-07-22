@@ -2,6 +2,12 @@ export type StateSetter<T> = (value: T | ((previous: T) => T)) => void
 
 export function useState<T>(initialValue: T): [T, StateSetter<T>]
 
+export interface RefObject<T> {
+  readonly current: T | null
+}
+
+export function useRef<T>(initialValue: null): RefObject<T>
+
 export function behavior(commands: Array<["add" | "set" | "log", unknown, unknown]>): unknown
 export function nativeBehavior(module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
 export function binding(value: unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
