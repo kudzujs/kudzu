@@ -416,6 +416,8 @@ async function compile(file, sourceFiles, base) {
 function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, clientImports) {
   return context => sourceFile => {
     const factory = context.factory
+    sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
+    ts.setParentRecursive(sourceFile, false)
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
     const settersByFunction = new Map()
     const functions = new Map()
@@ -455,10 +457,12 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         if (node.parent?.parent?.parent === sourceFile) components.set(node.name.text, { function: node.initializer, declaration: node })
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "createContext") contexts.add(node.name.text)
-      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isTopLevelConst(node)) {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isLocalConst(node)) {
         const owner = nearestFunction(node)
         const declarations = jsxLocalDeclarations.get(owner) ?? new Map()
-        declarations.set(node.name.text, { node, initializer: node.initializer })
+        const entries = declarations.get(node.name.text) ?? []
+        entries.push({ node, initializer: node.initializer })
+        declarations.set(node.name.text, entries)
         jsxLocalDeclarations.set(owner, declarations)
       }
       ts.forEachChild(node, collect)
@@ -469,32 +473,41 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       let changed = true
       while (changed) {
         changed = false
-        for (const [name, { initializer }] of declarations) {
-          if (!names.has(name) && isJsxLocalValue(initializer, names)) {
+        for (const [name, entries] of declarations) {
+          if (!names.has(name) && entries.some(({ initializer }) => isJsxLocalValue(initializer, names))) {
             names.add(name)
             changed = true
           }
+        }
+      }
+      for (const name of names) {
+        const entries = declarations.get(name)
+        if (entries.length > 1) {
+          const position = sourceFile.getLineAndCharacterOfPosition(entries[1].node.getStart(sourceFile))
+          throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Block-scoped JSX local "${name}" must not shadow another local`)
         }
       }
       jsxLocalsByFunction.set(owner, names)
     }
     for (const [owner, declarations] of jsxLocalDeclarations) {
       const setters = settersByFunction.get(owner) ?? new Map()
-      for (const [name, declaration] of declarations) {
-        const parts = keyedListParts(declaration.initializer, setters)
-        if (!parts) continue
-        const uses = []
-        const collectUses = node => {
-          if (ts.isJsxExpression(node) && node.initializer === undefined && ts.isIdentifier(node.expression) && node.expression.text === name && nearestFunction(node) === owner) uses.push(node)
-          ts.forEachChild(node, collectUses)
+      for (const [name, entries] of declarations) {
+        for (const declaration of entries) {
+          const parts = keyedListParts(declaration.initializer, setters)
+          if (!parts) continue
+          const uses = []
+          const collectUses = node => {
+            if (ts.isJsxExpression(node) && node.initializer === undefined && ts.isIdentifier(node.expression) && node.expression.text === name && nearestFunction(node) === owner) uses.push(node)
+            ts.forEachChild(node, collectUses)
+          }
+          collectUses(owner.body)
+          const references = identifierReferenceCount(owner.body, name)
+          const position = sourceFile.getLineAndCharacterOfPosition(declaration.node.getStart(sourceFile))
+          if (uses.length > 1) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" must be rendered exactly once`)
+          if (references !== uses.length) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" may only be used as a JSX child`)
+          listLocalDeclarations.add(declaration.node)
+          if (uses.length) listLocalUses.set(uses[0], parts)
         }
-        collectUses(owner.body)
-        const references = identifierReferenceCount(owner.body, name)
-        const position = sourceFile.getLineAndCharacterOfPosition(declaration.node.getStart(sourceFile))
-        if (uses.length > 1) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" must be rendered exactly once`)
-        if (references !== uses.length) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" may only be used as a JSX child`)
-        listLocalDeclarations.add(declaration.node)
-        if (uses.length) listLocalUses.set(uses[0], parts)
       }
     }
     const rawRenderedLists = []
@@ -510,6 +523,16 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
       throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
     }
+    const rejectUnsupportedRenderControl = node => {
+      if (ts.isIfStatement(node) && containsRenderControl(node, jsxLocalsByFunction.get(nearestFunction(node)) ?? new Set())) {
+        const setters = settersForNode(node, settersByFunction)
+        if (referencedStateNames(node.expression, setters).size) {
+          fail(node, "Reactive render if statements must use terminal returns or exhaustive adjacent JSX assignment")
+        }
+      }
+      ts.forEachChild(node, rejectUnsupportedRenderControl)
+    }
+    rejectUnsupportedRenderControl(sourceFile)
     const listComponentNames = new Set(rawRenderedLists.flatMap(({ parts }) => {
       const tag = jsxTagName(parts.root)
       return tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase() ? [tag.text] : []
@@ -553,6 +576,28 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       renderedLists.set(node, parts)
     }
 
+    const compileRenderExpression = (expression, anchor) => {
+      const parts = conditionalParts(expression)
+      if (!parts) return ts.visitNode(expression, visitor)
+      const setters = settersForNode(anchor, settersByFunction)
+      const usedStates = referencedStateNames(parts.condition, setters)
+      const captures = captureNames(parts.condition, parts.condition, setters)
+      if (!usedStates.size && !captures.size) return ts.visitEachChild(expression, visitor, context)
+      usesBehavior = true
+      usesConditional = true
+      return compileConditional(
+        parts.kind,
+        parts.condition,
+        compileRenderExpression(parts.truthy, anchor),
+        compileRenderExpression(parts.falsy, anchor),
+        setters,
+        factory,
+        context,
+        reactiveBindings,
+        handlerUrl
+      )
+    }
+
     const visitor = node => {
       if (specializedDeclarations.has(node)) return node
       if (componentSpecializations.has(node)) return ts.visitNode(componentSpecializations.get(node).root, visitor)
@@ -580,18 +625,13 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       }
 
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && jsxLocalsByFunction.get(nearestFunction(node))?.has(node.name.text) && referencesIdentifier(nearestFunction(node).body, node.name.text)) {
-        const parts = conditionalParts(node.initializer)
-        if (parts) {
-          const setters = settersForNode(node, settersByFunction)
-          const usedStates = referencedStateNames(parts.condition, setters)
-          const captures = captureNames(parts.condition, parts.condition, setters)
-          if (usedStates.size || captures.size) {
-            usesBehavior = true
-            usesConditional = true
-            const compiled = compileConditional(parts.kind, parts.condition, ts.visitNode(parts.truthy, visitor), ts.visitNode(parts.falsy, visitor), setters, factory, context, reactiveBindings, handlerUrl)
-            return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, compiled)
-          }
-        }
+        const compiled = compileRenderExpression(node.initializer, node)
+        if (compiled !== node.initializer) return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, compiled)
+      }
+
+      if (ts.isReturnStatement(node) && node.expression && isJsxLocalValue(node.expression, jsxLocalsByFunction.get(nearestFunction(node)) ?? new Set())) {
+        const compiled = compileRenderExpression(node.expression, node)
+        if (compiled !== node.expression) return factory.updateReturnStatement(node, compiled)
       }
 
       if (ts.isJsxExpression(node) && node.expression && listConditions.has(node.expression)) {
@@ -622,19 +662,10 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
             ts.visitNode(listParts.callback, visitor)
           ]))
         }
-        const parts = conditionalParts(node.expression)
-        if (parts) {
-          const setters = settersForNode(node, settersByFunction)
-          const usedStates = referencedStateNames(parts.condition, setters)
-          const captures = captureNames(parts.condition, parts.condition, setters)
-          if (usedStates.size || captures.size) {
-            usesBehavior = true
-            usesConditional = true
-            const truthy = ts.visitNode(parts.truthy, visitor)
-            const falsy = ts.visitNode(parts.falsy, visitor)
-            const compiled = compileConditional(parts.kind, parts.condition, truthy, falsy, setters, factory, context, reactiveBindings, handlerUrl)
-            return factory.updateJsxExpression(node, compiled)
-          }
+        const conditional = conditionalParts(node.expression)
+        if (conditional) {
+          const compiled = compileRenderExpression(node.expression, node)
+          if (compiled !== node.expression) return factory.updateJsxExpression(node, compiled)
         }
         const setters = settersForNode(node, settersByFunction)
         const usedStates = referencedStateNames(node.expression, setters)
@@ -695,6 +726,112 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     )
     return factory.updateSourceFile(transformed, [behaviorImport, ...transformed.statements])
   }
+}
+
+function normalizeRenderControlFlow(sourceFile, factory, context) {
+  const normalizeStatements = statements => {
+    const nested = statements.map(statement => ts.visitEachChild(statement, visitNested, context))
+    const assigned = []
+    for (let index = 0; index < nested.length; index++) {
+      const statement = nested[index]
+      const next = nested[index + 1]
+      const declaration = singleUninitializedLet(statement)
+      const assignment = declaration && next && assignmentConditional(next, declaration.name.text, factory)
+      if (declaration && assignment) {
+        const updated = factory.updateVariableDeclaration(declaration, declaration.name, declaration.exclamationToken, declaration.type, assignment)
+        const list = factory.createVariableDeclarationList([updated], ts.NodeFlags.Const)
+        assigned.push(factory.updateVariableStatement(statement, statement.modifiers, list))
+        index++
+      } else {
+        assigned.push(statement)
+      }
+    }
+
+    if (!assigned.length) return assigned
+    const finalIf = returnConditional(assigned.at(-1), factory)
+    if (finalIf) return [...assigned.slice(0, -1), factory.createReturnStatement(finalIf)]
+    if (!ts.isReturnStatement(assigned.at(-1)) || !assigned.at(-1).expression) return assigned
+    let expression = assigned.at(-1).expression
+    let start = assigned.length - 1
+    while (start > 0) {
+      const previous = assigned[start - 1]
+      if (!ts.isIfStatement(previous) || previous.elseStatement) break
+      const truthy = returnOnlyExpression(previous.thenStatement)
+      if (!truthy) break
+      expression = factory.createConditionalExpression(previous.expression, factory.createToken(ts.SyntaxKind.QuestionToken), truthy, factory.createToken(ts.SyntaxKind.ColonToken), expression)
+      start--
+    }
+    return start === assigned.length - 1 ? assigned : [...assigned.slice(0, start), factory.createReturnStatement(expression)]
+  }
+
+  const visitNested = node => {
+    if (ts.isBlock(node)) return factory.updateBlock(node, normalizeStatements([...node.statements]))
+    if (isFunctionLike(node) && ts.isBlock(node.body)) {
+      if (!isRenderFunction(node)) return node
+      const body = factory.updateBlock(node.body, normalizeStatements([...node.body.statements]))
+      if (ts.isFunctionDeclaration(node)) return factory.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, body)
+      if (ts.isFunctionExpression(node)) return factory.updateFunctionExpression(node, node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, body)
+      if (ts.isArrowFunction(node)) return factory.updateArrowFunction(node, node.modifiers, node.typeParameters, node.parameters, node.type, node.equalsGreaterThanToken, body)
+    }
+    return ts.visitEachChild(node, visitNested, context)
+  }
+
+  return ts.visitEachChild(sourceFile, visitNested, context)
+}
+
+function isRenderFunction(node) {
+  if (ts.isFunctionDeclaration(node)) return node.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword) || Boolean(node.name && /^[A-Z]/.test(node.name.text))
+  const declaration = node.parent
+  return ts.isVariableDeclaration(declaration) && ts.isIdentifier(declaration.name) && /^[A-Z]/.test(declaration.name.text)
+}
+
+function singleUninitializedLet(statement) {
+  if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Let) === 0 || statement.declarationList.declarations.length !== 1) return undefined
+  const declaration = statement.declarationList.declarations[0]
+  return ts.isIdentifier(declaration.name) && !declaration.initializer ? declaration : undefined
+}
+
+function assignmentConditional(statement, name, factory) {
+  if (!ts.isIfStatement(statement) || !statement.elseStatement) return undefined
+  const truthy = assignmentOnlyExpression(statement.thenStatement, name)
+  const falsy = ts.isIfStatement(statement.elseStatement)
+    ? assignmentConditional(statement.elseStatement, name, factory)
+    : assignmentOnlyExpression(statement.elseStatement, name)
+  if (!truthy || !falsy) return undefined
+  return factory.createConditionalExpression(statement.expression, factory.createToken(ts.SyntaxKind.QuestionToken), truthy, factory.createToken(ts.SyntaxKind.ColonToken), falsy)
+}
+
+function assignmentOnlyExpression(statement, name) {
+  const candidate = ts.isBlock(statement) && statement.statements.length === 1 ? statement.statements[0] : statement
+  if (!ts.isExpressionStatement(candidate) || !ts.isBinaryExpression(candidate.expression) || candidate.expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken || !ts.isIdentifier(candidate.expression.left) || candidate.expression.left.text !== name) return undefined
+  return candidate.expression.right
+}
+
+function returnConditional(statement, factory) {
+  if (!ts.isIfStatement(statement) || !statement.elseStatement) return undefined
+  const truthy = returnOnlyExpression(statement.thenStatement)
+  const falsy = ts.isIfStatement(statement.elseStatement)
+    ? returnConditional(statement.elseStatement, factory)
+    : returnOnlyExpression(statement.elseStatement)
+  if (!truthy || !falsy) return undefined
+  return factory.createConditionalExpression(statement.expression, factory.createToken(ts.SyntaxKind.QuestionToken), truthy, factory.createToken(ts.SyntaxKind.ColonToken), falsy)
+}
+
+function returnOnlyExpression(statement) {
+  const candidate = ts.isBlock(statement) && statement.statements.length === 1 ? statement.statements[0] : statement
+  return ts.isReturnStatement(candidate) && candidate.expression ? candidate.expression : undefined
+}
+
+function containsRenderControl(root, knownLocals) {
+  let found = false
+  const visit = node => {
+    if (isFunctionLike(node) && node !== root) return
+    if (ts.isReturnStatement(node) && node.expression && isJsxLocalValue(node.expression, knownLocals)) found = true
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && containsJsx(node.right)) found = true
+    if (!found) ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return found
 }
 
 function keyedListParts(expression, setters) {
@@ -1027,11 +1164,10 @@ function unwrapExpression(node) {
   return ts.isParenthesizedExpression(node) ? unwrapExpression(node.expression) : node
 }
 
-function isTopLevelConst(node) {
+function isLocalConst(node) {
   const list = node.parent
   const statement = list?.parent
-  const owner = nearestFunction(node)
-  return ts.isVariableDeclarationList(list) && (list.flags & ts.NodeFlags.Const) !== 0 && ts.isVariableStatement(statement) && statement.parent === owner?.body
+  return ts.isVariableDeclarationList(list) && (list.flags & ts.NodeFlags.Const) !== 0 && ts.isVariableStatement(statement)
 }
 
 function isJsxLocalValue(expression, known) {

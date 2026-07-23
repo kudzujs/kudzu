@@ -86,7 +86,7 @@ export function LimitsSection() {
       <li>Callback refs, mutable value refs, keyed-list refs, and reactive <code>dangerouslySetInnerHTML</code> are not supported.</li>
       <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
       <li>Keyed lists require local-state maps and intrinsic roots or top-level same-file row components; exported/imported rows, reusable aliases, nested dynamic JSX, prop spreads, and derived-expression captures remain unsupported.</li>
-      <li>Block-scoped or reassigned JSX locals are not implemented.</li>
+      <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
       <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
     </ul>

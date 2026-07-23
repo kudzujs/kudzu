@@ -30,11 +30,21 @@ return <>
     </div>
     {menuOpen && <MenuBar />}
     <div className="docs-callout"><strong>State</strong><span>Logical Kudzu state persists across branch switches. Uncontrolled input values, focus, selection, and imperative DOM mutations reset when a branch is remounted.</span></div>
-    <p>Top-level immutable <code>const</code> values can hold static JSX, state-dependent branches, aliases, and nested JSX locals. Kudzu compiles their initializers to the same bounded ranges as inline conditions.</p>
+    <p>Top-level and block-scoped immutable <code>const</code> values can hold static JSX, state-dependent branches, aliases, and nested JSX locals. Kudzu compiles their initializers to the same bounded ranges as inline conditions.</p>
     <CodeBlock code={`const menu = open ? <MenuBar /> : <p>Menu dormant</p>
 const content = open && menu
 
 return <main>{content}</main>`} />
+    <CodeBlock code={`if (loading) return <Loading />
+if (failed) return <ErrorView />
+return <Content />
+
+let view
+if (open) view = <MenuBar />
+else view = <p>Menu dormant</p>
+return view`} />
+    <p>Terminal early-return chains and one adjacent exhaustive <code>let</code> assignment normalize to the same bounded conditional ranges. Branches may contain only that return or assignment; effectful statements and non-exhaustive or later assignments are rejected for reactive rendering.</p>
+    <p>A 1,000-component A/B build emitted identical runtime assets and condition counts. Mixed block-local, early-return, and assignment source added 18 B gzip for evaluator exports and increased clean build time from 590 ms to 604 ms.</p>
     <p>Both branches are rendered into inert templates at build time. Conditional rendering is a UI mechanism, not an authorization boundary: do not place secrets or access-controlled content in a dormant branch, and avoid build-time side effects in branch components.</p>
   </section>
 }

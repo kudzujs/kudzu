@@ -43,6 +43,35 @@ function Child({ open }: { open: boolean }) {
   return <>{open && <small>Child open</small>}</>;
 }
 
+function BlockLocal({ open }: { open: boolean }) {
+  {
+    const view = open ? <strong data-block-local>Block open</strong> : <em data-block-local>Block closed</em>;
+    const alias = view;
+    return alias;
+  }
+}
+
+function EarlyReturn({ open }: { open: boolean }) {
+  if (open) return <strong data-early>Early open</strong>;
+  return <em data-early>Early closed</em>;
+}
+
+function AssignedLocal({ open }: { open: boolean }) {
+  let view;
+  if (open) {
+    view = <strong data-assigned>Assigned open</strong>;
+  } else {
+    view = <em data-assigned>Assigned closed</em>;
+  }
+  return view;
+}
+
+function NestedEarlyReturn({ open, count }: { open: boolean; count: number }) {
+  if (!open) return <em data-nested-early>Nested closed</em>;
+  if (count === 0) return <strong data-nested-early>Nested zero</strong>;
+  return <strong data-nested-early>Nested positive</strong>;
+}
+
 export default function ConditionalPage() {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
@@ -99,6 +128,10 @@ export default function ConditionalPage() {
       {open ? <strong>Open state</strong> : <em>Closed state</em>}
       {open ? "Visible text" : "Hidden text"}
       <Child open={open} />
+      <BlockLocal open={open} />
+      <EarlyReturn open={open} />
+      <AssignedLocal open={open} />
+      <NestedEarlyReturn open={open} count={count} />
       {true && <aside>Static condition</aside>}
       {staticLocal}
       {nestedLocal}

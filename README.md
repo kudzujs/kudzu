@@ -229,7 +229,7 @@ Logical state persists across branch switches, while uncontrolled DOM state rese
 
 Reactive conditional DOM currently targets the HTML namespace and is rejected inside SVG or MathML.
 
-Top-level immutable JSX locals can hold static or state-dependent branches:
+Top-level or block-scoped immutable JSX locals can hold static or state-dependent branches:
 
 ```tsx
 const menu = open ? <MenuBar /> : <p>Menu dormant</p>
@@ -238,7 +238,22 @@ const content = open && menu
 return <main>{content}</main>
 ```
 
-Kudzu compiles the local initializer to the same bounded DOM ranges as an inline condition. Reassigned, block-scoped, and keyed-list alias locals remain unsupported.
+Kudzu compiles the local initializer to the same bounded DOM ranges as an inline condition. Terminal early returns and one adjacent exhaustive `let` assignment normalize to the same representation:
+
+```tsx
+if (loading) return <Loading />
+if (failed) return <ErrorView />
+return <Content />
+
+let view
+if (open) view = <Menu />
+else view = <p>Closed</p>
+return view
+```
+
+Branches may contain only the return or assignment being normalized. Effectful statements, non-exhaustive assignments, later reassignment, loops, `switch`, and `try` remain ordinary JavaScript and state-dependent render forms are rejected rather than evaluated against signal-object truthiness. Reactive branches are still both rendered into inert templates at build time.
+
+A 1,000-component A/B build compared direct ternaries with an even mix of block locals, early returns, and exhaustive assignment. Both emitted 1,000 conditions and byte-identical runtime assets. The mixed source added 18 B gzip for three equivalent evaluator exports instead of one and built in 604 ms versus 590 ms (+2.24%).
 
 ## Keyed Lists
 
@@ -372,7 +387,7 @@ Supported:
 - Default, nested, and reactive context providers
 - Controlled `value` and `checked` form properties
 - Conditional child `&&` and ternary DOM patches
-- Top-level immutable JSX locals
+- Top-level and block-scoped JSX locals, terminal early returns, and exhaustive JSX assignment
 - Direct keyed local-state lists
 
 Not implemented yet:
@@ -426,11 +441,11 @@ Context adds 3,101 B gzip and 3.59 µs per update only on pages using nested rea
 
 #### Wrapper-Free Derived Text
 
-The same object-state counter was built with the v0.4.14 span target and the comment-bounded text range. Browser medians use five 20,000-update batches in each of seven fresh Chrome sessions.
+The same object-state counter was built with the legacy span target and the current comment-bounded text range. Browser medians use five 20,000-update batches in each of seven fresh Chrome sessions.
 
 | Text target | Files | JS gzip | Total output | Clean build | Update |
 |---|---:|---:|---:|---:|---:|
-| Span v0.4.14 | 7 | **4,453 B** | **10,065 B** | **404 ms** | **4.83 µs** |
+| Legacy span target | 7 | **4,453 B** | **10,065 B** | **404 ms** | **4.83 µs** |
 | Comment range | 7 | 4,763 B | 10,922 B | 426 ms | 5.03 µs |
 
 The range costs 310 B gzip only on pages using derived reactive text. It removes wrapper elements and preserves authored structure across table cells, options, SVG text, selectors, and conditional remounts; ordinary attribute and condition pages tree-shake the range code entirely.
