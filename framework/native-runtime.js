@@ -6,7 +6,6 @@ const registrations = new WeakMap()
 export function createNativeContext(state, stateIds, commit, serializedScope = {}) {
   const changed = new Set()
   let scheduled = false
-  const scope = Object.fromEntries(Object.entries(serializedScope).map(([name, value]) => [name, deserialize(value)]))
 
   const flush = () => {
     scheduled = false
@@ -14,6 +13,18 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
     changed.clear()
     for (const id of ids) commit(id, state.get(id))
   }
+
+  const setId = globalThis.__KUDZU_CAPTURE_SETTER__ ? (id, value) => {
+    const current = state.get(id)
+    state.set(id, typeof value === "function" ? value(current) : value)
+    changed.add(id)
+    if (!scheduled) {
+      scheduled = true
+      queueMicrotask(flush)
+    }
+  } : undefined
+
+  const scope = Object.fromEntries(Object.entries(serializedScope).map(([name, value]) => [name, deserialize(value, id => state.get(id), globalThis.__KUDZU_CAPTURE_SETTER__ ? setId : undefined)]))
 
   return {
     get(name) {
@@ -23,6 +34,10 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
       return serializedScope[name]?.type === "state" ? state.get(serializedScope[name].id) : scope[name]
     },
     set(name, value) {
+      if (globalThis.__KUDZU_CAPTURE_SETTER__) {
+        setId(stateIds[name], value)
+        return
+      }
       const id = stateIds[name]
       const current = state.get(id)
       state.set(id, typeof value === "function" ? value(current) : value)

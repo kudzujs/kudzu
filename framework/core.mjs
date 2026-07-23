@@ -1,6 +1,7 @@
 import { serializeStyle } from "./style.js"
 
 const signalMarker = Symbol("kudzu.signal")
+const setterMarker = Symbol("kudzu.setter")
 const behaviorMarker = Symbol("kudzu.behavior")
 const nativeBehaviorMarker = Symbol("kudzu.nativeBehavior")
 const bindingMarker = Symbol("kudzu.binding")
@@ -35,10 +36,12 @@ export function useState(initialValue, name) {
     }
   }
 
-  renderContext.states[id] = { name: name ?? id, initialValue }
-  return [signal, () => {
+  const setter = () => {
     throw new Error("State setters are compiled into ordered browser behaviors")
-  }]
+  }
+  Object.defineProperty(setter, setterMarker, { value: id })
+  renderContext.states[id] = { name: name ?? id, initialValue }
+  return [signal, setter]
 }
 
 export function useRef(initialValue) {
@@ -190,6 +193,8 @@ function bindingDescriptor(value) {
 function serializeCapture(name, value, seen) {
   if (value?.[listItemMarker]) return { type: "list-item" }
   if (value?.[refMarker]) return { type: "ref", id: value.id }
+  if (value?.[signalMarker]) return { type: "state", id: value.id }
+  if (typeof value === "function" && value[setterMarker]) return { type: "setter", id: value[setterMarker] }
   if (value === null || typeof value === "string" || typeof value === "boolean") return value
   if (typeof value === "number") {
     return Number.isFinite(value) && !Object.is(value, -0) ? value : { type: "number", value: String(value) }
@@ -375,7 +380,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
   if (node?.[bindingMarker]) {
     const descriptor = bindingDescriptor(node)
-    const reactive = Object.keys(node.states).length > 0 || Object.keys(node.scopeStates).length > 0 || Object.keys(node.scopeBindings).length > 0
+    const reactive = reactiveStateIds(descriptor).size > 0
     if (!reactive) return renderNode(node.value, namespace, selectValue)
     renderContext.bindings.push({ target: "text", ...descriptor })
     if (renderContext.conditionDepth || renderContext.listDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
@@ -492,14 +497,14 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
     if (value?.[signalMarker] || value?.[bindingMarker]) {
       const initialValue = value[signalMarker] ? value.value : value.value
-      const reactive = value[signalMarker] || Object.keys(value.states).length > 0 || Object.keys(value.scopeStates).length > 0 || Object.keys(value.scopeBindings).length > 0
+      const descriptor = value[signalMarker]
+        ? { state: value.id }
+        : bindingDescriptor(value)
+      const reactive = reactiveStateIds(descriptor).size > 0
       if (!reactive) {
         if (tag !== "select" || name !== "value") attributes += renderAttribute(name, initialValue)
         continue
       }
-      const descriptor = value[signalMarker]
-        ? { state: value.id }
-        : bindingDescriptor(value)
       if (tag !== "select" || name !== "value") attributes += renderAttribute(name, initialValue)
       if (propertyTarget) attributes += ` data-k-bind-${name}='${escapeJsonAttribute(descriptor)}'`
       else attributeBindings.push({ target: name, ...descriptor })
@@ -587,8 +592,17 @@ function reactiveStateIds(descriptor) {
   return new Set([
     ...Object.values(descriptor.states),
     ...Object.values(descriptor.scopeStates),
+    ...Object.values(descriptor.scope).flatMap(serializedStateIds),
     ...Object.values(descriptor.scopeBindings).flatMap(entry => [...reactiveStateIds(entry)])
   ])
+}
+
+function serializedStateIds(value) {
+  if (!value || typeof value !== "object") return []
+  if (value.type === "state") return [value.id]
+  if (value.type === "array") return value.value.flatMap(serializedStateIds)
+  if (value.type === "object") return value.value.flatMap(([, entry]) => serializedStateIds(entry))
+  return []
 }
 
 function renderAttribute(name, value) {

@@ -82,6 +82,8 @@ export async function build({ quiet = false, minify = true } = {}) {
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
   const hasTextBindings = plans.some(plan => plan.bindings.some(binding => binding.target === "text"))
   const hasListConditions = plans.some(plan => plan.lists.some(list => list.conditions))
+  const hasNestedStateCaptures = hasNestedCaptureState(plans)
+  const hasSetterCaptures = hasCaptureType(plans, "setter")
   const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
   const hasNativeHandlers = nativeModules.length > 0
   if (behaviorCount) {
@@ -89,14 +91,20 @@ export async function build({ quiet = false, minify = true } = {}) {
     const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, stateSeedCount > 0)
     await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
   }
-  if (bindingCount || hasNativeHandlers) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify)
+  if (bindingCount || hasNativeHandlers) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify, {
+    "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures),
+    "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
+  })
   if (bindingCount || listStyleCount) await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
   if (bindingCount) {
     const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
       .replace('"./style.js"', '"./kudzu-style.js"')
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify, { "globalThis.__KUDZU_TEXT_BINDINGS__": String(hasTextBindings) })
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify, {
+      "globalThis.__KUDZU_TEXT_BINDINGS__": String(hasTextBindings),
+      "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures)
+    })
   }
   if (listCount) {
     let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
@@ -115,7 +123,9 @@ export async function build({ quiet = false, minify = true } = {}) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
-    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), specializeNativeRuntime(nativeRuntime, nativeEvents, nativeModules), minify)
+    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), specializeNativeRuntime(nativeRuntime, nativeEvents, nativeModules), minify, {
+      "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
+    })
   }
   for (const handlerModule of handlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
@@ -171,6 +181,20 @@ function specializeNativeRuntime(source, events, modules) {
   return `${imports}\n${specializeEvents(source, events).replace(/const modules = new Map\(\[[^\n]*\]\)/, `const modules = new Map([${entries}])`)}`
 }
 
+function hasCaptureType(value, type) {
+  if (!value || typeof value !== "object") return false
+  if (value.type === type) return true
+  return (Array.isArray(value) ? value : Object.values(value)).some(entry => hasCaptureType(entry, type))
+}
+
+function hasNestedCaptureState(value, insideCapture = false) {
+  if (!value || typeof value !== "object") return false
+  if (value.type === "state") return insideCapture
+  if (value.type === "array") return value.value.some(entry => hasNestedCaptureState(entry, true))
+  if (value.type === "object") return value.value.some(([, entry]) => hasNestedCaptureState(entry, true))
+  return (Array.isArray(value) ? value : Object.values(value)).some(entry => hasNestedCaptureState(entry, false))
+}
+
 export function specializeRuntime(source, events, hasStateSeed) {
   const specialized = specializeEvents(source, events)
   if (hasStateSeed) return specialized
@@ -179,8 +203,8 @@ export function specializeRuntime(source, events, hasStateSeed) {
     .replace(/^  if \(initialState\).*\n/m, "")
 }
 
-async function writeJavaScript(file, source, minify) {
-  const code = minify ? (await transform(source, { format: "esm", legalComments: "none", minify: true, target: "es2022" })).code : source
+async function writeJavaScript(file, source, minify, define) {
+  const code = minify || define ? (await transform(source, { define, format: "esm", legalComments: "none", minify, target: "es2022" })).code : source
   await writeFile(file, code)
 }
 
@@ -396,6 +420,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     const settersByFunction = new Map()
     const functions = new Map()
     const components = new Map()
+    const contexts = new Set()
     const jsxLocalDeclarations = new Map()
     const jsxLocalsByFunction = new Map()
     const listLocalDeclarations = new WeakSet()
@@ -429,6 +454,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         functions.set(node.name.text, node.initializer)
         if (node.parent?.parent?.parent === sourceFile) components.set(node.name.text, { function: node.initializer, declaration: node })
       }
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "createContext") contexts.add(node.name.text)
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isTopLevelConst(node)) {
         const owner = nearestFunction(node)
         const declarations = jsxLocalDeclarations.get(owner) ?? new Map()
@@ -620,7 +646,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         }
       }
 
-      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !/^on/i.test(node.name.getText()) && !["key", "ref", "dangerouslysetinnerhtml"].includes(node.name.getText().toLowerCase())) {
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !isContextProviderValue(node, contexts) && !/^on/i.test(node.name.getText()) && !["key", "ref", "dangerouslysetinnerhtml"].includes(node.name.getText().toLowerCase())) {
         const expression = node.initializer.expression
         const setters = settersForNode(node, settersByFunction)
         const usedStates = referencedStateNames(expression, setters)
@@ -845,6 +871,13 @@ function addJsxAttribute(root, attribute, factory) {
 
 function jsxTagName(node) {
   return ts.isJsxElement(node) ? node.openingElement.tagName : ts.isJsxSelfClosingElement(node) ? node.tagName : undefined
+}
+
+function isContextProviderValue(node, contexts) {
+  if (node.name.getText() !== "value") return false
+  const element = node.parent?.parent
+  const tag = ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element) ? element.tagName : undefined
+  return ts.isPropertyAccessExpression(tag) && tag.name.text === "Provider" && ts.isIdentifier(tag.expression) && contexts.has(tag.expression.text)
 }
 
 function isJsxSyntaxIdentifier(node) {

@@ -229,7 +229,7 @@ async function loadEvaluator(descriptor) {
 }
 
 async function createBindingContext(descriptor) {
-  const scope = Object.fromEntries(Object.entries(descriptor.scope).map(([name, value]) => [name, deserialize(value)]))
+  const scope = Object.fromEntries(Object.entries(descriptor.scope).map(([name, value]) => [name, deserialize(value, id => browserState.get(id))]))
   const nested = {}
   await Promise.all(Object.entries(descriptor.scopeBindings).map(async ([name, binding]) => {
     const evaluator = await loadEvaluator(binding)
@@ -245,8 +245,17 @@ function bindingStateIds(descriptor) {
   return new Set([
     ...Object.values(descriptor.states),
     ...Object.values(descriptor.scopeStates),
+    ...(globalThis.__KUDZU_CAPTURE_STATE__ ? Object.values(descriptor.scope).flatMap(serializedStateIds) : []),
     ...Object.values(descriptor.scopeBindings).flatMap(binding => [...bindingStateIds(binding)])
   ])
+}
+
+function serializedStateIds(value) {
+  if (!value || typeof value !== "object") return []
+  if (value.type === "state") return [value.id]
+  if (value.type === "array") return value.value.flatMap(serializedStateIds)
+  if (value.type === "object") return value.value.flatMap(([, entry]) => serializedStateIds(entry))
+  return []
 }
 
 function matching(root, selector) {

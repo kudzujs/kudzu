@@ -191,20 +191,22 @@ Kudzu resolves `current` when the handler reads it, so removed conditional eleme
 Create a context to pass static or reactive values through component layers without prop drilling:
 
 ```tsx
-const ThemeContext = createContext("light")
+type ThemeValue = { theme: string; setTheme: (theme: string) => void }
+const ThemeContext = createContext<ThemeValue | null>(null)
 
 function Toolbar() {
-  const theme = useContext(ThemeContext)
-  return <button className={`theme-${theme}`}>{theme}</button>
+  const value = useContext(ThemeContext)
+  if (!value) return null
+  return <button className={`theme-${value.theme}`} onClick={() => value.setTheme("light")}>{value.theme}</button>
 }
 
 function App() {
-  const [theme] = useState("dark")
-  return <ThemeContext.Provider value={theme}><Toolbar /></ThemeContext.Provider>
+  const [theme, setTheme] = useState("dark")
+  return <ThemeContext.Provider value={{ theme, setTheme }}><Toolbar /></ThemeContext.Provider>
 }
 ```
 
-The default value applies outside a Provider, nested Providers override their parent, and native handlers read the latest direct state value. Static Provider values must be serializable. Reactive Provider values must be a direct `useState` value; setters and objects containing reactive values are not supported.
+Context values may contain state, setters, arrays, nested plain objects, and static serializable fields. Consumers can read reactive properties, destructure or rename them, and call setters from normal handlers. Kudzu serializes only state and setter IDs, then materializes live browser getters and batched setters; no function source, Provider tree, component tree, or hydration is shipped. The default applies outside a Provider and nested Providers resolve to independent concrete state IDs at build time. Arbitrary functions, accessors, cycles, symbols, and non-plain objects remain rejected at the browser capture boundary.
 
 ## Conditional DOM
 
@@ -410,6 +412,17 @@ The same native counter calculation was measured inline and through one relative
 | Imported helper | 5 | 1,845 B | 3,949 B | 446 ms | 4.47 µs |
 
 Bundling removes the helper file boundary, leaving 26 raw bytes and 18 gzip bytes for the function definition and calls. The measured call adds 0.69 µs per state update. The smaller 393 B command-only counter above uses a different optimized runtime path and is not the helper overhead baseline.
+
+#### Context Object Cost
+
+The same native counter was measured with local state access and through `value={{ count, setCount }}`. Context uses live object properties in both derived text and handlers, so this measures the complete recursive capture and generic binding capability.
+
+| Kudzu variant | Files | Initial JS gzip | Total output | Clean build | Click |
+|---|---:|---:|---:|---:|---:|
+| Local native state | 5 | **1,890 B** | **4,064 B** | **421 ms** | **3.96 µs** |
+| Context object | 7 | 4,991 B | 11,829 B | 441 ms | 7.54 µs |
+
+Context adds 3,101 B gzip and 3.59 µs per update only on pages using nested reactive capture descriptors. It preserves immediate logical reads across repeated setter calls and batches DOM writes once per synchronous turn. Capability specialization removes the recursive state/setter branches from pages that do not use them.
 
 #### Wrapper-Free Derived Text
 

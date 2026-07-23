@@ -1,6 +1,28 @@
 import { createContext, useContext, useState } from "@kudzujs/core";
 
 const ThemeContext = createContext("default");
+type CounterValue = { count: number; setCount: (value: number | ((previous: number) => number)) => void; label: string };
+const CounterContext = createContext<CounterValue | null>(null);
+
+function ContextCounter({ label }: { label: string }) {
+  const counter = useContext(CounterContext);
+  if (!counter) return null;
+  return <div data-counter={label} data-value={counter.count}>
+    <span>{counter.count}</span>
+    <button data-context-double onClick={() => {
+      counter.setCount(counter.count + 1);
+      counter.setCount(counter.count + 1);
+    }}>Double increment</button>
+    <button data-context-functional onClick={() => counter.setCount(previous => previous + 1)}>Functional increment</button>
+  </div>;
+}
+
+function DestructuredCounter() {
+  const value = useContext(CounterContext);
+  if (!value) return null;
+  const { count: current, setCount: update } = value;
+  return <button data-context-destructured onClick={() => update(current + 1)}>{current}</button>;
+}
 
 function ThemeValue({ label }: { label: string }) {
   const theme = useContext(ThemeContext);
@@ -26,6 +48,8 @@ export default function ConditionalPage() {
   const [count, setCount] = useState(0);
   const [hidden, setHidden] = useState(0);
   const [theme, setTheme] = useState("light");
+  const [contextCount, setContextCount] = useState(0);
+  const [nestedCount, setNestedCount] = useState(10);
 
   async function growAsync() {
     await Promise.resolve();
@@ -49,6 +73,13 @@ export default function ConditionalPage() {
         <ThemeContext.Provider value="nested"><ThemeValue label="nested" /></ThemeContext.Provider>
       </ThemeContext.Provider>
       <ThemeValue label="default" />
+      <CounterContext.Provider value={{ count: contextCount, setCount: setContextCount, label: "outer" }}>
+        <ContextCounter label="outer" />
+        <DestructuredCounter />
+        <CounterContext.Provider value={{ count: nestedCount, setCount: setNestedCount, label: "nested" }}>
+          <ContextCounter label="nested" />
+        </CounterContext.Provider>
+      </CounterContext.Provider>
       {open && (
         <section className={count > 0 ? "grown" : "new"} data-count={count} aria-live={count > 0 ? "polite" : "off"}>
           <span>{count}</span>
