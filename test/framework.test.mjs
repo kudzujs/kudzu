@@ -430,8 +430,10 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(component, /__kListItem/)
   assert.match(component, /function TableRow\(\{ item \}\)/)
   assert.match(component, /"data-row": __kListField/)
+  assert.doesNotMatch(component.slice(component.indexOf("function ItemRow"), component.indexOf("function TableRow")), /__kList/)
   assert.match(html, /<li data-id="1".*>.*Oak/)
   assert.match(html, /<tr data-row="2"/)
+  assert.match(html, /data-static.*Static/)
   assert.doesNotMatch(html, /data-k-list-item/)
   assert.match(html, /data-k-list-text="name"/)
   assert.match(html, /data-k-list-attrs=/)
@@ -458,7 +460,7 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(handlers, /as listExpression/)
   assert.match(handlers, /\.scope\("item"\)/)
   assert.doesNotMatch(handlers, /\beval\b|new Function/)
-  assert.equal(plan.lists.length, 2)
+  assert.equal(plan.lists.length, 3)
   assert.equal(plan.lists[0].state, "s0")
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runListBrowserTest(fixture, chrome)
@@ -506,7 +508,7 @@ test("shares lifecycle cleanup between conditional and list capabilities", async
 
 test("rejects unsupported keyed list expressions and duplicate initial keys", () => {
   for (const [fixture, message] of [
-    ["list-invalid-shape", /must receive the whole item through one direct prop/],
+    ["list-invalid-shape", /cannot use rest, defaults, or nested destructuring/],
     ["list-invalid-condition", /Keyed list item conditions must read the item/],
     ["list-invalid-browser", /identifier "window" is not allowed/],
     ["list-invalid-capture", /identifier "suffix" is not allowed/],
@@ -788,6 +790,10 @@ try {
   const click = action => document.querySelector('[data-action="' + action + '"]').click()
   let runtimeError = ""
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  document.querySelector("[data-static] [data-finish]").click()
+  document.querySelector("[data-static] [data-remove]").click()
+  await wait()
+  if (document.body.dataset.staticFinish !== "yes" || document.body.dataset.staticRemove !== "yes") throw new Error("component-normal-callbacks")
   const initialOak = document.querySelector('[data-id="1"]')
   if (initialOak.querySelector("span").textContent !== "OAK tree" || initialOak.className !== "active" || initialOak.getAttribute("aria-label") !== "Oak item" || initialOak.style.opacity !== "1" || initialOak.style.borderWidth !== "1px" || initialOak.style.getPropertyValue("--tone") !== "warm" || initialOak.querySelector("small").style.color !== "brown") throw new Error("initial-derived")
   if (!initialOak.querySelector("[data-finish]") || initialOak.querySelector("[data-and]") || document.querySelector('[data-id="2"] [data-status]').textContent !== "Pine complete" || !document.querySelector('[data-id="2"] [data-and]')) throw new Error("initial-condition")

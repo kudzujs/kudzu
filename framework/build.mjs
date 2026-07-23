@@ -395,6 +395,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
     const settersByFunction = new Map()
     const functions = new Map()
+    const components = new Map()
     const jsxLocalDeclarations = new Map()
     const jsxLocalsByFunction = new Map()
     const listLocalDeclarations = new WeakSet()
@@ -420,9 +421,13 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
           }
         }
       }
-      if (ts.isFunctionDeclaration(node) && node.name) functions.set(node.name.text, node)
+      if (ts.isFunctionDeclaration(node) && node.name) {
+        functions.set(node.name.text, node)
+        if (node.parent === sourceFile) components.set(node.name.text, { function: node, declaration: node })
+      }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
         functions.set(node.name.text, node.initializer)
+        if (node.parent?.parent?.parent === sourceFile) components.set(node.name.text, { function: node.initializer, declaration: node })
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isTopLevelConst(node)) {
         const owner = nearestFunction(node)
@@ -466,21 +471,66 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         if (uses.length) listLocalUses.set(uses[0], parts)
       }
     }
-    const renderedLists = new WeakMap()
+    const rawRenderedLists = []
     const collectRenderedLists = node => {
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
         const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction))
-        if (parts) {
-          if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
-          validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, functions)
-          renderedLists.set(node, parts)
-        }
+        if (parts) rawRenderedLists.push({ node, parts })
       }
       ts.forEachChild(node, collectRenderedLists)
     }
     collectRenderedLists(sourceFile)
+    const fail = (node, message) => {
+      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
+      throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+    }
+    const listComponentNames = new Set(rawRenderedLists.flatMap(({ parts }) => {
+      const tag = jsxTagName(parts.root)
+      return tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase() ? [tag.text] : []
+    }))
+    const componentSpecializations = new WeakMap()
+    const specializedDeclarations = new WeakSet()
+    for (const name of listComponentNames) {
+      const component = components.get(name)
+      if (!component) fail(sourceFile, `Keyed list component ${name} must be declared at the top level in the same file`)
+      if (isExportedDeclaration(component.declaration)) fail(component.declaration, `Keyed list component ${name} cannot be exported`)
+      const calls = jsxTagUses(sourceFile, name)
+      if (identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
+      for (const call of calls) componentSpecializations.set(call, specializeComponentCall(call, component.function, sourceFile, factory, context, fail))
+      specializedDeclarations.add(component.declaration)
+    }
+    const renderedLists = new WeakMap()
+    for (const { node, parts: originalParts } of rawRenderedLists) {
+      if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
+      const specialization = componentSpecializations.get(originalParts.root)
+      const root = specialization?.root ?? originalParts.root
+      const callback = root === originalParts.root ? originalParts.callback : factory.updateArrowFunction(
+        originalParts.callback,
+        originalParts.callback.modifiers,
+        originalParts.callback.typeParameters,
+        originalParts.callback.parameters,
+        originalParts.callback.type,
+        originalParts.callback.equalsGreaterThanToken,
+        root
+      )
+      if (callback !== originalParts.callback) {
+        ts.setParentRecursive(callback, false)
+        callback.parent = originalParts.callback.parent
+      }
+      const parts = { ...originalParts, root, callback }
+      for (const calculation of specialization?.calculations ?? []) {
+        ts.setParentRecursive(calculation, false)
+        calculation.parent = callback
+        validateListExpression(calculation, parts.item, originalParts.root, fail)
+      }
+      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions)
+      renderedLists.set(node, parts)
+    }
 
     const visitor = node => {
+      if (specializedDeclarations.has(node)) return node
+      if (componentSpecializations.has(node)) return ts.visitNode(componentSpecializations.get(node).root, visitor)
+
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
         return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(modulePath(node.moduleSpecifier.text)), node.attributes)
       }
@@ -639,35 +689,13 @@ function keyedListParts(expression, setters) {
   return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
 }
 
-function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, functions) {
+function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions) {
   const fail = (node, message) => {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
     throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
   }
-  let root = parts.root
-  let item = parts.item
-  const rootTag = ts.isJsxElement(root) ? root.openingElement.tagName : root.tagName
-  if (ts.isIdentifier(rootTag) && rootTag.text[0] === rootTag.text[0].toUpperCase()) {
-    const component = functions.get(rootTag.text)
-    if (!component) fail(root, `Keyed list component ${rootTag.text} must be declared in the same file`)
-    const uses = jsxTagUses(sourceFile, rootTag.text)
-    if (uses.length !== 1 || uses[0] !== root) fail(root, `Keyed list component ${rootTag.text} may only be used as this list root`)
-    const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
-    let itemProp
-    for (const attribute of attributes.properties) {
-      if (ts.isJsxSpreadAttribute(attribute)) {
-        if (referencesIdentifier(attribute.expression, item)) fail(attribute, "Keyed list item spreads are not supported")
-        continue
-      }
-      if (attribute.name.getText() === "key" || !attribute.initializer || !ts.isJsxExpression(attribute.initializer) || !attribute.initializer.expression || !referencesIdentifier(attribute.initializer.expression, item)) continue
-      if (!ts.isIdentifier(attribute.initializer.expression) || attribute.initializer.expression.text !== item || itemProp) fail(attribute, `Keyed list component ${rootTag.text} must receive the whole item through one direct prop`)
-      itemProp = attribute.name.getText()
-    }
-    if (ts.isJsxElement(root) && root.children.some(child => referencesIdentifier(child, item))) fail(root, `Keyed list component ${rootTag.text} must receive the whole item through one direct prop`)
-    if (!itemProp) fail(root, `Keyed list component ${rootTag.text} must receive the whole item through one direct prop`)
-    item = componentItemParameter(component, itemProp, node => fail(node, `Keyed list component ${rootTag.text} must destructure its item prop`))
-    root = componentJsxRoot(component, node => fail(node, `Keyed list component ${rootTag.text} must return one JSX element`))
-  }
+  const root = parts.root
+  const item = parts.item
   const validateElement = node => {
     const tag = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName
     if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
@@ -717,24 +745,120 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
   visit(root)
 }
 
-function componentItemParameter(component, prop, fail) {
-  if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component)
-  const element = component.parameters[0].name.elements.find(entry => !entry.dotDotDotToken && !entry.initializer && (entry.propertyName ?? entry.name).getText() === prop)
-  if (!element || !ts.isIdentifier(element.name)) fail(component.parameters[0])
-  return element.name.text
+function specializeComponentCall(call, component, sourceFile, factory, context, fail) {
+  if (component.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || component.asteriskToken) fail(component, "Keyed list components must be synchronous")
+  if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, "Keyed list components must use one destructured props parameter")
+  if (ts.isJsxElement(call) && call.children.some(child => !ts.isJsxText(child) || child.text.trim())) fail(call, "Keyed list component children are not supported")
+  const callAttributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+  const props = new Map()
+  let key
+  for (const attribute of callAttributes.properties) {
+    if (ts.isJsxSpreadAttribute(attribute)) fail(attribute, "Keyed list component prop spreads are not supported")
+    const name = attribute.name.getText()
+    if (props.has(name) || name === "key" && key) fail(attribute, `Duplicate keyed list component prop "${name}"`)
+    const value = !attribute.initializer
+      ? factory.createTrue()
+      : ts.isStringLiteral(attribute.initializer)
+        ? factory.createStringLiteral(attribute.initializer.text)
+        : ts.isJsxExpression(attribute.initializer) && attribute.initializer.expression
+          ? attribute.initializer.expression
+          : factory.createIdentifier("undefined")
+    if (name === "key") key = attribute
+    else props.set(name, value)
+  }
+  const substitutions = new Map()
+  const acceptedProps = new Set()
+  for (const element of component.parameters[0].name.elements) {
+    if (element.dotDotDotToken || element.initializer || !ts.isIdentifier(element.name)) fail(element, "Keyed list component props cannot use rest, defaults, or nested destructuring")
+    const prop = (element.propertyName ?? element.name).getText()
+    acceptedProps.add(prop)
+    substitutions.set(element.name.text, props.get(prop) ?? factory.createIdentifier("undefined"))
+  }
+  for (const prop of props.keys()) if (!acceptedProps.has(prop)) fail(call, `Unknown keyed list component prop "${prop}"`)
+
+  let returned
+  const calculations = []
+  if (!ts.isBlock(component.body)) {
+    returned = component.body
+  } else {
+    const statements = [...component.body.statements]
+    const last = statements.pop()
+    if (!last || !ts.isReturnStatement(last) || !last.expression) fail(component.body, "Keyed list component must end with one JSX return")
+    for (const statement of statements) {
+      if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, "Keyed list component locals must be single const declarations")
+      const declaration = statement.declarationList.declarations[0]
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, "Keyed list component locals must be initialized identifiers")
+      const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
+      calculations.push(calculation)
+      substitutions.set(declaration.name.text, calculation)
+    }
+    returned = last.expression
+  }
+  let root = unwrapExpression(substituteClone(returned, substitutions, factory, context))
+  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, "Keyed list component must return one JSX element")
+  const tag = jsxTagName(root)
+  if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(returned, "Keyed list component must directly return an intrinsic JSX element")
+  const rootAttributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
+  if (rootAttributes.properties.some(attribute => ts.isJsxAttribute(attribute) && attribute.name.text === "key")) fail(root, "Keyed list component intrinsic root cannot declare key")
+  if (key) root = addJsxAttribute(root, cloneAst(key, factory, context), factory)
+  ts.setParentRecursive(root, false)
+  root.parent = call.parent
+  return { root, calculations }
 }
 
-function componentJsxRoot(component, fail) {
-  if (!ts.isBlock(component.body)) {
-    const root = unwrapExpression(component.body)
-    if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(component.body)
-    return root
+function substituteClone(root, substitutions, factory, context) {
+  const visit = (node, shadowed = new Set()) => {
+    if (ts.isShorthandPropertyAssignment(node) && substitutions.has(node.name.text) && !shadowed.has(node.name.text)) {
+      return factory.createPropertyAssignment(cloneAst(node.name, factory, context), cloneAst(substitutions.get(node.name.text), factory, context))
+    }
+    if (ts.isIdentifier(node) && substitutions.has(node.text) && !shadowed.has(node.text) && isReferenceIdentifier(node) && !isJsxSyntaxIdentifier(node)) {
+      return cloneAst(substitutions.get(node.text), factory, context)
+    }
+    const nextShadowed = isFunctionLike(node)
+      ? new Set([...shadowed, ...node.parameters.flatMap(parameter => bindingNames(parameter.name))])
+      : shadowed
+    const clone = factory.cloneNode(node)
+    ts.setTextRange(clone, node)
+    ts.setOriginalNode(clone, node)
+    return ts.visitEachChild(clone, child => visit(child, nextShadowed), context)
   }
-  if (component.body.statements.length !== 1 || !ts.isReturnStatement(component.body.statements[0]) || !component.body.statements[0].expression) fail(component.body)
-  const statement = component.body.statements[0]
-  const root = unwrapExpression(statement.expression)
-  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(statement)
-  return root
+  return visit(root)
+}
+
+function cloneAst(root, factory, context) {
+  const visit = node => {
+    const clone = factory.cloneNode(node)
+    ts.setTextRange(clone, node)
+    ts.setOriginalNode(clone, node)
+    return ts.visitEachChild(clone, visit, context)
+  }
+  return visit(root)
+}
+
+function addJsxAttribute(root, attribute, factory) {
+  if (ts.isJsxSelfClosingElement(root)) {
+    return factory.updateJsxSelfClosingElement(root, root.tagName, root.typeArguments, factory.updateJsxAttributes(root.attributes, [attribute, ...root.attributes.properties]))
+  }
+  const opening = factory.updateJsxOpeningElement(root.openingElement, root.openingElement.tagName, root.openingElement.typeArguments, factory.updateJsxAttributes(root.openingElement.attributes, [attribute, ...root.openingElement.attributes.properties]))
+  return factory.updateJsxElement(root, opening, root.children, root.closingElement)
+}
+
+function jsxTagName(node) {
+  return ts.isJsxElement(node) ? node.openingElement.tagName : ts.isJsxSelfClosingElement(node) ? node.tagName : undefined
+}
+
+function isJsxSyntaxIdentifier(node) {
+  const parent = node.parent
+  return (ts.isJsxOpeningElement(parent) || ts.isJsxClosingElement(parent) || ts.isJsxSelfClosingElement(parent)) && parent.tagName === node || ts.isJsxAttribute(parent) && parent.name === node
+}
+
+function isFunctionLike(node) {
+  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
+}
+
+function isExportedDeclaration(node) {
+  const statement = ts.isVariableDeclaration(node) ? node.parent?.parent : node
+  return statement?.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword || modifier.kind === ts.SyntaxKind.DefaultKeyword) ?? false
 }
 
 function jsxTagUses(root, name) {

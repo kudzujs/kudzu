@@ -2,6 +2,20 @@ import { useState } from "@kudzujs/core"
 
 type Item = { id: number; name: string; tone: string; done: boolean; type: string; style: { color: string } }
 
+type ItemRowProps = Omit<Item, "type"> & { onFinish: () => void; onRemove: () => void }
+
+function ItemRow({ id, name, tone, done, style, onFinish, onRemove }: ItemRowProps) {
+  const rowClass = done ? "done" : "active"
+  const ariaLabel = `${name} item`
+  const rowStyle = { opacity: done ? 0.5 : 1, borderWidth: done ? 2 : 1, "--tone": tone }
+  return <li data-id={id} className={rowClass} aria-label={ariaLabel} style={rowStyle}>
+    <span>{name.toUpperCase()} tree</span><small style={style}>{name}</small><input data-uncontrolled />
+    {done ? <strong data-status>{name} complete</strong> : <button data-finish onClick={onFinish}>Finish {name}</button>}
+    {done && <em data-and>Done</em>}
+    <button data-remove onClick={() => onRemove()}>Remove</button>
+  </li>
+}
+
 function TableRow({ item }: { item: Item }) {
   return <tr data-row={item.id}><td>{item.name}</td></tr>
 }
@@ -32,12 +46,16 @@ export default function ListPage() {
     setItems(items.map(item => ({ ...item, id: 1 })))
   }
 
-  const rows = items.map(item => <li key={item.id} data-id={item.id} className={item.done ? "done" : "active"} aria-label={`${item.name} item`} style={{ opacity: item.done ? 0.5 : 1, borderWidth: item.done ? 2 : 1, "--tone": item.tone }}>
-    <span>{item.name.toUpperCase()} tree</span><small style={item.style}>{item.name}</small><input data-uncontrolled />
-    {item.done ? <strong data-status>{item.name} complete</strong> : <button data-finish onClick={() => setItems(items.map(entry => entry.id === item.id ? { ...entry, done: true } : entry))}>Finish {item.name}</button>}
-    {item.done && <em data-and>Done</em>}
-    <button data-remove onClick={() => setItems(items.filter(entry => entry.id !== item.id))}>Remove</button>
-  </li>)
+  const rows = items.map(item => <ItemRow
+    key={item.id}
+    id={item.id}
+    name={item.name}
+    tone={item.tone}
+    done={item.done}
+    style={item.style}
+    onFinish={() => setItems(items.map(entry => entry.id === item.id ? { ...entry, done: true } : entry))}
+    onRemove={() => setItems(items.filter(entry => entry.id !== item.id))}
+  />)
   const unusedRows = items.map(item => <p key={item.id}>{item.name}</p>)
 
   return <main>
@@ -48,6 +66,12 @@ export default function ListPage() {
     <button data-action="duplicate" onClick={duplicate}>Duplicate</button>
     <ul data-list>
       {rows}
+    </ul>
+    <ol data-copy>
+      {items.map(item => <ItemRow key={item.id} id={item.id} name={item.name} tone={item.tone} done={item.done} style={item.style} onFinish={() => setItems(items)} onRemove={() => setItems(items)} />)}
+    </ol>
+    <ul data-static>
+      <ItemRow id={99} name="Static" tone="plain" done={false} style={{ color: "gray" }} onFinish={() => { document.body.dataset.staticFinish = "yes" }} onRemove={() => { document.body.dataset.staticRemove = "yes" }} />
     </ul>
     <table><tbody>
       {items.map(item => <TableRow key={item.id} item={item} />)}

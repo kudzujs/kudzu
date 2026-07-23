@@ -1,6 +1,6 @@
 import { useState } from "@kudzujs/core"
 
-function Row({ name }: { name: string }) {
+function Row({ name = "Unknown" }: { name?: string }) {
   return <li>{name}</li>
 }
 
