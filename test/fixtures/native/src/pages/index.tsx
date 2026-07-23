@@ -1,4 +1,6 @@
 import { useState } from "@kudzujs/core"
+import offset, { clamp as Math } from "../helpers"
+import * as helpers from "../helpers"
 
 function NativeCounter({ increment }: { increment: number }) {
   const [count, setCount] = useState(0)
@@ -7,7 +9,7 @@ function NativeCounter({ increment }: { increment: number }) {
   const limits = { minimum: 2 }
 
   async function update(event: MouseEvent) {
-    const next = Math.max(count + step + increment + offsets[0], limits.minimum)
+    const next = Math(count + step + increment + offsets[0] + offset(), limits.minimum) + helpers.bonus()
     if ((event.currentTarget as HTMLElement).dataset.enabled === "yes") {
       setCount(next)
       console.log("native", count)

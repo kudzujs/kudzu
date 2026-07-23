@@ -7,7 +7,7 @@ const imports = new Map()
 const revisions = new WeakMap()
 const itemParts = new WeakMap()
 const conditionOwners = new WeakMap()
-const itemPartsSelector = "[data-k-list-text],[data-k-list-attrs],[data-k-list-events],[data-k-list-expression],[data-k-list-expression-attrs],[data-k-list-condition]"
+const itemPartsSelector = `[data-k-list-text],[data-k-list-attrs],[data-k-list-events],[data-k-list-expression],[data-k-list-expression-attrs]${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}`
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -33,7 +33,7 @@ function mountLists(root) {
     const roots = listRoots(start, end)
     const templateRoot = start.content.firstElementChild
     const parts = listItemPartPlan(templateRoot)
-    for (const root of roots) descriptor.conditions ? listItemParts(root) : mapListItemParts(parts, root)
+    for (const root of roots) __KUDZU_LIST_CONDITIONS__ && descriptor.conditions ? listItemParts(root) : mapListItemParts(parts, root)
     if (descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
     const items = browserState.get(descriptor.state)
     const list = {
@@ -183,10 +183,12 @@ function fillListParts(root, parts, item, revision) {
       }).catch(error => console.error(error))
     }
   }
-  for (const [marker, descriptor] of parts.conditions) {
-    evaluate(descriptor, item).then(value => {
-      if (revisions.get(root) === revision && root.isConnected) updateListCondition(marker, descriptor.kind, value, item)
-    }).catch(error => console.error(error))
+  if (__KUDZU_LIST_CONDITIONS__) {
+    for (const [marker, descriptor] of parts.conditions) {
+      evaluate(descriptor, item).then(value => {
+        if (revisions.get(root) === revision && root.isConnected) updateListCondition(marker, descriptor.kind, value, item)
+      }).catch(error => console.error(error))
+    }
   }
 }
 
@@ -200,7 +202,7 @@ function listItemParts(root) {
     if (node.hasAttribute("data-k-list-events")) parts.events.push([node, node.dataset.kListEvents])
     if (node.hasAttribute("data-k-list-expression")) parts.expressions.push([node, JSON.parse(node.dataset.kListExpression)])
     if (node.hasAttribute("data-k-list-expression-attrs")) parts.expressionAttributes.push([node, JSON.parse(node.dataset.kListExpressionAttrs)])
-    if (node.hasAttribute("data-k-list-condition")) {
+    if (__KUDZU_LIST_CONDITIONS__ && node.hasAttribute("data-k-list-condition")) {
       parts.conditions.push([node, JSON.parse(node.dataset.kListCondition)])
       conditionOwners.set(node, root)
     }
@@ -220,7 +222,7 @@ function listItemPartPlan(template) {
     events: parts.events.map(([node, events]) => [indexes.get(node), events]),
     expressions: parts.expressions.map(([node, descriptor]) => [indexes.get(node), descriptor]),
     expressionAttributes: parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes]),
-    conditions: parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor])
+    conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : []
   }
 }
 
@@ -233,10 +235,10 @@ function mapListItemParts(parts, root) {
     events: parts.events.map(([index, events]) => [target[index], events]),
     expressions: parts.expressions.map(([index, descriptor]) => [target[index], descriptor]),
     expressionAttributes: parts.expressionAttributes.map(([index, attributes]) => [target[index], attributes]),
-    conditions: parts.conditions.map(([index, descriptor]) => {
+    conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([index, descriptor]) => {
       conditionOwners.set(target[index], root)
       return [target[index], descriptor]
-    })
+    }) : []
   })
 }
 

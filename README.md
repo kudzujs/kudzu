@@ -247,7 +247,18 @@ async function load() {
 }
 ```
 
-Primitive values, arrays, plain objects, and destructured props can be captured by client handlers. Functions, symbols, bigints, cycles, class instances, and imported helper functions are not yet supported as captures.
+Native handlers may call default, named, or namespace helpers imported from relative TypeScript modules. Kudzu bundles the reachable helper graph into handler ESM and shared chunks; helper runtime imports must remain relative, and dynamic imports or JSX helpers are rejected. Imported functions cannot be used directly as JSX event callbacks.
+
+```tsx
+import { normalizeStatus } from "../lib/status"
+
+async function load() {
+  const response = await fetch("/api/status")
+  setStatus(normalizeStatus(await response.json()))
+}
+```
+
+Primitive values, arrays, plain objects, and destructured props can be captured by client handlers. Functions, symbols, bigints, cycles, and class instances are not supported as captures.
 
 Native handlers use direct DOM listeners with normal `currentTarget`, bubbling, default-action, and propagation semantics. Handler modules load before listener registration, so `preventDefault`, `stopPropagation`, and `stopImmediatePropagation` work synchronously as expected.
 
@@ -285,6 +296,7 @@ Supported:
 - Build-time async components
 - Primitive `useState` bindings
 - Synchronous and async event handlers
+- Relative imported helpers in native handlers
 - Serializable component-local captures
 - Direct text DOM patches
 - Reactive standard, `aria-*`, and `data-*` attributes
@@ -300,7 +312,7 @@ Not implemented yet:
 
 - Block-scoped JSX locals and reusable keyed-list aliases
 - Server actions and request-time SSR
-- Imported client helpers and React package islands
+- React package islands
 - HMR and framework DevTools
 
 ## Benchmarks
@@ -323,6 +335,17 @@ Same counter with initial value `7` and increment/decrement buttons:
 
 Astro produces the smallest hand-authored counter. Kudzu's advantage in this fixture is React-shaped state code with a sub-1 KB runtime, not the smallest possible JavaScript.
 
+#### Imported Helper Cost
+
+The same native counter calculation was measured inline and through one relative TypeScript helper. Click medians are per state update from five 20,000-click batches in each of seven fresh Chrome sessions.
+
+| Kudzu variant | Files | Initial JS gzip | Total output | Clean build | Click |
+|---|---:|---:|---:|---:|---:|
+| Inline native handler | 5 | 1,827 B | 3,923 B | **426 ms** | **3.78 µs** |
+| Imported helper | 5 | 1,845 B | 3,949 B | 446 ms | 4.47 µs |
+
+Bundling removes the helper file boundary, leaving 26 raw bytes and 18 gzip bytes for the function definition and calls. The measured call adds 0.69 µs per state update. The smaller 393 B command-only counter above uses a different optimized runtime path and is not the helper overhead baseline.
+
 ### Static Journal Page
 
 Same content and CSS across every fixture:
@@ -343,15 +366,15 @@ The list starts with 1,000 keyed items, then updates every label, reverses the o
 
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro | Yes | **324 B** | **43.6 KB** | 826 ms | **4.1 ms** | **3.7 ms** | **1.4 ms** | **3.3 ms** | **12.5 ms** |
-| Kudzu | Yes | 5.4 KB | 61.6 KB | **448 ms** | 8.6 ms | 8.3 ms | 2.4 ms | 8.6 ms | 27.9 ms |
-| Next.js | Yes | 182.2 KB | 695.2 KB | 3002 ms | 7.5 ms | 12.3 ms | 4.1 ms | 7.8 ms | 31.7 ms |
-| Vue CSR | No | 24.3 KB | 61.3 KB | 765 ms | 11.4 ms | 9.8 ms | 4.4 ms | 7.0 ms | 32.6 ms |
-| React CSR | No | 59.3 KB | 189.4 KB | 1039 ms | 9.9 ms | 13.4 ms | 4.7 ms | 6.1 ms | 34.1 ms |
-| Svelte CSR | No | 12.9 KB | 33.1 KB | 845 ms | 6.2 ms | 42.9 ms | 4.6 ms | 6.2 ms | 59.9 ms |
-| Qwik CSR | No | 22.2 KB | 64.1 KB | 630 ms | 10.7 ms | 27.5 ms | 39.2 ms | 22.2 ms | 99.6 ms |
+| Astro | Yes | **324 B** | **43.6 KB** | 834 ms | **4.3 ms** | **3.8 ms** | **1.3 ms** | **3.1 ms** | **12.5 ms** |
+| Kudzu | Yes | 5.1 KB | 60.3 KB | **438 ms** | 7.5 ms | 7.0 ms | 1.8 ms | 6.9 ms | 23.2 ms |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 2983 ms | 7.0 ms | 12.0 ms | 3.9 ms | 6.7 ms | 29.6 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1020 ms | 9.5 ms | 11.7 ms | 3.8 ms | 5.3 ms | 30.3 ms |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 773 ms | 11.4 ms | 9.5 ms | 4.1 ms | 6.6 ms | 31.6 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 828 ms | 5.8 ms | 38.9 ms | 4.0 ms | 5.9 ms | 54.6 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 594 ms | 9.1 ms | 22.2 ms | 30.8 ms | 19.0 ms | 81.1 ms |
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 27.9 ms, 15.4 ms behind the hand-authored Astro baseline and 6.2 ms ahead of React across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 23.2 ms, 10.7 ms behind the hand-authored Astro baseline and 7.1 ms ahead of React across all four operations.
 
 Benchmark snapshot collected on July 22, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 

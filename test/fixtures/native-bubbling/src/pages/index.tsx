@@ -1,5 +1,6 @@
 import { useRef, useState } from "@kudzujs/core"
 import { Parent } from "../Parent"
+import { coolWeather } from "../weather"
 
 export default function NativeBubblingPage() {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -30,6 +31,6 @@ export default function NativeBubblingPage() {
     <input id="focus-target" ref={inputRef} />
     <button id="focus-ref" onClick={focusInput}>Focus</button>
     <p id="object-state">{weather.temperature}° {weather.label}</p>
-    <button id="update-object" onClick={() => setWeather({ temperature: 21, label: "Cool" })}>Update weather</button>
+    <button id="update-object" onClick={() => setWeather(coolWeather())}>Update weather</button>
   </>
 }

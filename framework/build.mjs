@@ -1,9 +1,9 @@
 import { createServer } from "node:http"
 import { randomUUID } from "node:crypto"
 import { cp, mkdir, readFile, readdir, rm, stat, watch, writeFile } from "node:fs/promises"
-import { extname, join, relative, resolve, sep } from "node:path"
+import { dirname, extname, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
-import { transform } from "esbuild"
+import { build as bundle, transform } from "esbuild"
 import ts from "typescript"
 import { renderPage } from "./core.mjs"
 import { stateSchema } from "./dev-state.js"
@@ -24,10 +24,11 @@ export async function build({ quiet = false, minify = true } = {}) {
 
   const sourceFiles = (await walk(sourceDirectory)).filter(file => /\.(?:ts|tsx)$/.test(file)).sort()
   if (!sourceFiles.length) throw new Error("No TypeScript files found in src/")
+  const sourceFileSet = new Set(sourceFiles)
 
   const handlerModules = []
   for (const file of sourceFiles) {
-    const handlerModule = await compile(file)
+    const handlerModule = await compile(file, sourceFileSet)
     if (handlerModule) handlerModules.push(handlerModule)
   }
 
@@ -67,6 +68,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   await mkdir(assetsDirectory, { recursive: true })
   const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
+  const hasListConditions = plans.some(plan => plan.lists.some(list => list.conditions))
   const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => `/assets/${module.path}`)
   const hasNativeHandlers = nativeModules.length > 0
   if (behaviorCount) {
@@ -94,7 +96,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   }`
     listRuntime = listRuntime.replace("  /* list-style */", listStyleCount ? stylePatch : "")
     if (listStyleCount) listRuntime = `import { serializeStyle } from "./kudzu-style.js"\n${listRuntime}`
-    await writeJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify)
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify, { __KUDZU_LIST_CONDITIONS__: String(hasListConditions) })
   }
   if (hasNativeHandlers) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
@@ -106,6 +108,30 @@ export async function build({ quiet = false, minify = true } = {}) {
     const output = join(assetsDirectory, handlerModule.path)
     await mkdir(resolve(output, ".."), { recursive: true })
     await writeJavaScript(output, handlerModule.code, minify)
+  }
+  const clientModules = await collectClientModules(handlerModules.flatMap(module => module.clientImports), sourceFileSet)
+  for (const file of clientModules) {
+    const output = join(assetsDirectory, clientModulePath(file))
+    await mkdir(resolve(output, ".."), { recursive: true })
+    await writeJavaScript(output, await compileClientModule(file, sourceFileSet), minify)
+  }
+  if (clientModules.length) {
+    await bundle({
+      entryPoints: handlerModules.map(module => join(assetsDirectory, module.path)),
+      outbase: join(assetsDirectory, "handlers"),
+      outdir: join(assetsDirectory, "handlers"),
+      entryNames: "[dir]/[name]",
+      chunkNames: "chunks/[name]-[hash]",
+      allowOverwrite: true,
+      bundle: true,
+      splitting: true,
+      format: "esm",
+      target: "es2022",
+      minify,
+      legalComments: "none",
+      logLevel: "silent"
+    })
+    await rm(join(assetsDirectory, "modules"), { recursive: true, force: true })
   }
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans }, null, 2))
   if (hasStyles) await cp(join(sourceDirectory, "style.css"), join(assetsDirectory, "style.css"))
@@ -135,6 +161,22 @@ export function specializeRuntime(source, events, hasStateSeed) {
 async function writeJavaScript(file, source, minify) {
   const code = minify ? (await transform(source, { format: "esm", legalComments: "none", minify: true, target: "es2022" })).code : source
   await writeFile(file, code)
+}
+
+async function writeBundledJavaScript(file, source, minify, define) {
+  const result = await bundle({
+    stdin: { contents: source, resolveDir: dirname(file), sourcefile: file },
+    bundle: true,
+    write: false,
+    external: ["./kudzu.js", "./kudzu-style.js"],
+    define,
+    format: "esm",
+    target: "es2022",
+    minify,
+    legalComments: "none",
+    logLevel: "silent"
+  })
+  await writeFile(file, result.outputFiles[0].contents)
 }
 
 export function parseDevPort(value) {
@@ -275,11 +317,12 @@ function escapeHtml(value) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 }
 
-async function compile(file) {
+async function compile(file, sourceFiles) {
   const source = await readFile(file, "utf8")
   const nativeHandlers = []
   const reactiveBindings = []
   const listExpressions = []
+  const clientImports = new Set()
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
   const result = ts.transpileModule(source, {
     fileName: file,
@@ -289,7 +332,7 @@ async function compile(file) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, `/assets/${handlerPath}`)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, `/assets/${handlerPath}`, file, sourceFiles, clientImports)] },
     reportDiagnostics: true
   })
 
@@ -304,6 +347,7 @@ async function compile(file) {
 
   if (!nativeHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
   const moduleSource = [
+    printClientImports(nativeHandlers.flatMap(handler => handler.imports), handlerPath),
     ...nativeHandlers.map(handler => printNativeHandler(handler)),
     ...reactiveBindings.map(entry => printReactiveBinding(entry)),
     ...listExpressions.map(entry => printListExpression(entry))
@@ -314,12 +358,13 @@ async function compile(file) {
   })
   const moduleErrors = moduleResult.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
-  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0 }
+  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, clientImports: [...clientImports] }
 }
 
-function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, handlerUrl) {
+function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, clientImports) {
   return context => sourceFile => {
     const factory = context.factory
+    const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
     const settersByFunction = new Map()
     const functions = new Map()
     const jsxLocalDeclarations = new Map()
@@ -501,7 +546,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.getText())) {
         const setters = settersForNode(node, settersByFunction)
-        const event = compileEvent(node.initializer.expression, setters, functions, factory, nativeHandlers, handlerUrl, listEventItems.get(node))
+        const event = compileEvent(node.initializer.expression, setters, functions, factory, nativeHandlers, handlerUrl, listEventItems.get(node), importBindings, clientImports)
         if (event) {
           usesBehavior = true
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, event))
@@ -810,17 +855,20 @@ function factoryNull() {
   return ts.factory.createNull()
 }
 
-function compileEvent(expression, setters, functions, factory, nativeHandlers, handlerUrl, listItem) {
+function compileEvent(expression, setters, functions, factory, nativeHandlers, handlerUrl, listItem, importBindings, clientImports) {
   if (ts.isIdentifier(expression)) expression = functions.get(expression.text)
   if (!expression || (!ts.isArrowFunction(expression) && !ts.isFunctionExpression(expression) && !ts.isFunctionDeclaration(expression))) return undefined
 
   const optimized = compileOptimizedEvent(expression, setters, factory)
   if (optimized) return optimized
 
-  const captures = nativeCaptureNames(expression, setters)
+  const allCaptures = nativeCaptureNames(expression, setters)
+  const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
+  const captures = new Set([...allCaptures].filter(name => !importBindings.has(name)))
+  for (const entry of imports) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
   const exportName = `handler${nativeHandlers.length}`
-  nativeHandlers.push({ exportName, expression, captures, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))) })
+  nativeHandlers.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))) })
   const states = [...usedStates].map(name => factory.createArrayLiteralExpression([
     factory.createStringLiteral(name),
     factory.createIdentifier(name)
@@ -869,6 +917,16 @@ const nativeGlobals = new Set([
 
 function nativeCaptureNames(expression, setters) {
   return captureNames(expression, expression.body, setters)
+}
+
+function referencedImportedBindings(expression, imports) {
+  const names = new Set()
+  const visit = node => {
+    if (ts.isIdentifier(node) && imports.has(node.text) && isReferenceIdentifier(node)) names.add(node.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(expression.body)
+  return names
 }
 
 function captureNames(declarationRoot, referenceRoot, setters) {
@@ -935,6 +993,135 @@ function settersForNode(node, settersByFunction) {
     if (setters) return setters
   }
   return new Map()
+}
+
+function clientImportBindings(sourceFile, file, sourceFiles) {
+  const bindings = new Map()
+  for (const node of sourceFile.statements) {
+    if (!ts.isImportDeclaration(node) || !node.importClause || node.importClause.isTypeOnly || !ts.isStringLiteral(node.moduleSpecifier) || !node.moduleSpecifier.text.startsWith(".")) continue
+    const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
+    if (node.importClause.name) bindings.set(node.importClause.name.text, { kind: "default", local: node.importClause.name.text, target })
+    const named = node.importClause.namedBindings
+    if (named && ts.isNamespaceImport(named)) bindings.set(named.name.text, { kind: "namespace", local: named.name.text, target })
+    if (named && ts.isNamedImports(named)) {
+      for (const entry of named.elements) {
+        if (!entry.isTypeOnly) bindings.set(entry.name.text, { kind: "named", imported: (entry.propertyName ?? entry.name).text, local: entry.name.text, target })
+      }
+    }
+  }
+  return bindings
+}
+
+function printClientImports(entries, handlerPath) {
+  const unique = new Map(entries.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry]))
+  const groups = Map.groupBy(unique.values(), entry => entry.target)
+  const imports = []
+  for (const [target, group] of groups) {
+    const specifier = relativeModulePath(handlerPath, clientModulePath(target))
+    const defaults = group.filter(entry => entry.kind === "default")
+    const named = group.filter(entry => entry.kind === "named")
+    if (defaults.length === 1 || named.length) imports.push(`import ${defaults.length === 1 ? `${defaults[0].local}${named.length ? ", " : ""}` : ""}${named.length ? `{ ${named.map(entry => entry.imported === entry.local ? entry.local : `${entry.imported} as ${entry.local}`).join(", ")} }` : ""} from ${JSON.stringify(specifier)}`)
+    if (defaults.length > 1) for (const entry of defaults) imports.push(`import ${entry.local} from ${JSON.stringify(specifier)}`)
+    for (const entry of group.filter(entry => entry.kind === "namespace")) imports.push(`import * as ${entry.local} from ${JSON.stringify(specifier)}`)
+  }
+  return imports.join("\n")
+}
+
+async function collectClientModules(entries, sourceFiles) {
+  const modules = new Set()
+  const queue = [...new Set(entries)]
+  while (queue.length) {
+    const file = queue.shift()
+    if (modules.has(file)) continue
+    const source = await readFile(file, "utf8")
+    const sourceFile = parseSourceFile(file, source)
+    if (containsJsx(sourceFile)) throw new Error(`${relative(root, file)} Imported client helpers must not contain JSX`)
+    rejectUnsupportedClientImports(sourceFile, file)
+    modules.add(file)
+    for (const node of sourceFile.statements) {
+      if ((!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) || !node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier) || !runtimeModuleReference(node)) continue
+      if (!node.moduleSpecifier.text.startsWith(".")) throw new Error(`${relative(root, file)} Imported client helpers may only use relative runtime imports`)
+      queue.push(resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles))
+    }
+  }
+  const outputs = new Map()
+  for (const file of modules) {
+    const output = clientModulePath(file)
+    if (outputs.has(output)) throw new Error(`${relative(root, file)} and ${relative(root, outputs.get(output))} emit the same client module path`)
+    outputs.set(output, file)
+  }
+  return [...modules].sort()
+}
+
+async function compileClientModule(file, sourceFiles) {
+  const source = await readFile(file, "utf8")
+  const transformer = context => sourceFile => {
+    const factory = context.factory
+    const visitor = node => {
+      if (ts.isImportDeclaration(node) && runtimeModuleReference(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
+        const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
+        return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(relativeModulePath(clientModulePath(file), clientModulePath(target))), node.attributes)
+      }
+      if (ts.isExportDeclaration(node) && runtimeModuleReference(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
+        const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
+        return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(clientModulePath(file), clientModulePath(target))), node.attributes)
+      }
+      return ts.visitEachChild(node, visitor, context)
+    }
+    return ts.visitNode(sourceFile, visitor)
+  }
+  const result = ts.transpileModule(source, {
+    fileName: file,
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+    transformers: { before: [transformer] },
+    reportDiagnostics: true
+  })
+  const errors = result.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
+  if (errors.length) throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
+  return result.outputText
+}
+
+function resolveSourceImport(importer, specifier, sourceFiles) {
+  const base = resolve(dirname(importer), specifier)
+  const extension = extname(base)
+  const stem = /\.(?:js|jsx|ts|tsx)$/.test(extension) ? base.slice(0, -extension.length) : base
+  const candidates = extension === ".ts" || extension === ".tsx"
+    ? [base]
+    : [`${stem}.ts`, `${stem}.tsx`]
+  const matches = candidates.filter(candidate => sourceFiles.has(candidate))
+  if (matches.length !== 1) throw new Error(`${relative(root, importer)} Relative import ${JSON.stringify(specifier)} must resolve to one TypeScript file in src/`)
+  return matches[0]
+}
+
+function runtimeModuleReference(node) {
+  if (ts.isExportDeclaration(node)) return !node.isTypeOnly && (!node.exportClause || !ts.isNamedExports(node.exportClause) || node.exportClause.elements.some(entry => !entry.isTypeOnly))
+  const clause = node.importClause
+  if (!clause) return true
+  if (clause.isTypeOnly) return false
+  if (clause.name || clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) return true
+  return clause.namedBindings?.elements.some(entry => !entry.isTypeOnly) ?? false
+}
+
+function rejectUnsupportedClientImports(sourceFile, file) {
+  const visit = node => {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) throw new Error(`${relative(root, file)} Dynamic imports are not supported in imported client helpers`)
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") throw new Error(`${relative(root, file)} require() is not supported in imported client helpers`)
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+}
+
+function parseSourceFile(file, source) {
+  return ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+}
+
+function clientModulePath(file) {
+  return `modules/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
+}
+
+function relativeModulePath(from, to) {
+  const path = relative(dirname(from), to).replaceAll(sep, "/")
+  return path.startsWith(".") ? path : `./${path}`
 }
 
 function printNativeHandler({ exportName, expression, captures, setters }) {

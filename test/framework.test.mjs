@@ -388,6 +388,7 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
   assert.match(runtime, /Keyed list state must remain an array/)
+  assert.match(runtime, /Keyed list condition marker has no end/)
   assert.doesNotMatch(runtime, /\beval\b|new Function/)
   assert.match(handlers, /as handler/)
   assert.match(handlers, /as listExpression/)
@@ -409,12 +410,14 @@ test("emits only list capabilities for derived list expressions without handlers
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/list-expressions/dist/index.html", import.meta.url), "utf8")
   const handlers = await readFile(new URL("./fixtures/list-expressions/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/list-expressions/dist/assets/kudzu-list.js", import.meta.url), "utf8")
   assert.match(html, /kudzu-list\.js/)
   assert.doesNotMatch(html, /kudzu-binding\.js|kudzu-native\.js|kudzu-serialization\.js/)
   assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-native.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-serialization.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-style.js", import.meta.url)), false)
   assert.match(handlers, /as listExpression/)
+  assert.doesNotMatch(runtime, /data-k-list-condition|Keyed list condition marker has no end/)
 })
 
 test("shares lifecycle cleanup between conditional and list capabilities", async t => {
@@ -494,6 +497,8 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   assert.match(handlerSource, /as handler0/)
   assert.match(handlerSource, /Math\.max/)
   assert.match(handlerSource, /Promise\.resolve/)
+  assert.doesNotMatch(handlerSource, /modules\/helpers\.js/)
+  assert.equal(existsSync(new URL("./fixtures/native/dist/assets/modules", import.meta.url)), false)
   assert.match(handlerSource, /\.get\("count"\)/)
   assert.match(handlerSource, /\.set\("count"/)
   assert.match(handlerSource, /\.scope\("step"\)/)
@@ -506,6 +511,7 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   assert.doesNotMatch(handlerSource, /\beval\b|new Function/)
   assert.equal(native.scope.step, 2)
   assert.equal(native.scope.increment, 1)
+  assert.equal("offset" in native.scope || "Math" in native.scope || "helpers" in native.scope, false)
 
   const state = new Map([["s0", 0]])
   const commits = []
@@ -513,8 +519,8 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   const handlers = await import(`${new URL("./fixtures/native/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
   await handlers.handler0(context, { currentTarget: { dataset: { enabled: "yes" } } })
   await Promise.resolve()
-  assert.equal(state.get("s0"), 5)
-  assert.deepEqual(commits, [["s0", 4], ["s0", 5]])
+  assert.equal(state.get("s0"), 7)
+  assert.deepEqual(commits, [["s0", 6], ["s0", 7]])
 })
 
 test("mounts direct native handlers with browser event semantics", async t => {
@@ -533,6 +539,7 @@ test("mounts direct native handlers with browser event semantics", async t => {
   assert.match(html, /id="object-state"><span data-k-bind-text=.*28<\/span>° <span data-k-bind-text=.*Warm<\/span><\/p>/)
   assert.match(runtime, /\/assets\/handlers\/Parent\.js/)
   assert.match(runtime, /\/assets\/handlers\/pages\/index\.js/)
+  assert.equal(existsSync(new URL("./fixtures/native-bubbling/dist/assets/modules", import.meta.url)), false)
   assert.match(html, /id="focus-target" data-k-ref="r0"/)
   assert.doesNotMatch(runtime, /document\.addEventListener|new Proxy|dispatchNative|snapshotNativeTargets/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
@@ -547,6 +554,26 @@ test("rejects non-serializable component-scope captures by name", () => {
 
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /Native capture "helper" is not serializable: function/)
+})
+
+test("rejects unsupported imports in client helpers", async t => {
+  t.after(async () => {
+    await rm(new URL("./fixtures/native-invalid-helper/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/native-invalid-helper/dist", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/native-invalid-require/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/native-invalid-require/dist", import.meta.url), { recursive: true, force: true })
+  })
+  for (const [fixture, message] of [
+    ["native-invalid-helper", /Imported client helpers may only use relative runtime imports/],
+    ["native-invalid-require", /require\(\) is not supported in imported client helpers/]
+  ]) {
+    const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
+      cwd: new URL(`./fixtures/${fixture}`, import.meta.url),
+      encoding: "utf8"
+    })
+    assert.notEqual(result.status, 0)
+    assert.match(`${result.stdout}\n${result.stderr}`, message)
+  }
 })
 
 test("rejects every unsupported native capture shape", () => {

@@ -86,7 +86,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.13</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.14</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -288,6 +288,7 @@ return <>
             <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
             <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
             <p>Native handlers use direct DOM listeners with normal <code>currentTarget</code>, bubbling, default-action, and propagation semantics. Handler modules load before listener registration, so <code>preventDefault()</code>, <code>stopPropagation()</code>, and <code>stopImmediatePropagation()</code> work synchronously as expected.</p>
+            <p>Native handlers may call default, named, or namespace helpers from relative TypeScript modules. Kudzu bundles the reachable helper graph into handler ESM and shared chunks. Helper runtime imports must remain relative; package imports, dynamic imports, JSX helpers, and direct imported event callbacks are rejected.</p>
             <p>Object refs resolve DOM elements when a native handler reads <code>current</code>. They initialize with <code>null</code> and need no effect or hydration lifecycle.</p>
             <CodeBlock code={`const inputRef = useRef<HTMLInputElement>(null)
 
@@ -300,6 +301,12 @@ return <>
   const response = await fetch("/api/status")
   setLoading(false)
 }`} />
+            <CodeBlock code={`import { normalizeStatus } from "../lib/status"
+
+async function loadStatus() {
+  const response = await fetch("/api/status")
+  setStatus(normalizeStatus(await response.json()))
+}`} />
           </section>
 
           <section className="docs-section" id="captures">
@@ -307,7 +314,7 @@ return <>
             <p>Handlers and reactive expressions may capture serializable component locals and destructured props.</p>
             <div className="docs-columns">
               <div><strong>Supported</strong><p>Strings, booleans, numbers, arrays, plain objects, and destructured props.</p></div>
-              <div><strong>Unsupported</strong><p>Functions, symbols, bigints, cycles, class instances, and imported helpers.</p></div>
+              <div><strong>Unsupported</strong><p>Function captures, symbols, bigints, cycles, and class instances. Relative imported helpers use browser ESM instead of capture serialization.</p></div>
             </div>
           </section>
 
@@ -322,6 +329,7 @@ dist/
     ├── style.css
     ├── kudzu.js
     ├── kudzu-binding.js (when used)
+    ├── handlers/ (evaluators and imported helpers)
     ├── kudzu-list.js (when used)
     ├── kudzu-native.js (when used)
     ├── kudzu-serialization.js (when used)
@@ -362,13 +370,13 @@ dist/
             <BenchmarkTable
               columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
               rows={[
-                ["Astro", "324 B", "43.6 KB", "826 ms", "4.1 ms", "3.7 ms", "1.4 ms", "3.3 ms", "12.5 ms"],
-                ["Kudzu", "5.4 KB", "61.6 KB", "448 ms", "8.6 ms", "8.3 ms", "2.4 ms", "8.6 ms", "27.9 ms"],
-                ["Next.js", "182.2 KB", "695.2 KB", "3002 ms", "7.5 ms", "12.3 ms", "4.1 ms", "7.8 ms", "31.7 ms"],
-                ["Vue CSR", "24.3 KB", "61.3 KB", "765 ms", "11.4 ms", "9.8 ms", "4.4 ms", "7.0 ms", "32.6 ms"],
-                ["React CSR", "59.3 KB", "189.4 KB", "1039 ms", "9.9 ms", "13.4 ms", "4.7 ms", "6.1 ms", "34.1 ms"],
-                ["Svelte CSR", "12.9 KB", "33.1 KB", "845 ms", "6.2 ms", "42.9 ms", "4.6 ms", "6.2 ms", "59.9 ms"],
-                ["Qwik CSR", "22.2 KB", "64.1 KB", "630 ms", "10.7 ms", "27.5 ms", "39.2 ms", "22.2 ms", "99.6 ms"]
+                ["Astro", "324 B", "43.6 KB", "834 ms", "4.3 ms", "3.8 ms", "1.3 ms", "3.1 ms", "12.5 ms"],
+                ["Kudzu", "5.1 KB", "60.3 KB", "438 ms", "7.5 ms", "7.0 ms", "1.8 ms", "6.9 ms", "23.2 ms"],
+                ["Next.js", "182.2 KB", "695.2 KB", "2983 ms", "7.0 ms", "12.0 ms", "3.9 ms", "6.7 ms", "29.6 ms"],
+                ["React CSR", "59.3 KB", "189.4 KB", "1020 ms", "9.5 ms", "11.7 ms", "3.8 ms", "5.3 ms", "30.3 ms"],
+                ["Vue CSR", "24.3 KB", "61.3 KB", "773 ms", "11.4 ms", "9.5 ms", "4.1 ms", "6.6 ms", "31.6 ms"],
+                ["Svelte CSR", "12.9 KB", "33.1 KB", "828 ms", "5.8 ms", "38.9 ms", "4.0 ms", "5.9 ms", "54.6 ms"],
+                ["Qwik CSR", "22.2 KB", "64.1 KB", "594 ms", "9.1 ms", "22.2 ms", "30.8 ms", "19.0 ms", "81.1 ms"]
               ]}
             />
             <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>
@@ -383,7 +391,7 @@ dist/
               <li>Keyed lists require local-state maps and intrinsic roots; reusable aliases, nested dynamic JSX, item spreads, and derived-expression captures remain unsupported.</li>
               <li>Block-scoped or reassigned JSX locals are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
-              <li>Imported client helpers and non-serializable captures are rejected at build time.</li>
+              <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
             </ul>
           </section>
         </main>
