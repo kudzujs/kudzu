@@ -79,6 +79,43 @@ npm run dev
 
 Pages live in `src/pages`; `index.tsx` maps to `/`. `npm run dev` serves locally on `127.0.0.1`, reloads the browser after successful rebuilds, and shows build failures in an error overlay. Across that full-page reload, compatible Kudzu logical state is briefly preserved by route-unique state variable name for the current pathname, query, and hash, including controlled properties, conditions, and keyed-list arrays. Renamed, removed, and duplicate-named state is skipped. Uncontrolled DOM state, focus, selection, and imperative DOM mutations are not preserved. Set `PORT` to change the default port of `3000`. The development client and state snapshot are dev-only; production output in `dist/` is unaffected.
 
+Dynamic static pages use bracket parameters and `getStaticPaths()`:
+
+```tsx
+// src/pages/posts/[slug].tsx
+export async function getStaticPaths() {
+  return [
+    { params: { slug: "oak" }, props: { title: "Oak" } },
+    { params: { slug: "pine" }, props: { title: "Pine" } }
+  ]
+}
+
+export default function Post({ title }: { title: string }) {
+  return <h1>{title}</h1>
+}
+```
+
+This emits `/posts/oak` and `/posts/pine`. Parameter values must be safe single path segments; missing, unsafe, and duplicate routes fail the build.
+
+Static trusted HTML can be rendered without a transform layer:
+
+```tsx
+<article dangerouslySetInnerHTML={{ __html: renderedNotionHtml }} />
+```
+
+The HTML is intentionally not sanitized. Use only trusted or previously sanitized build-time content. Reactive raw HTML, children on the same element, void elements, and keyed-list raw HTML are rejected.
+
+Every CSS file under `src` is copied to the same relative path under `dist/assets` and linked in deterministic order. Project-page deployments and post-build artifacts use `kudzu.config.mjs`:
+
+```js
+export default {
+  base: "/newsletter",
+  async afterBuild({ outDir, routes, plans, base }) {
+    // Write RSS, sitemap, search indexes, or other static artifacts.
+  }
+}
+```
+
 ## State Semantics
 
 Kudzu intentionally differs from React's state snapshot behavior:
@@ -105,6 +142,8 @@ const [weather, setWeather] = useState({ temperature: 28, label: "Warm" })
 
 return <p>{weather.temperature}° {weather.label}</p>
 ```
+
+Derived text uses comment-bounded text nodes rather than wrapper elements, so table cells, options, SVG text, layout, and element selectors keep their authored structure.
 
 ## Reactive Attributes
 
@@ -294,6 +333,9 @@ Supported:
 - Function components, props, children, fragments, and TSX
 - File-based static routes
 - Build-time async components
+- Dynamic static routes with build-time props
+- Static trusted `dangerouslySetInnerHTML`
+- Base-path deployments, multiple CSS files, and `afterBuild`
 - Primitive `useState` bindings
 - Synchronous and async event handlers
 - Relative imported helpers in native handlers
@@ -345,6 +387,28 @@ The same native counter calculation was measured inline and through one relative
 | Imported helper | 5 | 1,845 B | 3,949 B | 446 ms | 4.47 µs |
 
 Bundling removes the helper file boundary, leaving 26 raw bytes and 18 gzip bytes for the function definition and calls. The measured call adds 0.69 µs per state update. The smaller 393 B command-only counter above uses a different optimized runtime path and is not the helper overhead baseline.
+
+#### Wrapper-Free Derived Text
+
+The same object-state counter was built with the v0.4.14 span target and the comment-bounded text range. Browser medians use five 20,000-update batches in each of seven fresh Chrome sessions.
+
+| Text target | Files | JS gzip | Total output | Clean build | Update |
+|---|---:|---:|---:|---:|---:|
+| Span v0.4.14 | 7 | **4,453 B** | **10,065 B** | **404 ms** | **4.83 µs** |
+| Comment range | 7 | 4,763 B | 10,922 B | 426 ms | 5.03 µs |
+
+The range costs 310 B gzip only on pages using derived reactive text. It removes wrapper elements and preserves authored structure across table cells, options, SVG text, selectors, and conditional remounts; ordinary attribute and condition pages tree-shake the range code entirely.
+
+### 123-Page Newsletter Build
+
+The migration fixture emits the same 123 static detail pages, two stylesheets, base-prefixed URLs, and post-build feed with no browser JavaScript. Seven clean builds compare generated page files with one dynamic page module.
+
+| Build model | TSX source files | Pages | JS gzip | Total output | Clean build |
+|---|---:|---:|---:|---:|---:|
+| Generated TSX workaround | 123 | 123 | 0 B | 52.0 KB | 882 ms |
+| `getStaticPaths` | **1** | 123 | 0 B | 52.0 KB | **454 ms** |
+
+`getStaticPaths` removes 122 generated source files and cuts clean build time by 48.5% without changing deploy output or runtime cost.
 
 ### Static Journal Page
 

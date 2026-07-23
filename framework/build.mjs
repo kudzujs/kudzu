@@ -17,18 +17,22 @@ const outputDirectory = join(root, "dist")
 const devClient = (session, revision, schema) => `<script>(()=>{const show=event=>{let box=document.getElementById("__kudzu_error");if(!box){box=document.createElement("div");box.id="__kudzu_error";box.setAttribute("role","alert");box.setAttribute("aria-live","assertive");box.style.cssText="position:fixed;inset:0;z-index:2147483647;overflow:auto;padding:2rem;background:#200;color:#fff;font:16px/1.5 ui-monospace,monospace";const title=document.createElement("strong"),text=document.createElement("pre");title.textContent="Kudzu build error";text.style.whiteSpace="pre-wrap";box.append(title,text);document.body.append(box)}box.querySelector("pre").textContent=event.data};const schema=${inlineJson(schema)},route=location.pathname+location.search+location.hash,urls=[...document.querySelectorAll('script[type="module"][src]')].map(node=>node.src).filter(url=>/\\/assets\\/kudzu(?:-(?:binding|list|native))?\\.js$/.test(new URL(url).pathname));const devImport=import("/__kudzu_dev.js"),runtimeImports=Promise.allSettled(urls.map(url=>import(url)));const ready=(async()=>{const dev=await devImport,modules=await runtimeImports,runtime=modules.find(result=>result.status==="fulfilled"&&result.value.browserState instanceof Map&&typeof result.value.commitDom==="function")?.value;try{dev.restoreState(sessionStorage,route,runtime?.browserState,schema,runtime?.commitDom)}catch{}return{dev,runtime}})().catch(()=>({}));const events=new EventSource("/__kudzu_reload?session=${session}&revision=${revision}");let reloading=false;events.addEventListener("reload",async()=>{if(reloading)return;reloading=true;try{const{dev,runtime}=await ready;dev?.snapshotState(sessionStorage,route,runtime?.browserState,schema)}catch{}location.reload()});events.addEventListener("build-error",show)})()</script>`
 
 export async function build({ quiet = false, minify = true } = {}) {
+  const config = await loadConfig()
+  const base = normalizeBase(config.base)
   await rm(workDirectory, { recursive: true, force: true })
   await rm(outputDirectory, { recursive: true, force: true })
   await mkdir(workDirectory, { recursive: true })
   await mkdir(outputDirectory, { recursive: true })
 
-  const sourceFiles = (await walk(sourceDirectory)).filter(file => /\.(?:ts|tsx)$/.test(file)).sort()
+  const projectFiles = await walk(sourceDirectory)
+  const sourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file)).sort()
+  const cssFiles = projectFiles.filter(file => file.endsWith(".css")).sort()
   if (!sourceFiles.length) throw new Error("No TypeScript files found in src/")
   const sourceFileSet = new Set(sourceFiles)
 
   const handlerModules = []
   for (const file of sourceFiles) {
-    const handlerModule = await compile(file, sourceFileSet)
+    const handlerModule = await compile(file, sourceFileSet, base)
     if (handlerModule) handlerModules.push(handlerModule)
   }
 
@@ -41,35 +45,44 @@ export async function build({ quiet = false, minify = true } = {}) {
   let listStyleCount = 0
   let stateSeedCount = 0
   const plans = []
-  const hasStyles = await exists(join(sourceDirectory, "style.css"))
+  const emittedRoutes = new Set()
+  const styleUrls = cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`))
 
   for (const pageFile of pageFiles) {
     const compiledFile = compiledPath(pageFile)
     const module = await import(`${pathToFileURL(compiledFile).href}?v=${Date.now()}`)
     if (typeof module.default !== "function") throw new Error(`${relative(root, pageFile)} must export a default component`)
 
-    const result = await renderPage(module.default, {
-      ...(module.metadata ?? {}),
-      styles: hasStyles
-    })
-    const route = routeFromPage(pageFile)
-    const routeDirectory = join(outputDirectory, route)
-    await mkdir(routeDirectory, { recursive: true })
-    await writeFile(join(routeDirectory, "index.html"), result.html)
-    plans.push({ route: `/${route}`, ...result.plan })
-    if (result.hasBehaviors) behaviorCount++
-    if (result.hasBindings) bindingCount++
-    if (result.hasLists) listCount++
-    if (result.hasListStyles) listStyleCount++
-    if (result.hasStateSeed) stateSeedCount++
+    const entries = await staticPathEntries(module, pageFile)
+    for (const { params, props } of entries) {
+      const route = routeFromPage(pageFile, params)
+      const routePath = withBase(base, `/${route}`)
+      if (emittedRoutes.has(routePath)) throw new Error(`Duplicate route: ${routePath}`)
+      emittedRoutes.add(routePath)
+      const result = await renderPage(module.default, {
+        ...(module.metadata ?? {}),
+        styles: styleUrls.length ? styleUrls : false,
+        base
+      }, props)
+      const routeDirectory = join(outputDirectory, route)
+      await mkdir(routeDirectory, { recursive: true })
+      await writeFile(join(routeDirectory, "index.html"), result.html)
+      plans.push({ route: routePath, ...result.plan })
+      if (result.hasBehaviors) behaviorCount++
+      if (result.hasBindings) bindingCount++
+      if (result.hasLists) listCount++
+      if (result.hasListStyles) listStyleCount++
+      if (result.hasStateSeed) stateSeedCount++
+    }
   }
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
   const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
+  const hasTextBindings = plans.some(plan => plan.bindings.some(binding => binding.target === "text"))
   const hasListConditions = plans.some(plan => plan.lists.some(list => list.conditions))
-  const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => `/assets/${module.path}`)
+  const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
   const hasNativeHandlers = nativeModules.length > 0
   if (behaviorCount) {
     const runtimeFile = bindingCount || listCount || hasNativeHandlers ? "./shared-runtime.js" : "./runtime.js"
@@ -83,7 +96,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
       .replace('"./style.js"', '"./kudzu-style.js"')
-    await writeJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify)
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify, { "globalThis.__KUDZU_TEXT_BINDINGS__": String(hasTextBindings) })
   }
   if (listCount) {
     let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
@@ -134,10 +147,18 @@ export async function build({ quiet = false, minify = true } = {}) {
     await rm(join(assetsDirectory, "modules"), { recursive: true, force: true })
   }
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans }, null, 2))
-  if (hasStyles) await cp(join(sourceDirectory, "style.css"), join(assetsDirectory, "style.css"))
+  for (const file of cssFiles) {
+    const output = join(assetsDirectory, relative(sourceDirectory, file))
+    await mkdir(dirname(output), { recursive: true })
+    await cp(file, output)
+  }
   if (await exists(join(root, "public"))) await cp(join(root, "public"), outputDirectory, { recursive: true })
+  if (config.afterBuild !== undefined) {
+    if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
+    await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans })
+  }
 
-  if (!quiet) console.log(`Built ${pageFiles.length} page(s), ${behaviorCount} interactive page(s) into dist/`)
+  if (!quiet) console.log(`Built ${plans.length} page(s), ${behaviorCount} interactive page(s) into dist/`)
 }
 
 function specializeEvents(source, events) {
@@ -168,7 +189,7 @@ async function writeBundledJavaScript(file, source, minify, define) {
     stdin: { contents: source, resolveDir: dirname(file), sourcefile: file },
     bundle: true,
     write: false,
-    external: ["./kudzu.js", "./kudzu-style.js"],
+    external: ["./kudzu.js", "./kudzu-serialization.js", "./kudzu-style.js"],
     define,
     format: "esm",
     target: "es2022",
@@ -189,6 +210,7 @@ export function parseDevPort(value) {
 
 export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid dev server port: ${port}`)
+  const base = normalizeBase((await loadConfig()).base)
 
   let buildError
   let revision = 0
@@ -226,7 +248,7 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
         return
       }
 
-      const relativePath = pathname.replace(/^\/+/, "")
+      const relativePath = stripBase(pathname, base).replace(/^\/+/, "")
       let file = resolve(outputDirectory, relativePath)
       if (!file.startsWith(`${outputDirectory}${sep}`) && file !== outputDirectory) throw new Error("Invalid path")
 
@@ -287,6 +309,12 @@ function injectDevClient(html, session, revision, schema) {
   return `${html}${devClient(session, revision, schema)}`
 }
 
+function stripBase(path, base) {
+  if (!base) return path
+  if (path === base) return "/"
+  return path.startsWith(`${base}/`) ? path.slice(base.length) : path
+}
+
 async function devSchema(pathname) {
   try {
     const plan = JSON.parse(await readFile(join(workDirectory, "kudzu-plan.json"), "utf8"))
@@ -317,7 +345,7 @@ function escapeHtml(value) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 }
 
-async function compile(file, sourceFiles) {
+async function compile(file, sourceFiles, base) {
   const source = await readFile(file, "utf8")
   const nativeHandlers = []
   const reactiveBindings = []
@@ -332,7 +360,7 @@ async function compile(file, sourceFiles) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, `/assets/${handlerPath}`, file, sourceFiles, clientImports)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, clientImports)] },
     reportDiagnostics: true
   })
 
@@ -1289,9 +1317,59 @@ function compiledPath(file) {
   return join(workDirectory, relative(sourceDirectory, file)).replace(/\.(?:ts|tsx)$/, ".mjs")
 }
 
-function routeFromPage(file) {
+async function loadConfig() {
+  for (const name of ["kudzu.config.mjs", "kudzu.config.js"]) {
+    const file = join(root, name)
+    if (!(await exists(file))) continue
+    const config = (await import(`${pathToFileURL(file).href}?v=${Date.now()}-${randomUUID()}`)).default ?? {}
+    if (!isPlainRecord(config)) throw new Error(`${name} must export a default object`)
+    return config
+  }
+  return {}
+}
+
+function normalizeBase(value) {
+  if (value == null || value === "" || value === "/") return ""
+  if (typeof value !== "string" || !value.startsWith("/") || /[?#\0]/.test(value) || value.split("/").includes("..")) throw new Error("kudzu.config base must be a root-relative path")
+  return value.replace(/\/+$/, "")
+}
+
+function assetPath(base, path) {
+  return `${base}/${path}`
+}
+
+function withBase(base, path) {
+  return base ? `${base}${path}` : path
+}
+
+async function staticPathEntries(module, file) {
+  if (typeof module.getStaticPaths !== "function") return [{ params: {}, props: {} }]
+  const entries = await module.getStaticPaths()
+  if (!Array.isArray(entries)) throw new Error(`${relative(root, file)} getStaticPaths() must return an array`)
+  return entries.map((entry, index) => {
+    if (!isPlainRecord(entry)) throw new Error(`${relative(root, file)} getStaticPaths()[${index}] must be an object`)
+    const params = entry.params ?? {}
+    const props = entry.props ?? {}
+    if (!isPlainRecord(params)) throw new Error(`${relative(root, file)} getStaticPaths()[${index}].params must be an object`)
+    if (!isPlainRecord(props)) throw new Error(`${relative(root, file)} getStaticPaths()[${index}].props must be an object`)
+    return { params, props }
+  })
+}
+
+function routeFromPage(file, params = {}) {
   const page = relative(pagesDirectory, file).replace(/\\/g, "/").replace(/\.tsx$/, "")
-  return page === "index" ? "" : page.replace(/\/index$/, "")
+  if (page.includes("[...")) throw new Error(`Catch-all routes are not supported: ${page}`)
+  const filled = page.replace(/\[([^\]]+)\]/g, (_, name) => {
+    if (!Object.hasOwn(params, name)) throw new Error(`Missing param "${name}" for route ${page}`)
+    const value = String(params[name])
+    if (!value || value === "." || value === ".." || /[\\/\0?#]/.test(value)) throw new Error(`Invalid param "${name}" for route ${page}`)
+    return value
+  })
+  return filled === "index" ? "" : filled.replace(/\/index$/, "")
+}
+
+function isPlainRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype
 }
 
 async function walk(directory) {

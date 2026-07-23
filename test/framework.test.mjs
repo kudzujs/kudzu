@@ -126,6 +126,16 @@ test("renders object refs and rejects unsupported ref shapes", async () => {
   }, { styles: false }), /Refs are not supported in keyed lists/)
 })
 
+test("renders static raw HTML and rejects reactive or conflicting content", async () => {
+  const result = await renderPage(() => jsx("article", { dangerouslySetInnerHTML: { __html: "<strong>Trusted</strong>" } }), { styles: false })
+  assert.match(result.html, /<article><strong>Trusted<\/strong><\/article>/)
+  await assert.rejects(renderPage(() => {
+    const [html] = useState("<strong>Reactive</strong>")
+    return jsx("article", { dangerouslySetInnerHTML: { __html: html } })
+  }, { styles: false }), /Reactive dangerouslySetInnerHTML is not supported/)
+  await assert.rejects(renderPage(() => jsx("article", { dangerouslySetInnerHTML: { __html: "<b>Raw</b>" }, children: "Text" }), { styles: false }), /cannot be used with children/)
+})
+
 test("renders context defaults and nested providers", async () => {
   const Theme = createContext("default")
   const Value = () => jsx("span", { children: useContext(Theme) })
@@ -188,6 +198,57 @@ test("produces the same execution plan for the same input", async () => {
   assert.equal(second, first)
 })
 
+test("emits dynamic routes from getStaticPaths with page props", async t => {
+  const fixture = new URL("./fixtures/dynamic", import.meta.url)
+  const config = new URL("./fixtures/dynamic/kudzu.config.mjs", import.meta.url)
+  await writeFile(config, `
+import { writeFile } from "node:fs/promises"
+import { join } from "node:path"
+export default {
+  base: "/newsletter",
+  async afterBuild({ outDir, routes }) {
+    await writeFile(join(outDir, "routes.json"), JSON.stringify(routes))
+  }
+}
+`)
+  t.after(async () => {
+    await rm(config, { force: true })
+    await rm(new URL("./fixtures/dynamic/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/dynamic/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  assert.match(result.stdout, /Built 2 page\(s\), 2 interactive page\(s\)/)
+  const oak = await readFile(new URL("./fixtures/dynamic/dist/posts/oak/index.html", import.meta.url), "utf8")
+  const pine = await readFile(new URL("./fixtures/dynamic/dist/posts/pine/index.html", import.meta.url), "utf8")
+  assert.match(oak, /href="\/newsletter\/assets\/newsletter\.css"/)
+  assert.match(oak, /href="\/newsletter\/assets\/style\.css"/)
+  assert.match(oak, /rel="icon" href="\/newsletter\/icon\.svg"/)
+  assert.match(oak, /rel="manifest" href="\/newsletter\/manifest\.webmanifest"/)
+  assert.match(oak, /src="\/newsletter\/assets\/kudzu(?:-native)?\.js"/)
+  assert.match(oak, /data-title="Oak".*<h1>Oak<\/h1><p>Score: 7<\/p><section><article><strong>Oak body<\/strong><\/article><\/section>/)
+  assert.match(pine, /data-title="Pine".*<h1>Pine<\/h1><p>Score: 9<\/p><section><article><strong>Pine body<\/strong><\/article><\/section>/)
+  assert.equal(existsSync(new URL("./fixtures/dynamic/dist/assets/newsletter.css", import.meta.url)), true)
+  assert.equal(existsSync(new URL("./fixtures/dynamic/dist/assets/style.css", import.meta.url)), true)
+  assert.deepEqual(JSON.parse(await readFile(new URL("./fixtures/dynamic/dist/routes.json", import.meta.url), "utf8")), ["/newsletter/posts/oak", "/newsletter/posts/pine"])
+  const plans = JSON.parse(await readFile(new URL("./fixtures/dynamic/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.deepEqual(plans.map(plan => plan.route), ["/newsletter/posts/oak", "/newsletter/posts/pine"])
+  assert.deepEqual(plans.map(plan => plan.events[0].native.scope.title), ["Oak", "Pine"])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runDynamicBrowserTest(fixture, chrome)
+})
+
+test("rejects unsafe dynamic route params", async t => {
+  const fixture = new URL("./fixtures/dynamic-invalid", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/dynamic-invalid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/dynamic-invalid/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Invalid param "slug" for route \[slug\]/)
+})
+
 test("patches reactive attributes and form properties without a VDOM", async t => {
   const fixture = new URL("./fixtures/bindings", import.meta.url)
   t.after(async () => {
@@ -229,6 +290,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(commandRuntime, /registerCommitter/)
   assert.match(commandRuntime, /\["change","click"\]/)
   assert.match(bindingRuntime, /patchBinding|data-k-bind/)
+  assert.doesNotMatch(bindingRuntime, /Reactive text marker has no end|k-text:/)
   assert.match(bindingRuntime, /kudzu-style\.js/)
   assert.equal(existsSync(new URL("./fixtures/bindings/dist/assets/kudzu-style.js", import.meta.url)), true)
   assert.match(serialization, /as deserialize/)
@@ -533,10 +595,14 @@ test("mounts direct native handlers with browser event semantics", async t => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/native-bubbling/dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("./fixtures/native-bubbling/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  const bindingRuntime = await readFile(new URL("./fixtures/native-bubbling/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
   assert.doesNotMatch(html, /"flags":/)
   assert.match(runtime, /addEventListener/)
   assert.match(runtime, /removeEventListener/)
-  assert.match(html, /id="object-state"><span data-k-bind-text=.*28<\/span>° <span data-k-bind-text=.*Warm<\/span><\/p>/)
+  assert.match(html, /data-k-text-bindings=/)
+  assert.match(html, /id="object-state"><!--k-text:\d+-->28<!--k-text-end-->° <!--k-text:\d+-->Warm<!--k-text-end--><\/p>/)
+  assert.doesNotMatch(html, /data-k-bind-text/)
+  assert.match(bindingRuntime, /Reactive text marker has no end/)
   assert.match(runtime, /\/assets\/handlers\/Parent\.js/)
   assert.match(runtime, /\/assets\/handlers\/pages\/index\.js/)
   assert.equal(existsSync(new URL("./fixtures/native-bubbling/dist/assets/modules", import.meta.url)), false)
@@ -841,10 +907,15 @@ try {
   document.querySelector("#focus-ref").click()
   await wait()
   if (document.activeElement?.id !== "focus-target" || document.body.dataset.ref !== "focus-target") throw new Error("object-ref")
-  if (document.querySelector("#object-state").textContent !== "28° Warm") throw new Error("object-state-initial")
+  if (document.querySelector("#object-state").textContent !== "28° Warm" || document.querySelector("#object-state").children.length) throw new Error("object-state-initial")
+  if (document.querySelector("#object-cell").textContent !== "WARM" || document.querySelector("#object-option").textContent !== "Warm" || document.querySelector("#object-svg").textContent !== "28" || document.querySelector("#object-condition").textContent !== "warm") throw new Error("object-context-initial")
+  document.querySelector("#hide-object").click()
+  await wait()
+  if (document.querySelector("#object-condition") || document.querySelector("#object-state").textContent !== "0° Idle") throw new Error("object-condition-unmount")
   document.querySelector("#update-object").click()
   await wait()
-  if (document.querySelector("#object-state").textContent !== "21° Cool") throw new Error("object-state-update")
+  if (document.querySelector("#object-state").textContent !== "21° Cool" || document.querySelector("#object-state").children.length) throw new Error("object-state-update")
+  if (document.querySelector("#object-cell").textContent !== "COOL" || document.querySelector("#object-option").textContent !== "Cool" || document.querySelector("#object-svg").textContent !== "21" || document.querySelector("#object-condition").textContent !== "cool") throw new Error("object-context-update")
   let lateListenerCalled = false
   document.querySelector("#controls").addEventListener("click", () => { lateListenerCalled = true })
   document.querySelector("#controls").click()
@@ -857,6 +928,7 @@ try {
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
 }
+
 `)
   const port = 42000 + process.pid % 1000
   const serverSource = `
@@ -872,6 +944,46 @@ http.createServer((request, response) => {
   await new Promise(resolve => setTimeout(resolve, 200))
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runDynamicBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("posts/oak/index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/newsletter/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  await wait()
+  if (document.querySelector("article strong").textContent !== "Oak body") throw new Error("raw-html")
+  document.querySelector("button").click()
+  await wait()
+  if (document.querySelector("button").textContent !== "Saved" || document.body.dataset.saved !== "Oak") throw new Error("dynamic-props")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 43000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url.replace(/^\\/newsletter\\/?/, "") || "index.html"
+  const file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/newsletter/posts/oak/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
   } finally {

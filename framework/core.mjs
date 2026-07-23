@@ -220,27 +220,27 @@ function serializeCapture(name, value, seen) {
   }
 }
 
-export async function renderPage(component, metadata = {}) {
-  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
+export async function renderPage(component, metadata = {}, props = {}) {
+  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], textBindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
-    const body = await renderNode({ type: component, props: {} })
+    const body = await renderNode({ type: component, props })
     const title = escapeHtml(metadata.title ?? "Kudzu")
     const head = renderMetadata(metadata)
     const styles = metadata.styles === false
       ? ""
-      : '<link rel="stylesheet" href="/assets/style.css">'
+      : (Array.isArray(metadata.styles) ? metadata.styles : [assetPath(metadata.base, "assets/style.css")]).map(href => `<link rel="stylesheet" href="${escapeAttribute(href)}">`).join("")
     const runtime = renderContext.hasBehaviors
-      ? '<script type="module" src="/assets/kudzu.js"></script>'
+      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu.js")}"></script>`
       : ""
     const nativeRuntime = renderContext.hasNativeBehaviors
-      ? '<script type="module" src="/assets/kudzu-native.js"></script>'
+      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-native.js")}"></script>`
       : ""
     const bindingRuntime = renderContext.hasBindings
-      ? '<script type="module" src="/assets/kudzu-binding.js"></script>'
+      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-binding.js")}"></script>`
       : ""
     const listRuntime = renderContext.hasLists
-      ? '<script type="module" src="/assets/kudzu-list.js"></script>'
+      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-list.js")}"></script>`
       : ""
     const listStates = new Set(renderContext.lists.map(list => list.state))
     const seededListStates = new Set(renderContext.lists.filter(list => list.seed && !renderContext.textStates.has(list.state) && !renderContext.conditionStates.has(list.state)).map(list => list.state))
@@ -253,9 +253,12 @@ export async function renderPage(component, metadata = {}) {
     const state = initialState.length
       ? ` data-k-state='${escapeJsonAttribute(initialState)}'`
       : ""
+    const textBindings = renderContext.textBindings.length
+      ? ` data-k-text-bindings='${escapeJsonAttribute(renderContext.textBindings)}'`
+      : ""
 
     return {
-      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}>${body}${runtime}${bindingRuntime}${listRuntime}${nativeRuntime}</body></html>`,
+      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}${textBindings}>${body}${runtime}${bindingRuntime}${listRuntime}${nativeRuntime}</body></html>`,
       hasBehaviors: renderContext.hasBehaviors,
       hasBindings: renderContext.hasBindings,
       hasLists: renderContext.hasLists,
@@ -283,9 +286,9 @@ function renderMetadata(metadata) {
   if (metadata.description) meta("description", metadata.description)
   if (metadata.themeColor) meta("theme-color", metadata.themeColor)
   if (metadata.url) tags.push(`<link rel="canonical" href="${escapeAttribute(metadata.url)}">`)
-  if (metadata.icon) tags.push(`<link rel="icon" href="${escapeAttribute(metadata.icon)}">`)
-  if (metadata.appleTouchIcon) tags.push(`<link rel="apple-touch-icon" href="${escapeAttribute(metadata.appleTouchIcon)}">`)
-  if (metadata.manifest) tags.push(`<link rel="manifest" href="${escapeAttribute(metadata.manifest)}">`)
+  if (metadata.icon) tags.push(`<link rel="icon" href="${escapeAttribute(baseUrl(metadata.base, metadata.icon))}">`)
+  if (metadata.appleTouchIcon) tags.push(`<link rel="apple-touch-icon" href="${escapeAttribute(baseUrl(metadata.base, metadata.appleTouchIcon))}">`)
+  if (metadata.manifest) tags.push(`<link rel="manifest" href="${escapeAttribute(baseUrl(metadata.base, metadata.manifest))}">`)
 
   meta("og:title", metadata.title, true)
   meta("og:description", metadata.description, true)
@@ -305,6 +308,14 @@ function renderMetadata(metadata) {
   meta("twitter:image", metadata.twitterImage ?? metadata.image)
 
   return tags.join("")
+}
+
+function assetPath(base, path) {
+  return `${base ?? ""}/${path}`
+}
+
+function baseUrl(base, value) {
+  return value.startsWith("/") ? `${base ?? ""}${value}` : value
 }
 
 async function renderNode(node, namespace, selectValue = noSelectValue) {
@@ -370,7 +381,9 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (renderContext.conditionDepth || renderContext.listDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
     renderContext.hasBehaviors = true
     renderContext.hasBindings = true
-    return `<span data-k-bind-text='${escapeJsonAttribute(descriptor)}'>${escapeHtml(node.value ?? "")}</span>`
+    const id = renderContext.textBindings.length
+    renderContext.textBindings.push(descriptor)
+    return `<!--k-text:${id}-->${escapeHtml(node.value ?? "")}<!--k-text-end-->`
   }
   if (node?.[listConditionalMarker]) {
     const descriptor = { kind: node.kind, module: node.module, handler: node.handler }
@@ -412,6 +425,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   const listAttributes = []
   const listExpressionAttributes = []
   const listEvents = []
+  let rawHtml
 
   if (renderContext.listRoot) {
     const root = renderContext.listRoot
@@ -432,6 +446,14 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (rawName.toLowerCase().startsWith("data-k-")) throw new Error(`${rawName} uses Kudzu's reserved data-k-* prefix`)
     if (["ref", "dangerouslysetinnerhtml"].includes(rawName.toLowerCase()) && (value?.[signalMarker] || value?.[bindingMarker])) {
       throw new Error(`Reactive ${rawName} is not supported`)
+    }
+    if (rawName === "dangerouslySetInnerHTML") {
+      if (renderContext.listDepth) throw new Error("dangerouslySetInnerHTML is not supported in keyed lists")
+      if (!value || typeof value !== "object" || Array.isArray(value) || !Object.hasOwn(value, "__html")) throw new Error("dangerouslySetInnerHTML requires { __html }")
+      if (value.__html?.[signalMarker] || value.__html?.[bindingMarker]) throw new Error("Reactive dangerouslySetInnerHTML is not supported")
+      if (props.children != null) throw new Error("dangerouslySetInnerHTML cannot be used with children")
+      rawHtml = value.__html == null ? "" : String(value.__html)
+      continue
     }
 
     if (/^on[A-Z]/.test(rawName)) {
@@ -504,8 +526,11 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (tag === "option" && selectValue !== noSelectValue && String(optionValue(props)) === (selectValue == null ? "" : String(selectValue))) attributes += " selected"
 
   const voidElements = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"])
-  if (voidElements.has(tag)) return `<${tag}${attributes}>`
-  const children = directListText ? escapeHtml(directListText.value ?? "") : await renderNode(props.children, childNamespace, childSelectValue)
+  if (voidElements.has(tag)) {
+    if (rawHtml !== undefined) throw new Error(`dangerouslySetInnerHTML cannot be used on <${tag}>`)
+    return `<${tag}${attributes}>`
+  }
+  const children = rawHtml ?? (directListText ? escapeHtml(directListText.value ?? "") : await renderNode(props.children, childNamespace, childSelectValue))
   return `<${tag}${attributes}>${children}</${tag}>`
 }
 

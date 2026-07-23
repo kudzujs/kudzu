@@ -1,11 +1,11 @@
 # Framework Internals
 
-- `build.mjs`: TSX compilation, file routes, behavior extraction, static HTML output, and the development server.
+- `build.mjs`: TSX compilation, static and `getStaticPaths` routes, base paths, CSS collection, post-build hooks, behavior extraction, static HTML output, and the development server.
 - `core.mjs`: server-side JSX rendering, state slots, context providers, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.
 - `runtime.js`: command-only runtime for direct state-to-text patches.
 - `shared-runtime.js`: command runtime with capability commit and DOM lifecycle hooks, emitted only when needed.
-- `binding-runtime.js`: optional generic attributes, form properties, and conditional range patches.
+- `binding-runtime.js`: optional generic attributes, form properties, comment-bounded text patches, and conditional range patches.
 - `list-runtime.js`: optional keyed list validation, external item-expression evaluation, item-local conditional ranges, dynamic styles and item-handler scopes, moves, and cleanup.
 - `serialization.js`: capture deserialization shared by binding and native handlers.
 - `native-runtime.js`: optional runtime for normal synchronous and asynchronous ESM handlers.

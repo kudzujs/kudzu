@@ -31,6 +31,11 @@ export default function NativeBubblingPage() {
     <input id="focus-target" ref={inputRef} />
     <button id="focus-ref" onClick={focusInput}>Focus</button>
     <p id="object-state">{weather.temperature}° {weather.label}</p>
+    <table><tbody><tr><td id="object-cell">{weather.label.toUpperCase()}</td></tr></tbody></table>
+    <select><option id="object-option">{weather.label}</option></select>
+    <svg><text id="object-svg">{weather.temperature}</text></svg>
+    {weather.temperature > 0 && <aside id="object-condition">{weather.label.toLowerCase()}</aside>}
+    <button id="hide-object" onClick={() => setWeather({ temperature: 0, label: "Idle" })}>Hide weather</button>
     <button id="update-object" onClick={() => setWeather(coolWeather())}>Update weather</button>
   </>
 }

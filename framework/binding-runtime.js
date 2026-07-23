@@ -9,13 +9,13 @@ const mountedBindings = new WeakSet()
 const mountedConditions = new WeakSet()
 const bindingRegistrations = new WeakMap()
 const conditionRegistrations = new WeakMap()
-const bindingTypes = ["text", "class", "disabled", "value", "checked", "style"]
+const textDescriptors = globalThis.__KUDZU_TEXT_BINDINGS__ && typeof document !== "undefined" ? JSON.parse(document.body.dataset.kTextBindings ?? "[]") : []
+const bindingTypes = ["class", "disabled", "value", "checked", "style"]
 const bindingSelector = [...bindingTypes.map(target => `[data-k-bind-${target}]`), "[data-k-bind-attrs]"].join(",")
 
 export function patchBinding(node, target, value) {
-  if (target === "text") {
-    const next = value == null ? "" : String(value)
-    if (node.textContent !== next) node.textContent = next
+  if (globalThis.__KUDZU_TEXT_BINDINGS__ && target === "text") {
+    patchText(node, value)
   } else if (target === "disabled") {
     node.toggleAttribute("disabled", Boolean(value))
   } else if (target === "checked") {
@@ -94,6 +94,25 @@ function mountBindings(root) {
       }).catch(error => console.error(error))
     }
   }
+  if (globalThis.__KUDZU_TEXT_BINDINGS__) {
+    for (const node of textBindingStarts(root)) {
+      if (mountedBindings.has(node)) continue
+      const descriptor = textDescriptors[Number(node.data.slice("k-text:".length))]
+      if (!descriptor) continue
+      mountedBindings.add(node)
+      const registrations = []
+      bindingRegistrations.set(node, registrations)
+      loadEvaluator(descriptor).then(evaluator => {
+        if (!node.isConnected) return
+        const binding = { node, target: "text", read: evaluator.read }
+        for (const id of evaluator.stateIds) {
+          register(bindingTargets, id, binding)
+          registrations.push([id, binding])
+        }
+        patchBinding(node, "text", binding.read())
+      }).catch(error => console.error(error))
+    }
+  }
 }
 
 function mountConditions(root) {
@@ -145,6 +164,13 @@ function unmountBindings(root) {
     for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
     bindingRegistrations.delete(node)
     mountedBindings.delete(node)
+  }
+  if (globalThis.__KUDZU_TEXT_BINDINGS__) {
+    for (const node of textBindingStarts(root)) {
+      for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
+      bindingRegistrations.delete(node)
+      mountedBindings.delete(node)
+    }
   }
 }
 
@@ -225,6 +251,28 @@ function bindingStateIds(descriptor) {
 
 function matching(root, selector) {
   return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
+}
+
+function textBindingStarts(root) {
+  const nodes = root.nodeType === 8 && root.data.startsWith("k-text:") ? [root] : []
+  const walker = (root.ownerDocument ?? root).createTreeWalker?.(root, 128)
+  while (walker?.nextNode()) if (walker.currentNode.data.startsWith("k-text:")) nodes.push(walker.currentNode)
+  return nodes
+}
+
+function patchText(start, value) {
+  const next = value == null ? "" : String(value)
+  const current = start.nextSibling
+  const text = current?.nodeType === 3 ? current : undefined
+  const end = text ? text.nextSibling : current
+  if (end?.nodeType !== 8 || end.data !== "k-text-end") throw new Error("Reactive text marker has no end")
+  if (text) {
+    if (next) {
+      if (text.data !== next) text.data = next
+    } else text.remove()
+    return
+  }
+  if (next) end.before(start.ownerDocument.createTextNode(next))
 }
 
 function capitalize(value) {

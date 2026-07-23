@@ -26,8 +26,8 @@ export function listExpression(read: () => unknown, module: string, handler: str
 export function listItem(): unknown
 export function listConditional(kind: "and" | "ternary", read: () => unknown, truthy: () => unknown, falsy: () => unknown, module: string, handler: string): unknown
 
-export function renderPage(
-  component: (props: Record<string, never>) => unknown | Promise<unknown>,
+export function renderPage<Props = Record<string, never>>(
+  component: (props: Props) => unknown | Promise<unknown>,
   metadata?: {
     title?: string
     description?: string
@@ -44,8 +44,10 @@ export function renderPage(
     icon?: string
     appleTouchIcon?: string
     manifest?: string
-    styles?: boolean
-  }
+    styles?: boolean | string[]
+    base?: string
+  },
+  props?: Props
 ): Promise<{
   html: string
   hasBehaviors: boolean

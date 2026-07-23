@@ -86,7 +86,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.4.14</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.5.0</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -108,6 +108,31 @@ npm run dev`} />
               <code>src/pages/docs.tsx</code><span>→</span><code>/docs</code>
               <code>src/pages/blog/index.tsx</code><span>→</span><code>/blog</code>
             </div>
+            <p>Bracket parameters use <code>getStaticPaths()</code> to emit multiple static pages with build-time props.</p>
+            <CodeBlock code={`// src/pages/posts/[slug].tsx
+export async function getStaticPaths() {
+  return [
+    { params: { slug: "oak" }, props: { title: "Oak" } },
+    { params: { slug: "pine" }, props: { title: "Pine" } }
+  ]
+}
+
+export default function Post({ title }: { title: string }) {
+  return <h1>{title}</h1>
+}`} />
+            <p>Missing params, unsafe path segments, and duplicate output routes fail the build. Catch-all parameters are not yet supported.</p>
+            <h3>Project configuration</h3>
+            <CodeBlock code={`// kudzu.config.mjs
+export default {
+  base: "/newsletter",
+  async afterBuild({ outDir, routes, plans, base }) {
+    // Write RSS, sitemap, or search indexes.
+  }
+}`} />
+            <p>The base prefixes runtime, handler, stylesheet, icon, manifest, and dev-server URLs without nesting files under <code>dist</code>. Every CSS file under <code>src</code> is copied under <code>dist/assets</code> with its relative path and linked in deterministic order.</p>
+            <h3>Trusted HTML</h3>
+            <CodeBlock code={`<article dangerouslySetInnerHTML={{ __html: renderedNotionHtml }} />`} />
+            <p>Raw HTML is not sanitized. It accepts trusted build-time content only; reactive values, children on the same element, void elements, and keyed-list raw HTML are rejected.</p>
           </section>
 
           <section className="docs-section" id="components">
@@ -135,6 +160,7 @@ function growTwice() {
 const [weather, setWeather] = useState({ temperature: 28, label: "Warm" })
 
 return <p>{weather.temperature}° {weather.label}</p>`} />
+            <p>Derived text patches a comment-bounded text node without adding a wrapper element. Table cells, options, SVG text, layout, and element selectors retain their authored structure.</p>
             <div className="docs-callout"><strong>Result</strong><span>Logical state increases by 2. Bound DOM nodes patch once.</span></div>
             <h3 id="context">Context</h3>
             <p>Context passes default, nested, or direct state values through component layers without retaining a browser component tree.</p>
@@ -366,6 +392,15 @@ dist/
                 ["Next.js", "Yes", "182.6 KB", "663.6 KB", "3126 ms"]
               ]}
             />
+            <h3>123-page newsletter build</h3>
+            <BenchmarkTable
+              columns={["Build model", "TSX files", "Pages", "JS gzip", "Output", "Build"]}
+              rows={[
+                ["Generated workaround", "123", "123", "0 B", "52.0 KB", "882 ms"],
+                ["getStaticPaths", "1", "123", "0 B", "52.0 KB", "454 ms"]
+              ]}
+            />
+            <p>One dynamic page module removes 122 generated source files and reduces clean build time by 48.5% while emitting the same static pages, CSS, base-prefixed URLs, post-build feed, and zero browser JavaScript.</p>
             <h3>1,000-item keyed list</h3>
             <BenchmarkTable
               columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]}
