@@ -24,17 +24,7 @@ export function useState(initialValue, name) {
   }
 
   const id = `s${renderContext.nextState++}`
-  const signal = {
-    [signalMarker]: true,
-    id,
-    value: initialValue,
-    valueOf() {
-      return this.value
-    },
-    toString() {
-      return String(this.value)
-    }
-  }
+  const signal = createSignal(id, initialValue)
 
   const setter = () => {
     throw new Error("State setters are compiled into ordered browser behaviors")
@@ -42,6 +32,36 @@ export function useState(initialValue, name) {
   Object.defineProperty(setter, setterMarker, { value: id })
   renderContext.states[id] = { name: name ?? id, initialValue }
   return [signal, setter]
+}
+
+export function useParams() {
+  if (!renderContext?.runtimeParamNames?.length) throw new Error("useParams() requires export const runtimeParams = true on a bracket page")
+  if (!renderContext.params) {
+    const params = Object.create(null)
+    renderContext.paramEntries = renderContext.runtimeParamNames.map((name, index) => {
+      const id = `p${index}`
+      params[name] = createSignal(id, "")
+      return { name, id }
+    })
+    renderContext.params = Object.freeze(params)
+    renderContext.hasBehaviors = true
+    renderContext.hasParams = true
+  }
+  return renderContext.params
+}
+
+function createSignal(id, value) {
+  return {
+    [signalMarker]: true,
+    id,
+    value,
+    valueOf() {
+      return this.value
+    },
+    toString() {
+      return String(this.value)
+    }
+  }
 }
 
 export function useEffect(callback, dependencies, module, handler, states, scope, source) {
@@ -242,7 +262,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}) {
-  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const body = await renderNode({ type: component, props })
@@ -267,6 +287,9 @@ export async function renderPage(component, metadata = {}, props = {}) {
       : ""
     const nativeRuntime = renderContext.hasNativeBehaviors
       ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-native.js")}"></script>`
+      : ""
+    const paramRuntime = renderContext.hasParams
+      ? `<script type="module" src="${escapeAttribute(metadata.paramAsset)}"></script>`
       : ""
     const bindingRuntime = renderContext.hasBindings
       ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-binding.js")}"></script>`
@@ -293,15 +316,17 @@ export async function renderPage(component, metadata = {}, props = {}) {
       : ""
 
     return {
-      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}${textBindings}>${body}${runtime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}</body></html>`,
+      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}${textBindings}>${body}${runtime}${paramRuntime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}</body></html>`,
       hasBehaviors: renderContext.hasBehaviors,
       hasEffects: renderContext.hasEffects,
+      hasParams: renderContext.hasParams,
       hasBindings: renderContext.hasBindings,
       hasLists: renderContext.hasLists,
       hasListStyles: renderContext.hasListStyles,
       hasStateSeed: initialState.length > 0,
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
+        params: renderContext.paramEntries,
         events: renderContext.events,
         effects: renderContext.effects,
         bindings: renderContext.bindings,

@@ -2,6 +2,7 @@ export type StateSetter<T> = (value: T | ((previous: T) => T)) => void
 
 export function useState<T>(initialValue: T): [T, StateSetter<T>]
 export function useEffect(effect: () => void | Promise<void>, dependencies: readonly []): void
+export function useParams<Params extends Record<string, string> = Record<string, string>>(): Readonly<Params>
 
 export interface RefObject<T> {
   readonly current: T | null
@@ -48,18 +49,22 @@ export function renderPage<Props = Record<string, never>>(
     styles?: boolean | string[]
     base?: string
     effectAsset?: string
+    paramAsset?: string
+    runtimeParams?: string[]
   },
   props?: Props
 ): Promise<{
   html: string
   hasBehaviors: boolean
   hasEffects: boolean
+  hasParams: boolean
   hasBindings: boolean
   hasLists: boolean
   hasListStyles: boolean
   hasStateSeed: boolean
   plan: {
     states: Array<{ id: string; name: string; initialValue: unknown }>
+    params: Array<{ name: string; id: string }>
     events: Array<{
       event: string
       commands?: Array<[string, string, unknown]>

@@ -114,6 +114,8 @@ Acceptance criteria:
 
 ### 3. Runtime Path Parameters
 
+Status: implemented. `export const runtimeParams = true` on a bracket page emits one static fallback, ordered host rewrite metadata, and a route-specific `useParams()` pathname matcher. Exact static files win in development, effects import the matcher before execution, and no navigation interception is added.
+
 Support bracket routes whose values cannot be enumerated during the build, without adding an SPA router.
 
 Target authoring shape:
@@ -137,7 +139,7 @@ Compiler and build requirements:
 - Treat decoded parameters as untrusted input and reject malformed or traversal-like values.
 - Allow extracted params to feed mount effects and direct bindings without executing a browser component tree.
 
-The exact fallback opt-in syntax and output path should be decided from the first real fixture. Do not invent a broad router API first.
+The fallback opt-in is `export const runtimeParams = true`; physical fallback output keeps the bracket pattern under `dist`, and ordered rewrites are exposed through the build plan and `afterBuild()`.
 
 Acceptance criteria:
 
@@ -146,6 +148,8 @@ Acceptance criteria:
 - Build-known dynamic routes remain unchanged.
 - Static routes without runtime params have byte-for-byte unchanged output.
 - Tests cover decoding, invalid values, multiple parameters, route precedence, base paths, and development-server behavior.
+
+The two-parameter fixture's route matcher is 672 B gzip. Its complete binding, effect, event, serialization, and parameter initial graph is 6.1 KB gzip and its seven-run clean-build median is 450 ms.
 
 ### 4. Add Effect Semantics Only When Proven Necessary
 

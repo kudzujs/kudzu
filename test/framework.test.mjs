@@ -251,6 +251,82 @@ test("rejects unsafe dynamic route params", async t => {
   assert.match(`${result.stdout}\n${result.stderr}`, /Invalid param "slug" for route \[slug\]/)
 })
 
+test("compiles runtime route params to a static fallback and route ESM", async t => {
+  const fixture = new URL("./fixtures/runtime-params", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/runtime-params/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/runtime-params/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/runtime-params/dist/orgs/[org]/items/[id]/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/runtime-params/dist/orgs/acme/items/new/index.html", import.meta.url), "utf8")
+  const params = await readFile(new URL("./fixtures/runtime-params/dist/assets/params/orgs/[org]/items/[id]/index.js", import.meta.url), "utf8")
+  const effect = await readFile(new URL("./fixtures/runtime-params/dist/assets/effects/orgs/[org]/items/[id]/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/runtime-params/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  const afterBuild = JSON.parse(await readFile(new URL("./fixtures/runtime-params/dist/rewrites.json", import.meta.url), "utf8"))
+  assert.match(html, /data-k-text="p0"/)
+  assert.match(html, /data-k-text="p1"/)
+  assert.match(html, /kudzu\.js.*params\/orgs\/\[org\]\/items\/\[id\]\/index\.js.*kudzu-binding\.js.*effects\/orgs\/\[org\]\/items\/\[id\]\/index\.js/s)
+  assert.match(staticHtml, /data-static-new/)
+  assert.doesNotMatch(staticHtml, /<script|data-k-state/)
+  assert.match(params, /location\.pathname/)
+  assert.match(params, /decodeURIComponent/)
+  assert.doesNotMatch(params, /pushState|popstate|preventDefault/)
+  assert.match(effect, /params\/orgs\/\[org\]\/items\/\[id\]\/index\.js/)
+  assert.deepEqual(plan.routes.find(route => route.route.includes("[org]")).params, [{ name: "org", id: "p0" }, { name: "id", id: "p1" }])
+  assert.equal(plan.routes.find(route => route.route.endsWith("/new")).params.length, 0)
+  assert.deepEqual(plan.rewrites, afterBuild.rewrites)
+  assert.equal(afterBuild.base, "/%ED%8F%AC%ED%84%B8")
+  assert.deepEqual(plan.rewrites[0].pattern, "/%ED%8F%AC%ED%84%B8/orgs/[org]/items/[id]")
+  assert.deepEqual(plan.rewrites[0].file, "orgs/[org]/items/[id]/index.html")
+  const paramModule = new URL("./fixtures/runtime-params/dist/assets/params/orgs/[org]/items/[id]/index.js", import.meta.url).href
+  const runParamModule = pathname => spawnSync(process.execPath, ["--input-type=module", "-e", `globalThis.location={pathname:${JSON.stringify(pathname)}};globalThis.document={body:{dataset:{}},querySelectorAll:()=>[]};await import(${JSON.stringify(`${paramModule}?path=${encodeURIComponent(pathname)}`)})`], { encoding: "utf8" })
+  assert.equal(runParamModule("/%ED%8F%AC%ED%84%B8/orgs/acme/items/report.json").status, 0)
+  assert.equal(runParamModule("/%ed%8f%ac%ed%84%b8/orgs/acme/items/report.json").status, 0)
+  assert.equal(runParamModule("/%ED%8F%AC%ED%84%B8/orgs/acme/items/report%2Ejson").status, 0)
+  for (const pathname of [
+    "/%ED%8F%AC%ED%84%B8/orgs/acme/items/%2F",
+    "/%ED%8F%AC%ED%84%B8/orgs/acme/items/%252f",
+    "/%ED%8F%AC%ED%84%B8/orgs/acme/items/%252e%252e",
+    "/%ED%8F%AC%ED%84%B8/orgs/acme/items/%C2%85",
+    "/%ED%8F%AC%ED%84%B8/orgs/acme/items/%E0%A4%A",
+    "/%ED%8F%AC%ED%84%B8/orgs/acme/items/../secret"
+  ]) assert.notEqual(runParamModule(pathname).status, 0, pathname)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runRuntimeParamsBrowserTest(fixture, chrome)
+})
+
+test("rejects invalid runtime route declarations", () => {
+  for (const [fixture, message] of [
+    ["runtime-params-invalid-static", /runtimeParams requires a bracket page/],
+    ["runtime-params-invalid-value", /runtimeParams must be exactly true/],
+    ["runtime-params-invalid-paths", /cannot be combined with getStaticPaths/],
+    ["runtime-params-invalid-partial", /must occupy a complete path segment/],
+    ["runtime-params-invalid-hook", /useParams\(\) requires export const runtimeParams = true/],
+    ["runtime-params-invalid-duplicate", /duplicate runtime parameter "id"/],
+    ["runtime-params-invalid-name", /invalid runtime parameter name "bad-name"/],
+    ["runtime-params-invalid-catchall", /Catch-all routes are not supported/],
+    ["runtime-params-invalid-ambiguous", /Ambiguous runtime routes/]
+  ]) {
+    const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL(`./fixtures/${fixture}`, import.meta.url), encoding: "utf8" })
+    assert.notEqual(result.status, 0)
+    assert.match(`${result.stdout}\n${result.stderr}`, message)
+  }
+})
+
+test("orders overlapping runtime rewrites by specificity", async t => {
+  const fixture = new URL("./fixtures/runtime-params-specificity", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/runtime-params-specificity/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/runtime-params-specificity/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const plan = JSON.parse(await readFile(new URL("./fixtures/runtime-params-specificity/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.deepEqual(plan.rewrites.map(rewrite => rewrite.pattern), ["/items/new/[tab]", "/items/[id]/[tab]"])
+})
+
 test("patches reactive attributes and form properties without a VDOM", async t => {
   const fixture = new URL("./fixtures/bindings", import.meta.url)
   t.after(async () => {
@@ -798,7 +874,7 @@ try {
   document.body.dataset.docsListTest = "fail-" + error.message
 }
 `)
-  const port = 43000 + process.pid % 1000
+  const port = 38000 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -1063,7 +1139,7 @@ try {
 await new Promise(resolve => setTimeout(resolve, 50))
 document.body.dataset.browserTest = document.querySelector("[data-only]").textContent === "after" ? "pass" : "fail-effect-only"
 `)
-  const port = 43000 + process.pid % 1000
+  const port = 45000 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -1162,6 +1238,7 @@ try {
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
 }
+
 `)
   const port = 43000 + process.pid % 1000
   const serverSource = `
@@ -1178,6 +1255,55 @@ http.createServer((request, response) => {
   await new Promise(resolve => setTimeout(resolve, 200))
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/newsletter/posts/oak/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runRuntimeParamsBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const fallbackUrl = new URL("orgs/[org]/items/[id]/index.html", output)
+  const html = await readFile(fallbackUrl, "utf8")
+  await writeFile(fallbackUrl, html.replace("</body>", '<script type="module" src="/포털/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  await wait()
+  const main = document.querySelector("main")
+  const id = "550e8400-e29b-41d4-a716-446655440000"
+  if (main.dataset.org !== "acme" || main.dataset.id !== id) throw new Error("attributes")
+  if (main.querySelector("h1").textContent !== "acme" || main.querySelector("[data-child]").textContent !== id) throw new Error("direct-text")
+  if (main.querySelector("[data-derived]").textContent !== "Item " + id + " in acme") throw new Error("derived-text")
+  if (main.querySelector("[data-edit]").getAttribute("href") !== "/포털/orgs/acme/items/" + id + "/edit") throw new Error("href")
+  if (main.querySelector("[data-status]").textContent !== "acme/" + id || document.body.dataset.effectParams !== "acme:" + id) throw new Error("effect")
+  main.querySelector("button").click()
+  await wait()
+  if (document.body.dataset.eventParams !== "acme:" + id) throw new Error("event")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 44000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2]), fallback = path.join(root, "orgs/[org]/items/[id]/index.html")
+http.createServer((request, response) => {
+  const pathname = decodeURIComponent(new URL(request.url, "http://localhost").pathname)
+  let relative = pathname.replace(/^\\/포털\\/?/, "") || "index.html"
+  let file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  if (!fs.existsSync(file) && /^orgs\\/[^/]+\\/items\\/[^/]+$/.test(relative)) file = fallback
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const id = "550e8400-e29b-41d4-a716-446655440000"
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/포털/orgs/acme/items/${id}?view=full`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
   } finally {

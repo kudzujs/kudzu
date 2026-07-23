@@ -187,7 +187,7 @@ test("dev server reports build errors and reloads without changing output HTML",
     await writeFile(source, "export default function HomePage() { return <main>Second valid build</main> }\n")
     const second = await poll(async () => {
       const html = await (await fetch(url)).text()
-      return html.includes("Second valid build") ? html : undefined
+      return html.includes("Second valid build") && clientState(html).revision === 2 ? html : undefined
     })
     const secondClient = clientState(second)
     assert.equal(secondClient.revision, 2)
@@ -212,6 +212,59 @@ test("dev server reports build errors and reloads without changing output HTML",
     }
     await rm(new URL("dist", fixture), { recursive: true, force: true })
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
+  }
+})
+
+test("dev server resolves validated runtime route fallbacks after exact files", async () => {
+  const runtimeFixture = new URL("./fixtures/runtime-params-dev/", import.meta.url)
+  let server
+  try {
+    server = spawn(process.execPath, [command, "dev"], {
+      cwd: runtimeFixture,
+      env: { ...process.env, PORT: "0" },
+      stdio: ["ignore", "pipe", "pipe"]
+    })
+    const url = await serverUrl(server)
+    const id = "550e8400-e29b-41d4-a716-446655440000"
+    const runtime = await fetch(`${url}/포털/orgs/acme/items/${id}?view=full`)
+    const html = await runtime.text()
+    assert.equal(runtime.status, 200)
+    assert.match(html, /data-k-text="p0"/)
+    assert.match(html, /const schema=\[\["s0","status"\]\]/)
+    const trailing = await fetch(`${url}/포털/orgs/acme/items/${id}/`)
+    assert.equal(trailing.status, 200)
+    const unicode = await fetch(`${url}/포털/orgs/acme/items/%E6%9C%A8`)
+    assert.equal(unicode.status, 200)
+    const dotted = await fetch(`${url}/포털/orgs/acme/items/report.json`)
+    assert.equal(dotted.status, 200)
+    const encodedDot = await fetch(`${url}/포털/orgs/acme/items/report%2Ejson`)
+    assert.equal(encodedDot.status, 200)
+
+    const exact = await fetch(`${url}/포털/orgs/acme/items/new`)
+    assert.equal(exact.status, 200)
+    assert.match(await exact.text(), /data-static-new.*const schema=\[\["s0","label"\]\]/s)
+    assert.equal((await fetch(`${url}/%ed%8f%ac%ed%84%b8/orgs/acme/items/${id}`)).status, 200)
+
+    for (const path of [
+      `/orgs/acme/items/${id}`,
+      "/포털/orgs/acme/items/",
+      "/포털/orgs/acme/items/%2F",
+      "/포털/orgs/acme/items/%252f",
+      "/포털/orgs/acme/items/%252e%252e",
+      "/포털/orgs/acme/items/%C2%85",
+      "/포털/orgs/acme/items/%E0%A4%A",
+      `/포털/orgs/acme/items/${id}/extra`,
+      `/포털/teams/acme/items/${id}`
+    ]) {
+      assert.equal((await fetch(`${url}${path}`)).status, 404, path)
+    }
+  } finally {
+    if (server?.exitCode === null) {
+      server.kill()
+      await once(server, "exit")
+    }
+    await rm(new URL("dist", runtimeFixture), { recursive: true, force: true })
+    await rm(new URL(".kudzu", runtimeFixture), { recursive: true, force: true })
   }
 })
 

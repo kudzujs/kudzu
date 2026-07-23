@@ -47,6 +47,8 @@ export async function build({ quiet = false, minify = true } = {}) {
   let stateSeedCount = 0
   const plans = []
   const effectEntries = []
+  const paramEntries = []
+  const rewrites = []
   const emittedRoutes = new Set()
   const styleUrls = cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`))
 
@@ -55,24 +57,40 @@ export async function build({ quiet = false, minify = true } = {}) {
     const module = await import(`${pathToFileURL(compiledFile).href}?v=${Date.now()}`)
     if (typeof module.default !== "function") throw new Error(`${relative(root, pageFile)} must export a default component`)
 
-    const entries = await staticPathEntries(module, pageFile)
+    const runtimeSchema = runtimeRouteSchema(module, pageFile)
+    if (runtimeSchema) {
+      const conflicting = rewrites.find(rewrite => sameRuntimePrecedence(rewrite, runtimeSchema))
+      if (conflicting) throw new Error(`Ambiguous runtime routes: ${conflicting.route} and ${runtimeSchema.route}`)
+      rewrites.push({
+        route: runtimeSchema.route,
+        pattern: withBase(base, `/${runtimeSchema.route}`),
+        file: `${runtimeSchema.route}/index.html`,
+        params: runtimeSchema.params,
+        segments: runtimeSchema.segments
+      })
+    }
+    const entries = runtimeSchema ? [{ params: {}, props: {} }] : await staticPathEntries(module, pageFile)
     for (const { params, props } of entries) {
-      const route = routeFromPage(pageFile, params)
+      const route = runtimeSchema?.route ?? routeFromPage(pageFile, params)
       const routePath = withBase(base, `/${route}`)
       const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
+      const paramPath = `params/${route}/index.js`
       if (emittedRoutes.has(routePath)) throw new Error(`Duplicate route: ${routePath}`)
       emittedRoutes.add(routePath)
       const result = await renderPage(module.default, {
         ...(module.metadata ?? {}),
         styles: styleUrls.length ? styleUrls : false,
         base,
-        effectAsset: assetPath(base, `assets/${effectPath}`)
+        effectAsset: assetPath(base, `assets/${effectPath}`),
+        paramAsset: assetPath(base, `assets/${paramPath}`),
+        runtimeParams: runtimeSchema?.params
       }, props)
       const routeDirectory = join(outputDirectory, route)
       await mkdir(routeDirectory, { recursive: true })
       await writeFile(join(routeDirectory, "index.html"), result.html)
       plans.push({ route: routePath, ...result.plan })
-      if (result.hasEffects) effectEntries.push({ path: effectPath, effects: result.plan.effects })
+      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params })
+      if (result.hasEffects) effectEntries.push({ path: effectPath, effects: result.plan.effects, paramPath: result.hasParams ? paramPath : undefined })
       if (result.hasBehaviors) behaviorCount++
       if (result.hasBindings) bindingCount++
       if (result.hasLists) listCount++
@@ -165,10 +183,15 @@ export async function build({ quiet = false, minify = true } = {}) {
     await mkdir(resolve(output, ".."), { recursive: true })
     await writeJavaScript(output, handlerModule.code, minify)
   }
+  for (const entry of paramEntries) {
+    const output = join(assetsDirectory, entry.path)
+    await mkdir(dirname(output), { recursive: true })
+    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, output, assetsDirectory, base), minify)
+  }
   for (const entry of effectEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base), minify)
+    await writeJavaScript(output, printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base, entry.paramPath), minify)
   }
   const clientModules = await collectClientModules(handlerModules.flatMap(module => module.clientImports), sourceFileSet)
   for (const file of clientModules) {
@@ -194,7 +217,8 @@ export async function build({ quiet = false, minify = true } = {}) {
     })
     await rm(join(assetsDirectory, "modules"), { recursive: true, force: true })
   }
-  await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans }, null, 2))
+  const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
+  await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
   for (const file of cssFiles) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
     await mkdir(dirname(output), { recursive: true })
@@ -203,7 +227,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   if (await exists(join(root, "public"))) await cp(join(root, "public"), outputDirectory, { recursive: true })
   if (config.afterBuild !== undefined) {
     if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
-    await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans })
+    await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites })
   }
 
   if (!quiet) console.log(`Built ${plans.length} page(s), ${behaviorCount} interactive page(s) into dist/`)
@@ -219,7 +243,7 @@ function specializeNativeRuntime(source, events, modules) {
   return `${imports}\n${specializeEvents(source, events).replace(/const modules = new Map\(\[[^\n]*\]\)/, `const modules = new Map([${entries}])`)}`
 }
 
-function printEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath) {
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -229,6 +253,7 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
   const imports = [
     `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
+    ...(paramPath ? [`import ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, paramPath)))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
@@ -242,6 +267,42 @@ for (const effect of effects) {
   } catch (error) {
     console.error(error)
   }
+}`
+}
+
+function printParamEntry(schema, params, output, assetsDirectory, base) {
+  return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}
+const base = ${inlineJson(browserPath(base).slice(1).split("/").filter(Boolean).map(segment => decodeURIComponent(segment)))}
+const schema = ${inlineJson(schema.segments)}
+const params = ${inlineJson(params)}
+let path = location.pathname
+if (base.length) {
+  const pathSegments = path.slice(1).split("/")
+  if (pathSegments.length < base.length || base.some((segment, index) => decodeSegment(pathSegments[index], false) !== segment)) throw new Error("Runtime route is outside the configured base")
+  path = "/" + pathSegments.slice(base.length).join("/")
+}
+if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1)
+const segments = path.slice(1).split("/")
+if (segments.length !== schema.length) throw new Error("Runtime route does not match its fallback pattern")
+const values = Object.create(null)
+for (let index = 0; index < schema.length; index++) {
+  const segment = schema[index]
+  const value = decodeSegment(segments[index], Boolean(segment.param))
+  if (segment.literal !== undefined && value !== segment.literal) throw new Error("Runtime route literal does not match")
+  if (segment.param) values[segment.param] = value
+}
+for (const param of params) {
+  const value = values[param.name]
+  browserState.set(param.id, value)
+  commitDom(param.id, value)
+}
+function decodeSegment(raw, param) {
+  if (param && /%(?:2f|5c)/i.test(raw)) throw new Error("Runtime route parameter contains an encoded separator")
+  let value
+  try { value = decodeURIComponent(raw) } catch { throw new Error("Runtime route parameter has malformed encoding") }
+  const decodedDots = value.replace(/%2e/gi, ".")
+  if (param && (!value || value === "." || value === ".." || decodedDots === "." || decodedDots === ".." || /[\\/?#]/.test(value) || [...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159) || /%(?:2f|5c)/i.test(value))) throw new Error("Runtime route parameter is invalid")
+  return value
 }`
 }
 
@@ -316,7 +377,8 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url, "http://localhost")
-      const pathname = decodeURIComponent(url.pathname)
+      const rawPathname = url.pathname
+      const pathname = decodeURIComponent(rawPathname)
       if (pathname === "/__kudzu_reload") {
         response.writeHead(200, {
           "content-type": "text/event-stream; charset=utf-8",
@@ -336,15 +398,24 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
         return
       }
 
-      const relativePath = stripBase(pathname, base).replace(/^\/+/, "")
+      const relativePath = stripBaseStrict(pathname, decodeURIComponent(base)).replace(/^\/+/, "")
       let file = resolve(outputDirectory, relativePath)
       if (!file.startsWith(`${outputDirectory}${sep}`) && file !== outputDirectory) throw new Error("Invalid path")
 
       if ((await exists(file)) && (await stat(file)).isDirectory()) file = join(file, "index.html")
       if (!(await exists(file)) && !extname(file)) file = join(file, "index.html")
+      let matchedRoute
+      if (!(await exists(file)) && !buildError) {
+        const plan = JSON.parse(await readFile(join(workDirectory, "kudzu-plan.json"), "utf8"))
+        const rewrite = plan.rewrites?.find(entry => runtimePathValues(rawPathname, entry, browserPath(base)))
+        if (rewrite) {
+          file = resolve(outputDirectory, rewrite.file)
+          matchedRoute = rewrite.pattern
+        }
+      }
       const isHtml = extname(file) === ".html"
       const content = isHtml
-        ? injectDevClient(buildError ? errorPage(buildError) : await readFile(file, "utf8"), session, revision, buildError ? [] : await devSchema(pathname))
+        ? injectDevClient(buildError ? errorPage(buildError) : await readFile(file, "utf8"), session, revision, buildError ? [] : await devSchema(withBase(base, stripBaseStrict(pathname, decodeURIComponent(base))), matchedRoute))
         : await readFile(file)
       response.writeHead(200, {
         "content-type": contentType(file),
@@ -397,20 +468,56 @@ function injectDevClient(html, session, revision, schema) {
   return `${html}${devClient(session, revision, schema)}`
 }
 
-function stripBase(path, base) {
+function stripBaseStrict(path, base) {
   if (!base) return path
   if (path === base) return "/"
-  return path.startsWith(`${base}/`) ? path.slice(base.length) : path
+  if (path.startsWith(`${base}/`)) return path.slice(base.length)
+  throw new Error("Path is outside the configured base")
 }
 
-async function devSchema(pathname) {
+async function devSchema(pathname, matchedRoute) {
   try {
     const plan = JSON.parse(await readFile(join(workDirectory, "kudzu-plan.json"), "utf8"))
-    const route = pathname.replace(/\/(?:index\.html)?$/, "") || "/"
+    const route = matchedRoute ?? (pathname.replace(/\/(?:index\.html)?$/, "") || "/")
     return stateSchema(plan.routes.find(entry => entry.route === route)?.states ?? [])
   } catch {
     return []
   }
+}
+
+function runtimePathValues(pathname, rewrite, base) {
+  try {
+    let path = stripBrowserBase(pathname, base)
+    if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1)
+    const rawSegments = path.slice(1).split("/")
+    if (rawSegments.length !== rewrite.segments.length) return undefined
+    const values = Object.create(null)
+    for (let index = 0; index < rewrite.segments.length; index++) {
+      const segment = rewrite.segments[index]
+      const value = decodeRuntimeSegment(rawSegments[index], Boolean(segment.param))
+      if (segment.literal !== undefined && value !== segment.literal) return undefined
+      if (segment.param) values[segment.param] = value
+    }
+    return values
+  } catch {
+    return undefined
+  }
+}
+
+function stripBrowserBase(path, base) {
+  if (!base) return path
+  const pathSegments = path.slice(1).split("/")
+  const baseSegments = base.slice(1).split("/").map(segment => decodeURIComponent(segment))
+  if (pathSegments.length < baseSegments.length || baseSegments.some((segment, index) => decodeRuntimeSegment(pathSegments[index], false) !== segment)) throw new Error("Path is outside the configured base")
+  return `/${pathSegments.slice(baseSegments.length).join("/")}`
+}
+
+function decodeRuntimeSegment(raw, param) {
+  if (param && /%(?:2f|5c)/i.test(raw)) throw new Error("Encoded separator")
+  const value = decodeURIComponent(raw)
+  const decodedDots = value.replace(/%2e/gi, ".")
+  if (param && (!value || value === "." || value === ".." || decodedDots === "." || decodedDots === ".." || /[\\/?#]/.test(value) || [...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159) || /%(?:2f|5c)/i.test(value))) throw new Error("Invalid runtime parameter")
+  return value
 }
 
 function inlineJson(value) {
@@ -1960,8 +2067,15 @@ async function loadConfig() {
 
 function normalizeBase(value) {
   if (value == null || value === "" || value === "/") return ""
-  if (typeof value !== "string" || !value.startsWith("/") || /[?#\0]/.test(value) || value.split("/").includes("..")) throw new Error("kudzu.config base must be a root-relative path")
+  if (typeof value !== "string" || !value.startsWith("/") || /[?#\0]/.test(value) || /%(?:2f|5c)/i.test(value)) throw new Error("kudzu.config base must be a root-relative path")
+  let decoded
+  try { decoded = decodeURIComponent(value) } catch { throw new Error("kudzu.config base must be a root-relative path") }
+  if (/[\\?#\0]/.test(decoded) || decoded.split("/").includes("..") || [...decoded].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159)) throw new Error("kudzu.config base must be a root-relative path")
   return value.replace(/\/+$/, "")
+}
+
+function browserPath(path) {
+  return path ? new URL(path, "http://kudzu.local").pathname : ""
 }
 
 function assetPath(base, path) {
@@ -1984,6 +2098,43 @@ async function staticPathEntries(module, file) {
     if (!isPlainRecord(props)) throw new Error(`${relative(root, file)} getStaticPaths()[${index}].props must be an object`)
     return { params, props }
   })
+}
+
+function runtimeRouteSchema(module, file) {
+  if (!Object.hasOwn(module, "runtimeParams")) return undefined
+  if (module.runtimeParams !== true) throw new Error(`${relative(root, file)} runtimeParams must be exactly true`)
+  if (typeof module.getStaticPaths === "function") throw new Error(`${relative(root, file)} runtimeParams cannot be combined with getStaticPaths()`)
+  const route = pageRoutePattern(file)
+  if (route.includes("[...")) throw new Error(`Catch-all routes are not supported: ${route}`)
+  const names = new Set()
+  const segments = route.split("/").map(segment => {
+    const match = segment.match(/^\[([^\]]+)\]$/)
+    if (!match) {
+      if (/[\[\]]/.test(segment)) throw new Error(`${relative(root, file)} runtime parameters must occupy a complete path segment`)
+      return { literal: segment }
+    }
+    const name = match[1]
+    if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) || ["__proto__", "constructor", "prototype"].includes(name)) throw new Error(`${relative(root, file)} invalid runtime parameter name ${JSON.stringify(name)}`)
+    if (names.has(name)) throw new Error(`${relative(root, file)} duplicate runtime parameter ${JSON.stringify(name)}`)
+    names.add(name)
+    return { param: name }
+  })
+  if (!names.size) throw new Error(`${relative(root, file)} runtimeParams requires a bracket page`)
+  return { route, segments, params: [...names] }
+}
+
+function pageRoutePattern(file) {
+  const page = relative(pagesDirectory, file).replace(/\\/g, "/").replace(/\.tsx$/, "")
+  return page === "index" ? "" : page.replace(/\/index$/, "")
+}
+
+function runtimeSpecificity(schema) {
+  return schema.segments.filter(segment => segment.literal !== undefined).length
+}
+
+function sameRuntimePrecedence(left, right) {
+  if (left.segments.length !== right.segments.length || runtimeSpecificity(left) !== runtimeSpecificity(right)) return false
+  return left.segments.every((segment, index) => segment.literal === undefined || right.segments[index].literal === undefined || segment.literal === right.segments[index].literal)
 }
 
 function routeFromPage(file, params = {}) {

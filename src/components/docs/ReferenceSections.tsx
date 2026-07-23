@@ -19,12 +19,13 @@ dist/
     ├── style.css
     ├── kudzu.js
     ├── kudzu-binding.js (when used)
+    ├── params/ (when runtimeParams is used)
     ├── handlers/ (evaluators and imported helpers)
     ├── kudzu-list.js (when used)
     ├── kudzu-native.js (when used)
     ├── kudzu-serialization.js (when used)
     └── handlers/`} />
-    <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use.</p>
+    <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use. Runtime bracket pages emit one fallback HTML file plus a route-specific parameter matcher. Ordered host rewrites are written to <code>.kudzu/kudzu-plan.json</code> and passed to <code>afterBuild()</code>.</p>
   </section>
 }
 
@@ -34,20 +35,24 @@ export function BenchmarksSection() {
     <p>Production builds ran after one warm-up in seven rotating rounds on Node 24.14.0 and an Intel i5-9500. Browser list operations are medians from seven fresh headless Chrome runs, measured when a DOM observer sees each expected result rather than at the next animation frame.</p>
     <h3>Interactive counter</h3>
     <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
-      ["Kudzu", "Yes", "393 B", "1.1 KB", "409 ms"],
-      ["Astro", "Yes", "158 B", "365 B", "893 ms"],
-      ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "600 ms"],
-      ["Vue CSR", "No", "24.0 KB", "60.3 KB", "785 ms"],
-      ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "867 ms"],
-      ["React CSR", "No", "59.2 KB", "189.0 KB", "1032 ms"],
-      ["Next.js", "Yes", "182.1 KB", "652.2 KB", "3082 ms"]
+      ["Kudzu", "Yes", "1.8 KB", "4.0 KB", "445 ms"],
+      ["Astro", "Yes", "158 B", "365 B", "975 ms"],
+      ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "706 ms"],
+      ["Vue CSR", "No", "24.0 KB", "60.3 KB", "874 ms"],
+      ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "982 ms"],
+      ["React CSR", "No", "59.2 KB", "189.0 KB", "1181 ms"],
+      ["Next.js", "Yes", "182.1 KB", "652.2 KB", "3503 ms"]
     ]} />
     <h3>Context object cost</h3>
     <BenchmarkTable columns={["Kudzu variant", "JS gzip", "Output", "Build", "Click"]} rows={[
-      ["Local native state", "1,890 B", "4,064 B", "421 ms", "3.96 µs"],
-      ["Context object", "4,991 B", "11,829 B", "441 ms", "7.54 µs"]
+      ["Local native state", "1.9 KB", "4.0 KB", "472 ms", "4.38 µs"],
+      ["Context object", "4.9 KB", "12.6 KB", "494 ms", "6.94 µs"]
     ]} />
-    <p>The Context fixture uses live object properties in derived text and handlers. Recursive state/setter capture and generic binding add 3,101 B gzip and 3.59 µs per update only when used, while preserving immediate logical reads and one batched DOM commit per synchronous turn. Capability specialization removes these branches from pages that do not use them.</p>
+    <p>The Context fixture uses live object properties in derived text and handlers. Recursive state/setter capture and generic binding add about 3.0 KB gzip and 2.56 µs per update only when used, while preserving immediate logical reads and one batched DOM commit per synchronous turn. Capability specialization removes these branches from pages that do not use them.</p>
+    <h3>Runtime path parameters</h3>
+    <BenchmarkTable columns={["Fixture", "Initial JS gzip", "Matcher gzip", "Build"]} rows={[
+      ["Two params + bindings + effect + event", "6.3 KB", "702 B", "411 ms"]
+    ]} />
     <h3>Static journal</h3>
     <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
       ["Kudzu", "Yes", "0 B", "3.2 KB", "422 ms"],
@@ -88,6 +93,7 @@ export function LimitsSection() {
       <li>Keyed lists require local-state maps and intrinsic roots or top-level local or relative-imported row components; package and namespace row imports, reusable aliases, nested dynamic JSX, prop spreads, and derived-expression captures remain unsupported.</li>
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
       <li><code>useEffect</code> supports inline block-bodied mount-only callbacks with a literal empty dependency array; dependencies and cleanup or other return values are not yet supported.</li>
+      <li><code>runtimeParams = true</code> requires full bracket segments, cannot be combined with <code>getStaticPaths()</code>, and requires an exact-file-first fallback rewrite on the production host. Catch-all runtime parameters are not supported.</li>
       <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
     </ul>

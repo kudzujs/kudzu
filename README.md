@@ -97,6 +97,27 @@ export default function Post({ title }: { title: string }) {
 
 This emits `/posts/oak` and `/posts/pine`. Parameter values must be safe single path segments; missing, unsafe, and duplicate routes fail the build.
 
+When a bracket value exists only in the request URL, opt into one static fallback document and read it with `useParams()`:
+
+```tsx
+// src/pages/items/[id].tsx
+import { useEffect, useParams } from "@kudzujs/core"
+
+export const runtimeParams = true
+
+export default function ItemPage() {
+  const { id } = useParams<{ id: string }>()
+
+  useEffect(() => {
+    fetch(`/api/items/${encodeURIComponent(id)}`)
+  }, [])
+
+  return <h1>Item {id}</h1>
+}
+```
+
+This emits `dist/items/[id]/index.html` and a route-specific pathname matcher. `getStaticPaths()` and `runtimeParams` are mutually exclusive. Runtime parameters occupy complete path segments, decode once, and reject empty, malformed, separator, control, and traversal-like values. The development server resolves deep links automatically. Production static hosts must try exact files first, then internally rewrite matching paths to the fallback file while preserving the browser URL; `.kudzu/kudzu-plan.json` and `afterBuild()` expose ordered `rewrites` for host adapters. Navigation remains ordinary `<a>` document navigation, not an SPA router.
+
 Static trusted HTML can be rendered without a transform layer:
 
 ```tsx
@@ -110,8 +131,8 @@ Every CSS file under `src` is copied to the same relative path under `dist/asset
 ```js
 export default {
   base: "/newsletter",
-  async afterBuild({ outDir, routes, plans, base }) {
-    // Write RSS, sitemap, search indexes, or other static artifacts.
+  async afterBuild({ outDir, routes, plans, rewrites, base }) {
+    // Write host rewrites, RSS, sitemap, or other static artifacts.
   }
 }
 ```
@@ -395,6 +416,7 @@ Supported:
 - File-based static routes
 - Build-time async components
 - Dynamic static routes with build-time props
+- Runtime bracket parameters with static fallback documents and host rewrite metadata
 - Static trusted `dangerouslySetInnerHTML`
 - Base-path deployments, multiple CSS files, and `afterBuild`
 - Primitive `useState` bindings

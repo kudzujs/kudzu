@@ -33,11 +33,26 @@ export default function Post({ title }: { title: string }) {
   return <h1>{title}</h1>
 }`} />
     <p>Missing params, unsafe path segments, and duplicate output routes fail the build. Catch-all parameters are not yet supported.</p>
+    <h3>Runtime parameters</h3>
+    <p>When a bracket value exists only in the request URL, export <code>runtimeParams = true</code> and read it with <code>useParams()</code>. Kudzu emits one static fallback document and a route-specific pathname matcher, not a client router.</p>
+    <CodeBlock code={`// src/pages/items/[id].tsx
+import { useEffect, useParams } from "@kudzujs/core"
+
+export const runtimeParams = true
+
+export default function ItemPage() {
+  const { id } = useParams<{ id: string }>()
+  useEffect(() => {
+    fetch(\`/api/items/\${encodeURIComponent(id)}\`)
+  }, [])
+  return <h1>Item {id}</h1>
+}`} />
+    <p><code>getStaticPaths()</code> and <code>runtimeParams</code> are mutually exclusive. Parameters occupy complete path segments and malformed, separator, control, and traversal-like values are rejected. Static hosts must try exact files first and then internally rewrite matching paths to the generated fallback while preserving the URL. Ordered rewrite metadata is available to <code>afterBuild()</code>.</p>
     <h3>Project configuration</h3>
     <CodeBlock code={`// kudzu.config.mjs
 export default {
   base: "/newsletter",
-  async afterBuild({ outDir, routes, plans, base }) {
+  async afterBuild({ outDir, routes, plans, rewrites, base }) {
     // Write RSS, sitemap, or search indexes.
   }
 }`} />
