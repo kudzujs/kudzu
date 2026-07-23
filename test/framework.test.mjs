@@ -480,6 +480,35 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   if (chrome) await runListBrowserTest(fixture, chrome)
 })
 
+test("specializes relative imported keyed list components", async t => {
+  const fixture = new URL("./fixtures/imported-lists", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/imported-lists/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/imported-lists/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/imported-lists/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/imported-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const handlers = await readFile(new URL("./fixtures/imported-lists/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/imported-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-default-list.*data-default="1".*OAK.*data-aliased-list.*data-named="1".*data-barrel-list.*data-named="1"/s)
+  assert.equal((component.match(/__kList\(/g) ?? []).length, 3)
+  assert.match(handlers, /as handler/)
+  assert.equal(plan.lists.length, 3)
+})
+
+test("rejects package imported and cyclic re-exported keyed list components", () => {
+  for (const [fixture, message] of [
+    ["imported-list-invalid-package", /must be declared locally or imported from a relative TypeScript module/],
+    ["imported-list-invalid-cycle", /Imported keyed list component re-export cycle/]
+  ]) {
+    const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL(`./fixtures/${fixture}`, import.meta.url), encoding: "utf8" })
+    assert.notEqual(result.status, 0)
+    assert.match(`${result.stdout}\n${result.stderr}`, message)
+  }
+})
+
 test("emits only list capabilities for derived list expressions without handlers", async t => {
   const fixture = new URL("./fixtures/list-expressions", import.meta.url)
   t.after(async () => {

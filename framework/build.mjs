@@ -29,10 +29,11 @@ export async function build({ quiet = false, minify = true } = {}) {
   const cssFiles = projectFiles.filter(file => file.endsWith(".css")).sort()
   if (!sourceFiles.length) throw new Error("No TypeScript files found in src/")
   const sourceFileSet = new Set(sourceFiles)
+  const sourceIndex = new Map(await Promise.all(sourceFiles.map(async file => [file, await readFile(file, "utf8")])))
 
   const handlerModules = []
   for (const file of sourceFiles) {
-    const handlerModule = await compile(file, sourceFileSet, base)
+    const handlerModule = await compile(file, sourceFileSet, sourceIndex, base)
     if (handlerModule) handlerModules.push(handlerModule)
   }
 
@@ -369,8 +370,8 @@ function escapeHtml(value) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 }
 
-async function compile(file, sourceFiles, base) {
-  const source = await readFile(file, "utf8")
+async function compile(file, sourceFiles, sourceIndex, base) {
+  const source = sourceIndex.get(file)
   const nativeHandlers = []
   const reactiveBindings = []
   const listExpressions = []
@@ -384,7 +385,7 @@ async function compile(file, sourceFiles, base) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, clientImports)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, clientImports)] },
     reportDiagnostics: true
   })
 
@@ -413,12 +414,22 @@ async function compile(file, sourceFiles, base) {
   return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, clientImports: [...clientImports] }
 }
 
-function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, clientImports) {
+function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports) {
   return context => sourceFile => {
     const factory = context.factory
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
+    const importedSources = new Map()
+    const importedSource = target => {
+      let imported = importedSources.get(target)
+      if (!imported) {
+        imported = normalizeRenderControlFlow(parseSourceFile(target, sourceIndex.get(target)), factory, context)
+        ts.setParentRecursive(imported, false)
+        importedSources.set(target, imported)
+      }
+      return imported
+    }
     const settersByFunction = new Map()
     const functions = new Map()
     const components = new Map()
@@ -520,8 +531,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     }
     collectRenderedLists(sourceFile)
     const fail = (node, message) => {
-      const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
-      throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+      throw sourceNodeError(node, sourceFile, message)
     }
     const rejectUnsupportedRenderControl = node => {
       if (ts.isIfStatement(node) && containsRenderControl(node, jsxLocalsByFunction.get(nearestFunction(node)) ?? new Set())) {
@@ -540,13 +550,19 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
     const componentSpecializations = new WeakMap()
     const specializedDeclarations = new WeakSet()
     for (const name of listComponentNames) {
-      const component = components.get(name)
-      if (!component) fail(sourceFile, `Keyed list component ${name} must be declared at the top level in the same file`)
-      if (isExportedDeclaration(component.declaration)) fail(component.declaration, `Keyed list component ${name} cannot be exported`)
+      let component = components.get(name)
+      const local = Boolean(component)
+      if (!component) {
+        const binding = importBindings.get(name)
+        if (!binding || binding.kind === "namespace") fail(sourceFile, `Keyed list component ${name} must be declared locally or imported from a relative TypeScript module`)
+        const imported = binding.kind === "default" ? "default" : binding.imported
+        component = { function: resolveComponentExport(binding.target, imported, importedSource, sourceFiles), declaration: undefined }
+      }
+      if (local && isExportedDeclaration(component.declaration)) fail(component.declaration, `Keyed list component ${name} cannot be exported`)
       const calls = jsxTagUses(sourceFile, name)
-      if (identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
+      if (local && identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
       for (const call of calls) componentSpecializations.set(call, specializeComponentCall(call, component.function, sourceFile, factory, context, fail))
-      specializedDeclarations.add(component.declaration)
+      if (local) specializedDeclarations.add(component.declaration)
     }
     const renderedLists = new WeakMap()
     for (const { node, parts: originalParts } of rawRenderedLists) {
@@ -603,11 +619,13 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       if (componentSpecializations.has(node)) return ts.visitNode(componentSpecializations.get(node).root, visitor)
 
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
-        return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(modulePath(node.moduleSpecifier.text)), node.attributes)
+        const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
+        return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
 
       if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
-        return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(modulePath(node.moduleSpecifier.text)), node.attributes)
+        const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
+        return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
 
       if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "useState" && node.initializer.arguments.length === 1) {
@@ -677,7 +695,7 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         }
       }
 
-      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !isContextProviderValue(node, contexts) && !/^on/i.test(node.name.getText()) && !["key", "ref", "dangerouslysetinnerhtml"].includes(node.name.getText().toLowerCase())) {
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !isContextProviderValue(node, contexts) && !/^on/i.test(node.name.text) && !["key", "ref", "dangerouslysetinnerhtml"].includes(node.name.text.toLowerCase())) {
         const expression = node.initializer.expression
         const setters = settersForNode(node, settersByFunction)
         const usedStates = referencedStateNames(expression, setters)
@@ -690,15 +708,16 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         }
       }
 
-      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.getText())) {
+      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.text)) {
         const setters = settersForNode(node, settersByFunction)
         const event = compileEvent(node.initializer.expression, setters, functions, factory, nativeHandlers, handlerUrl, listEventItems.get(node), importBindings, clientImports)
         if (event) {
           usesBehavior = true
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, event))
         }
+        if (ts.isIdentifier(node.initializer.expression) && isDestructuredParameter(node.initializer.expression, nearestFunction(node))) return node
         const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
-        throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${node.name.getText()} must reference a function`)
+        throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${node.name.text} must reference a function`)
       }
 
       return ts.visitEachChild(node, visitor, context)
@@ -854,8 +873,7 @@ function keyedListParts(expression, setters) {
 
 function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions) {
   const fail = (node, message) => {
-    const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
-    throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+    throw sourceNodeError(node, sourceFile, message)
   }
   const root = parts.root
   const item = parts.item
@@ -869,7 +887,7 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
     if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, "Nested keyed lists are not supported")
     if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, item)) fail(node, "Keyed list item spreads are not supported")
-    if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.getText())) {
+    if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.text)) {
       listEventItems.set(node, item)
       return
     }
@@ -888,9 +906,9 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
         return
       }
       const field = directProperty(expression, item)
-      const isRootKey = ts.isJsxAttribute(node.parent) && node.parent.name.getText() === "key"
+      const isRootKey = ts.isJsxAttribute(node.parent) && node.parent.name.text === "key"
       if (field && ["__proto__", "constructor", "prototype"].includes(field)) fail(node, `Keyed list item property "${field}" is not supported`)
-      if (field && ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
+      if (field && ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.text.toLowerCase())) fail(node, `Keyed list item ${node.parent.name.text} is not supported`)
       if (isRootKey) return
       if (field) {
         listValues.set(node.expression, { field })
@@ -898,7 +916,7 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
       }
       if (referencesIdentifier(expression, item)) {
         validateListExpression(expression, item, node, fail)
-        if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
+        if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.text.toLowerCase())) fail(node, `Keyed list item ${node.parent.name.text} is not supported`)
         listValues.set(node.expression, { item })
         return
       }
@@ -971,6 +989,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
 
 function substituteClone(root, substitutions, factory, context) {
   const visit = (node, shadowed = new Set()) => {
+    if (ts.isTypeNode(node)) return cloneAst(node, factory, context)
     if (ts.isShorthandPropertyAssignment(node) && substitutions.has(node.name.text) && !shadowed.has(node.name.text)) {
       return factory.createPropertyAssignment(cloneAst(node.name, factory, context), cloneAst(substitutions.get(node.name.text), factory, context))
     }
@@ -1026,6 +1045,10 @@ function isFunctionLike(node) {
   return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
 }
 
+function isDestructuredParameter(identifier, fn) {
+  return fn?.parameters.some(parameter => ts.isObjectBindingPattern(parameter.name) && parameter.name.elements.some(element => ts.isIdentifier(element.name) && element.name.text === identifier.text)) ?? false
+}
+
 function isExportedDeclaration(node) {
   const statement = ts.isVariableDeclaration(node) ? node.parent?.parent : node
   return statement?.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword || modifier.kind === ts.SyntaxKind.DefaultKeyword) ?? false
@@ -1057,6 +1080,7 @@ const assignmentOperators = new Set([
 
 function validateListExpression(expression, item, source, fail) {
   const visit = node => {
+    if (ts.isTypeNode(node)) return
     if (ts.isElementAccessExpression(node) && referencesIdentifier(node.expression, item)) {
       const key = node.argumentExpression
       if (!ts.isStringLiteral(key) && !ts.isNumericLiteral(key)) fail(source, "Derived keyed list item computed properties require a direct string or numeric literal key")
@@ -1399,6 +1423,60 @@ function clientImportBindings(sourceFile, file, sourceFiles) {
   return bindings
 }
 
+function resolveComponentExport(file, exportName, getSource, sourceFiles, trail = []) {
+  const key = `${file}:${exportName}`
+  if (trail.includes(key)) throw new Error(`Imported keyed list component re-export cycle: ${[...trail, key].map(entry => relative(root, entry.slice(0, entry.lastIndexOf(":")))).join(" -> ")}`)
+  const sourceFile = getSource(file)
+  const nextTrail = [...trail, key]
+
+  for (const statement of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(statement)) {
+      const isDefault = statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)
+      const isExported = statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)
+      if (exportName === "default" && isDefault || exportName !== "default" && isExported && statement.name?.text === exportName) return statement
+    }
+    if (ts.isVariableStatement(statement) && statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword) && exportName !== "default") {
+      const declaration = statement.declarationList.declarations.find(entry => ts.isIdentifier(entry.name) && entry.name.text === exportName)
+      if (declaration?.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) return declaration.initializer
+    }
+    if (exportName === "default" && ts.isExportAssignment(statement) && !statement.isExportEquals && ts.isIdentifier(statement.expression)) {
+      const component = localComponentDeclaration(sourceFile, statement.expression.text)
+      if (component) return component
+    }
+    if (ts.isExportDeclaration(statement) && ts.isNamedExports(statement.exportClause)) {
+      const entry = statement.exportClause.elements.find(element => !element.isTypeOnly && element.name.text === exportName)
+      if (!entry) continue
+      const imported = (entry.propertyName ?? entry.name).text
+      if (statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
+        if (!statement.moduleSpecifier.text.startsWith(".")) throw sourceNodeError(statement, sourceFile, "Imported keyed list components must use relative TypeScript re-exports")
+        const target = resolveSourceImport(file, statement.moduleSpecifier.text, sourceFiles)
+        return resolveComponentExport(target, imported, getSource, sourceFiles, nextTrail)
+      }
+      const component = localComponentDeclaration(sourceFile, imported)
+      if (component) return component
+    }
+  }
+  throw new Error(`${relative(root, file)} does not export a statically analyzable keyed list component named ${JSON.stringify(exportName)}`)
+}
+
+function localComponentDeclaration(sourceFile, name) {
+  for (const statement of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === name) return statement
+    if (ts.isVariableStatement(statement)) {
+      const declaration = statement.declarationList.declarations.find(entry => ts.isIdentifier(entry.name) && entry.name.text === name)
+      if (declaration?.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) return declaration.initializer
+    }
+  }
+  return undefined
+}
+
+function sourceNodeError(node, fallbackSource, message) {
+  const original = ts.getOriginalNode(node)
+  const sourceFile = original.getSourceFile?.()?.fileName ? original.getSourceFile() : fallbackSource
+  const position = sourceFile.getLineAndCharacterOfPosition(original.getStart(sourceFile))
+  return new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+}
+
 function printClientImports(entries, handlerPath) {
   const unique = new Map(entries.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry]))
   const groups = Map.groupBy(unique.values(), entry => entry.target)
@@ -1474,7 +1552,7 @@ function resolveSourceImport(importer, specifier, sourceFiles) {
   const stem = /\.(?:js|jsx|ts|tsx)$/.test(extension) ? base.slice(0, -extension.length) : base
   const candidates = extension === ".ts" || extension === ".tsx"
     ? [base]
-    : [`${stem}.ts`, `${stem}.tsx`]
+    : [`${stem}.ts`, `${stem}.tsx`, join(stem, "index.ts"), join(stem, "index.tsx")]
   const matches = candidates.filter(candidate => sourceFiles.has(candidate))
   if (matches.length !== 1) throw new Error(`${relative(root, importer)} Relative import ${JSON.stringify(specifier)} must resolve to one TypeScript file in src/`)
   return matches[0]
@@ -1665,11 +1743,6 @@ function isPrimitiveLiteral(node) {
 function numericExpression(factory, value, negative) {
   const literal = factory.createNumericLiteral(value)
   return negative ? factory.createPrefixUnaryExpression(ts.SyntaxKind.MinusToken, literal) : literal
-}
-
-function modulePath(value) {
-  if (/\.(?:ts|tsx|js|jsx)$/.test(value)) return value.replace(/\.(?:ts|tsx|js|jsx)$/, ".mjs")
-  return `${value}.mjs`
 }
 
 function compiledPath(file) {
