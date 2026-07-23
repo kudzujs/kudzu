@@ -428,6 +428,8 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(component, /__kListExpression/)
   assert.match(component, /__kListConditional/)
   assert.match(component, /__kListItem/)
+  assert.match(component, /function TableRow\(\{ item \}\)/)
+  assert.match(component, /"data-row": __kListField/)
   assert.match(html, /<li data-id="1".*>.*Oak/)
   assert.match(html, /<tr data-row="2"/)
   assert.doesNotMatch(html, /data-k-list-item/)
@@ -504,7 +506,7 @@ test("shares lifecycle cleanup between conditional and list capabilities", async
 
 test("rejects unsupported keyed list expressions and duplicate initial keys", () => {
   for (const [fixture, message] of [
-    ["list-invalid-shape", /must use intrinsic JSX elements/],
+    ["list-invalid-shape", /must receive the whole item through one direct prop/],
     ["list-invalid-condition", /Keyed list item conditions must read the item/],
     ["list-invalid-browser", /identifier "window" is not allowed/],
     ["list-invalid-capture", /identifier "suffix" is not allowed/],

@@ -2,6 +2,10 @@ import { useState } from "@kudzujs/core"
 
 type Item = { id: number; name: string; tone: string; done: boolean; type: string; style: { color: string } }
 
+function TableRow({ item }: { item: Item }) {
+  return <tr data-row={item.id}><td>{item.name}</td></tr>
+}
+
 export default function ListPage() {
   const [items, setItems] = useState<Item[]>([
     { id: 1, name: "Oak", tone: "warm", done: false, type: "undefined", style: { color: "brown" } },
@@ -46,7 +50,7 @@ export default function ListPage() {
       {rows}
     </ul>
     <table><tbody>
-      {items.map(item => <tr key={item.id} data-row={item.id}><td>{item.name}</td></tr>)}
+      {items.map(item => <TableRow key={item.id} item={item} />)}
     </tbody></table>
   </main>
 }

@@ -264,9 +264,19 @@ const rows = items.map(item =>
 return <ul>{rows}</ul>
 ```
 
+The root may also be a same-file row component that directly returns one intrinsic element and receives the whole item through one prop:
+
+```tsx
+function ItemRow({ item }: { item: Item }) {
+  return <li>{item.name}</li>
+}
+
+const rows = items.map(item => <ItemRow key={item.id} item={item} />)
+```
+
 Kudzu emits initial items as static HTML, then adds, removes, updates, styles, conditional branches, and moves keyed elements directly. The map may appear directly in JSX or in one top-level immutable `const` rendered once as a JSX child. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Single-level item-local `&&` and ternary JSX conditions patch only their bounded branch and mount or unmount its handlers. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
 
-Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root, and `key={item.<field>}`. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested item conditions or lists, item spreads, component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
+Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root or same-file row component, and `key={item.<field>}`. A row component must directly destructure the whole item prop, directly return one intrinsic element, and be used only by that list. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, locals, imported helpers, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Nested item conditions, lists, or component tags, item spreads, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 ## Normal JavaScript
 
@@ -437,6 +447,8 @@ The list starts with 1,000 keyed items, then updates every label, reverses the o
 | Vue CSR | No | 24.3 KB | 61.3 KB | 773 ms | 11.4 ms | 9.5 ms | 4.1 ms | 6.6 ms | 31.6 ms |
 | Svelte CSR | No | 12.9 KB | 33.1 KB | 828 ms | 5.8 ms | 38.9 ms | 4.0 ms | 5.9 ms | 54.6 ms |
 | Qwik CSR | No | 22.2 KB | 64.1 KB | 594 ms | 9.1 ms | 22.2 ms | 30.8 ms | 19.0 ms | 81.1 ms |
+
+An intrinsic-root versus row-component A/B build produced byte-for-byte identical `dist` output: 5,175 B JS gzip and 61,731 B total. Seven interleaved clean builds measured 444 ms and 441 ms. Browser operation medians totaled 23.8 ms and 25.4 ms respectively; because the deployed HTML and JavaScript are identical, that 1.6 ms difference is measurement variance rather than component runtime overhead.
 
 Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 23.2 ms, 10.7 ms behind the hand-authored Astro baseline and 7.1 ms ahead of React across all four operations.
 

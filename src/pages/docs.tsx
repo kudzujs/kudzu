@@ -86,7 +86,7 @@ export default function DocsPage() {
 
         <main className="docs-content">
           <section className="docs-intro">
-            <p className="eyebrow">KUDZU DOCUMENTATION · v0.5.0</p>
+            <p className="eyebrow">KUDZU DOCUMENTATION · v0.5.1</p>
             <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
             <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
           </section>
@@ -290,6 +290,14 @@ return <>
   <button onClick={reverse}>Reverse</button>
   <ul>{rows}</ul>
 </>`} />
+            <p>A same-file row component can be the map root when it receives the whole item through one prop and directly returns one intrinsic element.</p>
+            <CodeBlock code={`function TreeRow({ item }: { item: Tree }) {
+  return <li>{item.name}</li>
+}
+
+const rows = items.map(item =>
+  <TreeRow key={item.id} item={item} />
+)`} />
             <div className="list-demo">
               <div className="list-demo-actions">
                 <span>LIVE KEYED LIST</span>
@@ -307,7 +315,7 @@ return <>
               </ul>
             </div>
             <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. The map may be direct JSX or one top-level immutable local rendered once as a JSX child. Direct item-property reads use compact markers. Derived item text, attributes, object styles, and single-level <code>&amp;&amp;</code> or ternary JSX conditions compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Conditional branches patch only their bounded DOM and mount or unmount their handlers. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested item conditions or lists, reusable aliases, item spreads, component tags, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+            <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. The map may be direct JSX or one top-level immutable local rendered once as a JSX child. A row component must directly destructure its whole-item prop, directly return one intrinsic element, and be used only by that list. Direct item-property reads use compact markers. Derived item text, attributes, object styles, and single-level <code>&amp;&amp;</code> or ternary JSX conditions compile to external ESM evaluators and must remain pure and synchronous: item reads, literals, operators, templates, approved read-only methods, deterministic <code>Math</code>, and primitive conversion are supported. Conditional branches patch only their bounded DOM and mount or unmount their handlers. Mutation, Promise values, arbitrary calls, browser globals, component state, locals, imported helpers, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key; descriptors use a placeholder rather than duplicating the full item in initial HTML. Nested item conditions, lists, or component tags, reusable aliases, item spreads, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
           </section>
 
           <section className="docs-section" id="events">
@@ -414,6 +422,7 @@ dist/
                 ["Qwik CSR", "22.2 KB", "64.1 KB", "594 ms", "9.1 ms", "22.2 ms", "30.8 ms", "19.0 ms", "81.1 ms"]
               ]}
             />
+            <p>An intrinsic-root versus row-component A/B build emitted byte-for-byte identical HTML and JavaScript. Seven clean-build medians were 444 ms and 441 ms; browser operation totals were 23.8 ms and 25.4 ms. Since no component code remains in <code>dist</code>, the browser difference is measurement variance rather than runtime overhead.</p>
             <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>
           </section>
 
@@ -423,7 +432,7 @@ dist/
               <li>Callback refs, mutable value refs, keyed-list refs, and reactive <code>dangerouslySetInnerHTML</code> are not supported.</li>
               <li>Context setters and objects containing reactive context values are not supported.</li>
               <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
-              <li>Keyed lists require local-state maps and intrinsic roots; reusable aliases, nested dynamic JSX, item spreads, and derived-expression captures remain unsupported.</li>
+              <li>Keyed lists require local-state maps and intrinsic roots or a direct same-file row component; reusable aliases, nested dynamic JSX, item spreads, and derived-expression captures remain unsupported.</li>
               <li>Block-scoped or reassigned JSX locals are not implemented.</li>
               <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
               <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>

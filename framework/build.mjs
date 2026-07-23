@@ -466,6 +466,19 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
         if (uses.length) listLocalUses.set(uses[0], parts)
       }
     }
+    const renderedLists = new WeakMap()
+    const collectRenderedLists = node => {
+      if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
+        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction))
+        if (parts) {
+          if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
+          validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, functions)
+          renderedLists.set(node, parts)
+        }
+      }
+      ts.forEachChild(node, collectRenderedLists)
+    }
+    collectRenderedLists(sourceFile)
 
     const visitor = node => {
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
@@ -523,10 +536,8 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       }
 
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const listParts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction))
+        const listParts = renderedLists.get(node)
         if (listParts) {
-          if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
-          validateKeyedList(listParts, sourceFile, settersForNode(node, settersByFunction), listValues, listEventItems, listConditions)
           usesBehavior = true
           usesList = true
           return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, [
@@ -628,10 +639,34 @@ function keyedListParts(expression, setters) {
   return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
 }
 
-function validateKeyedList(parts, sourceFile, setters, listValues, listEventItems, listConditions) {
+function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, functions) {
   const fail = (node, message) => {
     const position = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
     throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+  }
+  let root = parts.root
+  let item = parts.item
+  const rootTag = ts.isJsxElement(root) ? root.openingElement.tagName : root.tagName
+  if (ts.isIdentifier(rootTag) && rootTag.text[0] === rootTag.text[0].toUpperCase()) {
+    const component = functions.get(rootTag.text)
+    if (!component) fail(root, `Keyed list component ${rootTag.text} must be declared in the same file`)
+    const uses = jsxTagUses(sourceFile, rootTag.text)
+    if (uses.length !== 1 || uses[0] !== root) fail(root, `Keyed list component ${rootTag.text} may only be used as this list root`)
+    const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
+    let itemProp
+    for (const attribute of attributes.properties) {
+      if (ts.isJsxSpreadAttribute(attribute)) {
+        if (referencesIdentifier(attribute.expression, item)) fail(attribute, "Keyed list item spreads are not supported")
+        continue
+      }
+      if (attribute.name.getText() === "key" || !attribute.initializer || !ts.isJsxExpression(attribute.initializer) || !attribute.initializer.expression || !referencesIdentifier(attribute.initializer.expression, item)) continue
+      if (!ts.isIdentifier(attribute.initializer.expression) || attribute.initializer.expression.text !== item || itemProp) fail(attribute, `Keyed list component ${rootTag.text} must receive the whole item through one direct prop`)
+      itemProp = attribute.name.getText()
+    }
+    if (ts.isJsxElement(root) && root.children.some(child => referencesIdentifier(child, item))) fail(root, `Keyed list component ${rootTag.text} must receive the whole item through one direct prop`)
+    if (!itemProp) fail(root, `Keyed list component ${rootTag.text} must receive the whole item through one direct prop`)
+    item = componentItemParameter(component, itemProp, node => fail(node, `Keyed list component ${rootTag.text} must destructure its item prop`))
+    root = componentJsxRoot(component, node => fail(node, `Keyed list component ${rootTag.text} must return one JSX element`))
   }
   const validateElement = node => {
     const tag = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName
@@ -641,10 +676,10 @@ function validateKeyedList(parts, sourceFile, setters, listValues, listEventItem
   const visit = node => {
     if (ts.isJsxFragment(node)) fail(node, "Fragments are not supported in keyed lists")
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
-    if (node !== parts.root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, "Nested keyed lists are not supported")
-    if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, parts.item)) fail(node, "Keyed list item spreads are not supported")
+    if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, "Nested keyed lists are not supported")
+    if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, item)) fail(node, "Keyed list item spreads are not supported")
     if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.getText())) {
-      listEventItems.set(node, parts.item)
+      listEventItems.set(node, item)
       return
     }
     if (ts.isJsxExpression(node) && node.expression) {
@@ -652,16 +687,16 @@ function validateKeyedList(parts, sourceFile, setters, listValues, listEventItem
       const condition = conditionalParts(expression)
       if (condition && containsJsx(expression)) {
         if (conditionDepth) fail(node, "Nested item conditions are not supported in keyed lists")
-        if (!referencesIdentifier(condition.condition, parts.item)) fail(node, "Keyed list item conditions must read the item")
-        validateListExpression(condition.condition, parts.item, node, fail)
-        listConditions.set(node.expression, { ...condition, item: parts.item })
+        if (!referencesIdentifier(condition.condition, item)) fail(node, "Keyed list item conditions must read the item")
+        validateListExpression(condition.condition, item, node, fail)
+        listConditions.set(node.expression, { ...condition, item })
         conditionDepth++
         visit(condition.truthy)
         visit(condition.falsy)
         conditionDepth--
         return
       }
-      const field = directProperty(expression, parts.item)
+      const field = directProperty(expression, item)
       const isRootKey = ts.isJsxAttribute(node.parent) && node.parent.name.getText() === "key"
       if (field && ["__proto__", "constructor", "prototype"].includes(field)) fail(node, `Keyed list item property "${field}" is not supported`)
       if (field && ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
@@ -670,16 +705,47 @@ function validateKeyedList(parts, sourceFile, setters, listValues, listEventItem
         listValues.set(node.expression, { field })
         return
       }
-      if (referencesIdentifier(expression, parts.item)) {
-        validateListExpression(expression, parts.item, node, fail)
+      if (referencesIdentifier(expression, item)) {
+        validateListExpression(expression, item, node, fail)
         if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.getText().toLowerCase())) fail(node, `Keyed list item ${node.parent.name.getText()} is not supported`)
-        listValues.set(node.expression, { item: parts.item })
+        listValues.set(node.expression, { item })
         return
       }
     }
     ts.forEachChild(node, visit)
   }
-  visit(parts.root)
+  visit(root)
+}
+
+function componentItemParameter(component, prop, fail) {
+  if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component)
+  const element = component.parameters[0].name.elements.find(entry => !entry.dotDotDotToken && !entry.initializer && (entry.propertyName ?? entry.name).getText() === prop)
+  if (!element || !ts.isIdentifier(element.name)) fail(component.parameters[0])
+  return element.name.text
+}
+
+function componentJsxRoot(component, fail) {
+  if (!ts.isBlock(component.body)) {
+    const root = unwrapExpression(component.body)
+    if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(component.body)
+    return root
+  }
+  if (component.body.statements.length !== 1 || !ts.isReturnStatement(component.body.statements[0]) || !component.body.statements[0].expression) fail(component.body)
+  const statement = component.body.statements[0]
+  const root = unwrapExpression(statement.expression)
+  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(statement)
+  return root
+}
+
+function jsxTagUses(root, name) {
+  const uses = []
+  const visit = node => {
+    const tag = ts.isJsxElement(node) ? node.openingElement.tagName : ts.isJsxSelfClosingElement(node) ? node.tagName : undefined
+    if (tag && ts.isIdentifier(tag) && tag.text === name) uses.push(node)
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return uses
 }
 
 const pureListMethods = new Set(["at", "charAt", "charCodeAt", "concat", "endsWith", "includes", "indexOf", "join", "lastIndexOf", "padEnd", "padStart", "repeat", "replace", "replaceAll", "slice", "startsWith", "substring", "toLowerCase", "toUpperCase", "trim", "trimEnd", "trimStart"])
