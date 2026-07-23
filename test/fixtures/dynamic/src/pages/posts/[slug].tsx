@@ -1,4 +1,4 @@
-import { useState } from "@kudzujs/core"
+import { useEffect, useState } from "@kudzujs/core"
 
 type Props = { title: string; score: number; html: string }
 
@@ -13,6 +13,11 @@ export async function getStaticPaths() {
 
 export default function Post({ title, score, html }: Props) {
   const [saved, setSaved] = useState(false)
+  const [mounted, setMounted] = useState("pending")
+
+  useEffect(() => {
+    setMounted(title)
+  }, [])
 
   function save() {
     document.body.dataset.saved = title
@@ -22,6 +27,7 @@ export default function Post({ title, score, html }: Props) {
   return <main data-title={title}>
     <h1>{title}</h1>
     <p>Score: {score}</p>
+    <p data-mounted>{mounted}</p>
     <section dangerouslySetInnerHTML={{ __html: html }} />
     <button onClick={save}>{saved ? "Saved" : "Save"}</button>
   </main>

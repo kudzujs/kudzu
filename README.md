@@ -6,7 +6,7 @@
 
 HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
-Kudzu keeps the familiar function-component, props, children, event-handler, and `useState` shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers compile to external ESM.
+Kudzu keeps the familiar function-component, props, children, event-handler, `useState`, and mount-effect shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers and mount effects compile to external ESM.
 
 > Experimental `0.4.x`: the compiler API and supported TSX surface may change.
 
@@ -308,6 +308,27 @@ The original component remains reusable across multiple lists and ordinary JSX. 
 
 Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root or top-level local or relative-imported row component, and `key={item.<field>}`. Row components accept destructured projected props and top-level single-`const` calculations before one intrinsic return. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, imported helpers used inside calculations, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, nested item conditions, lists, or component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
+## Mount Effects
+
+Browser-only initial work uses the familiar empty-dependency effect shape:
+
+```tsx
+import { useEffect, useState } from "@kudzujs/core"
+
+const [items, setItems] = useState([])
+
+useEffect(async () => {
+  const response = await fetch("/api/items")
+  setItems(await response.json())
+}, [])
+```
+
+Kudzu does not execute the effect during static rendering and does not ship the component. It emits one route-specific effect entry that invokes the compiled callback against existing logical state and direct DOM commit capabilities. Effects may update reactive text, attributes, conditions, and keyed lists. Multiple effects start independently in source order, and one synchronous or asynchronous failure is reported without suppressing later effects.
+
+Only inline block-bodied callbacks with a literal empty dependency array are supported. Dependencies, cleanup or other return values, callback parameters, and non-serializable captures are rejected at build time. Pages without effects receive no effect entry and retain their existing output.
+
+A matched mount-fetch benchmark renders a title and two keyed rows from local JSON. With one warm-up and seven rotating clean builds, Kudzu shipped initial HTML, 3.4 KB initial JS gzip, 8.1 KB total output, and built in 374 ms. React CSR shipped no initial content, 59.3 KB initial JS gzip, 189.2 KB total output, and built in 992 ms. Hand-written ESM shipped 534 B initial JS gzip, 1.2 KB total output, and built in 210 ms. Fresh-profile Chrome medians to loaded data were 157.9 ms, 166.5 ms, and 153.4 ms respectively.
+
 ## Normal JavaScript
 
 Command-only setters use the smallest optimized path. Conditions, local variables, browser globals, events, and `async`/`await` compile to external ESM without `eval`, `new Function`, or inline executable code.
@@ -377,6 +398,7 @@ Supported:
 - Static trusted `dangerouslySetInnerHTML`
 - Base-path deployments, multiple CSS files, and `afterBuild`
 - Primitive `useState` bindings
+- Mount-only `useEffect(fn, [])` compiled to route-specific ESM
 - Synchronous and async event handlers
 - Relative imported helpers in native handlers
 - Serializable component-local captures

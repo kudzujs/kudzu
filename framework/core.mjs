@@ -44,6 +44,16 @@ export function useState(initialValue, name) {
   return [signal, setter]
 }
 
+export function useEffect(callback, dependencies, module, handler, states, scope, source) {
+  if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
+  if (typeof callback !== "function" || !Array.isArray(dependencies) || dependencies.length || !module || !handler) {
+    throw new Error("useEffect() must be compiled with a literal empty dependency array")
+  }
+  renderContext.effects.push({ module, handler, states, scope, source })
+  renderContext.hasBehaviors = true
+  renderContext.hasEffects = true
+}
+
 export function useRef(initialValue) {
   if (!renderContext) throw new Error("useRef() can only run while rendering a Kudzu component")
   if (initialValue !== null) throw new Error("Kudzu DOM refs must initialize with null")
@@ -82,8 +92,14 @@ export function nativeBehavior(module, handler, states, scope) {
     [nativeBehaviorMarker]: true,
     module,
     handler,
+    ...nativeDescriptor(states, scope)
+  }
+}
+
+function nativeDescriptor(states, scope) {
+  return {
     states: Object.fromEntries(states.map(([name, signal]) => {
-      if (!signal?.[signalMarker]) throw new Error("A native behavior must target framework state")
+      if (!signal?.[signalMarker]) throw new Error("A native callback must target framework state")
       return [name, signal.id]
     })),
     scope: Object.fromEntries(scope.map(([name, value]) => [name, value?.[signalMarker] ? { type: "state", id: value.id } : serializeCapture(name, value, new Set())]))
@@ -226,10 +242,21 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}) {
-  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], bindings: [], textBindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const body = await renderNode({ type: component, props })
+    renderContext.effects = renderContext.effects.map(effect => {
+      try {
+        return {
+          module: effect.module,
+          handler: effect.handler,
+          ...nativeDescriptor(effect.states.map(([name, read]) => [name, read()]), effect.scope.map(([name, read]) => [name, read()]))
+        }
+      } catch (error) {
+        throw new Error(`${effect.source} ${error.message}`)
+      }
+    })
     const title = escapeHtml(metadata.title ?? "Kudzu")
     const head = renderMetadata(metadata)
     const styles = metadata.styles === false
@@ -247,6 +274,9 @@ export async function renderPage(component, metadata = {}, props = {}) {
     const listRuntime = renderContext.hasLists
       ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-list.js")}"></script>`
       : ""
+    const effectRuntime = renderContext.hasEffects
+      ? `<script type="module" src="${escapeAttribute(metadata.effectAsset)}"></script>`
+      : ""
     const listStates = new Set(renderContext.lists.map(list => list.state))
     const seededListStates = new Set(renderContext.lists.filter(list => list.seed && !renderContext.textStates.has(list.state) && !renderContext.conditionStates.has(list.state)).map(list => list.state))
     const initialState = renderContext.hasBehaviors
@@ -263,8 +293,9 @@ export async function renderPage(component, metadata = {}, props = {}) {
       : ""
 
     return {
-      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}${textBindings}>${body}${runtime}${bindingRuntime}${listRuntime}${nativeRuntime}</body></html>`,
+      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}${textBindings}>${body}${runtime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}</body></html>`,
       hasBehaviors: renderContext.hasBehaviors,
+      hasEffects: renderContext.hasEffects,
       hasBindings: renderContext.hasBindings,
       hasLists: renderContext.hasLists,
       hasListStyles: renderContext.hasListStyles,
@@ -272,6 +303,7 @@ export async function renderPage(component, metadata = {}, props = {}) {
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
         events: renderContext.events,
+        effects: renderContext.effects,
         bindings: renderContext.bindings,
         conditions: renderContext.conditions,
         lists: renderContext.lists
@@ -552,6 +584,11 @@ async function renderList(node, namespace, selectValue) {
     const template = await renderNode(node.render({}), namespace, selectValue)
     if (template.includes("data-k-native-")) descriptor.mount = true
     if (template.includes("data-k-list-condition")) descriptor.conditions = true
+    if (template.includes("data-k-list-text-end")) descriptor.textRanges = true
+    if (template.includes("data-k-list-attrs")) descriptor.attributes = true
+    if (template.includes("data-k-list-events")) descriptor.events = true
+    if (template.includes("data-k-list-expression=")) descriptor.expressions = true
+    if (template.includes("data-k-list-expression-attrs")) descriptor.expressionAttributes = true
     const seed = listSeed(node.items.value, renderContext.listFields)
     if (seed) descriptor.seed = seed
     let current = ""

@@ -100,6 +100,15 @@ function App() {
   </ThemeContext.Provider>
 }`} />
     <p>Context objects may contain state, setters, nested plain data, and static fields. Consumers may destructure or rename properties. Kudzu emits only concrete state/setter IDs and reconstructs live getters with the existing synchronous, batched setter semantics; no function source or browser Provider tree is shipped. Nested Providers remain independent. Arbitrary functions, accessors, cycles, symbols, and non-plain objects are rejected when captured for browser use.</p>
+    <h3 id="effects">Mount effects</h3>
+    <p>Browser-only initial work can use an inline <code>useEffect</code> callback with a literal empty dependency array. Kudzu emits that callback as route-specific ESM and patches only state-bound DOM; it does not ship or rerun the component.</p>
+    <CodeBlock code={`const [items, setItems] = useState([])
+
+useEffect(async () => {
+  const response = await fetch("/api/items")
+  setItems(await response.json())
+}, [])`} />
+    <p>Effects may update text, attributes, conditions, and keyed lists. The callback must be inline and block-bodied. Dependencies, cleanup or other return values, callback parameters, and non-serializable captures remain unsupported and fail during the build. Routes without effects emit no effect entry.</p>
   </section>
 }
 

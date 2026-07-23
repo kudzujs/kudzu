@@ -46,6 +46,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   let listStyleCount = 0
   let stateSeedCount = 0
   const plans = []
+  const effectEntries = []
   const emittedRoutes = new Set()
   const styleUrls = cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`))
 
@@ -58,17 +59,20 @@ export async function build({ quiet = false, minify = true } = {}) {
     for (const { params, props } of entries) {
       const route = routeFromPage(pageFile, params)
       const routePath = withBase(base, `/${route}`)
+      const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
       if (emittedRoutes.has(routePath)) throw new Error(`Duplicate route: ${routePath}`)
       emittedRoutes.add(routePath)
       const result = await renderPage(module.default, {
         ...(module.metadata ?? {}),
         styles: styleUrls.length ? styleUrls : false,
-        base
+        base,
+        effectAsset: assetPath(base, `assets/${effectPath}`)
       }, props)
       const routeDirectory = join(outputDirectory, route)
       await mkdir(routeDirectory, { recursive: true })
       await writeFile(join(routeDirectory, "index.html"), result.html)
       plans.push({ route: routePath, ...result.plan })
+      if (result.hasEffects) effectEntries.push({ path: effectPath, effects: result.plan.effects })
       if (result.hasBehaviors) behaviorCount++
       if (result.hasBindings) bindingCount++
       if (result.hasLists) listCount++
@@ -83,19 +87,37 @@ export async function build({ quiet = false, minify = true } = {}) {
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
   const hasTextBindings = plans.some(plan => plan.bindings.some(binding => binding.target === "text"))
   const hasListConditions = plans.some(plan => plan.lists.some(list => list.conditions))
+  const hasListTextRanges = plans.some(plan => plan.lists.some(list => list.textRanges))
+  const hasListAttributes = plans.some(plan => plan.lists.some(list => list.attributes))
+  const hasListEvents = plans.some(plan => plan.lists.some(list => list.events))
+  const hasListExpressions = plans.some(plan => plan.lists.some(list => list.expressions))
+  const hasListExpressionAttributes = plans.some(plan => plan.lists.some(list => list.expressionAttributes))
+  const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed))
+  const hasListAsyncParts = hasListExpressions || hasListExpressionAttributes || hasListConditions
+  const hasListMounts = hasListConditions || plans.some(plan => plan.lists.some(list => list.mount))
   const hasNestedStateCaptures = hasNestedCaptureState(plans)
   const hasSetterCaptures = hasCaptureType(plans, "setter")
+  const hasEffectCaptures = plans.some(plan => plan.effects.some(effect => Object.keys(effect.scope).length))
   const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
   const hasNativeHandlers = nativeModules.length > 0
+  const hasEffects = effectEntries.length > 0
   if (behaviorCount) {
     const runtimeFile = bindingCount || listCount || hasNativeHandlers ? "./shared-runtime.js" : "./runtime.js"
     const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, stateSeedCount > 0)
     await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
   }
-  if (bindingCount || hasNativeHandlers) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify, {
+  if (bindingCount || hasNativeHandlers || hasEffectCaptures) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify, {
     "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures),
     "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
   })
+  if (hasEffects) {
+    let effectRuntime = await readFile(new URL("./effect-runtime.js", import.meta.url), "utf8")
+    effectRuntime = hasEffectCaptures ? effectRuntime.replace('"./serialization.js"', '"./kudzu-serialization.js"') : effectRuntime.replace(/^import[^\n]+\n/, "")
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-effect.js"), effectRuntime, minify, {
+      "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures),
+      "globalThis.__KUDZU_EFFECT_CAPTURES__": String(hasEffectCaptures)
+    })
+  }
   if (bindingCount || listStyleCount) await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
   if (bindingCount) {
     const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
@@ -118,7 +140,17 @@ export async function build({ quiet = false, minify = true } = {}) {
   }`
     listRuntime = listRuntime.replace("  /* list-style */", listStyleCount ? stylePatch : "")
     if (listStyleCount) listRuntime = `import { serializeStyle } from "./kudzu-style.js"\n${listRuntime}`
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify, { __KUDZU_LIST_CONDITIONS__: String(hasListConditions) })
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify, {
+      __KUDZU_LIST_CONDITIONS__: String(hasListConditions),
+      __KUDZU_LIST_TEXT_RANGES__: String(hasListTextRanges),
+      __KUDZU_LIST_ATTRIBUTES__: String(hasListAttributes),
+      __KUDZU_LIST_EVENTS__: String(hasListEvents),
+      __KUDZU_LIST_EXPRESSIONS__: String(hasListExpressions),
+      __KUDZU_LIST_EXPRESSION_ATTRIBUTES__: String(hasListExpressionAttributes),
+      __KUDZU_LIST_SEEDS__: String(hasListSeeds),
+      __KUDZU_LIST_ASYNC_PARTS__: String(hasListAsyncParts),
+      __KUDZU_LIST_MOUNTS__: String(hasListMounts)
+    })
   }
   if (hasNativeHandlers) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
@@ -132,6 +164,11 @@ export async function build({ quiet = false, minify = true } = {}) {
     const output = join(assetsDirectory, handlerModule.path)
     await mkdir(resolve(output, ".."), { recursive: true })
     await writeJavaScript(output, handlerModule.code, minify)
+  }
+  for (const entry of effectEntries) {
+    const output = join(assetsDirectory, entry.path)
+    await mkdir(dirname(output), { recursive: true })
+    await writeJavaScript(output, printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base), minify)
   }
   const clientModules = await collectClientModules(handlerModules.flatMap(module => module.clientImports), sourceFileSet)
   for (const file of clientModules) {
@@ -180,6 +217,32 @@ function specializeNativeRuntime(source, events, modules) {
   const imports = modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
   const entries = modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
   return `${imports}\n${specializeEvents(source, events).replace(/const modules = new Map\(\[[^\n]*\]\)/, `const modules = new Map([${entries}])`)}`
+}
+
+function printEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+  const moduleUrls = [...new Set(effects.map(effect => effect.module))]
+  const modules = moduleUrls.map(url => {
+    const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
+    if (!module) throw new Error(`Effect handler module was not emitted: ${url}`)
+    return module
+  })
+  const imports = [
+    `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
+    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
+    ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
+  ]
+  const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
+  return `${imports.join("\n")}
+const effects = ${inlineJson(effects)}
+const modules = new Map([${entries}])
+for (const effect of effects) {
+  try {
+    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope))
+    if (result && typeof result.then === "function") result.catch(error => console.error(error))
+  } catch (error) {
+    console.error(error)
+  }
+}`
 }
 
 function hasCaptureType(value, type) {
@@ -373,6 +436,7 @@ function escapeHtml(value) {
 async function compile(file, sourceFiles, sourceIndex, base) {
   const source = sourceIndex.get(file)
   const nativeHandlers = []
+  const effectHandlers = []
   const reactiveBindings = []
   const listExpressions = []
   const clientImports = new Set()
@@ -385,7 +449,7 @@ async function compile(file, sourceFiles, sourceIndex, base) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, clientImports)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, clientImports)] },
     reportDiagnostics: true
   })
 
@@ -398,10 +462,11 @@ async function compile(file, sourceFiles, sourceIndex, base) {
   await mkdir(resolve(output, ".."), { recursive: true })
   await writeFile(output, result.outputText)
 
-  if (!nativeHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
+  if (!nativeHandlers.length && !effectHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
+  const callbacks = [...nativeHandlers, ...effectHandlers]
   const moduleSource = [
-    printClientImports(nativeHandlers.flatMap(handler => handler.imports), handlerPath),
-    ...nativeHandlers.map(handler => printNativeHandler(handler)),
+    printClientImports(callbacks.flatMap(handler => handler.imports), handlerPath),
+    ...callbacks.map(handler => printNativeHandler(handler)),
     ...reactiveBindings.map(entry => printReactiveBinding(entry)),
     ...listExpressions.map(entry => printListExpression(entry))
   ].join("\n")
@@ -411,15 +476,16 @@ async function compile(file, sourceFiles, sourceIndex, base) {
   })
   const moduleErrors = moduleResult.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
-  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, clientImports: [...clientImports] }
+  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports] }
 }
 
-function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports) {
+function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports) {
   return context => sourceFile => {
     const factory = context.factory
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
+    const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === "@kudzujs/core" && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
     const importedSources = new Map()
     const importedSource = target => {
       let imported = importedSources.get(target)
@@ -626,6 +692,31 @@ function createKudzuTransformer(nativeHandlers, reactiveBindings, listExpression
       if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
         return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
+      }
+
+      if (hasUseEffectImport && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useEffect") {
+        if (node.arguments.length !== 2) fail(node, "useEffect() requires exactly a callback and literal empty dependency array")
+        const [callback, dependencies] = node.arguments
+        if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) fail(callback, "useEffect() callback must be an inline function")
+        if (ts.isFunctionExpression(callback) && callback.name) fail(callback, "useEffect() callback function must be anonymous")
+        if (callback.parameters.length) fail(callback, "useEffect() callback cannot declare parameters")
+        if (!ts.isArrayLiteralExpression(dependencies) || dependencies.elements.length) fail(dependencies, "useEffect() dependencies must be a literal empty array")
+        if (!nearestFunction(node)) fail(node, "useEffect() cannot be used outside a Kudzu component")
+        if (returnsCleanup(callback)) fail(callback, "useEffect() cleanup functions are not supported")
+        if (!ts.isBlock(callback.body)) fail(callback, "useEffect() callback must use a block body")
+        if (returnsEffectValue(callback)) fail(callback, "useEffect() return values are not supported")
+        const setters = settersForNode(node, settersByFunction)
+        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, importBindings, clientImports, "effect", undefined, true)
+        usesBehavior = true
+        return factory.updateCallExpression(node, node.expression, node.typeArguments, [
+          callback,
+          dependencies,
+          factory.createStringLiteral(handlerUrl),
+          factory.createStringLiteral(descriptor.exportName),
+          descriptor.states,
+          descriptor.scope,
+          factory.createStringLiteral(sourceLocation(node, sourceFile))
+        ])
       }
 
       if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "useState" && node.initializer.arguments.length === 1) {
@@ -1273,26 +1364,37 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
   const optimized = compileOptimizedEvent(expression, setters, factory)
   if (optimized) return optimized
 
+  const descriptor = compileNativeCallback(expression, setters, factory, nativeHandlers, importBindings, clientImports, "handler", listItem)
+  return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
+    factory.createStringLiteral(handlerUrl),
+    factory.createStringLiteral(descriptor.exportName),
+    descriptor.states,
+    descriptor.scope
+  ])
+}
+
+function compileNativeCallback(expression, setters, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false) {
   const allCaptures = nativeCaptureNames(expression, setters)
   const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
   const captures = new Set([...allCaptures].filter(name => !importBindings.has(name)))
   for (const entry of imports) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
-  const exportName = `handler${nativeHandlers.length}`
-  nativeHandlers.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))) })
-  const states = [...usedStates].map(name => factory.createArrayLiteralExpression([
-    factory.createStringLiteral(name),
-    factory.createIdentifier(name)
-  ]))
-  return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
-    factory.createStringLiteral(handlerUrl),
-    factory.createStringLiteral(exportName),
-    factory.createArrayLiteralExpression(states),
-    factory.createArrayLiteralExpression([...captures].map(name => factory.createArrayLiteralExpression([
+  const exportName = `${prefix}${entries.length}`
+  entries.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))) })
+  const value = name => deferValues
+    ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
+    : factory.createIdentifier(name)
+  return {
+    exportName,
+    states: factory.createArrayLiteralExpression([...usedStates].map(name => factory.createArrayLiteralExpression([
       factory.createStringLiteral(name),
-      name === listItem ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, []) : factory.createIdentifier(name)
+      value(name)
+    ]))),
+    scope: factory.createArrayLiteralExpression([...captures].map(name => factory.createArrayLiteralExpression([
+      factory.createStringLiteral(name),
+      name === listItem ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, []) : value(name)
     ])))
-  ])
+  }
 }
 
 function nativeStateNames(expression, setters) {
@@ -1303,7 +1405,8 @@ function referencedStateNames(root, setters, scopeRoot = root) {
   const stateNames = new Set(setters.values())
   const used = new Set()
   const visit = node => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text)) used.add(setters.get(node.expression.text))
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, scopeRoot)) used.add(setters.get(node.expression.text))
+    if (ts.isIdentifier(node) && setters.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, scopeRoot)) used.add(setters.get(node.text))
     if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, scopeRoot)) used.add(node.text)
     ts.forEachChild(node, visit)
   }
@@ -1342,20 +1445,22 @@ function referencedImportedBindings(expression, imports) {
 
 function captureNames(declarationRoot, referenceRoot, setters) {
   const local = new Set()
-  const collectDeclarations = node => {
-    if (ts.isVariableDeclaration(node)) for (const name of bindingNames(node.name)) local.add(name)
-    if (ts.isParameter(node)) for (const name of bindingNames(node.name)) local.add(name)
-    if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) && node.name) local.add(node.name.text)
-    ts.forEachChild(node, collectDeclarations)
+  if (!isFunctionLike(declarationRoot)) {
+    const collectDeclarations = node => {
+      if (ts.isVariableDeclaration(node)) for (const name of bindingNames(node.name)) local.add(name)
+      if (ts.isParameter(node)) for (const name of bindingNames(node.name)) local.add(name)
+      if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) && node.name) local.add(node.name.text)
+      ts.forEachChild(node, collectDeclarations)
+    }
+    collectDeclarations(declarationRoot)
   }
-  collectDeclarations(declarationRoot)
-
   const stateNames = new Set(setters.values())
   const captures = new Set()
   const visit = node => {
     if (ts.isTypeNode(node)) return
-    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !local.has(node.text) && !setters.has(node.text) && !stateNames.has(node.text) && !nativeGlobals.has(node.text)) {
-      captures.add(node.text)
+    if (ts.isIdentifier(node)) {
+      const declared = isFunctionLike(declarationRoot) ? isShadowedIdentifier(node, declarationRoot) : local.has(node.text)
+      if (isReferenceIdentifier(node) && !declared && !setters.has(node.text) && !stateNames.has(node.text) && !nativeGlobals.has(node.text)) captures.add(node.text)
     }
     ts.forEachChild(node, visit)
   }
@@ -1377,7 +1482,7 @@ function isReferenceIdentifier(node) {
       (ts.isVariableDeclaration(parent) && parent.name === node) ||
       (ts.isParameter(parent) && parent.name === node) ||
       (ts.isFunctionDeclaration(parent) && parent.name === node) ||
-      (ts.isBindingElement(parent) && parent.name === node) ||
+      (ts.isBindingElement(parent) && (parent.name === node || parent.propertyName === node)) ||
       ts.isImportSpecifier(parent) || ts.isImportClause(parent)) return false
   return true
 }
@@ -1395,6 +1500,43 @@ function isShadowedByParameter(node, scopeRoot) {
     if (current === scopeRoot) break
   }
   return false
+}
+
+function isShadowedIdentifier(node, scopeRoot) {
+  if (isShadowedByParameter(node, scopeRoot)) return true
+  if (node === scopeRoot) return false
+  if (isFunctionLike(scopeRoot) && scopeRoot.name?.text === node.text) return true
+  if (isFunctionLike(scopeRoot) && functionVarDeclaresName(scopeRoot, node.text)) return true
+  for (let current = node.parent; current; current = current.parent) {
+    if (current === scopeRoot) break
+    if (ts.isBlock(current) && current.statements.some(statement => statementDeclaresName(statement, node.text))) return true
+    if (ts.isCaseBlock(current) && current.clauses.some(clause => clause.statements.some(statement => statementDeclaresName(statement, node.text)))) return true
+    if (ts.isCatchClause(current) && current.variableDeclaration && bindingNames(current.variableDeclaration.name).includes(node.text)) return true
+    if ((ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current)) && loopDeclaresName(current, node.text)) return true
+    if (isFunctionLike(current) && functionVarDeclaresName(current, node.text)) return true
+  }
+  return false
+}
+
+function statementDeclaresName(statement, name) {
+  if (ts.isVariableStatement(statement)) return statement.declarationList.declarations.some(declaration => bindingNames(declaration.name).includes(name))
+  return (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) && statement.name?.text === name
+}
+
+function loopDeclaresName(loop, name) {
+  const declaration = ts.isForStatement(loop) ? loop.initializer : loop.initializer
+  return declaration && ts.isVariableDeclarationList(declaration) && declaration.declarations.some(entry => bindingNames(entry.name).includes(name))
+}
+
+function functionVarDeclaresName(fn, name) {
+  let found = false
+  const visit = node => {
+    if (found || node !== fn.body && isFunctionLike(node)) return
+    if (ts.isVariableDeclarationList(node) && (node.flags & ts.NodeFlags.BlockScoped) === 0 && node.declarations.some(entry => bindingNames(entry.name).includes(name))) found = true
+    if (!found) ts.forEachChild(node, visit)
+  }
+  if (fn.body) visit(fn.body)
+  return found
 }
 
 function settersForNode(node, settersByFunction) {
@@ -1475,6 +1617,42 @@ function sourceNodeError(node, fallbackSource, message) {
   const sourceFile = original.getSourceFile?.()?.fileName ? original.getSourceFile() : fallbackSource
   const position = sourceFile.getLineAndCharacterOfPosition(original.getStart(sourceFile))
   return new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+}
+
+function sourceLocation(node, fallbackSource) {
+  const original = ts.getOriginalNode(node)
+  const sourceFile = original.getSourceFile?.()?.fileName ? original.getSourceFile() : fallbackSource
+  const position = sourceFile.getLineAndCharacterOfPosition(original.getStart(sourceFile))
+  return `${sourceFile.fileName}:${position.line + 1}:${position.character + 1}`
+}
+
+function returnsCleanup(callback) {
+  if (ts.isArrowFunction(callback) && !ts.isBlock(callback.body)) {
+    const body = unwrapExpression(callback.body)
+    return ts.isArrowFunction(body) || ts.isFunctionExpression(body)
+  }
+  let found = false
+  const visit = node => {
+    if (found || node !== callback.body && isFunctionLike(node)) return
+    if (ts.isReturnStatement(node) && node.expression) {
+      const expression = unwrapExpression(node.expression)
+      if (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression)) found = true
+    }
+    if (!found) ts.forEachChild(node, visit)
+  }
+  visit(callback.body)
+  return found
+}
+
+function returnsEffectValue(callback) {
+  let found = false
+  const visit = node => {
+    if (found || node !== callback.body && isFunctionLike(node)) return
+    if (ts.isReturnStatement(node) && node.expression) found = true
+    if (!found) ts.forEachChild(node, visit)
+  }
+  visit(callback.body)
+  return found
 }
 
 function printClientImports(entries, handlerPath) {
@@ -1594,24 +1772,33 @@ function printNativeHandler({ exportName, expression, captures, setters }) {
   const stateNames = new Set(setters.values())
   const transformer = context => root => {
     const visitor = node => {
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text)) {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
         return factory.createCallExpression(
           factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"),
           undefined,
           [factory.createStringLiteral(setters.get(node.expression.text)), ...node.arguments.map(argument => ts.visitNode(argument, visitor))]
         )
       }
-      if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
+      if (ts.isShorthandPropertyAssignment(node) && setters.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        return factory.createPropertyAssignment(node.name, setterReference(factory, setters.get(node.name.text)))
+      }
+      if (ts.isIdentifier(node) && setters.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        return setterReference(factory, setters.get(node.text))
+      }
+      if (ts.isShorthandPropertyAssignment(node) && stateNames.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        return factory.createPropertyAssignment(node.name, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(node.name.text)]))
+      }
+      if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
         return factory.createCallExpression(
           factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"),
           undefined,
           [factory.createStringLiteral(node.text)]
         )
       }
-      if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text)) {
+      if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
         return factory.createPropertyAssignment(node.name, scopeRead(factory, node.name.text))
       }
-      if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node)) {
+      if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
         return scopeRead(factory, node.text)
       }
       return ts.visitEachChild(node, visitor, context)
@@ -1638,6 +1825,17 @@ function printNativeHandler({ exportName, expression, captures, setters }) {
   } finally {
     transformed.dispose()
   }
+}
+
+function setterReference(factory, stateName) {
+  return factory.createArrowFunction(
+    undefined,
+    undefined,
+    [factory.createParameterDeclaration(undefined, undefined, "value")],
+    undefined,
+    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+    factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(stateName), factory.createIdentifier("value")])
+  )
 }
 
 function printReactiveBinding({ exportName, expression, captures, states }) {

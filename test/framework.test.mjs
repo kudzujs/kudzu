@@ -226,14 +226,16 @@ export default {
   assert.match(oak, /rel="icon" href="\/newsletter\/icon\.svg"/)
   assert.match(oak, /rel="manifest" href="\/newsletter\/manifest\.webmanifest"/)
   assert.match(oak, /src="\/newsletter\/assets\/kudzu(?:-native)?\.js"/)
-  assert.match(oak, /data-title="Oak".*<h1>Oak<\/h1><p>Score: 7<\/p><section><article><strong>Oak body<\/strong><\/article><\/section>/)
-  assert.match(pine, /data-title="Pine".*<h1>Pine<\/h1><p>Score: 9<\/p><section><article><strong>Pine body<\/strong><\/article><\/section>/)
+  assert.match(oak, /src="\/newsletter\/assets\/effects\/posts\/oak\/index\.js"/)
+  assert.match(oak, /data-title="Oak".*<h1>Oak<\/h1><p>Score: 7<\/p><p data-mounted="true">.*pending.*<\/p><section><article><strong>Oak body<\/strong><\/article><\/section>/)
+  assert.match(pine, /data-title="Pine".*<h1>Pine<\/h1><p>Score: 9<\/p><p data-mounted="true">.*pending.*<\/p><section><article><strong>Pine body<\/strong><\/article><\/section>/)
   assert.equal(existsSync(new URL("./fixtures/dynamic/dist/assets/newsletter.css", import.meta.url)), true)
   assert.equal(existsSync(new URL("./fixtures/dynamic/dist/assets/style.css", import.meta.url)), true)
   assert.deepEqual(JSON.parse(await readFile(new URL("./fixtures/dynamic/dist/routes.json", import.meta.url), "utf8")), ["/newsletter/posts/oak", "/newsletter/posts/pine"])
   const plans = JSON.parse(await readFile(new URL("./fixtures/dynamic/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
   assert.deepEqual(plans.map(plan => plan.route), ["/newsletter/posts/oak", "/newsletter/posts/pine"])
   assert.deepEqual(plans.map(plan => plan.events[0].native.scope.title), ["Oak", "Pine"])
+  assert.deepEqual(plans.map(plan => plan.effects[0].scope.title), ["Oak", "Pine"])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runDynamicBrowserTest(fixture, chrome)
 })
@@ -578,6 +580,71 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     assert.notEqual(result.status, 0)
     assert.match(`${result.stdout}\n${result.stderr}`, message)
   }
+})
+
+test("compiles mount effects to route-specific ESM", async t => {
+  const fixture = new URL("./fixtures/effects", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/effects/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/effects/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/effects/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/effects/dist/static/index.html", import.meta.url), "utf8")
+  const onlyHtml = await readFile(new URL("./fixtures/effects/dist/only/index.html", import.meta.url), "utf8")
+  const entry = await readFile(new URL("./fixtures/effects/dist/assets/effects/index.js", import.meta.url), "utf8")
+  const dynamicEntry = await readFile(new URL("./fixtures/effects/dist/assets/effects/oak/index.js", import.meta.url), "utf8")
+  const handlers = await readFile(new URL("./fixtures/effects/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const plans = JSON.parse(await readFile(new URL("./fixtures/effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(html, />Loading<.*>pending</s)
+  assert.doesNotMatch(html, />Loaded<|>Oak<|>Pine</)
+  assert.match(html, /kudzu-binding\.js.*kudzu-list\.js.*assets\/effects\/index\.js/s)
+  assert.doesNotMatch(html, /<script[^>]+kudzu-native\.js/)
+  assert.doesNotMatch(staticHtml, /<script|data-k-state/)
+  assert.match(onlyHtml, /kudzu\.js.*effects\/only\/index\.js/s)
+  assert.doesNotMatch(onlyHtml, /kudzu-binding\.js|kudzu-list\.js|<script[^>]+kudzu-native\.js/)
+  assert.match(entry, /kudzu-effect\.js/)
+  assert.match(entry, /effect0/)
+  assert.match(entry, /effect1/)
+  assert.match(handlers, /fetch\("\/api\/items\.json"\)/)
+  assert.match(handlers, /\.set\("second"/)
+  assert.notEqual(dynamicEntry, entry)
+  assert.match(dynamicEntry, /handlers\/pages\/\[slug\]\.js/)
+  assert.equal(plans.find(plan => plan.route === "/").effects.length, 12)
+  assert.equal(plans.find(plan => plan.route === "/static").effects.length, 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runEffectBrowserTest(fixture, chrome)
+})
+
+test("rejects unsupported mount effect forms", () => {
+  for (const [fixture, message] of [
+    ["effect-invalid-dependencies", /dependencies must be a literal empty array/],
+    ["effect-invalid-cleanup", /cleanup functions are not supported/],
+    ["effect-invalid-return", /return values are not supported/],
+    ["effect-invalid-named", /callback function must be anonymous/]
+  ]) {
+    const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL(`./fixtures/${fixture}`, import.meta.url), encoding: "utf8" })
+    assert.notEqual(result.status, 0)
+    assert.match(`${result.stdout}\n${result.stderr}`, message)
+  }
+})
+
+test("does not promote effect-only builds to the shared runtime", async t => {
+  const fixture = new URL("./fixtures/effect-isolation", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/effect-isolation/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/effect-isolation/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const command = await readFile(new URL("./fixtures/effect-isolation/dist/command/index.html", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/effect-isolation/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const effectRuntime = await readFile(new URL("./fixtures/effect-isolation/dist/assets/kudzu-effect.js", import.meta.url), "utf8")
+  assert.doesNotMatch(command, /effects\//)
+  assert.doesNotMatch(runtime, /registerMountHook|registerCommitter/)
+  assert.doesNotMatch(effectRuntime, /deserialize|kudzu-serialization/)
+  assert.equal(existsSync(new URL("./fixtures/effect-isolation/dist/assets/kudzu-serialization.js", import.meta.url)), false)
 })
 
 test("compiles normal async JavaScript handlers to external ESM", async t => {
@@ -964,6 +1031,63 @@ http.createServer((request, response) => {
   }
 }
 
+async function runEffectBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 100))
+try {
+  await wait()
+  const main = document.querySelector("main")
+  if (main.dataset.label !== "Loaded" || main.querySelector("h1").textContent !== "Loaded") throw new Error("text-attribute")
+  if (!main.querySelector("[data-ready]") || main.querySelector("[data-second]").textContent !== "complete") throw new Error("condition-setter-reference")
+  if (main.querySelector("[data-after-failure]").textContent !== "continued") throw new Error("failure-isolation")
+  if ([...main.querySelectorAll("[data-items] li")].map(node => node.textContent).join(",") !== "Oak,Pine") throw new Error("list")
+  if (document.body.dataset.shadowedSetter !== "local") throw new Error("setter-shadow")
+  if (document.body.dataset.shorthandState !== "shorthand") throw new Error("shorthand-state-setter")
+  if (document.body.dataset.catchShadow !== "catch" || document.body.dataset.forShadow !== "for" || document.body.dataset.varShadow !== "var") throw new Error("lexical-shadow")
+  if (document.body.dataset.switchShadow !== "switch") throw new Error("switch-shadow")
+  if (document.body.dataset.outerCapture !== "outer" || document.body.dataset.innerShadow !== "inner") throw new Error("nested-capture-shadow")
+  if (document.body.dataset.laterCapture !== "later" || main.querySelector("[data-later-state]").textContent !== "after") throw new Error("deferred-capture")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const onlyUrl = new URL("only/index.html", output)
+  const onlyHtml = await readFile(onlyUrl, "utf8")
+  await writeFile(onlyUrl, onlyHtml.replace("</body>", '<script type="module" src="/only-browser-test.js"></script></body>'))
+  await writeFile(new URL("only-browser-test.js", output), `
+await new Promise(resolve => setTimeout(resolve, 50))
+document.body.dataset.browserTest = document.querySelector("[data-only]").textContent === "after" ? "pass" : "fail-effect-only"
+`)
+  const port = 43000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url === "/" ? "index.html" : request.url.slice(1)
+  const file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".json") ? "application/json" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+    const effectOnly = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/only/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(effectOnly.status, 0, effectOnly.stderr)
+    assert.match(effectOnly.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runNativeBubblingBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -1030,6 +1154,7 @@ const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
   await wait()
   if (document.querySelector("article strong").textContent !== "Oak body") throw new Error("raw-html")
+  if (document.querySelector("[data-mounted]").textContent !== "Oak") throw new Error("mount-effect-props")
   document.querySelector("button").click()
   await wait()
   if (document.querySelector("button").textContent !== "Saved" || document.body.dataset.saved !== "Oak") throw new Error("dynamic-props")

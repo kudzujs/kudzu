@@ -3,11 +3,11 @@ import { browserState, mountDom, registerCommitter, registerMountHook, registerU
 const listTargets = new Map()
 const listRegistrations = new WeakMap()
 const mountedLists = new WeakSet()
-const imports = new Map()
-const revisions = new WeakMap()
+const imports = __KUDZU_LIST_ASYNC_PARTS__ ? new Map() : undefined
+const revisions = __KUDZU_LIST_ASYNC_PARTS__ ? new WeakMap() : undefined
 const itemParts = new WeakMap()
-const conditionOwners = new WeakMap()
-const itemPartsSelector = `[data-k-list-text],[data-k-list-attrs],[data-k-list-events],[data-k-list-expression],[data-k-list-expression-attrs]${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}`
+const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
+const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}`
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -34,13 +34,13 @@ function mountLists(root) {
     const templateRoot = start.content.firstElementChild
     const parts = listItemPartPlan(templateRoot)
     for (const root of roots) __KUDZU_LIST_CONDITIONS__ && descriptor.conditions ? listItemParts(root) : mapListItemParts(parts, root)
-    if (descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
+    if (__KUDZU_LIST_SEEDS__ && descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
     const items = browserState.get(descriptor.state)
     const list = {
       start,
       descriptor,
       parts,
-      seedFields: descriptor.seed && Object.keys(descriptor.seed),
+      seedFields: __KUDZU_LIST_SEEDS__ && descriptor.seed && Object.keys(descriptor.seed),
       roots: new Map(roots.map((node, index) => [keyToken(descriptor.keys[index]), node])),
       values: new Map(),
       container: roots[0]?.parentNode,
@@ -77,7 +77,7 @@ function updateList(list) {
     const key = item?.[list.descriptor.key]
     if (!validListKey(key)) throw new Error(`Keyed list key "${list.descriptor.key}" must be a string or finite number`)
     assertListItem(item)
-    const seededValue = list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed)
+    const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed) : undefined
     if (seededValue === undefined) assertListValue(item, seen, true)
     const token = keyToken(key)
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
@@ -108,13 +108,13 @@ function updateList(list) {
   }
   for (const [token, node] of list.roots) {
     if (keys.has(token)) continue
-    if (list.descriptor.mount) {
+    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) {
       unmountDom(node)
       node.remove()
     } else node.remove()
   }
   if (added) {
-    if (list.descriptor.mount) mountDom(additions)
+    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) mountDom(additions)
     parent.insertBefore(additions, list.boundary)
     list.container ??= parent
   }
@@ -142,8 +142,8 @@ function updateList(list) {
 }
 
 function fillListItem(root, item) {
-  const revision = (revisions.get(root) ?? 0) + 1
-  revisions.set(root, revision)
+  const revision = __KUDZU_LIST_ASYNC_PARTS__ ? (revisions.get(root) ?? 0) + 1 : 0
+  if (__KUDZU_LIST_ASYNC_PARTS__) revisions.set(root, revision)
   const parts = listItemParts(root)
   fillListParts(root, parts, item, revision)
 }
@@ -159,28 +159,36 @@ function fillListParts(root, parts, item, revision) {
       node.textContent = value
     }
   }
-  for (const [marker, field] of parts.texts) {
-    patchListText(marker, "template[data-k-list-text-end]", item?.[field])
+  if (__KUDZU_LIST_TEXT_RANGES__) {
+    for (const [marker, field] of parts.texts) patchListText(marker, "template[data-k-list-text-end]", item?.[field])
   }
-  for (const [node, attributes] of parts.attributes) {
-    for (const [target, field] of attributes) patchBinding(node, target, item?.[field])
-  }
-  for (const [node, events] of parts.events) {
-    for (const [event, native] of JSON.parse(events)) {
-      native.scope = Object.fromEntries(Object.entries(native.scope).map(([name, value]) => [name, value?.type === "list-item" ? serializeItem(item) : value]))
-      node.dataset[`kNative${capitalize(event)}`] = JSON.stringify(native)
+  if (__KUDZU_LIST_ATTRIBUTES__) {
+    for (const [node, attributes] of parts.attributes) {
+      for (const [target, field] of attributes) patchBinding(node, target, item?.[field])
     }
   }
-  for (const [marker, descriptor] of parts.expressions) {
-    evaluate(descriptor, item).then(value => {
-      if (revisions.get(root) === revision && root.isConnected) patchListText(marker, "template[data-k-list-expression-end]", value)
-    }).catch(error => console.error(error))
+  if (__KUDZU_LIST_EVENTS__) {
+    for (const [node, events] of parts.events) {
+      for (const [event, native] of JSON.parse(events)) {
+        native.scope = Object.fromEntries(Object.entries(native.scope).map(([name, value]) => [name, value?.type === "list-item" ? serializeItem(item) : value]))
+        node.dataset[`kNative${capitalize(event)}`] = JSON.stringify(native)
+      }
+    }
   }
-  for (const [node, attributes] of parts.expressionAttributes) {
-    for (const [target, module, handler] of attributes) {
-      evaluate({ module, handler }, item).then(value => {
-        if (revisions.get(root) === revision && root.isConnected) patchBinding(node, target, value)
+  if (__KUDZU_LIST_EXPRESSIONS__) {
+    for (const [marker, descriptor] of parts.expressions) {
+      evaluate(descriptor, item).then(value => {
+        if (revisions.get(root) === revision && root.isConnected) patchListText(marker, "template[data-k-list-expression-end]", value)
       }).catch(error => console.error(error))
+    }
+  }
+  if (__KUDZU_LIST_EXPRESSION_ATTRIBUTES__) {
+    for (const [node, attributes] of parts.expressionAttributes) {
+      for (const [target, module, handler] of attributes) {
+        evaluate({ module, handler }, item).then(value => {
+          if (revisions.get(root) === revision && root.isConnected) patchBinding(node, target, value)
+        }).catch(error => console.error(error))
+      }
     }
   }
   if (__KUDZU_LIST_CONDITIONS__) {
@@ -198,10 +206,10 @@ function listItemParts(root) {
   parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [], conditions: [] }
   for (const node of matching(root, itemPartsSelector)) {
     if (node.hasAttribute("data-k-list-text")) (node.tagName === "TEMPLATE" ? parts.texts : parts.directTexts).push([node, node.dataset.kListText])
-    if (node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, JSON.parse(node.dataset.kListAttrs)])
-    if (node.hasAttribute("data-k-list-events")) parts.events.push([node, node.dataset.kListEvents])
-    if (node.hasAttribute("data-k-list-expression")) parts.expressions.push([node, JSON.parse(node.dataset.kListExpression)])
-    if (node.hasAttribute("data-k-list-expression-attrs")) parts.expressionAttributes.push([node, JSON.parse(node.dataset.kListExpressionAttrs)])
+    if (__KUDZU_LIST_ATTRIBUTES__ && node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, JSON.parse(node.dataset.kListAttrs)])
+    if (__KUDZU_LIST_EVENTS__ && node.hasAttribute("data-k-list-events")) parts.events.push([node, node.dataset.kListEvents])
+    if (__KUDZU_LIST_EXPRESSIONS__ && node.hasAttribute("data-k-list-expression")) parts.expressions.push([node, JSON.parse(node.dataset.kListExpression)])
+    if (__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ && node.hasAttribute("data-k-list-expression-attrs")) parts.expressionAttributes.push([node, JSON.parse(node.dataset.kListExpressionAttrs)])
     if (__KUDZU_LIST_CONDITIONS__ && node.hasAttribute("data-k-list-condition")) {
       parts.conditions.push([node, JSON.parse(node.dataset.kListCondition)])
       conditionOwners.set(node, root)
@@ -217,11 +225,11 @@ function listItemPartPlan(template) {
   const parts = listItemParts(template)
   return {
     directTexts: parts.directTexts.map(([node, field]) => [indexes.get(node), field]),
-    texts: parts.texts.map(([node, field]) => [indexes.get(node), field]),
-    attributes: parts.attributes.map(([node, attributes]) => [indexes.get(node), attributes]),
-    events: parts.events.map(([node, events]) => [indexes.get(node), events]),
-    expressions: parts.expressions.map(([node, descriptor]) => [indexes.get(node), descriptor]),
-    expressionAttributes: parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes]),
+    texts: __KUDZU_LIST_TEXT_RANGES__ ? parts.texts.map(([node, field]) => [indexes.get(node), field]) : [],
+    attributes: __KUDZU_LIST_ATTRIBUTES__ ? parts.attributes.map(([node, attributes]) => [indexes.get(node), attributes]) : [],
+    events: __KUDZU_LIST_EVENTS__ ? parts.events.map(([node, events]) => [indexes.get(node), events]) : [],
+    expressions: __KUDZU_LIST_EXPRESSIONS__ ? parts.expressions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : [],
+    expressionAttributes: __KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes]) : [],
     conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : []
   }
 }
@@ -230,11 +238,11 @@ function mapListItemParts(parts, root) {
   const target = [root, ...root.querySelectorAll("*")]
   itemParts.set(root, {
     directTexts: parts.directTexts.map(([index, field]) => [target[index], field]),
-    texts: parts.texts.map(([index, field]) => [target[index], field]),
-    attributes: parts.attributes.map(([index, attributes]) => [target[index], attributes]),
-    events: parts.events.map(([index, events]) => [target[index], events]),
-    expressions: parts.expressions.map(([index, descriptor]) => [target[index], descriptor]),
-    expressionAttributes: parts.expressionAttributes.map(([index, attributes]) => [target[index], attributes]),
+    texts: __KUDZU_LIST_TEXT_RANGES__ ? parts.texts.map(([index, field]) => [target[index], field]) : [],
+    attributes: __KUDZU_LIST_ATTRIBUTES__ ? parts.attributes.map(([index, attributes]) => [target[index], attributes]) : [],
+    events: __KUDZU_LIST_EVENTS__ ? parts.events.map(([index, events]) => [target[index], events]) : [],
+    expressions: __KUDZU_LIST_EXPRESSIONS__ ? parts.expressions.map(([index, descriptor]) => [target[index], descriptor]) : [],
+    expressionAttributes: __KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? parts.expressionAttributes.map(([index, attributes]) => [target[index], attributes]) : [],
     conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([index, descriptor]) => {
       conditionOwners.set(target[index], root)
       return [target[index], descriptor]

@@ -87,6 +87,7 @@ export function LimitsSection() {
       <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
       <li>Keyed lists require local-state maps and intrinsic roots or top-level local or relative-imported row components; package and namespace row imports, reusable aliases, nested dynamic JSX, prop spreads, and derived-expression captures remain unsupported.</li>
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
+      <li><code>useEffect</code> supports inline block-bodied mount-only callbacks with a literal empty dependency array; dependencies and cleanup or other return values are not yet supported.</li>
       <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
     </ul>
