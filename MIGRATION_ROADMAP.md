@@ -102,14 +102,14 @@ Compiler requirements:
 - Generate a route-specific effect entry and include it only on pages using an effect.
 - Reuse existing logical state and direct DOM commit paths for setters.
 - Do not introduce a scheduler, component instance, hook dispatcher, or component re-render loop in the browser.
-- Reject dependencies, cleanup returns, unsupported captures, and non-analyzable calls with source-located diagnostics until each is deliberately implemented.
+- Accept directly returned inline cleanup functions; reject dependencies, named or dynamic cleanup returns, unsupported captures, and non-analyzable calls with source-located diagnostics until each is deliberately implemented.
 
 Acceptance criteria:
 
 - A page can fetch on mount, set state, and patch reactive text, attributes, conditions, and keyed lists.
 - A page without `useEffect` has byte-for-byte unchanged runtime output.
 - No React code or component function is shipped.
-- Tests cover success, async failure behavior, unsupported dependencies, unsupported cleanup, and multiple independent effects.
+- Tests cover success, async failure behavior, cleanup disposal and isolation, unsupported dependencies, unsupported returns, and multiple independent effects.
 - Benchmarks report added raw and gzip JavaScript for the effect fixture.
 
 ### 3. Runtime Path Parameters
@@ -149,13 +149,19 @@ Acceptance criteria:
 - Static routes without runtime params have byte-for-byte unchanged output.
 - Tests cover decoding, invalid values, multiple parameters, route precedence, base paths, and development-server behavior.
 
-The two-parameter fixture's route matcher is 672 B gzip. Its complete binding, effect, event, serialization, and parameter initial graph is 6.1 KB gzip and its seven-run clean-build median is 450 ms.
+The two-parameter fixture's route matcher is 702 B gzip. Its complete binding, effect, event, serialization, and parameter initial graph is 6.3 KB gzip and its seven-run clean-build median is 411 ms.
 
 ### 4. Add Effect Semantics Only When Proven Necessary
 
+Status: mount-only cleanup is implemented. A directly returned inline cleanup function is document-owned, reuses shared unmount hooks when present, runs once on non-persisted page exit, and isolates synchronous and asynchronous failures without adding lifecycle code to ordinary effects. Nested cleanup closures retain mount-time state snapshots while the effect body keeps Kudzu's immediate logical-state semantics.
+
+The three-cleanup isolation fixture emits 1.4 KB gzip across its four JavaScript files, including a 487 B gzip route effect entry, and its seven-run clean-build median is 480 ms.
+
+In the matched one-listener cleanup benchmark, Kudzu emits 1.2 KB JavaScript gzip and builds in 402 ms. Svelte emits 10.1 KB in 861 ms, Vue 23.6 KB in 768 ms, React 59.1 KB in 1,058 ms, and the hand-written Astro baseline 127 B in 865 ms. Kudzu and Astro include initial HTML; the CSR fixtures do not.
+
 After mount-only effects and runtime params unblock a real migration, add the next missing semantic one at a time:
 
-1. cleanup for `useEffect(fn, [])`;
+1. cleanup for `useEffect(fn, [])` (implemented);
 2. primitive dependency arrays such as `[id]`;
 3. cleanup-before-rerun;
 4. effect ownership inside conditional or keyed DOM ranges.

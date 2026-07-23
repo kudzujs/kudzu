@@ -1,7 +1,8 @@
 export type StateSetter<T> = (value: T | ((previous: T) => T)) => void
+export type EffectCleanup = () => void | Promise<void>
 
 export function useState<T>(initialValue: T): [T, StateSetter<T>]
-export function useEffect(effect: () => void | Promise<void>, dependencies: readonly []): void
+export function useEffect(effect: () => void | EffectCleanup | Promise<void>, dependencies: readonly []): void
 export function useParams<Params extends Record<string, string> = Record<string, string>>(): Readonly<Params>
 
 export interface RefObject<T> {
@@ -70,7 +71,7 @@ export function renderPage<Props = Record<string, never>>(
       commands?: Array<[string, string, unknown]>
       native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
     }>
-    effects: Array<{ module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }>
+    effects: Array<{ module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown>; cleanup?: true }>
     bindings: Array<{
       target: string
       state?: string

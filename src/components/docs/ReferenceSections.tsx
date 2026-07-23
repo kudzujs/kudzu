@@ -53,6 +53,15 @@ export function BenchmarksSection() {
     <BenchmarkTable columns={["Fixture", "Initial JS gzip", "Matcher gzip", "Build"]} rows={[
       ["Two params + bindings + effect + event", "6.3 KB", "702 B", "411 ms"]
     ]} />
+    <h3>Mount cleanup</h3>
+    <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
+      ["Kudzu", "Yes", "1.2 KB", "2.3 KB", "402 ms"],
+      ["Astro native", "Yes", "127 B", "255 B", "865 ms"],
+      ["Svelte CSR", "No", "10.1 KB", "26.2 KB", "861 ms"],
+      ["Vue CSR", "No", "23.6 KB", "59.4 KB", "768 ms"],
+      ["React CSR", "No", "59.1 KB", "189.0 KB", "1058 ms"]
+    ]} />
+    <p>Each fixture mounts one resize listener and removes it during cleanup. Kudzu ships 88% less JavaScript than Svelte, 95% less than Vue, and 98% less than React in this fixture while retaining static initial HTML. Astro is the hand-written native lifecycle baseline.</p>
     <h3>Static journal</h3>
     <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
       ["Kudzu", "Yes", "0 B", "3.2 KB", "422 ms"],
@@ -92,7 +101,7 @@ export function LimitsSection() {
       <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
       <li>Keyed lists require local-state maps and intrinsic roots or top-level local or relative-imported row components; package and namespace row imports, reusable aliases, nested dynamic JSX, prop spreads, and derived-expression captures remain unsupported.</li>
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
-      <li><code>useEffect</code> supports inline block-bodied mount-only callbacks with a literal empty dependency array; dependencies and cleanup or other return values are not yet supported.</li>
+      <li><code>useEffect</code> supports inline block-bodied mount-only callbacks with a literal empty dependency array and directly returned inline cleanup functions. Dependencies, named or dynamic cleanup functions, cleanup parameters or generators, async effects returning cleanup, and other return values are not supported.</li>
       <li><code>runtimeParams = true</code> requires full bracket segments, cannot be combined with <code>getStaticPaths()</code>, and requires an exact-file-first fallback rewrite on the production host. Catch-all runtime parameters are not supported.</li>
       <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>

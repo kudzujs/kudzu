@@ -693,11 +693,47 @@ test("compiles mount effects to route-specific ESM", async t => {
   if (chrome) await runEffectBrowserTest(fixture, chrome)
 })
 
+test("runs mount effect cleanup once on document disposal", async t => {
+  const fixture = new URL("./fixtures/effect-cleanup", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/effect-cleanup/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/effect-cleanup/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const entryUrl = new URL("./fixtures/effect-cleanup/dist/assets/effects/index.js", import.meta.url)
+  const entry = await readFile(entryUrl, "utf8")
+  const runtime = await readFile(new URL("./fixtures/effect-cleanup/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/effect-cleanup/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(entry, /registerUnmountHook.*pagehide/s)
+  assert.doesNotMatch(runtime, /registerUnmountHook/)
+  assert.deepEqual(plan.effects.map(effect => effect.cleanup), [true, true, true])
+
+  const browser = spawnSync(process.execPath, ["--input-type=module", "-e", `
+const listeners = new Map()
+globalThis.document = { body: { dataset: { kState: JSON.stringify([["s0", "resize"]]) } }, querySelectorAll: () => [], addEventListener() {} }
+globalThis.addEventListener = (name, listener) => listeners.set(name, listener)
+await import(${JSON.stringify(entryUrl.href)})
+if (document.body.dataset.mountedResource !== "local") throw new Error("mount")
+listeners.get("pagehide")({ persisted: true })
+if (document.body.dataset.cleanup) throw new Error("persisted")
+listeners.get("pagehide")({ persisted: false })
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.cleanup !== "local:1" || document.body.dataset.cleanupEvent !== "resize" || document.body.dataset.cleanupAccessor !== "resize" || document.body.dataset.cleanupMethod !== "method" || document.body.dataset.laterCleanup !== "ran") throw new Error("cleanup")
+listeners.get("pagehide")({ persisted: false })
+if (document.body.dataset.cleanup !== "local:1") throw new Error("repeat")
+`], { encoding: "utf8" })
+  assert.equal(browser.status, 0, `${browser.stdout}\n${browser.stderr}`)
+})
+
 test("rejects unsupported mount effect forms", () => {
   for (const [fixture, message] of [
     ["effect-invalid-dependencies", /dependencies must be a literal empty array/],
-    ["effect-invalid-cleanup", /cleanup functions are not supported/],
-    ["effect-invalid-return", /return values are not supported/],
+    ["effect-invalid-cleanup", /async callbacks cannot return cleanup functions/],
+    ["effect-invalid-cleanup-shape", /cleanup functions cannot declare parameters or be generators/],
+    ["effect-invalid-cleanup-generator", /cleanup functions cannot declare parameters or be generators/],
+    ["effect-invalid-generator", /callback cannot be a generator/],
+    ["effect-invalid-return", /return values must be inline cleanup functions/],
     ["effect-invalid-named", /callback function must be anonymous/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL(`./fixtures/${fixture}`, import.meta.url), encoding: "utf8" })

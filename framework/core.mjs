@@ -64,12 +64,12 @@ function createSignal(id, value) {
   }
 }
 
-export function useEffect(callback, dependencies, module, handler, states, scope, source) {
+export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup) {
   if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
   if (typeof callback !== "function" || !Array.isArray(dependencies) || dependencies.length || !module || !handler) {
     throw new Error("useEffect() must be compiled with a literal empty dependency array")
   }
-  renderContext.effects.push({ module, handler, states, scope, source })
+  renderContext.effects.push({ module, handler, states, scope, source, ...(cleanup ? { cleanup: true } : {}) })
   renderContext.hasBehaviors = true
   renderContext.hasEffects = true
 }
@@ -271,6 +271,7 @@ export async function renderPage(component, metadata = {}, props = {}) {
         return {
           module: effect.module,
           handler: effect.handler,
+          ...(effect.cleanup ? { cleanup: true } : {}),
           ...nativeDescriptor(effect.states.map(([name, read]) => [name, read()]), effect.scope.map(([name, read]) => [name, read()]))
         }
       } catch (error) {

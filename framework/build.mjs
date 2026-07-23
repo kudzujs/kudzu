@@ -244,6 +244,7 @@ function specializeNativeRuntime(source, events, modules) {
 }
 
 function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath) {
+  const hasCleanup = effects.some(effect => effect.cleanup)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -251,13 +252,15 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
     return module
   })
   const imports = [
-    `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
+    hasCleanup
+      ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}\nconst { browserState, commitDom } = __kRuntime`
+      : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
     ...(paramPath ? [`import ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, paramPath)))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
-  return `${imports.join("\n")}
+  if (!hasCleanup) return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
 for (const effect of effects) {
@@ -268,6 +271,39 @@ for (const effect of effects) {
     console.error(error)
   }
 }`
+  return `${imports.join("\n")}
+const effects = ${inlineJson(effects)}
+const modules = new Map([${entries}])
+const cleanups = []
+for (const effect of effects) {
+  try {
+    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope))
+    if (effect.cleanup && typeof result === "function") cleanups.push(result)
+    else if (result && typeof result.then === "function") result.catch(error => console.error(error))
+  } catch (error) {
+    console.error(error)
+  }
+}
+let cleaned = false
+const dispose = root => {
+  if (root !== document || cleaned) return
+  cleaned = true
+  for (const cleanup of cleanups) {
+    try {
+      const result = cleanup()
+      if (result && typeof result.then === "function") result.catch(error => console.error(error))
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  cleanups.length = 0
+}
+if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose)
+addEventListener("pagehide", event => {
+  if (event.persisted) return
+  if (__kRuntime.unmountDom) __kRuntime.unmountDom(document)
+  else dispose(document)
+})`
 }
 
 function printParamEntry(schema, params, output, assetsDirectory, base) {
@@ -806,14 +842,18 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         const [callback, dependencies] = node.arguments
         if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) fail(callback, "useEffect() callback must be an inline function")
         if (ts.isFunctionExpression(callback) && callback.name) fail(callback, "useEffect() callback function must be anonymous")
+        if (callback.asteriskToken) fail(callback, "useEffect() callback cannot be a generator")
         if (callback.parameters.length) fail(callback, "useEffect() callback cannot declare parameters")
         if (!ts.isArrayLiteralExpression(dependencies) || dependencies.elements.length) fail(dependencies, "useEffect() dependencies must be a literal empty array")
         if (!nearestFunction(node)) fail(node, "useEffect() cannot be used outside a Kudzu component")
-        if (returnsCleanup(callback)) fail(callback, "useEffect() cleanup functions are not supported")
         if (!ts.isBlock(callback.body)) fail(callback, "useEffect() callback must use a block body")
-        if (returnsEffectValue(callback)) fail(callback, "useEffect() return values are not supported")
+        const returns = effectReturns(callback)
+        if (returns.invalid) fail(returns.invalid, "useEffect() return values must be inline cleanup functions")
+        const invalidCleanup = returns.cleanups.find(cleanup => cleanup.parameters.length || cleanup.asteriskToken)
+        if (invalidCleanup) fail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
+        if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) fail(callback, "useEffect() async callbacks cannot return cleanup functions")
         const setters = settersForNode(node, settersByFunction)
-        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, importBindings, clientImports, "effect", undefined, true)
+        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, importBindings, clientImports, "effect", undefined, true, returns.cleanup)
         usesBehavior = true
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
           callback,
@@ -822,7 +862,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           factory.createStringLiteral(descriptor.exportName),
           descriptor.states,
           descriptor.scope,
-          factory.createStringLiteral(sourceLocation(node, sourceFile))
+          factory.createStringLiteral(sourceLocation(node, sourceFile)),
+          returns.cleanup ? factory.createTrue() : factory.createFalse()
         ])
       }
 
@@ -1240,7 +1281,7 @@ function isJsxSyntaxIdentifier(node) {
 }
 
 function isFunctionLike(node) {
-  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
+  return ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node) || ts.isConstructorDeclaration(node)
 }
 
 function isDestructuredParameter(identifier, fn) {
@@ -1480,14 +1521,14 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
   ])
 }
 
-function compileNativeCallback(expression, setters, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false) {
+function compileNativeCallback(expression, setters, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false, snapshotNested = false) {
   const allCaptures = nativeCaptureNames(expression, setters)
   const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
   const captures = new Set([...allCaptures].filter(name => !importBindings.has(name)))
   for (const entry of imports) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
   const exportName = `${prefix}${entries.length}`
-  entries.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))) })
+  entries.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), snapshotNested })
   const value = name => deferValues
     ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
     : factory.createIdentifier(name)
@@ -1586,6 +1627,7 @@ function isReferenceIdentifier(node) {
   if ((ts.isPropertyAccessExpression(parent) && parent.name === node) ||
       (ts.isPropertyAssignment(parent) && parent.name === node) ||
       (ts.isMethodDeclaration(parent) && parent.name === node) ||
+      ((ts.isGetAccessorDeclaration(parent) || ts.isSetAccessorDeclaration(parent)) && parent.name === node) ||
       (ts.isVariableDeclaration(parent) && parent.name === node) ||
       (ts.isParameter(parent) && parent.name === node) ||
       (ts.isFunctionDeclaration(parent) && parent.name === node) ||
@@ -1603,7 +1645,7 @@ function nearestFunction(node) {
 
 function isShadowedByParameter(node, scopeRoot) {
   for (let current = node.parent; current; current = current.parent) {
-    if ((ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) && current.parameters.some(parameter => bindingNames(parameter.name).includes(node.text))) return true
+    if (isFunctionLike(current) && current.parameters.some(parameter => bindingNames(parameter.name).includes(node.text))) return true
     if (current === scopeRoot) break
   }
   return false
@@ -1733,33 +1775,24 @@ function sourceLocation(node, fallbackSource) {
   return `${sourceFile.fileName}:${position.line + 1}:${position.character + 1}`
 }
 
-function returnsCleanup(callback) {
-  if (ts.isArrowFunction(callback) && !ts.isBlock(callback.body)) {
-    const body = unwrapExpression(callback.body)
-    return ts.isArrowFunction(body) || ts.isFunctionExpression(body)
-  }
-  let found = false
+function effectReturns(callback) {
+  let cleanup = false
+  let invalid
+  const cleanups = []
   const visit = node => {
-    if (found || node !== callback.body && isFunctionLike(node)) return
+    if (invalid || node !== callback.body && isFunctionLike(node)) return
     if (ts.isReturnStatement(node) && node.expression) {
       const expression = unwrapExpression(node.expression)
-      if (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression)) found = true
+      if (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression)) {
+        cleanup = true
+        cleanups.push(expression)
+      }
+      else invalid = node
     }
-    if (!found) ts.forEachChild(node, visit)
+    if (!invalid) ts.forEachChild(node, visit)
   }
   visit(callback.body)
-  return found
-}
-
-function returnsEffectValue(callback) {
-  let found = false
-  const visit = node => {
-    if (found || node !== callback.body && isFunctionLike(node)) return
-    if (ts.isReturnStatement(node) && node.expression) found = true
-    if (!found) ts.forEachChild(node, visit)
-  }
-  visit(callback.body)
-  return found
+  return { cleanup, cleanups, invalid }
 }
 
 function printClientImports(entries, handlerPath) {
@@ -1874,9 +1907,11 @@ function relativeModulePath(from, to) {
   return path.startsWith(".") ? path : `./${path}`
 }
 
-function printNativeHandler({ exportName, expression, captures, setters }) {
+function printNativeHandler({ exportName, expression, captures, setters, snapshotNested }) {
   const factory = ts.factory
   const stateNames = new Set(setters.values())
+  const snapshotNames = snapshotNested ? nestedStateNames(expression, setters) : new Set()
+  const snapshots = new Map([...snapshotNames].map(name => [name, factory.createUniqueName("__kEffectState")]))
   const transformer = context => root => {
     const visitor = node => {
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
@@ -1893,9 +1928,11 @@ function printNativeHandler({ exportName, expression, captures, setters }) {
         return setterReference(factory, setters.get(node.text))
       }
       if (ts.isShorthandPropertyAssignment(node) && stateNames.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (snapshots.has(node.name.text) && insideNestedFunction(node, expression)) return factory.createPropertyAssignment(node.name, snapshots.get(node.name.text))
         return factory.createPropertyAssignment(node.name, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(node.name.text)]))
       }
       if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (snapshots.has(node.text) && insideNestedFunction(node, expression)) return snapshots.get(node.text)
         return factory.createCallExpression(
           factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"),
           undefined,
@@ -1914,9 +1951,13 @@ function printNativeHandler({ exportName, expression, captures, setters }) {
   }
   const transformed = ts.transform(expression.body, [transformer])
   try {
-    const body = ts.isBlock(expression.body)
+    let body = ts.isBlock(expression.body)
       ? transformed.transformed[0]
       : factory.createBlock([factory.createReturnStatement(transformed.transformed[0])], true)
+    if (snapshots.size) body = factory.updateBlock(body, [
+      factory.createVariableStatement(undefined, factory.createVariableDeclarationList([...snapshots].map(([name, identifier]) => factory.createVariableDeclaration(identifier, undefined, undefined, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(name)]))), ts.NodeFlags.Const)),
+      ...body.statements
+    ])
     const modifiers = [factory.createModifier(ts.SyntaxKind.ExportKeyword)]
     if (expression.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) modifiers.push(factory.createModifier(ts.SyntaxKind.AsyncKeyword))
     const declaration = factory.createFunctionDeclaration(
@@ -1932,6 +1973,24 @@ function printNativeHandler({ exportName, expression, captures, setters }) {
   } finally {
     transformed.dispose()
   }
+}
+
+function nestedStateNames(expression, setters) {
+  const states = new Set(setters.values())
+  const names = new Set()
+  const visit = node => {
+    if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && !isShadowedIdentifier(node, expression)) names.add(node.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(expression.body)
+  return names
+}
+
+function insideNestedFunction(node, root) {
+  for (let current = node.parent; current && current !== root; current = current.parent) {
+    if (isFunctionLike(current)) return true
+  }
+  return false
 }
 
 function setterReference(factory, stateName) {

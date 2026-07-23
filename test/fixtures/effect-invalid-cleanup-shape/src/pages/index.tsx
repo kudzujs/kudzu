@@ -1,9 +1,8 @@
 import { useEffect } from "@kudzujs/core"
 
 export default function Page() {
-  const cleanup = () => console.log("cleanup")
   useEffect(() => {
-    return cleanup
+    return (event?: Event) => console.log(event)
   }, [])
-  return <p>Return</p>
+  return <p>Cleanup parameter</p>
 }

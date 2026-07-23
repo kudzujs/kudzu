@@ -123,7 +123,13 @@ useEffect(async () => {
   const response = await fetch("/api/items")
   setItems(await response.json())
 }, [])`} />
-    <p>Effects may update text, attributes, conditions, and keyed lists. The callback must be inline and block-bodied. Dependencies, cleanup or other return values, callback parameters, and non-serializable captures remain unsupported and fail during the build. Routes without effects emit no effect entry.</p>
+    <p>Effects may update text, attributes, conditions, and keyed lists. They may directly return an inline cleanup function, which runs once when the document leaves outside the browser back-forward cache.</p>
+    <CodeBlock code={`useEffect(() => {
+  const onResize = () => console.log(window.innerWidth)
+  window.addEventListener("resize", onResize)
+  return () => window.removeEventListener("resize", onResize)
+}, [])`} />
+    <p>Effect-local resources and component state read by nested cleanup closures retain their mount-time values. The effect callback must be inline and block-bodied. Dependencies, named or dynamic cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures remain unsupported. Async effects cannot return cleanup functions; cleanup functions may be async. Routes without effects emit no effect entry, and ordinary effects do not pay for cleanup lifecycle code.</p>
   </section>
 }
 

@@ -346,9 +346,22 @@ useEffect(async () => {
 
 Kudzu does not execute the effect during static rendering and does not ship the component. It emits one route-specific effect entry that invokes the compiled callback against existing logical state and direct DOM commit capabilities. Effects may update reactive text, attributes, conditions, and keyed lists. Multiple effects start independently in source order, and one synchronous or asynchronous failure is reported without suppressing later effects.
 
-Only inline block-bodied callbacks with a literal empty dependency array are supported. Dependencies, cleanup or other return values, callback parameters, and non-serializable captures are rejected at build time. Pages without effects receive no effect entry and retain their existing output.
+An effect may directly return an inline cleanup function:
+
+```tsx
+useEffect(() => {
+  const onResize = () => console.log(window.innerWidth)
+  window.addEventListener("resize", onResize)
+
+  return () => window.removeEventListener("resize", onResize)
+}, [])
+```
+
+Cleanup runs once when the document leaves outside the browser back-forward cache. Effect-local resources and component state read by nested cleanup closures retain their mount-time values. Cleanup failures are isolated so later cleanups still run. Only inline block-bodied callbacks with a literal empty dependency array are supported. Dependencies, named or dynamically obtained cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures are rejected at build time. Async effects cannot return cleanup functions; the cleanup itself may be async. Pages without effects receive no effect entry, and effects without cleanup retain their smaller runtime output.
 
 A matched mount-fetch benchmark renders a title and two keyed rows from local JSON. With one warm-up and seven rotating clean builds, Kudzu shipped initial HTML, 3.4 KB initial JS gzip, 8.1 KB total output, and built in 374 ms. React CSR shipped no initial content, 59.3 KB initial JS gzip, 189.2 KB total output, and built in 992 ms. Hand-written ESM shipped 534 B initial JS gzip, 1.2 KB total output, and built in 210 ms. Fresh-profile Chrome medians to loaded data were 157.9 ms, 166.5 ms, and 153.4 ms respectively.
+
+A matched resize-listener cleanup fixture, measured with the same warm-up and seven rotating clean builds, shipped 1.2 KB JavaScript gzip and built in 402 ms with Kudzu. Svelte shipped 10.1 KB and built in 861 ms, Vue shipped 23.6 KB and built in 768 ms, and React shipped 59.1 KB and built in 1,058 ms. Kudzu and the 127 B hand-written Astro baseline emitted initial HTML; the CSR fixtures did not.
 
 ## Normal JavaScript
 
