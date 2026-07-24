@@ -126,16 +126,19 @@ Static trusted HTML can be rendered without a transform layer:
 
 The HTML is intentionally not sanitized. Use only trusted or previously sanitized build-time content. Reactive raw HTML, children on the same element, void elements, and keyed-list raw HTML are rejected.
 
-Every CSS file under `src` is copied to the same relative path under `dist/assets` and linked in deterministic order. Project-page deployments and post-build artifacts use `kudzu.config.mjs`:
+Every CSS file under `src` is copied to the same relative path under `dist/assets` and linked in deterministic order. Stylesheets produced by another build step can be declared globally so Kudzu still emits them in every document `<head>`. Configured root-relative URLs receive `base`; absolute HTTP URLs are preserved. Project-page deployments and post-build artifacts use `kudzu.config.mjs`:
 
 ```js
 export default {
   base: "/newsletter",
+  styles: ["/assets/generated.css"],
   async afterBuild({ outDir, routes, plans, rewrites, base }) {
-    // Write host rewrites, RSS, sitemap, or other static artifacts.
+    // Write generated.css, host rewrites, RSS, sitemap, or other static artifacts.
   }
 }
 ```
+
+Do not render `<link rel="stylesheet">` from page or component JSX. Kudzu rejects direct static body stylesheets with a source location and catches computed JSX stylesheet output during rendering. Trusted `dangerouslySetInnerHTML` remains unparsed and is responsible for its own resource tags.
 
 ## State Semantics
 
@@ -427,6 +430,7 @@ TSX
 
 - Static pages ship no client JavaScript.
 - Interactive pages receive only the runtime capabilities they use.
+- Interactive route modules are discovered in the document head and retain deferred execution after HTML parsing, overlapping cold downloads with document transfer.
 - Production JavaScript is minified; development output stays readable.
 - Components are authoring units; no component tree is retained in the browser.
 - There is no VDOM, hydration pass, router, or client application runtime.

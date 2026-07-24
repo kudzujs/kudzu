@@ -19,6 +19,7 @@ const devClient = (session, revision, schema) => `<script>(()=>{const show=event
 export async function build({ quiet = false, minify = true } = {}) {
   const config = await loadConfig()
   const base = normalizeBase(config.base)
+  const configuredStyles = normalizeStyles(config.styles, base)
   await rm(workDirectory, { recursive: true, force: true })
   await rm(outputDirectory, { recursive: true, force: true })
   await mkdir(workDirectory, { recursive: true })
@@ -53,7 +54,10 @@ export async function build({ quiet = false, minify = true } = {}) {
   const paramEntries = []
   const rewrites = []
   const emittedRoutes = new Set()
-  const styleUrls = cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`))
+  const styleUrls = [...new Set([
+    ...cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)),
+    ...configuredStyles
+  ])]
   const runtimePlaceholder = `/__kudzu_runtime_${randomUUID()}.js`
 
   for (const pageFile of pageFiles) {
@@ -845,6 +849,7 @@ async function compile(file, sourceFiles, sourceIndex, base) {
 function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports) {
   return context => sourceFile => {
     const factory = context.factory
+    const hasLinkElements = /<link/i.test(sourceFile.text)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
@@ -1046,6 +1051,10 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const visitor = node => {
       if (specializedDeclarations.has(node)) return node
       if (componentSpecializations.has(node)) return ts.visitNode(componentSpecializations.get(node).root, visitor)
+
+      if (hasLinkElements && (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) && isStylesheetLink(node)) {
+        fail(node, "Stylesheets must be placed under src/ or declared in kudzu.config styles so Kudzu can emit them in <head>")
+      }
 
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
@@ -1488,6 +1497,19 @@ function addJsxAttribute(root, attribute, factory) {
 
 function jsxTagName(node) {
   return ts.isJsxElement(node) ? node.openingElement.tagName : ts.isJsxSelfClosingElement(node) ? node.tagName : undefined
+}
+
+function isStylesheetLink(node) {
+  const element = ts.isJsxElement(node) ? node.openingElement : node
+  if (!ts.isIdentifier(element.tagName) || element.tagName.text.toLowerCase() !== "link") return false
+  const attribute = element.attributes.properties.find(property => ts.isJsxAttribute(property) && property.name.getText().toLowerCase() === "rel")
+  if (!attribute?.initializer) return false
+  const value = ts.isStringLiteral(attribute.initializer)
+    ? attribute.initializer.text
+    : ts.isJsxExpression(attribute.initializer) && attribute.initializer.expression && (ts.isStringLiteral(attribute.initializer.expression) || ts.isNoSubstitutionTemplateLiteral(attribute.initializer.expression))
+      ? attribute.initializer.expression.text
+      : undefined
+  return value?.toLowerCase().split(/\s+/).includes("stylesheet") ?? false
 }
 
 function isContextProviderValue(node, contexts) {
@@ -2362,6 +2384,19 @@ async function loadConfig() {
     return config
   }
   return {}
+}
+
+function normalizeStyles(value, base) {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) throw new Error("kudzu.config styles must be an array of URLs")
+  return value.map((style, index) => {
+    if (typeof style !== "string" || !style) throw new Error(`kudzu.config styles[${index}] must be a non-empty URL`)
+    if (style.startsWith("//")) throw new Error(`kudzu.config styles[${index}] must be root-relative or an absolute HTTP URL`)
+    if (style.startsWith("/")) return withBase(base, style)
+    if (!/^https?:\/\//i.test(style)) throw new Error(`kudzu.config styles[${index}] must be root-relative or an absolute HTTP URL`)
+    try { new URL(style) } catch { throw new Error(`kudzu.config styles[${index}] must be root-relative or an absolute HTTP URL`) }
+    return style
+  })
 }
 
 function normalizeBase(value) {

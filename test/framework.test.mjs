@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { existsSync } from "node:fs"
-import { readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import test from "node:test"
 import { build, specializeRuntime } from "../framework/build.mjs"
@@ -24,6 +24,8 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /rel="icon" href="\/favicon\.ico"/)
   assert.match(html, /data-k-on-click/)
   assert.match(html, /data-k-text="s0"/)
+  assert.match(html, /<head>.*<script type="module"[^>]+kudzu\.js.*<\/head><body/s)
+  assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -46,6 +48,57 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runDocsListBrowserTest(chrome)
+})
+
+test("emits configured global styles in every document head", async t => {
+  const fixture = new URL("./fixtures/global-styles", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/global-styles/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/global-styles/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  for (const route of ["", "about/"]) {
+    const html = await readFile(new URL(`./fixtures/global-styles/dist/${route}index.html`, import.meta.url), "utf8")
+    assert.match(html, /<head>.*href="\/guide\/assets\/base\.css".*href="\/guide\/assets\/generated\.css".*href="HTTPS:\/\/cdn\.example\.test\/theme\.css".*<\/head><body>/)
+    assert.doesNotMatch(html.split("<body>")[1], /rel="stylesheet"/)
+    assert.doesNotMatch(html, /<script/)
+  }
+  assert.equal(await readFile(new URL("./fixtures/global-styles/dist/assets/generated.css", import.meta.url), "utf8"), "main { color: rebeccapurple; }")
+})
+
+test("rejects stylesheets rendered in the document body", async t => {
+  const fixture = new URL("./fixtures/body-stylesheet", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/body-stylesheet/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/body-stylesheet/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:2:\d+ Stylesheets must be placed under src\/ or declared in kudzu\.config styles so Kudzu can emit them in <head>/)
+  await assert.rejects(
+    renderPage(() => jsx("link", { rel: "stylesheet", href: "/late.css" }), { styles: false }),
+    /Stylesheets must be placed under src\/ or declared in kudzu\.config styles/
+  )
+  await assert.rejects(
+    renderPage(() => jsx("lInK", { REL: "stylesheet", href: "/late.css" }), { styles: false }),
+    /Stylesheets must be placed under src\/ or declared in kudzu\.config styles/
+  )
+})
+
+test("rejects ambiguous global stylesheet URLs", async t => {
+  const fixture = new URL("./fixtures/global-styles-invalid", import.meta.url)
+  const dist = new URL("./fixtures/global-styles-invalid/dist/", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/global-styles-invalid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/global-styles-invalid/dist", import.meta.url), { recursive: true, force: true })
+  })
+  await mkdir(dist, { recursive: true })
+  await writeFile(new URL("last-good.txt", dist), "keep")
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /kudzu\.config styles\[0\] must be root-relative or an absolute HTTP URL/)
+  assert.equal(await readFile(new URL("last-good.txt", dist), "utf8"), "keep")
 })
 
 test("removes unused initial state bootstrapping from both runtimes", async () => {

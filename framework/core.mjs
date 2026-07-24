@@ -324,7 +324,7 @@ export async function renderPage(component, metadata = {}, props = {}) {
       : ""
 
     return {
-      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}</head><body${state}${textBindings}>${body}${runtime}${paramRuntime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}</body></html>`,
+      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}${runtime}${paramRuntime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}</head><body${state}${textBindings}>${body}</body></html>`,
       hasBehaviors: renderContext.hasBehaviors,
       hasEffects: renderContext.hasEffects,
       hasParams: renderContext.hasParams,
@@ -483,6 +483,13 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 
   const tag = node.type
   const props = node.props ?? {}
+  if (typeof tag === "string" && tag.toLowerCase() === "link") {
+    const rel = Object.entries(props).find(([name]) => name.toLowerCase() === "rel")?.[1]
+    const value = rel?.[signalMarker] || rel?.[bindingMarker] ? rel.value : rel
+    if (typeof value === "string" && value.toLowerCase().split(/\s+/).includes("stylesheet")) {
+      throw new Error("Stylesheets must be placed under src/ or declared in kudzu.config styles so Kudzu can emit them in <head>")
+    }
+  }
   const directListText = props.children?.[listFieldMarker] ? props.children : undefined
   const childSelectValue = tag === "select"
     ? Object.hasOwn(props, "value") ? bindingValue(props.value) : noSelectValue
