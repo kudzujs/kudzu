@@ -329,7 +329,7 @@ The original component remains reusable across multiple lists and ordinary JSX. 
 
 Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root or top-level local or relative-imported row component, and `key={item.<field>}`. Row components accept destructured projected props and top-level single-`const` calculations before one intrinsic return. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, imported helpers used inside calculations, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, nested item conditions, lists, or component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
-## Mount Effects
+## Effects
 
 Browser-only initial work uses the familiar empty-dependency effect shape:
 
@@ -357,11 +357,29 @@ useEffect(() => {
 }, [])
 ```
 
-Cleanup runs once when the document leaves outside the browser back-forward cache. Effect-local resources and component state read by nested cleanup closures retain their mount-time values. Cleanup failures are isolated so later cleanups still run. Only inline block-bodied callbacks with a literal empty dependency array are supported. Dependencies, named or dynamically obtained cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures are rejected at build time. Async effects cannot return cleanup functions; the cleanup itself may be async. Pages without effects receive no effect entry, and effects without cleanup retain their smaller runtime output.
+Cleanup runs once when the document leaves outside the browser back-forward cache. Effect-local resources and component state read by nested cleanup closures retain their setup-time values. Cleanup failures are isolated so later cleanups still run.
+
+Literal arrays of direct primitive `useState` or `useParams` signal identifiers rerun after committed dependency changes:
+
+```tsx
+const [event, setEvent] = useState("resize")
+
+useEffect(() => {
+  const listener = () => console.log(event)
+  window.addEventListener(event, listener)
+  return () => window.removeEventListener(event, listener)
+}, [event])
+```
+
+Dependency values are limited to JSON-safe strings, finite numbers, booleans, and `null`; direct signal aliases are accepted, while expressions, property reads, ordinary props or locals, objects, spreads, and dynamic arrays fail the build. Kudzu compares dependencies with `Object.is`, coalesces multiple commits in one turn, invokes every affected previous cleanup in declaration order, awaits asynchronous cleanup, and then runs the affected setups in declaration order. The component itself is not rerun.
+
+Effect callbacks must be inline and block-bodied. Named or dynamically obtained cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures are rejected. Async effects cannot return cleanup functions; the cleanup itself may be async. Pages without effects receive no effect entry. Empty-dependency effects retain their smaller output, and dependency-only capability code is isolated to the routes that use `kudzu-deps.js` unless another capability already requires the shared runtime.
 
 A matched mount-fetch benchmark renders a title and two keyed rows from local JSON. With one warm-up and seven rotating clean builds, Kudzu shipped initial HTML, 3.4 KB initial JS gzip, 8.1 KB total output, and built in 374 ms. React CSR shipped no initial content, 59.3 KB initial JS gzip, 189.2 KB total output, and built in 992 ms. Hand-written ESM shipped 534 B initial JS gzip, 1.2 KB total output, and built in 210 ms. Fresh-profile Chrome medians to loaded data were 157.9 ms, 166.5 ms, and 153.4 ms respectively.
 
 A matched resize-listener cleanup fixture, measured with the same warm-up and seven rotating clean builds, shipped 1.2 KB JavaScript gzip and built in 402 ms with Kudzu. Svelte shipped 10.1 KB and built in 861 ms, Vue shipped 23.6 KB and built in 768 ms, and React shipped 59.1 KB and built in 1,058 ms. Kudzu and the 127 B hand-written Astro baseline emitted initial HTML; the CSR fixtures did not.
+
+In the matched dependency-rerun fixture, Kudzu shipped 1.5 KB JavaScript gzip and built in 429 ms. Svelte shipped 9.7 KB in 995 ms, Vue 23.8 KB in 943 ms, React 59.2 KB in 1,172 ms, and the hand-written Astro baseline 196 B in 969 ms. Kudzu and Astro emitted initial HTML; the CSR fixtures did not.
 
 ## Normal JavaScript
 

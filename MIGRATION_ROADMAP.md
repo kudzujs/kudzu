@@ -102,7 +102,7 @@ Compiler requirements:
 - Generate a route-specific effect entry and include it only on pages using an effect.
 - Reuse existing logical state and direct DOM commit paths for setters.
 - Do not introduce a scheduler, component instance, hook dispatcher, or component re-render loop in the browser.
-- Accept directly returned inline cleanup functions; reject dependencies, named or dynamic cleanup returns, unsupported captures, and non-analyzable calls with source-located diagnostics until each is deliberately implemented.
+- Accept directly returned inline cleanup functions and literal arrays of direct primitive signal dependencies; reject dependency expressions, named or dynamic cleanup returns, unsupported captures, and non-analyzable calls with source-located diagnostics.
 
 Acceptance criteria:
 
@@ -149,21 +149,23 @@ Acceptance criteria:
 - Static routes without runtime params have byte-for-byte unchanged output.
 - Tests cover decoding, invalid values, multiple parameters, route precedence, base paths, and development-server behavior.
 
-The two-parameter fixture's route matcher is 702 B gzip. Its complete binding, effect, event, serialization, and parameter initial graph is 6.3 KB gzip and its seven-run clean-build median is 411 ms.
+The two-parameter fixture's route matcher is 702 B gzip. Its complete binding, dependency effect, event, serialization, and parameter initial graph is 6.7 KB gzip and its seven-run clean-build median is 491 ms.
 
 ### 4. Add Effect Semantics Only When Proven Necessary
 
-Status: mount-only cleanup is implemented. A directly returned inline cleanup function is document-owned, reuses shared unmount hooks when present, runs once on non-persisted page exit, and isolates synchronous and asynchronous failures without adding lifecycle code to ordinary effects. Nested cleanup closures retain mount-time state snapshots while the effect body keeps Kudzu's immediate logical-state semantics.
+Status: mount-only cleanup, primitive dependency arrays, and cleanup-before-rerun are implemented. Direct state and runtime parameter signal identifiers are compared with `Object.is`; commits coalesce per turn, affected asynchronous cleanups are awaited in declaration order, then replacement setups run in declaration order. Components are not rerun. Document cleanup remains document-owned and skips persisted page exits.
 
 The three-cleanup isolation fixture emits 1.4 KB gzip across its four JavaScript files, including a 487 B gzip route effect entry, and its seven-run clean-build median is 480 ms.
 
 In the matched one-listener cleanup benchmark, Kudzu emits 1.2 KB JavaScript gzip and builds in 402 ms. Svelte emits 10.1 KB in 861 ms, Vue 23.6 KB in 768 ms, React 59.1 KB in 1,058 ms, and the hand-written Astro baseline 127 B in 865 ms. Kudzu and Astro include initial HTML; the CSR fixtures do not.
 
+In the matched dependency-rerun benchmark, Kudzu emits 1.5 KB JavaScript gzip and builds in 429 ms. Svelte emits 9.7 KB in 995 ms, Vue 23.8 KB in 943 ms, React 59.2 KB in 1,172 ms, and the hand-written Astro baseline 196 B in 969 ms. Kudzu and Astro include initial HTML; the CSR fixtures do not. Single-effect, single-dependency routes use a direct runner without generic maps, sets, or sorting.
+
 After mount-only effects and runtime params unblock a real migration, add the next missing semantic one at a time:
 
 1. cleanup for `useEffect(fn, [])` (implemented);
-2. primitive dependency arrays such as `[id]`;
-3. cleanup-before-rerun;
+2. primitive dependency arrays such as `[id]` (implemented);
+3. cleanup-before-rerun (implemented);
 4. effect ownership inside conditional or keyed DOM ranges.
 
 Each addition must reuse capability mount/unmount hooks, have one focused migration fixture, and preserve zero output cost for pages that do not use it.

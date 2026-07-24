@@ -66,12 +66,18 @@ function createSignal(id, value) {
 
 export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup) {
   if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
-  if (typeof callback !== "function" || !Array.isArray(dependencies) || dependencies.length || !module || !handler) {
-    throw new Error("useEffect() must be compiled with a literal empty dependency array")
-  }
-  renderContext.effects.push({ module, handler, states, scope, source, ...(cleanup ? { cleanup: true } : {}) })
+  if (typeof callback !== "function" || !Array.isArray(dependencies) || !module || !handler) throw new Error("useEffect() must be compiled with a literal dependency array")
+  const dependencyIds = dependencies.map(dependency => {
+    if (!dependency?.[signalMarker] || !validEffectDependency(dependency.value)) throw new Error(`${source} useEffect() dependencies must be primitive Kudzu state or runtime parameter identifiers`)
+    return dependency.id
+  })
+  renderContext.effects.push({ module, handler, states, scope, source, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(cleanup ? { cleanup: true } : {}) })
   renderContext.hasBehaviors = true
   renderContext.hasEffects = true
+}
+
+function validEffectDependency(value) {
+  return value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0)
 }
 
 export function useRef(initialValue) {
@@ -271,6 +277,7 @@ export async function renderPage(component, metadata = {}, props = {}) {
         return {
           module: effect.module,
           handler: effect.handler,
+          ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
           ...(effect.cleanup ? { cleanup: true } : {}),
           ...nativeDescriptor(effect.states.map(([name, read]) => [name, read()]), effect.scope.map(([name, read]) => [name, read()]))
         }
@@ -284,7 +291,7 @@ export async function renderPage(component, metadata = {}, props = {}) {
       ? ""
       : (Array.isArray(metadata.styles) ? metadata.styles : [assetPath(metadata.base, "assets/style.css")]).map(href => `<link rel="stylesheet" href="${escapeAttribute(href)}">`).join("")
     const runtime = renderContext.hasBehaviors
-      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu.js")}"></script>`
+      ? `<script type="module" src="${escapeAttribute(metadata.runtimeAsset ?? assetPath(metadata.base, "assets/kudzu.js"))}"></script>`
       : ""
     const nativeRuntime = renderContext.hasNativeBehaviors
       ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-native.js")}"></script>`

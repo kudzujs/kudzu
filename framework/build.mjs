@@ -41,16 +41,20 @@ export async function build({ quiet = false, minify = true } = {}) {
   if (!pageFiles.length) throw new Error("No pages found in src/pages/")
 
   let behaviorCount = 0
+  let regularBehaviorCount = 0
   let bindingCount = 0
   let listCount = 0
   let listStyleCount = 0
-  let stateSeedCount = 0
+  let regularStateSeedCount = 0
+  let dependencyStateSeedCount = 0
   const plans = []
+  const pageEntries = []
   const effectEntries = []
   const paramEntries = []
   const rewrites = []
   const emittedRoutes = new Set()
   const styleUrls = cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`))
+  const runtimePlaceholder = `/__kudzu_runtime_${randomUUID()}.js`
 
   for (const pageFile of pageFiles) {
     const compiledFile = compiledPath(pageFile)
@@ -81,21 +85,28 @@ export async function build({ quiet = false, minify = true } = {}) {
         ...(module.metadata ?? {}),
         styles: styleUrls.length ? styleUrls : false,
         base,
+        runtimeAsset: runtimePlaceholder,
         effectAsset: assetPath(base, `assets/${effectPath}`),
         paramAsset: assetPath(base, `assets/${paramPath}`),
         runtimeParams: runtimeSchema?.params
       }, props)
-      const routeDirectory = join(outputDirectory, route)
-      await mkdir(routeDirectory, { recursive: true })
-      await writeFile(join(routeDirectory, "index.html"), result.html)
+      const hasDependencies = result.plan.effects.some(effect => effect.dependencies?.length)
+      const usesDependencyRuntime = hasDependencies && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
+      pageEntries.push({ route, html: result.html, usesDependencyRuntime })
       plans.push({ route: routePath, ...result.plan })
-      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params })
-      if (result.hasEffects) effectEntries.push({ path: effectPath, effects: result.plan.effects, paramPath: result.hasParams ? paramPath : undefined })
-      if (result.hasBehaviors) behaviorCount++
+      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, usesDependencyRuntime })
+      if (result.hasEffects) effectEntries.push({ path: effectPath, effects: result.plan.effects, paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime })
+      if (result.hasBehaviors) {
+        behaviorCount++
+        if (!usesDependencyRuntime) regularBehaviorCount++
+      }
       if (result.hasBindings) bindingCount++
       if (result.hasLists) listCount++
       if (result.hasListStyles) listStyleCount++
-      if (result.hasStateSeed) stateSeedCount++
+      if (result.hasStateSeed) {
+        if (usesDependencyRuntime) dependencyStateSeedCount++
+        else regularStateSeedCount++
+      }
     }
   }
 
@@ -119,10 +130,23 @@ export async function build({ quiet = false, minify = true } = {}) {
   const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
   const hasNativeHandlers = nativeModules.length > 0
   const hasEffects = effectEntries.length > 0
-  if (behaviorCount) {
-    const runtimeFile = bindingCount || listCount || hasNativeHandlers ? "./shared-runtime.js" : "./runtime.js"
-    const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, stateSeedCount > 0)
+  const hasSharedRuntime = bindingCount || listCount || hasNativeHandlers
+  const hasDependencyRuntime = pageEntries.some(entry => entry.usesDependencyRuntime)
+  const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
+  for (const entry of pageEntries) {
+    const routeDirectory = join(outputDirectory, entry.route)
+    await mkdir(routeDirectory, { recursive: true })
+    const html = entry.html.replace(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/${runtimeName(entry.usesDependencyRuntime)}`)))
+    await writeFile(join(routeDirectory, "index.html"), html)
+  }
+  if (behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
+    const runtimeFile = hasSharedRuntime ? "./shared-runtime.js" : "./runtime.js"
+    const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, regularStateSeedCount > 0)
     await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
+  }
+  if (hasDependencyRuntime) {
+    const runtime = specializeRuntime(await readFile(new URL("./dependency-runtime.js", import.meta.url), "utf8"), commandEvents, dependencyStateSeedCount > 0)
+    await writeJavaScript(join(assetsDirectory, "kudzu-deps.js"), runtime, minify)
   }
   if (bindingCount || hasNativeHandlers || hasEffectCaptures) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify, {
     "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures),
@@ -186,12 +210,12 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const entry of paramEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, output, assetsDirectory, base), minify)
+    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime)), minify)
   }
   for (const entry of effectEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base, entry.paramPath), minify)
+    await writeJavaScript(output, printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime)), minify)
   }
   const clientModules = await collectClientModules(handlerModules.flatMap(module => module.clientImports), sourceFileSet)
   for (const file of clientModules) {
@@ -243,8 +267,9 @@ function specializeNativeRuntime(source, events, modules) {
   return `${imports}\n${specializeEvents(source, events).replace(/const modules = new Map\(\[[^\n]*\]\)/, `const modules = new Map([${entries}])`)}`
 }
 
-function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath) {
+function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName) {
   const hasCleanup = effects.some(effect => effect.cleanup)
+  const hasDependencies = effects.some(effect => effect.dependencies?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -252,14 +277,117 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
     return module
   })
   const imports = [
-    hasCleanup
-      ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}\nconst { browserState, commitDom } = __kRuntime`
-      : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
+    hasCleanup || hasDependencies
+      ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}\nconst { browserState, commitDom } = __kRuntime`
+      : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
     ...(paramPath ? [`import ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, paramPath)))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
+  if (effects.length === 1 && effects[0].dependencies?.length === 1) return printSingleDependencyEffect(imports, effects[0], hasCleanup)
+  const disposal = hasCleanup ? `
+let disposed = false
+const dispose = root => {
+  if (root !== document || disposed) return
+  disposed = true
+  active = false
+  pending.clear()
+  for (const record of records) invokeCleanup(record)
+}
+if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose)
+addEventListener("pagehide", event => {
+  if (event.persisted) return
+  if (__kRuntime.unmountDom) __kRuntime.unmountDom(document)
+  else dispose(document)
+})` : ""
+  if (hasDependencies) return `${imports.join("\n")}
+const effects = ${inlineJson(effects)}
+const modules = new Map([${entries}])
+const records = effects.map((effect, index) => ({ effect, index, values: undefined, cleanup: undefined }))
+const dependencies = new Map()
+const pending = new Set()
+let scheduled = false
+let flushing = false
+let active = true
+for (const record of records) {
+  for (const id of record.effect.dependencies ?? []) {
+    const subscribers = dependencies.get(id) ?? new Set()
+    subscribers.add(record)
+    dependencies.set(id, subscribers)
+  }
+}
+__kRuntime.registerCommitter(id => {
+  if (!active) return
+  for (const record of dependencies.get(id) ?? []) pending.add(record)
+  schedule()
+})
+for (const record of records) {
+  try {
+    record.values = readDependencies(record)
+    invoke(record)
+  } catch (error) {
+    console.error(error)
+  }
+}
+function schedule() {
+  if (!pending.size || scheduled || flushing) return
+  scheduled = true
+  queueMicrotask(flush)
+}
+async function flush() {
+  scheduled = false
+  if (!active) return pending.clear()
+  flushing = true
+  try {
+    const selected = [...pending].sort((left, right) => left.index - right.index)
+    pending.clear()
+    const changed = []
+    for (const record of selected) {
+      try {
+        const values = readDependencies(record)
+        if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) {
+          record.values = values
+          changed.push(record)
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    }
+    for (const record of changed) await invokeCleanup(record)
+    if (active) for (const record of changed) invoke(record)
+  } finally {
+    flushing = false
+    if (active) schedule()
+  }
+}
+function readDependencies(record) {
+  return (record.effect.dependencies ?? []).map(id => {
+    const value = browserState.get(id)
+    if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+    return value
+  })
+}
+function invoke(record) {
+  try {
+    const effect = record.effect
+    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope))
+    if (effect.cleanup && typeof result === "function") record.cleanup = result
+    else if (result && typeof result.then === "function") result.catch(error => console.error(error))
+  } catch (error) {
+    console.error(error)
+  }
+}
+async function invokeCleanup(record) {
+  const cleanup = record.cleanup
+  record.cleanup = undefined
+  if (!cleanup) return
+  try {
+    await cleanup()
+  } catch (error) {
+    console.error(error)
+  }
+}${disposal}`
   if (!hasCleanup) return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
@@ -306,8 +434,96 @@ addEventListener("pagehide", event => {
 })`
 }
 
-function printParamEntry(schema, params, output, assetsDirectory, base) {
-  return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}
+function printSingleDependencyEffect(imports, effect, hasCleanup) {
+  const disposal = hasCleanup ? `
+const dispose = root => {
+  if (root !== document || !active) return
+  active = false
+  pending = false
+  invokeCleanup()
+}
+if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose)
+addEventListener("pagehide", event => {
+  if (event.persisted) return
+  if (__kRuntime.unmountDom) __kRuntime.unmountDom(document)
+  else dispose(document)
+})` : ""
+  return `${imports.join("\n")}
+const effect = ${inlineJson(effect)}
+const dependency = effect.dependencies[0]
+let value
+let cleanup
+let active = true
+let pending = false
+let scheduled = false
+let running = false
+__kRuntime.registerCommitter(id => {
+  if (active && id === dependency) {
+    pending = true
+    schedule()
+  }
+})
+try {
+  value = readDependency()
+  invoke()
+} catch (error) {
+  console.error(error)
+}
+function schedule() {
+  if (!pending || scheduled || running) return
+  scheduled = true
+  queueMicrotask(flush)
+}
+async function flush() {
+  scheduled = false
+  if (!active) return
+  let next
+  try {
+    next = readDependency()
+  } catch (error) {
+    console.error(error)
+    return
+  }
+  pending = false
+  if (Object.is(next, value)) return
+  value = next
+  running = true
+  try {
+    await invokeCleanup()
+    if (active) invoke()
+  } finally {
+    running = false
+    if (active) schedule()
+  }
+}
+function readDependency() {
+  const next = browserState.get(dependency)
+  if (next !== null && typeof next !== "string" && typeof next !== "boolean" && !(typeof next === "number" && Number.isFinite(next) && !Object.is(next, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+  return next
+}
+function invoke() {
+  try {
+    const result = __kEffectModule0[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope))
+    if (effect.cleanup && typeof result === "function") cleanup = result
+    else if (result && typeof result.then === "function") result.catch(error => console.error(error))
+  } catch (error) {
+    console.error(error)
+  }
+}
+async function invokeCleanup() {
+  const current = cleanup
+  cleanup = undefined
+  if (!current) return
+  try {
+    await current()
+  } catch (error) {
+    console.error(error)
+  }
+}${disposal}`
+}
+
+function printParamEntry(schema, params, output, assetsDirectory, base, runtimeName) {
+  return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}
 const base = ${inlineJson(browserPath(base).slice(1).split("/").filter(Boolean).map(segment => decodeURIComponent(segment)))}
 const schema = ${inlineJson(schema.segments)}
 const params = ${inlineJson(params)}
@@ -501,7 +717,7 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
 }
 
 function injectDevClient(html, session, revision, schema) {
-  return `${html}${devClient(session, revision, schema)}`
+  return `${html}${devClient(session, revision, schema).replace("binding|list|native", "binding|deps|list|native")}`
 }
 
 function stripBaseStrict(path, base) {
@@ -574,6 +790,10 @@ function sendEvent(response, event, data = "") {
 
 function escapeHtml(value) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll('"', "&quot;").replaceAll("'", "&#39;")
 }
 
 async function compile(file, sourceFiles, sourceIndex, base) {
@@ -838,13 +1058,15 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       }
 
       if (hasUseEffectImport && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useEffect") {
-        if (node.arguments.length !== 2) fail(node, "useEffect() requires exactly a callback and literal empty dependency array")
+        if (node.arguments.length !== 2) fail(node, "useEffect() requires exactly a callback and literal dependency array")
         const [callback, dependencies] = node.arguments
         if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) fail(callback, "useEffect() callback must be an inline function")
         if (ts.isFunctionExpression(callback) && callback.name) fail(callback, "useEffect() callback function must be anonymous")
         if (callback.asteriskToken) fail(callback, "useEffect() callback cannot be a generator")
         if (callback.parameters.length) fail(callback, "useEffect() callback cannot declare parameters")
-        if (!ts.isArrayLiteralExpression(dependencies) || dependencies.elements.length) fail(dependencies, "useEffect() dependencies must be a literal empty array")
+        if (!ts.isArrayLiteralExpression(dependencies)) fail(dependencies, "useEffect() dependencies must be a literal array")
+        const invalidDependency = dependencies.elements.find(dependency => !ts.isIdentifier(dependency))
+        if (invalidDependency) fail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
         if (!nearestFunction(node)) fail(node, "useEffect() cannot be used outside a Kudzu component")
         if (!ts.isBlock(callback.body)) fail(callback, "useEffect() callback must use a block body")
         const returns = effectReturns(callback)
@@ -1912,6 +2134,8 @@ function printNativeHandler({ exportName, expression, captures, setters, snapsho
   const stateNames = new Set(setters.values())
   const snapshotNames = snapshotNested ? nestedStateNames(expression, setters) : new Set()
   const snapshots = new Map([...snapshotNames].map(name => [name, factory.createUniqueName("__kEffectState")]))
+  const captureSnapshotNames = snapshotNested ? nestedCaptureNames(expression, captures) : new Set()
+  const captureSnapshots = new Map([...captureSnapshotNames].map(name => [name, factory.createUniqueName("__kEffectCapture")]))
   const transformer = context => root => {
     const visitor = node => {
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
@@ -1940,9 +2164,11 @@ function printNativeHandler({ exportName, expression, captures, setters, snapsho
         )
       }
       if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (captureSnapshots.has(node.name.text) && insideNestedFunction(node, expression)) return factory.createPropertyAssignment(node.name, captureSnapshots.get(node.name.text))
         return factory.createPropertyAssignment(node.name, scopeRead(factory, node.name.text))
       }
       if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (captureSnapshots.has(node.text) && insideNestedFunction(node, expression)) return captureSnapshots.get(node.text)
         return scopeRead(factory, node.text)
       }
       return ts.visitEachChild(node, visitor, context)
@@ -1954,8 +2180,12 @@ function printNativeHandler({ exportName, expression, captures, setters, snapsho
     let body = ts.isBlock(expression.body)
       ? transformed.transformed[0]
       : factory.createBlock([factory.createReturnStatement(transformed.transformed[0])], true)
-    if (snapshots.size) body = factory.updateBlock(body, [
-      factory.createVariableStatement(undefined, factory.createVariableDeclarationList([...snapshots].map(([name, identifier]) => factory.createVariableDeclaration(identifier, undefined, undefined, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(name)]))), ts.NodeFlags.Const)),
+    const snapshotDeclarations = [
+      ...[...snapshots].map(([name, identifier]) => factory.createVariableDeclaration(identifier, undefined, undefined, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(name)]))),
+      ...[...captureSnapshots].map(([name, identifier]) => factory.createVariableDeclaration(identifier, undefined, undefined, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "scope"), undefined, [factory.createStringLiteral(name)])))
+    ]
+    if (snapshotDeclarations.length) body = factory.updateBlock(body, [
+      factory.createVariableStatement(undefined, factory.createVariableDeclarationList(snapshotDeclarations, ts.NodeFlags.Const)),
       ...body.statements
     ])
     const modifiers = [factory.createModifier(ts.SyntaxKind.ExportKeyword)]
@@ -1973,6 +2203,16 @@ function printNativeHandler({ exportName, expression, captures, setters, snapsho
   } finally {
     transformed.dispose()
   }
+}
+
+function nestedCaptureNames(expression, captures) {
+  const names = new Set()
+  const visit = node => {
+    if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && !isShadowedIdentifier(node, expression)) names.add(node.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(expression.body)
+  return names
 }
 
 function nestedStateNames(expression, setters) {

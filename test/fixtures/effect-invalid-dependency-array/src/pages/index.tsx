@@ -2,8 +2,9 @@ import { useEffect, useState } from "@kudzujs/core"
 
 export default function Page() {
   const [value] = useState(1)
+  const dependencies = [value] as const
   useEffect(() => {
     console.log(value)
-  }, [value + 1])
-  return <p>{value}</p>
+  }, dependencies)
+  return <p>Dynamic dependency array</p>
 }

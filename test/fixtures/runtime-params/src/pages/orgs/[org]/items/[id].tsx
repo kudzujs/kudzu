@@ -13,7 +13,7 @@ export default function RuntimeItemPage() {
   useEffect(() => {
     setStatus(`${org}/${id}`)
     document.body.dataset.effectParams = `${org}:${id}`
-  }, [])
+  }, [org, id])
 
   function mark() {
     document.body.dataset.eventParams = `${org}:${id}`

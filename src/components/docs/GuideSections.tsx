@@ -115,8 +115,8 @@ function App() {
   </ThemeContext.Provider>
 }`} />
     <p>Context objects may contain state, setters, nested plain data, and static fields. Consumers may destructure or rename properties. Kudzu emits only concrete state/setter IDs and reconstructs live getters with the existing synchronous, batched setter semantics; no function source or browser Provider tree is shipped. Nested Providers remain independent. Arbitrary functions, accessors, cycles, symbols, and non-plain objects are rejected when captured for browser use.</p>
-    <h3 id="effects">Mount effects</h3>
-    <p>Browser-only initial work can use an inline <code>useEffect</code> callback with a literal empty dependency array. Kudzu emits that callback as route-specific ESM and patches only state-bound DOM; it does not ship or rerun the component.</p>
+    <h3 id="effects">Effects</h3>
+    <p>Browser-only work can use an inline <code>useEffect</code> callback with a literal dependency array. Kudzu emits that callback as route-specific ESM and patches only state-bound DOM; it does not ship or rerun the component.</p>
     <CodeBlock code={`const [items, setItems] = useState([])
 
 useEffect(async () => {
@@ -129,7 +129,15 @@ useEffect(async () => {
   window.addEventListener("resize", onResize)
   return () => window.removeEventListener("resize", onResize)
 }, [])`} />
-    <p>Effect-local resources and component state read by nested cleanup closures retain their mount-time values. The effect callback must be inline and block-bodied. Dependencies, named or dynamic cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures remain unsupported. Async effects cannot return cleanup functions; cleanup functions may be async. Routes without effects emit no effect entry, and ordinary effects do not pay for cleanup lifecycle code.</p>
+    <p>Primitive state and runtime parameter identifiers may trigger cleanup and rerun without rerunning the component.</p>
+    <CodeBlock code={`const [event, setEvent] = useState("resize")
+
+useEffect(() => {
+  const listener = () => console.log(event)
+  window.addEventListener(event, listener)
+  return () => window.removeEventListener(event, listener)
+}, [event])`} />
+    <p>Kudzu coalesces committed dependency changes, awaits every affected cleanup in declaration order, and then runs new setups in declaration order. Dependencies must be direct signal identifiers or aliases holding JSON-safe primitives. Expressions, properties, ordinary locals, objects, spreads, and dynamic arrays are rejected. Effect callbacks remain inline and block-bodied; named or dynamic cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures remain unsupported. Routes without dependency effects do not load <code>kudzu-deps.js</code>.</p>
   </section>
 }
 

@@ -94,6 +94,15 @@ test("escapes compact JSON attributes", async () => {
   assert.match(result.html, /data-k-on-click='\[\["set","s0","it&#39;s &lt;&amp;"\]\]'/)
 })
 
+test("escapes custom runtime asset URLs", async () => {
+  const result = await renderPage(() => {
+    const [value] = useState(false)
+    return jsx("button", { onClick: behavior([["set", value, true]]), children: "Set" })
+  }, { styles: false, runtimeAsset: '\"><script data-injected>' })
+  assert.match(result.html, /src="&quot;&gt;&lt;script data-injected&gt;"/)
+  assert.doesNotMatch(result.html, /<script data-injected>/)
+})
+
 test("rejects reactive conditionals in foreign namespaces", async () => {
   await assert.rejects(renderPage(() => {
     const [open] = useState(true)
@@ -275,6 +284,7 @@ test("compiles runtime route params to a static fallback and route ESM", async t
   assert.doesNotMatch(params, /pushState|popstate|preventDefault/)
   assert.match(effect, /params\/orgs\/\[org\]\/items\/\[id\]\/index\.js/)
   assert.deepEqual(plan.routes.find(route => route.route.includes("[org]")).params, [{ name: "org", id: "p0" }, { name: "id", id: "p1" }])
+  assert.deepEqual(plan.routes.find(route => route.route.includes("[org]")).effects[0].dependencies, ["p0", "p1"])
   assert.equal(plan.routes.find(route => route.route.endsWith("/new")).params.length, 0)
   assert.deepEqual(plan.rewrites, afterBuild.rewrites)
   assert.equal(afterBuild.base, "/%ED%8F%AC%ED%84%B8")
@@ -726,9 +736,99 @@ if (document.body.dataset.cleanup !== "local:1") throw new Error("repeat")
   assert.equal(browser.status, 0, `${browser.stdout}\n${browser.stderr}`)
 })
 
+test("reruns primitive dependency effects after cleanup", async t => {
+  const fixture = new URL("./fixtures/effect-dependencies", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/effect-dependencies/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/effect-dependencies/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const entryUrl = new URL("./fixtures/effect-dependencies/dist/assets/effects/index.js", import.meta.url)
+  const runtimeUrl = new URL("./fixtures/effect-dependencies/dist/assets/kudzu-deps.js", import.meta.url)
+  const entry = await readFile(entryUrl, "utf8")
+  const runtime = await readFile(runtimeUrl, "utf8")
+  const html = await readFile(new URL("./fixtures/effect-dependencies/dist/index.html", import.meta.url), "utf8")
+  const commandHtml = await readFile(new URL("./fixtures/effect-dependencies/dist/command/index.html", import.meta.url), "utf8")
+  const commandRuntime = await readFile(new URL("./fixtures/effect-dependencies/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/effect-dependencies/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.effects.length)
+  assert.match(entry, /registerCommitter/)
+  assert.match(runtime, /registerCommitter/)
+  assert.match(html, /kudzu-deps\.js/)
+  assert.match(html, /\/docs&amp;notes\/assets\/kudzu-deps\.js/)
+  assert.match(html, /data-runtime-link="\/assets\/kudzu\.js"/)
+  assert.doesNotMatch(commandHtml, /kudzu-deps\.js/)
+  assert.doesNotMatch(commandRuntime, /registerCommitter/)
+  assert.doesNotMatch(commandRuntime, /kState/)
+  assert.match(runtime, /kState/)
+  assert.deepEqual(plan.effects.map(effect => effect.dependencies), [["s0", "s1"], ["s0"]])
+
+  const browser = spawnSync(process.execPath, ["--input-type=module", "-e", `
+const listeners = new Map()
+const stateNodes = [{ dataset: { kText: "s0", kValue: "0" }, textContent: "0" }, { dataset: { kText: "s1", kValue: "1" }, textContent: "1" }]
+globalThis.document = { body: { dataset: { kState: JSON.stringify([["s2", "dependency-only"]]) } }, querySelectorAll: selector => selector === "[data-k-text]" ? stateNodes : [], addEventListener() {} }
+globalThis.addEventListener = (name, listener) => listeners.set(name, listener)
+await import(${JSON.stringify(entryUrl.href)})
+const runtime = await import(${JSON.stringify(runtimeUrl.href)})
+const initial = "|setup 0:1|second setup 0"
+if (document.body.dataset.effectLog !== initial) throw new Error("initial")
+runtime.applyCommands(runtime.browserState, [["add", "s0", 1], ["add", "s1", 1]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+const rerun = initial + "|cleanup 0:1|second cleanup 0|setup 1:2|second setup 1"
+if (document.body.dataset.effectLog !== rerun) throw new Error("rerun: " + document.body.dataset.effectLog)
+runtime.applyCommands(runtime.browserState, [["add", "s0", 0]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.effectLog !== rerun) throw new Error("equal")
+listeners.get("pagehide")({ persisted: false })
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.effectLog !== rerun + "|cleanup 1:2|second cleanup 1") throw new Error("dispose")
+`], { encoding: "utf8" })
+  assert.equal(browser.status, 0, `${browser.stdout}\n${browser.stderr}`)
+})
+
+test("specializes one primitive dependency effect", async t => {
+  const fixture = new URL("./fixtures/effect-dependency-fast", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/effect-dependency-fast/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/effect-dependency-fast/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const entryUrl = new URL("./fixtures/effect-dependency-fast/dist/assets/effects/index.js", import.meta.url)
+  const runtimeUrl = new URL("./fixtures/effect-dependency-fast/dist/assets/kudzu-deps.js", import.meta.url)
+  const entry = await readFile(entryUrl, "utf8")
+  assert.doesNotMatch(entry, /new Map|new Set|\.sort\(/)
+  assert.equal(existsSync(new URL("./fixtures/effect-dependency-fast/dist/assets/kudzu.js", import.meta.url)), false)
+
+  const browser = spawnSync(process.execPath, ["--input-type=module", "-e", `
+const listeners = new Map()
+globalThis.document = { body: { dataset: { kState: JSON.stringify([["s0", "resize"]]) } }, querySelectorAll: () => [], addEventListener() {} }
+globalThis.addEventListener = (name, listener) => listeners.set(name, listener)
+await import(${JSON.stringify(entryUrl.href)})
+const runtime = await import(${JSON.stringify(runtimeUrl.href)})
+if (document.body.dataset.fastLog !== "|setup resize") throw new Error("initial")
+runtime.applyCommands(runtime.browserState, [["set", "s0", "scroll"]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.fastLog !== "|setup resize|cleanup resize|setup scroll") throw new Error("rerun")
+runtime.applyCommands(runtime.browserState, [["set", "s0", "scroll"]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.fastLog !== "|setup resize|cleanup resize|setup scroll") throw new Error("equal")
+runtime.applyCommands(runtime.browserState, [["set", "s0", { invalid: true }]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.fastLog !== "|setup resize|cleanup resize|setup scroll") throw new Error("invalid")
+runtime.applyCommands(runtime.browserState, [["set", "s0", "resize"]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.fastLog !== "|setup resize|cleanup resize|setup scroll|cleanup scroll|setup resize") throw new Error("recovery")
+`], { encoding: "utf8" })
+  assert.equal(browser.status, 0, `${browser.stdout}\n${browser.stderr}`)
+})
+
 test("rejects unsupported mount effect forms", () => {
   for (const [fixture, message] of [
-    ["effect-invalid-dependencies", /dependencies must be a literal empty array/],
+    ["effect-invalid-dependencies", /dependencies must be direct state or runtime parameter identifiers/],
+    ["effect-invalid-dependency-array", /dependencies must be a literal array/],
+    ["effect-invalid-dependency-local", /dependencies must be primitive Kudzu state or runtime parameter identifiers/],
+    ["effect-invalid-dependency-object", /dependencies must be primitive Kudzu state or runtime parameter identifiers/],
     ["effect-invalid-cleanup", /async callbacks cannot return cleanup functions/],
     ["effect-invalid-cleanup-shape", /cleanup functions cannot declare parameters or be generators/],
     ["effect-invalid-cleanup-generator", /cleanup functions cannot declare parameters or be generators/],
