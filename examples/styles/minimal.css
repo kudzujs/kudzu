@@ -1,0 +1,93 @@
+.tpl-minimal {
+  min-height: 100vh;
+  color: #222;
+  background: #fafafa;
+  font-family: Georgia;
+}
+.tpl-minimal > main {
+  width: min(680px, calc(100% - 40px));
+  margin: auto;
+  padding: 110px 0 50px;
+}
+.tpl-minimal main > header {
+  border-bottom: 1px solid #bbb;
+  padding-bottom: 40px;
+}
+.tpl-minimal main > header h1 {
+  margin: 0;
+  font: 400 54px Georgia;
+}
+.tpl-minimal main > header p {
+  color: #777;
+}
+.tpl-minimal nav {
+  margin-top: 30px;
+}
+.tpl-minimal nav a {
+  color: inherit;
+}
+.tpl-minimal main > footer {
+  display: flex;
+  justify-content: space-between;
+  width: auto;
+  padding: 60px 0 0;
+  color: #888;
+  border-top: 1px solid #bbb;
+  font: 9px var(--mono);
+}
+.article-minimal {
+  color: #222;
+  background: #fafafa;
+}
+.article-minimal .article-hero {
+  min-height: 1px;
+  background: #222;
+}
+.article-minimal article > header,
+.article-minimal .article-content {
+  max-width: 720px;
+  margin: auto;
+}
+.article-minimal .article-content {
+  grid-template-columns: 1fr;
+}
+.article-minimal .article-content > aside {
+  background: transparent;
+}
+.minimal-feature {
+  padding: 90px 0;
+}
+.minimal-feature time,
+.minimal-list time {
+  color: #888;
+  font: 10px var(--mono);
+}
+.minimal-feature h2 {
+  margin: 20px 0;
+  font: 400 48px/1.1 Georgia;
+}
+.minimal-feature p {
+  font-size: 20px;
+  line-height: 1.8;
+}
+.minimal-feature a {
+  color: inherit;
+  border-bottom: 1px solid;
+}
+.minimal-list {
+  border-top: 1px solid #bbb;
+}
+.minimal-list h3 {
+  margin: 30px 0;
+  font-weight: 400;
+}
+.minimal-list article {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  padding: 20px 0;
+  border-top: 1px solid #ddd;
+}
+.minimal-list a {
+  color: inherit;
+  font-size: 21px;
+}

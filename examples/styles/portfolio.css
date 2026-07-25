@@ -1,0 +1,144 @@
+.tpl-portfolio {
+  color: #111;
+  background: #e5e3dc;
+  font-family: Arial;
+}
+.tpl-portfolio > header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 75px;
+  padding: 0 3vw;
+  border-bottom: 2px solid;
+}
+.tpl-portfolio > header > a {
+  color: inherit;
+  font-weight: 900;
+}
+.tpl-portfolio > header > span {
+  font: 9px var(--mono);
+}
+.tpl-portfolio > header button {
+  justify-self: end;
+  border: 0;
+  background: none;
+}
+.tpl-portfolio > main {
+  padding: 0 3vw;
+}
+.article-portfolio {
+  color: #111;
+  background: #e5e3dc;
+  font-family: Arial;
+}
+.article-portfolio .article-hero {
+  background: linear-gradient(90deg, #ed4b35 33%, #175966 33% 66%, #daa13e 66%);
+}
+.article-portfolio article > header h1 {
+  font-family: Arial;
+}
+.work-hero {
+  padding: 90px 0 120px;
+}
+.work-hero > span {
+  font: 10px var(--mono);
+}
+.work-hero h1 {
+  margin: 28px 0;
+  font-size: clamp(75px, 12vw, 170px);
+  line-height: 0.77;
+  letter-spacing: -0.09em;
+}
+.work-hero > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+}
+.work-hero p {
+  max-width: 500px;
+  line-height: 1.7;
+}
+.work-hero i {
+  font: 9px var(--mono);
+}
+.work-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.work-list article > header,
+.work-list article > footer {
+  display: flex;
+  justify-content: space-between;
+  width: auto;
+  padding: 14px 0;
+  border-top: 1px solid;
+}
+.work-list article small {
+  font: 9px var(--mono);
+}
+.work-visual {
+  display: grid;
+  place-items: center;
+  height: 480px;
+}
+.work-visual b {
+  font-size: clamp(40px, 7vw, 90px);
+}
+.work-visual-1 {
+  color: white;
+  background: #ed4b35;
+}
+.work-visual-2 {
+  color: white;
+  background: #175966;
+  transform: translateY(70px);
+}
+.work-visual-3 {
+  background: #daa13e;
+}
+.work-list article > footer {
+  align-items: start;
+}
+.work-list h2 {
+  max-width: 240px;
+  font-size: 25px;
+}
+.work-process {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 150px 0 80px;
+  padding: 50px 0;
+  border-top: 4px solid;
+}
+.work-process p {
+  max-width: 500px;
+  font-size: 22px;
+}
+
+@media (max-width: 800px) {
+  .work-2 {
+    transform: none;
+  }
+  .work-hero > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 30px;
+  }
+  .work-list {
+    grid-template-columns: 1fr;
+  }
+  .work-visual-2 {
+    transform: none;
+  }
+  .work-process {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tpl-portfolio > header > span {
+    display: none;
+  }
+}

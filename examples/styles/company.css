@@ -1,0 +1,172 @@
+.tpl-company {
+  color: #17204d;
+  background: #f6f7fb;
+  font-family: Arial;
+}
+.tpl-company > header,
+.tpl-company > main {
+  width: min(1180px, calc(100% - 40px));
+  margin: auto;
+}
+.tpl-company > header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 78px;
+  border-bottom: 1px solid #ccd0e3;
+}
+.tpl-company > header > a {
+  color: inherit;
+  font-weight: 800;
+}
+.tpl-company > header > a i {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  background: #5262ee;
+  transform: rotate(45deg);
+}
+.tpl-company > header button {
+  justify-self: end;
+  padding: 11px 16px;
+  color: white;
+  border: 0;
+  background: #5262ee;
+}
+.tpl-company nav a {
+  color: inherit;
+}
+.article-company {
+  color: #17204d;
+  background: #f6f7fb;
+  font-family: Arial;
+}
+.article-company .article-hero {
+  background: linear-gradient(135deg, #17204d, #6877ff);
+}
+.article-company .article-content > aside {
+  background: #e5e8fa;
+}
+.company-hero {
+  display: grid;
+  grid-template-columns: 1fr 250px;
+  gap: 50px;
+  align-items: end;
+  padding: 100px 0 70px;
+}
+.company-hero span,
+.company-feature small,
+.company-grid > article > span,
+.company-letter span {
+  color: #5262ee;
+  font: 10px var(--mono);
+}
+.company-hero h1 {
+  max-width: 850px;
+  margin: 18px 0;
+  font-size: clamp(60px, 8vw, 104px);
+  line-height: 0.88;
+  letter-spacing: -0.075em;
+}
+.company-hero p {
+  color: #687096;
+  font-size: 19px;
+}
+.company-hero aside {
+  display: flex;
+  flex-direction: column;
+  padding: 25px;
+  border: 1px solid #ccd0e3;
+}
+.company-hero aside strong {
+  color: #5262ee;
+  font-size: 54px;
+}
+.company-feature {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  min-height: 450px;
+  background: #17204d;
+  color: white;
+}
+.company-feature > div {
+  display: grid;
+  place-items: end start;
+  padding: 25px;
+  background: linear-gradient(135deg, #5364ef, #8e98ff);
+}
+.company-feature article {
+  padding: 55px;
+}
+.company-feature h2 {
+  font-size: 44px;
+}
+.company-feature p {
+  color: #b9bfdc;
+  line-height: 1.7;
+}
+.company-feature a {
+  color: white;
+}
+.company-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 55px 0;
+}
+.company-grid article {
+  padding: 35px;
+  border: 1px solid #ccd0e3;
+}
+.company-grid h3 {
+  font-size: 30px;
+}
+.company-letter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 80px;
+  padding: 45px;
+  background: #e6e9fb;
+}
+.company-letter h2 {
+  max-width: 650px;
+}
+.company-letter button {
+  padding: 14px;
+  color: white;
+  border: 0;
+  background: #5262ee;
+}
+
+@media (max-width: 800px) {
+  .company-hero,
+  .company-feature,
+  .company-grid {
+    grid-template-columns: 1fr;
+  }
+  .company-feature > div {
+    min-height: 320px;
+  }
+  .company-letter {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .company-hero {
+    grid-template-columns: 1fr;
+  }
+  .company-hero aside {
+    display: none;
+  }
+  .tpl-company > header {
+    grid-template-columns: 1fr auto;
+  }
+  .tpl-company > header nav {
+    display: none;
+  }
+}

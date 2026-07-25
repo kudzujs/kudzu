@@ -1,0 +1,155 @@
+.article-recipe {
+  color: #44291f;
+  background: #f4e5cc;
+}
+.article-recipe .article-hero {
+  background-image: url("https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1500&q=85");
+}
+.article-recipe .article-content > aside {
+  background: #ead1ad;
+}
+.tpl-recipe {
+  color: #44291f;
+  background: #f4e5cc;
+  font-family: Arial;
+}
+.tpl-recipe > header,
+.tpl-recipe > main {
+  width: min(1180px, calc(100% - 40px));
+  margin: auto;
+}
+.tpl-recipe > header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 96px;
+  border-bottom: 1px solid #9d735e;
+}
+.tpl-recipe > header > a {
+  color: #9b3e27;
+  font: 700 28px Georgia;
+}
+.tpl-recipe > header > a i {
+  font-weight: 400;
+}
+.tpl-recipe > header button {
+  justify-self: end;
+  padding: 10px 15px;
+  color: #f4e5cc;
+  border: 0;
+  background: #9b3e27;
+}
+.tpl-recipe nav a {
+  color: inherit;
+}
+.recipe-cover {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 55px;
+  align-items: center;
+  padding: 65px 0;
+}
+.recipe-photo {
+  min-height: 600px;
+  background: url("https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1100&q=80")
+    center/cover;
+  border-radius: 48% 48% 4px 4px;
+}
+.recipe-cover article > span,
+.recipe-week header > span {
+  color: #b64d2e;
+  font: 10px var(--mono);
+}
+.recipe-cover h1 {
+  margin: 18px 0;
+  font: 600 clamp(50px, 6vw, 82px)/0.9 Georgia;
+}
+.recipe-cover p {
+  font-size: 18px;
+  line-height: 1.6;
+}
+.recipe-cover article > div {
+  display: flex;
+  gap: 22px;
+  margin: 30px 0;
+  padding: 18px 0;
+  border-top: 1px solid #aa806c;
+  border-bottom: 1px solid #aa806c;
+}
+.recipe-cover article > div span {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+}
+.recipe-cover article > a {
+  color: white;
+  background: #9b3e27;
+  padding: 14px 18px;
+}
+.recipe-week {
+  padding: 75px 0;
+  border-top: 1px solid #9d735e;
+}
+.recipe-week h2 {
+  font: 48px Georgia;
+}
+.recipe-week > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+.recipe-image {
+  height: 350px;
+  background-size: cover;
+}
+.recipe-image-1 {
+  background-image: url("https://images.unsplash.com/photo-1519915028121-7d3463d20b13?auto=format&fit=crop&w=900&q=80");
+}
+.recipe-image-2 {
+  background-image: url("https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80");
+}
+.recipe-week small {
+  display: block;
+  margin-top: 15px;
+  color: #b64d2e;
+}
+.recipe-week h3 {
+  font: 28px Georgia;
+}
+.recipe-pantry {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  margin-bottom: 80px;
+  padding: 28px;
+  border: 1px solid #9d735e;
+}
+.recipe-pantry a {
+  margin-left: auto;
+}
+
+@media (max-width: 800px) {
+  .recipe-cover {
+    grid-template-columns: 1fr;
+  }
+  .recipe-photo {
+    min-height: 460px;
+  }
+  .recipe-week > div {
+    grid-template-columns: 1fr;
+  }
+  .recipe-pantry {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .recipe-pantry a {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .recipe-cover article > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

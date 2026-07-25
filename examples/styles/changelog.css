@@ -1,0 +1,156 @@
+.tpl-changelog {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  min-height: 100vh;
+  color: #e6edf3;
+  background: #0d1117;
+  font-family: var(--mono);
+}
+.tpl-changelog > aside {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 30px 24px;
+  border-right: 1px solid #30363d;
+}
+.tpl-changelog > aside > a {
+  color: #56d29a;
+  font-weight: 800;
+}
+.tpl-changelog > aside > a i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  background: #56d29a;
+  border-radius: 50%;
+}
+.tpl-changelog > aside nav {
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 70px;
+}
+.tpl-changelog > aside nav a {
+  padding: 11px;
+  color: #8b949e;
+}
+.tpl-changelog > aside nav .active {
+  color: white;
+  background: #161b22;
+}
+.tpl-changelog > aside footer {
+  margin-top: auto;
+  font-size: 9px;
+}
+.tpl-changelog > aside footer span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: #56d29a;
+  border-radius: 50%;
+}
+.tpl-changelog > main {
+  width: min(850px, calc(100% - 60px));
+  margin: auto;
+  padding: 70px 0;
+}
+.tpl-changelog main > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+}
+.tpl-changelog main > header span {
+  color: #56d29a;
+  font-size: 10px;
+}
+.tpl-changelog main > header h1 {
+  margin: 15px 0;
+  font: 700 72px Arial;
+}
+.tpl-changelog button {
+  padding: 10px;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  background: #161b22;
+}
+.article-changelog .article-hero {
+  min-height: 430px;
+  background: repeating-linear-gradient(
+    135deg,
+    #161b22 0 20px,
+    #1f2933 20px 40px
+  );
+}
+.article-changelog .article-content > aside {
+  border-color: #56d29a;
+}
+.article-release .release-badge {
+  align-self: start;
+  padding: 5px;
+  color: #0d1117;
+  background: #56d29a;
+}
+.change-filter {
+  display: flex;
+  gap: 8px;
+  margin: 50px 0;
+}
+.change-list article {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  padding: 45px 0;
+  border-top: 1px solid #30363d;
+}
+.change-list time {
+  display: flex;
+  flex-direction: column;
+  color: #8b949e;
+}
+.change-list time strong {
+  color: #e6edf3;
+}
+.change-list article > div > span {
+  margin-right: 12px;
+  padding: 5px 7px;
+  color: #0d1117;
+  background: #56d29a;
+  font-size: 9px;
+}
+.change-list .improved {
+  background: #79c0ff;
+}
+.change-list small {
+  color: #8b949e;
+}
+.change-list h2 {
+  font-size: 28px;
+}
+.change-list p,
+.change-list li {
+  color: #8b949e;
+  line-height: 1.7;
+}
+
+@media (max-width: 800px) {
+  .tpl-changelog {
+    grid-template-columns: 1fr;
+  }
+  .tpl-changelog > aside {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #30363d;
+  }
+  .tpl-changelog > aside nav {
+    display: none;
+  }
+  .tpl-changelog > aside footer {
+    margin-top: 20px;
+  }
+  .change-list article {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

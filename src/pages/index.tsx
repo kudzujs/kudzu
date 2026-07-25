@@ -38,6 +38,7 @@ export default function HomePage() {
           <a href="#quick-start">Start</a>
           <a href="#model">Model</a>
           <a href="/docs">Docs</a>
+          <a href="/example">Examples</a>
           <a href="https://www.npmjs.com/package/@kudzujs/core">npm</a>
           <a className="github-link" href="https://github.com/kudzujs/kudzu">GitHub ↗</a>
         </nav>

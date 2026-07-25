@@ -1,0 +1,136 @@
+.tpl-lifestyle {
+  color: #493a38;
+  background: #eee2dc;
+  font-family: Arial;
+}
+.tpl-lifestyle > header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  width: min(1200px, calc(100% - 40px));
+  min-height: 82px;
+  margin: auto;
+  align-items: center;
+  border-bottom: 1px solid #b19a94;
+}
+.tpl-lifestyle > header > a {
+  color: inherit;
+  font: 500 30px Georgia;
+  letter-spacing: 0.12em;
+}
+.tpl-lifestyle > header button {
+  border: 0;
+  background: none;
+}
+.tpl-lifestyle > header button:last-child {
+  justify-self: end;
+}
+.tpl-lifestyle > main {
+  width: min(1160px, calc(100% - 40px));
+  margin: auto;
+}
+.article-lifestyle {
+  color: #493a38;
+  background: #eee2dc;
+}
+.article-lifestyle .article-hero {
+  background-image: url("https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1500&q=85");
+}
+.article-lifestyle .article-content > aside {
+  background: #d8c2ba;
+}
+.life-tagline {
+  margin: 18px 0;
+  text-align: center;
+  font: italic 16px Georgia;
+}
+.life-cover {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 60px;
+  align-items: center;
+  padding: 40px 0 90px;
+}
+.life-cover-image {
+  min-height: 620px;
+  background: url("https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1100&q=80")
+    center/cover;
+}
+.life-cover span,
+.life-grid small,
+.life-edit > span {
+  color: #a65d63;
+  font: 9px var(--mono);
+  letter-spacing: 0.13em;
+}
+.life-cover h1 {
+  font: 500 clamp(50px, 6vw, 82px)/0.93 Georgia;
+}
+.life-cover p {
+  line-height: 1.7;
+}
+.life-cover a {
+  color: inherit;
+  border-bottom: 1px solid;
+}
+.life-grid {
+  display: grid;
+  grid-template-columns: 1fr 0.65fr 1fr;
+  gap: 28px;
+  align-items: center;
+  padding: 70px 0;
+  border-top: 1px solid #b19a94;
+}
+.life-image {
+  height: 370px;
+  margin-bottom: 16px;
+  background-size: cover;
+}
+.life-image-1 {
+  background-image: url("https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=800&q=80");
+}
+.life-image-2 {
+  background-image: url("https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=800&q=80");
+}
+.life-grid blockquote {
+  font: italic 28px/1.5 Georgia;
+}
+.life-grid h2 {
+  font: 27px Georgia;
+}
+.life-edit {
+  padding: 60px;
+  margin-bottom: 90px;
+  background: #d5bbb3;
+  text-align: center;
+}
+.life-edit h2 {
+  font: 44px Georgia;
+}
+.life-edit > div {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+}
+.life-edit i {
+  width: 70px;
+  height: 70px;
+  background: #eee2dc;
+  border-radius: 50%;
+}
+
+@media (max-width: 800px) {
+  .life-cover,
+  .life-grid {
+    grid-template-columns: 1fr;
+  }
+  .life-grid blockquote {
+    padding: 35px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .tpl-lifestyle > header {
+    grid-template-columns: 50px 1fr 50px;
+    text-align: center;
+  }
+}

@@ -1,0 +1,125 @@
+.article-developer .article-hero {
+  background: linear-gradient(135deg, #0d2d1e, #79f2b5);
+}
+.tpl-developer {
+  color: #d7f5e5;
+  background: #07100c;
+  font-family: var(--mono);
+}
+.tpl-developer > header,
+.tpl-developer > main {
+  width: min(1160px, calc(100% - 40px));
+  margin: auto;
+}
+.tpl-developer > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 74px;
+  border-bottom: 1px solid #244334;
+}
+.tpl-developer > header > a {
+  color: #79f2b5;
+  font-size: 20px;
+  font-weight: 800;
+}
+.tpl-developer > header > a span {
+  color: #718077;
+}
+.dev-lead > div > span,
+.dev-feed > header span,
+.dev-snippet > span {
+  color: #79f2b5;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.dev-lead h1 {
+  margin: 22px 0;
+  font: 700 clamp(48px, 7vw, 92px)/0.9 var(--mono);
+  letter-spacing: -0.07em;
+}
+.dev-lead h1 span {
+  color: #79f2b5;
+}
+.article-code code {
+  padding: 14px;
+  color: #79f2b5;
+  background: #07100c;
+}
+.dev-lead {
+  display: grid;
+  grid-template-columns: 1fr 0.75fr;
+  gap: 60px;
+  align-items: center;
+  min-height: 580px;
+}
+.dev-lead p {
+  color: #799285;
+  line-height: 1.7;
+}
+.dev-lead > div > a {
+  color: #79f2b5;
+}
+.dev-lead pre {
+  padding: 32px;
+  color: #bce8d0;
+  border: 1px solid #315942;
+  background: #0b1912;
+  line-height: 2;
+  box-shadow: 12px 12px 0 #10271b;
+}
+.dev-feed {
+  border-top: 1px solid #315942;
+}
+.dev-feed > header {
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 0;
+}
+.dev-feed article {
+  display: grid;
+  grid-template-columns: 60px 1fr auto;
+  align-items: center;
+  padding: 25px 0;
+  border-top: 1px solid #1c3327;
+}
+.dev-feed article > span,
+.dev-feed small,
+.dev-feed article > code {
+  color: #6d8879;
+}
+.dev-feed h2 {
+  margin: 7px 0 0;
+  font-size: 24px;
+}
+.dev-snippet {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  margin: 70px 0;
+  padding: 24px;
+  border: 1px dashed #315942;
+}
+.dev-snippet button {
+  color: #79f2b5;
+  border: 0;
+  background: none;
+}
+
+@media (max-width: 800px) {
+  .dev-lead {
+    grid-template-columns: 1fr;
+  }
+  .dev-lead {
+    padding: 70px 0;
+  }
+  .dev-feed article {
+    grid-template-columns: 45px 1fr;
+  }
+  .dev-feed article > code {
+    grid-column: 2;
+  }
+  .dev-snippet {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
