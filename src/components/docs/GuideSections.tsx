@@ -96,6 +96,12 @@ export function ComponentsSection() {
 export default function Page() {
   return <Greeting name="Kudzu" />
 }`} />
+    <p>State-backed keyed lists may stay in one same-file component when the page passes its local state identifier directly as a prop. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
+    <CodeBlock code={`function ItemList({ items }: { items: Item[] }) {
+  return <ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+}
+
+return <ItemList items={items} />`} />
   </section>
 }
 

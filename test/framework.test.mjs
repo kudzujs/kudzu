@@ -877,6 +877,26 @@ test("specializes relative imported keyed list components", async t => {
   assert.equal(plan.lists.length, 3)
 })
 
+test("specializes state-backed list components", async t => {
+  const fixture = new URL("./fixtures/component-lists", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/component-lists/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/component-lists/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/component-lists/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/component-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/component-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-component-list.*data-item="1">Oak.*data-item="2">Pine/s)
+  assert.equal((component.match(/__kList\(/g) ?? []).length, 1)
+  assert.match(component, /function ItemList\(\{ items \}\)/)
+  assert.equal(plan.lists.length, 1)
+  assert.equal(plan.lists[0].state, "s0")
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runComponentListBrowserTest(fixture, chrome)
+})
+
 test("rejects package imported and cyclic re-exported keyed list components", () => {
   for (const [fixture, message] of [
     ["imported-list-invalid-package", /must be declared locally or imported from a relative TypeScript module/],
@@ -946,6 +966,7 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-prototype-key", /property "__proto__" is not supported/],
     ["list-invalid-spread", /item spreads are not supported/],
     ["list-invalid-style", /style must be an object/],
+    ["component-list-invalid-mixed", /State-backed list component ItemList must receive its mapped prop from local state at every call/],
     ["list-invalid-alias-reuse", /Keyed list local "rows" must be rendered exactly once/],
     ["list-invalid-alias-use", /Keyed list local "rows" may only be used as a JSX child/],
     ["list-invalid-table", /must be wrapped in <tbody>/]
@@ -1031,22 +1052,14 @@ test("bundles relative TypeScript Workers for inline effects", async t => {
     const firstWorker = await readFile(new URL(`dist/assets/workers/${firstFiles[0]}`, fixture))
     const dashboard = await readFile(new URL("dist/dashboard/index.html", fixture), "utf8")
     const plain = await readFile(new URL("dist/plain/index.html", fixture), "utf8")
-    const devices = await readFile(new URL("dist/devices/index.html", fixture), "utf8")
-    const device = await readFile(new URL("dist/devices/[id]/index.html", fixture), "utf8")
     const staticHtml = await readFile(new URL("dist/static/index.html", fixture), "utf8")
     const handler = await readFile(new URL("dist/assets/handlers/pages/dashboard.js", fixture), "utf8")
     const capabilityPaths = ["kudzu.js", "kudzu-effect.js", "kudzu-navigation.js", "effects/dashboard/index.js"]
     const capabilities = await Promise.all(capabilityPaths.map(path => readFile(new URL(`dist/assets/${path}`, fixture))))
-    assert.doesNotMatch([dashboard, plain, devices, device, staticHtml].join("\n"), /assets\/workers|\.worker-/)
+    assert.doesNotMatch([dashboard, plain, staticHtml].join("\n"), /assets\/workers|\.worker-/)
     assert.match(handler, new RegExp(`/dash/assets/workers/${firstFiles[0].replace(".", "\\.")}`))
     assert.doesNotMatch(handler, /__kudzu_worker_|import\.meta|telemetry\.worker\.ts/)
     assert.doesNotMatch(plain, /effects\/|kudzu-effect|handlers\/pages\/dashboard/)
-    assert.match(devices, /Oak sensor/)
-    assert.match(devices, /Pine meter/)
-    assert.match(devices, /Elm gateway/)
-    assert.match(device, /data-k-route="\/devices\/\[id\]"/)
-    assert.match(device, /data-command="timeout"/)
-    assert.doesNotMatch([dashboard, plain, devices, staticHtml].join("\n"), /effects\/devices\/\[id\]|handlers\/pages\/devices\/\[id\]/)
     assert.doesNotMatch(staticHtml, /<script|data-k-state|data-k-capability/)
 
     const second = buildFixture()
@@ -1819,28 +1832,8 @@ http.createServer((request, response) => {
     return response.end(JSON.stringify(counts.get(url.searchParams.get("path")) || 0))
   }
   counts.set(url.pathname, (counts.get(url.pathname) || 0) + 1)
-  if (url.pathname.startsWith("/dash/api/devices/")) {
-    response.setHeader("content-type", "application/json")
-    if (!url.pathname.endsWith("/commands")) {
-      const id = decodeURIComponent(url.pathname.split("/").at(-1))
-      return response.end(JSON.stringify({ name: id === "oak" ? "Oak sensor" : id + " device", connection: "online" }))
-    }
-    let body = ""
-    request.on("data", chunk => { body += chunk })
-    request.on("end", () => {
-      const command = JSON.parse(body).command
-      if (command === "reject") {
-        response.statusCode = 503
-        return response.end(JSON.stringify({ error: "rejected" }))
-      }
-      const delay = command === "reboot" ? 20000 : command === "timeout" ? 700 : 20
-      setTimeout(() => response.end(JSON.stringify({ command })), delay)
-    })
-    return
-  }
   const relative = url.pathname.replace(/^\\/dash\\/?/, "")
-  const runtimeDevice = /^devices\\/[^/]+\\/?$/.test(relative)
-  const file = path.join(root, runtimeDevice ? "devices/[id]/index.html" : !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  const file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1", () => console.log("ready"))
@@ -1873,88 +1866,6 @@ http.createServer((request, response) => {
     const rate = (generated - 130) * 1000 / elapsed
     assert.ok(rate >= 700 && rate <= 1300, `logical rate ${rate}`)
     assert.ok(renders >= 2 && renders <= elapsed / 40 + 2, `render cadence ${renders}`)
-    assert.equal(await fetch(`http://127.0.0.1:${port}/request-count?path=${encodeURIComponent(workerPath)}`).then(response => response.json()), 1)
-
-    const workflow = await evaluateInChrome(chrome, `http://127.0.0.1:${port}/dash/devices/oak`, `
-      (async () => {
-        const waitFor = async (test, label) => {
-          for (let index = 0; index < 250; index++) {
-            if (test()) return
-            await new Promise(resolve => setTimeout(resolve, 20))
-          }
-          throw new Error(label)
-        }
-        const click = selector => document.querySelector(selector).click()
-        const route = name => document.querySelector('[data-route="' + name + '"]')
-        await waitFor(() => route("device")?.dataset.deviceId === "oak" && document.querySelector("[data-connection]")?.textContent === "online", "direct device load")
-        if (document.querySelector("strong[data-device-id]").textContent !== "oak" || document.querySelector("h1").textContent !== "Oak sensor") throw new Error("runtime device identity")
-
-        click("[data-devices-link]")
-        await waitFor(() => route("devices") && document.querySelectorAll("[data-device]").length === 3, "device list")
-        click('[data-filter="online"]')
-        await waitFor(() => document.querySelectorAll("[data-device]").length === 2, "online filter")
-        if ([...document.querySelectorAll("[data-device]")].some(row => row.dataset.status !== "online")) throw new Error("online rows")
-        click('[data-filter="offline"]')
-        await waitFor(() => document.querySelectorAll("[data-device]").length === 1, "offline filter")
-        if (document.querySelector("[data-device]").dataset.device !== "pine") throw new Error("offline row")
-        click('[data-filter="missing"]')
-        await waitFor(() => document.querySelectorAll("[data-device]").length === 0 && document.querySelector("[data-device-empty]"), "empty filter")
-        click('[data-filter="all"]')
-        await waitFor(() => document.querySelectorAll("[data-device]").length === 3 && !document.querySelector("[data-device-empty]"), "restore filter")
-
-        click("[data-device-link]")
-        await waitFor(() => route("device")?.dataset.deviceId === "oak" && document.querySelector("[data-connection]")?.textContent === "online", "device revisit")
-        click('[data-command="reboot"]')
-        await waitFor(() => route("device").dataset.commandStatus === "sending" && globalThis.deviceWorkflowStats.commandStarts >= 1, "reboot start")
-        click('[data-command="refresh"]')
-        await waitFor(() => route("device").dataset.commandStatus === "success", "refresh success")
-        await new Promise(resolve => setTimeout(resolve, 220))
-        if (route("device").dataset.appliedCommand !== "refresh") throw new Error("superseded command")
-
-        click('[data-command="reject"]')
-        await waitFor(() => route("device").dataset.commandStatus === "error" && document.querySelector("[data-command-error]")?.textContent.includes("503"), "command rejection")
-        if (route("device").dataset.appliedCommand !== "refresh" || document.querySelector("[data-command-error]").getAttribute("role") !== "alert") throw new Error("rejection rollback")
-        click('[data-command="timeout"]')
-        await waitFor(() => route("device").dataset.commandStatus === "error" && document.querySelector("[data-command-error]")?.textContent === "Command timed out", "command timeout")
-        if (route("device").dataset.appliedCommand !== "refresh") throw new Error("timeout rollback")
-
-        click('[data-command="reboot"]')
-        await waitFor(() => route("device").dataset.commandStatus === "sending", "departure command")
-        const removedDevice = route("device")
-        click("[data-plain-link]")
-        await waitFor(() => route("plain") && globalThis.deviceWorkflowStats.timers === 0, "departure cleanup")
-        const removedStatus = removedDevice.dataset.commandStatus
-        await new Promise(resolve => setTimeout(resolve, 220))
-        if (removedDevice.dataset.commandStatus !== removedStatus) throw new Error("stale removed route write")
-        history.back()
-        await waitFor(() => route("device")?.dataset.deviceId === "oak", "device history back")
-        history.forward()
-        await waitFor(() => route("plain"), "device history forward")
-
-        const stats = globalThis.deviceWorkflowStats
-        const before = { starts: stats.commandStarts, cleanups: stats.commandCleanups, aborts: stats.commandAborts }
-        for (let cycle = 1; cycle <= 30; cycle++) {
-          click("[data-device-link]")
-          await waitFor(() => route("device")?.dataset.deviceId === "oak", "device cycle mount " + cycle)
-          click('[data-command="reboot"]')
-          await waitFor(() => stats.commandStarts === before.starts + cycle, "device command start " + cycle)
-          click("[data-plain-link]")
-          await waitFor(() => route("plain") && stats.commandAborts === before.aborts + cycle && stats.timers === 0, "device command cleanup " + cycle)
-        }
-        await new Promise(resolve => setTimeout(resolve, 50))
-        return {
-          applied: removedDevice.dataset.appliedCommand,
-          starts: stats.commandStarts - before.starts,
-          cleanups: stats.commandCleanups - before.cleanups,
-          aborts: stats.commandAborts - before.aborts,
-          timers: stats.timers,
-          stale: stats.stale,
-        }
-      })()
-    `, port + 2, new URL(".chrome-device-profile", output))
-    assert.equal(workflow.applied, "refresh")
-    assert.deepEqual({ starts: workflow.starts, cleanups: workflow.cleanups, aborts: workflow.aborts, timers: workflow.timers }, { starts: 30, cleanups: 30, aborts: 30, timers: 0 })
-    assert.ok(workflow.stale >= 1)
     assert.equal(await fetch(`http://127.0.0.1:${port}/request-count?path=${encodeURIComponent(workerPath)}`).then(response => response.json()), 1)
 
     const fakeWorker = `<script>
@@ -2271,6 +2182,56 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runComponentListBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const click = action => document.querySelector('[data-action="' + action + '"]').click()
+try {
+  const list = () => [...document.querySelectorAll("[data-component-list] > li")]
+  if (list().map(node => node.dataset.item).join(",") !== "1,2") throw new Error("initial")
+  click("add")
+  await wait()
+  if (list().map(node => node.textContent).join(",") !== "Oak,Pine,Elm") throw new Error("add")
+  const oak = list()[0]
+  click("rename")
+  await wait()
+  if (list()[0] !== oak || oak.textContent !== "Red oak") throw new Error("update")
+  click("reorder")
+  await wait()
+  if (list().map(node => node.dataset.item).join(",") !== "3,2,1" || list()[2] !== oak) throw new Error("reorder")
+  click("remove")
+  await wait()
+  if (list().map(node => node.dataset.item).join(",") !== "3,1") throw new Error("remove")
+  document.body.dataset.componentListTest = "pass"
+} catch (error) {
+  document.body.dataset.componentListTest = "fail-" + error.message
+}
+`)
+  const port = 40100 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-component-list-test="pass"/)
   } finally {
     server.kill()
   }

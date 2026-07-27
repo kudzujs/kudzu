@@ -1701,8 +1701,36 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         }
       }
     }
+    const fail = (node, message) => {
+      throw sourceNodeError(node, sourceFile, message)
+    }
+    const componentSpecializations = new WeakMap()
+    const specializedDeclarations = new WeakSet()
+    const stateBackedComponentFunctions = new WeakSet()
+    const stateBackedComponentRoots = []
+    for (const [name, component] of components) {
+      const calls = jsxTagUses(sourceFile, name)
+      const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component.function, settersByFunction.get(nearestFunction(call)) ?? new Map()))
+      if (!stateBackedCalls.length) continue
+      if (isExportedDeclaration(component.declaration)) fail(component.declaration, `State-backed list component ${name} cannot be exported`)
+      if (identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `State-backed list component ${name} may only be referenced as JSX`)
+      if (stateBackedCalls.length !== calls.length) fail(component.declaration, `State-backed list component ${name} must receive its mapped prop from local state at every call`)
+      for (const call of stateBackedCalls) {
+        const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
+        if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
+        componentSpecializations.set(call, specialization)
+        stateBackedComponentRoots.push(specialization.root)
+      }
+      specializedDeclarations.add(component.declaration)
+      stateBackedComponentFunctions.add(component.function)
+    }
     const rawRenderedLists = []
     const collectRenderedLists = node => {
+      const specialization = componentSpecializations.get(node)
+      if (specialization) {
+        collectRenderedLists(specialization.root)
+        return
+      }
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
         const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction))
         if (parts) rawRenderedLists.push({ node, parts })
@@ -1710,9 +1738,6 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       ts.forEachChild(node, collectRenderedLists)
     }
     collectRenderedLists(sourceFile)
-    const fail = (node, message) => {
-      throw sourceNodeError(node, sourceFile, message)
-    }
     const rejectUnsupportedRenderControl = node => {
       if (ts.isIfStatement(node) && containsRenderControl(node, jsxLocalsByFunction.get(nearestFunction(node)) ?? new Set())) {
         const setters = settersForNode(node, settersByFunction)
@@ -1727,8 +1752,6 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       const tag = jsxTagName(parts.root)
       return tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase() ? [tag.text] : []
     }))
-    const componentSpecializations = new WeakMap()
-    const specializedDeclarations = new WeakSet()
     const keyedComponentCalls = new Set(rawRenderedLists.map(({ parts }) => parts.root))
     for (const name of listComponentNames) {
       let component = components.get(name)
@@ -1740,8 +1763,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         component = { function: resolveComponentExport(binding.target, imported, importedSource, sourceFiles), declaration: undefined }
       }
       if (local && isExportedDeclaration(component.declaration)) fail(component.declaration, `Keyed list component ${name} cannot be exported`)
-      const calls = jsxTagUses(sourceFile, name)
-      if (local && identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
+      const declaredCalls = jsxTagUses(sourceFile, name)
+      if (local && identifierReferenceCount(sourceFile, name) !== declaredCalls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
+      const calls = [
+        ...declaredCalls.filter(call => !stateBackedComponentFunctions.has(nearestFunction(call))),
+        ...stateBackedComponentRoots.flatMap(root => jsxTagUses(root, name))
+      ]
       for (const call of calls) {
         const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
         if (specialization.effects.length && !keyedComponentCalls.has(call)) fail(call, "Effectful keyed row components may only be used directly as keyed map rows")
@@ -2141,6 +2168,36 @@ function keyedListParts(expression, setters) {
   const field = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression && directProperty(key.initializer.expression, callback.parameters[0].name.text)
   if (!field) throw new Error(`Keyed list root must have key={${callback.parameters[0].name.text}.<field>}`)
   return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
+}
+
+function isStateBackedListComponentCall(call, component, setters) {
+  if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) return false
+  const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+  const stateNames = new Set(setters.values())
+  const mappedProps = new Set()
+  for (const element of component.parameters[0].name.elements) {
+    if (!ts.isIdentifier(element.name)) continue
+    const prop = (element.propertyName ?? element.name).getText()
+    const attribute = attributes.properties.find(entry => ts.isJsxAttribute(entry) && entry.name.getText() === prop)
+    const value = attribute?.initializer && ts.isJsxExpression(attribute.initializer) ? unwrapExpression(attribute.initializer.expression) : undefined
+    if (value && ts.isIdentifier(value) && stateNames.has(value.text)) mappedProps.add(element.name.text)
+  }
+  if (!mappedProps.size) return false
+  const returned = ts.isBlock(component.body)
+    ? [...component.body.statements].reverse().find(ts.isReturnStatement)?.expression
+    : component.body
+  if (!returned || !containsJsx(returned)) return false
+  let found = false
+  const visit = node => {
+    if (found || node !== returned && isFunctionLike(node)) return
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && ts.isIdentifier(node.expression.expression) && mappedProps.has(node.expression.expression.text)) {
+      found = true
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(returned)
+  return found
 }
 
 function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions) {

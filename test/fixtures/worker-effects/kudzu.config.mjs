@@ -1,4 +1,4 @@
 export default {
   base: "/dash",
-  navigation: { routes: ["/dashboard", "/plain", "/devices", "/devices/[id]"] }
+  navigation: { routes: ["/dashboard", "/plain"] }
 }

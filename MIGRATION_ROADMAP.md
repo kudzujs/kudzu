@@ -4,11 +4,9 @@ This document is the durable product and implementation direction for future Kud
 
 The approved business-application milestone and its performance gates are defined in [`GOAL_A.md`](./GOAL_A.md). Static realtime dashboard work is defined in [`GOAL_B.md`](./GOAL_B.md).
 
-Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports the legacy `navigation: { routes: string[] }` group and post-Goal-A `navigation: { groups: [{ routes: string[] }] }` shared-layout groups. Each group enhances only its emitted exact or `runtimeParams` routes exporting the same layout function; group assets and pattern/effect/parameter specialization are independent, cross-group links remain native, and overlapping path domains are rejected. Every route remains a complete document. Layout- and route-lifetime effects, including effects owned by conditional DOM and keyed rows, mount for their declared lifetime. Route registries are recreated after each insertion while the layout registry persists. Direct JSON-safe primitive keyed-item property dependencies rerun only rows whose selected values changed. The Phase 6 compatibility probe confirms that these lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
+Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports the legacy `navigation: { routes: string[] }` group and post-Goal-A `navigation: { groups: [{ routes: string[] }] }` shared-layout groups. Each group enhances only its emitted exact or `runtimeParams` routes exporting the same layout function; group assets and pattern/effect/parameter specialization are independent, cross-group links remain native, and overlapping path domains are rejected. Every route remains a complete document. Layout- and route-lifetime effects, including effects owned by conditional DOM and keyed rows, mount for their declared lifetime. Route registries are recreated after each insertion while the layout registry persists. Direct JSON-safe primitive keyed-item property dependencies rerun only rows whose selected values changed. Same-file components may receive a local state array directly and render its keyed map under an intrinsic root; the compiler specializes the wrapper at build time. The Phase 6 compatibility probe confirms that these lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
 
 Goal B Milestone 1 is implemented. Exact relative `.worker.ts` module construction inside compiled inline effects emits a separately hashed Worker graph under `assets/workers`; route cleanup owns termination, and non-Worker routes retain their existing capability paths. The supported syntax and deliberate graph limits are specified in `GOAL_B.md`.
-
-Goal B Milestone 2 is implemented with existing capabilities. A static keyed device list and runtime-parameter detail route prove filtering, route-owned fetch and command effects, timeout and HTTP failure feedback, superseding abort, stale-response suppression, and repeated navigation cleanup without a request abstraction or shared transport.
 
 ## North Star
 
@@ -42,7 +40,7 @@ Kudzu already has the pieces below. Reuse them instead of creating parallel syst
 - `getStaticPaths()` handles dynamic paths known during the build and passes page props.
 - `useState`, context, reactive text and attributes, conditionals, keyed lists, and normal ESM event handlers compile to direct DOM behavior.
 - Shared state, serialization, DOM commit batching, mount hooks, and cleanup hooks already exist in capability runtimes.
-- Imported relative TypeScript helpers and imported keyed-list row components already have build-time resolution paths.
+- Imported relative TypeScript helpers, imported keyed-list row components, and same-file state-backed list wrappers already have build-time resolution paths.
 
 For build-time data, prefer the existing form:
 
