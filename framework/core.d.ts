@@ -70,6 +70,7 @@ export function renderPage<Props = Record<string, never>>(
   hasLists: boolean
   hasListStyles: boolean
   hasStateSeed: boolean
+  handlerModules: string[]
   plan: {
     states: Array<{ id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route" }>
     params: Array<{ name: string; id: string }>

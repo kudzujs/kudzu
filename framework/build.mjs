@@ -70,6 +70,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
   const emittedNavigationRecords = []
+  const renderedHandlerUrls = new Set()
   const styleUrls = [...new Set([
     ...cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)),
     ...configuredStyles
@@ -129,6 +130,7 @@ export async function build({ quiet = false, minify = true } = {}) {
         runtimeParams: runtimeSchema?.params,
         ...(navigable ? { navigationAsset: navigationGroup.assetPath, applicationId: navigationGroup.applicationId, layoutId: navigationGroup.layoutId, routeId: applicationRoute } : {})
       }, props, module.layout)
+      for (const url of result.handlerModules) renderedHandlerUrls.add(url)
       if (navigationGroup) {
         navigationGroup.hasEffects ||= result.hasEffects
         navigationGroup.hasParams ||= result.hasParams
@@ -163,11 +165,12 @@ export async function build({ quiet = false, minify = true } = {}) {
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
+  const emittedHandlerModules = handlerModules.filter(module => renderedHandlerUrls.has(assetPath(base, `assets/${module.path}`)))
   const renderedEffects = new Set(plans.flatMap(plan => plan.effects.map(effect => `${effect.module}:${effect.handler}`)))
   const renderedWorkerReferences = workerReferences.filter(reference => renderedEffects.has(`${reference.module}:${reference.handler}`))
   if (renderedWorkerReferences.length && await exists(join(root, "public", "assets", "workers"))) throw new Error("public/assets/workers collides with Kudzu's generated Worker asset namespace")
   const workerAssets = await emitWorkers(renderedWorkerReferences, sourceFileSet, assetsDirectory, base, minify)
-  for (const module of handlerModules) {
+  for (const module of emittedHandlerModules) {
     for (const reference of workerReferences) {
       if (reference.module !== assetPath(base, `assets/${module.path}`)) continue
       const url = workerAssets.get(reference.placeholder) ?? "about:blank"
@@ -192,7 +195,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasNestedStateCaptures = hasNestedCaptureState(plans)
   const hasSetterCaptures = hasCaptureType(plans, "setter")
   const hasEffectCaptures = plans.some(plan => plan.effects.some(effect => Object.keys(effect.scope).length))
-  const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
+  const nativeModules = emittedHandlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
   const hasNativeHandlers = nativeModules.length > 0
   const hasEffects = effectEntries.length > 0
   const hasNavigableEffects = effectEntries.some(entry => entry.navigable)
@@ -290,7 +293,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       await writeJavaScript(join(assetsDirectory, group.assetName), specializeNavigationEffects(navigationRuntime, group.hasEffects || group.hasParams), minify)
     }
   }
-  for (const handlerModule of handlerModules) {
+  for (const handlerModule of emittedHandlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
     await mkdir(resolve(output, ".."), { recursive: true })
     await writeJavaScript(output, handlerModule.code, minify)
@@ -305,11 +308,11 @@ export async function build({ quiet = false, minify = true } = {}) {
     await mkdir(dirname(output), { recursive: true })
     await writeJavaScript(output, entry.navigable
       ? entry.effects.some(effect => effect.owner)
-        ? printOwnedNavigableEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base)
-        : printNavigableEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base)
-      : printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime)), minify)
+        ? printOwnedNavigableEffectEntry(entry.effects, output, emittedHandlerModules, assetsDirectory, base)
+        : printNavigableEffectEntry(entry.effects, output, emittedHandlerModules, assetsDirectory, base)
+      : printEffectEntry(entry.effects, output, emittedHandlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime)), minify)
   }
-  const clientModules = await collectClientModules(handlerModules.flatMap(module => module.clientImports), sourceFileSet)
+  const clientModules = await collectClientModules(emittedHandlerModules.flatMap(module => module.clientImports), sourceFileSet)
   for (const file of clientModules) {
     const output = join(assetsDirectory, clientModulePath(file))
     await mkdir(resolve(output, ".."), { recursive: true })
@@ -317,7 +320,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   }
   if (clientModules.length) {
     await bundle({
-      entryPoints: handlerModules.map(module => join(assetsDirectory, module.path)),
+      entryPoints: emittedHandlerModules.map(module => join(assetsDirectory, module.path)),
       outbase: join(assetsDirectory, "handlers"),
       outdir: join(assetsDirectory, "handlers"),
       entryNames: "[dir]/[name]",
@@ -1724,6 +1727,26 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       specializedDeclarations.add(component.declaration)
       stateBackedComponentFunctions.add(component.function)
     }
+    for (const [name, binding] of importBindings) {
+      if (binding.kind === "namespace") continue
+      const calls = jsxTagUses(sourceFile, name)
+      if (!calls.some(call => jsxCallHasDirectStateProp(call, settersByFunction.get(nearestFunction(call)) ?? new Map()))) continue
+      const imported = binding.kind === "default" ? "default" : binding.imported
+      let component
+      try {
+        component = resolveComponentExport(binding.target, imported, importedSource, sourceFiles)
+      } catch (error) {
+        if (error.message.includes("does not export a statically analyzable keyed list component")) continue
+        throw error
+      }
+      const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component, settersByFunction.get(nearestFunction(call)) ?? new Map()))
+      for (const call of stateBackedCalls) {
+        const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail)
+        if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
+        componentSpecializations.set(call, specialization)
+        stateBackedComponentRoots.push(specialization.root)
+      }
+    }
     const rawRenderedLists = []
     const collectRenderedLists = node => {
       const specialization = componentSpecializations.get(node)
@@ -2164,7 +2187,7 @@ function keyedListParts(expression, setters) {
   const root = unwrapExpression(callback.body)
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) throw new Error("Keyed list map callback must return one JSX element")
   const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
-  const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && attribute.name.getText() === "key")
+  const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === "key")
   const field = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression && directProperty(key.initializer.expression, callback.parameters[0].name.text)
   if (!field) throw new Error(`Keyed list root must have key={${callback.parameters[0].name.text}.<field>}`)
   return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
@@ -2198,6 +2221,15 @@ function isStateBackedListComponentCall(call, component, setters) {
   }
   visit(returned)
   return found
+}
+
+function jsxCallHasDirectStateProp(call, setters) {
+  const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+  const stateNames = new Set(setters.values())
+  return attributes.properties.some(attribute => {
+    const value = ts.isJsxAttribute(attribute) && attribute.initializer && ts.isJsxExpression(attribute.initializer) ? unwrapExpression(attribute.initializer.expression) : undefined
+    return value && ts.isIdentifier(value) && stateNames.has(value.text)
+  })
 }
 
 function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions) {

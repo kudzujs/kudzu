@@ -897,6 +897,27 @@ test("specializes state-backed list components", async t => {
   if (chrome) await runComponentListBrowserTest(fixture, chrome)
 })
 
+test("specializes relative imported state-backed list components", async t => {
+  const fixture = new URL("./fixtures/imported-component-lists", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/imported-component-lists/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/imported-component-lists/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/imported-component-lists/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/imported-component-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const nativeRuntime = await readFile(new URL("./fixtures/imported-component-lists/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/imported-component-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-default-list.*data-named-list.*data-barrel-list/s)
+  assert.equal((component.match(/__kList\(/g) ?? []).length, 3)
+  assert.deepEqual(plan.lists.map(list => list.state), ["s0", "s0", "s0"])
+  assert.equal(existsSync(new URL("./fixtures/imported-component-lists/dist/assets/handlers/components", import.meta.url)), false)
+  assert.doesNotMatch(nativeRuntime, /handlers\/components/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runImportedComponentListBrowserTest(fixture, chrome)
+})
+
 test("rejects package imported and cyclic re-exported keyed list components", () => {
   for (const [fixture, message] of [
     ["imported-list-invalid-package", /must be declared locally or imported from a relative TypeScript module/],
@@ -2232,6 +2253,58 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-component-list-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runImportedComponentListBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const click = action => document.querySelector('[data-action="' + action + '"]').click()
+const selectors = ["[data-default-list]", "[data-named-list]", "[data-barrel-list]"]
+const rows = selector => [...document.querySelectorAll(selector + " > [data-item]")]
+try {
+  if (selectors.some(selector => rows(selector).map(node => node.dataset.item).join(",") !== "1,2")) throw new Error("initial")
+  if (rows("[data-default-list]")[0].getAttribute("aria-label") !== "OAK") throw new Error("specialized-expression")
+  const oaks = selectors.map(selector => rows(selector)[0])
+  click("add")
+  await wait()
+  if (selectors.some(selector => rows(selector).map(node => node.textContent).join(",") !== "Oak,Pine,Elm")) throw new Error("add")
+  click("rename")
+  await wait()
+  if (selectors.some((selector, index) => rows(selector)[0] !== oaks[index] || oaks[index].textContent !== "Red oak") || oaks[0].getAttribute("aria-label") !== "RED OAK") throw new Error("update")
+  click("reorder")
+  await wait()
+  if (selectors.some((selector, index) => rows(selector).map(node => node.dataset.item).join(",") !== "3,2,1" || rows(selector)[2] !== oaks[index])) throw new Error("reorder")
+  click("remove")
+  await wait()
+  if (selectors.some(selector => rows(selector).map(node => node.dataset.item).join(",") !== "3,1")) throw new Error("remove")
+  document.body.dataset.importedComponentListTest = "pass"
+} catch (error) {
+  document.body.dataset.importedComponentListTest = "fail-" + error.message
+}
+`)
+  const port = 40200 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-imported-component-list-test="pass"/)
   } finally {
     server.kill()
   }

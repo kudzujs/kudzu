@@ -99,6 +99,7 @@ export function useEffect(callback, dependencies, module, handler, states, scope
     owners.push(owner)
   }
   if (!renderContext.listDepth || list) renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
+  renderContext.handlerModules.add(module)
   renderContext.hasBehaviors = true
   renderContext.hasEffects = true
 }
@@ -141,6 +142,7 @@ export function behavior(commands) {
 }
 
 export function nativeBehavior(module, handler, states, scope) {
+  renderContext?.handlerModules.add(module)
   return {
     [nativeBehaviorMarker]: true,
     module,
@@ -187,6 +189,7 @@ export function listField(read, field) {
 }
 
 export function listExpression(read, module, handler) {
+  renderContext?.handlerModules.add(module)
   const value = renderContext?.listTemplate ? undefined : read()
   if (value && typeof value.then === "function") throw new Error("Derived keyed list item expressions must return synchronous values")
   return { [listExpressionMarker]: true, module, handler, value }
@@ -197,6 +200,7 @@ export function listItem() {
 }
 
 export function listConditional(kind, read, truthy, falsy, module, handler) {
+  renderContext?.handlerModules.add(module)
   return { [listConditionalMarker]: true, kind, value: renderContext?.listTemplate ? undefined : read(), truthy, falsy, module, handler }
 }
 
@@ -230,6 +234,7 @@ function assertListValue(value, seen) {
 }
 
 function reactiveDescriptor(module, handler, states, scope) {
+  renderContext?.handlerModules.add(module)
   const scopeStates = {}
   const serializedScope = {}
   const scopeBindings = {}
@@ -295,7 +300,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -370,6 +375,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
       hasLists: renderContext.hasLists,
       hasListStyles: renderContext.hasListStyles,
       hasStateSeed: initialState.length > 0,
+      handlerModules: [...renderContext.handlerModules],
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
         params: renderContext.paramEntries,

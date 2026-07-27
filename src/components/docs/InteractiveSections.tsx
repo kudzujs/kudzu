@@ -104,6 +104,7 @@ return <><button onClick={create}>Create</button><button onClick={add}>Add</butt
 const rows = items.map(item =>
   <TreeRow key={item.id} name={item.name} onRemove={() => setItems(items.filter(entry => entry.id !== item.id))} />
 )`} />
+    <p>The whole map may also live in a same-file or relative-imported wrapper receiving <code>items</code> directly from local state. Default, named/aliased, and direct named re-export wrappers are specialized to intrinsic DOM; package, namespace, star-export, derived-prop, and effectful wrappers remain unsupported.</p>
     <div className="list-demo">
       <div className="list-demo-actions"><span>LIVE KEYED LIST</span><button onClick={createTrees}>Create</button><button onClick={addTree}>Add</button><button onClick={reverseTrees}>Reverse</button></div>
       <ul>{demoTrees.map(item => <li key={item.id} data-id={item.id} style={{ opacity: item.id % 2 ? 1 : 0.7 }}>
