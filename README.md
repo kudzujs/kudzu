@@ -380,6 +380,20 @@ Dependency values are limited to JSON-safe strings, finite numbers, booleans, an
 
 Effect callbacks must be inline and block-bodied. Named or dynamically obtained cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures are rejected. Async effects cannot return cleanup functions; the cleanup itself may be async. Pages without effects receive no effect entry. Empty-dependency effects retain their smaller output, and dependency-only capability code is isolated to the routes that use `kudzu-deps.js` unless another capability already requires the shared runtime.
 
+An inline effect may own an exact relative TypeScript module Worker:
+
+```tsx
+useEffect(() => {
+  const worker = new Worker(
+    new URL("../telemetry.worker.ts", import.meta.url),
+    { type: "module" },
+  )
+  return () => worker.terminate()
+}, [])
+```
+
+Kudzu resolves the path from the callback source, bundles the Worker and its relative TypeScript imports separately as content-hashed ESM under `assets/workers`, and rewrites the constructor to the base-prefixed same-origin asset URL. The Worker is fetched only when the effect mounts; it is not a capability script, preload, or window import. Unrendered effect handlers do not cause their Worker root to be emitted. This slice requires unshadowed global `Worker` and `URL`, exact `import.meta.url`, a relative `.worker.ts` string literal, and exactly `{ type: "module" }`. Worker graphs reject JSX, package runtime imports, TypeScript import-equals declarations, dynamic imports, `require()`, missing files, and paths outside `src`. Worker source cannot be imported or re-exported as an ordinary runtime module. Construction in event handlers, imported helpers, or imported keyed-row effects is rejected; move keyed-row Worker ownership to a directly compiled page or local component effect. Public or absolute JavaScript Workers remain ordinary browser code and are not transformed.
+
 A matched mount-fetch benchmark renders a title and two keyed rows from local JSON. With one warm-up and seven rotating clean builds, Kudzu shipped initial HTML, 3.4 KB initial JS gzip, 8.1 KB total output, and built in 374 ms. React CSR shipped no initial content, 59.3 KB initial JS gzip, 189.2 KB total output, and built in 992 ms. Hand-written ESM shipped 534 B initial JS gzip, 1.2 KB total output, and built in 210 ms. Fresh-profile Chrome medians to loaded data were 157.9 ms, 166.5 ms, and 153.4 ms respectively.
 
 A matched resize-listener cleanup fixture, measured with the same warm-up and seven rotating clean builds, shipped 1.2 KB JavaScript gzip and built in 402 ms with Kudzu. Svelte shipped 10.1 KB and built in 861 ms, Vue shipped 23.6 KB and built in 768 ms, and React shipped 59.1 KB and built in 1,058 ms. Kudzu and the 127 B hand-written Astro baseline emitted initial HTML; the CSR fixtures did not.
@@ -495,6 +509,7 @@ Supported:
 - Base-path deployments, multiple CSS files, and `afterBuild`
 - Primitive `useState` bindings
 - Mount-only `useEffect(fn, [])` compiled to route-specific ESM
+- Relative TypeScript module Workers owned by inline effects
 - Conditional and keyed-row effect ownership with cleanup on DOM removal
 - Synchronous and async event handlers
 - Relative imported helpers in native handlers

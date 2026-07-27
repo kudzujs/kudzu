@@ -994,6 +994,185 @@ test("compiles mount effects to route-specific ESM", async t => {
   if (chrome) await runEffectBrowserTest(fixture, chrome)
 })
 
+test("bundles relative TypeScript Workers for inline effects", async t => {
+  const fixture = new URL("./fixtures/worker-effects/", import.meta.url)
+  const pageUrl = new URL("src/pages/dashboard.tsx", fixture)
+  const workerUrl = new URL("src/telemetry.worker.ts", fixture)
+  const chartUrl = new URL("src/chart.ts", fixture)
+  const ringUrl = new URL("src/telemetry/ring.ts", fixture)
+  const plainUrl = new URL("src/pages/plain.tsx", fixture)
+  const configUrl = new URL("kudzu.config.mjs", fixture)
+  const pageSource = await readFile(pageUrl, "utf8")
+  const workerSource = await readFile(workerUrl, "utf8")
+  const chartSource = await readFile(chartUrl, "utf8")
+  const ringSource = await readFile(ringUrl, "utf8")
+  const plainSource = await readFile(plainUrl, "utf8")
+  const configSource = await readFile(configUrl, "utf8")
+  const buildFixture = () => spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  const workerFiles = async () => (await readdir(new URL("dist/assets/workers/", fixture), { recursive: true })).filter(file => file.endsWith(".js")).sort()
+  t.after(async () => {
+    await writeFile(pageUrl, pageSource)
+    await writeFile(workerUrl, workerSource)
+    await writeFile(chartUrl, chartSource)
+    await writeFile(ringUrl, ringSource)
+    await writeFile(plainUrl, plainSource)
+    await writeFile(configUrl, configSource)
+    await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
+    await rm(new URL("dist", fixture), { recursive: true, force: true })
+    await rm(new URL("public", fixture), { recursive: true, force: true })
+  })
+
+  try {
+    const first = buildFixture()
+    assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`)
+    const firstFiles = await workerFiles()
+    assert.equal(firstFiles.length, 1)
+    assert.match(firstFiles[0], /^telemetry\.worker-[A-Z0-9]+\.js$/)
+    const firstWorker = await readFile(new URL(`dist/assets/workers/${firstFiles[0]}`, fixture))
+    const dashboard = await readFile(new URL("dist/dashboard/index.html", fixture), "utf8")
+    const plain = await readFile(new URL("dist/plain/index.html", fixture), "utf8")
+    const staticHtml = await readFile(new URL("dist/static/index.html", fixture), "utf8")
+    const handler = await readFile(new URL("dist/assets/handlers/pages/dashboard.js", fixture), "utf8")
+    const capabilityPaths = ["kudzu.js", "kudzu-effect.js", "kudzu-navigation.js", "effects/dashboard/index.js"]
+    const capabilities = await Promise.all(capabilityPaths.map(path => readFile(new URL(`dist/assets/${path}`, fixture))))
+    assert.doesNotMatch([dashboard, plain, staticHtml].join("\n"), /assets\/workers|\.worker-/)
+    assert.match(handler, new RegExp(`/dash/assets/workers/${firstFiles[0].replace(".", "\\.")}`))
+    assert.doesNotMatch(handler, /__kudzu_worker_|import\.meta|telemetry\.worker\.ts/)
+    assert.doesNotMatch(plain, /effects\/|kudzu-effect|handlers\/pages\/dashboard/)
+    assert.doesNotMatch(staticHtml, /<script|data-k-state|data-k-capability/)
+
+    const second = buildFixture()
+    assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`)
+    assert.deepEqual(await workerFiles(), firstFiles)
+    assert.deepEqual(await readFile(new URL(`dist/assets/workers/${firstFiles[0]}`, fixture)), firstWorker)
+
+    const effectStart = pageSource.indexOf("  useEffect(() => {")
+    const effectEnd = pageSource.indexOf("\n\n  return <main", effectStart)
+    const noWorkerPage = pageSource.slice(0, effectStart) + `  useEffect(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>("[data-chart]")!
+    const chart = createChart(canvas)
+    chart.render({ batchSize: 10, buffered: 128, generated: 130, elapsed: 0, points: [0, 1] })
+    return () => chart.dispose()
+  }, [])` + pageSource.slice(effectEnd)
+    await writeFile(pageUrl, noWorkerPage)
+    const noWorker = buildFixture()
+    assert.equal(noWorker.status, 0, `${noWorker.stdout}\n${noWorker.stderr}`)
+    assert.equal(existsSync(new URL("dist/assets/workers", fixture)), false)
+    assert.deepEqual(await Promise.all(capabilityPaths.map(path => readFile(new URL(`dist/assets/${path}`, fixture)))), capabilities)
+    await writeFile(pageUrl, pageSource)
+
+    await writeFile(configUrl, configSource.replace('base: "/dash"', 'base: "/dash\\\"quoted!()[]"'))
+    const quotedBase = buildFixture()
+    assert.equal(quotedBase.status, 0, `${quotedBase.stdout}\n${quotedBase.stderr}`)
+    const quotedHandlerUrl = new URL("dist/assets/handlers/pages/dashboard.js", fixture)
+    const quotedHandler = await readFile(quotedHandlerUrl, "utf8")
+    assert.ok(quotedHandler.includes(`new Worker('/dash"quoted!()[]/assets/workers/`) || quotedHandler.includes(`new Worker("/dash\\"quoted!()[]/assets/workers/`))
+    const parsedHandler = spawnSync(process.execPath, ["--check", quotedHandlerUrl.pathname], { encoding: "utf8" })
+    assert.equal(parsedHandler.status, 0, parsedHandler.stderr)
+    await writeFile(configUrl, configSource)
+
+    await writeFile(workerUrl, workerSource.replace("downsample(ring.snapshot(), 24)", "downsample(ring.snapshot(), 23)"))
+    const changed = buildFixture()
+    assert.equal(changed.status, 0, `${changed.stdout}\n${changed.stderr}`)
+    assert.notDeepEqual(await workerFiles(), firstFiles)
+    await writeFile(workerUrl, workerSource)
+
+    for (const [source, message] of [
+      [pageSource.replace('"../telemetry.worker.ts"', "workerPath"), /dashboard\.tsx:\d+:\d+ Relative TypeScript Worker paths must be relative string literals/],
+      [pageSource.replace("telemetry.worker.ts", "telemetry.ts"), /dashboard\.tsx:\d+:\d+ Relative TypeScript Worker paths must end in \.worker\.ts/],
+      [pageSource.replace("telemetry.worker.ts", "missing.worker.ts"), /dashboard\.tsx:\d+:\d+ Relative TypeScript Worker .* must resolve to an existing \.worker\.ts/],
+      [pageSource.replace("../telemetry.worker.ts", "../../outside.worker.ts"), /dashboard\.tsx:\d+:\d+ Relative TypeScript Worker source must remain under src/],
+      [pageSource.replace('{ type: "module" }', '{}'), /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require exactly/],
+      [pageSource.replace('{ type: "module" }', '{ type: "module", name: "telemetry" }'), /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require exactly/],
+      [pageSource.replace('{ type: "module" }', '{ ...workerOptions, type: "module" }'), /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require exactly/],
+      [pageSource.replace("  useEffect(() => {", "  const Worker = class {} as any\n  useEffect(() => {"), /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require the unshadowed global Worker/],
+      [pageSource.replace("export default function Dashboard() {", "export default function Dashboard() {\n  enum Worker { Shadowed }"), /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require the unshadowed global Worker/],
+      [`namespace URL { export const shadowed = true }\n${pageSource}`, /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require the unshadowed global URL/],
+      [`import Worker = require("../chart")\n${pageSource}`, /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require the unshadowed global Worker/],
+      [pageSource.replace("import.meta.url", "location.href"), /dashboard\.tsx:\d+:\d+ Relative TypeScript Workers require new URL/]
+    ]) {
+      await writeFile(pageUrl, source)
+      const invalid = buildFixture()
+      assert.notEqual(invalid.status, 0)
+      assert.match(`${invalid.stdout}\n${invalid.stderr}`, message)
+    }
+    await writeFile(pageUrl, pageSource)
+    for (const source of [
+      `import "../telemetry.worker.ts"\n${pageSource}`,
+      `export * from "../telemetry.worker.ts"\n${pageSource}`
+    ]) {
+      await writeFile(pageUrl, source)
+      const runtimeImport = buildFixture()
+      assert.notEqual(runtimeImport.status, 0)
+      assert.match(`${runtimeImport.stdout}\n${runtimeImport.stderr}`, /dashboard\.tsx:\d+:\d+ Worker source modules cannot be imported or re-exported as ordinary runtime modules.*use new Worker/)
+    }
+    await writeFile(pageUrl, pageSource)
+    const eventSource = pageSource
+      .replace("  useEffect(() => {", "  const start = () => {")
+      .replace("  }, [])\n\n  return <main", "  }\n\n  return <main onClick={start}")
+    await writeFile(pageUrl, eventSource)
+    const eventWorker = buildFixture()
+    assert.notEqual(eventWorker.status, 0)
+    assert.match(`${eventWorker.stdout}\n${eventWorker.stderr}`, /dashboard\.tsx:\d+:\d+ Relative TypeScript Worker construction is only supported directly inside an inline useEffect/)
+    await writeFile(pageUrl, pageSource)
+    await writeFile(chartUrl, `${chartSource}\nexport function unsupportedWorkerHelper() {\n  return new Worker(new URL("./telemetry.worker.ts", import.meta.url), { type: "module" })\n}\n`)
+    const helperWorker = buildFixture()
+    assert.notEqual(helperWorker.status, 0)
+    assert.match(`${helperWorker.stdout}\n${helperWorker.stderr}`, /chart\.ts:\d+:\d+ Relative TypeScript Worker construction is only supported directly inside an inline useEffect.*imported client helpers/)
+    await writeFile(chartUrl, chartSource)
+    await writeFile(plainUrl, `import { useState } from "@kudzujs/core"
+import UnusedWorkerRow from "../UnusedWorkerRow"
+import { Shell } from "../Shell"
+export const layout = Shell
+export default function Plain() {
+  const [items, setItems] = useState([{ id: 1, name: "Oak" }])
+  return <main><ul>{items.map(item => <UnusedWorkerRow key={item.id} item={item} />)}</ul></main>
+}
+`)
+    const importedRow = buildFixture()
+    assert.notEqual(importedRow.status, 0)
+    assert.match(`${importedRow.stdout}\n${importedRow.stderr}`, /UnusedWorkerRow\.tsx:\d+:\d+ Relative TypeScript Worker construction in imported keyed-row effects is not supported/)
+    await writeFile(plainUrl, plainSource)
+    for (const [source, message] of [
+      ['import "example-package"\n' + workerSource, /telemetry\.worker\.ts:\d+:\d+ Worker modules may only use relative runtime imports/],
+      ['import "./Shell"\n' + workerSource, /Shell\.tsx:\d+:\d+ Worker modules must not contain JSX/],
+      ['void import(".\/telemetry\/ring")\n' + workerSource, /telemetry\.worker\.ts:\d+:\d+ Dynamic imports are not supported in Worker modules/],
+      ['import { missing } from "..\/outside"\n' + workerSource, /telemetry\.worker\.ts:\d+:\d+ Relative import "\.\.\/outside" must resolve to one TypeScript file in src/]
+    ]) {
+      await writeFile(workerUrl, source)
+      const invalid = buildFixture()
+      assert.notEqual(invalid.status, 0)
+      assert.match(`${invalid.stdout}\n${invalid.stderr}`, message)
+    }
+    await writeFile(workerUrl, workerSource)
+    for (const specifier of ["./downsample", "legacy-worker-package"]) {
+      await writeFile(ringUrl, `import Legacy = require(${JSON.stringify(specifier)})\n${ringSource}`)
+      const importEquals = buildFixture()
+      assert.notEqual(importEquals.status, 0)
+      assert.match(`${importEquals.stdout}\n${importEquals.stderr}`, /telemetry\/ring\.ts:\d+:\d+ TypeScript import-equals declarations are not supported in Worker modules/)
+    }
+    await writeFile(ringUrl, ringSource)
+    await mkdir(new URL("public/assets/workers", fixture), { recursive: true })
+    const collision = buildFixture()
+    assert.notEqual(collision.status, 0)
+    assert.match(`${collision.stdout}\n${collision.stderr}`, /public\/assets\/workers collides/)
+    await rm(new URL("public", fixture), { recursive: true, force: true })
+
+    const finalBuild = buildFixture()
+    assert.equal(finalBuild.status, 0, `${finalBuild.stdout}\n${finalBuild.stderr}`)
+    const finalWorker = (await workerFiles())[0]
+    const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+    if (chrome) await runWorkerEffectBrowserTest(fixture, chrome, `/dash/assets/workers/${finalWorker}`)
+  } finally {
+    await writeFile(pageUrl, pageSource)
+    await writeFile(workerUrl, workerSource)
+    await writeFile(chartUrl, chartSource)
+    await writeFile(ringUrl, ringSource)
+    await writeFile(plainUrl, plainSource)
+    await writeFile(configUrl, configSource)
+  }
+})
+
 test("owns effects rendered inside conditional DOM", async t => {
   const fixture = new URL("./fixtures/conditional-effects", import.meta.url)
   t.after(async () => {
@@ -1612,6 +1791,211 @@ http.createServer((request, response) => {
     assert.match(browser.stdout, /data-browser-test="pass"/)
   } finally {
     server.kill()
+  }
+}
+
+async function runWorkerEffectBrowserTest(fixture, chrome, workerPath) {
+  const output = new URL("dist/", fixture)
+  const dashboardUrl = new URL("dashboard/index.html", output)
+  const plainUrl = new URL("plain/index.html", output)
+  const dashboardHtml = await readFile(dashboardUrl, "utf8")
+  const plainHtml = await readFile(plainUrl, "utf8")
+  const port = 47500 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2]), counts = new Map()
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  if (url.pathname === "/request-count") {
+    response.setHeader("content-type", "application/json")
+    return response.end(JSON.stringify(counts.get(url.searchParams.get("path")) || 0))
+  }
+  counts.set(url.pathname, (counts.get(url.pathname) || 0) + 1)
+  const relative = url.pathname.replace(/^\\/dash\\/?/, "")
+  const file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1", () => console.log("ready"))
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: ["ignore", "pipe", "pipe"] })
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Worker effect server did not start")), 5000)
+    server.stdout.once("data", () => { clearTimeout(timeout); resolve() })
+    server.once("exit", code => { clearTimeout(timeout); reject(new Error(`Worker effect server exited ${code}`)) })
+  })
+  try {
+    const real = await evaluateInChrome(chrome, `http://127.0.0.1:${port}/dash/dashboard`, `
+      (async () => {
+        let canvas
+        for (let index = 0; index < 100 && !canvas; index++) {
+          canvas = document.querySelector("[data-chart]")
+          if (!canvas) await new Promise(resolve => setTimeout(resolve, 20))
+        }
+        if (!canvas) throw new Error("chart did not load")
+        for (let index = 0; index < 300 && Number(canvas.dataset.generated) < 1130 && !canvas.dataset.workerError; index++) await new Promise(resolve => setTimeout(resolve, 20))
+        return { ...canvas.dataset }
+      })()
+    `, port + 1, new URL(".chrome-worker-profile", output))
+    assert.notEqual(real.workerError, "true")
+    assert.ok(Number(real.generated) >= 1130)
+    assert.equal(real.batchSize, "10")
+    assert.equal(real.buffered, "128")
+    assert.equal(real.points, "24")
+    const elapsed = Number(real.elapsed), generated = Number(real.generated), renders = Number(real.renders)
+    const rate = (generated - 130) * 1000 / elapsed
+    assert.ok(rate >= 700 && rate <= 1300, `logical rate ${rate}`)
+    assert.ok(renders >= 2 && renders <= elapsed / 40 + 2, `render cadence ${renders}`)
+    assert.equal(await fetch(`http://127.0.0.1:${port}/request-count?path=${encodeURIComponent(workerPath)}`).then(response => response.json()), 1)
+
+    const fakeWorker = `<script>
+globalThis.workerStats = { starts: 0, terminations: 0, listeners: 0, listenerAdds: 0, listenerRemoves: 0, messages: 0, maxBuffered: 0, batchSize: 0, urls: [], removedMessages: [] }
+globalThis.Worker = class {
+  constructor(url, options) {
+    this.listeners = new Map([["message", new Set()], ["error", new Set()]])
+    this.generated = 0
+    this.ticks = 0
+    workerStats.starts++
+    workerStats.urls.push([String(url), options && options.type])
+    this.timer = setInterval(() => {
+      this.generated += 10
+      if (++this.ticks % 5) return
+      const data = { batchSize: 10, buffered: Math.min(128, this.generated), generated: this.generated, elapsed: this.generated, points: new Array(24).fill(0) }
+      workerStats.messages++
+      workerStats.maxBuffered = Math.max(workerStats.maxBuffered, data.buffered)
+      workerStats.batchSize = data.batchSize
+      for (const listener of this.listeners.get("message")) listener({ data })
+    }, 10)
+  }
+  addEventListener(name, listener) {
+    const listeners = this.listeners.get(name)
+    if (listeners && !listeners.has(listener)) {
+      listeners.add(listener)
+      workerStats.listeners++
+      workerStats.listenerAdds++
+    }
+  }
+  removeEventListener(name, listener) {
+    const listeners = this.listeners.get(name)
+    if (listeners?.delete(listener)) {
+      workerStats.listeners--
+      workerStats.listenerRemoves++
+      if (name === "message") workerStats.removedMessages.push(listener)
+    }
+  }
+  terminate() {
+    if (!this.timer) return
+    clearInterval(this.timer)
+    this.timer = 0
+    workerStats.terminations++
+  }
+}
+document.documentElement.dataset.workerStartsBeforeMount = String(workerStats.starts)
+</script>`
+    await writeFile(dashboardUrl, dashboardHtml.replace('<script type="module"', `${fakeWorker}<script type="module"`).replace("</body>", '<script type="module" src="/fake-worker-test.js"></script></body>'))
+    await writeFile(plainUrl, plainHtml)
+    await writeFile(new URL("fake-worker-test.js", output), `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const click = selector => document.querySelector(selector).click()
+const route = name => document.querySelector('[data-route="' + name + '"]')
+try {
+  await waitFor(() => workerStats.starts === 1 && Number(document.querySelector("[data-chart]").dataset.renders) > 0, "initial mount")
+  if (document.documentElement.dataset.workerStartsBeforeMount !== "0") throw new Error("started before mount")
+  if (workerStats.urls[0][0] !== ${JSON.stringify(workerPath)} || workerStats.urls[0][1] !== "module") throw new Error("base URL")
+  const oldCanvas = document.querySelector("[data-chart]")
+  click("[data-plain-link]")
+  await waitFor(() => route("plain") && workerStats.terminations === 1 && workerStats.listeners === 0, "first cleanup")
+  const renders = oldCanvas.dataset.renders
+  workerStats.removedMessages.at(-1)({ data: { batchSize: 10, buffered: 128, generated: 999, elapsed: 999, points: [] } })
+  if (oldCanvas.dataset.renders !== renders || oldCanvas.dataset.disposed !== "true") throw new Error("stale/disposed render")
+  history.back()
+  await waitFor(() => route("dashboard") && workerStats.starts === 2, "back ownership")
+  const backCanvas = document.querySelector("[data-chart]")
+  history.forward()
+  await waitFor(() => route("plain") && workerStats.terminations === 2, "forward cleanup")
+  if (backCanvas.dataset.disposed !== "true") throw new Error("back chart disposal")
+  history.back()
+  await waitFor(() => route("dashboard") && workerStats.starts === 3, "cached ownership")
+  const cachedCanvas = document.querySelector("[data-chart]")
+  click("[data-plain-link]")
+  await waitFor(() => route("plain") && workerStats.terminations === 3, "cached cleanup")
+  if (cachedCanvas.dataset.disposed !== "true") throw new Error("cached chart disposal")
+  Object.assign(workerStats, { starts: 0, terminations: 0, listeners: 0, listenerAdds: 0, listenerRemoves: 0, messages: 0, maxBuffered: 0, batchSize: 0, urls: [], removedMessages: [] })
+  let renderTotal = 0
+  const oldCanvases = []
+  for (let cycle = 1; cycle <= 30; cycle++) {
+    click("[data-dashboard-link]")
+    await waitFor(() => route("dashboard") && workerStats.starts === cycle && Number(document.querySelector("[data-chart]").dataset.renders) > 0, "cycle mount " + cycle)
+    const canvas = document.querySelector("[data-chart]")
+    oldCanvases.push(canvas)
+    click("[data-plain-link]")
+    await waitFor(() => route("plain") && workerStats.terminations === cycle && workerStats.listeners === 0, "cycle cleanup " + cycle)
+    renderTotal += Number(canvas.dataset.renders)
+    if (canvas.dataset.disposed !== "true") throw new Error("cycle chart disposal " + cycle)
+  }
+  if (workerStats.starts !== 30 || workerStats.terminations !== 30 || workerStats.messages < 30) throw new Error("cycle totals")
+  if (workerStats.listenerAdds !== 60 || workerStats.listenerRemoves !== 60 || workerStats.messages !== renderTotal || oldCanvases.some(canvas => canvas.dataset.disposed !== "true")) throw new Error("listener/render/disposal totals")
+  if (workerStats.maxBuffered > 128 || workerStats.batchSize !== 10) throw new Error("bounded batches")
+  document.body.dataset.workerBrowserTest = "pass"
+} catch (error) {
+  document.body.dataset.workerBrowserTest = "fail-" + error.message
+}
+`)
+    const fake = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=12000", "--dump-dom", `http://127.0.0.1:${port}/dash/dashboard`], { encoding: "utf8", timeout: 30000 })
+    assert.equal(fake.status, 0, fake.stderr)
+    assert.match(fake.stdout, /data-worker-browser-test="pass"/)
+  } finally {
+    await writeFile(dashboardUrl, dashboardHtml)
+    await writeFile(plainUrl, plainHtml)
+    server.kill()
+  }
+}
+
+async function evaluateInChrome(chrome, url, expression, port, profile) {
+  await mkdir(profile, { recursive: true })
+  const browser = spawn(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--user-data-dir=${profile.pathname}`, `--remote-debugging-port=${port}`, url], { stdio: "ignore" })
+  try {
+    let target
+    for (let index = 0; index < 100 && !target; index++) {
+      try {
+        const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then(response => response.json())
+        target = targets.find(entry => entry.type === "page" && entry.url === url)
+      } catch {}
+      if (!target) await new Promise(resolve => setTimeout(resolve, 50))
+    }
+    if (!target) throw new Error("Chrome DevTools target did not start")
+    await new Promise(resolve => setTimeout(resolve, 500))
+    const socket = new WebSocket(target.webSocketDebuggerUrl)
+    await new Promise((resolve, reject) => {
+      socket.addEventListener("open", resolve, { once: true })
+      socket.addEventListener("error", reject, { once: true })
+    })
+    try {
+      const result = await new Promise((resolve, reject) => {
+        socket.addEventListener("message", event => {
+          const message = JSON.parse(event.data)
+          if (message.id !== 1) return
+          if (message.error || message.result?.exceptionDetails) reject(new Error(JSON.stringify(message.error ?? message.result.exceptionDetails)))
+          else resolve(message.result.result.value)
+        })
+        socket.send(JSON.stringify({ id: 1, method: "Runtime.evaluate", params: { expression, awaitPromise: true, returnByValue: true } }))
+      })
+      return result
+    } finally {
+      socket.close()
+    }
+  } finally {
+    browser.kill()
+    if (browser.exitCode === null) await Promise.race([
+      new Promise(resolve => browser.once("exit", resolve)),
+      new Promise(resolve => setTimeout(resolve, 2000))
+    ])
+    await rm(profile, { recursive: true, force: true })
   }
 }
 

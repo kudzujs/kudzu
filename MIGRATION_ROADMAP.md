@@ -2,9 +2,11 @@
 
 This document is the durable product and implementation direction for future Kudzu work. Read it before changing architecture or attempting a React migration.
 
-The approved business-application milestone and its performance gates are defined in [`GOAL_A.md`](./GOAL_A.md).
+The approved business-application milestone and its performance gates are defined in [`GOAL_A.md`](./GOAL_A.md). Static realtime dashboard work is defined in [`GOAL_B.md`](./GOAL_B.md).
 
 Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports the legacy `navigation: { routes: string[] }` group and post-Goal-A `navigation: { groups: [{ routes: string[] }] }` shared-layout groups. Each group enhances only its emitted exact or `runtimeParams` routes exporting the same layout function; group assets and pattern/effect/parameter specialization are independent, cross-group links remain native, and overlapping path domains are rejected. Every route remains a complete document. Layout- and route-lifetime effects, including effects owned by conditional DOM and keyed rows, mount for their declared lifetime. Route registries are recreated after each insertion while the layout registry persists. Direct JSON-safe primitive keyed-item property dependencies rerun only rows whose selected values changed. The Phase 6 compatibility probe confirms that these lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
+
+Goal B Milestone 1 is implemented. Exact relative `.worker.ts` module construction inside compiled inline effects emits a separately hashed Worker graph under `assets/workers`; route cleanup owns termination, and non-Worker routes retain their existing capability paths. The supported syntax and deliberate graph limits are specified in `GOAL_B.md`.
 
 ## North Star
 

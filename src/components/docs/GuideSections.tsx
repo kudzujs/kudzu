@@ -160,6 +160,15 @@ useEffect(() => {
   return () => window.removeEventListener(event, listener)
 }, [event])`} />
     <p>Kudzu coalesces committed dependency changes, awaits every affected cleanup in declaration order, and then runs new setups in declaration order. Dependencies must be direct signal identifiers or aliases holding JSON-safe primitives. A keyed row may also use direct primitive properties such as <code>[item.id]</code> or <code>[version, item.name]</code>; only rows whose selected values changed rerun, reorder does not rerun, and key changes remount. Whole-item, computed, nested, derived, prototype-sensitive, ordinary local, object, spread, and dynamic dependencies are rejected. Effect callbacks remain inline and block-bodied; named or dynamic cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures remain unsupported. Routes without dependency effects do not load <code>kudzu-deps.js</code>.</p>
+    <p>An effect may own a relative TypeScript module Worker. Kudzu emits its graph separately and creates it only when the effect mounts.</p>
+    <CodeBlock code={`useEffect(() => {
+  const worker = new Worker(
+    new URL("../telemetry.worker.ts", import.meta.url),
+    { type: "module" },
+  )
+  return () => worker.terminate()
+}, [])`} />
+    <p>The supported form requires unshadowed global <code>Worker</code> and <code>URL</code>, exact <code>import.meta.url</code>, a relative <code>.worker.ts</code> literal, and exactly <code>{`{ type: "module" }`}</code>. Worker imports must use relative TypeScript ESM without JSX, packages, import-equals, dynamic imports, or <code>require()</code>; ordinary runtime imports of Worker source are rejected. Event handlers, imported helpers, and imported keyed-row effects cannot construct relative TypeScript Workers. Give keyed-row Workers to a directly compiled page or local component effect instead.</p>
   </section>
 }
 

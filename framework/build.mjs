@@ -45,8 +45,10 @@ export async function build({ quiet = false, minify = true } = {}) {
   const sourceIndex = new Map(await Promise.all(sourceFiles.map(async file => [file, await readFile(file, "utf8")])))
 
   const handlerModules = []
+  const workerReferences = []
   for (const file of sourceFiles) {
-    const handlerModule = await compile(file, sourceFileSet, sourceIndex, base)
+    if (file.endsWith(".worker.ts")) continue
+    const handlerModule = await compile(file, sourceFileSet, sourceIndex, base, workerReferences)
     if (handlerModule) handlerModules.push(handlerModule)
   }
 
@@ -161,6 +163,18 @@ export async function build({ quiet = false, minify = true } = {}) {
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
+  const renderedEffects = new Set(plans.flatMap(plan => plan.effects.map(effect => `${effect.module}:${effect.handler}`)))
+  const renderedWorkerReferences = workerReferences.filter(reference => renderedEffects.has(`${reference.module}:${reference.handler}`))
+  if (renderedWorkerReferences.length && await exists(join(root, "public", "assets", "workers"))) throw new Error("public/assets/workers collides with Kudzu's generated Worker asset namespace")
+  const workerAssets = await emitWorkers(renderedWorkerReferences, sourceFileSet, assetsDirectory, base, minify)
+  for (const module of handlerModules) {
+    for (const reference of workerReferences) {
+      if (reference.module !== assetPath(base, `assets/${module.path}`)) continue
+      const url = workerAssets.get(reference.placeholder) ?? "about:blank"
+      module.code = module.code.replaceAll(JSON.stringify(reference.placeholder), JSON.stringify(url))
+    }
+    if (module.code.includes("/__kudzu_worker_")) throw new Error(`Worker URL placeholder survived in ${module.path}`)
+  }
   const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
   const hasTextBindings = plans.some(plan => plan.bindings.some(binding => binding.target === "text"))
@@ -1528,7 +1542,7 @@ function escapeAttribute(value) {
   return escapeHtml(value).replaceAll('"', "&quot;").replaceAll("'", "&#39;")
 }
 
-async function compile(file, sourceFiles, sourceIndex, base) {
+async function compile(file, sourceFiles, sourceIndex, base, workerReferences) {
   const source = sourceIndex.get(file)
   const nativeHandlers = []
   const effectHandlers = []
@@ -1544,7 +1558,7 @@ async function compile(file, sourceFiles, sourceIndex, base) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, clientImports)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, clientImports, workerReferences)] },
     reportDiagnostics: true
   })
 
@@ -1574,12 +1588,13 @@ async function compile(file, sourceFiles, sourceIndex, base) {
   return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports] }
 }
 
-function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports) {
+function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports, workerReferences) {
   return context => sourceFile => {
     const factory = context.factory
     const hasLinkElements = /<link/i.test(sourceFile.text)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
+    rejectOrdinaryWorkerImports(sourceFile, file, sourceFiles)
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === "@kudzujs/core" && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
     const importedSources = new Map()
@@ -1855,7 +1870,19 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
         if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
         const setters = settersForNode(node, settersByFunction)
-        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
+        const callbackSource = listEffect?.sourceFile ?? sourceFile
+        const callbackFile = callbackSource.fileName
+        const workerStart = workerReferences.length
+        let compiledCallback
+        if (listEffect && callbackFile !== file) {
+          const originalCallback = listEffect.source.arguments[0]
+          rejectWorkerConstructions(originalCallback, callbackSource, "Relative TypeScript Worker construction in imported keyed-row effects is not supported; construct the Worker in a directly compiled page or local component effect")
+          compiledCallback = callback
+        } else {
+          compiledCallback = rewriteEffectWorkers(callback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
+        }
+        const descriptor = compileNativeCallback(compiledCallback, setters, factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
+        for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
@@ -2547,6 +2574,7 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
   const optimized = compileOptimizedEvent(expression, setters, factory)
   if (optimized) return optimized
 
+  rejectWorkerConstructions(expression, expression.getSourceFile(), "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback")
   const descriptor = compileNativeCallback(expression, setters, factory, nativeHandlers, importBindings, clientImports, "handler", listItem)
   return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
     factory.createStringLiteral(handlerUrl),
@@ -2609,8 +2637,80 @@ function compileOptimizedEvent(expression, setters, factory) {
 }
 
 const nativeGlobals = new Set([
-  "Array", "ArrayBuffer", "BigInt", "Boolean", "Date", "Error", "Event", "FormData", "Infinity", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "atob", "btoa", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "location", "navigator", "parseFloat", "parseInt", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
+  "Array", "ArrayBuffer", "BigInt", "Boolean", "Date", "Error", "Event", "FormData", "Infinity", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "atob", "btoa", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "location", "navigator", "parseFloat", "parseInt", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
 ])
+
+function rewriteEffectWorkers(callback, file, sourceFile, sourceFiles, workerReferences, factory, context) {
+  const visit = node => {
+    const candidate = relativeWorkerCandidate(node, sourceFile)
+    if (candidate) {
+      if (nearestFunction(node) !== callback) throw sourceNodeError(node, sourceFile, "Relative TypeScript Worker construction must be directly inside the inline useEffect() callback, not a nested function")
+      const { worker, url, specifier, options } = validateWorkerCandidate(candidate, sourceFile)
+      const target = resolve(dirname(file), specifier)
+      const sourceRelative = relative(sourceDirectory, target)
+      if (sourceRelative.startsWith(`..${sep}`) || sourceRelative === ".." || resolve(sourceDirectory, sourceRelative) !== target) throw sourceNodeError(url.arguments[0], sourceFile, "Relative TypeScript Worker source must remain under src/")
+      if (!sourceFiles.has(target)) throw sourceNodeError(url.arguments[0], sourceFile, `Relative TypeScript Worker ${JSON.stringify(specifier)} must resolve to an existing .worker.ts file under src/`)
+      const identity = `${sourceRelative.replaceAll(sep, "/")}:${ts.getOriginalNode(node).getStart(sourceFile)}`
+      const placeholder = `/__kudzu_worker_${createHash("sha256").update(identity).digest("hex").slice(0, 16)}__.js`
+      workerReferences.push({ root: target, placeholder })
+      return factory.updateNewExpression(worker, worker.expression, worker.typeArguments, [factory.createStringLiteral(placeholder), options])
+    }
+    return ts.visitEachChild(node, visit, context)
+  }
+  return ts.visitEachChild(callback, visit, context)
+}
+
+function rejectWorkerConstructions(expression, sourceFile, message) {
+  const visit = node => {
+    if (relativeWorkerCandidate(node, sourceFile)) throw sourceNodeError(node, sourceFile, message)
+    ts.forEachChild(node, visit)
+  }
+  visit(expression.body ?? expression)
+}
+
+function relativeWorkerCandidate(node, sourceFile) {
+  if (!ts.isNewExpression(node) || !ts.isIdentifier(node.expression) || node.expression.text !== "Worker") return undefined
+  const first = node.arguments?.[0]
+  if (!first || !ts.isNewExpression(first) || !ts.isIdentifier(first.expression) || first.expression.text !== "URL") return undefined
+  const specifier = first.arguments?.[0]
+  const base = first.arguments?.[1]
+  const relativeLiteral = ts.isStringLiteral(specifier) && (specifier.text.startsWith("./") || specifier.text.startsWith("../"))
+  if (!relativeLiteral && !(specifier && !ts.isStringLiteral(specifier) && base && isImportMetaUrl(base))) return undefined
+  return { worker: node, url: first, sourceFile }
+}
+
+function validateWorkerCandidate(candidate, sourceFile) {
+  const { worker, url } = candidate
+  if (!isUnshadowedGlobal(worker.expression, sourceFile)) throw sourceNodeError(worker.expression, sourceFile, "Relative TypeScript Workers require the unshadowed global Worker constructor")
+  if (!isUnshadowedGlobal(url.expression, sourceFile)) throw sourceNodeError(url.expression, sourceFile, "Relative TypeScript Workers require the unshadowed global URL constructor")
+  if (url.arguments?.length !== 2 || !isImportMetaUrl(url.arguments[1])) throw sourceNodeError(url, sourceFile, "Relative TypeScript Workers require new URL(relativeLiteral, import.meta.url)")
+  const specifierNode = url.arguments[0]
+  if (!ts.isStringLiteral(specifierNode) || !(specifierNode.text.startsWith("./") || specifierNode.text.startsWith("../"))) throw sourceNodeError(specifierNode, sourceFile, "Relative TypeScript Worker paths must be relative string literals")
+  if (/[\\?#]/.test(specifierNode.text) || !specifierNode.text.endsWith(".worker.ts")) throw sourceNodeError(specifierNode, sourceFile, "Relative TypeScript Worker paths must end in .worker.ts")
+  if (worker.arguments?.length !== 2) throw sourceNodeError(worker, sourceFile, 'Relative TypeScript Workers require exactly { type: "module" } as the second argument')
+  const options = worker.arguments[1]
+  if (!ts.isObjectLiteralExpression(options) || options.properties.length !== 1) throw sourceNodeError(options, sourceFile, 'Relative TypeScript Workers require exactly { type: "module" } as the second argument')
+  const property = options.properties[0]
+  const name = ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) ? property.name.text : undefined
+  if (name !== "type" || !ts.isStringLiteral(property.initializer) || property.initializer.text !== "module") throw sourceNodeError(property, sourceFile, 'Relative TypeScript Workers require exactly { type: "module" } as the second argument')
+  return { worker, url, specifier: specifierNode.text, options }
+}
+
+function isImportMetaUrl(node) {
+  return ts.isPropertyAccessExpression(node) && node.name.text === "url" && ts.isMetaProperty(node.expression) && node.expression.keywordToken === ts.SyntaxKind.ImportKeyword && node.expression.name.text === "meta"
+}
+
+function isUnshadowedGlobal(identifier, sourceFile) {
+  if (isShadowedIdentifier(identifier, sourceFile)) return false
+  return !sourceFile.statements.some(statement => {
+    if (statementDeclaresName(statement, identifier.text)) return true
+    if (!ts.isImportDeclaration(statement) || !statement.importClause) return false
+    const clause = statement.importClause
+    if (clause.name?.text === identifier.text) return true
+    if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) return clause.namedBindings.name.text === identifier.text
+    return clause.namedBindings && ts.isNamedImports(clause.namedBindings) ? clause.namedBindings.elements.some(entry => entry.name.text === identifier.text) : false
+  })
+}
 
 function nativeCaptureNames(expression, setters) {
   return captureNames(expression, expression.body, setters)
@@ -2704,7 +2804,31 @@ function isShadowedIdentifier(node, scopeRoot) {
 
 function statementDeclaresName(statement, name) {
   if (ts.isVariableStatement(statement)) return statement.declarationList.declarations.some(declaration => bindingNames(declaration.name).includes(name))
-  return (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) && statement.name?.text === name
+  if (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isImportEqualsDeclaration(statement)) return statement.name?.text === name
+  if ((ts.isEnumDeclaration(statement) || ts.isModuleDeclaration(statement)) && !statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DeclareKeyword)) return ts.isIdentifier(statement.name) && statement.name.text === name
+  return false
+}
+
+function rejectOrdinaryWorkerImports(sourceFile, file, sourceFiles) {
+  for (const node of sourceFile.statements) {
+    let specifier
+    let runtime = false
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      specifier = node.moduleSpecifier
+      runtime = runtimeModuleReference(node)
+    } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) && ts.isStringLiteral(node.moduleReference.expression)) {
+      specifier = node.moduleReference.expression
+      runtime = !node.isTypeOnly
+    }
+    if (!runtime || !specifier?.text.startsWith(".")) continue
+    let target
+    try {
+      target = resolveSourceImport(file, specifier.text, sourceFiles)
+    } catch {
+      continue
+    }
+    if (target.endsWith(".worker.ts")) throw sourceNodeError(specifier, sourceFile, "Worker source modules cannot be imported or re-exported as ordinary runtime modules; use new Worker(new URL(relative.worker.ts, import.meta.url), { type: \"module\" }) inside an inline useEffect() callback")
+  }
 }
 
 function loopDeclaresName(loop, name) {
@@ -2736,7 +2860,12 @@ function clientImportBindings(sourceFile, file, sourceFiles) {
   const bindings = new Map()
   for (const node of sourceFile.statements) {
     if (!ts.isImportDeclaration(node) || !node.importClause || node.importClause.isTypeOnly || !ts.isStringLiteral(node.moduleSpecifier) || !node.moduleSpecifier.text.startsWith(".")) continue
-    const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
+    let target
+    try {
+      target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
+    } catch (error) {
+      throw sourceNodeError(node.moduleSpecifier, sourceFile, error.message)
+    }
     if (node.importClause.name) bindings.set(node.importClause.name.text, { kind: "default", local: node.importClause.name.text, target })
     const named = node.importClause.namedBindings
     if (named && ts.isNamespaceImport(named)) bindings.set(named.name.text, { kind: "namespace", local: named.name.text, target })
@@ -2845,6 +2974,71 @@ function printClientImports(entries, handlerPath) {
   return imports.join("\n")
 }
 
+async function emitWorkers(references, sourceFiles, assetsDirectory, base, minify) {
+  const roots = [...new Set(references.map(reference => reference.root))].sort()
+  if (!roots.length) return new Map()
+  await validateWorkerGraphs(roots, sourceFiles)
+  const workerDirectory = join(assetsDirectory, "workers")
+  await mkdir(workerDirectory, { recursive: true })
+  const result = await bundle({
+    absWorkingDir: root,
+    entryPoints: roots,
+    outbase: sourceDirectory,
+    outdir: workerDirectory,
+    entryNames: "[dir]/[name]-[hash]",
+    chunkNames: "chunks/[name]-[hash]",
+    bundle: true,
+    splitting: true,
+    format: "esm",
+    platform: "browser",
+    target: "es2022",
+    minify,
+    legalComments: "none",
+    metafile: true,
+    logLevel: "silent"
+  })
+  const emitted = new Map()
+  for (const [output, metadata] of Object.entries(result.metafile.outputs)) {
+    if (!metadata.entryPoint) continue
+    const entry = resolve(root, metadata.entryPoint)
+    const rootReferences = references.filter(reference => reference.root === entry)
+    const outputFile = resolve(root, output)
+    const url = assetPath(base, relative(outputDirectory, outputFile).replaceAll(sep, "/"))
+    for (const reference of rootReferences) emitted.set(reference.placeholder, url)
+  }
+  for (const reference of references) if (!emitted.has(reference.placeholder)) throw new Error(`Worker entry was not emitted: ${relative(root, reference.root)}`)
+  return emitted
+}
+
+async function validateWorkerGraphs(roots, sourceFiles) {
+  const visited = new Set()
+  const queue = [...roots]
+  while (queue.length) {
+    const file = queue.shift()
+    if (visited.has(file)) continue
+    visited.add(file)
+    const sourceFile = parseSourceFile(file, await readFile(file, "utf8"))
+    if (containsJsx(sourceFile)) throw sourceNodeError(sourceFile, sourceFile, "Worker modules must not contain JSX")
+    const visit = node => {
+      if (ts.isImportEqualsDeclaration(node)) throw sourceNodeError(node, sourceFile, "TypeScript import-equals declarations are not supported in Worker modules; use a relative ESM import")
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) throw sourceNodeError(node, sourceFile, "Dynamic imports are not supported in Worker modules")
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") throw sourceNodeError(node, sourceFile, "require() is not supported in Worker modules")
+      ts.forEachChild(node, visit)
+    }
+    visit(sourceFile)
+    for (const node of sourceFile.statements) {
+      if ((!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) || !node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier) || !runtimeModuleReference(node)) continue
+      if (!node.moduleSpecifier.text.startsWith(".")) throw sourceNodeError(node.moduleSpecifier, sourceFile, "Worker modules may only use relative runtime imports")
+      try {
+        queue.push(resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles))
+      } catch (error) {
+        const message = error.message.slice(error.message.indexOf("Relative import"))
+        throw sourceNodeError(node.moduleSpecifier, sourceFile, message)
+      }
+    }
+  }
+}
+
 async function collectClientModules(entries, sourceFiles) {
   const modules = new Set()
   const queue = [...new Set(entries)]
@@ -2853,6 +3047,7 @@ async function collectClientModules(entries, sourceFiles) {
     if (modules.has(file)) continue
     const source = await readFile(file, "utf8")
     const sourceFile = parseSourceFile(file, source)
+    rejectWorkerConstructions(sourceFile, sourceFile, "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback, not imported client helpers")
     if (containsJsx(sourceFile)) throw new Error(`${relative(root, file)} Imported client helpers must not contain JSX`)
     rejectUnsupportedClientImports(sourceFile, file)
     modules.add(file)
