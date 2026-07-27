@@ -78,7 +78,7 @@ export function renderPage<Props = Record<string, never>>(
       commands?: Array<[string, string, unknown]>
       native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
     }>
-    effects: Array<{ module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown>; lifetime?: "layout" | "route"; dependencies?: string[]; cleanup?: true; owner?: string; list?: true }>
+    effects: Array<{ module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown>; lifetime?: "layout" | "route"; dependencies?: string[]; itemDependencies?: string[]; listState?: string; cleanup?: true; owner?: string; list?: true }>
     bindings: Array<{
       target: string
       state?: string

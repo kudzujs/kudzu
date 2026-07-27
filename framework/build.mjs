@@ -172,6 +172,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasListExpressionAttributes = plans.some(plan => plan.lists.some(list => list.expressionAttributes))
   const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed))
   const hasListEffects = plans.some(plan => plan.lists.some(list => list.effects))
+  const hasItemDependencies = plans.some(plan => plan.effects.some(effect => effect.itemDependencies?.length))
   const hasListAsyncParts = hasListExpressions || hasListExpressionAttributes || hasListConditions
   const hasListMounts = hasListConditions || plans.some(plan => plan.lists.some(list => list.mount))
   const hasNestedStateCaptures = hasNestedCaptureState(plans)
@@ -194,6 +195,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   if (navigationRoutes.length || behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
     const runtimeFile = hasSharedRuntime ? "./shared-runtime.js" : "./runtime.js"
     let runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, regularStateSeedCount > 0)
+    if (!hasItemDependencies) runtime = runtime.replace(/\/\* list-item-hooks \*\/[\s\S]*?\/\* list-item-hooks-end \*\/\n/, "")
     if (hasNavigableEffects) runtime = runtime.replace("export function registerCommitter(commit) {\n  committers.push(commit)\n}", "export function registerCommitter(commit) {\n  committers.push(commit)\n  return () => {\n    const index = committers.indexOf(commit)\n    if (index !== -1) committers.splice(index, 1)\n  }\n}")
     if (hasNavigableOwners) runtime = runtime
       .replace("export function registerMountHook(mount) {\n  mountHooks.push(mount)\n}", "export function registerMountHook(mount) {\n  mountHooks.push(mount)\n  return () => {\n    const index = mountHooks.indexOf(mount)\n    if (index !== -1) mountHooks.splice(index, 1)\n  }\n}")
@@ -231,6 +233,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   if (listCount) {
     let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
+    if (!hasItemDependencies) listRuntime = listRuntime.replace(", notifyListItem", "")
     const stylePatch = `  if (target === "style") {
     const style = serializeStyle(value)
     if (style) node.setAttribute("style", style)
@@ -249,7 +252,8 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_LIST_SEEDS__: String(hasListSeeds),
       __KUDZU_LIST_EFFECTS__: String(hasListEffects),
       __KUDZU_LIST_ASYNC_PARTS__: String(hasListAsyncParts),
-      __KUDZU_LIST_MOUNTS__: String(hasListMounts)
+      __KUDZU_LIST_MOUNTS__: String(hasListMounts),
+      __KUDZU_LIST_ITEM_HOOKS__: String(hasItemDependencies)
     })
   }
   if (hasNativeHandlers) {
@@ -396,7 +400,7 @@ function specializeNativeRuntime(source, events, modules) {
 
 function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName) {
   const hasCleanup = effects.some(effect => effect.cleanup)
-  const hasDependencies = effects.some(effect => effect.dependencies?.length)
+  const hasDependencies = effects.some(effect => effect.dependencies?.length || effect.itemDependencies?.length)
   const hasOwners = effects.some(effect => effect.owner)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
@@ -684,6 +688,7 @@ function mount(lifetime) {
 }
 
 function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+  const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -728,7 +733,12 @@ function mount(lifetime) {
   }) : undefined
   const unsubscribeMount = __kRuntime.registerMountHook(mountOwned)
   const unsubscribeUnmount = __kRuntime.registerUnmountHook(unmountOwned)
-  for (const record of records) if (record.mounted) start(record)
+  ${hasItemDependencies ? `const unsubscribeItems = [...new Set(selectedEffects.filter(({ effect }) => effect.itemDependencies?.length).map(({ effect }) => effect.listState))].map(listState => __kRuntime.registerListItemHook(listState, root => {
+    if (!active) return
+    for (const record of registrations.get(root) ?? []) if (record.mounted && record.effect.itemDependencies) pending.add(record)
+    schedule()
+  }))
+  ` : ""}for (const record of records) if (record.mounted) start(record)
   mountOwned(document)
   function createRecord(template, mounted = true) {
     const record = { ...template, order: order++, mounted, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
@@ -833,16 +843,21 @@ function mount(lifetime) {
       for (const record of selected) {
         try {
           const values = readDependencies(record)
-          if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) {
-            record.values = values
-            changed.push([record, record.version])
-          }
+          if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) changed.push([record, record.version])
         } catch (error) {
           console.error(error)
         }
       }
       for (const [record] of changed) await cleanup(record)
-      if (active) for (const [record, version] of changed) if (record.mounted && record.version === version) invoke(record)
+      if (active) for (const [record, version] of changed) if (record.mounted && record.version === version) {
+        try {
+          record.values = readDependencies(record)
+          invoke(record)
+        } catch (error) {
+          record.values = undefined
+          console.error(error)
+        }
+      }
     })()
     flushing = operation
     try { await operation } finally {
@@ -851,11 +866,20 @@ function mount(lifetime) {
     }
   }
   function readDependencies(record) {
-    return (record.effect.dependencies ?? []).map(id => {
+    const values = (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
       if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
       return value
     })
+    ${hasItemDependencies ? `if (record.effect.itemDependencies) {
+      const item = JSON.parse(record.marker.dataset.kEffectItem)
+      for (const field of record.effect.itemDependencies) {
+        const value = item[field]
+        if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error(\`useEffect() keyed item dependency "\${field}" must remain a JSON-safe primitive\`)
+        values.push(value)
+      }
+    }` : ""}
+    return values
   }
   function invoke(record) {
     const token = { active: true }
@@ -896,7 +920,7 @@ function mount(lifetime) {
     disposal = (async () => {
       active = false
       unsubscribeCommitter?.()
-      unsubscribeMount()
+      ${hasItemDependencies ? "for (const unsubscribe of unsubscribeItems) unsubscribe()\n      " : ""}unsubscribeMount()
       unsubscribeUnmount()
       pending.clear()
       for (const record of records) if (record.token) record.token.active = false
@@ -919,6 +943,7 @@ function runtimeEffects(effects, lifetimes = false) {
     module: effect.module,
     handler: effect.handler,
     ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
+    ...(effect.itemDependencies ? { itemDependencies: effect.itemDependencies, listState: effect.listState } : {}),
     ...(effect.cleanup ? { cleanup: true } : {}),
     ...(effect.owner ? { owner: effect.owner } : {}),
     ...(effect.list ? { list: true } : {}),
@@ -929,10 +954,12 @@ function runtimeEffects(effects, lifetimes = false) {
 }
 
 function printOwnedEffectEntry(imports, effects, entries) {
+  const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
+  const hasOrdinaryDependencies = effects.some(effect => effect.dependencies?.length)
   return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
-const records = effects.map((effect, index) => effect.list ? undefined : createRecord(effect, index)).filter(Boolean)
+${hasItemDependencies ? "let order = 0\n" : ""}const records = effects.map((effect, index) => effect.list ? undefined : createRecord(effect, index)).filter(Boolean)
 const listTemplates = new Map(effects.map((effect, index) => effect.list ? [effect.owner, { effect, index }] : undefined).filter(Boolean))
 const owners = new Map(records.filter(record => record.effect.owner).map(record => [record.effect.owner, record]))
 const listRegistrations = new WeakMap()
@@ -944,7 +971,7 @@ let flushing = false
 let active = true
 for (const record of records) registerDependencies(record)
 function createRecord(effect, index) {
-  return { effect, index, mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
+  return { effect, index, ${hasItemDependencies ? "order: order++, " : ""}mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
 }
 function registerDependencies(record) {
   for (const id of record.effect.dependencies ?? []) {
@@ -960,12 +987,17 @@ function unregisterDependencies(record) {
     if (!subscribers?.size) dependencies.delete(id)
   }
 }
-__kRuntime.registerCommitter(id => {
+${hasItemDependencies ? `if (${hasOrdinaryDependencies}) ` : ""}__kRuntime.registerCommitter(id => {
   if (!active) return
   for (const record of dependencies.get(id) ?? []) if (record.mounted) pending.add(record)
   schedule()
 })
-__kRuntime.registerMountHook(root => {
+${hasItemDependencies ? `for (const listState of new Set(effects.filter(effect => effect.itemDependencies?.length).map(effect => effect.listState))) __kRuntime.registerListItemHook(listState, root => {
+  if (!active) return
+  for (const record of listRegistrations.get(root) ?? []) if (record.mounted && record.effect.itemDependencies) pending.add(record)
+  schedule()
+})
+` : ""}__kRuntime.registerMountHook(root => {
   if (!active) return
   for (const marker of matching(root)) {
     if (marker.dataset.kEffects) {
@@ -1053,33 +1085,47 @@ async function flush() {
   if (!active) return pending.clear()
   flushing = true
   try {
-    const selected = [...pending].filter(record => record.mounted).sort((left, right) => left.index - right.index)
+    const selected = [...pending].filter(record => record.mounted).sort((left, right) => left.index - right.index${hasItemDependencies ? " || left.order - right.order" : ""})
     pending.clear()
     const changed = []
     for (const record of selected) {
       try {
         const values = readDependencies(record)
-        if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) {
-          record.values = values
-          changed.push([record, record.version])
-        }
+        if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) changed.push([record, record.version])
       } catch (error) {
         console.error(error)
       }
     }
     for (const [record] of changed) await invokeCleanup(record)
-    if (active) for (const [record, version] of changed) if (record.mounted && record.version === version) invoke(record)
+    if (active) for (const [record, version] of changed) if (record.mounted && record.version === version) {
+      try {
+        record.values = readDependencies(record)
+        invoke(record)
+      } catch (error) {
+        record.values = undefined
+        console.error(error)
+      }
+    }
   } finally {
     flushing = false
     if (active) schedule()
   }
 }
 function readDependencies(record) {
-  return (record.effect.dependencies ?? []).map(id => {
+  const values = (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
     if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
     return value
   })
+  ${hasItemDependencies ? `if (record.effect.itemDependencies) {
+    const item = JSON.parse(record.marker.dataset.kEffectItem)
+    for (const field of record.effect.itemDependencies) {
+      const value = item[field]
+      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error(\`useEffect() keyed item dependency "\${field}" must remain a JSON-safe primitive\`)
+      values.push(value)
+    }
+  }` : ""}
+  return values
 }
 function invoke(record) {
   const token = { active: true }
@@ -1563,6 +1609,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     let usesConditional = false
     let usesList = false
     let usesListEffects = false
+    let usesListItem = false
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -1782,10 +1829,23 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (callback.asteriskToken) effectFail(callback, "useEffect() callback cannot be a generator")
         if (callback.parameters.length) effectFail(callback, "useEffect() callback cannot declare parameters")
         if (!ts.isArrayLiteralExpression(dependencies)) effectFail(dependencies, "useEffect() dependencies must be a literal array")
-        if (listEffect && dependencies.elements.some(dependency => referencesIdentifier(dependency, listEffect.item))) {
-          effectFail(dependencies, "useEffect() item-property dependencies are not supported in keyed lists; use [] or primitive Kudzu state identifiers")
+        const itemDependencies = []
+        const ordinaryDependencies = []
+        let dependencyItem = listEffect?.item
+        for (const dependency of dependencies.elements) {
+          const value = unwrapExpression(dependency)
+          if (!dependencyItem && ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression) && isDestructuredParameter(value.expression, nearestFunction(node))) dependencyItem = value.expression.text
+          const field = dependencyItem && directProperty(dependency, dependencyItem)
+          if (field) {
+            if (["__proto__", "constructor", "prototype"].includes(field)) effectFail(dependency, `useEffect() keyed item property "${field}" is not supported`)
+            itemDependencies.push(field)
+          } else if (dependencyItem && referencesIdentifier(dependency, dependencyItem)) {
+            effectFail(dependency, "useEffect() keyed item dependencies must be direct item.<field> properties")
+          } else {
+            ordinaryDependencies.push(dependency)
+          }
         }
-        const invalidDependency = dependencies.elements.find(dependency => !ts.isIdentifier(dependency))
+        const invalidDependency = ordinaryDependencies.find(dependency => !ts.isIdentifier(dependency))
         if (invalidDependency) effectFail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
         if (!nearestFunction(node)) fail(node, "useEffect() cannot be used outside a Kudzu component")
         if (!ts.isBlock(callback.body)) effectFail(callback, "useEffect() callback must use a block body")
@@ -1795,17 +1855,19 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
         if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
         const setters = settersForNode(node, settersByFunction)
-        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", listEffect?.item, true, returns.cleanup)
+        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
+        usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
           callback,
-          dependencies,
+          factory.createArrayLiteralExpression(ordinaryDependencies),
           factory.createStringLiteral(handlerUrl),
           factory.createStringLiteral(descriptor.exportName),
           descriptor.states,
           descriptor.scope,
           factory.createStringLiteral(listEffect ? sourceLocation(listEffect.source, listEffect.sourceFile) : sourceLocation(node, sourceFile)),
-          returns.cleanup ? factory.createTrue() : factory.createFalse()
+          returns.cleanup ? factory.createTrue() : factory.createFalse(),
+          factory.createArrayLiteralExpression(itemDependencies.map(field => factory.createStringLiteral(field)))
         ])
       }
 
@@ -1918,6 +1980,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listConditional"), factory.createIdentifier("__kListConditional")))
     }
+    if (usesListItem && !usesList) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
     if (usesListEffects) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useEffect"), factory.createIdentifier("__kListUseEffect")))
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(

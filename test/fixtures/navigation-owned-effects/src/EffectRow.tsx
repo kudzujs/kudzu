@@ -8,14 +8,14 @@ export default function EffectRow({ item, version }: { item: Item; version: numb
     return () => {
       document.body.dataset.rowLog += `|unmount ${item.name}:${document.querySelector(`[data-row="${item.id}"]`)?.isConnected}`
     }
-  }, [])
+  }, [item.id])
 
   useEffect(() => {
     document.body.dataset.rowLog += `|dep ${item.name}:${version}`
     return () => {
       document.body.dataset.rowLog += `|dep-clean ${item.name}:${version}`
     }
-  }, [version])
+  }, [version, item.name])
 
   return <li data-row={item.id}>{item.name}</li>
 }

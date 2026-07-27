@@ -284,15 +284,20 @@ test("owns conditional and keyed effects across navigation lifetimes", async t =
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const entry = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
   const runtime = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const listRuntime = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/kudzu-list.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/navigation-owned-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(entry, /registerMountHook|registerUnmountHook/)
+  assert.match(entry, /registerListItemHook/)
+  assert.doesNotMatch(entry, /dependencyIds/)
+  assert.match(runtime, /registerListItemHook|notifyListItem/)
+  assert.match(listRuntime, /notifyListItem/)
   assert.match(entry, /mountLayoutEffects|mountRouteEffects/)
   assert.match(runtime, /indexOf/)
-  assert.deepEqual(plan.effects.map(effect => [effect.lifetime, effect.owner, effect.list]), [
-    ["layout", "le0", undefined],
-    ["route", "re0", undefined],
-    ["route", "re1", true],
-    ["route", "re2", true]
+  assert.deepEqual(plan.effects.map(effect => [effect.lifetime, effect.owner, effect.list, effect.itemDependencies, effect.listState]), [
+    ["layout", "le0", undefined, undefined, undefined],
+    ["route", "re0", undefined, undefined, undefined],
+    ["route", "re1", true, ["id"], "rs4"],
+    ["route", "re2", true, ["name"], "rs4"]
   ])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runOwnedNavigationEffectBrowserTest(fixture, chrome)
@@ -1017,12 +1022,39 @@ test("owns effects rendered by imported keyed row components", async t => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/keyed-effects/dist/index.html", import.meta.url), "utf8")
   const entry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
-  const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  const itemOnlyEntry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/item-only/index.js", import.meta.url), "utf8")
+  const stateOnlyEntry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/state-only/index.js", import.meta.url), "utf8")
+  const listRuntime = await readFile(new URL("./fixtures/keyed-effects/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/keyed-effects/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
   assert.match(html, /data-k-effects=/)
   assert.match(entry, /kEffectItem/)
-  assert.deepEqual(plan.effects.map(effect => [effect.owner, effect.list, effect.dependencies]), [["e0", true, undefined], ["e1", true, ["s1"]]])
+  assert.match(entry, /registerListItemHook/)
+  assert.match(itemOnlyEntry, /registerListItemHook/)
+  assert.doesNotMatch(itemOnlyEntry, /registerCommitter|dependencyIds/)
+  assert.match(listRuntime, /notifyListItem/)
+  assert.match(runtime, /registerListItemHook|notifyListItem/)
+  assert.doesNotMatch(stateOnlyEntry, /itemDependencies|listState|dependencyIds|keyed item dependency|registerListItemHook|notifyListItem/)
+  assert.deepEqual(plan.effects.map(effect => [effect.owner, effect.list, effect.dependencies, effect.itemDependencies, effect.listState]), [["e0", true, undefined, ["id"], "s2"], ["e1", true, ["s1"], ["name"], "s2"]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runKeyedEffectBrowserTest(fixture, chrome)
+})
+
+test("omits keyed item notifications from state-only effect builds", async t => {
+  const fixture = new URL("./fixtures/keyed-effects-state-only", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/keyed-effects-state-only/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/keyed-effects-state-only/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const output = await Promise.all([
+    "dist/assets/effects/index.js",
+    "dist/assets/kudzu-list.js",
+    "dist/assets/kudzu.js"
+  ].map(path => readFile(new URL(path, `${fixture.href}/`), "utf8")))
+  assert.doesNotMatch(output.join("\n"), /itemDependencies|listState|registerListItemHook|notifyListItem|keyed item dependency/)
+  assert.match(output[0], /registerCommitter/)
 })
 
 test("runs mount effect cleanup once on document disposal", async t => {
@@ -1145,7 +1177,7 @@ if (document.body.dataset.fastLog !== "|setup resize|cleanup resize|setup scroll
   assert.equal(browser.status, 0, `${browser.stdout}\n${browser.stderr}`)
 })
 
-test("rejects unsupported mount effect forms", () => {
+test("rejects unsupported mount effect forms", async () => {
   for (const [fixture, message] of [
     ["effect-invalid-dependencies", /dependencies must be direct state or runtime parameter identifiers/],
     ["effect-invalid-dependency-array", /dependencies must be a literal array/],
@@ -1157,11 +1189,28 @@ test("rejects unsupported mount effect forms", () => {
     ["effect-invalid-generator", /callback cannot be a generator/],
     ["effect-invalid-return", /return values must be inline cleanup functions/],
     ["effect-invalid-named", /callback function must be anonymous/],
-    ["effect-invalid-list-dependency", /src\/pages\/index\.tsx:\d+:\d+ useEffect\(\) item-property dependencies are not supported in keyed lists/]
+    ["effect-invalid-list-dependency", /src\/pages\/index\.tsx:\d+:\d+ useEffect\(\) keyed item dependencies must be direct item\.<field> properties/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL(`./fixtures/${fixture}`, import.meta.url), encoding: "utf8" })
     assert.notEqual(result.status, 0)
     assert.match(`${result.stdout}\n${result.stderr}`, message)
+  }
+  const fixture = new URL("./fixtures/effect-invalid-list-dependency/", import.meta.url)
+  const sourceUrl = new URL("src/pages/index.tsx", fixture)
+  const source = await readFile(sourceUrl, "utf8")
+  try {
+    for (const [dependency, message] of [
+      ["item", /keyed item dependencies must be direct item\.<field> properties/],
+      ['item["name"]', /keyed item dependencies must be direct item\.<field> properties/],
+      ["item.__proto__", /keyed item property "__proto__" is not supported/]
+    ]) {
+      await writeFile(sourceUrl, source.replace("item.name.length", dependency))
+      const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+      assert.notEqual(result.status, 0)
+      assert.match(`${result.stdout}\n${result.stderr}`, message)
+    }
+  } finally {
+    await writeFile(sourceUrl, source)
   }
 })
 
@@ -1498,9 +1547,9 @@ try {
   await new Promise(resolve => setTimeout(resolve, 50))
   if (document.body.dataset.rowLog !== beforeRows + "|mount Elm|dep Elm:0") throw new Error("row-reorder")
   click("[data-update]")
-  await waitFor(() => document.body.dataset.rowLog.endsWith("|dep-clean Oak:0|dep-clean Pine:0|dep-clean Elm:0|dep Red oak:1|dep Pine:1|dep Elm:1"), "row-update")
+  await waitFor(() => document.body.dataset.rowLog.endsWith("|dep-clean Oak:0|dep Red oak:0"), "row-update")
   click("[data-remove]")
-  await waitFor(() => document.body.dataset.rowLog.endsWith("|unmount Pine:true|dep-clean Pine:1"), "row-remove")
+  await waitFor(() => document.body.dataset.rowLog.endsWith("|unmount Pine:true|dep-clean Pine:0"), "row-remove")
   click('a[href="/other"]')
   await waitFor(() => document.querySelector('[data-route="other"]'), "other")
   if (document.querySelector("[data-layout]") !== originalLayout || !document.body.dataset.routeLog.endsWith("|cleanup 3:true")) throw new Error("route-departure")
@@ -1523,6 +1572,10 @@ try {
   history.back()
   await waitFor(() => document.querySelector('[data-route="home"]') && count(document.body.dataset.rowLog, "|mount Oak") === 3, "cached-revisit")
   if (count(document.body.dataset.rowLog, "|mount Pine") !== 3) throw new Error("fresh-row-records")
+  const beforeRevisitUpdate = count(document.body.dataset.rowLog, "|dep-clean Oak:0")
+  click("[data-update]")
+  await waitFor(() => count(document.body.dataset.rowLog, "|dep-clean Oak:0") === beforeRevisitUpdate + 1, "revisit-row-update")
+  if (count(document.body.dataset.rowLog, "|dep Red oak:0") !== 2) throw new Error("accumulated-row-hooks")
   const beforePersisted = [document.body.dataset.layoutLog, document.body.dataset.routeLog, document.body.dataset.rowLog, document.body.dataset.disposeOrder].join(";")
   pagehide(true)
   await new Promise(resolve => setTimeout(resolve, 0))
@@ -1900,25 +1953,64 @@ async function runKeyedEffectBrowserTest(fixture, chrome) {
   await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 5))
+  }
+  throw new Error(label)
+}
 try {
   const control = action => document.querySelector('[data-action="' + action + '"]')
+  const runtime = await import("/assets/kudzu.js")
+  const notifications = []
+  runtime.registerListItemHook("s2", root => notifications.push(root.dataset.row))
+  const errors = []
+  const originalError = console.error
+  console.error = error => { errors.push(String(error)); originalError(error) }
   await wait()
-  let expected = "|mount OAK:true|dep Oak:0|mount PINE:true|dep Pine:0"
+  let expected = "|mount OAK:true|dep Oak:old:0|mount PINE:true|dep Pine:old:0"
   if (document.body.dataset.effectLog !== expected) throw new Error("initial:" + document.body.dataset.effectLog)
   control("add").click()
   await wait()
-  expected += "|mount ELM:true|dep Elm:0"
+  expected += "|mount ELM:true|dep Elm:old:0"
   if (document.body.dataset.effectLog !== expected) throw new Error("add")
+  if (notifications.length) throw new Error("add-notification")
   control("reorder").click()
   await wait()
   if (document.body.dataset.effectLog !== expected) throw new Error("reorder")
+  if (notifications.length) throw new Error("reorder-notification")
+  control("unrelated").click()
+  await wait()
+  if (document.body.dataset.effectLog !== expected) throw new Error("unrelated")
+  if (notifications.join() !== "1") throw new Error("changed-root-notification:" + notifications)
+  const stale = document.body.rowResolvers[1]
+  control("invalid").click()
+  await wait()
+  if (document.body.dataset.effectLog !== expected || !errors.some(error => error.includes('keyed item dependency "name" must remain a JSON-safe primitive'))) throw new Error("invalid-dependency")
+  control("update").click()
+  expected += "|dep-clean Oak:0"
+  await waitFor(() => document.body.dataset.effectLog === expected, "async-cleanup-start")
+  control("invalid").click()
+  await wait()
+  if (document.body.dataset.effectLog !== expected) throw new Error("invalid-during-cleanup")
   control("update").click()
   await wait()
-  expected += "|dep-clean Oak:0|dep-clean Pine:0|dep-clean Elm:0|dep Red oak:1|dep Pine:1|dep Elm:1"
+  expected += "|dep Red oak:latest:0"
   if (document.body.dataset.effectLog !== expected) throw new Error("update:" + document.body.dataset.effectLog)
+  stale("stale")
+  await wait()
+  if (document.querySelector("[data-result]").textContent !== "pending") throw new Error("stale-setter")
+  document.body.rowResolvers[1]("fresh")
+  await wait()
+  if (document.querySelector("[data-result]").textContent !== "fresh") throw new Error("fresh-setter")
+  control("mixed").click()
+  expected += "|dep-clean Red oak:0|dep-clean Pine:0|dep-clean Elm:0|dep Red oak:latest:1|dep White pine:old:1|dep Elm:old:1"
+  await waitFor(() => document.body.dataset.effectLog === expected, "mixed-dependency-complete")
+  if (document.body.dataset.effectLog !== expected) throw new Error("mixed-dependency")
   control("remove-two").click()
   await wait()
-  expected += "|unmount PINE|dep-clean Pine:1"
+  expected += "|unmount PINE|dep-clean White pine:1"
   if (document.body.dataset.effectLog !== expected) throw new Error("remove")
   control("close").click()
   await wait()
@@ -1926,12 +2018,11 @@ try {
   if (document.body.dataset.effectLog !== expected) throw new Error("conditional-close:" + document.body.dataset.effectLog)
   control("open").click()
   await wait()
-  expected += "|mount ELM:true|dep Elm:1|mount RED OAK:true|dep Red oak:1"
+  expected += "|mount ELM:true|dep Elm:old:1|mount RED OAK:true|dep Red oak:latest:1"
   if (document.body.dataset.effectLog !== expected) throw new Error("conditional-open")
   control("remove-three").click()
   await wait()
   expected += "|unmount ELM|dep-clean Elm:1"
-  const runtime = await import("/assets/kudzu.js")
   runtime.unmountDom(document)
   runtime.unmountDom(document)
   await wait()

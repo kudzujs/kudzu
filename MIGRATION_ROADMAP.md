@@ -4,7 +4,7 @@ This document is the durable product and implementation direction for future Kud
 
 The approved business-application milestone and its performance gates are defined in [`GOAL_A.md`](./GOAL_A.md).
 
-Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports the legacy `navigation: { routes: string[] }` group and post-Goal-A `navigation: { groups: [{ routes: string[] }] }` shared-layout groups. Each group enhances only its emitted exact or `runtimeParams` routes exporting the same layout function; group assets and pattern/effect/parameter specialization are independent, cross-group links remain native, and overlapping cross-group path domains are rejected. Every route remains a complete document. Layout- and route-lifetime effects, including effects owned by conditional DOM and keyed rows, mount for their declared lifetime. Route registries are recreated after each insertion while the layout registry persists; keyed item-property dependencies remain unsupported. The Phase 6 compatibility probe confirms that these lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
+Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports the legacy `navigation: { routes: string[] }` group and post-Goal-A `navigation: { groups: [{ routes: string[] }] }` shared-layout groups. Each group enhances only its emitted exact or `runtimeParams` routes exporting the same layout function; group assets and pattern/effect/parameter specialization are independent, cross-group links remain native, and overlapping path domains are rejected. Every route remains a complete document. Layout- and route-lifetime effects, including effects owned by conditional DOM and keyed rows, mount for their declared lifetime. Route registries are recreated after each insertion while the layout registry persists. Direct JSON-safe primitive keyed-item property dependencies rerun only rows whose selected values changed. The Phase 6 compatibility probe confirms that these lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
 
 ## North Star
 
@@ -170,9 +170,13 @@ After mount-only effects and runtime params unblock a real migration, add the ne
 1. cleanup for `useEffect(fn, [])` (implemented);
 2. primitive dependency arrays such as `[id]` (implemented);
 3. cleanup-before-rerun (implemented);
-4. effect ownership inside conditional or keyed DOM ranges (implemented; keyed item-property dependencies remain unsupported).
+4. effect ownership inside conditional or keyed DOM ranges, including direct primitive keyed-item property dependencies (implemented).
 
 Each addition must reuse capability mount/unmount hooks, have one focused migration fixture, and preserve zero output cost for pages that do not use it.
+
+Keyed row dependencies accept only direct `item.<field>` reads, optionally mixed with direct state or runtime parameter identifiers. Selected values must remain JSON-safe primitives. Whole-item, computed, nested, derived, and prototype-sensitive reads fail with source diagnostics. Reorder compares equal and does not run lifecycle work; selected field changes rerun only affected rows with the complete latest item, and key changes remain remove plus mount. The complete targeted-notification capability costs +821 B raw/+255 B gzip across its route entry, shared runtime, and list runtime; builds without item dependencies retain their previous path. The expanded three-route fixture's seven clean builds measured a 430 ms median.
+
+The matched 1,000-row effect runtime benchmark measured Kudzu at 3.4 ms for one selected-field change, 2.9 ms for an unrelated-field change, and 7.8 ms for reorder after all targets were initialized. React CSR measured 12.3, 6.8, and 19.0 ms; Vue measured 4.7, 2.3, and 10.1 ms; Svelte measured 5.2, 3.0, and 48.1 ms; and hand-written native DOM measured 0.4, 0.2, and 5.5 ms. Kudzu and native emit initial rows while the framework fixtures are CSR, so artifact and build values are not architecture-equivalent comparisons. The list runtime now notifies only the changed keyed root after refreshing its item marker, and route registries unsubscribe those hooks on disposal. List validation, serialization, and reconciliation remain O(n); do not add a general scheduler unless those existing costs exceed a real fixture's budget.
 
 Do not implement `useLayoutEffect`, concurrent rendering, Suspense semantics, transitions, or an effect scheduler without an explicit application requirement.
 

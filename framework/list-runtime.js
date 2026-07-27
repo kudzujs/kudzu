@@ -1,4 +1,4 @@
-import { browserState, mountDom, registerCommitter, registerMountHook, registerUnmountHook, unmountDom } from "./shared-runtime.js"
+import { browserState, mountDom, notifyListItem, registerCommitter, registerMountHook, registerUnmountHook, unmountDom } from "./shared-runtime.js"
 
 const listTargets = new Map()
 const listRegistrations = new WeakMap()
@@ -102,6 +102,7 @@ function updateList(list) {
       added = true
     } else if (list.values.get(token) !== value) {
       fillListItem(node, item)
+      if (__KUDZU_LIST_ITEM_HOOKS__) notifyListItem(list.descriptor.state, node)
     }
     next.push([token, node])
     values.set(token, value)

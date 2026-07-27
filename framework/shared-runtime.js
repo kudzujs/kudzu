@@ -19,6 +19,24 @@ const committers = []
 const mountHooks = []
 const unmountHooks = []
 
+/* list-item-hooks */
+const listItemHooks = new Map()
+
+export function registerListItemHook(id, hook) {
+  const hooks = listItemHooks.get(id) ?? new Set()
+  hooks.add(hook)
+  listItemHooks.set(id, hooks)
+  return () => {
+    hooks.delete(hook)
+    if (!hooks.size) listItemHooks.delete(id)
+  }
+}
+
+export function notifyListItem(id, root) {
+  for (const hook of listItemHooks.get(id) ?? []) hook(root)
+}
+/* list-item-hooks-end */
+
 export function registerCommitter(commit) {
   committers.push(commit)
 }

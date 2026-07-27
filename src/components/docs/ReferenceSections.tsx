@@ -55,6 +55,15 @@ export function BenchmarksSection() {
     <p>The mobile row is retained from the previous matched run using a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput. Both profiles recorded zero cold and warm layout shift.</p>
     <h3>Build startup</h3>
     <p>Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. The current seven-run matched commerce build measured Kudzu at 486.8 ms and React at 545.4 ms, making Kudzu 10.7% faster in that run. Kudzu shipped 88.1% less product JavaScript and measured 52.9% faster interaction and 43.4% faster product-to-cart navigation than React. Disabling the cache preserves byte-for-byte output. Generated-handler lowering and shared-Program experiments did not improve the combined median and were not retained.</p>
+    <h3>1,000-row keyed effect</h3>
+    <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Selected update", "Unrelated update", "Reverse"]} rows={[
+      ["Astro native", "Yes", "381 B", "1,022 ms", "0.4 ms", "0.2 ms", "5.5 ms"],
+      ["Kudzu", "Yes", "7,070 B", "437 ms", "3.4 ms", "2.9 ms", "7.8 ms"],
+      ["Vue CSR", "No", "25,091 B", "893 ms", "4.7 ms", "2.3 ms", "10.1 ms"],
+      ["Svelte CSR", "No", "12,848 B", "1,012 ms", "5.2 ms", "3.0 ms", "48.1 ms"],
+      ["React CSR", "No", "60,921 B", "1,132 ms", "12.3 ms", "6.8 ms", "19.0 ms"]
+    ]} />
+    <p>Each row owns one effect depending on its name. Browser timing starts only after every target has 1,000 rows and effects ready. Targeted changed-root notification reduced Kudzu's selected update from 6.2 to 3.4 ms, versus Vue at 4.7 ms, Svelte at 5.2 ms, and React at 12.3 ms. It adds 126 B gzip to Kudzu's initial graph. List reconciliation remains O(n), so Vue is faster on the unrelated detail update. Kudzu and Astro emit the initial rows while the other targets are CSR; JavaScript, output, and build values therefore are not architecture-equivalent comparisons.</p>
     <p>These results describe one matched fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves eligible application transitions; direct loads still transfer and render complete standalone documents.</p>
   </section>
 }
@@ -67,9 +76,9 @@ export function LimitsSection() {
       <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
       <li>Keyed lists require local-state maps and intrinsic roots or top-level local or relative-imported row components; package and namespace row imports, reusable aliases, nested dynamic JSX, prop spreads, and derived-expression captures remain unsupported.</li>
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
-      <li><code>useEffect</code> supports inline block-bodied callbacks, directly returned inline cleanup, DOM ownership in conditional and supported keyed rows, and literal arrays of direct JSON-safe primitive state or runtime parameter identifiers. Keyed item-property dependencies, dependency expressions, properties, ordinary locals, objects, spreads, dynamic arrays, named or dynamic cleanup functions, cleanup parameters or generators, async effects returning cleanup, and other return values are not supported.</li>
+      <li><code>useEffect</code> supports inline block-bodied callbacks, directly returned inline cleanup, DOM ownership in conditional and supported keyed rows, and literal arrays of direct JSON-safe primitive state or runtime parameter identifiers. Keyed rows also accept direct <code>item.&lt;field&gt;</code> properties whose values remain JSON-safe primitives. Whole-item, computed, nested, derived, prototype-sensitive, non-item property, ordinary local, object, spread, dynamic, named or dynamic cleanup, cleanup parameter or generator, async-cleanup, and other return forms are not supported.</li>
       <li><code>runtimeParams = true</code> requires full bracket segments, cannot be combined with <code>getStaticPaths()</code>, and requires an exact-file-first fallback rewrite on the production host. Catch-all runtime parameters are not supported.</li>
-      <li>There is no request-time SSR, server actions, default/general router, HMR, or DevTools. Opt-in navigation supports independent emitted exact/runtime groups with one shared layout per group; cross-group path domains cannot overlap. Conditional and keyed effects follow their layout or route lifetime, but keyed item-property dependencies remain unsupported.</li>
+      <li>There is no request-time SSR, server actions, default/general router, HMR, or DevTools. Opt-in navigation supports independent emitted exact/runtime groups with one shared layout per group; cross-group path domains cannot overlap. Conditional and keyed effects follow their layout or route lifetime.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
     </ul>
   </section>

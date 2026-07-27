@@ -38,7 +38,6 @@ export default function Page() {
     <button data-reorder onClick={() => setItems([...items].reverse())}>Reorder</button>
     <button data-update onClick={() => {
       setItems(items.map(item => item.id === 1 ? { ...item, name: "Red oak" } : item))
-      setVersion(version + 1)
     }}>Update</button>
     <button data-remove onClick={() => setItems(items.filter(item => item.id !== 2))}>Remove</button>
     <p data-result>{result}</p>

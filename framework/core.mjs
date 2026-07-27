@@ -66,9 +66,10 @@ function createSignal(id, value) {
   }
 }
 
-export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup) {
+export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup, itemDependencies = []) {
   if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
   if (typeof callback !== "function" || !Array.isArray(dependencies) || !module || !handler) throw new Error("useEffect() must be compiled with a literal dependency array")
+  if (itemDependencies.length && !renderContext.listDepth) throw new Error(`${source} useEffect() item-property dependencies are only supported in direct keyed row components`)
   const dependencyIds = dependencies.map(dependency => {
     if (!dependency?.[signalMarker] || !validEffectDependency(dependency.value)) throw new Error(`${source} useEffect() dependencies must be primitive Kudzu state or runtime parameter identifiers`)
     return dependency.id
@@ -88,13 +89,16 @@ export function useEffect(callback, dependencies, module, handler, states, scope
       if (!owner) throw new Error(`${source} Keyed row effects must have the same hook order for every item`)
     }
     effects.push(owner)
+    if (!renderContext.listRoot.template) for (const field of itemDependencies) {
+      if (!validEffectDependency(renderContext.listRoot.item[field])) throw new Error(`${source} useEffect() keyed item dependency "${field}" must be a JSON-safe primitive`)
+    }
   } else if (renderContext.conditionDepth) {
     const owners = renderContext.effectOwners.at(-1)
     if (!owners) throw new Error(`${source} useEffect() inside conditional DOM must belong to a rendered function component`)
     owner = nextRenderId("e")
     owners.push(owner)
   }
-  if (!renderContext.listDepth || list) renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
+  if (!renderContext.listDepth || list) renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
   renderContext.hasBehaviors = true
   renderContext.hasEffects = true
 }
@@ -303,6 +307,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
           module: effect.module,
           handler: effect.handler,
           ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
+          ...(effect.itemDependencies ? { itemDependencies: effect.itemDependencies, listState: effect.listState } : {}),
           ...(effect.cleanup ? { cleanup: true } : {}),
           ...(effect.owner ? { owner: effect.owner } : {}),
           ...(effect.list ? { list: true } : {}),
@@ -682,7 +687,7 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listTemplate = true
     renderContext.listEffectOwners = []
     renderContext.listFields = new Set([node.keyField])
-    renderContext.listRoot = { id, template: true, effects: [], item: {} }
+    renderContext.listRoot = { id, state: node.items.id, template: true, effects: [], item: {} }
     const template = await renderNode(node.render({}), namespace, selectValue)
     if (template.includes("data-k-native-") || template.includes("data-k-effects=")) descriptor.mount = true
     if (template.includes("data-k-effects=")) descriptor.effects = true
@@ -698,7 +703,7 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listTemplate = false
     renderContext.listInitialMarkers = Boolean(descriptor.conditions)
     for (const item of node.items.value) {
-      renderContext.listRoot = { id, key: item[node.keyField], template: false, effects: [], item }
+      renderContext.listRoot = { id, state: node.items.id, key: item[node.keyField], template: false, effects: [], item }
       current += await renderNode(node.render(item), namespace, selectValue)
     }
     renderContext.lists.push(descriptor)
