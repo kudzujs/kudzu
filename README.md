@@ -457,9 +457,22 @@ export default {
 }
 ```
 
-Every configured identity must be an emitted exact route or `runtimeParams` bracket pattern and export the same layout function. The layout DOM, state, and top-level effects persist; route state, parameters, and top-level effects reset after cleanup on each transition. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct requests, reloads, malformed runtime paths, JavaScript failures, unsupported links, and routes outside the group retain native document navigation.
+The legacy single-group form remains supported. Applications with multiple shared layouts use mutually exclusive `groups`:
 
-Multiple layout groups and conditional or keyed effects inside a navigation group are not supported yet.
+```js
+export default {
+  navigation: { groups: [
+    { routes: ["/product", "/items/[id]"] },
+    { routes: ["/account", "/settings"] }
+  ] }
+}
+```
+
+Every configured identity must be a unique emitted exact route or `runtimeParams` bracket pattern. Routes within each group must export the same layout function identity; different groups may export different layouts. Kudzu emits one deterministic, route-set-hashed navigation asset per group containing only that group's records and capabilities. Path domains may overlap within a group, where exact and more-specific matching wins, but overlapping exact/runtime or runtime/runtime domains across groups fail the build.
+
+The layout DOM, state, and top-level effects persist within its group; route state, parameters, and top-level effects reset after cleanup on each transition. Eligible same-group anchors prefetch validated complete documents into a finite memory cache. Cross-group links, ungrouped routes, direct requests, reloads, malformed runtime paths, JavaScript failures, and unsupported links retain native document navigation.
+
+Conditional or keyed effects inside a navigation group are not supported yet.
 
 This produces fast same-document route changes, but it does not add a coordinated transition animation. CSS entry animations can style newly inserted route content; exit and shared-element View Transitions are not integrated yet.
 
@@ -519,22 +532,22 @@ Browser medians use seven rotating fresh Chrome profiles per target with 4x CPU 
 
 | Target | Product JS gzip | Cold transfer | Cold LCP | Warm LCP | Startup task | Heap | Interaction | Product → cart |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Kudzu | **7,215 B** | **34,809 B** | 324 ms | **140 ms** | **103.3 ms** | **648,844 B** | **3.7 ms** | **5.7 ms** |
-| React + Vite | 61,464 B | 202,842 B | 324 ms | 232 ms | 160.0 ms | 1,062,520 B | 10.5 ms | 8.3 ms |
-| Next.js | 190,090 B | 546,581 B | **316 ms** | 156 ms | 357.7 ms | 2,157,020 B | 11.4 ms | 26.9 ms |
-| Nuxt | 67,620 B | 195,953 B | 320 ms | 204 ms | 205.1 ms | 1,721,348 B | 3.9 ms | 33.0 ms |
-| SvelteKit | 32,473 B | 90,929 B | 340 ms | 172 ms | 125.8 ms | 999,496 B | 4.7 ms | 20.3 ms |
+| Kudzu | **7,334 B** | **35,260 B** | 324 ms | **152 ms** | **109.3 ms** | **650,708 B** | **3.9 ms** | **6.1 ms** |
+| React + Vite | 61,464 B | 202,842 B | 340 ms | 244 ms | 166.2 ms | 1,062,512 B | 10.9 ms | 8.9 ms |
+| Next.js | 190,090 B | 546,581 B | **320 ms** | 168 ms | 413.0 ms | 2,158,160 B | 14.3 ms | 29.8 ms |
+| Nuxt | 67,620 B | 195,953 B | 328 ms | 216 ms | 243.8 ms | 1,721,348 B | 4.3 ms | 28.4 ms |
+| SvelteKit | 32,475 B | 90,934 B | 352 ms | 176 ms | 150.5 ms | 999,496 B | 5.2 ms | 24.0 ms |
 
-The Kudzu application emits 34,879 deploy bytes. Its 7,215 B gzip product graph includes the 2,306 B navigation capability. The first implementation paid a 128.7 ms HTML round trip during product-to-cart navigation; validated near-viewport document prefetch reduced the measured median to 5.7 ms while preserving complete documents and native fallback.
+The current Kudzu application emits 35,355 deploy bytes. Its 7,334 B gzip product graph includes the 2,425 B navigation capability. The first implementation paid a 128.7 ms HTML round trip during product-to-cart navigation; validated near-viewport document prefetch measured 6.1 ms in the current run while preserving complete documents and native fallback.
 
-The mobile profile uses a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput:
+The mobile row is retained from the previous matched run using a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput:
 
 | Profile | Cold LCP | Warm LCP | Interaction | Product → cart | Reject feedback | Rollback/error | CLS |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Desktop | 324 ms | 140 ms | 3.7 ms | 5.7 ms | 3.3 ms | 110.8 ms | 0 |
+| Desktop | 324 ms | 152 ms | 3.9 ms | 6.1 ms | 2.6 ms | 111.7 ms | 0 |
 | Mobile | 420 ms | 220 ms | 5.6 ms | 8.7 ms | 4.1 ms | 158 ms | 0 |
 
-Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. An empty-cache build measured 541.4 ms against the previous 547.6 ms path; after one warm-up, 31 interleaved artifact-clean builds measured Kudzu at 425.8 ms and React at 483.4 ms, making Kudzu 11.9% faster in that run. Disabling the cache preserves byte-for-byte output. Attempts to replace generated-handler lowering or share one TypeScript Program did not improve the combined median and were not retained.
+Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. The current seven-run matched commerce build measured Kudzu at 462.1 ms and React at 508.5 ms, making Kudzu 9.1% faster in that run. Disabling the cache preserves byte-for-byte output. Attempts to replace generated-handler lowering or share one TypeScript Program did not improve the combined median and were not retained.
 
 These results describe this six-route fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves an eligible warm application transition; it does not hide cold transfer, and direct loads remain complete standalone documents.
 

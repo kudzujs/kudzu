@@ -47,7 +47,7 @@ export default function HomePage() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.6.2</span> HTML-FIRST TSX FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.6.3</span> HTML-FIRST TSX FRAMEWORK</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">

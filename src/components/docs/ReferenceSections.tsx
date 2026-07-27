@@ -19,7 +19,8 @@ dist/
     ├── style.css
     ├── kudzu.js
     ├── kudzu-deps.js (when dependency-only effects are used)
-    ├── kudzu-navigation.js (when navigation is configured)
+    ├── kudzu-navigation.js (legacy navigation.routes)
+    ├── kudzu-navigation-&lt;route-hash&gt;.js (per navigation group)
     ├── kudzu-binding.js (when used)
     ├── kudzu-effect.js (when effects are used)
     ├── kudzu-style.js (when reactive styles are used)
@@ -39,21 +40,21 @@ export function BenchmarksSection() {
     <p>The Goal A fixture covers a matched six-route commerce journey with complete initial HTML, shared layout state, product options, optimistic cart success and rejection, accessible rollback, and product-to-cart navigation. Browser medians use seven rotating fresh Chrome profiles per target with 4x CPU slowdown, 100 ms latency, and 200 KiB/s throughput.</p>
     <h3>Desktop commerce</h3>
     <BenchmarkTable columns={["Target", "JS gzip", "Cold transfer", "Cold LCP", "Warm LCP", "Startup", "Heap", "Interaction", "Product → cart"]} rows={[
-      ["Kudzu", "7,215 B", "34,809 B", "324 ms", "140 ms", "103.3 ms", "648,844 B", "3.7 ms", "5.7 ms"],
-      ["React + Vite", "61,464 B", "202,842 B", "324 ms", "232 ms", "160.0 ms", "1,062,520 B", "10.5 ms", "8.3 ms"],
-      ["Next.js", "190,090 B", "546,581 B", "316 ms", "156 ms", "357.7 ms", "2,157,020 B", "11.4 ms", "26.9 ms"],
-      ["Nuxt", "67,620 B", "195,953 B", "320 ms", "204 ms", "205.1 ms", "1,721,348 B", "3.9 ms", "33.0 ms"],
-      ["SvelteKit", "32,473 B", "90,929 B", "340 ms", "172 ms", "125.8 ms", "999,496 B", "4.7 ms", "20.3 ms"]
+      ["Kudzu", "7,334 B", "35,260 B", "324 ms", "152 ms", "109.3 ms", "650,708 B", "3.9 ms", "6.1 ms"],
+      ["React + Vite", "61,464 B", "202,842 B", "340 ms", "244 ms", "166.2 ms", "1,062,512 B", "10.9 ms", "8.9 ms"],
+      ["Next.js", "190,090 B", "546,581 B", "320 ms", "168 ms", "413.0 ms", "2,158,160 B", "14.3 ms", "29.8 ms"],
+      ["Nuxt", "67,620 B", "195,953 B", "328 ms", "216 ms", "243.8 ms", "1,721,348 B", "4.3 ms", "28.4 ms"],
+      ["SvelteKit", "32,475 B", "90,934 B", "352 ms", "176 ms", "150.5 ms", "999,496 B", "5.2 ms", "24.0 ms"]
     ]} />
-    <p>Kudzu emits 34,879 deploy bytes. Its product graph includes the 2,306 B gzip navigation capability. Validated near-viewport document prefetch reduced the measured product-to-cart median from 128.7 ms to 5.7 ms without removing complete documents or native fallback.</p>
+    <p>Kudzu emits 35,355 deploy bytes. Its product graph includes the 2,425 B gzip navigation capability. Validated near-viewport document prefetch reduced the original 128.7 ms product-to-cart transition to 6.1 ms in the current run without removing complete documents or native fallback.</p>
     <h3>Desktop and mobile behavior</h3>
     <BenchmarkTable columns={["Profile", "Cold LCP", "Warm LCP", "Interaction", "Product → cart", "Reject feedback", "Rollback/error", "CLS"]} rows={[
-      ["Desktop", "324 ms", "140 ms", "3.7 ms", "5.7 ms", "3.3 ms", "110.8 ms", "0"],
+      ["Desktop", "324 ms", "152 ms", "3.9 ms", "6.1 ms", "2.6 ms", "111.7 ms", "0"],
       ["Mobile", "420 ms", "220 ms", "5.6 ms", "8.7 ms", "4.1 ms", "158 ms", "0"]
     ]} />
-    <p>The mobile profile uses a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput. Both profiles recorded zero cold and warm layout shift.</p>
+    <p>The mobile row is retained from the previous matched run using a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput. Both profiles recorded zero cold and warm layout shift.</p>
     <h3>Build startup</h3>
-    <p>Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. An empty-cache build measured 541.4 ms against the previous 547.6 ms path; after one warm-up, 31 interleaved artifact-clean builds measured Kudzu at 425.8 ms and React at 483.4 ms, making Kudzu 11.9% faster in that run. Disabling the cache preserves byte-for-byte output. Generated-handler lowering and shared-Program experiments did not improve the combined median and were not retained.</p>
+    <p>Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. The current seven-run matched commerce build measured Kudzu at 462.1 ms and React at 508.5 ms, making Kudzu 9.1% faster in that run. Disabling the cache preserves byte-for-byte output. Generated-handler lowering and shared-Program experiments did not improve the combined median and were not retained.</p>
     <p>These results describe one matched fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves eligible application transitions; direct loads still transfer and render complete standalone documents.</p>
   </section>
 }
@@ -68,7 +69,7 @@ export function LimitsSection() {
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
       <li><code>useEffect</code> supports inline block-bodied callbacks, directly returned inline cleanup, DOM ownership in conditional and supported keyed rows, and literal arrays of direct JSON-safe primitive state or runtime parameter identifiers. Keyed item-property dependencies, dependency expressions, properties, ordinary locals, objects, spreads, dynamic arrays, named or dynamic cleanup functions, cleanup parameters or generators, async effects returning cleanup, and other return values are not supported.</li>
       <li><code>runtimeParams = true</code> requires full bracket segments, cannot be combined with <code>getStaticPaths()</code>, and requires an exact-file-first fallback rewrite on the production host. Catch-all runtime parameters are not supported.</li>
-      <li>There is no request-time SSR, server actions, default/general router, HMR, or DevTools. Opt-in navigation supports one emitted exact/runtime route group with a shared layout; multiple groups and conditional or keyed effects in that group are not supported.</li>
+      <li>There is no request-time SSR, server actions, default/general router, HMR, or DevTools. Opt-in navigation supports independent emitted exact/runtime groups with one shared layout per group; cross-group path domains cannot overlap, and conditional or keyed effects in a group are not supported.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
     </ul>
   </section>

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { existsSync } from "node:fs"
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import { gzipSync } from "node:zlib"
 import test from "node:test"
@@ -144,7 +144,7 @@ test("enhances configured emitted routes sharing one layout", async t => {
   assert.equal(await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8"), navigation)
 
   for (const html of [product, cart, chart, broken, item, newItem, genericItem]) {
-    assert.match(html, /^<!doctype html>.*<body[^>]+data-k-application="[^"]+"[^>]+data-k-layout="[^"]+".*data-k-route-start.*data-k-route-end.*<\/body><\/html>$/s)
+    assert.match(html, /^<!doctype html>.*<body[^>]+data-k-application="a-a8d4d2fb8e9e69eb"[^>]+data-k-layout="l-a8d4d2fb8e9e69eb".*data-k-route-start.*data-k-route-end.*<\/body><\/html>$/s)
     assert.match(html, /data-k-route="\/(?:product|cart|chart|broken|items\/(?:\[id\]|new)|\[section\]\/\[id\])"/)
     assert.equal((html.match(/kudzu-navigation\.js/g) ?? []).length, 1)
   }
@@ -176,6 +176,84 @@ test("specializes effect-free exact navigation", async t => {
   assert.equal(result.status, 0, result.stderr)
   const navigation = await readFile(new URL("./fixtures/navigation-static/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
   assert.doesNotMatch(navigation, /capabilities|mountInitial|mountRouteEffects|initializeParams|pagehide|decodeSegment/)
+})
+
+test("emits independent shared-layout navigation groups", async t => {
+  const fixture = new URL("./fixtures/navigation-groups", import.meta.url)
+  const config = new URL("kudzu.config.mjs", `${fixture.href}/`)
+  const originalConfig = await readFile(config, "utf8")
+  const exactDiagnostic = new URL("src/pages/items/new.tsx", `${fixture.href}/`)
+  const runtimeDiagnostic = new URL("src/pages/[section]/[slug].tsx", `${fixture.href}/`)
+  t.after(async () => {
+    await writeFile(config, originalConfig)
+    await rm(exactDiagnostic, { force: true })
+    await rm(runtimeDiagnostic, { force: true })
+    await rm(new URL("./fixtures/navigation-groups/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/navigation-groups/dist", import.meta.url), { recursive: true, force: true })
+  })
+
+  assert.throws(() => normalizeNavigation({ routes: ["/a"], groups: [{ routes: ["/b"] }] }), /exactly one/)
+  assert.throws(() => normalizeNavigation({ groups: [] }), /nonempty array/)
+  assert.throws(() => normalizeNavigation({ groups: [null] }), /groups\[0\] must be a plain object/)
+  assert.throws(() => normalizeNavigation({ groups: [{ routes: ["/a"], name: "a" }] }), /groups\[0\] only supports routes/)
+  assert.throws(() => normalizeNavigation({ groups: [{ routes: ["/a"] }, { routes: ["/a"] }] }), /duplicates kudzu\.config navigation\.groups\[0\]/)
+
+  const groups = normalizeNavigation({ groups: [{ routes: ["/alpha", "/items/[id]"] }, { routes: ["/beta", "/gamma"] }] })
+  const buildFixture = () => spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  const first = buildFixture()
+  assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`)
+  const assetA = groups[0].assetName
+  const assetB = groups[1].assetName
+  const alpha = await readFile(new URL("dist/alpha/index.html", `${fixture.href}/`), "utf8")
+  const beta = await readFile(new URL("dist/beta/index.html", `${fixture.href}/`), "utf8")
+  const outside = await readFile(new URL("dist/outside/index.html", `${fixture.href}/`), "utf8")
+  const nativeItem = await readFile(new URL("dist/items/native/index.html", `${fixture.href}/`), "utf8")
+  const sourceA = await readFile(new URL(`dist/assets/${assetA}`, `${fixture.href}/`), "utf8")
+  const sourceB = await readFile(new URL(`dist/assets/${assetB}`, `${fixture.href}/`), "utf8")
+  assert.match(alpha, new RegExp(assetA.replace(".", "\\.")))
+  assert.doesNotMatch(alpha, new RegExp(assetB.replace(".", "\\.")))
+  assert.match(beta, new RegExp(assetB.replace(".", "\\.")))
+  assert.doesNotMatch(beta, new RegExp(assetA.replace(".", "\\.")))
+  assert.match(sourceA, /\/app\/alpha/)
+  assert.match(sourceA, /\/items\/\[id\]/)
+  assert.match(sourceA, /id:"\/items\/native",path:"\/app\/items\/native",native:!0/)
+  assert.doesNotMatch(sourceA, /\/app\/(?:beta|gamma)/)
+  assert.match(sourceB, /\/app\/beta/)
+  assert.match(sourceB, /\/app\/gamma/)
+  assert.doesNotMatch(sourceB, /\/app\/alpha|\/items\/\[id\]/)
+  assert.doesNotMatch(sourceB, /capabilities|mountInitial|mountRouteEffects|initializeParams|pagehide|decodeSegment/)
+  assert.doesNotMatch(outside, /data-k-(?:application|layout|route)|kudzu-navigation|data-k-capability/)
+  assert.doesNotMatch(nativeItem, /data-k-(?:application|layout|route)|kudzu-navigation|data-k-capability/)
+
+  await writeFile(config, `export default { base: "/app", navigation: { groups: [{ routes: ["/beta", "/gamma"] }, { routes: ["/alpha", "/items/[id]"] }] } }\n`)
+  const reordered = buildFixture()
+  assert.equal(reordered.status, 0, `${reordered.stdout}\n${reordered.stderr}`)
+  assert.equal(await readFile(new URL(`dist/assets/${assetA}`, `${fixture.href}/`), "utf8"), sourceA)
+  assert.equal(await readFile(new URL(`dist/assets/${assetB}`, `${fixture.href}/`), "utf8"), sourceB)
+  assert.equal(await readFile(new URL("dist/alpha/index.html", `${fixture.href}/`), "utf8"), alpha)
+  assert.deepEqual((await readdir(new URL("dist/assets", `${fixture.href}/`))).filter(name => name.startsWith("kudzu-navigation-")).sort(), [assetA, assetB].sort())
+
+  await writeFile(config, originalConfig)
+  const rebuilt = buildFixture()
+  assert.equal(rebuilt.status, 0, `${rebuilt.stdout}\n${rebuilt.stderr}`)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNavigationGroupsBrowserTest(fixture, chrome)
+
+  const invalidBuild = async (navigation, pattern) => {
+    await writeFile(config, `export default { base: "/app", navigation: ${JSON.stringify(navigation)} }\n`)
+    const result = buildFixture()
+    assert.notEqual(result.status, 0)
+    assert.match(`${result.stdout}\n${result.stderr}`, pattern)
+  }
+  await invalidBuild({ groups: [{ routes: ["/missing"] }] }, /navigation\.groups\[0\] route "\/missing" is not an emitted route/)
+  await invalidBuild({ groups: [{ routes: ["/outside"] }] }, /navigation\.groups\[0\] emitted route "\/app\/outside" must export a layout function/)
+  await invalidBuild({ groups: [{ routes: ["/alpha", "/beta"] }] }, /routes "\/alpha" and "\/beta" must export the same layout function identity/)
+  await mkdir(new URL("src/pages/items", `${fixture.href}/`), { recursive: true })
+  await writeFile(exactDiagnostic, 'import { ShellB } from "../../ShellB"\nexport const layout = ShellB\nexport default function Page() { return <main>New</main> }\n')
+  await invalidBuild({ groups: [{ routes: ["/items/[id]"] }, { routes: ["/items/new"] }] }, /overlap.*groups\[0\] route "\/items\/\[id\]".*groups\[1\] route "\/items\/new"/)
+  await mkdir(new URL("src/pages/[section]", `${fixture.href}/`), { recursive: true })
+  await writeFile(runtimeDiagnostic, 'import { ShellB } from "../../ShellB"\nexport const layout = ShellB\nexport const runtimeParams = true\nexport default function Page() { return <main>Generic</main> }\n')
+  await invalidBuild({ groups: [{ routes: ["/items/[id]"] }, { routes: ["/[section]/[slug]"] }] }, /overlap.*groups\[0\] route "\/items\/\[id\]".*groups\[1\] route "\/\[section\]\/\[slug\]"/)
 })
 
 test("rejects DOM-owned effects only in navigation groups", async () => {
@@ -1238,10 +1316,14 @@ http.createServer((request, response) => {
   const file = path.join(root, relative)
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
-}).listen(port, "127.0.0.1")
+}).listen(port, "127.0.0.1", () => console.log("ready"))
 `
-  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: ["ignore", "pipe", "pipe"] })
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("navigation group server did not start")), 5000)
+    server.stdout.once("data", () => { clearTimeout(timeout); resolve() })
+    server.once("exit", code => { clearTimeout(timeout); reject(new Error(`navigation group server exited ${code}`)) })
+  })
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/docs/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -1297,6 +1379,44 @@ http.createServer((request, response) => {
     const runtimeBrowser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/shop/items/oak?direct=1`], { encoding: "utf8", timeout: 20000 })
     assert.equal(runtimeBrowser.status, 0, runtimeBrowser.stderr)
     assert.match(runtimeBrowser.stdout, /data-runtime-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNavigationGroupsBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  for (const route of ["alpha", "items/[id]", "beta", "gamma", "outside"]) {
+    const htmlUrl = new URL(`${route}/index.html`, output)
+    const html = await readFile(htmlUrl, "utf8")
+    await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  }
+  const port = 46000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2]), counts = new Map()
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  if (url.pathname === "/request-count") {
+    response.setHeader("content-type", "application/json")
+    return response.end(JSON.stringify(counts.get(url.searchParams.get("path")) || 0))
+  }
+  counts.set(url.pathname, (counts.get(url.pathname) || 0) + 1)
+  const relative = url.pathname.replace(/^\\/app\\/?/, "")
+  let file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  if (!fs.existsSync(file) && /^\\/app\\/items\\/[^/]+\\/?$/.test(url.pathname)) file = path.join(root, "items/[id]/index.html")
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    for (const route of ["alpha", "beta", "outside"]) {
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/${route}`], { encoding: "utf8", timeout: 20000 })
+      assert.equal(browser.status, 0, browser.stderr)
+      assert.match(browser.stdout, /data-navigation-groups-test="pass"/)
+    }
   } finally {
     server.kill()
   }

@@ -195,7 +195,7 @@ function commit(incoming, incomingNodes, initializeParams, pathname) {
 
 function matchRoute(pathname) {
   const exact = routes.find(record => record.path === pathname)
-  if (exact) return exact
+  if (exact) return exact.native ? undefined : exact
   for (const record of routes) {
     if (!record.segments) continue
     try {
@@ -212,7 +212,7 @@ function matchRoute(pathname) {
       if (record.segments.every((literal, index) => {
         const value = decodeSegment(segments[index], literal === null)
         return literal === null || value === literal
-      })) return record
+      })) return record.native ? undefined : record
     } catch {}
   }
 }

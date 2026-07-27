@@ -20,13 +20,18 @@ export async function build({ quiet = false, minify = true } = {}) {
   const config = await loadConfig()
   const base = normalizeBase(config.base)
   const configuredStyles = normalizeStyles(config.styles, base)
-  const navigationRoutes = normalizeNavigation(config.navigation)
-  const navigationSet = new Set(navigationRoutes)
-  const navigationAsset = assetPath(base, "assets/kudzu-navigation.js")
-  const navigationId = navigationRoutes.length ? createHash("sha256").update(JSON.stringify([...navigationRoutes].sort())).digest("hex").slice(0, 16) : undefined
-  const applicationId = navigationId ? `a-${navigationId}` : undefined
-  const layoutId = navigationId ? `l-${navigationId}` : undefined
-  let navigationLayout
+  const navigationGroups = normalizeNavigation(config.navigation)
+  const navigationRoutes = navigationGroups.flatMap(group => group.routes)
+  const navigationByRoute = new Map(navigationGroups.flatMap(group => group.routes.map(route => [route, group])))
+  for (const group of navigationGroups) {
+    group.assetPath = assetPath(base, `assets/${group.assetName}`)
+    group.applicationId = `a-${group.id}`
+    group.layoutId = `l-${group.id}`
+    group.records = []
+    group.routeRecords = []
+    group.hasEffects = false
+    group.hasParams = false
+  }
   await rm(workDirectory, { recursive: true, force: true })
   await rm(outputDirectory, { recursive: true, force: true })
   await mkdir(workDirectory, { recursive: true })
@@ -62,7 +67,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const rewrites = []
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
-  const navigationRecords = []
+  const emittedNavigationRecords = []
   const styleUrls = [...new Set([
     ...cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)),
     ...configuredStyles
@@ -92,19 +97,25 @@ export async function build({ quiet = false, minify = true } = {}) {
       const route = runtimeSchema?.route ?? routeFromPage(pageFile, params)
       const applicationRoute = `/${route}`
       const routePath = withBase(base, `/${route}`)
-      const navigable = navigationSet.has(applicationRoute)
+      const navigationGroup = navigationByRoute.get(applicationRoute)
+      const navigable = Boolean(navigationGroup)
       const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
       const paramPath = `params/${route}/index.js`
       if (emittedRoutes.has(routePath)) throw new Error(`Duplicate route: ${routePath}`)
       emittedRoutes.add(routePath)
       emittedApplicationRoutes.add(applicationRoute)
+      const navigationRecord = runtimeSchema
+        ? { id: applicationRoute, base: browserPath(base), segments: runtimeSchema.segments.map(segment => segment.literal ?? null) }
+        : { id: applicationRoute, path: routePath }
+      const routeRecord = { route: applicationRoute, segments: runtimeSchema ? navigationRecord.segments : exactRouteSegments(applicationRoute), record: navigationRecord, group: navigationGroup }
+      emittedNavigationRecords.push(routeRecord)
       if (navigable) {
-        if (typeof module.layout !== "function") throw new Error(`kudzu.config navigation emitted route ${JSON.stringify(routePath)} must export a layout function so Kudzu can emit route markers`)
-        if (navigationLayout && navigationLayout !== module.layout) throw new Error("kudzu.config navigation routes must export the same layout function identity")
-        navigationLayout = module.layout
-        navigationRecords.push(runtimeSchema
-          ? { id: applicationRoute, base: browserPath(base), segments: runtimeSchema.segments.map(segment => segment.literal ?? null) }
-          : { id: applicationRoute, path: routePath })
+        if (typeof module.layout !== "function") throw new Error(`${navigationGroup.label} emitted route ${JSON.stringify(routePath)} must export a layout function so Kudzu can emit route markers`)
+        if (navigationGroup.layoutIdentity && navigationGroup.layoutIdentity !== module.layout) throw new Error(`${navigationGroup.label} routes ${JSON.stringify(navigationGroup.layoutRoute)} and ${JSON.stringify(applicationRoute)} must export the same layout function identity`)
+        navigationGroup.layoutIdentity = module.layout
+        navigationGroup.layoutRoute ??= applicationRoute
+        navigationGroup.records.push(navigationRecord)
+        navigationGroup.routeRecords.push(routeRecord)
       }
       const result = await renderPage(module.default, {
         ...(module.metadata ?? {}),
@@ -114,8 +125,12 @@ export async function build({ quiet = false, minify = true } = {}) {
         effectAsset: assetPath(base, `assets/${effectPath}`),
         paramAsset: assetPath(base, `assets/${paramPath}`),
         runtimeParams: runtimeSchema?.params,
-        ...(navigable ? { navigationAsset, applicationId, layoutId, routeId: applicationRoute } : {})
+        ...(navigable ? { navigationAsset: navigationGroup.assetPath, applicationId: navigationGroup.applicationId, layoutId: navigationGroup.layoutId, routeId: applicationRoute } : {})
       }, props, module.layout)
+      if (navigationGroup) {
+        navigationGroup.hasEffects ||= result.hasEffects
+        navigationGroup.hasParams ||= result.hasParams
+      }
       const hasDependencies = result.plan.effects.some(effect => effect.dependencies?.length)
       const usesDependencyRuntime = !navigable && hasDependencies && !result.plan.effects.some(effect => effect.owner) && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
       pageEntries.push({ route, html: result.html, usesDependencyRuntime })
@@ -136,8 +151,13 @@ export async function build({ quiet = false, minify = true } = {}) {
     }
   }
 
-  for (const route of navigationRoutes) if (!emittedApplicationRoutes.has(route)) throw new Error(`kudzu.config navigation route ${JSON.stringify(route)} is not an emitted route`)
-  navigationRecords.sort((left, right) => (right.segments?.filter(segment => segment !== null).length ?? 0) - (left.segments?.filter(segment => segment !== null).length ?? 0) || left.id.localeCompare(right.id))
+  for (const group of navigationGroups) for (const route of group.routes) if (!emittedApplicationRoutes.has(route)) throw new Error(`${group.label} route ${JSON.stringify(route)} is not an emitted route`)
+  rejectNavigationOverlap(navigationGroups)
+  for (const group of navigationGroups) {
+    const runtimeRecords = group.routeRecords.filter(record => record.record.segments)
+    for (const entry of emittedNavigationRecords) if (!entry.group && runtimeRecords.some(record => navigationDomainsOverlap(record, entry))) group.records.push({ ...entry.record, native: true })
+    group.records.sort((left, right) => (right.segments?.filter(segment => segment !== null).length ?? 0) - (left.segments?.filter(segment => segment !== null).length ?? 0) || left.id.localeCompare(right.id))
+  }
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
@@ -161,7 +181,6 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasNativeHandlers = nativeModules.length > 0
   const hasEffects = effectEntries.length > 0
   const hasNavigableEffects = effectEntries.some(entry => entry.navigable)
-  const hasNavigableParams = paramEntries.some(entry => entry.navigable)
   const hasSharedRuntime = bindingCount || listCount || hasNativeHandlers || navigationRoutes.length
   const hasDependencyRuntime = pageEntries.some(entry => entry.usesDependencyRuntime)
   const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
@@ -237,14 +256,17 @@ export async function build({ quiet = false, minify = true } = {}) {
       "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
     })
   }
-  if (navigationRoutes.length) {
-    let navigationRuntime = (await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8"))
-      .replace("__KUDZU_NAVIGATION_ROUTES__", inlineJson(navigationRecords))
-      .replace("__KUDZU_APPLICATION_ID__", JSON.stringify(applicationId))
-      .replace("__KUDZU_LAYOUT_ID__", JSON.stringify(layoutId))
-      .replace('"./shared-runtime.js"', '"./kudzu.js"')
-    navigationRuntime = specializeNavigationPatterns(navigationRuntime, navigationRecords.some(record => record.segments))
-    await writeJavaScript(join(assetsDirectory, "kudzu-navigation.js"), specializeNavigationEffects(navigationRuntime, hasNavigableEffects || hasNavigableParams), minify)
+  if (navigationGroups.length) {
+    const navigationSource = await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8")
+    for (const group of navigationGroups) {
+      let navigationRuntime = navigationSource
+        .replace("__KUDZU_NAVIGATION_ROUTES__", inlineJson(group.records))
+        .replace("__KUDZU_APPLICATION_ID__", JSON.stringify(group.applicationId))
+        .replace("__KUDZU_LAYOUT_ID__", JSON.stringify(group.layoutId))
+        .replace('"./shared-runtime.js"', '"./kudzu.js"')
+      navigationRuntime = specializeNavigationPatterns(navigationRuntime, group.records.some(record => record.segments))
+      await writeJavaScript(join(assetsDirectory, group.assetName), specializeNavigationEffects(navigationRuntime, group.hasEffects || group.hasParams), minify)
+    }
   }
   for (const handlerModule of handlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
@@ -2883,17 +2905,62 @@ function normalizeStyles(value, base) {
 export function normalizeNavigation(value) {
   if (value === undefined) return []
   if (!isPlainRecord(value)) throw new Error("kudzu.config navigation must be a plain object")
-  if (Object.keys(value).some(key => key !== "routes")) throw new Error("kudzu.config navigation only supports routes")
-  if (!Array.isArray(value.routes) || !value.routes.length) throw new Error("kudzu.config navigation.routes must be a nonempty array")
-  const routes = value.routes.map((route, index) => {
-    if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//") || /[?#\\\0]/.test(route) || /%(?:2f|5c)/i.test(route)) throw new Error(`kudzu.config navigation.routes[${index}] must be a root-relative path without query, hash, or traversal`)
+  if (Object.keys(value).some(key => !["routes", "groups"].includes(key))) throw new Error("kudzu.config navigation only supports routes or groups")
+  if ((value.routes === undefined) === (value.groups === undefined)) throw new Error("kudzu.config navigation must define exactly one of routes or groups")
+  const inputs = value.routes === undefined ? value.groups : [{ routes: value.routes }]
+  if (!Array.isArray(inputs) || !inputs.length) throw new Error("kudzu.config navigation.groups must be a nonempty array")
+  const groups = inputs.map((group, groupIndex) => {
+    const label = value.routes === undefined ? `kudzu.config navigation.groups[${groupIndex}]` : "kudzu.config navigation"
+    if (!isPlainRecord(group)) throw new Error(`${label} must be a plain object`)
+    if (Object.keys(group).some(key => key !== "routes")) throw new Error(`${label} only supports routes`)
+    if (!Array.isArray(group.routes) || !group.routes.length) throw new Error(`${label}.routes must be a nonempty array`)
+    const routes = normalizeNavigationRoutes(group.routes, `${label}.routes`)
+    const id = createHash("sha256").update(JSON.stringify([...routes].sort())).digest("hex").slice(0, 16)
+    return { label, index: groupIndex, routes, routeSet: new Set(routes), id, assetName: value.routes === undefined ? `kudzu-navigation-${id}.js` : "kudzu-navigation.js" }
+  })
+  const identities = groups.flatMap(group => group.routes.map(route => [route, group.label]))
+  const seenRoutes = new Map()
+  for (const [route, label] of identities) {
+    if (seenRoutes.has(route)) throw new Error(`${label} route ${JSON.stringify(route)} duplicates ${seenRoutes.get(route)}`)
+    seenRoutes.set(route, label)
+  }
+  const seenAssets = new Map()
+  for (const group of groups) {
+    if (seenAssets.has(group.assetName)) throw new Error(`${group.label} navigation hash/asset collision with ${seenAssets.get(group.assetName)}`)
+    seenAssets.set(group.assetName, group.label)
+  }
+  return groups
+}
+
+function normalizeNavigationRoutes(values, label) {
+  const routes = values.map((route, index) => {
+    if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//") || /[?#\\\0]/.test(route) || /%(?:2f|5c)/i.test(route)) throw new Error(`${label}[${index}] must be a root-relative path without query, hash, or traversal`)
     let decoded
-    try { decoded = decodeURIComponent(route) } catch { throw new Error(`kudzu.config navigation.routes[${index}] must be a root-relative path without query, hash, or traversal`) }
-    if (decoded.split("/").includes("..") || /[?#\\\0]/.test(decoded)) throw new Error(`kudzu.config navigation.routes[${index}] must be a root-relative path without query, hash, or traversal`)
+    try { decoded = decodeURIComponent(route) } catch { throw new Error(`${label}[${index}] must be a root-relative path without query, hash, or traversal`) }
+    if (decoded.split("/").includes("..") || /[?#\\\0]/.test(decoded)) throw new Error(`${label}[${index}] must be a root-relative path without query, hash, or traversal`)
     return route
   })
-  if (new Set(routes).size !== routes.length) throw new Error("kudzu.config navigation.routes must contain unique paths")
+  if (new Set(routes).size !== routes.length) throw new Error(`${label} must contain unique paths`)
   return routes
+}
+
+function exactRouteSegments(route) {
+  return route.slice(1).split("/").map(segment => decodeURIComponent(segment))
+}
+
+function rejectNavigationOverlap(groups) {
+  for (let leftIndex = 0; leftIndex < groups.length; leftIndex++) for (let rightIndex = leftIndex + 1; rightIndex < groups.length; rightIndex++) {
+    const leftGroup = groups[leftIndex]
+    const rightGroup = groups[rightIndex]
+    for (const left of leftGroup.routeRecords) for (const right of rightGroup.routeRecords) {
+      if (!navigationDomainsOverlap(left, right)) continue
+      throw new Error(`Navigation path domains overlap between ${leftGroup.label} route ${JSON.stringify(left.route)} and ${rightGroup.label} route ${JSON.stringify(right.route)}`)
+    }
+  }
+}
+
+function navigationDomainsOverlap(left, right) {
+  return left.segments.length === right.segments.length && left.segments.every((segment, index) => segment === null || right.segments[index] === null || segment === right.segments[index])
 }
 
 function specializeNavigationTextDescriptors(source) {

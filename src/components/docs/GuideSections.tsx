@@ -61,7 +61,14 @@ export default function ProductPage() {
 export default {
   navigation: { routes: ["/product", "/items/[id]"] }
 }`} />
-    <p>Every configured pattern must identify an emitted route and export the same layout function. A runtime route uses its bracket pattern, such as <code>/items/[id]</code>. Layout DOM, state, and top-level effects persist; route state, parameters, and top-level effects reset after cleanup. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct loads, reloads, failures, malformed paths, unsupported links, and routes outside the group keep native document navigation. Route replacement is fast but coordinated exit and shared-element View Transitions are not integrated yet. Multiple groups and conditional or keyed effects inside navigation groups are not supported.</p>
+    <CodeBlock code={`// Multiple shared layouts (mutually exclusive with routes)
+export default {
+  navigation: { groups: [
+    { routes: ["/product", "/items/[id]"] },
+    { routes: ["/account", "/settings"] }
+  ] }
+}`} />
+    <p>Every configured pattern must identify a globally unique emitted route. A runtime route uses its bracket pattern, such as <code>/items/[id]</code>. Each group uses one page-exported layout identity, while different groups may use different layouts. Kudzu emits one deterministic route-hashed, capability-specialized asset per group and rejects overlapping path domains across groups. Layout DOM, state, and top-level effects persist within a group; route state, parameters, and top-level effects reset after cleanup. Eligible same-group anchors prefetch validated complete documents. Cross-group links, direct loads, reloads, failures, malformed paths, unsupported links, and ungrouped routes keep native document navigation. Coordinated exit/shared-element View Transitions and conditional or keyed effects inside navigation groups are not supported.</p>
     <h3>Project configuration</h3>
     <CodeBlock code={`// kudzu.config.mjs
 export default {

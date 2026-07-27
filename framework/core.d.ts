@@ -57,6 +57,7 @@ export function renderPage<Props = Record<string, never>>(
     navigationAsset?: string
     applicationId?: string
     layoutId?: string
+    routeId?: string
   },
   props?: Props,
   layout?: (props: { children: unknown }) => unknown | Promise<unknown>

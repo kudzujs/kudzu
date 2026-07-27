@@ -8,7 +8,7 @@ The benchmark runner, framework fixtures, generated artifacts, and raw arrays ar
 
 ## Implementation Status
 
-**Goal A is complete for one explicitly configured emitted-route group with one shared layout.** Complete standalone documents, exact and runtime-parameter navigation, native fallback, persistent layout state/effects, disposable route state/effects, optimistic workflows, desktop/mobile performance gates, and the dashboard expansion seam are covered. Multiple layout groups and conditional/keyed DOM-owned effects inside a navigation group remain deliberate post-Goal-A limits.
+**Goal A is complete for one explicitly configured emitted-route group with one shared layout.** Complete standalone documents, exact and runtime-parameter navigation, native fallback, persistent layout state/effects, disposable route state/effects, optimistic workflows, desktop/mobile performance gates, and the dashboard expansion seam are covered. Multiple independent shared-layout groups were added post-Goal-A; conditional/keyed DOM-owned effects inside a navigation group remain a deliberate limit.
 
 - **Phase 1 complete**: a local six-route commerce fixture, locked React/Next/Nuxt/SvelteKit comparisons, and a reproducible artifact/build/Chrome runner validate the implementation.
 - **Phase 2 complete**: effects inside conditional ranges and supported keyed row components mount with their DOM owner, unsubscribe and clean up on removal, and remount without affecting effect-free output.
@@ -24,6 +24,10 @@ The capability-local prefetch/cache increased the commerce navigation asset from
 In the focused effect-enabled navigation fixture, mount support adds 171 B gzip to the same-route navigation asset and 37 B gzip to the shared runtime. The active-context guard adds 18 B gzip to `kudzu-effect.js` (257 B total); cache-safe route entries are 1,059-1,116 B gzip. The effect-free commerce specialization remains byte-for-byte unchanged.
 
 The post-Goal-A runtime-pattern matcher increases the exact-only commerce navigation asset from 2,306 B to 2,461 B gzip. The mixed exact/runtime navigation fixture emits a 3,105 B gzip navigation asset and a 703 B gzip cache-safe parameter initializer.
+
+The post-Goal-A multiple-group fixture emits a 7,448 B raw / 3,099 B gzip (`gzip -9`) mixed runtime/effect group asset, including one native exclusion for an overlapping ungrouped exact route, and a separately specialized 5,681 B raw / 2,448 B gzip exact effect-free group asset. These measurements do not revise the historical Goal A benchmark.
+
+A current 0.6.2 desktop rerun of the matched six-route commerce fixture measured Kudzu at 462.1 ms build, 35,355 deploy bytes, 7,334 B gzip product JavaScript, 324/152 ms cold/warm LCP, 109.3 ms startup task, 3.9 ms interaction, and 6.1 ms product-cart navigation. React measured 508.5 ms build, 61,464 B gzip product JavaScript, 340/244 ms LCP, 166.2 ms startup task, 10.9 ms interaction, and 8.9 ms navigation. Raw arrays and the consolidated report are retained under the local demo benchmark workspace.
 
 The Phase 6 chart probe's complete initial module graph is 11,902 B raw / 5,331 B gzip. It adds no framework API or package and does not change the commerce benchmark fixture.
 
