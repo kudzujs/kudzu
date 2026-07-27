@@ -181,6 +181,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasNativeHandlers = nativeModules.length > 0
   const hasEffects = effectEntries.length > 0
   const hasNavigableEffects = effectEntries.some(entry => entry.navigable)
+  const hasNavigableOwners = effectEntries.some(entry => entry.navigable && entry.effects.some(effect => effect.owner))
   const hasSharedRuntime = bindingCount || listCount || hasNativeHandlers || navigationRoutes.length
   const hasDependencyRuntime = pageEntries.some(entry => entry.usesDependencyRuntime)
   const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
@@ -194,6 +195,9 @@ export async function build({ quiet = false, minify = true } = {}) {
     const runtimeFile = hasSharedRuntime ? "./shared-runtime.js" : "./runtime.js"
     let runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, regularStateSeedCount > 0)
     if (hasNavigableEffects) runtime = runtime.replace("export function registerCommitter(commit) {\n  committers.push(commit)\n}", "export function registerCommitter(commit) {\n  committers.push(commit)\n  return () => {\n    const index = committers.indexOf(commit)\n    if (index !== -1) committers.splice(index, 1)\n  }\n}")
+    if (hasNavigableOwners) runtime = runtime
+      .replace("export function registerMountHook(mount) {\n  mountHooks.push(mount)\n}", "export function registerMountHook(mount) {\n  mountHooks.push(mount)\n  return () => {\n    const index = mountHooks.indexOf(mount)\n    if (index !== -1) mountHooks.splice(index, 1)\n  }\n}")
+      .replace("export function registerUnmountHook(unmount) {\n  unmountHooks.push(unmount)\n}", "export function registerUnmountHook(unmount) {\n  unmountHooks.push(unmount)\n  return () => {\n    const index = unmountHooks.indexOf(unmount)\n    if (index !== -1) unmountHooks.splice(index, 1)\n  }\n}")
     await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
   }
   if (hasDependencyRuntime) {
@@ -282,7 +286,9 @@ export async function build({ quiet = false, minify = true } = {}) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
     await writeJavaScript(output, entry.navigable
-      ? printNavigableEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base)
+      ? entry.effects.some(effect => effect.owner)
+        ? printOwnedNavigableEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base)
+        : printNavigableEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base)
       : printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime)), minify)
   }
   const clientModules = await collectClientModules(handlerModules.flatMap(module => module.clientImports), sourceFileSet)
@@ -677,6 +683,237 @@ function mount(lifetime) {
 }`
 }
 
+function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+  const moduleUrls = [...new Set(effects.map(effect => effect.module))]
+  const modules = moduleUrls.map(url => {
+    const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
+    if (!module) throw new Error(`Effect handler module was not emitted: ${url}`)
+    return module
+  })
+  const imports = [
+    `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
+    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
+    ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
+  ]
+  const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
+  return `${imports.join("\n")}
+const effects = ${inlineJson(effects)}
+const modules = new Map([${entries}])
+export const mountLayoutEffects = () => mount("layout")
+export const mountRouteEffects = () => mount("route")
+function mount(lifetime) {
+  let active = true
+  let flushing
+  let order = 0
+  const selectedEffects = effects.map((effect, index) => ({ effect, index })).filter(entry => entry.effect.lifetime === lifetime)
+  const records = new Set()
+  const owners = new Map()
+  const listTemplates = new Map()
+  const registrations = new WeakMap()
+  const dependencies = new Map()
+  const pending = new Set()
+  const startedCleanups = new Set()
+  let scheduled = false
+  for (const template of selectedEffects) {
+    if (template.effect.list) listTemplates.set(template.effect.owner, template)
+    else {
+      const record = createRecord(template, !template.effect.owner)
+      if (template.effect.owner) owners.set(template.effect.owner, record)
+    }
+  }
+  const unsubscribeCommitter = selectedEffects.some(({ effect }) => effect.dependencies?.length) ? __kRuntime.registerCommitter(id => {
+    if (!active) return
+    for (const record of dependencies.get(id) ?? []) if (record.mounted) pending.add(record)
+    schedule()
+  }) : undefined
+  const unsubscribeMount = __kRuntime.registerMountHook(mountOwned)
+  const unsubscribeUnmount = __kRuntime.registerUnmountHook(unmountOwned)
+  for (const record of records) if (record.mounted) start(record)
+  mountOwned(document)
+  function createRecord(template, mounted = true) {
+    const record = { ...template, order: order++, mounted, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
+    records.add(record)
+    registerDependencies(record)
+    return record
+  }
+  function registerDependencies(record) {
+    for (const id of record.effect.dependencies ?? []) {
+      const subscribers = dependencies.get(id) ?? new Set()
+      subscribers.add(record)
+      dependencies.set(id, subscribers)
+    }
+  }
+  function unregisterDependencies(record) {
+    for (const id of record.effect.dependencies ?? []) {
+      const subscribers = dependencies.get(id)
+      subscribers?.delete(record)
+      if (!subscribers?.size) dependencies.delete(id)
+    }
+  }
+  function mountOwned(root) {
+    if (!active) return
+    for (const marker of matching(root)) {
+      if (!marker.isConnected) continue
+      if (marker.dataset.kEffects) {
+        if (registrations.has(marker)) continue
+        const rowRecords = JSON.parse(marker.dataset.kEffects).flatMap(owner => {
+          const template = listTemplates.get(owner)
+          if (!template) return []
+          const record = createRecord(template)
+          record.marker = marker
+          start(record)
+          return [record]
+        })
+        if (rowRecords.length) registrations.set(marker, rowRecords)
+        continue
+      }
+      const record = owners.get(marker.dataset.kEffect)
+      if (record && !record.mounted) mountRecord(record, marker)
+    }
+  }
+  function unmountOwned(root) {
+    if (!active) return
+    for (const marker of matching(root)) {
+      const rowRecords = registrations.get(marker)
+      if (rowRecords) {
+        for (const record of rowRecords) unmountRecord(record, true)
+        registrations.delete(marker)
+        continue
+      }
+      const record = owners.get(marker.dataset.kEffect)
+      if (record?.marker === marker) unmountRecord(record)
+    }
+  }
+  function matching(root) {
+    const selector = "template[data-k-effect],[data-k-effects]"
+    return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
+  }
+  function mountRecord(record, marker) {
+    record.mounted = true
+    record.marker = marker
+    const version = ++record.version
+    const begin = () => {
+      if (active && record.mounted && record.version === version && marker.isConnected) start(record)
+    }
+    if (record.disposal) record.disposal.then(begin)
+    else begin()
+  }
+  function unmountRecord(record, dynamic = false) {
+    if (!record.mounted) return
+    record.mounted = false
+    record.marker = undefined
+    record.version++
+    pending.delete(record)
+    if (dynamic) {
+      unregisterDependencies(record)
+      records.delete(record)
+    }
+    void cleanup(record)
+  }
+  function start(record) {
+    try {
+      record.values = readDependencies(record)
+      invoke(record)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  function schedule() {
+    if (!pending.size || scheduled || flushing) return
+    scheduled = true
+    queueMicrotask(flush)
+  }
+  async function flush() {
+    scheduled = false
+    if (!active) return pending.clear()
+    const operation = (async () => {
+      const changed = []
+      const selected = [...pending].filter(record => record.mounted).sort((left, right) => left.index - right.index || left.order - right.order)
+      pending.clear()
+      for (const record of selected) {
+        try {
+          const values = readDependencies(record)
+          if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) {
+            record.values = values
+            changed.push([record, record.version])
+          }
+        } catch (error) {
+          console.error(error)
+        }
+      }
+      for (const [record] of changed) await cleanup(record)
+      if (active) for (const [record, version] of changed) if (record.mounted && record.version === version) invoke(record)
+    })()
+    flushing = operation
+    try { await operation } finally {
+      if (flushing === operation) flushing = undefined
+      if (active) schedule()
+    }
+  }
+  function readDependencies(record) {
+    return (record.effect.dependencies ?? []).map(id => {
+      const value = __kRuntime.browserState.get(id)
+      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+      return value
+    })
+  }
+  function invoke(record) {
+    const token = { active: true }
+    record.token = token
+    try {
+      const effect = record.effect
+      const scope = effect.list
+        ? Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, value?.type === "list-item" ? JSON.parse(record.marker.dataset.kEffectItem) : value]))
+        : effect.scope
+      const result = modules.get(effect.module)[effect.handler](createEffectContext(__kRuntime.browserState, effect.states, __kRuntime.commitDom, scope, () => active && token.active && record.token === token))
+      if (effect.cleanup && typeof result === "function") record.cleanup = result
+      else if (result && typeof result.then === "function") result.catch(error => console.error(error))
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  function cleanup(record) {
+    if (record.token) record.token.active = false
+    record.token = undefined
+    if (record.disposal) return record.disposal
+    const current = record.cleanup
+    record.cleanup = undefined
+    if (!current) return Promise.resolve()
+    const disposal = (async () => {
+      try { await current() } catch (error) { console.error(error) }
+    })()
+    record.disposal = disposal
+    startedCleanups.add(disposal)
+    disposal.finally(() => {
+      startedCleanups.delete(disposal)
+      if (record.disposal === disposal) record.disposal = undefined
+    })
+    return disposal
+  }
+  let disposal
+  return async function dispose() {
+    if (disposal) return disposal
+    disposal = (async () => {
+      active = false
+      unsubscribeCommitter?.()
+      unsubscribeMount()
+      unsubscribeUnmount()
+      pending.clear()
+      for (const record of records) if (record.token) record.token.active = false
+      if (flushing) await flushing
+      const mounted = [...records].filter(record => record.mounted).sort((left, right) => left.index - right.index || left.order - right.order)
+      for (const record of mounted) {
+        record.mounted = false
+        await cleanup(record)
+      }
+      await Promise.all([...startedCleanups])
+      records.clear()
+    })()
+    return disposal
+  }
+}`
+}
+
 function runtimeEffects(effects, lifetimes = false) {
   return effects.map(effect => ({
     module: effect.module,
@@ -707,7 +944,7 @@ let flushing = false
 let active = true
 for (const record of records) registerDependencies(record)
 function createRecord(effect, index) {
-  return { effect, index, mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined }
+  return { effect, index, mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
 }
 function registerDependencies(record) {
   for (const id of record.effect.dependencies ?? []) {
@@ -845,12 +1082,14 @@ function readDependencies(record) {
   })
 }
 function invoke(record) {
+  const token = { active: true }
+  record.token = token
   try {
     const effect = record.effect
     const scope = effect.list
       ? Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, value?.type === "list-item" ? JSON.parse(record.marker.dataset.kEffectItem) : value]))
       : effect.scope
-    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, scope))
+    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, scope, () => active && token.active && record.token === token))
     if (effect.cleanup && typeof result === "function") record.cleanup = result
     else if (result && typeof result.then === "function") result.catch(error => console.error(error))
   } catch (error) {
@@ -858,6 +1097,8 @@ function invoke(record) {
   }
 }
 function invokeCleanup(record) {
+  if (record.token) record.token.active = false
+  record.token = undefined
   if (record.disposal) return record.disposal
   const cleanup = record.cleanup
   record.cleanup = undefined

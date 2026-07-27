@@ -470,9 +470,7 @@ export default {
 
 Every configured identity must be a unique emitted exact route or `runtimeParams` bracket pattern. Routes within each group must export the same layout function identity; different groups may export different layouts. Kudzu emits one deterministic, route-set-hashed navigation asset per group containing only that group's records and capabilities. Path domains may overlap within a group, where exact and more-specific matching wins, but overlapping exact/runtime or runtime/runtime domains across groups fail the build.
 
-The layout DOM, state, and top-level effects persist within its group; route state, parameters, and top-level effects reset after cleanup on each transition. Eligible same-group anchors prefetch validated complete documents into a finite memory cache. Cross-group links, ungrouped routes, direct requests, reloads, malformed runtime paths, JavaScript failures, and unsupported links retain native document navigation.
-
-Conditional or keyed effects inside a navigation group are not supported yet.
+The layout DOM, state, and effects persist within its group; route state, parameters, and effects reset after cleanup on each transition. Conditional effects mount only while their DOM is connected. Keyed row effects mount per connected row, survive reorder, read the latest row item when a supported state dependency reruns, and clean up on removal. Cached route modules create fresh route owner records and subscriptions on every revisit. Keyed item-property dependencies remain unsupported. Eligible same-group anchors prefetch validated complete documents into a finite memory cache. Cross-group links, ungrouped routes, direct requests, reloads, malformed runtime paths, JavaScript failures, and unsupported links retain native document navigation.
 
 This produces fast same-document route changes, but it does not add a coordinated transition animation. CSS entry animations can style newly inserted route content; exit and shared-element View Transitions are not integrated yet.
 
@@ -513,6 +511,7 @@ Supported:
 - Page-exported shared layouts with layout/route state lifetimes
 - Opt-in exact/runtime-route navigation with complete-document prefetch and native fallback
 - Layout- and route-lifetime effect mounts in navigation groups
+- Conditional/keyed DOM-owned effects in navigation groups
 
 Not implemented yet:
 
@@ -520,7 +519,6 @@ Not implemented yet:
 - Server actions and request-time SSR
 - React package islands
 - HMR and framework DevTools
-- Conditional/keyed DOM-owned effects inside navigation groups
 
 ## Benchmarks
 
@@ -532,22 +530,22 @@ Browser medians use seven rotating fresh Chrome profiles per target with 4x CPU 
 
 | Target | Product JS gzip | Cold transfer | Cold LCP | Warm LCP | Startup task | Heap | Interaction | Product → cart |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Kudzu | **7,334 B** | **35,260 B** | 324 ms | **152 ms** | **109.3 ms** | **650,708 B** | **3.9 ms** | **6.1 ms** |
-| React + Vite | 61,464 B | 202,842 B | 340 ms | 244 ms | 166.2 ms | 1,062,512 B | 10.9 ms | 8.9 ms |
-| Next.js | 190,090 B | 546,581 B | **320 ms** | 168 ms | 413.0 ms | 2,158,160 B | 14.3 ms | 29.8 ms |
-| Nuxt | 67,620 B | 195,953 B | 328 ms | 216 ms | 243.8 ms | 1,721,348 B | 4.3 ms | 28.4 ms |
-| SvelteKit | 32,475 B | 90,934 B | 352 ms | 176 ms | 150.5 ms | 999,496 B | 5.2 ms | 24.0 ms |
+| Kudzu | **7,334 B** | **35,260 B** | 332 ms | **156 ms** | **122.6 ms** | **650,708 B** | **4.8 ms** | **5.6 ms** |
+| React + Vite | 61,464 B | 202,842 B | 332 ms | 264 ms | 179.9 ms | 1,062,520 B | 10.2 ms | 9.9 ms |
+| Next.js | 190,090 B | 547,615 B | **324 ms** | 176 ms | 434.4 ms | 2,168,412 B | 14.0 ms | 30.0 ms |
+| Nuxt | 67,620 B | 195,953 B | **324 ms** | 224 ms | 247.9 ms | 1,721,348 B | **4.5 ms** | 29.6 ms |
+| SvelteKit | 32,474 B | 90,939 B | 376 ms | 184 ms | 143.8 ms | 999,496 B | 6.3 ms | 21.8 ms |
 
-The current Kudzu application emits 35,355 deploy bytes. Its 7,334 B gzip product graph includes the 2,425 B navigation capability. The first implementation paid a 128.7 ms HTML round trip during product-to-cart navigation; validated near-viewport document prefetch measured 6.1 ms in the current run while preserving complete documents and native fallback.
+The current Kudzu application emits 35,355 deploy bytes. Its 7,334 B gzip product graph includes the 2,425 B navigation capability; all three sizes are unchanged by conditional/keyed navigation effects because this top-level-only fixture retains the smaller specialized path. The first implementation paid a 128.7 ms HTML round trip during product-to-cart navigation; validated near-viewport document prefetch measured 5.6 ms in the current run while preserving complete documents and native fallback.
 
 The mobile row is retained from the previous matched run using a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput:
 
 | Profile | Cold LCP | Warm LCP | Interaction | Product → cart | Reject feedback | Rollback/error | CLS |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Desktop | 324 ms | 152 ms | 3.9 ms | 6.1 ms | 2.6 ms | 111.7 ms | 0 |
+| Desktop | 332 ms | 156 ms | 4.8 ms | 5.6 ms | 4.0 ms | 112.1 ms | 0 |
 | Mobile | 420 ms | 220 ms | 5.6 ms | 8.7 ms | 4.1 ms | 158 ms | 0 |
 
-Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. The current seven-run matched commerce build measured Kudzu at 462.1 ms and React at 508.5 ms, making Kudzu 9.1% faster in that run. Disabling the cache preserves byte-for-byte output. Attempts to replace generated-handler lowering or share one TypeScript Program did not improve the combined median and were not retained.
+Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. The current seven-run matched commerce build measured Kudzu at 486.8 ms and React at 545.4 ms, making Kudzu 10.7% faster in that run. Kudzu also shipped 88.1% less product JavaScript, used 38.8% less measured heap, and measured 52.9% faster interaction and 43.4% faster product-to-cart navigation than React. Disabling the cache preserves byte-for-byte output. Attempts to replace generated-handler lowering or share one TypeScript Program did not improve the combined median and were not retained.
 
 These results describe this six-route fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves an eligible warm application transition; it does not hide cold transfer, and direct loads remain complete standalone documents.
 

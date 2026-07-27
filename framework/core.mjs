@@ -298,7 +298,6 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
     const body = await renderNode(layout ? { type: layout, props: { children: page } } : { type: component, props })
     renderContext.effects = renderContext.effects.map(effect => {
       try {
-        if (metadata.navigationAsset && effect.owner) throw new Error("useEffect() inside conditional or keyed DOM is not supported in a configured navigation group yet; move the effect to the layout or route component body, or remove the route from navigation")
         const descriptor = nativeDescriptor(effect.states.map(([name, read]) => [name, read()]), effect.scope.map(([name, read]) => [name, typeof read === "function" ? read() : read]))
         return {
           module: effect.module,

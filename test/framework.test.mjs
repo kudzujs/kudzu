@@ -134,6 +134,7 @@ test("enhances configured emitted routes sharing one layout", async t => {
   const newItem = await readFile(new URL("./fixtures/navigation/dist/items/new/index.html", import.meta.url), "utf8")
   const genericItem = await readFile(new URL("./fixtures/navigation/dist/[section]/[id]/index.html", import.meta.url), "utf8")
   const itemParams = await readFile(new URL("./fixtures/navigation/dist/assets/params/items/[id]/index.js", import.meta.url), "utf8")
+  const productEffects = await readFile(new URL("./fixtures/navigation/dist/assets/effects/product/index.js", import.meta.url), "utf8")
   const outside = await readFile(new URL("./fixtures/navigation/dist/outside/index.html", import.meta.url), "utf8")
   const navigation = await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
 
@@ -158,6 +159,7 @@ test("enhances configured emitted routes sharing one layout", async t => {
   assert.match(itemParams, /export\s*\{[^}]*initializeParams|export function initializeParams/)
   assert.match(itemParams, /decodeURIComponent/)
   assert.doesNotMatch(itemParams, /location\.pathname/)
+  assert.doesNotMatch(productEffects, /registerMountHook|registerUnmountHook|data-k-effect/)
   assert.doesNotMatch(navigation, /[?&](?:v|t)=|Date\.now|Math\.random/)
   assert.ok(gzipSync(navigation).length > 0)
 
@@ -175,7 +177,9 @@ test("specializes effect-free exact navigation", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, result.stderr)
   const navigation = await readFile(new URL("./fixtures/navigation-static/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/navigation-static/dist/assets/kudzu.js", import.meta.url), "utf8")
   assert.doesNotMatch(navigation, /capabilities|mountInitial|mountRouteEffects|initializeParams|pagehide|decodeSegment/)
+  assert.doesNotMatch(runtime, /indexOf/)
 })
 
 test("emits independent shared-layout navigation groups", async t => {
@@ -256,7 +260,7 @@ test("emits independent shared-layout navigation groups", async t => {
   await invalidBuild({ groups: [{ routes: ["/items/[id]"] }, { routes: ["/[section]/[slug]"] }] }, /overlap.*groups\[0\] route "\/items\/\[id\]".*groups\[1\] route "\/\[section\]\/\[slug\]"/)
 })
 
-test("rejects DOM-owned effects only in navigation groups", async () => {
+test("plans DOM-owned effects in navigation groups", async () => {
   function OwnedEffect() {
     useEffect(() => {}, [], "/effect.js", "effect0", [], [], "fixture.tsx:4:5", false)
     return jsx("span", { children: "owned" })
@@ -265,11 +269,33 @@ test("rejects DOM-owned effects only in navigation groups", async () => {
     const [shown] = useState(true)
     return conditional("and", shown, () => jsx(OwnedEffect, {}), () => null, "/condition.js", "condition0", [["shown", shown]], [])
   }
-  await assert.rejects(
-    renderPage(Page, { styles: false, navigationAsset: "/navigation.js" }),
-    /fixture\.tsx:4:5 useEffect\(\) inside conditional or keyed DOM is not supported in a configured navigation group yet; move the effect to the layout or route component body, or remove the route from navigation/
-  )
-  assert.equal((await renderPage(Page, { styles: false })).plan.effects[0].owner, "e0")
+  const result = await renderPage(Page, { styles: false, navigationAsset: "/navigation.js" })
+  assert.equal(result.plan.effects[0].owner, "e0")
+  assert.match(result.html, /data-k-effect="e0"/)
+})
+
+test("owns conditional and keyed effects across navigation lifetimes", async t => {
+  const fixture = new URL("./fixtures/navigation-owned-effects", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/navigation-owned-effects/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/navigation-owned-effects/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const entry = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/navigation-owned-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(entry, /registerMountHook|registerUnmountHook/)
+  assert.match(entry, /mountLayoutEffects|mountRouteEffects/)
+  assert.match(runtime, /indexOf/)
+  assert.deepEqual(plan.effects.map(effect => [effect.lifetime, effect.owner, effect.list]), [
+    ["layout", "le0", undefined],
+    ["route", "re0", undefined],
+    ["route", "re1", true],
+    ["route", "re2", true]
+  ])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runOwnedNavigationEffectBrowserTest(fixture, chrome)
 })
 
 test("rejects stylesheets rendered in the document body", async t => {
@@ -1422,6 +1448,120 @@ http.createServer((request, response) => {
   }
 }
 
+async function runOwnedNavigationEffectBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  for (const route of ["", "other/"]) {
+    const htmlUrl = new URL(`${route}index.html`, output)
+    const html = await readFile(htmlUrl, "utf8")
+    await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  }
+  await writeFile(new URL("browser-test.js", output), `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+  throw new Error(label)
+}
+const click = selector => document.querySelector(selector).click()
+const count = (log, value) => log.split(value).length - 1
+const pagehide = persisted => {
+  const event = new Event("pagehide")
+  Object.defineProperty(event, "persisted", { value: persisted })
+  dispatchEvent(event)
+}
+try {
+  const originalLayout = document.querySelector("[data-layout]")
+  await waitFor(() => document.body.dataset.layoutLog === "|setup 0" && document.body.dataset.rowLog === "|mount Oak|dep Oak:0|mount Pine|dep Pine:0", "initial")
+  if (document.body.dataset.routeLog || document.querySelector("[data-resource]")) throw new Error("hidden-initial")
+  click("[data-count]")
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.routeLog) throw new Error("hidden-dependency")
+  click("[data-open]")
+  await waitFor(() => document.body.dataset.routeLog === "|setup 1:true", "open")
+  click("[data-count]")
+  await waitFor(() => document.body.dataset.routeLog === "|setup 1:true|cleanup 1:true|setup 2:true", "dependency")
+  document.body.ownedResolvers[0]("stale-dependency")
+  await new Promise(resolve => setTimeout(resolve, 0))
+  if (document.querySelector("[data-result]").textContent !== "pending") throw new Error("dependency-stale-setter")
+  click("[data-close]")
+  await waitFor(() => document.body.dataset.routeLog.endsWith("|cleanup 2:true"), "close")
+  click("[data-count]")
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (!document.body.dataset.routeLog.endsWith("|cleanup 2:true")) throw new Error("closed-dependency")
+  click("[data-open]")
+  await waitFor(() => document.body.dataset.routeLog.endsWith("|setup 3:true"), "reopen")
+  const beforeRows = document.body.dataset.rowLog
+  click("[data-add]")
+  await waitFor(() => document.body.dataset.rowLog === beforeRows + "|mount Elm|dep Elm:0", "row-add")
+  click("[data-reorder]")
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.rowLog !== beforeRows + "|mount Elm|dep Elm:0") throw new Error("row-reorder")
+  click("[data-update]")
+  await waitFor(() => document.body.dataset.rowLog.endsWith("|dep-clean Oak:0|dep-clean Pine:0|dep-clean Elm:0|dep Red oak:1|dep Pine:1|dep Elm:1"), "row-update")
+  click("[data-remove]")
+  await waitFor(() => document.body.dataset.rowLog.endsWith("|unmount Pine:true|dep-clean Pine:1"), "row-remove")
+  click('a[href="/other"]')
+  await waitFor(() => document.querySelector('[data-route="other"]'), "other")
+  if (document.querySelector("[data-layout]") !== originalLayout || !document.body.dataset.routeLog.endsWith("|cleanup 3:true")) throw new Error("route-departure")
+  if (!document.body.dataset.routeCleanup.endsWith("|done 3")) throw new Error("route-cleanup-await")
+  if (!document.body.dataset.rowLog.includes("|unmount Oak:true") || !document.body.dataset.rowLog.includes("|unmount Elm:true") || count(document.body.dataset.rowLog, "|unmount Pine:true") !== 1) throw new Error("row-departure")
+  click("[data-layout-version]")
+  await waitFor(() => document.body.dataset.layoutLog === "|setup 0|cleanup 0|setup 1", "layout-transition")
+  history.back()
+  await waitFor(() => document.querySelector('[data-route="home"]') && count(document.body.dataset.rowLog, "|mount Oak") === 2, "back")
+  if (document.querySelector("[data-layout]") !== originalLayout || document.body.dataset.routeLog.includes("|setup 0")) throw new Error("back-lifetimes")
+  document.body.ownedResolvers[2]("stale-route")
+  await new Promise(resolve => setTimeout(resolve, 0))
+  if (document.querySelector("[data-result]").textContent !== "pending") throw new Error("route-stale-setter")
+  click("[data-open]")
+  await waitFor(() => document.body.ownedResolvers.length === 4, "fresh-open")
+  document.body.ownedResolvers[3]("fresh")
+  await waitFor(() => document.querySelector("[data-result]").textContent === "fresh", "fresh-setter")
+  history.forward()
+  await waitFor(() => document.querySelector('[data-route="other"]'), "forward")
+  history.back()
+  await waitFor(() => document.querySelector('[data-route="home"]') && count(document.body.dataset.rowLog, "|mount Oak") === 3, "cached-revisit")
+  if (count(document.body.dataset.rowLog, "|mount Pine") !== 3) throw new Error("fresh-row-records")
+  const beforePersisted = [document.body.dataset.layoutLog, document.body.dataset.routeLog, document.body.dataset.rowLog, document.body.dataset.disposeOrder].join(";")
+  pagehide(true)
+  await new Promise(resolve => setTimeout(resolve, 0))
+  if ([document.body.dataset.layoutLog, document.body.dataset.routeLog, document.body.dataset.rowLog, document.body.dataset.disposeOrder].join(";") !== beforePersisted) throw new Error("persisted")
+  click("[data-open]")
+  await waitFor(() => document.querySelector("[data-resource]"), "final-open")
+  pagehide(false)
+  await waitFor(() => document.body.dataset.disposeOrder.endsWith("|route|layout"), "pagehide-order")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 46500 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url.split("?")[0].replace(/^\\//, "")
+  const file = path.join(root, !relative ? "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1", () => console.log("ready"))
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: ["ignore", "pipe", "pipe"] })
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("owned navigation effect server did not start")), 5000)
+    server.stdout.once("data", () => { clearTimeout(timeout); resolve() })
+    server.once("exit", code => { clearTimeout(timeout); reject(new Error(`owned navigation effect server exited ${code}`)) })
+  })
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=7000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 20000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runConditionalBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -1710,6 +1850,9 @@ try {
   control("count").click()
   await wait()
   if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2") throw new Error("mounted-rerun")
+  document.body.effectResolvers[0]("stale")
+  await wait()
+  if (document.querySelector("[data-result]").textContent !== "pending") throw new Error("stale-setter")
   control("close").click()
   await wait()
   if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2|cleanup 2") throw new Error("close")
