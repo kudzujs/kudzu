@@ -534,7 +534,7 @@ The mobile profile uses a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and
 | Desktop | 324 ms | 140 ms | 3.7 ms | 5.7 ms | 3.3 ms | 110.8 ms | 0 |
 | Mobile | 420 ms | 220 ms | 5.6 ms | 8.7 ms | 4.1 ms | 158 ms | 0 |
 
-Small clean builds are the known tradeoff. Seven rotating production builds measured Kudzu at 460.8 ms and React at 429.5 ms; a separate 21-run interleaved check measured 578.6 ms and 542.5 ms. The repeatable 6–7% difference is primarily TypeScript ESM/compiler startup. Attempts to replace generated-handler lowering or share one TypeScript Program did not improve the combined median and were not retained.
+Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. An empty-cache build measured 541.4 ms against the previous 547.6 ms path; after one warm-up, 31 interleaved artifact-clean builds measured Kudzu at 425.8 ms and React at 483.4 ms, making Kudzu 11.9% faster in that run. Disabling the cache preserves byte-for-byte output. Attempts to replace generated-handler lowering or share one TypeScript Program did not improve the combined median and were not retained.
 
 These results describe this six-route fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves an eligible warm application transition; it does not hide cold transfer, and direct loads remain complete standalone documents.
 
