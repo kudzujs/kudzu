@@ -128,6 +128,29 @@ The real-Worker browser check uses real wall time and requires sustained generat
 
 Each phase starts with one failing fixture and ends with correctness, lifecycle, browser, size, and build measurements.
 
+## Milestone 2: Device Workflows
+
+Status: implemented and verified without a new framework API. This milestone uses existing state, keyed lists, runtime parameters, effects, and navigation ownership.
+
+The focused fixture extends the first vertical slice with `/devices` and `/devices/[id]`. The list emits three devices in initial HTML and supports keyed status filtering. The runtime-parameter detail route owns its initial fetch and command requests, applies explicit deadlines, aborts superseded and unmounted requests, ignores late completion, and reports pending, success, and failure through accessible low-frequency state.
+
+Acceptance criteria:
+
+- direct load, enhanced navigation, history, and cached revisits initialize the correct device ID;
+- filtering starts from three static rows and covers online, offline, restored, and empty results;
+- command success applies once, while HTTP rejection and timeout preserve the previous applied value and expose an accessible error;
+- starting a second command aborts the first, and its late completion cannot overwrite the second result;
+- route departure clears command timers and aborts pending requests before the next route mounts;
+- repeated detail/plain navigation leaves no pending request, timer, listener, Worker, chart, state, or DOM ownership;
+- device routes do not fetch the telemetry Worker, and the unrelated static route remains JavaScript-free;
+- raw/gzip output cost and clean build time are recorded with browser lifecycle counters.
+
+Shared transports, request hooks, command buses, query caches, generic device tables, widget registries, authentication, and server protocol emulation remain outside this milestone.
+
+The device list emits 4,430 B raw / 1,095 B gzip HTML and its complete initial module graph is 24,153 B raw / 10,306 B gzip. The runtime detail fallback emits 3,502 B raw / 1,045 B gzip HTML and its parameter, effect, command, binding, navigation, and shared-runtime graph is 20,897 B raw / 9,621 B gzip. After one warm-up, seven clean minified builds measured 532.6, 502.5, 539.1, 501.5, 565.6, 524.1, and 629.4 ms; sorted, the median was 532.6 ms.
+
+The browser check covers direct runtime-parameter entry, enhanced list/detail/plain navigation, history, cached revisits, all/online/offline/empty keyed filters, superseded command completion, HTTP rejection, timeout, and route departure. Thirty detail/plain cycles recorded exactly 30 command starts, 30 cleanups, and 30 aborts with zero retained timers and at least one observed late completion blocked from the removed route. Rejection and timeout retained the last successful command and exposed a `role="alert"` error. Device workflows did not fetch or instantiate a Worker; the telemetry asset remained `telemetry.worker-BVG2SA55.js`, and the unrelated static route remained script-free.
+
 ## Performance Gates
 
 - sustained 1,000 samples/second does not create one main-thread task or Kudzu state commit per sample;
@@ -150,4 +173,4 @@ Each phase starts with one failing fixture and ends with correctness, lifecycle,
 
 ## Completion Definition
 
-Goal B Milestone 1 is complete when the focused realtime fixture proves deterministic relative TypeScript Worker emission, bounded high-frequency processing, imperative chart updates, exact route ownership and cleanup across repeated navigation, native/static fallback, zero-cost exclusion, source diagnostics, and recorded production measurements.
+Goal B Milestones 1 and 2 are complete when the focused fixture proves deterministic relative TypeScript Worker emission, bounded high-frequency processing, imperative chart updates, runtime device identity, keyed filtering, command success/error/timeout, stale-response suppression, exact route ownership and cleanup across repeated navigation, native/static fallback, zero-cost exclusion, source diagnostics, and recorded production measurements.

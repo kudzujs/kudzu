@@ -8,6 +8,8 @@ Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports 
 
 Goal B Milestone 1 is implemented. Exact relative `.worker.ts` module construction inside compiled inline effects emits a separately hashed Worker graph under `assets/workers`; route cleanup owns termination, and non-Worker routes retain their existing capability paths. The supported syntax and deliberate graph limits are specified in `GOAL_B.md`.
 
+Goal B Milestone 2 is implemented with existing capabilities. A static keyed device list and runtime-parameter detail route prove filtering, route-owned fetch and command effects, timeout and HTTP failure feedback, superseding abort, stale-response suppression, and repeated navigation cleanup without a request abstraction or shared transport.
+
 ## North Star
 
 An AI should be able to migrate a conventional React application while preserving familiar TSX authoring. Kudzu then compiles that source to CDN-deployable static HTML, CSS, and the smallest route-specific ESM needed for behavior.

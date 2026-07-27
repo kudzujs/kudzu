@@ -1031,14 +1031,22 @@ test("bundles relative TypeScript Workers for inline effects", async t => {
     const firstWorker = await readFile(new URL(`dist/assets/workers/${firstFiles[0]}`, fixture))
     const dashboard = await readFile(new URL("dist/dashboard/index.html", fixture), "utf8")
     const plain = await readFile(new URL("dist/plain/index.html", fixture), "utf8")
+    const devices = await readFile(new URL("dist/devices/index.html", fixture), "utf8")
+    const device = await readFile(new URL("dist/devices/[id]/index.html", fixture), "utf8")
     const staticHtml = await readFile(new URL("dist/static/index.html", fixture), "utf8")
     const handler = await readFile(new URL("dist/assets/handlers/pages/dashboard.js", fixture), "utf8")
     const capabilityPaths = ["kudzu.js", "kudzu-effect.js", "kudzu-navigation.js", "effects/dashboard/index.js"]
     const capabilities = await Promise.all(capabilityPaths.map(path => readFile(new URL(`dist/assets/${path}`, fixture))))
-    assert.doesNotMatch([dashboard, plain, staticHtml].join("\n"), /assets\/workers|\.worker-/)
+    assert.doesNotMatch([dashboard, plain, devices, device, staticHtml].join("\n"), /assets\/workers|\.worker-/)
     assert.match(handler, new RegExp(`/dash/assets/workers/${firstFiles[0].replace(".", "\\.")}`))
     assert.doesNotMatch(handler, /__kudzu_worker_|import\.meta|telemetry\.worker\.ts/)
     assert.doesNotMatch(plain, /effects\/|kudzu-effect|handlers\/pages\/dashboard/)
+    assert.match(devices, /Oak sensor/)
+    assert.match(devices, /Pine meter/)
+    assert.match(devices, /Elm gateway/)
+    assert.match(device, /data-k-route="\/devices\/\[id\]"/)
+    assert.match(device, /data-command="timeout"/)
+    assert.doesNotMatch([dashboard, plain, devices, staticHtml].join("\n"), /effects\/devices\/\[id\]|handlers\/pages\/devices\/\[id\]/)
     assert.doesNotMatch(staticHtml, /<script|data-k-state|data-k-capability/)
 
     const second = buildFixture()
@@ -1811,8 +1819,28 @@ http.createServer((request, response) => {
     return response.end(JSON.stringify(counts.get(url.searchParams.get("path")) || 0))
   }
   counts.set(url.pathname, (counts.get(url.pathname) || 0) + 1)
+  if (url.pathname.startsWith("/dash/api/devices/")) {
+    response.setHeader("content-type", "application/json")
+    if (!url.pathname.endsWith("/commands")) {
+      const id = decodeURIComponent(url.pathname.split("/").at(-1))
+      return response.end(JSON.stringify({ name: id === "oak" ? "Oak sensor" : id + " device", connection: "online" }))
+    }
+    let body = ""
+    request.on("data", chunk => { body += chunk })
+    request.on("end", () => {
+      const command = JSON.parse(body).command
+      if (command === "reject") {
+        response.statusCode = 503
+        return response.end(JSON.stringify({ error: "rejected" }))
+      }
+      const delay = command === "reboot" ? 20000 : command === "timeout" ? 700 : 20
+      setTimeout(() => response.end(JSON.stringify({ command })), delay)
+    })
+    return
+  }
   const relative = url.pathname.replace(/^\\/dash\\/?/, "")
-  const file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  const runtimeDevice = /^devices\\/[^/]+\\/?$/.test(relative)
+  const file = path.join(root, runtimeDevice ? "devices/[id]/index.html" : !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1", () => console.log("ready"))
@@ -1845,6 +1873,88 @@ http.createServer((request, response) => {
     const rate = (generated - 130) * 1000 / elapsed
     assert.ok(rate >= 700 && rate <= 1300, `logical rate ${rate}`)
     assert.ok(renders >= 2 && renders <= elapsed / 40 + 2, `render cadence ${renders}`)
+    assert.equal(await fetch(`http://127.0.0.1:${port}/request-count?path=${encodeURIComponent(workerPath)}`).then(response => response.json()), 1)
+
+    const workflow = await evaluateInChrome(chrome, `http://127.0.0.1:${port}/dash/devices/oak`, `
+      (async () => {
+        const waitFor = async (test, label) => {
+          for (let index = 0; index < 250; index++) {
+            if (test()) return
+            await new Promise(resolve => setTimeout(resolve, 20))
+          }
+          throw new Error(label)
+        }
+        const click = selector => document.querySelector(selector).click()
+        const route = name => document.querySelector('[data-route="' + name + '"]')
+        await waitFor(() => route("device")?.dataset.deviceId === "oak" && document.querySelector("[data-connection]")?.textContent === "online", "direct device load")
+        if (document.querySelector("strong[data-device-id]").textContent !== "oak" || document.querySelector("h1").textContent !== "Oak sensor") throw new Error("runtime device identity")
+
+        click("[data-devices-link]")
+        await waitFor(() => route("devices") && document.querySelectorAll("[data-device]").length === 3, "device list")
+        click('[data-filter="online"]')
+        await waitFor(() => document.querySelectorAll("[data-device]").length === 2, "online filter")
+        if ([...document.querySelectorAll("[data-device]")].some(row => row.dataset.status !== "online")) throw new Error("online rows")
+        click('[data-filter="offline"]')
+        await waitFor(() => document.querySelectorAll("[data-device]").length === 1, "offline filter")
+        if (document.querySelector("[data-device]").dataset.device !== "pine") throw new Error("offline row")
+        click('[data-filter="missing"]')
+        await waitFor(() => document.querySelectorAll("[data-device]").length === 0 && document.querySelector("[data-device-empty]"), "empty filter")
+        click('[data-filter="all"]')
+        await waitFor(() => document.querySelectorAll("[data-device]").length === 3 && !document.querySelector("[data-device-empty]"), "restore filter")
+
+        click("[data-device-link]")
+        await waitFor(() => route("device")?.dataset.deviceId === "oak" && document.querySelector("[data-connection]")?.textContent === "online", "device revisit")
+        click('[data-command="reboot"]')
+        await waitFor(() => route("device").dataset.commandStatus === "sending" && globalThis.deviceWorkflowStats.commandStarts >= 1, "reboot start")
+        click('[data-command="refresh"]')
+        await waitFor(() => route("device").dataset.commandStatus === "success", "refresh success")
+        await new Promise(resolve => setTimeout(resolve, 220))
+        if (route("device").dataset.appliedCommand !== "refresh") throw new Error("superseded command")
+
+        click('[data-command="reject"]')
+        await waitFor(() => route("device").dataset.commandStatus === "error" && document.querySelector("[data-command-error]")?.textContent.includes("503"), "command rejection")
+        if (route("device").dataset.appliedCommand !== "refresh" || document.querySelector("[data-command-error]").getAttribute("role") !== "alert") throw new Error("rejection rollback")
+        click('[data-command="timeout"]')
+        await waitFor(() => route("device").dataset.commandStatus === "error" && document.querySelector("[data-command-error]")?.textContent === "Command timed out", "command timeout")
+        if (route("device").dataset.appliedCommand !== "refresh") throw new Error("timeout rollback")
+
+        click('[data-command="reboot"]')
+        await waitFor(() => route("device").dataset.commandStatus === "sending", "departure command")
+        const removedDevice = route("device")
+        click("[data-plain-link]")
+        await waitFor(() => route("plain") && globalThis.deviceWorkflowStats.timers === 0, "departure cleanup")
+        const removedStatus = removedDevice.dataset.commandStatus
+        await new Promise(resolve => setTimeout(resolve, 220))
+        if (removedDevice.dataset.commandStatus !== removedStatus) throw new Error("stale removed route write")
+        history.back()
+        await waitFor(() => route("device")?.dataset.deviceId === "oak", "device history back")
+        history.forward()
+        await waitFor(() => route("plain"), "device history forward")
+
+        const stats = globalThis.deviceWorkflowStats
+        const before = { starts: stats.commandStarts, cleanups: stats.commandCleanups, aborts: stats.commandAborts }
+        for (let cycle = 1; cycle <= 30; cycle++) {
+          click("[data-device-link]")
+          await waitFor(() => route("device")?.dataset.deviceId === "oak", "device cycle mount " + cycle)
+          click('[data-command="reboot"]')
+          await waitFor(() => stats.commandStarts === before.starts + cycle, "device command start " + cycle)
+          click("[data-plain-link]")
+          await waitFor(() => route("plain") && stats.commandAborts === before.aborts + cycle && stats.timers === 0, "device command cleanup " + cycle)
+        }
+        await new Promise(resolve => setTimeout(resolve, 50))
+        return {
+          applied: removedDevice.dataset.appliedCommand,
+          starts: stats.commandStarts - before.starts,
+          cleanups: stats.commandCleanups - before.cleanups,
+          aborts: stats.commandAborts - before.aborts,
+          timers: stats.timers,
+          stale: stats.stale,
+        }
+      })()
+    `, port + 2, new URL(".chrome-device-profile", output))
+    assert.equal(workflow.applied, "refresh")
+    assert.deepEqual({ starts: workflow.starts, cleanups: workflow.cleanups, aborts: workflow.aborts, timers: workflow.timers }, { starts: 30, cleanups: 30, aborts: 30, timers: 0 })
+    assert.ok(workflow.stale >= 1)
     assert.equal(await fetch(`http://127.0.0.1:${port}/request-count?path=${encodeURIComponent(workerPath)}`).then(response => response.json()), 1)
 
     const fakeWorker = `<script>
@@ -1995,7 +2105,7 @@ async function evaluateInChrome(chrome, url, expression, port, profile) {
       new Promise(resolve => browser.once("exit", resolve)),
       new Promise(resolve => setTimeout(resolve, 2000))
     ])
-    await rm(profile, { recursive: true, force: true })
+    await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   }
 }
 

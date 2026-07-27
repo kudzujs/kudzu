@@ -3,6 +3,8 @@ export function Shell({ children }: { children?: unknown }) {
     <nav>
       <a data-dashboard-link href="/dash/dashboard">Dashboard</a>
       <a data-plain-link href="/dash/plain">Plain</a>
+      <a data-devices-link href="/dash/devices">Devices</a>
+      <a data-device-link href="/dash/devices/oak">Oak device</a>
       <a data-static-link href="/dash/static">Static</a>
     </nav>
     {children}
