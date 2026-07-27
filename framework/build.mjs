@@ -22,7 +22,6 @@ export async function build({ quiet = false, minify = true } = {}) {
   const configuredStyles = normalizeStyles(config.styles, base)
   const navigationRoutes = normalizeNavigation(config.navigation)
   const navigationSet = new Set(navigationRoutes)
-  const browserNavigationRoutes = navigationRoutes.map(route => withBase(base, route))
   const navigationAsset = assetPath(base, "assets/kudzu-navigation.js")
   const navigationId = navigationRoutes.length ? createHash("sha256").update(JSON.stringify([...navigationRoutes].sort())).digest("hex").slice(0, 16) : undefined
   const applicationId = navigationId ? `a-${navigationId}` : undefined
@@ -63,6 +62,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const rewrites = []
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
+  const navigationRecords = []
   const styleUrls = [...new Set([
     ...cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)),
     ...configuredStyles
@@ -99,10 +99,12 @@ export async function build({ quiet = false, minify = true } = {}) {
       emittedRoutes.add(routePath)
       emittedApplicationRoutes.add(applicationRoute)
       if (navigable) {
-        if (runtimeSchema) throw new Error(`kudzu.config navigation route ${JSON.stringify(routePath)} must be an exact static route; runtime bracket routes are not supported`)
-        if (typeof module.layout !== "function") throw new Error(`kudzu.config navigation route ${JSON.stringify(routePath)} must export a layout function so Kudzu can emit route markers`)
+        if (typeof module.layout !== "function") throw new Error(`kudzu.config navigation emitted route ${JSON.stringify(routePath)} must export a layout function so Kudzu can emit route markers`)
         if (navigationLayout && navigationLayout !== module.layout) throw new Error("kudzu.config navigation routes must export the same layout function identity")
         navigationLayout = module.layout
+        navigationRecords.push(runtimeSchema
+          ? { id: applicationRoute, base: browserPath(base), segments: runtimeSchema.segments.map(segment => segment.literal ?? null) }
+          : { id: applicationRoute, path: routePath })
       }
       const result = await renderPage(module.default, {
         ...(module.metadata ?? {}),
@@ -112,13 +114,13 @@ export async function build({ quiet = false, minify = true } = {}) {
         effectAsset: assetPath(base, `assets/${effectPath}`),
         paramAsset: assetPath(base, `assets/${paramPath}`),
         runtimeParams: runtimeSchema?.params,
-        ...(navigable ? { navigationAsset, applicationId, layoutId } : {})
+        ...(navigable ? { navigationAsset, applicationId, layoutId, routeId: applicationRoute } : {})
       }, props, module.layout)
       const hasDependencies = result.plan.effects.some(effect => effect.dependencies?.length)
       const usesDependencyRuntime = !navigable && hasDependencies && !result.plan.effects.some(effect => effect.owner) && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
       pageEntries.push({ route, html: result.html, usesDependencyRuntime })
       plans.push({ route: routePath, ...result.plan })
-      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, usesDependencyRuntime })
+      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, usesDependencyRuntime, navigable })
       if (result.hasEffects) effectEntries.push({ path: effectPath, effects: runtimeEffects(result.plan.effects, navigable), paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime, navigable })
       if (result.hasBehaviors) {
         behaviorCount++
@@ -134,7 +136,8 @@ export async function build({ quiet = false, minify = true } = {}) {
     }
   }
 
-  for (const route of navigationRoutes) if (!emittedApplicationRoutes.has(route)) throw new Error(`kudzu.config navigation route ${JSON.stringify(route)} is not an exact emitted route`)
+  for (const route of navigationRoutes) if (!emittedApplicationRoutes.has(route)) throw new Error(`kudzu.config navigation route ${JSON.stringify(route)} is not an emitted route`)
+  navigationRecords.sort((left, right) => (right.segments?.filter(segment => segment !== null).length ?? 0) - (left.segments?.filter(segment => segment !== null).length ?? 0) || left.id.localeCompare(right.id))
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
@@ -158,6 +161,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasNativeHandlers = nativeModules.length > 0
   const hasEffects = effectEntries.length > 0
   const hasNavigableEffects = effectEntries.some(entry => entry.navigable)
+  const hasNavigableParams = paramEntries.some(entry => entry.navigable)
   const hasSharedRuntime = bindingCount || listCount || hasNativeHandlers || navigationRoutes.length
   const hasDependencyRuntime = pageEntries.some(entry => entry.usesDependencyRuntime)
   const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
@@ -234,12 +238,13 @@ export async function build({ quiet = false, minify = true } = {}) {
     })
   }
   if (navigationRoutes.length) {
-    const navigationRuntime = (await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8"))
-      .replace("__KUDZU_NAVIGATION_ROUTES__", inlineJson(browserNavigationRoutes))
+    let navigationRuntime = (await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8"))
+      .replace("__KUDZU_NAVIGATION_ROUTES__", inlineJson(navigationRecords))
       .replace("__KUDZU_APPLICATION_ID__", JSON.stringify(applicationId))
       .replace("__KUDZU_LAYOUT_ID__", JSON.stringify(layoutId))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
-    await writeJavaScript(join(assetsDirectory, "kudzu-navigation.js"), specializeNavigationEffects(navigationRuntime, hasNavigableEffects), minify)
+    navigationRuntime = specializeNavigationPatterns(navigationRuntime, navigationRecords.some(record => record.segments))
+    await writeJavaScript(join(assetsDirectory, "kudzu-navigation.js"), specializeNavigationEffects(navigationRuntime, hasNavigableEffects || hasNavigableParams), minify)
   }
   for (const handlerModule of handlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
@@ -249,7 +254,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const entry of paramEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime)), minify)
+    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify)
   }
   for (const entry of effectEntries) {
     const output = join(assetsDirectory, entry.path)
@@ -319,24 +324,40 @@ function specializeNavigationEffects(source, enabled) {
     .replace(`
 async function mountInitial() {
   try {
-    const effects = await loadCapabilities(validate(document))
-    layoutDispose = await effects?.mountLayoutEffects?.() ?? noDispose
-    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose
+    const record = matchRoute(location.pathname)
+    if (!record) throw new Error("Initial navigation route does not match")
+    const capabilities = await loadCapabilities(validate(document, record))
+    capabilities.params?.(location.pathname)
+    layoutDispose = await capabilities.effects?.mountLayoutEffects?.() ?? noDispose
+    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
   } catch (error) {
     console.error(error)
   }
 }
 `, "")
     .replace("  await ready\n", "")
-    .replace("    const effects = await loadCapabilities(parsed)\n", "    await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n")
+    .replace("    const capabilities = await loadCapabilities(parsed)\n", "    await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n")
     .replace("    await routeDispose()\n    if (current !== revision) return\n", "")
-    .replace("    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose\n", "")
+    .replace("    commit(incoming, parsed.nodes, capabilities.params, url.pathname)\n", "    commit(incoming, parsed.nodes)\n")
+    .replace("    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose\n", "")
     .replace(`
 async function loadCapabilities(parsed) {
   const modules = await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))
-  return modules.find(module => typeof module.mountRouteEffects === "function")
+  const params = modules.filter(module => typeof module.initializeParams === "function")
+  const effects = modules.filter(module => typeof module.mountRouteEffects === "function")
+  if (params.length > 1 || effects.length > 1) throw new Error("Navigation document has duplicate route capabilities")
+  return { params: params[0]?.initializeParams, effects: effects[0] }
 }
 `, "")
+}
+
+function specializeNavigationPatterns(source, enabled) {
+  if (enabled) return source
+  return source.replace(/function matchRoute\(pathname\) \{[\s\S]+?\n\}\n\nfunction fallback/, `function matchRoute(pathname) {
+  return routes.find(record => record.path === pathname)
+}
+
+function fallback`)
 }
 
 function specializeNativeRuntime(source, events, modules) {
@@ -922,12 +943,14 @@ async function invokeCleanup() {
 }${disposal}`
 }
 
-function printParamEntry(schema, params, output, assetsDirectory, base, runtimeName) {
+function printParamEntry(schema, params, output, assetsDirectory, base, runtimeName, navigable) {
+  const prefix = navigable ? "export function initializeParams(pathname) {\n" : "let pathname = location.pathname\n"
+  const suffix = navigable ? "\n}" : ""
   return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}
 const base = ${inlineJson(browserPath(base).slice(1).split("/").filter(Boolean).map(segment => decodeURIComponent(segment)))}
 const schema = ${inlineJson(schema.segments)}
 const params = ${inlineJson(params)}
-let path = location.pathname
+${prefix}let path = pathname
 if (base.length) {
   const pathSegments = path.slice(1).split("/")
   if (pathSegments.length < base.length || base.some((segment, index) => decodeSegment(pathSegments[index], false) !== segment)) throw new Error("Runtime route is outside the configured base")
@@ -955,7 +978,7 @@ function decodeSegment(raw, param) {
   const decodedDots = value.replace(/%2e/gi, ".")
   if (param && (!value || value === "." || value === ".." || decodedDots === "." || decodedDots === ".." || /[\\/?#]/.test(value) || [...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159) || /%(?:2f|5c)/i.test(value))) throw new Error("Runtime route parameter is invalid")
   return value
-}`
+}${suffix}`
 }
 
 function hasCaptureType(value, type) {

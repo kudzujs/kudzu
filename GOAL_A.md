@@ -8,7 +8,7 @@ The benchmark runner, framework fixtures, generated artifacts, and raw arrays ar
 
 ## Implementation Status
 
-**Goal A is complete for one explicitly configured exact-static route group with one shared layout.** Complete standalone documents, native fallback, persistent layout state/effects, disposable route state/effects, optimistic workflows, desktop/mobile performance gates, and the dashboard expansion seam are covered. Runtime bracket navigation, multiple layout groups, and conditional/keyed DOM-owned effects inside a navigation group remain deliberate post-Goal-A limits.
+**Goal A is complete for one explicitly configured emitted-route group with one shared layout.** Complete standalone documents, exact and runtime-parameter navigation, native fallback, persistent layout state/effects, disposable route state/effects, optimistic workflows, desktop/mobile performance gates, and the dashboard expansion seam are covered. Multiple layout groups and conditional/keyed DOM-owned effects inside a navigation group remain deliberate post-Goal-A limits.
 
 - **Phase 1 complete**: a local six-route commerce fixture, locked React/Next/Nuxt/SvelteKit comparisons, and a reproducible artifact/build/Chrome runner validate the implementation.
 - **Phase 2 complete**: effects inside conditional ranges and supported keyed row components mount with their DOM owner, unsubscribe and clean up on removal, and remount without affecting effect-free output.
@@ -22,6 +22,8 @@ The benchmark runner, framework fixtures, generated artifacts, and raw arrays ar
 The capability-local prefetch/cache increased the commerce navigation asset from 1,887 B to 2,306 B gzip (+419 B). Routes outside the configured group remain unchanged.
 
 In the focused effect-enabled navigation fixture, mount support adds 171 B gzip to the same-route navigation asset and 37 B gzip to the shared runtime. The active-context guard adds 18 B gzip to `kudzu-effect.js` (257 B total); cache-safe route entries are 1,059-1,116 B gzip. The effect-free commerce specialization remains byte-for-byte unchanged.
+
+The post-Goal-A runtime-pattern matcher increases the exact-only commerce navigation asset from 2,306 B to 2,461 B gzip. The mixed exact/runtime navigation fixture emits a 3,105 B gzip navigation asset and a 703 B gzip cache-safe parameter initializer.
 
 The Phase 6 chart probe's complete initial module graph is 11,902 B raw / 5,331 B gzip. It adds no framework API or package and does not change the commerce benchmark fixture.
 
@@ -108,7 +110,7 @@ Each phase starts with one failing fixture and ends with correctness, browser, s
 1. **Benchmark harness**: freeze the commerce journey, network profiles, framework versions, generated artifacts, and measurement scripts before optimizing Kudzu.
 2. **Owned effects**: complete cleanup for conditional ranges and keyed items using the existing mount and unmount hooks. **Complete.**
 3. **Layout and route scopes**: retain only declared layout state and dispose route-owned behavior on every completed transition. **Compiler ownership complete; transition behavior belongs to Phase 4.**
-4. **Opt-in navigation**: support eligible links, history, aborts, stale responses, focus, scroll, metadata, and native fallback. **Complete for exact static routes and top-level layout/route effects; conditional/keyed DOM-owned effects remain excluded.**
+4. **Opt-in navigation**: support eligible links, history, aborts, stale responses, focus, scroll, metadata, and native fallback. **Complete for emitted exact/runtime-parameter routes and top-level layout/route effects; conditional/keyed DOM-owned effects remain excluded.**
 5. **Business workflows**: close only fixture-proven gaps in forms, async requests, optimistic updates, and diagnostics. **Complete for the matched cart success/rejection flow.**
 6. **Expansion probe**: prove that one persistent mock stream and one imperative chart stub can mount, update, navigate, and dispose without adding a component runtime. **Compatibility probe complete; real telemetry and chart engines remain outside Goal A.**
 

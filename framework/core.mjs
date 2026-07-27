@@ -358,7 +358,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
       : ""
 
     return {
-      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}${runtime}${paramRuntime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}${navigationRuntime}</head><body${state}${textBindings}${metadata.applicationId ? ` data-k-application="${escapeAttribute(metadata.applicationId)}" data-k-layout="${escapeAttribute(metadata.layoutId)}"` : ""}>${body}</body></html>`,
+      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}${runtime}${paramRuntime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}${navigationRuntime}</head><body${state}${textBindings}${metadata.applicationId ? ` data-k-application="${escapeAttribute(metadata.applicationId)}" data-k-layout="${escapeAttribute(metadata.layoutId)}" data-k-route="${escapeAttribute(metadata.routeId)}"` : ""}>${body}</body></html>`,
       hasBehaviors: renderContext.hasBehaviors,
       hasEffects: renderContext.hasEffects,
       hasParams: renderContext.hasParams,

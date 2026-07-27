@@ -1,6 +1,6 @@
 import { browserState, mountDom, unmountDom } from "./shared-runtime.js"
 
-const routes = new Set(__KUDZU_NAVIGATION_ROUTES__)
+const routes = __KUDZU_NAVIGATION_ROUTES__
 const applicationId = __KUDZU_APPLICATION_ID__
 const layoutId = __KUDZU_LAYOUT_ID__
 const navigationAsset = new URL(import.meta.url).pathname
@@ -46,9 +46,12 @@ discover()
 
 async function mountInitial() {
   try {
-    const effects = await loadCapabilities(validate(document))
-    layoutDispose = await effects?.mountLayoutEffects?.() ?? noDispose
-    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose
+    const record = matchRoute(location.pathname)
+    if (!record) throw new Error("Initial navigation route does not match")
+    const capabilities = await loadCapabilities(validate(document, record))
+    capabilities.params?.(location.pathname)
+    layoutDispose = await capabilities.effects?.mountLayoutEffects?.() ?? noDispose
+    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
   } catch (error) {
     console.error(error)
   }
@@ -64,7 +67,7 @@ function eligibleAnchor(anchor) {
   if (anchor.relList?.contains("external")) return false
   const url = new URL(anchor.href)
   if (url.hash && url.pathname === location.pathname && url.search === location.search) return false
-  return url.origin === location.origin && routes.has(url.pathname)
+  return url.origin === location.origin && Boolean(matchRoute(url.pathname))
 }
 
 function discover() {
@@ -94,7 +97,7 @@ function prefetchAnchor(anchor) {
   const url = new URL(anchor.href)
   prune([...document.querySelectorAll("a[href]")].filter(eligibleAnchor))
   if (documents.has(url.href)) return
-  const pending = fetchDocument(url)
+  const pending = fetchDocument(url, matchRoute(url.pathname))
   documents.set(url.href, pending)
   pending.catch(() => {
     if (documents.get(url.href) === pending) documents.delete(url.href)
@@ -108,6 +111,8 @@ function prune(anchors) {
 
 async function navigate(url, push) {
   await ready
+  const record = matchRoute(url.pathname)
+  if (!record) return fallback(url, push)
   const current = ++revision
   request?.abort()
   request = new AbortController()
@@ -117,17 +122,17 @@ async function navigate(url, push) {
     const cached = documents.get(url.href)
     if (cached) {
       try { documentResult = await cached }
-      catch { documentResult = await fetchDocument(url, request.signal) }
-    } else documentResult = await fetchDocument(url, request.signal)
+      catch { documentResult = await fetchDocument(url, record, request.signal) }
+    } else documentResult = await fetchDocument(url, record, request.signal)
     documents.set(url.href, Promise.resolve(documentResult))
     const { incoming, parsed } = documentResult
-    const effects = await loadCapabilities(parsed)
+    const capabilities = await loadCapabilities(parsed)
     if (current !== revision) return
     await routeDispose()
     if (current !== revision) return
-    commit(incoming, parsed.nodes)
-    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose
+    commit(incoming, parsed.nodes, capabilities.params, url.pathname)
     committed = true
+    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
     if (push) history.pushState(null, "", url)
     updateHead(incoming)
     focusAndScroll(url)
@@ -135,26 +140,28 @@ async function navigate(url, push) {
     discover()
   } catch (error) {
     if (current !== revision || error.name === "AbortError") return
-    if (push) location.assign(url.href)
-    else location.reload()
+    fallback(url, push)
     if (committed) return
   }
 }
 
 async function loadCapabilities(parsed) {
   const modules = await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))
-  return modules.find(module => typeof module.mountRouteEffects === "function")
+  const params = modules.filter(module => typeof module.initializeParams === "function")
+  const effects = modules.filter(module => typeof module.mountRouteEffects === "function")
+  if (params.length > 1 || effects.length > 1) throw new Error("Navigation document has duplicate route capabilities")
+  return { params: params[0]?.initializeParams, effects: effects[0] }
 }
 
-async function fetchDocument(url, signal) {
+async function fetchDocument(url, record, signal) {
   const response = await fetch(url, { signal, redirect: "manual", headers: { accept: "text/html" } })
   if (!response.ok || response.redirected || response.type === "opaqueredirect" || !response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("Navigation response is not successful nonredirected HTML")
   const incoming = new DOMParser().parseFromString(await response.text(), "text/html")
-  return { incoming, parsed: validate(incoming) }
+  return { incoming, parsed: validate(incoming, record), record }
 }
 
-function validate(incoming) {
-  if (incoming.body.dataset.kApplication !== applicationId || incoming.body.dataset.kLayout !== layoutId) throw new Error("Navigation document identity does not match")
+function validate(incoming, record) {
+  if (incoming.body.dataset.kApplication !== applicationId || incoming.body.dataset.kLayout !== layoutId || incoming.body.dataset.kRoute !== record.id) throw new Error("Navigation document identity does not match")
   const starts = incoming.querySelectorAll("template[data-k-route-start]")
   const ends = incoming.querySelectorAll("template[data-k-route-end]")
   if (starts.length !== 1 || ends.length !== 1) throw new Error("Navigation document must contain exactly one route marker pair")
@@ -168,7 +175,7 @@ function validate(incoming) {
   return { nodes, assets: [...new Set(assets)] }
 }
 
-function commit(incoming, incomingNodes) {
+function commit(incoming, incomingNodes, initializeParams, pathname) {
   const start = document.querySelector("template[data-k-route-start]")
   const end = document.querySelector("template[data-k-route-end]")
   if (!start || !end || document.querySelectorAll("template[data-k-route-start],template[data-k-route-end]").length !== 2) throw new Error("Current route markers are invalid")
@@ -179,9 +186,48 @@ function commit(incoming, incomingNodes) {
   for (const [id, value, compact] of JSON.parse(incoming.body.dataset.kState ?? "[]")) if (id.startsWith("r")) browserState.set(id, compact ? value[1].map(row => Object.fromEntries(value[0].map((field, index) => [field, row[index]]))) : value)
   if (incoming.body.dataset.kTextBindings === undefined) delete document.body.dataset.kTextBindings
   else document.body.dataset.kTextBindings = incoming.body.dataset.kTextBindings
+  document.body.dataset.kRoute = incoming.body.dataset.kRoute
   const nodes = incomingNodes.map(node => document.importNode(node, true))
   end.before(...nodes)
+  initializeParams?.(pathname)
   for (const node of nodes) mountDom(node)
+}
+
+function matchRoute(pathname) {
+  const exact = routes.find(record => record.path === pathname)
+  if (exact) return exact
+  for (const record of routes) {
+    if (!record.segments) continue
+    try {
+      let path = pathname
+      if (record.base) {
+        const pathSegments = path.slice(1).split("/")
+        const baseSegments = record.base.slice(1).split("/").map(segment => decodeURIComponent(segment))
+        if (pathSegments.length < baseSegments.length || baseSegments.some((segment, index) => decodeSegment(pathSegments[index], false) !== segment)) continue
+        path = `/${pathSegments.slice(baseSegments.length).join("/")}`
+      }
+      if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1)
+      const segments = path.slice(1).split("/")
+      if (segments.length !== record.segments.length) continue
+      if (record.segments.every((literal, index) => {
+        const value = decodeSegment(segments[index], literal === null)
+        return literal === null || value === literal
+      })) return record
+    } catch {}
+  }
+}
+
+function decodeSegment(raw, param) {
+  if (param && /%(?:2f|5c)/i.test(raw)) throw new Error("Encoded separator")
+  const value = decodeURIComponent(raw)
+  const decodedDots = value.replace(/%2e/gi, ".")
+  if (param && (!value || value === "." || value === ".." || decodedDots === "." || decodedDots === ".." || /[\\/?#]/.test(value) || [...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159) || /%(?:2f|5c)/i.test(value))) throw new Error("Invalid runtime parameter")
+  return value
+}
+
+function fallback(url, push) {
+  if (push) location.assign(url.href)
+  else location.reload()
 }
 
 function between(start, end) {

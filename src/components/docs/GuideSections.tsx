@@ -49,7 +49,7 @@ export default function ItemPage() {
 }`} />
     <p><code>getStaticPaths()</code> and <code>runtimeParams</code> are mutually exclusive. Parameters occupy complete path segments and malformed, separator, control, and traversal-like values are rejected. Static hosts must try exact files first and then internally rewrite matching paths to the generated fallback while preserving the URL. Ordered rewrite metadata is available to <code>afterBuild()</code>.</p>
     <h3 id="navigation">Application navigation</h3>
-    <p>Exact static routes may share a page-exported layout and opt into same-document navigation while every URL remains a complete standalone document.</p>
+    <p>Emitted exact and runtime-parameter routes may share a page-exported layout and opt into same-document navigation while every URL remains a complete standalone document.</p>
     <CodeBlock code={`// src/pages/product.tsx
 export { Shell as layout } from "../components/Shell"
 
@@ -59,9 +59,9 @@ export default function ProductPage() {
 
 // kudzu.config.mjs
 export default {
-  navigation: { routes: ["/product", "/cart"] }
+  navigation: { routes: ["/product", "/items/[id]"] }
 }`} />
-    <p>Every configured path must be an exact static route and export the same layout function. Layout DOM, state, and top-level effects persist; route state and top-level effects reset after cleanup. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct loads, reloads, failures, unsupported links, and routes outside the group keep native document navigation. Route replacement is fast but coordinated exit and shared-element View Transitions are not integrated yet. Runtime bracket routes, multiple groups, and conditional or keyed effects inside navigation groups are not yet supported.</p>
+    <p>Every configured pattern must identify an emitted route and export the same layout function. A runtime route uses its bracket pattern, such as <code>/items/[id]</code>. Layout DOM, state, and top-level effects persist; route state, parameters, and top-level effects reset after cleanup. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct loads, reloads, failures, malformed paths, unsupported links, and routes outside the group keep native document navigation. Route replacement is fast but coordinated exit and shared-element View Transitions are not integrated yet. Multiple groups and conditional or keyed effects inside navigation groups are not supported.</p>
     <h3>Project configuration</h3>
     <CodeBlock code={`// kudzu.config.mjs
 export default {

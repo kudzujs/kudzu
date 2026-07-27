@@ -112,7 +112,7 @@ test("renders page layouts with collision-free layout and route scopes", async t
   assert.match(`${invalid.stdout}\n${invalid.stderr}`, /src\/pages\/invalid\.tsx:1:\d+ layout export must be a function/)
 })
 
-test("enhances only configured exact static routes sharing one layout", async t => {
+test("enhances configured emitted routes sharing one layout", async t => {
   const fixture = new URL("./fixtures/navigation", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/navigation/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -130,6 +130,10 @@ test("enhances only configured exact static routes sharing one layout", async t 
   const cart = await readFile(new URL("./fixtures/navigation/dist/cart/index.html", import.meta.url), "utf8")
   const chart = await readFile(new URL("./fixtures/navigation/dist/chart/index.html", import.meta.url), "utf8")
   const broken = await readFile(new URL("./fixtures/navigation/dist/broken/index.html", import.meta.url), "utf8")
+  const item = await readFile(new URL("./fixtures/navigation/dist/items/[id]/index.html", import.meta.url), "utf8")
+  const newItem = await readFile(new URL("./fixtures/navigation/dist/items/new/index.html", import.meta.url), "utf8")
+  const genericItem = await readFile(new URL("./fixtures/navigation/dist/[section]/[id]/index.html", import.meta.url), "utf8")
+  const itemParams = await readFile(new URL("./fixtures/navigation/dist/assets/params/items/[id]/index.js", import.meta.url), "utf8")
   const outside = await readFile(new URL("./fixtures/navigation/dist/outside/index.html", import.meta.url), "utf8")
   const navigation = await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
 
@@ -139,19 +143,39 @@ test("enhances only configured exact static routes sharing one layout", async t 
   assert.equal(await readFile(new URL("./fixtures/navigation/dist/cart/index.html", import.meta.url), "utf8"), cart)
   assert.equal(await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8"), navigation)
 
-  for (const html of [product, cart, chart, broken]) {
+  for (const html of [product, cart, chart, broken, item, newItem, genericItem]) {
     assert.match(html, /^<!doctype html>.*<body[^>]+data-k-application="[^"]+"[^>]+data-k-layout="[^"]+".*data-k-route-start.*data-k-route-end.*<\/body><\/html>$/s)
+    assert.match(html, /data-k-route="\/(?:product|cart|chart|broken|items\/(?:\[id\]|new)|\[section\]\/\[id\])"/)
     assert.equal((html.match(/kudzu-navigation\.js/g) ?? []).length, 1)
   }
   assert.doesNotMatch(outside, /data-k-(?:application|layout)|kudzu-navigation\.js|data-k-capability/)
   assert.match(navigation, /popstate/)
   assert.match(navigation, /\/shop\/product/)
+  assert.match(navigation, /\/items\/\[id\]/)
+  assert.match(navigation, /path:"\/shop\/items\/new"/)
+  assert.match(navigation, /base:"\/shop",segments:\["items",null\]/)
+  assert.ok(navigation.indexOf('segments:["items",null]') < navigation.indexOf("segments:[null,null]"))
+  assert.match(itemParams, /export\s*\{[^}]*initializeParams|export function initializeParams/)
+  assert.match(itemParams, /decodeURIComponent/)
+  assert.doesNotMatch(itemParams, /location\.pathname/)
   assert.doesNotMatch(navigation, /[?&](?:v|t)=|Date\.now|Math\.random/)
   assert.ok(gzipSync(navigation).length > 0)
 
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   assert.match(chart, /data-chart="true" data-sample="0"/)
   if (chrome) await runNavigationBrowserTest(fixture, chrome)
+})
+
+test("specializes effect-free exact navigation", async t => {
+  const fixture = new URL("./fixtures/navigation-static", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/navigation-static/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/navigation-static/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, result.stderr)
+  const navigation = await readFile(new URL("./fixtures/navigation-static/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
+  assert.doesNotMatch(navigation, /capabilities|mountInitial|mountRouteEffects|initializeParams|pagehide|decodeSegment/)
 })
 
 test("rejects DOM-owned effects only in navigation groups", async () => {
@@ -1229,7 +1253,7 @@ http.createServer((request, response) => {
 
 async function runNavigationBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
-  for (const route of ["product", "cart", "chart", "broken"]) {
+  for (const route of ["product", "cart", "chart", "broken", "items/[id]", "items/new"]) {
     const htmlUrl = new URL(`${route}/index.html`, output)
     const html = await readFile(htmlUrl, "utf8")
     await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
@@ -1245,6 +1269,10 @@ http.createServer((request, response) => {
     response.setHeader("content-type", "application/json")
     return response.end(JSON.stringify(counts.get(url.searchParams.get("url")) || 0))
   }
+  if (url.pathname === "/reset-counts") {
+    counts.clear()
+    return response.end("ok")
+  }
   const key = url.pathname + url.search
   counts.set(key, (counts.get(key) || 0) + 1)
   if (url.pathname === "/shop/broken" && request.headers["sec-fetch-mode"] !== "navigate") {
@@ -1253,7 +1281,8 @@ http.createServer((request, response) => {
     return response.end(html)
   }
   const relative = url.pathname.replace(/^\\/shop\\/?/, "")
-  const file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  let file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  if (!fs.existsSync(file) && /^\\/shop\\/items\\/[^/]+\\/?$/.test(url.pathname)) file = path.join(root, "items/[id]/index.html")
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1")
@@ -1264,6 +1293,10 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=7000", "--dump-dom", `http://127.0.0.1:${port}/shop/product?initial=1`], { encoding: "utf8", timeout: 20000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+    await fetch(`http://127.0.0.1:${port}/reset-counts`)
+    const runtimeBrowser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/shop/items/oak?direct=1`], { encoding: "utf8", timeout: 20000 })
+    assert.equal(runtimeBrowser.status, 0, runtimeBrowser.stderr)
+    assert.match(runtimeBrowser.stdout, /data-runtime-browser-test="pass"/)
   } finally {
     server.kill()
   }

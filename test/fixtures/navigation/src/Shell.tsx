@@ -36,6 +36,10 @@ export function Shell({ children }: { children?: unknown }) {
         <a href="/shop/outside">Outside</a>
         <a href="/shop/cart" data-k-native>Native cart</a>
         <a href="/shop/broken">Broken</a>
+        <a data-item-a href="/shop/items/oak">Oak item</a>
+        <a data-item-b href="/shop/items/pine">Pine item</a>
+        <a data-item-new href="/shop/items/new">New item</a>
+        <a data-item-malformed href="/shop/items/%2F">Malformed item</a>
       </nav>
     </header>
     {children}

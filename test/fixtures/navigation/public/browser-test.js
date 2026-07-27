@@ -14,6 +14,50 @@ if (sessionStorage.kNavigationFallback) {
   const preserved = sessionStorage.kNavigationPreserved === "chart"
   sessionStorage.removeItem("kNavigationPreserved")
   document.body.dataset.browserTest = preserved && document.querySelector('[data-route="broken"]') && document.querySelector("[data-layout]") ? "pass" : "fail-standalone-fallback"
+} else if (location.pathname.startsWith("/shop/items/")) {
+  try {
+    const originalLayout = document.querySelector("[data-layout]")
+    const item = () => document.querySelector('[data-route="item"]')
+    const id = () => item()?.dataset.itemId
+    await waitFor(() => id() === "oak" && document.querySelector("[data-item-derived]")?.textContent === "Selected oak")
+    await waitFor(() => document.body.dataset.runtimeLog === "|setup oak")
+    document.querySelector("[data-item-capture]").click()
+    if (document.body.dataset.runtimeCapture !== "oak") throw new Error("direct-runtime-capture")
+    document.querySelector('[data-route="item"] [data-route-count]').click()
+    await waitFor(() => item().dataset.itemCount === "1")
+    document.querySelector('a[href="/shop/product"]').click()
+    await waitFor(() => document.querySelector('[data-route="product"]'))
+    if (document.querySelector("[data-layout]") !== originalLayout) throw new Error("runtime-layout-product")
+    document.querySelector("[data-item-a]").click()
+    await waitFor(() => id() === "oak")
+    if (item().dataset.itemCount !== "0") throw new Error("runtime-state-reset")
+    await waitFor(async () => await requestCount("/shop/items/pine") === 1)
+    document.querySelector('[data-route="item"] [data-item-b]').click()
+    await waitFor(() => id() === "pine")
+    if (document.querySelector("[data-item-direct]").textContent !== "pine" || document.querySelector("[data-item-derived]").textContent !== "Selected pine") throw new Error("runtime-bindings")
+    if (document.querySelector("[data-layout]") !== originalLayout || document.body.dataset.runtimeLog !== "|setup oak|cleanup oak|setup oak|cleanup oak|setup pine") throw new Error(`runtime-order-${document.body.dataset.runtimeLog}`)
+    if (await requestCount("/shop/items/pine") !== 1) throw new Error("runtime-prefetch-count")
+    document.querySelector("[data-item-capture]").click()
+    if (document.body.dataset.runtimeCapture !== "pine") throw new Error("runtime-cached-capture")
+    history.back()
+    await waitFor(() => id() === "oak")
+    history.forward()
+    await waitFor(() => id() === "pine")
+    const beforeMalformed = item()
+    let intercepted
+    document.addEventListener("click", event => {
+      intercepted = event.defaultPrevented
+      event.preventDefault()
+    }, { once: true })
+    document.querySelector("[data-item-malformed]").dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }))
+    if (intercepted || item() !== beforeMalformed || id() !== "pine") throw new Error("runtime-malformed-commit")
+    document.querySelector("[data-item-new]").click()
+    await waitFor(() => document.querySelector('[data-route="new-item"]'))
+    if (document.querySelector("[data-layout]") !== originalLayout) throw new Error("runtime-exact-precedence")
+    document.body.dataset.runtimeBrowserTest = "pass"
+  } catch (error) {
+    document.body.dataset.runtimeBrowserTest = `fail-${error.message}`
+  }
 } else if (location.pathname === "/shop/product") {
   try {
     const originalDocument = document

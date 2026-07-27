@@ -449,17 +449,17 @@ export default function ProductPage() {
 }
 ```
 
-Opt exact static routes into same-document navigation:
+Opt emitted exact or runtime-parameter routes into same-document navigation:
 
 ```js
 export default {
-  navigation: { routes: ["/product", "/cart"] }
+  navigation: { routes: ["/product", "/items/[id]"] }
 }
 ```
 
-Every configured route must be an exact static route and export the same layout function. The layout DOM, state, and top-level effects persist; route state and top-level effects reset after cleanup on each transition. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct requests, reloads, JavaScript failures, unsupported links, and routes outside the group retain native document navigation.
+Every configured identity must be an emitted exact route or `runtimeParams` bracket pattern and export the same layout function. The layout DOM, state, and top-level effects persist; route state, parameters, and top-level effects reset after cleanup on each transition. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct requests, reloads, malformed runtime paths, JavaScript failures, unsupported links, and routes outside the group retain native document navigation.
 
-Runtime bracket routes, multiple layout groups, and conditional or keyed effects inside a navigation group are not supported yet.
+Multiple layout groups and conditional or keyed effects inside a navigation group are not supported yet.
 
 This produces fast same-document route changes, but it does not add a coordinated transition animation. CSS entry animations can style newly inserted route content; exit and shared-element View Transitions are not integrated yet.
 
@@ -498,7 +498,7 @@ Supported:
 - Top-level and block-scoped JSX locals, terminal early returns, and exhaustive JSX assignment
 - Direct keyed local-state lists
 - Page-exported shared layouts with layout/route state lifetimes
-- Opt-in exact-route navigation with complete-document prefetch and native fallback
+- Opt-in exact/runtime-route navigation with complete-document prefetch and native fallback
 - Layout- and route-lifetime effect mounts in navigation groups
 
 Not implemented yet:

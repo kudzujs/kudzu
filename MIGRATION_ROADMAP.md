@@ -4,7 +4,7 @@ This document is the durable product and implementation direction for future Kud
 
 The approved business-application milestone and its performance gates are defined in [`GOAL_A.md`](./GOAL_A.md).
 
-Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports one deliberately narrow navigation group: `navigation: { routes: string[] }` may enhance exact static routes exporting the same layout function, while every route remains a complete document and all other routes remain native. Top-level layout- and route-owned effects mount for their declared lifetime; conditional/keyed DOM-owned effects and runtime bracket routes remain rejected in navigation groups. The Phase 6 compatibility probe confirms that these existing lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
+Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports one deliberately narrow navigation group: `navigation: { routes: string[] }` may enhance emitted exact or `runtimeParams` routes exporting the same layout function, while every route remains a complete document and all other routes remain native. Top-level layout- and route-owned effects mount for their declared lifetime; conditional/keyed DOM-owned effects remain rejected in navigation groups. The Phase 6 compatibility probe confirms that these existing lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
 
 ## North Star
 
