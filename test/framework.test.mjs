@@ -2,9 +2,10 @@ import assert from "node:assert/strict"
 import { existsSync } from "node:fs"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
+import { gzipSync } from "node:zlib"
 import test from "node:test"
-import { build, specializeRuntime } from "../framework/build.mjs"
-import { behavior, conditional, createContext, list, nativeBehavior, renderPage, useContext, useRef, useState } from "../framework/core.mjs"
+import { build, normalizeNavigation, specializeRuntime } from "../framework/build.mjs"
+import { behavior, conditional, createContext, list, nativeBehavior, renderPage, useContext, useEffect, useParams, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -65,6 +66,108 @@ test("emits configured global styles in every document head", async t => {
     assert.doesNotMatch(html, /<script/)
   }
   assert.equal(await readFile(new URL("./fixtures/global-styles/dist/assets/generated.css", import.meta.url), "utf8"), "main { color: rebeccapurple; }")
+})
+
+test("renders page layouts with collision-free layout and route scopes", async t => {
+  const fixture = new URL("./fixtures/layout-scopes", import.meta.url)
+  const invalidPage = new URL("./fixtures/layout-scopes/src/pages/invalid.tsx", import.meta.url)
+  t.after(async () => {
+    await rm(invalidPage, { force: true })
+    await rm(new URL("./fixtures/layout-scopes/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/layout-scopes/dist", import.meta.url), { recursive: true, force: true })
+  })
+
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/layout-scopes/dist/items/[id]/index.html", import.meta.url), "utf8")
+  const plain = await readFile(new URL("./fixtures/layout-scopes/dist/plain/index.html", import.meta.url), "utf8")
+  const effects = await readFile(new URL("./fixtures/layout-scopes/dist/assets/effects/items/[id]/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/layout-scopes/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  const scoped = plan.find(route => route.route === "/items/[id]")
+
+  assert.match(html, /^<!doctype html><html[^>]*><head>.*<\/head><body[^>]*><div data-shell="true">/s)
+  assert.match(html, /<div data-shell="true">.*<template data-k-route-start><\/template><main.*<\/main><template data-k-route-end><\/template><footer>Layout footer<\/footer><\/div><\/body><\/html>$/s)
+  assert.match(html, /data-k-ref="lr0".*data-k-ref="rr0"/s)
+  assert.deepEqual(scoped.states.map(state => [state.id, state.lifetime]), [["ls0", "layout"], ["ls1", "layout"], ["rs0", "route"], ["rs1", "route"]])
+  assert.deepEqual(scoped.params, [{ name: "id", id: "rp0" }])
+  assert.deepEqual(scoped.conditions.map(condition => condition.id), ["lc0", "rc0"])
+  assert.deepEqual(scoped.lists.map(list => list.id), ["ll0", "rl0"])
+  assert.deepEqual(scoped.effects.map(effect => effect.lifetime), ["layout", "layout", "route", "route"])
+  assert.deepEqual(scoped.effects.filter(effect => effect.owner).map(effect => effect.owner), ["le0", "re0"])
+  assert.ok(scoped.effects.every(effect => Object.hasOwn(effect, "scope") && !Object.hasOwn(effect, "captures")))
+  assert.doesNotMatch(effects, /"lifetime":"(?:layout|route)"/)
+  assert.match(plain, /data-k-text="s0"/)
+  assert.doesNotMatch(plain, /data-k-route-(?:start|end)|data-k-text="rs0"/)
+
+  const legacy = await renderPage(() => {
+    const [count] = useState(1)
+    return jsx("p", { children: count })
+  }, { styles: false })
+  assert.equal(legacy.html, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kudzu</title></head><body><p><span data-k-text="s0" data-k-value='1'>1</span></p></body></html>`)
+  await assert.rejects(renderPage(() => null, { styles: false, runtimeParams: ["id"] }, {}, () => useParams()), /useParams\(\) is only supported in route scope/)
+
+  await writeFile(invalidPage, "export const layout = 1\nexport default function Page() { return <main /> }\n")
+  const invalid = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(invalid.status, 0)
+  assert.match(`${invalid.stdout}\n${invalid.stderr}`, /src\/pages\/invalid\.tsx:1:\d+ layout export must be a function/)
+})
+
+test("enhances only configured exact static routes sharing one layout", async t => {
+  const fixture = new URL("./fixtures/navigation", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/navigation/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/navigation/dist", import.meta.url), { recursive: true, force: true })
+  })
+
+  assert.throws(() => normalizeNavigation([]), /plain object/)
+  assert.throws(() => normalizeNavigation({ routes: [] }), /nonempty array/)
+  assert.throws(() => normalizeNavigation({ routes: ["/product", "/product"] }), /unique paths/)
+  for (const path of ["product", "/product?x=1", "/product#x", "/a/../product", "/%2e%2e/product"]) assert.throws(() => normalizeNavigation({ routes: [path] }), /root-relative path/)
+
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const product = await readFile(new URL("./fixtures/navigation/dist/product/index.html", import.meta.url), "utf8")
+  const cart = await readFile(new URL("./fixtures/navigation/dist/cart/index.html", import.meta.url), "utf8")
+  const chart = await readFile(new URL("./fixtures/navigation/dist/chart/index.html", import.meta.url), "utf8")
+  const broken = await readFile(new URL("./fixtures/navigation/dist/broken/index.html", import.meta.url), "utf8")
+  const outside = await readFile(new URL("./fixtures/navigation/dist/outside/index.html", import.meta.url), "utf8")
+  const navigation = await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
+
+  const second = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`)
+  assert.equal(await readFile(new URL("./fixtures/navigation/dist/product/index.html", import.meta.url), "utf8"), product)
+  assert.equal(await readFile(new URL("./fixtures/navigation/dist/cart/index.html", import.meta.url), "utf8"), cart)
+  assert.equal(await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8"), navigation)
+
+  for (const html of [product, cart, chart, broken]) {
+    assert.match(html, /^<!doctype html>.*<body[^>]+data-k-application="[^"]+"[^>]+data-k-layout="[^"]+".*data-k-route-start.*data-k-route-end.*<\/body><\/html>$/s)
+    assert.equal((html.match(/kudzu-navigation\.js/g) ?? []).length, 1)
+  }
+  assert.doesNotMatch(outside, /data-k-(?:application|layout)|kudzu-navigation\.js|data-k-capability/)
+  assert.match(navigation, /popstate/)
+  assert.match(navigation, /\/shop\/product/)
+  assert.doesNotMatch(navigation, /[?&](?:v|t)=|Date\.now|Math\.random/)
+  assert.ok(gzipSync(navigation).length > 0)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  assert.match(chart, /data-chart="true" data-sample="0"/)
+  if (chrome) await runNavigationBrowserTest(fixture, chrome)
+})
+
+test("rejects DOM-owned effects only in navigation groups", async () => {
+  function OwnedEffect() {
+    useEffect(() => {}, [], "/effect.js", "effect0", [], [], "fixture.tsx:4:5", false)
+    return jsx("span", { children: "owned" })
+  }
+  function Page() {
+    const [shown] = useState(true)
+    return conditional("and", shown, () => jsx(OwnedEffect, {}), () => null, "/condition.js", "condition0", [["shown", shown]], [])
+  }
+  await assert.rejects(
+    renderPage(Page, { styles: false, navigationAsset: "/navigation.js" }),
+    /fixture\.tsx:4:5 useEffect\(\) inside conditional or keyed DOM is not supported in a configured navigation group yet; move the effect to the layout or route component body, or remove the route from navigation/
+  )
+  assert.equal((await renderPage(Page, { styles: false })).plan.effects[0].owner, "e0")
 })
 
 test("rejects stylesheets rendered in the document body", async t => {
@@ -610,6 +713,8 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
   assert.match(runtime, /Keyed list state must remain an array/)
   assert.match(runtime, /Keyed list condition marker has no end/)
+  assert.doesNotMatch(html, /data-k-effects|data-k-effect-item/)
+  assert.doesNotMatch(runtime, /data-k-effects|kEffectItem/)
   assert.doesNotMatch(runtime, /\beval\b|new Function/)
   assert.match(handlers, /as handler/)
   assert.match(handlers, /as listExpression/)
@@ -756,6 +861,42 @@ test("compiles mount effects to route-specific ESM", async t => {
   if (chrome) await runEffectBrowserTest(fixture, chrome)
 })
 
+test("owns effects rendered inside conditional DOM", async t => {
+  const fixture = new URL("./fixtures/conditional-effects", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/conditional-effects/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/conditional-effects/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/conditional-effects/dist/index.html", import.meta.url), "utf8")
+  const entry = await readFile(new URL("./fixtures/conditional-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/conditional-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-k-effect=/)
+  assert.match(entry, /registerMountHook/)
+  assert.equal(plan.effects[0].owner, "e0")
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runConditionalEffectBrowserTest(fixture, chrome)
+})
+
+test("owns effects rendered by imported keyed row components", async t => {
+  const fixture = new URL("./fixtures/keyed-effects", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/keyed-effects/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/keyed-effects/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/keyed-effects/dist/index.html", import.meta.url), "utf8")
+  const entry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-k-effects=/)
+  assert.match(entry, /kEffectItem/)
+  assert.deepEqual(plan.effects.map(effect => [effect.owner, effect.list, effect.dependencies]), [["e0", true, undefined], ["e1", true, ["s1"]]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runKeyedEffectBrowserTest(fixture, chrome)
+})
+
 test("runs mount effect cleanup once on document disposal", async t => {
   const fixture = new URL("./fixtures/effect-cleanup", import.meta.url)
   t.after(async () => {
@@ -887,7 +1028,8 @@ test("rejects unsupported mount effect forms", () => {
     ["effect-invalid-cleanup-generator", /cleanup functions cannot declare parameters or be generators/],
     ["effect-invalid-generator", /callback cannot be a generator/],
     ["effect-invalid-return", /return values must be inline cleanup functions/],
-    ["effect-invalid-named", /callback function must be anonymous/]
+    ["effect-invalid-named", /callback function must be anonymous/],
+    ["effect-invalid-list-dependency", /src\/pages\/index\.tsx:\d+:\d+ useEffect\(\) item-property dependencies are not supported in keyed lists/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL(`./fixtures/${fixture}`, import.meta.url), encoding: "utf8" })
     assert.notEqual(result.status, 0)
@@ -1080,6 +1222,48 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/docs/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-docs-list-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNavigationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  for (const route of ["product", "cart", "chart", "broken"]) {
+    const htmlUrl = new URL(`${route}/index.html`, output)
+    const html = await readFile(htmlUrl, "utf8")
+    await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  }
+  const port = 45000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+const counts = new Map()
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  if (url.pathname === "/request-count") {
+    response.setHeader("content-type", "application/json")
+    return response.end(JSON.stringify(counts.get(url.searchParams.get("url")) || 0))
+  }
+  const key = url.pathname + url.search
+  counts.set(key, (counts.get(key) || 0) + 1)
+  if (url.pathname === "/shop/broken" && request.headers["sec-fetch-mode"] !== "navigate") {
+    response.setHeader("content-type", "text/html")
+    const html = fs.readFileSync(path.join(root, "product/index.html"), "utf8").replace(/data-k-application="[^"]+"/, 'data-k-application="wrong"')
+    return response.end(html)
+  }
+  const relative = url.pathname.replace(/^\\/shop\\/?/, "")
+  const file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=7000", "--dump-dom", `http://127.0.0.1:${port}/shop/product?initial=1`], { encoding: "utf8", timeout: 20000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
   } finally {
     server.kill()
   }
@@ -1353,6 +1537,136 @@ http.createServer((request, response) => {
   }
 }
 
+async function runConditionalEffectBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  await wait()
+  const control = action => document.querySelector('[data-action="' + action + '"]')
+  if (document.body.dataset.effectLog || document.querySelector("[data-resource]")) throw new Error("hidden-mounted")
+  control("count").click()
+  await wait()
+  if (document.body.dataset.effectLog) throw new Error("hidden-rerun")
+  control("open").click()
+  await wait()
+  if (document.body.dataset.effectLog !== "|setup 1") throw new Error("open")
+  control("count").click()
+  await wait()
+  if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2") throw new Error("mounted-rerun")
+  control("close").click()
+  await wait()
+  if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2|cleanup 2") throw new Error("close")
+  control("count").click()
+  await wait()
+  if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2|cleanup 2") throw new Error("closed-rerun")
+  control("open").click()
+  await wait()
+  if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2|cleanup 2|setup 3") throw new Error("reopen")
+  const runtime = await import("/assets/kudzu.js")
+  runtime.unmountDom(document)
+  runtime.unmountDom(document)
+  await wait()
+  if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2|cleanup 2|setup 3|cleanup 3") throw new Error("dispose")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 47000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runKeyedEffectBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  const control = action => document.querySelector('[data-action="' + action + '"]')
+  await wait()
+  let expected = "|mount OAK:true|dep Oak:0|mount PINE:true|dep Pine:0"
+  if (document.body.dataset.effectLog !== expected) throw new Error("initial:" + document.body.dataset.effectLog)
+  control("add").click()
+  await wait()
+  expected += "|mount ELM:true|dep Elm:0"
+  if (document.body.dataset.effectLog !== expected) throw new Error("add")
+  control("reorder").click()
+  await wait()
+  if (document.body.dataset.effectLog !== expected) throw new Error("reorder")
+  control("update").click()
+  await wait()
+  expected += "|dep-clean Oak:0|dep-clean Pine:0|dep-clean Elm:0|dep Red oak:1|dep Pine:1|dep Elm:1"
+  if (document.body.dataset.effectLog !== expected) throw new Error("update:" + document.body.dataset.effectLog)
+  control("remove-two").click()
+  await wait()
+  expected += "|unmount PINE|dep-clean Pine:1"
+  if (document.body.dataset.effectLog !== expected) throw new Error("remove")
+  control("close").click()
+  await wait()
+  expected += "|unmount ELM|dep-clean Elm:1|unmount OAK|dep-clean Red oak:1"
+  if (document.body.dataset.effectLog !== expected) throw new Error("conditional-close:" + document.body.dataset.effectLog)
+  control("open").click()
+  await wait()
+  expected += "|mount ELM:true|dep Elm:1|mount RED OAK:true|dep Red oak:1"
+  if (document.body.dataset.effectLog !== expected) throw new Error("conditional-open")
+  control("remove-three").click()
+  await wait()
+  expected += "|unmount ELM|dep-clean Elm:1"
+  const runtime = await import("/assets/kudzu.js")
+  runtime.unmountDom(document)
+  runtime.unmountDom(document)
+  await wait()
+  expected += "|unmount RED OAK|dep-clean Red oak:1"
+  if (document.body.dataset.effectLog !== expected) throw new Error("dispose:" + document.body.dataset.effectLog)
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 48000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runNativeBubblingBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -1474,6 +1788,7 @@ try {
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
 }
+
 `)
   const port = 44000 + process.pid % 1000
   const serverSource = `

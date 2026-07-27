@@ -18,13 +18,17 @@ dist/
 └── assets/
     ├── style.css
     ├── kudzu.js
+    ├── kudzu-deps.js (when dependency-only effects are used)
+    ├── kudzu-navigation.js (when navigation is configured)
     ├── kudzu-binding.js (when used)
+    ├── kudzu-effect.js (when effects are used)
+    ├── kudzu-style.js (when reactive styles are used)
+    ├── effects/ (when route-specific effects are used)
     ├── params/ (when runtimeParams is used)
     ├── handlers/ (evaluators and imported helpers)
     ├── kudzu-list.js (when used)
     ├── kudzu-native.js (when used)
-    ├── kudzu-serialization.js (when used)
-    └── handlers/`} />
+    └── kudzu-serialization.js (when used)`} />
     <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use. Runtime bracket pages emit one fallback HTML file plus a route-specific parameter matcher. Ordered host rewrites are written to <code>.kudzu/kudzu-plan.json</code> and passed to <code>afterBuild()</code>.</p>
   </section>
 }
@@ -32,73 +36,25 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <p>Production builds ran after one warm-up in seven rotating rounds on Node 24.14.0 and an Intel i5-9500. Browser list operations are medians from seven fresh headless Chrome runs, measured when a DOM observer sees each expected result rather than at the next animation frame.</p>
-    <h3>Interactive counter</h3>
-    <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
-      ["Kudzu", "Yes", "1.8 KB", "4.0 KB", "445 ms"],
-      ["Astro", "Yes", "158 B", "365 B", "975 ms"],
-      ["Qwik CSR", "No", "20.6 KB", "57.8 KB", "706 ms"],
-      ["Vue CSR", "No", "24.0 KB", "60.3 KB", "874 ms"],
-      ["Svelte CSR", "No", "10.5 KB", "26.9 KB", "982 ms"],
-      ["React CSR", "No", "59.2 KB", "189.0 KB", "1181 ms"],
-      ["Next.js", "Yes", "182.1 KB", "652.2 KB", "3503 ms"]
+    <p>The Goal A fixture covers a matched six-route commerce journey with complete initial HTML, shared layout state, product options, optimistic cart success and rejection, accessible rollback, and product-to-cart navigation. Browser medians use seven rotating fresh Chrome profiles per target with 4x CPU slowdown, 100 ms latency, and 200 KiB/s throughput.</p>
+    <h3>Desktop commerce</h3>
+    <BenchmarkTable columns={["Target", "JS gzip", "Cold transfer", "Cold LCP", "Warm LCP", "Startup", "Heap", "Interaction", "Product → cart"]} rows={[
+      ["Kudzu", "7,215 B", "34,809 B", "324 ms", "140 ms", "103.3 ms", "648,844 B", "3.7 ms", "5.7 ms"],
+      ["React + Vite", "61,464 B", "202,842 B", "324 ms", "232 ms", "160.0 ms", "1,062,520 B", "10.5 ms", "8.3 ms"],
+      ["Next.js", "190,090 B", "546,581 B", "316 ms", "156 ms", "357.7 ms", "2,157,020 B", "11.4 ms", "26.9 ms"],
+      ["Nuxt", "67,620 B", "195,953 B", "320 ms", "204 ms", "205.1 ms", "1,721,348 B", "3.9 ms", "33.0 ms"],
+      ["SvelteKit", "32,473 B", "90,929 B", "340 ms", "172 ms", "125.8 ms", "999,496 B", "4.7 ms", "20.3 ms"]
     ]} />
-    <h3>Context object cost</h3>
-    <BenchmarkTable columns={["Kudzu variant", "JS gzip", "Output", "Build", "Click"]} rows={[
-      ["Local native state", "1.9 KB", "4.0 KB", "472 ms", "4.38 µs"],
-      ["Context object", "4.9 KB", "12.6 KB", "494 ms", "6.94 µs"]
+    <p>Kudzu emits 34,879 deploy bytes. Its product graph includes the 2,306 B gzip navigation capability. Validated near-viewport document prefetch reduced the measured product-to-cart median from 128.7 ms to 5.7 ms without removing complete documents or native fallback.</p>
+    <h3>Desktop and mobile behavior</h3>
+    <BenchmarkTable columns={["Profile", "Cold LCP", "Warm LCP", "Interaction", "Product → cart", "Reject feedback", "Rollback/error", "CLS"]} rows={[
+      ["Desktop", "324 ms", "140 ms", "3.7 ms", "5.7 ms", "3.3 ms", "110.8 ms", "0"],
+      ["Mobile", "420 ms", "220 ms", "5.6 ms", "8.7 ms", "4.1 ms", "158 ms", "0"]
     ]} />
-    <p>The Context fixture uses live object properties in derived text and handlers. Recursive state/setter capture and generic binding add about 3.0 KB gzip and 2.56 µs per update only when used, while preserving immediate logical reads and one batched DOM commit per synchronous turn. Capability specialization removes these branches from pages that do not use them.</p>
-    <h3>Runtime path parameters</h3>
-    <BenchmarkTable columns={["Fixture", "Initial JS gzip", "Matcher gzip", "Build"]} rows={[
-      ["Two params + bindings + dependency effect + event", "6.7 KB", "702 B", "491 ms"]
-    ]} />
-    <h3>Mount cleanup</h3>
-    <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
-      ["Kudzu", "Yes", "1.2 KB", "2.3 KB", "402 ms"],
-      ["Astro native", "Yes", "127 B", "255 B", "865 ms"],
-      ["Svelte CSR", "No", "10.1 KB", "26.2 KB", "861 ms"],
-      ["Vue CSR", "No", "23.6 KB", "59.4 KB", "768 ms"],
-      ["React CSR", "No", "59.1 KB", "189.0 KB", "1058 ms"]
-    ]} />
-    <p>Each fixture mounts one resize listener and removes it during cleanup. Kudzu ships 88% less JavaScript than Svelte, 95% less than Vue, and 98% less than React in this fixture while retaining static initial HTML. Astro is the hand-written native lifecycle baseline.</p>
-    <h3>Dependency effect rerun</h3>
-    <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
-      ["Kudzu", "Yes", "1.5 KB", "3.1 KB", "429 ms"],
-      ["Astro native", "Yes", "196 B", "478 B", "969 ms"],
-      ["Svelte CSR", "No", "9.7 KB", "24.9 KB", "995 ms"],
-      ["Vue CSR", "No", "23.8 KB", "60.0 KB", "943 ms"],
-      ["React CSR", "No", "59.2 KB", "189.1 KB", "1172 ms"]
-    ]} />
-    <p>Each fixture changes one primitive dependency, removes the previous listener, and mounts the replacement. Kudzu ships 84% less JavaScript than Svelte, 94% less than Vue, and 97% less than React while retaining static initial HTML. A single-effect, single-dependency route uses a direct runner without generic maps, sets, or sorting.</p>
-    <h3>Static journal</h3>
-    <BenchmarkTable columns={["Framework", "Initial HTML", "JS gzip", "Output", "Build"]} rows={[
-      ["Kudzu", "Yes", "0 B", "3.2 KB", "422 ms"],
-      ["Astro", "Yes", "0 B", "3.0 KB", "1081 ms"],
-      ["Qwik CSR", "No", "20.2 KB", "59.6 KB", "633 ms"],
-      ["Vue CSR", "No", "24.2 KB", "62.3 KB", "810 ms"],
-      ["Svelte CSR", "No", "10.2 KB", "27.2 KB", "902 ms"],
-      ["React CSR", "No", "59.8 KB", "192.3 KB", "1110 ms"],
-      ["Next.js", "Yes", "182.6 KB", "663.6 KB", "3126 ms"]
-    ]} />
-    <h3>123-page newsletter build</h3>
-    <BenchmarkTable columns={["Build model", "TSX files", "Pages", "JS gzip", "Output", "Build"]} rows={[
-      ["Generated workaround", "123", "123", "0 B", "52.0 KB", "882 ms"],
-      ["getStaticPaths", "1", "123", "0 B", "52.0 KB", "454 ms"]
-    ]} />
-    <p>One dynamic page module removes 122 generated source files and reduces clean build time by 48.5% while emitting the same static pages, CSS, base-prefixed URLs, post-build feed, and zero browser JavaScript.</p>
-    <h3>1,000-item keyed list</h3>
-    <BenchmarkTable columns={["Framework", "JS gzip", "Output", "Build", "Update", "Reverse", "Remove", "Add", "Total"]} rows={[
-      ["Astro", "324 B", "43.6 KB", "834 ms", "4.3 ms", "3.8 ms", "1.3 ms", "3.1 ms", "12.5 ms"],
-      ["Kudzu", "5.1 KB", "60.3 KB", "438 ms", "7.5 ms", "7.0 ms", "1.8 ms", "6.9 ms", "23.2 ms"],
-      ["Next.js", "182.2 KB", "695.2 KB", "2983 ms", "7.0 ms", "12.0 ms", "3.9 ms", "6.7 ms", "29.6 ms"],
-      ["React CSR", "59.3 KB", "189.4 KB", "1020 ms", "9.5 ms", "11.7 ms", "3.8 ms", "5.3 ms", "30.3 ms"],
-      ["Vue CSR", "24.3 KB", "61.3 KB", "773 ms", "11.4 ms", "9.5 ms", "4.1 ms", "6.6 ms", "31.6 ms"],
-      ["Svelte CSR", "12.9 KB", "33.1 KB", "828 ms", "5.8 ms", "38.9 ms", "4.0 ms", "5.9 ms", "54.6 ms"],
-      ["Qwik CSR", "22.2 KB", "64.1 KB", "594 ms", "9.1 ms", "22.2 ms", "30.8 ms", "19.0 ms", "81.1 ms"]
-    ]} />
-    <p>An intrinsic-root versus projected-prop row-component A/B build emitted byte-for-byte identical HTML and JavaScript. Seven clean-build medians were 467 ms and 455 ms; browser operation totals were 23.7 ms and 23.9 ms. Since no component code remains in <code>dist</code>, the browser difference is measurement variance rather than runtime overhead.</p>
-    <p>Astro is the hand-authored native DOM baseline for interactive fixtures. Kudzu and Astro emit initial HTML; React, Vue, Svelte, and Qwik use client-rendered fixtures. These numbers describe the selected fixtures, not complete framework capability.</p>
+    <p>The mobile profile uses a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput. Both profiles recorded zero cold and warm layout shift.</p>
+    <h3>Build tradeoff</h3>
+    <p>Seven rotating clean production builds measured Kudzu at 460.8 ms and React at 429.5 ms. A separate 21-run interleaved check measured 578.6 ms and 542.5 ms. The repeatable 6–7% small-project difference is primarily TypeScript ESM/compiler startup. Generated-handler lowering and shared-Program experiments did not improve the combined median, so neither was retained.</p>
+    <p>These results describe one matched fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves eligible application transitions; direct loads still transfer and render complete standalone documents.</p>
   </section>
 }
 
@@ -110,9 +66,9 @@ export function LimitsSection() {
       <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
       <li>Keyed lists require local-state maps and intrinsic roots or top-level local or relative-imported row components; package and namespace row imports, reusable aliases, nested dynamic JSX, prop spreads, and derived-expression captures remain unsupported.</li>
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
-      <li><code>useEffect</code> supports inline block-bodied callbacks, directly returned inline cleanup, and literal arrays of direct JSON-safe primitive state or runtime parameter identifiers. Dependency expressions, properties, ordinary locals, objects, spreads, dynamic arrays, named or dynamic cleanup functions, cleanup parameters or generators, async effects returning cleanup, and other return values are not supported.</li>
+      <li><code>useEffect</code> supports inline block-bodied callbacks, directly returned inline cleanup, DOM ownership in conditional and supported keyed rows, and literal arrays of direct JSON-safe primitive state or runtime parameter identifiers. Keyed item-property dependencies, dependency expressions, properties, ordinary locals, objects, spreads, dynamic arrays, named or dynamic cleanup functions, cleanup parameters or generators, async effects returning cleanup, and other return values are not supported.</li>
       <li><code>runtimeParams = true</code> requires full bracket segments, cannot be combined with <code>getStaticPaths()</code>, and requires an exact-file-first fallback rewrite on the production host. Catch-all runtime parameters are not supported.</li>
-      <li>There is no request-time SSR, server actions, router, HMR, or DevTools.</li>
+      <li>There is no request-time SSR, server actions, default/general router, HMR, or DevTools. Opt-in navigation supports one exact static route group with a shared layout; runtime bracket routes, multiple groups, and conditional or keyed effects in that group are not supported.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
     </ul>
   </section>

@@ -14,6 +14,7 @@ const listConditionalMarker = Symbol("kudzu.listConditional")
 const refMarker = Symbol("kudzu.ref")
 const contextMarker = Symbol("kudzu.context")
 const contextProviderMarker = Symbol("kudzu.contextProvider")
+const routeScopeMarker = Symbol("kudzu.routeScope")
 const noSelectValue = Symbol("kudzu.no-select-value")
 
 let renderContext
@@ -23,23 +24,24 @@ export function useState(initialValue, name) {
     throw new Error("useState() can only run while rendering a Kudzu component")
   }
 
-  const id = `s${renderContext.nextState++}`
+  const id = nextRenderId("s")
   const signal = createSignal(id, initialValue)
 
   const setter = () => {
     throw new Error("State setters are compiled into ordered browser behaviors")
   }
   Object.defineProperty(setter, setterMarker, { value: id })
-  renderContext.states[id] = { name: name ?? id, initialValue }
+  renderContext.states[id] = { name: name ?? id, initialValue, ...(renderContext.scoped ? { lifetime: renderContext.renderScope } : {}) }
   return [signal, setter]
 }
 
 export function useParams() {
+  if (renderContext?.renderScope === "layout") throw new Error("useParams() is only supported in route scope")
   if (!renderContext?.runtimeParamNames?.length) throw new Error("useParams() requires export const runtimeParams = true on a bracket page")
   if (!renderContext.params) {
     const params = Object.create(null)
-    renderContext.paramEntries = renderContext.runtimeParamNames.map((name, index) => {
-      const id = `p${index}`
+    renderContext.paramEntries = renderContext.runtimeParamNames.map(name => {
+      const id = nextRenderId("p")
       params[name] = createSignal(id, "")
       return { name, id }
     })
@@ -71,7 +73,28 @@ export function useEffect(callback, dependencies, module, handler, states, scope
     if (!dependency?.[signalMarker] || !validEffectDependency(dependency.value)) throw new Error(`${source} useEffect() dependencies must be primitive Kudzu state or runtime parameter identifiers`)
     return dependency.id
   })
-  renderContext.effects.push({ module, handler, states, scope, source, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(cleanup ? { cleanup: true } : {}) })
+  let owner
+  let list = false
+  if (renderContext.listDepth) {
+    const effects = renderContext.listRoot?.effects
+    if (!effects) throw new Error(`${source} useEffect() inside keyed lists must belong to the direct row component`)
+    const index = effects.length
+    if (renderContext.listTemplate) {
+      owner = nextRenderId("e")
+      renderContext.listEffectOwners.push(owner)
+      list = true
+    } else {
+      owner = renderContext.listEffectOwners[index]
+      if (!owner) throw new Error(`${source} Keyed row effects must have the same hook order for every item`)
+    }
+    effects.push(owner)
+  } else if (renderContext.conditionDepth) {
+    const owners = renderContext.effectOwners.at(-1)
+    if (!owners) throw new Error(`${source} useEffect() inside conditional DOM must belong to a rendered function component`)
+    owner = nextRenderId("e")
+    owners.push(owner)
+  }
+  if (!renderContext.listDepth || list) renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
   renderContext.hasBehaviors = true
   renderContext.hasEffects = true
 }
@@ -83,7 +106,7 @@ function validEffectDependency(value) {
 export function useRef(initialValue) {
   if (!renderContext) throw new Error("useRef() can only run while rendering a Kudzu component")
   if (initialValue !== null) throw new Error("Kudzu DOM refs must initialize with null")
-  return { [refMarker]: true, id: `r${renderContext.nextRef++}`, current: null }
+  return { [refMarker]: true, id: nextRenderId("r"), current: null }
 }
 
 export function createContext(defaultValue) {
@@ -267,19 +290,26 @@ function serializeCapture(name, value, seen) {
   }
 }
 
-export async function renderPage(component, metadata = {}, props = {}) {
-  renderContext = { nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+export async function renderPage(component, metadata = {}, props = {}, layout) {
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
-    const body = await renderNode({ type: component, props })
+    const page = { [routeScopeMarker]: true, component, props }
+    const body = await renderNode(layout ? { type: layout, props: { children: page } } : { type: component, props })
     renderContext.effects = renderContext.effects.map(effect => {
       try {
+        if (metadata.navigationAsset && effect.owner) throw new Error("useEffect() inside conditional or keyed DOM is not supported in a configured navigation group yet; move the effect to the layout or route component body, or remove the route from navigation")
+        const descriptor = nativeDescriptor(effect.states.map(([name, read]) => [name, read()]), effect.scope.map(([name, read]) => [name, typeof read === "function" ? read() : read]))
         return {
           module: effect.module,
           handler: effect.handler,
           ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
           ...(effect.cleanup ? { cleanup: true } : {}),
-          ...nativeDescriptor(effect.states.map(([name, read]) => [name, read()]), effect.scope.map(([name, read]) => [name, read()]))
+          ...(effect.owner ? { owner: effect.owner } : {}),
+          ...(effect.list ? { list: true } : {}),
+          ...(renderContext.scoped ? { lifetime: effect.renderScope } : {}),
+          states: descriptor.states,
+          scope: descriptor.scope
         }
       } catch (error) {
         throw new Error(`${effect.source} ${error.message}`)
@@ -287,26 +317,30 @@ export async function renderPage(component, metadata = {}, props = {}) {
     })
     const title = escapeHtml(metadata.title ?? "Kudzu")
     const head = renderMetadata(metadata)
+    const capability = metadata.navigationAsset ? " data-k-capability" : ""
     const styles = metadata.styles === false
       ? ""
       : (Array.isArray(metadata.styles) ? metadata.styles : [assetPath(metadata.base, "assets/style.css")]).map(href => `<link rel="stylesheet" href="${escapeAttribute(href)}">`).join("")
     const runtime = renderContext.hasBehaviors
-      ? `<script type="module" src="${escapeAttribute(metadata.runtimeAsset ?? assetPath(metadata.base, "assets/kudzu.js"))}"></script>`
+      ? `<script type="module"${capability} src="${escapeAttribute(metadata.runtimeAsset ?? assetPath(metadata.base, "assets/kudzu.js"))}"></script>`
       : ""
     const nativeRuntime = renderContext.hasNativeBehaviors
-      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-native.js")}"></script>`
+      ? `<script type="module"${capability} src="${assetPath(metadata.base, "assets/kudzu-native.js")}"></script>`
       : ""
     const paramRuntime = renderContext.hasParams
-      ? `<script type="module" src="${escapeAttribute(metadata.paramAsset)}"></script>`
+      ? `<script type="module"${capability} src="${escapeAttribute(metadata.paramAsset)}"></script>`
       : ""
     const bindingRuntime = renderContext.hasBindings
-      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-binding.js")}"></script>`
+      ? `<script type="module"${capability} src="${assetPath(metadata.base, "assets/kudzu-binding.js")}"></script>`
       : ""
     const listRuntime = renderContext.hasLists
-      ? `<script type="module" src="${assetPath(metadata.base, "assets/kudzu-list.js")}"></script>`
+      ? `<script type="module"${capability} src="${assetPath(metadata.base, "assets/kudzu-list.js")}"></script>`
       : ""
     const effectRuntime = renderContext.hasEffects
-      ? `<script type="module" src="${escapeAttribute(metadata.effectAsset)}"></script>`
+      ? `<script type="module"${capability} src="${escapeAttribute(metadata.effectAsset)}"></script>`
+      : ""
+    const navigationRuntime = metadata.navigationAsset
+      ? `<script type="module" data-k-capability src="${escapeAttribute(metadata.navigationAsset)}"></script>`
       : ""
     const listStates = new Set(renderContext.lists.map(list => list.state))
     const seededListStates = new Set(renderContext.lists.filter(list => list.seed && !renderContext.textStates.has(list.state) && !renderContext.conditionStates.has(list.state)).map(list => list.state))
@@ -324,7 +358,7 @@ export async function renderPage(component, metadata = {}, props = {}) {
       : ""
 
     return {
-      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}${runtime}${paramRuntime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}</head><body${state}${textBindings}>${body}</body></html>`,
+      html: `<!doctype html><html lang="${escapeAttribute(metadata.lang ?? "en")}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title>${head}${styles}${runtime}${paramRuntime}${bindingRuntime}${listRuntime}${nativeRuntime}${effectRuntime}${navigationRuntime}</head><body${state}${textBindings}${metadata.applicationId ? ` data-k-application="${escapeAttribute(metadata.applicationId)}" data-k-layout="${escapeAttribute(metadata.layoutId)}"` : ""}>${body}</body></html>`,
       hasBehaviors: renderContext.hasBehaviors,
       hasEffects: renderContext.hasEffects,
       hasParams: renderContext.hasParams,
@@ -349,16 +383,17 @@ export async function renderPage(component, metadata = {}, props = {}) {
 
 function renderMetadata(metadata) {
   const tags = []
+  const owned = metadata.navigationAsset ? " data-k-head" : ""
   const meta = (name, content, property = false) => {
-    if (content) tags.push(`<meta ${property ? "property" : "name"}="${escapeAttribute(name)}" content="${escapeAttribute(content)}">`)
+    if (content) tags.push(`<meta${owned} ${property ? "property" : "name"}="${escapeAttribute(name)}" content="${escapeAttribute(content)}">`)
   }
 
   if (metadata.description) meta("description", metadata.description)
   if (metadata.themeColor) meta("theme-color", metadata.themeColor)
-  if (metadata.url) tags.push(`<link rel="canonical" href="${escapeAttribute(metadata.url)}">`)
-  if (metadata.icon) tags.push(`<link rel="icon" href="${escapeAttribute(baseUrl(metadata.base, metadata.icon))}">`)
-  if (metadata.appleTouchIcon) tags.push(`<link rel="apple-touch-icon" href="${escapeAttribute(baseUrl(metadata.base, metadata.appleTouchIcon))}">`)
-  if (metadata.manifest) tags.push(`<link rel="manifest" href="${escapeAttribute(baseUrl(metadata.base, metadata.manifest))}">`)
+  if (metadata.url) tags.push(`<link${owned} rel="canonical" href="${escapeAttribute(metadata.url)}">`)
+  if (metadata.icon) tags.push(`<link${owned} rel="icon" href="${escapeAttribute(baseUrl(metadata.base, metadata.icon))}">`)
+  if (metadata.appleTouchIcon) tags.push(`<link${owned} rel="apple-touch-icon" href="${escapeAttribute(baseUrl(metadata.base, metadata.appleTouchIcon))}">`)
+  if (metadata.manifest) tags.push(`<link${owned} rel="manifest" href="${escapeAttribute(baseUrl(metadata.base, metadata.manifest))}">`)
 
   meta("og:title", metadata.title, true)
   meta("og:description", metadata.description, true)
@@ -404,6 +439,16 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     return escapeHtml(node)
   }
   if (node instanceof Promise) return renderNode(await node, namespace, selectValue)
+  if (node?.[routeScopeMarker]) {
+    const previousScope = renderContext.renderScope
+    renderContext.renderScope = "route"
+    try {
+      const html = await renderNode({ type: node.component, props: node.props }, namespace, selectValue)
+      return `<template data-k-route-start></template>${html}<template data-k-route-end></template>`
+    } finally {
+      renderContext.renderScope = previousScope
+    }
+  }
   if (node?.[contextProviderMarker]) {
     renderContext.contexts.push([node.context, node.value])
     try {
@@ -418,7 +463,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (!stateIds.size) return renderNode(node.value ? node.truthy() : node.falsy(), namespace, selectValue)
     if (namespace) throw new Error(`Reactive conditional DOM is not supported inside ${namespace}`)
 
-    const id = `c${renderContext.nextCondition++}`
+    const id = nextRenderId("c")
     renderContext.conditionDepth++
     const truthy = await renderNode(node.truthy(), namespace, selectValue)
     const falsy = await renderNode(node.falsy(), namespace, selectValue)
@@ -479,7 +524,19 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
 
   if (node.type === Symbol.for("kudzu.fragment")) return renderNode(node.props.children, namespace, selectValue)
-  if (typeof node.type === "function") return renderNode(await node.type(node.props), namespace, selectValue)
+  if (typeof node.type === "function") {
+    if (!renderContext.conditionDepth) return renderNode(await node.type(node.props), namespace, selectValue)
+    const owners = []
+    renderContext.effectOwners.push(owners)
+    let result
+    try {
+      result = await node.type(node.props)
+    } finally {
+      renderContext.effectOwners.pop()
+    }
+    const html = await renderNode(result, namespace, selectValue)
+    return owners.map(owner => `<template data-k-effect="${owner}"></template>`).join("") + html
+  }
 
   const tag = node.type
   const props = node.props ?? {}
@@ -508,6 +565,10 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     const root = renderContext.listRoot
     renderContext.listRoot = undefined
     if (root.template) attributes += ` data-k-list-root="${root.id}"`
+    if (root.effects.length) {
+      attributes += ` data-k-effects='${escapeJsonAttribute(root.effects)}'`
+      if (!root.template) attributes += ` data-k-effect-item='${escapeJsonAttribute(root.item)}'`
+    }
   }
 
   for (const [rawName, value] of Object.entries(props)) {
@@ -520,7 +581,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
     if (rawName === "selected" && selectValue !== noSelectValue) continue
     if (/^on/i.test(rawName) && !/^on[A-Z]/.test(rawName)) throw new Error(`${rawName} must use a camelCase event handler`)
-    if (rawName.toLowerCase().startsWith("data-k-")) throw new Error(`${rawName} uses Kudzu's reserved data-k-* prefix`)
+    if (rawName.toLowerCase().startsWith("data-k-") && rawName.toLowerCase() !== "data-k-native") throw new Error(`${rawName} uses Kudzu's reserved data-k-* prefix`)
     if (["ref", "dangerouslysetinnerhtml"].includes(rawName.toLowerCase()) && (value?.[signalMarker] || value?.[bindingMarker])) {
       throw new Error(`Reactive ${rawName} is not supported`)
     }
@@ -613,16 +674,19 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 
 async function renderList(node, namespace, selectValue) {
   if (namespace) throw new Error(`Reactive keyed lists are not supported inside ${namespace}`)
-  const id = `l${renderContext.nextList++}`
+  const id = nextRenderId("l")
   const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.items.value.map(item => item[node.keyField]) }
   renderContext.listDepth++
   const previousListFields = renderContext.listFields
+  const previousListEffectOwners = renderContext.listEffectOwners
   try {
     renderContext.listTemplate = true
+    renderContext.listEffectOwners = []
     renderContext.listFields = new Set([node.keyField])
-    renderContext.listRoot = { id, template: true }
+    renderContext.listRoot = { id, template: true, effects: [], item: {} }
     const template = await renderNode(node.render({}), namespace, selectValue)
-    if (template.includes("data-k-native-")) descriptor.mount = true
+    if (template.includes("data-k-native-") || template.includes("data-k-effects=")) descriptor.mount = true
+    if (template.includes("data-k-effects=")) descriptor.effects = true
     if (template.includes("data-k-list-condition")) descriptor.conditions = true
     if (template.includes("data-k-list-text-end")) descriptor.textRanges = true
     if (template.includes("data-k-list-attrs")) descriptor.attributes = true
@@ -635,7 +699,7 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listTemplate = false
     renderContext.listInitialMarkers = Boolean(descriptor.conditions)
     for (const item of node.items.value) {
-      renderContext.listRoot = { id, key: item[node.keyField], template: false }
+      renderContext.listRoot = { id, key: item[node.keyField], template: false, effects: [], item }
       current += await renderNode(node.render(item), namespace, selectValue)
     }
     renderContext.lists.push(descriptor)
@@ -647,8 +711,15 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listTemplate = false
     renderContext.listInitialMarkers = false
     renderContext.listFields = previousListFields
+    renderContext.listEffectOwners = previousListEffectOwners
     renderContext.listDepth--
   }
+}
+
+function nextRenderId(kind) {
+  if (renderContext.scoped) return `${renderContext.renderScope === "layout" ? "l" : "r"}${kind}${renderContext.counters[renderContext.renderScope][kind]++}`
+  const counters = { s: "nextState", r: "nextRef", c: "nextCondition", l: "nextList", e: "nextEffect", p: "nextParam" }
+  return `${kind}${renderContext[counters[kind]]++}`
 }
 
 function optionValue(props) {

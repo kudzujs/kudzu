@@ -7,7 +7,7 @@ const imports = __KUDZU_LIST_ASYNC_PARTS__ ? new Map() : undefined
 const revisions = __KUDZU_LIST_ASYNC_PARTS__ ? new WeakMap() : undefined
 const itemParts = new WeakMap()
 const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
-const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}`
+const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}${__KUDZU_LIST_EFFECTS__ ? ",[data-k-effects]" : ""}`
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -114,8 +114,11 @@ function updateList(list) {
     } else node.remove()
   }
   if (added) {
-    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) mountDom(additions)
-    parent.insertBefore(additions, list.boundary)
+    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) {
+      const addedNodes = [...additions.childNodes]
+      parent.insertBefore(additions, list.boundary)
+      for (const node of addedNodes) mountDom(node)
+    } else parent.insertBefore(additions, list.boundary)
     list.container ??= parent
   }
   let anchor = list.boundary
@@ -149,6 +152,7 @@ function fillListItem(root, item) {
 }
 
 function fillListParts(root, parts, item, revision) {
+  if (__KUDZU_LIST_EFFECTS__) for (const node of parts.effects) node.dataset.kEffectItem = JSON.stringify(item)
   for (const [node, field] of parts.directTexts) {
     const text = item?.[field]
     const value = text == null ? "" : String(text)
@@ -203,7 +207,7 @@ function fillListParts(root, parts, item, revision) {
 function listItemParts(root) {
   let parts = itemParts.get(root)
   if (parts) return parts
-  parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [], conditions: [] }
+  parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [], conditions: [], effects: [] }
   for (const node of matching(root, itemPartsSelector)) {
     if (node.hasAttribute("data-k-list-text")) (node.tagName === "TEMPLATE" ? parts.texts : parts.directTexts).push([node, node.dataset.kListText])
     if (__KUDZU_LIST_ATTRIBUTES__ && node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, JSON.parse(node.dataset.kListAttrs)])
@@ -214,6 +218,7 @@ function listItemParts(root) {
       parts.conditions.push([node, JSON.parse(node.dataset.kListCondition)])
       conditionOwners.set(node, root)
     }
+    if (__KUDZU_LIST_EFFECTS__ && node.hasAttribute("data-k-effects")) parts.effects.push(node)
   }
   itemParts.set(root, parts)
   return parts
@@ -230,7 +235,8 @@ function listItemPartPlan(template) {
     events: __KUDZU_LIST_EVENTS__ ? parts.events.map(([node, events]) => [indexes.get(node), events]) : [],
     expressions: __KUDZU_LIST_EXPRESSIONS__ ? parts.expressions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : [],
     expressionAttributes: __KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes]) : [],
-    conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : []
+    conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : [],
+    effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(node => indexes.get(node)) : []
   }
 }
 
@@ -246,7 +252,8 @@ function mapListItemParts(parts, root) {
     conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([index, descriptor]) => {
       conditionOwners.set(target[index], root)
       return [target[index], descriptor]
-    }) : []
+    }) : [],
+    effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(index => target[index]) : []
   })
 }
 

@@ -2,6 +2,10 @@
 
 This document is the durable product and implementation direction for future Kudzu work. Read it before changing architecture or attempting a React migration.
 
+The approved business-application milestone and its performance gates are defined in [`GOAL_A.md`](./GOAL_A.md).
+
+Goal A Phase 3 layout and route render scopes are implemented. Phase 4 supports one deliberately narrow navigation group: `navigation: { routes: string[] }` may enhance exact static routes exporting the same layout function, while every route remains a complete document and all other routes remain native. Top-level layout- and route-owned effects mount for their declared lifetime; conditional/keyed DOM-owned effects and runtime bracket routes remain rejected in navigation groups. The Phase 6 compatibility probe confirms that these existing lifetimes can own a mock stream and an imperative helper across navigation; it adds no telemetry, chart, worker, socket, plugin, or public framework API.
+
 ## North Star
 
 An AI should be able to migrate a conventional React application while preserving familiar TSX authoring. Kudzu then compiles that source to CDN-deployable static HTML, CSS, and the smallest route-specific ESM needed for behavior.
@@ -23,7 +27,7 @@ Syntax compatibility does not mean shipping React semantics wholesale. Kudzu sup
 - State setters update logical state immediately and batch direct DOM writes at synchronous-turn boundaries.
 - Prefer build-time execution whenever all inputs are available during the build.
 - Unknown runtime data cannot be pre-rendered as known content. Emit a static shell plus only the ESM needed to obtain and patch that data.
-- Use browser document navigation and ordinary `<a>` elements by default. Client routing is not part of the current roadmap.
+- Use browser document navigation and ordinary `<a>` elements by default. Goal A may enhance explicitly configured application route groups while preserving complete documents and native fallback.
 - Do not add compatibility APIs speculatively. Start with a real migration fixture that fails, then implement the smallest shared compiler feature that unblocks it.
 
 ## Existing Building Blocks
@@ -59,7 +63,7 @@ Classify each migrated screen before changing the framework.
 | Route IDs known at build time | Existing bracket route plus `getStaticPaths()` |
 | UUID or route value known only from the request URL | Static fallback document plus compiled pathname parameter reader |
 | Normal navigation | Native `<a>` document navigation |
-| SPA transitions | Out of scope until explicitly approved from measured need |
+| SPA transitions | Goal A opt-in application groups only; complete documents and native fallback remain required |
 
 ## Implementation Order
 
@@ -153,7 +157,7 @@ The two-parameter fixture's route matcher is 702 B gzip. Its complete binding, d
 
 ### 4. Add Effect Semantics Only When Proven Necessary
 
-Status: mount-only cleanup, primitive dependency arrays, and cleanup-before-rerun are implemented. Direct state and runtime parameter signal identifiers are compared with `Object.is`; commits coalesce per turn, affected asynchronous cleanups are awaited in declaration order, then replacement setups run in declaration order. Components are not rerun. Document cleanup remains document-owned and skips persisted page exits.
+Status: mount-only cleanup, primitive dependency arrays, cleanup-before-rerun, and DOM-range ownership are implemented. Direct state and runtime parameter signal identifiers are compared with `Object.is`; commits coalesce per turn, affected asynchronous cleanups are awaited in declaration order, then replacement setups run in declaration order. Components are not rerun. Document effects skip persisted page exits; effects in conditional ranges and supported keyed row components mount and clean up with their DOM owner.
 
 The three-cleanup isolation fixture emits 1.4 KB gzip across its four JavaScript files, including a 487 B gzip route effect entry, and its seven-run clean-build median is 480 ms.
 
@@ -166,7 +170,7 @@ After mount-only effects and runtime params unblock a real migration, add the ne
 1. cleanup for `useEffect(fn, [])` (implemented);
 2. primitive dependency arrays such as `[id]` (implemented);
 3. cleanup-before-rerun (implemented);
-4. effect ownership inside conditional or keyed DOM ranges.
+4. effect ownership inside conditional or keyed DOM ranges (implemented; keyed item-property dependencies remain unsupported).
 
 Each addition must reuse capability mount/unmount hooks, have one focused migration fixture, and preserve zero output cost for pages that do not use it.
 
@@ -178,7 +182,7 @@ Status: implemented for stylesheets and generated route modules. CSS under `src`
 
 In a generic seven-run browser fixture with 75.3 KB HTML, a 57 KB two-module graph, 100 ms latency, and 200 KB/s download throughput, head discovery started the entry request 383 ms earlier and reached route readiness 208 ms earlier on a cold load. Warm-cache readiness was unchanged, transferred module bytes were unchanged, and both forms recorded zero layout shift. A 31-run interleaved clean-build comparison measured 596.6 ms for `v0.5.9` and 584.8 ms with document-resource handling, a 2.0% reduction; the overlapping ranges make this a no-regression result rather than a claimed build-speed gain.
 
-Before adding prefetch, view transitions, asset hashing, image transformation, or client routing, reduce a general native-navigation fixture and measure cold and warm document loads under production-like caching. Record HTML, CSS, initial ESM graph, local media and font bytes, request transfer sizes, layout shift, and largest contentful paint. An individual migrated application may reveal a category of problem but must not become Kudzu architecture or a framework fixture by itself.
+Before adding view transitions, asset hashing, image transformation, or further navigation behavior, reduce a general fixture and measure cold and warm document loads under production-like caching. Record HTML, CSS, initial ESM graph, local media and font bytes, request transfer sizes, layout shift, and largest contentful paint. Goal A navigation followed this gate: its first complete-document transition exposed one network round trip, so a finite validated prefetch cache was added only after the matched fixture measured the need. An individual migrated application may reveal a category of problem but must not become Kudzu architecture or a framework fixture by itself.
 
 Acceptance criteria:
 
@@ -209,7 +213,7 @@ When asked to migrate a React application:
 - Running arbitrary React applications unchanged.
 - Compatibility with the React package or React component ecosystem.
 - Shipping component functions to reproduce React re-render semantics.
-- A default SPA router or global client application runtime.
+- A default SPA router or global client application runtime; Goal A navigation remains explicit and route-group scoped.
 - Request-time SSR, server actions, or a hidden application server.
 - Replacing browser-native navigation for cosmetic SPA behavior.
 

@@ -39,7 +39,7 @@ export default {
 
 function seoFor(path) {
   if (path === "/") return page("Kudzu — HTML-first TSX framework", "React-shaped TSX with synchronous state, static HTML, and no virtual DOM.", path, "WebSite")
-  if (path === "/docs") return page("Kudzu Documentation — HTML-first TSX", "Learn Kudzu components, state semantics, routing, effects, events, lists, and static build output.", path, "TechArticle")
+  if (path === "/docs") return page("Kudzu Documentation — HTML-first TSX", "Learn Kudzu components, state semantics, application navigation, effects, performance, and static build output.", path, "TechArticle")
   if (path === "/example") return page("Kudzu Examples — Static sites and source code", "Explore complete static site examples, live previews, project structure, and exact Kudzu TSX source.", path, "CollectionPage")
 
   const match = path.match(/^\/example\/blog\/([^/]+)(?:\/demo(?:\/([^/]+))?)?$/)

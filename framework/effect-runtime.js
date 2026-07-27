@@ -1,17 +1,19 @@
 import { deserialize } from "./serialization.js"
 
-export function createEffectContext(state, stateIds, commit, serializedScope = {}) {
+export function createEffectContext(state, stateIds, commit, serializedScope = {}, active = () => true) {
   const changed = new Set()
   let scheduled = false
 
   const flush = () => {
     scheduled = false
+    if (!active()) return changed.clear()
     const ids = [...changed]
     changed.clear()
     for (const id of ids) commit(id, state.get(id))
   }
 
   const setId = (id, value) => {
+    if (!active()) return
     const current = state.get(id)
     state.set(id, typeof value === "function" ? value(current) : value)
     changed.add(id)

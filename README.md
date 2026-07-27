@@ -8,9 +8,11 @@ HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
 Kudzu keeps the familiar function-component, props, children, event-handler, `useState`, and mount-effect shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers and mount effects compile to external ESM.
 
-> Experimental `0.4.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.6.x`: the compiler API and supported TSX surface may change.
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
+
+Development target: [Goal A static business applications](./GOAL_A.md)
 
 ## Install
 
@@ -328,9 +330,9 @@ const rows = items.map(item => <ItemRow
 />)
 ```
 
-The original component remains reusable across multiple lists and ordinary JSX. No component function or component runtime is shipped to the browser. Kudzu emits initial items as static HTML, then adds, removes, updates, styles, conditional branches, and moves keyed elements directly. The map may appear directly in JSX or in one top-level immutable `const` rendered once as a JSX child. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Single-level item-local `&&` and ternary JSX conditions patch only their bounded branch and mount or unmount its handlers. Item-local handlers use direct DOM listeners and receive the latest JSON-safe item for their key, including after updates, additions, and reorders. The item remains stored once in shared list state; handler descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
+The original component remains reusable across multiple lists and ordinary JSX. No component function or component runtime is shipped to the browser. Kudzu emits initial items as static HTML, then adds, removes, updates, styles, conditional branches, and moves keyed elements directly. The map may appear directly in JSX or in one top-level immutable `const` rendered once as a JSX child. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Single-level item-local `&&` and ternary JSX conditions patch only their bounded branch and mount or unmount its handlers. Item-local handlers and effects receive the latest JSON-safe item for their key. Effects mount after a row is connected, clean up when it is removed, and do not rerun during reorder. The item remains stored once in shared list state; runtime descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
 
-Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root or top-level local or relative-imported row component, and `key={item.<field>}`. Row components accept destructured projected props and top-level single-`const` calculations before one intrinsic return. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, imported helpers used inside calculations, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, nested item conditions, lists, or component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
+Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root or top-level local or relative-imported row component, and `key={item.<field>}`. Row components accept destructured projected props, top-level single-`const` calculations and inline effects before one intrinsic return. Effect dependencies inside a row may be empty or direct primitive Kudzu state identifiers; item-property dependencies remain unsupported. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, imported helpers used inside calculations, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, nested item conditions, lists, or component tags, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 ## Effects
 
@@ -360,7 +362,7 @@ useEffect(() => {
 }, [])
 ```
 
-Cleanup runs once when the document leaves outside the browser back-forward cache. Effect-local resources and component state read by nested cleanup closures retain their setup-time values. Cleanup failures are isolated so later cleanups still run.
+Document-owned cleanup runs once when the document leaves outside the browser back-forward cache. An effect in a conditional branch or supported keyed row mounts only while its DOM owner is present and cleans up once when that owner is removed. Effect-local resources and component state read by nested cleanup closures retain their setup-time values. Cleanup failures are isolated so later cleanups still run.
 
 Literal arrays of direct primitive `useState` or `useParams` signal identifiers rerun after committed dependency changes:
 
@@ -433,7 +435,33 @@ TSX
 - Interactive route modules are discovered in the document head and retain deferred execution after HTML parsing, overlapping cold downloads with document transfer.
 - Production JavaScript is minified; development output stays readable.
 - Components are authoring units; no component tree is retained in the browser.
-- There is no VDOM, hydration pass, router, or client application runtime.
+- There is no VDOM, hydration pass, retained component tree, default router, or general client application runtime.
+
+## Application Navigation
+
+Pages may export one shared layout while continuing to emit complete standalone documents:
+
+```tsx
+export { Shell as layout } from "../components/Shell"
+
+export default function ProductPage() {
+  return <main><h1>Product</h1></main>
+}
+```
+
+Opt exact static routes into same-document navigation:
+
+```js
+export default {
+  navigation: { routes: ["/product", "/cart"] }
+}
+```
+
+Every configured route must be an exact static route and export the same layout function. The layout DOM, state, and top-level effects persist; route state and top-level effects reset after cleanup on each transition. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct requests, reloads, JavaScript failures, unsupported links, and routes outside the group retain native document navigation.
+
+Runtime bracket routes, multiple layout groups, and conditional or keyed effects inside a navigation group are not supported yet.
+
+This produces fast same-document route changes, but it does not add a coordinated transition animation. CSS entry animations can style newly inserted route content; exit and shared-element View Transitions are not integrated yet.
 
 Example Nginx configuration:
 
@@ -456,6 +484,7 @@ Supported:
 - Base-path deployments, multiple CSS files, and `afterBuild`
 - Primitive `useState` bindings
 - Mount-only `useEffect(fn, [])` compiled to route-specific ESM
+- Conditional and keyed-row effect ownership with cleanup on DOM removal
 - Synchronous and async event handlers
 - Relative imported helpers in native handlers
 - Serializable component-local captures
@@ -468,17 +497,50 @@ Supported:
 - Conditional child `&&` and ternary DOM patches
 - Top-level and block-scoped JSX locals, terminal early returns, and exhaustive JSX assignment
 - Direct keyed local-state lists
+- Page-exported shared layouts with layout/route state lifetimes
+- Opt-in exact-route navigation with complete-document prefetch and native fallback
+- Layout- and route-lifetime effect mounts in navigation groups
 
 Not implemented yet:
 
-- Block-scoped JSX locals and reusable keyed-list aliases
+- Reusable keyed-list aliases
 - Server actions and request-time SSR
 - React package islands
 - HMR and framework DevTools
+- Conditional/keyed DOM-owned effects inside navigation groups
 
 ## Benchmarks
 
-Measurements below were produced on the same machine from production builds. Each framework received one warm-up followed by seven clean builds in rotating order; the table reports the median. Initial JavaScript includes inline scripts, root script references, and their static import graph, compressed file-by-file with gzip level 9. Total output is the raw size of every deploy artifact.
+### Goal A Commerce Journey
+
+The matched fixture covers home, category, product, cart, checkout, and account routes with complete initial HTML, shared application layout state, product options, optimistic cart success and rejection, accessible errors, rollback, and product-to-cart navigation. Kudzu, React + Vite, Next.js, Nuxt, and SvelteKit render the same tested content and interactions.
+
+Browser medians use seven rotating fresh Chrome profiles per target with 4x CPU slowdown, 100 ms latency, and 200 KiB/s throughput. Product JavaScript includes the initial static import graph; cold transfer includes the complete initial page transfer. Lower is better.
+
+| Target | Product JS gzip | Cold transfer | Cold LCP | Warm LCP | Startup task | Heap | Interaction | Product → cart |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Kudzu | **7,215 B** | **34,809 B** | 324 ms | **140 ms** | **103.3 ms** | **648,844 B** | **3.7 ms** | **5.7 ms** |
+| React + Vite | 61,464 B | 202,842 B | 324 ms | 232 ms | 160.0 ms | 1,062,520 B | 10.5 ms | 8.3 ms |
+| Next.js | 190,090 B | 546,581 B | **316 ms** | 156 ms | 357.7 ms | 2,157,020 B | 11.4 ms | 26.9 ms |
+| Nuxt | 67,620 B | 195,953 B | 320 ms | 204 ms | 205.1 ms | 1,721,348 B | 3.9 ms | 33.0 ms |
+| SvelteKit | 32,473 B | 90,929 B | 340 ms | 172 ms | 125.8 ms | 999,496 B | 4.7 ms | 20.3 ms |
+
+The Kudzu application emits 34,879 deploy bytes. Its 7,215 B gzip product graph includes the 2,306 B navigation capability. The first implementation paid a 128.7 ms HTML round trip during product-to-cart navigation; validated near-viewport document prefetch reduced the measured median to 5.7 ms while preserving complete documents and native fallback.
+
+The mobile profile uses a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput:
+
+| Profile | Cold LCP | Warm LCP | Interaction | Product → cart | Reject feedback | Rollback/error | CLS |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Desktop | 324 ms | 140 ms | 3.7 ms | 5.7 ms | 3.3 ms | 110.8 ms | 0 |
+| Mobile | 420 ms | 220 ms | 5.6 ms | 8.7 ms | 4.1 ms | 158 ms | 0 |
+
+Small clean builds are the known tradeoff. Seven rotating production builds measured Kudzu at 460.8 ms and React at 429.5 ms; a separate 21-run interleaved check measured 578.6 ms and 542.5 ms. The repeatable 6–7% difference is primarily TypeScript ESM/compiler startup. Attempts to replace generated-handler lowering or share one TypeScript Program did not improve the combined median and were not retained.
+
+These results describe this six-route fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves an eligible warm application transition; it does not hide cold transfer, and direct loads remain complete standalone documents.
+
+### Capability Microbenchmarks
+
+The measurements below isolate individual compiler capabilities. They were produced on the same machine from production builds. Each framework received one warm-up followed by seven clean builds in rotating order; the table reports the median. Initial JavaScript includes inline scripts, root script references, and their static import graph, compressed file-by-file with gzip level 9. Total output is the raw size of every deploy artifact.
 
 ### Interactive Counter
 

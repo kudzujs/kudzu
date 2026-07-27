@@ -3,6 +3,7 @@ dist/
 .kudzu/
 test/fixtures/**/.kudzu/
 test/fixtures/**/dist/
+benchmarks/
 
 # wrangler files
 .wrangler

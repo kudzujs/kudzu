@@ -1,5 +1,5 @@
 import { createServer } from "node:http"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { cp, mkdir, readFile, readdir, rm, stat, watch, writeFile } from "node:fs/promises"
 import { dirname, extname, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -20,6 +20,14 @@ export async function build({ quiet = false, minify = true } = {}) {
   const config = await loadConfig()
   const base = normalizeBase(config.base)
   const configuredStyles = normalizeStyles(config.styles, base)
+  const navigationRoutes = normalizeNavigation(config.navigation)
+  const navigationSet = new Set(navigationRoutes)
+  const browserNavigationRoutes = navigationRoutes.map(route => withBase(base, route))
+  const navigationAsset = assetPath(base, "assets/kudzu-navigation.js")
+  const navigationId = navigationRoutes.length ? createHash("sha256").update(JSON.stringify([...navigationRoutes].sort())).digest("hex").slice(0, 16) : undefined
+  const applicationId = navigationId ? `a-${navigationId}` : undefined
+  const layoutId = navigationId ? `l-${navigationId}` : undefined
+  let navigationLayout
   await rm(workDirectory, { recursive: true, force: true })
   await rm(outputDirectory, { recursive: true, force: true })
   await mkdir(workDirectory, { recursive: true })
@@ -54,6 +62,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const paramEntries = []
   const rewrites = []
   const emittedRoutes = new Set()
+  const emittedApplicationRoutes = new Set()
   const styleUrls = [...new Set([
     ...cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)),
     ...configuredStyles
@@ -64,6 +73,7 @@ export async function build({ quiet = false, minify = true } = {}) {
     const compiledFile = compiledPath(pageFile)
     const module = await import(`${pathToFileURL(compiledFile).href}?v=${Date.now()}`)
     if (typeof module.default !== "function") throw new Error(`${relative(root, pageFile)} must export a default component`)
+    if (Object.hasOwn(module, "layout") && typeof module.layout !== "function") throw layoutExportError(pageFile, sourceIndex.get(pageFile))
 
     const runtimeSchema = runtimeRouteSchema(module, pageFile)
     if (runtimeSchema) {
@@ -80,11 +90,20 @@ export async function build({ quiet = false, minify = true } = {}) {
     const entries = runtimeSchema ? [{ params: {}, props: {} }] : await staticPathEntries(module, pageFile)
     for (const { params, props } of entries) {
       const route = runtimeSchema?.route ?? routeFromPage(pageFile, params)
+      const applicationRoute = `/${route}`
       const routePath = withBase(base, `/${route}`)
+      const navigable = navigationSet.has(applicationRoute)
       const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
       const paramPath = `params/${route}/index.js`
       if (emittedRoutes.has(routePath)) throw new Error(`Duplicate route: ${routePath}`)
       emittedRoutes.add(routePath)
+      emittedApplicationRoutes.add(applicationRoute)
+      if (navigable) {
+        if (runtimeSchema) throw new Error(`kudzu.config navigation route ${JSON.stringify(routePath)} must be an exact static route; runtime bracket routes are not supported`)
+        if (typeof module.layout !== "function") throw new Error(`kudzu.config navigation route ${JSON.stringify(routePath)} must export a layout function so Kudzu can emit route markers`)
+        if (navigationLayout && navigationLayout !== module.layout) throw new Error("kudzu.config navigation routes must export the same layout function identity")
+        navigationLayout = module.layout
+      }
       const result = await renderPage(module.default, {
         ...(module.metadata ?? {}),
         styles: styleUrls.length ? styleUrls : false,
@@ -92,14 +111,15 @@ export async function build({ quiet = false, minify = true } = {}) {
         runtimeAsset: runtimePlaceholder,
         effectAsset: assetPath(base, `assets/${effectPath}`),
         paramAsset: assetPath(base, `assets/${paramPath}`),
-        runtimeParams: runtimeSchema?.params
-      }, props)
+        runtimeParams: runtimeSchema?.params,
+        ...(navigable ? { navigationAsset, applicationId, layoutId } : {})
+      }, props, module.layout)
       const hasDependencies = result.plan.effects.some(effect => effect.dependencies?.length)
-      const usesDependencyRuntime = hasDependencies && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
+      const usesDependencyRuntime = !navigable && hasDependencies && !result.plan.effects.some(effect => effect.owner) && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
       pageEntries.push({ route, html: result.html, usesDependencyRuntime })
       plans.push({ route: routePath, ...result.plan })
       if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, usesDependencyRuntime })
-      if (result.hasEffects) effectEntries.push({ path: effectPath, effects: result.plan.effects, paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime })
+      if (result.hasEffects) effectEntries.push({ path: effectPath, effects: runtimeEffects(result.plan.effects, navigable), paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime, navigable })
       if (result.hasBehaviors) {
         behaviorCount++
         if (!usesDependencyRuntime) regularBehaviorCount++
@@ -114,6 +134,8 @@ export async function build({ quiet = false, minify = true } = {}) {
     }
   }
 
+  for (const route of navigationRoutes) if (!emittedApplicationRoutes.has(route)) throw new Error(`kudzu.config navigation route ${JSON.stringify(route)} is not an exact emitted route`)
+
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
   const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
@@ -126,6 +148,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasListExpressions = plans.some(plan => plan.lists.some(list => list.expressions))
   const hasListExpressionAttributes = plans.some(plan => plan.lists.some(list => list.expressionAttributes))
   const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed))
+  const hasListEffects = plans.some(plan => plan.lists.some(list => list.effects))
   const hasListAsyncParts = hasListExpressions || hasListExpressionAttributes || hasListConditions
   const hasListMounts = hasListConditions || plans.some(plan => plan.lists.some(list => list.mount))
   const hasNestedStateCaptures = hasNestedCaptureState(plans)
@@ -134,7 +157,8 @@ export async function build({ quiet = false, minify = true } = {}) {
   const nativeModules = handlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
   const hasNativeHandlers = nativeModules.length > 0
   const hasEffects = effectEntries.length > 0
-  const hasSharedRuntime = bindingCount || listCount || hasNativeHandlers
+  const hasNavigableEffects = effectEntries.some(entry => entry.navigable)
+  const hasSharedRuntime = bindingCount || listCount || hasNativeHandlers || navigationRoutes.length
   const hasDependencyRuntime = pageEntries.some(entry => entry.usesDependencyRuntime)
   const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
   for (const entry of pageEntries) {
@@ -143,9 +167,10 @@ export async function build({ quiet = false, minify = true } = {}) {
     const html = entry.html.replace(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/${runtimeName(entry.usesDependencyRuntime)}`)))
     await writeFile(join(routeDirectory, "index.html"), html)
   }
-  if (behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
+  if (navigationRoutes.length || behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
     const runtimeFile = hasSharedRuntime ? "./shared-runtime.js" : "./runtime.js"
-    const runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, regularStateSeedCount > 0)
+    let runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, regularStateSeedCount > 0)
+    if (hasNavigableEffects) runtime = runtime.replace("export function registerCommitter(commit) {\n  committers.push(commit)\n}", "export function registerCommitter(commit) {\n  committers.push(commit)\n  return () => {\n    const index = committers.indexOf(commit)\n    if (index !== -1) committers.splice(index, 1)\n  }\n}")
     await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
   }
   if (hasDependencyRuntime) {
@@ -166,10 +191,11 @@ export async function build({ quiet = false, minify = true } = {}) {
   }
   if (bindingCount || listStyleCount) await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
   if (bindingCount) {
-    const bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
+    let bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
       .replace('"./style.js"', '"./kudzu-style.js"')
+    if (navigationRoutes.length) bindingRuntime = specializeNavigationTextDescriptors(bindingRuntime)
     await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify, {
       "globalThis.__KUDZU_TEXT_BINDINGS__": String(hasTextBindings),
       "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures)
@@ -194,6 +220,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_LIST_EXPRESSIONS__: String(hasListExpressions),
       __KUDZU_LIST_EXPRESSION_ATTRIBUTES__: String(hasListExpressionAttributes),
       __KUDZU_LIST_SEEDS__: String(hasListSeeds),
+      __KUDZU_LIST_EFFECTS__: String(hasListEffects),
       __KUDZU_LIST_ASYNC_PARTS__: String(hasListAsyncParts),
       __KUDZU_LIST_MOUNTS__: String(hasListMounts)
     })
@@ -205,6 +232,14 @@ export async function build({ quiet = false, minify = true } = {}) {
     await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), specializeNativeRuntime(nativeRuntime, nativeEvents, nativeModules), minify, {
       "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
     })
+  }
+  if (navigationRoutes.length) {
+    const navigationRuntime = (await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8"))
+      .replace("__KUDZU_NAVIGATION_ROUTES__", inlineJson(browserNavigationRoutes))
+      .replace("__KUDZU_APPLICATION_ID__", JSON.stringify(applicationId))
+      .replace("__KUDZU_LAYOUT_ID__", JSON.stringify(layoutId))
+      .replace('"./shared-runtime.js"', '"./kudzu.js"')
+    await writeJavaScript(join(assetsDirectory, "kudzu-navigation.js"), specializeNavigationEffects(navigationRuntime, hasNavigableEffects), minify)
   }
   for (const handlerModule of handlerModules) {
     const output = join(assetsDirectory, handlerModule.path)
@@ -219,7 +254,9 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const entry of effectEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime)), minify)
+    await writeJavaScript(output, entry.navigable
+      ? printNavigableEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base)
+      : printEffectEntry(entry.effects, output, handlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime)), minify)
   }
   const clientModules = await collectClientModules(handlerModules.flatMap(module => module.clientImports), sourceFileSet)
   for (const file of clientModules) {
@@ -265,6 +302,43 @@ function specializeEvents(source, events) {
   return source.replace(/const eventNames = \[[^\n]+\]/, `const eventNames = ${JSON.stringify(events)}`)
 }
 
+function specializeNavigationEffects(source, enabled) {
+  if (enabled) return source
+  return source
+    .replace("const noDispose = async () => {}\nlet routeDispose = noDispose\nlet layoutDispose = noDispose\nconst ready = mountInitial()\n", "")
+    .replace(`addEventListener("pagehide", event => {
+  if (event.persisted) return
+  ++revision
+  request?.abort()
+  void (async () => {
+    await routeDispose()
+    await layoutDispose()
+  })()
+})
+`, "")
+    .replace(`
+async function mountInitial() {
+  try {
+    const effects = await loadCapabilities(validate(document))
+    layoutDispose = await effects?.mountLayoutEffects?.() ?? noDispose
+    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose
+  } catch (error) {
+    console.error(error)
+  }
+}
+`, "")
+    .replace("  await ready\n", "")
+    .replace("    const effects = await loadCapabilities(parsed)\n", "    await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n")
+    .replace("    await routeDispose()\n    if (current !== revision) return\n", "")
+    .replace("    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose\n", "")
+    .replace(`
+async function loadCapabilities(parsed) {
+  const modules = await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))
+  return modules.find(module => typeof module.mountRouteEffects === "function")
+}
+`, "")
+}
+
 function specializeNativeRuntime(source, events, modules) {
   const imports = modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
   const entries = modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
@@ -274,6 +348,7 @@ function specializeNativeRuntime(source, events, modules) {
 function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName) {
   const hasCleanup = effects.some(effect => effect.cleanup)
   const hasDependencies = effects.some(effect => effect.dependencies?.length)
+  const hasOwners = effects.some(effect => effect.owner)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -281,7 +356,7 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
     return module
   })
   const imports = [
-    hasCleanup || hasDependencies
+    hasCleanup || hasDependencies || hasOwners
       ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}\nconst { browserState, commitDom } = __kRuntime`
       : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
@@ -289,6 +364,7 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
+  if (hasOwners) return printOwnedEffectEntry(imports, effects, entries)
   if (effects.length === 1 && effects[0].dependencies?.length === 1) return printSingleDependencyEffect(imports, effects[0], hasCleanup)
   const disposal = hasCleanup ? `
 let disposed = false
@@ -299,6 +375,7 @@ const dispose = root => {
   pending.clear()
   for (const record of records) invokeCleanup(record)
 }
+
 if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose)
 addEventListener("pagehide", event => {
   if (event.persisted) return
@@ -436,6 +513,325 @@ addEventListener("pagehide", event => {
   if (__kRuntime.unmountDom) __kRuntime.unmountDom(document)
   else dispose(document)
 })`
+}
+
+function printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+  const moduleUrls = [...new Set(effects.map(effect => effect.module))]
+  const modules = moduleUrls.map(url => {
+    const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
+    if (!module) throw new Error(`Effect handler module was not emitted: ${url}`)
+    return module
+  })
+  const imports = [
+    `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
+    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
+    ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
+  ]
+  const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
+  return `${imports.join("\n")}
+const effects = ${inlineJson(effects)}
+const modules = new Map([${entries}])
+export const mountLayoutEffects = () => mount("layout")
+export const mountRouteEffects = () => mount("route")
+function mount(lifetime) {
+  let active = true
+  let flushing
+  const records = effects.filter(effect => effect.lifetime === lifetime).map((effect, index) => ({ effect, index, values: undefined, cleanup: undefined, token: undefined }))
+  const dependencies = new Map()
+  const pending = new Set()
+  let scheduled = false
+  for (const record of records) for (const id of record.effect.dependencies ?? []) {
+    const subscribers = dependencies.get(id) ?? new Set()
+    subscribers.add(record)
+    dependencies.set(id, subscribers)
+  }
+  const unsubscribe = dependencies.size ? __kRuntime.registerCommitter(id => {
+    if (!active) return
+    for (const record of dependencies.get(id) ?? []) pending.add(record)
+    if (pending.size && !scheduled && !flushing) {
+      scheduled = true
+      queueMicrotask(flush)
+    }
+  }) : undefined
+  for (const record of records) {
+    try {
+      record.values = readDependencies(record)
+      invoke(record)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  async function flush() {
+    scheduled = false
+    if (!active) return pending.clear()
+    const operation = (async () => {
+      const selected = [...pending].sort((left, right) => left.index - right.index)
+      pending.clear()
+      const changed = []
+      for (const record of selected) {
+        try {
+          const values = readDependencies(record)
+          if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) {
+            record.values = values
+            changed.push(record)
+          }
+        } catch (error) {
+          console.error(error)
+        }
+      }
+      for (const record of changed) await cleanup(record)
+      if (active) for (const record of changed) invoke(record)
+    })()
+    flushing = operation
+    try { await operation } finally {
+      if (flushing === operation) flushing = undefined
+      if (active && pending.size && !scheduled) {
+        scheduled = true
+        queueMicrotask(flush)
+      }
+    }
+  }
+  function readDependencies(record) {
+    return (record.effect.dependencies ?? []).map(id => {
+      const value = __kRuntime.browserState.get(id)
+      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+      return value
+    })
+  }
+  function invoke(record) {
+    const token = { active: true }
+    record.token = token
+    try {
+      const effect = record.effect
+      const result = modules.get(effect.module)[effect.handler](createEffectContext(__kRuntime.browserState, effect.states, __kRuntime.commitDom, effect.scope, () => active && token.active && record.token === token))
+      if (effect.cleanup && typeof result === "function") record.cleanup = result
+      else if (result && typeof result.then === "function") result.catch(error => console.error(error))
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  async function cleanup(record) {
+    if (record.token) record.token.active = false
+    record.token = undefined
+    const current = record.cleanup
+    record.cleanup = undefined
+    if (!current) return
+    try { await current() } catch (error) { console.error(error) }
+  }
+  let disposal
+  return async function dispose() {
+    if (disposal) return disposal
+    disposal = (async () => {
+      active = false
+      unsubscribe?.()
+      pending.clear()
+      for (const record of records) if (record.token) record.token.active = false
+      if (flushing) await flushing
+      for (const record of records) await cleanup(record)
+    })()
+    return disposal
+  }
+}`
+}
+
+function runtimeEffects(effects, lifetimes = false) {
+  return effects.map(effect => ({
+    module: effect.module,
+    handler: effect.handler,
+    ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
+    ...(effect.cleanup ? { cleanup: true } : {}),
+    ...(effect.owner ? { owner: effect.owner } : {}),
+    ...(effect.list ? { list: true } : {}),
+    ...(lifetimes && effect.lifetime ? { lifetime: effect.lifetime } : {}),
+    states: effect.states,
+    scope: effect.scope
+  }))
+}
+
+function printOwnedEffectEntry(imports, effects, entries) {
+  return `${imports.join("\n")}
+const effects = ${inlineJson(effects)}
+const modules = new Map([${entries}])
+const records = effects.map((effect, index) => effect.list ? undefined : createRecord(effect, index)).filter(Boolean)
+const listTemplates = new Map(effects.map((effect, index) => effect.list ? [effect.owner, { effect, index }] : undefined).filter(Boolean))
+const owners = new Map(records.filter(record => record.effect.owner).map(record => [record.effect.owner, record]))
+const listRegistrations = new WeakMap()
+const mountedRecords = new Set(records.filter(record => record.mounted))
+const dependencies = new Map()
+const pending = new Set()
+let scheduled = false
+let flushing = false
+let active = true
+for (const record of records) registerDependencies(record)
+function createRecord(effect, index) {
+  return { effect, index, mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined }
+}
+function registerDependencies(record) {
+  for (const id of record.effect.dependencies ?? []) {
+  const subscribers = dependencies.get(id) ?? new Set()
+  subscribers.add(record)
+  dependencies.set(id, subscribers)
+  }
+}
+function unregisterDependencies(record) {
+  for (const id of record.effect.dependencies ?? []) {
+    const subscribers = dependencies.get(id)
+    subscribers?.delete(record)
+    if (!subscribers?.size) dependencies.delete(id)
+  }
+}
+__kRuntime.registerCommitter(id => {
+  if (!active) return
+  for (const record of dependencies.get(id) ?? []) if (record.mounted) pending.add(record)
+  schedule()
+})
+__kRuntime.registerMountHook(root => {
+  if (!active) return
+  for (const marker of matching(root)) {
+    if (marker.dataset.kEffects) {
+      if (listRegistrations.has(marker)) continue
+      const rowRecords = JSON.parse(marker.dataset.kEffects).map(owner => {
+        const template = listTemplates.get(owner)
+        if (!template) throw new Error("Keyed row effect template was not emitted")
+        const record = createRecord(template.effect, template.index)
+        registerDependencies(record)
+        mount(record, marker)
+        return record
+      })
+      listRegistrations.set(marker, rowRecords)
+      continue
+    }
+    const record = owners.get(marker.dataset.kEffect)
+    if (!record?.mounted) mount(record, marker)
+  }
+})
+__kRuntime.registerUnmountHook(root => {
+  if (root === document) {
+    if (!active) return
+    active = false
+    pending.clear()
+    for (const record of [...mountedRecords]) unmount(record, record.effect.list)
+    return
+  }
+  for (const marker of matching(root)) {
+    const rowRecords = listRegistrations.get(marker)
+    if (rowRecords) {
+      for (const record of rowRecords) unmount(record, true)
+      listRegistrations.delete(marker)
+      continue
+    }
+    const record = owners.get(marker.dataset.kEffect)
+    if (record?.marker === marker) unmount(record)
+  }
+})
+for (const record of records) if (record.mounted) start(record)
+__kRuntime.mountDom(document)
+addEventListener("pagehide", event => {
+  if (!event.persisted) __kRuntime.unmountDom(document)
+})
+function matching(root) {
+  const selector = "template[data-k-effect],[data-k-effects]"
+  return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
+}
+function mount(record, marker) {
+  record.mounted = true
+  record.marker = marker
+  mountedRecords.add(record)
+  const version = ++record.version
+  const begin = () => {
+    if (!active || !record.mounted || record.version !== version || !marker.isConnected) return
+    start(record)
+  }
+  if (record.disposal) record.disposal.then(begin)
+  else begin()
+}
+function unmount(record, dynamic = false) {
+  if (!record.mounted) return
+  record.mounted = false
+  record.marker = undefined
+  mountedRecords.delete(record)
+  if (dynamic) unregisterDependencies(record)
+  record.version++
+  pending.delete(record)
+  invokeCleanup(record)
+}
+function start(record) {
+  try {
+    record.values = readDependencies(record)
+    invoke(record)
+  } catch (error) {
+    console.error(error)
+  }
+}
+function schedule() {
+  if (!pending.size || scheduled || flushing) return
+  scheduled = true
+  queueMicrotask(flush)
+}
+async function flush() {
+  scheduled = false
+  if (!active) return pending.clear()
+  flushing = true
+  try {
+    const selected = [...pending].filter(record => record.mounted).sort((left, right) => left.index - right.index)
+    pending.clear()
+    const changed = []
+    for (const record of selected) {
+      try {
+        const values = readDependencies(record)
+        if (!record.values || values.some((value, index) => !Object.is(value, record.values[index]))) {
+          record.values = values
+          changed.push([record, record.version])
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    }
+    for (const [record] of changed) await invokeCleanup(record)
+    if (active) for (const [record, version] of changed) if (record.mounted && record.version === version) invoke(record)
+  } finally {
+    flushing = false
+    if (active) schedule()
+  }
+}
+function readDependencies(record) {
+  return (record.effect.dependencies ?? []).map(id => {
+    const value = browserState.get(id)
+    if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+    return value
+  })
+}
+function invoke(record) {
+  try {
+    const effect = record.effect
+    const scope = effect.list
+      ? Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, value?.type === "list-item" ? JSON.parse(record.marker.dataset.kEffectItem) : value]))
+      : effect.scope
+    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, scope))
+    if (effect.cleanup && typeof result === "function") record.cleanup = result
+    else if (result && typeof result.then === "function") result.catch(error => console.error(error))
+  } catch (error) {
+    console.error(error)
+  }
+}
+function invokeCleanup(record) {
+  if (record.disposal) return record.disposal
+  const cleanup = record.cleanup
+  record.cleanup = undefined
+  if (!cleanup) return Promise.resolve()
+  const disposal = (async () => {
+    try {
+      await cleanup()
+    } catch (error) {
+      console.error(error)
+    }
+  })()
+  record.disposal = disposal
+  disposal.finally(() => {
+    if (record.disposal === disposal) record.disposal = undefined
+  })
+  return disposal
+}`
 }
 
 function printSingleDependencyEffect(imports, effect, hasCleanup) {
@@ -875,10 +1271,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const listValues = new WeakMap()
     const listEventItems = new WeakMap()
     const listConditions = new WeakMap()
+    const listEffectEntries = new WeakMap()
     let usesBehavior = false
     let usesBinding = false
     let usesConditional = false
     let usesList = false
+    let usesListEffects = false
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -983,6 +1381,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }))
     const componentSpecializations = new WeakMap()
     const specializedDeclarations = new WeakSet()
+    const keyedComponentCalls = new Set(rawRenderedLists.map(({ parts }) => parts.root))
     for (const name of listComponentNames) {
       let component = components.get(name)
       const local = Boolean(component)
@@ -995,7 +1394,11 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       if (local && isExportedDeclaration(component.declaration)) fail(component.declaration, `Keyed list component ${name} cannot be exported`)
       const calls = jsxTagUses(sourceFile, name)
       if (local && identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
-      for (const call of calls) componentSpecializations.set(call, specializeComponentCall(call, component.function, sourceFile, factory, context, fail))
+      for (const call of calls) {
+        const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
+        if (specialization.effects.length && !keyedComponentCalls.has(call)) fail(call, "Effectful keyed row components may only be used directly as keyed map rows")
+        componentSpecializations.set(call, specialization)
+      }
       if (local) specializedDeclarations.add(component.declaration)
     }
     const renderedLists = new WeakMap()
@@ -1003,7 +1406,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
       const specialization = componentSpecializations.get(originalParts.root)
       const root = specialization?.root ?? originalParts.root
-      const callback = root === originalParts.root ? originalParts.callback : factory.updateArrowFunction(
+      let callback = root === originalParts.root ? originalParts.callback : factory.updateArrowFunction(
         originalParts.callback,
         originalParts.callback.modifiers,
         originalParts.callback.typeParameters,
@@ -1023,6 +1426,20 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         validateListExpression(calculation, parts.item, originalParts.root, fail)
       }
       validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions)
+      if (specialization?.effects.length) {
+        usesListEffects = true
+        const statements = specialization.effects.map(entry => {
+          const call = factory.updateCallExpression(entry.call, factory.createIdentifier("__kListUseEffect"), entry.call.typeArguments, entry.call.arguments)
+          synthesizeTree(call)
+          const effectSource = entry.source.getSourceFile()
+          listEffectEntries.set(call, { item: parts.item, source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
+          return factory.createExpressionStatement(call)
+        })
+        callback = factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, callback.parameters, callback.type, callback.equalsGreaterThanToken, factory.createBlock([...statements, factory.createReturnStatement(root)], true))
+        ts.setParentRecursive(callback, false)
+        callback.parent = originalParts.callback.parent
+        parts.callback = callback
+      }
       renderedLists.set(node, parts)
     }
 
@@ -1066,25 +1483,33 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
 
-      if (hasUseEffectImport && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useEffect") {
-        if (node.arguments.length !== 2) fail(node, "useEffect() requires exactly a callback and literal dependency array")
+      const listEffect = ts.isCallExpression(node) ? listEffectEntries.get(node) : undefined
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && (hasUseEffectImport && node.expression.text === "useEffect" || listEffect)) {
+        const effectFail = (target, message) => {
+          if (listEffect) throw sourceNodeError(listEffect.source, listEffect.sourceFile, message)
+          fail(target, message)
+        }
+        if (node.arguments.length !== 2) effectFail(node, "useEffect() requires exactly a callback and literal dependency array")
         const [callback, dependencies] = node.arguments
-        if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) fail(callback, "useEffect() callback must be an inline function")
-        if (ts.isFunctionExpression(callback) && callback.name) fail(callback, "useEffect() callback function must be anonymous")
-        if (callback.asteriskToken) fail(callback, "useEffect() callback cannot be a generator")
-        if (callback.parameters.length) fail(callback, "useEffect() callback cannot declare parameters")
-        if (!ts.isArrayLiteralExpression(dependencies)) fail(dependencies, "useEffect() dependencies must be a literal array")
+        if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) effectFail(callback, "useEffect() callback must be an inline function")
+        if (ts.isFunctionExpression(callback) && callback.name) effectFail(callback, "useEffect() callback function must be anonymous")
+        if (callback.asteriskToken) effectFail(callback, "useEffect() callback cannot be a generator")
+        if (callback.parameters.length) effectFail(callback, "useEffect() callback cannot declare parameters")
+        if (!ts.isArrayLiteralExpression(dependencies)) effectFail(dependencies, "useEffect() dependencies must be a literal array")
+        if (listEffect && dependencies.elements.some(dependency => referencesIdentifier(dependency, listEffect.item))) {
+          effectFail(dependencies, "useEffect() item-property dependencies are not supported in keyed lists; use [] or primitive Kudzu state identifiers")
+        }
         const invalidDependency = dependencies.elements.find(dependency => !ts.isIdentifier(dependency))
-        if (invalidDependency) fail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
+        if (invalidDependency) effectFail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
         if (!nearestFunction(node)) fail(node, "useEffect() cannot be used outside a Kudzu component")
-        if (!ts.isBlock(callback.body)) fail(callback, "useEffect() callback must use a block body")
+        if (!ts.isBlock(callback.body)) effectFail(callback, "useEffect() callback must use a block body")
         const returns = effectReturns(callback)
-        if (returns.invalid) fail(returns.invalid, "useEffect() return values must be inline cleanup functions")
+        if (returns.invalid) effectFail(returns.invalid, "useEffect() return values must be inline cleanup functions")
         const invalidCleanup = returns.cleanups.find(cleanup => cleanup.parameters.length || cleanup.asteriskToken)
-        if (invalidCleanup) fail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
-        if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) fail(callback, "useEffect() async callbacks cannot return cleanup functions")
+        if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
+        if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
         const setters = settersForNode(node, settersByFunction)
-        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, importBindings, clientImports, "effect", undefined, true, returns.cleanup)
+        const descriptor = compileNativeCallback(callback, setters, factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", listEffect?.item, true, returns.cleanup)
         usesBehavior = true
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
           callback,
@@ -1093,7 +1518,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           factory.createStringLiteral(descriptor.exportName),
           descriptor.states,
           descriptor.scope,
-          factory.createStringLiteral(sourceLocation(node, sourceFile)),
+          factory.createStringLiteral(listEffect ? sourceLocation(listEffect.source, listEffect.sourceFile) : sourceLocation(node, sourceFile)),
           returns.cleanup ? factory.createTrue() : factory.createFalse()
         ])
       }
@@ -1207,6 +1632,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listConditional"), factory.createIdentifier("__kListConditional")))
     }
+    if (usesListEffects) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useEffect"), factory.createIdentifier("__kListUseEffect")))
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
@@ -1429,6 +1855,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
 
   let returned
   const calculations = []
+  const effectCalls = []
   if (!ts.isBlock(component.body)) {
     returned = component.body
   } else {
@@ -1436,6 +1863,10 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     const last = statements.pop()
     if (!last || !ts.isReturnStatement(last) || !last.expression) fail(component.body, "Keyed list component must end with one JSX return")
     for (const statement of statements) {
+      if (ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && ts.isIdentifier(statement.expression.expression) && statement.expression.expression.text === "useEffect") {
+        effectCalls.push(statement.expression)
+        continue
+      }
       if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, "Keyed list component locals must be single const declarations")
       const declaration = statement.declarationList.declarations[0]
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, "Keyed list component locals must be initialized identifiers")
@@ -1454,7 +1885,8 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   if (key) root = addJsxAttribute(root, cloneAst(key, factory, context), factory)
   ts.setParentRecursive(root, false)
   root.parent = call.parent
-  return { root, calculations }
+  const effects = effectCalls.map(source => ({ source, call: substituteClone(source, substitutions, factory, context) }))
+  return { root, calculations, effects }
 }
 
 function substituteClone(root, substitutions, factory, context) {
@@ -1485,6 +1917,16 @@ function cloneAst(root, factory, context) {
     return ts.visitEachChild(clone, visit, context)
   }
   return visit(root)
+}
+
+function synthesizeTree(root) {
+  const visit = node => {
+    ts.setTextRange(node, { pos: -1, end: -1 })
+    ts.setOriginalNode(node, undefined)
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return root
 }
 
 function addJsxAttribute(root, attribute, factory) {
@@ -2142,6 +2584,22 @@ function parseSourceFile(file, source) {
   return ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
 }
 
+function layoutExportError(file, source) {
+  const sourceFile = parseSourceFile(file, source)
+  for (const statement of sourceFile.statements) {
+    if (ts.isExportDeclaration(statement) && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+      const specifier = statement.exportClause.elements.find(entry => entry.name.text === "layout")
+      if (specifier) return sourceNodeError(specifier, sourceFile, "layout export must be a function")
+    }
+    if (ts.isVariableStatement(statement) && statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) {
+      const declaration = statement.declarationList.declarations.find(entry => ts.isIdentifier(entry.name) && entry.name.text === "layout")
+      if (declaration) return sourceNodeError(declaration, sourceFile, "layout export must be a function")
+    }
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === "layout") return sourceNodeError(statement, sourceFile, "layout export must be a function")
+  }
+  return new Error(`${relative(root, file)} layout export must be a function`)
+}
+
 function clientModulePath(file) {
   return `modules/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
 }
@@ -2397,6 +2855,30 @@ function normalizeStyles(value, base) {
     try { new URL(style) } catch { throw new Error(`kudzu.config styles[${index}] must be root-relative or an absolute HTTP URL`) }
     return style
   })
+}
+
+export function normalizeNavigation(value) {
+  if (value === undefined) return []
+  if (!isPlainRecord(value)) throw new Error("kudzu.config navigation must be a plain object")
+  if (Object.keys(value).some(key => key !== "routes")) throw new Error("kudzu.config navigation only supports routes")
+  if (!Array.isArray(value.routes) || !value.routes.length) throw new Error("kudzu.config navigation.routes must be a nonempty array")
+  const routes = value.routes.map((route, index) => {
+    if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//") || /[?#\\\0]/.test(route) || /%(?:2f|5c)/i.test(route)) throw new Error(`kudzu.config navigation.routes[${index}] must be a root-relative path without query, hash, or traversal`)
+    let decoded
+    try { decoded = decodeURIComponent(route) } catch { throw new Error(`kudzu.config navigation.routes[${index}] must be a root-relative path without query, hash, or traversal`) }
+    if (decoded.split("/").includes("..") || /[?#\\\0]/.test(decoded)) throw new Error(`kudzu.config navigation.routes[${index}] must be a root-relative path without query, hash, or traversal`)
+    return route
+  })
+  if (new Set(routes).size !== routes.length) throw new Error("kudzu.config navigation.routes must contain unique paths")
+  return routes
+}
+
+function specializeNavigationTextDescriptors(source) {
+  const dynamic = source
+    .replace("const textDescriptors = globalThis.__KUDZU_TEXT_BINDINGS__ && typeof document !== \"undefined\" ? JSON.parse(document.body.dataset.kTextBindings ?? \"[]\") : []", "const textDescriptors = () => globalThis.__KUDZU_TEXT_BINDINGS__ ? JSON.parse(document.body.dataset.kTextBindings ?? \"[]\") : []")
+    .replace("const descriptor = textDescriptors[Number(node.data.slice(\"k-text:\".length))]", "const descriptor = textDescriptors()[Number(node.data.slice(\"k-text:\".length))]")
+  if (dynamic === source) throw new Error("Navigation text descriptor specialization did not match binding-runtime.js")
+  return dynamic
 }
 
 function normalizeBase(value) {

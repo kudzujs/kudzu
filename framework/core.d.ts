@@ -54,8 +54,12 @@ export function renderPage<Props = Record<string, never>>(
     effectAsset?: string
     paramAsset?: string
     runtimeParams?: string[]
+    navigationAsset?: string
+    applicationId?: string
+    layoutId?: string
   },
-  props?: Props
+  props?: Props,
+  layout?: (props: { children: unknown }) => unknown | Promise<unknown>
 ): Promise<{
   html: string
   hasBehaviors: boolean
@@ -66,14 +70,14 @@ export function renderPage<Props = Record<string, never>>(
   hasListStyles: boolean
   hasStateSeed: boolean
   plan: {
-    states: Array<{ id: string; name: string; initialValue: unknown }>
+    states: Array<{ id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route" }>
     params: Array<{ name: string; id: string }>
     events: Array<{
       event: string
       commands?: Array<[string, string, unknown]>
       native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
     }>
-    effects: Array<{ module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown>; dependencies?: string[]; cleanup?: true }>
+    effects: Array<{ module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown>; lifetime?: "layout" | "route"; dependencies?: string[]; cleanup?: true; owner?: string; list?: true }>
     bindings: Array<{
       target: string
       state?: string

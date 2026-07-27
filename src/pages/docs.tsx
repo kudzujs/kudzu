@@ -5,7 +5,7 @@ import { BenchmarksSection, BuildSection, LimitsSection } from "../components/do
 
 export const metadata = {
   title: "Kudzu Docs — HTML-first TSX",
-  description: "Kudzu installation, components, state semantics, reactive attributes, event handlers, routing, and build reference.",
+  description: "Kudzu installation, components, state semantics, application navigation, effects, performance, and build reference.",
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu",

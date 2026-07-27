@@ -1,0 +1,220 @@
+import { browserState, mountDom, unmountDom } from "./shared-runtime.js"
+
+const routes = new Set(__KUDZU_NAVIGATION_ROUTES__)
+const applicationId = __KUDZU_APPLICATION_ID__
+const layoutId = __KUDZU_LAYOUT_ID__
+const navigationAsset = new URL(import.meta.url).pathname
+const status = document.createElement("div")
+status.dataset.kNavigationStatus = ""
+status.setAttribute("role", "status")
+status.setAttribute("aria-live", "polite")
+status.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;padding:0;margin:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0"
+document.body.append(status)
+
+let request
+let revision = 0
+const documents = new Map()
+let observer
+let idle
+let idleAnchors
+const noDispose = async () => {}
+let routeDispose = noDispose
+let layoutDispose = noDispose
+const ready = mountInitial()
+
+document.addEventListener("click", event => {
+  const anchor = event.target.closest?.("a[href]")
+  if (!eligibleClick(event, anchor)) return
+  const url = new URL(anchor.href)
+  event.preventDefault()
+  navigate(url, true)
+})
+document.addEventListener("pointerover", event => prefetchAnchor(event.target.closest?.("a[href]")))
+document.addEventListener("focusin", event => prefetchAnchor(event.target.closest?.("a[href]")))
+
+addEventListener("popstate", () => navigate(new URL(location.href), false))
+addEventListener("pagehide", event => {
+  if (event.persisted) return
+  ++revision
+  request?.abort()
+  void (async () => {
+    await routeDispose()
+    await layoutDispose()
+  })()
+})
+discover()
+
+async function mountInitial() {
+  try {
+    const effects = await loadCapabilities(validate(document))
+    layoutDispose = await effects?.mountLayoutEffects?.() ?? noDispose
+    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+function eligibleClick(event, anchor) {
+  if (!anchor || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false
+  return eligibleAnchor(anchor)
+}
+
+function eligibleAnchor(anchor) {
+  if (anchor.hasAttribute("download") || anchor.hasAttribute("data-k-native") || !["", "_self"].includes(anchor.target)) return false
+  if (anchor.relList?.contains("external")) return false
+  const url = new URL(anchor.href)
+  if (url.hash && url.pathname === location.pathname && url.search === location.search) return false
+  return url.origin === location.origin && routes.has(url.pathname)
+}
+
+function discover() {
+  const anchors = [...document.querySelectorAll("a[href]")].filter(eligibleAnchor)
+  idleAnchors = anchors
+  prune(anchors)
+  observer?.disconnect()
+  if ("IntersectionObserver" in globalThis) {
+    observer ??= new IntersectionObserver(entries => {
+      for (const entry of entries) if (entry.isIntersecting) {
+        observer.unobserve(entry.target)
+        prefetchAnchor(entry.target)
+      }
+    }, { rootMargin: "200px" })
+    for (const anchor of anchors) observer.observe(anchor)
+  } else if (idle === undefined) {
+    const schedule = globalThis.requestIdleCallback ?? (callback => setTimeout(callback, 0))
+    idle = schedule(() => {
+      idle = undefined
+      for (const anchor of idleAnchors) prefetchAnchor(anchor)
+    })
+  }
+}
+
+function prefetchAnchor(anchor) {
+  if (!eligibleAnchor(anchor)) return
+  const url = new URL(anchor.href)
+  prune([...document.querySelectorAll("a[href]")].filter(eligibleAnchor))
+  if (documents.has(url.href)) return
+  const pending = fetchDocument(url)
+  documents.set(url.href, pending)
+  pending.catch(() => {
+    if (documents.get(url.href) === pending) documents.delete(url.href)
+  })
+}
+
+function prune(anchors) {
+  const retained = new Set([location.href, ...anchors.map(anchor => anchor.href)])
+  for (const key of documents.keys()) if (!retained.has(key)) documents.delete(key)
+}
+
+async function navigate(url, push) {
+  await ready
+  const current = ++revision
+  request?.abort()
+  request = new AbortController()
+  let committed = false
+  try {
+    let documentResult
+    const cached = documents.get(url.href)
+    if (cached) {
+      try { documentResult = await cached }
+      catch { documentResult = await fetchDocument(url, request.signal) }
+    } else documentResult = await fetchDocument(url, request.signal)
+    documents.set(url.href, Promise.resolve(documentResult))
+    const { incoming, parsed } = documentResult
+    const effects = await loadCapabilities(parsed)
+    if (current !== revision) return
+    await routeDispose()
+    if (current !== revision) return
+    commit(incoming, parsed.nodes)
+    routeDispose = await effects?.mountRouteEffects?.() ?? noDispose
+    committed = true
+    if (push) history.pushState(null, "", url)
+    updateHead(incoming)
+    focusAndScroll(url)
+    status.textContent = `Navigated to ${document.title}`
+    discover()
+  } catch (error) {
+    if (current !== revision || error.name === "AbortError") return
+    if (push) location.assign(url.href)
+    else location.reload()
+    if (committed) return
+  }
+}
+
+async function loadCapabilities(parsed) {
+  const modules = await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))
+  return modules.find(module => typeof module.mountRouteEffects === "function")
+}
+
+async function fetchDocument(url, signal) {
+  const response = await fetch(url, { signal, redirect: "manual", headers: { accept: "text/html" } })
+  if (!response.ok || response.redirected || response.type === "opaqueredirect" || !response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("Navigation response is not successful nonredirected HTML")
+  const incoming = new DOMParser().parseFromString(await response.text(), "text/html")
+  return { incoming, parsed: validate(incoming) }
+}
+
+function validate(incoming) {
+  if (incoming.body.dataset.kApplication !== applicationId || incoming.body.dataset.kLayout !== layoutId) throw new Error("Navigation document identity does not match")
+  const starts = incoming.querySelectorAll("template[data-k-route-start]")
+  const ends = incoming.querySelectorAll("template[data-k-route-end]")
+  if (starts.length !== 1 || ends.length !== 1) throw new Error("Navigation document must contain exactly one route marker pair")
+  const nodes = between(starts[0], ends[0])
+  const assets = [...incoming.querySelectorAll("script[data-k-capability][src]")].map(script => {
+    const url = new URL(script.src)
+    if (url.origin !== location.origin) throw new Error("Navigation capability asset must be same-origin")
+    return url.pathname
+  })
+  if (!assets.includes(navigationAsset)) throw new Error("Navigation capability asset is missing")
+  return { nodes, assets: [...new Set(assets)] }
+}
+
+function commit(incoming, incomingNodes) {
+  const start = document.querySelector("template[data-k-route-start]")
+  const end = document.querySelector("template[data-k-route-end]")
+  if (!start || !end || document.querySelectorAll("template[data-k-route-start],template[data-k-route-end]").length !== 2) throw new Error("Current route markers are invalid")
+  const outgoing = between(start, end)
+  for (const node of outgoing) unmountDom(node)
+  for (const node of outgoing) node.remove()
+  for (const id of [...browserState.keys()]) if (id.startsWith("r")) browserState.delete(id)
+  for (const [id, value, compact] of JSON.parse(incoming.body.dataset.kState ?? "[]")) if (id.startsWith("r")) browserState.set(id, compact ? value[1].map(row => Object.fromEntries(value[0].map((field, index) => [field, row[index]]))) : value)
+  if (incoming.body.dataset.kTextBindings === undefined) delete document.body.dataset.kTextBindings
+  else document.body.dataset.kTextBindings = incoming.body.dataset.kTextBindings
+  const nodes = incomingNodes.map(node => document.importNode(node, true))
+  end.before(...nodes)
+  for (const node of nodes) mountDom(node)
+}
+
+function between(start, end) {
+  if (start.parentNode !== end.parentNode) throw new Error("Route markers must share a parent")
+  const nodes = []
+  for (let node = start.nextSibling; node && node !== end; node = node.nextSibling) nodes.push(node)
+  if (!nodes.length && start.nextSibling !== end) throw new Error("Route marker pair is invalid")
+  return nodes
+}
+
+function updateHead(incoming) {
+  document.title = incoming.title
+  document.head.querySelectorAll("[data-k-head]").forEach(node => node.remove())
+  document.head.append(...[...incoming.head.querySelectorAll("[data-k-head]")].map(node => document.importNode(node, true)))
+}
+
+function focusAndScroll(url) {
+  const hashTarget = url.hash && document.getElementById(decodeURIComponent(url.hash.slice(1)))
+  const target = hashTarget ?? routeElement("h1") ?? routeElement("main")
+  if (target) {
+    if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")
+    target.focus({ preventScroll: true })
+  }
+  if (hashTarget) hashTarget.scrollIntoView()
+  else scrollTo(0, 0)
+}
+
+function routeElement(selector) {
+  const start = document.querySelector("template[data-k-route-start]")
+  const end = document.querySelector("template[data-k-route-end]")
+  for (const node of between(start, end)) {
+    if (node.matches?.(selector)) return node
+    const match = node.querySelector?.(selector)
+    if (match) return match
+  }
+}

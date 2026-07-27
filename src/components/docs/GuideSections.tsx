@@ -48,6 +48,20 @@ export default function ItemPage() {
   return <h1>Item {id}</h1>
 }`} />
     <p><code>getStaticPaths()</code> and <code>runtimeParams</code> are mutually exclusive. Parameters occupy complete path segments and malformed, separator, control, and traversal-like values are rejected. Static hosts must try exact files first and then internally rewrite matching paths to the generated fallback while preserving the URL. Ordered rewrite metadata is available to <code>afterBuild()</code>.</p>
+    <h3 id="navigation">Application navigation</h3>
+    <p>Exact static routes may share a page-exported layout and opt into same-document navigation while every URL remains a complete standalone document.</p>
+    <CodeBlock code={`// src/pages/product.tsx
+export { Shell as layout } from "../components/Shell"
+
+export default function ProductPage() {
+  return <main><h1>Product</h1></main>
+}
+
+// kudzu.config.mjs
+export default {
+  navigation: { routes: ["/product", "/cart"] }
+}`} />
+    <p>Every configured path must be an exact static route and export the same layout function. Layout DOM, state, and top-level effects persist; route state and top-level effects reset after cleanup. Eligible ordinary anchors prefetch validated complete documents into a finite memory cache. Direct loads, reloads, failures, unsupported links, and routes outside the group keep native document navigation. Route replacement is fast but coordinated exit and shared-element View Transitions are not integrated yet. Runtime bracket routes, multiple groups, and conditional or keyed effects inside navigation groups are not yet supported.</p>
     <h3>Project configuration</h3>
     <CodeBlock code={`// kudzu.config.mjs
 export default {
@@ -124,7 +138,7 @@ useEffect(async () => {
   const response = await fetch("/api/items")
   setItems(await response.json())
 }, [])`} />
-    <p>Effects may update text, attributes, conditions, and keyed lists. They may directly return an inline cleanup function, which runs once when the document leaves outside the browser back-forward cache.</p>
+    <p>Effects may update text, attributes, conditions, and keyed lists. They may directly return an inline cleanup function. A document effect cleans up when the document leaves outside the browser back-forward cache; an effect in a conditional branch or supported keyed row mounts and cleans up with that DOM owner.</p>
     <CodeBlock code={`useEffect(() => {
   const onResize = () => console.log(window.innerWidth)
   window.addEventListener("resize", onResize)
@@ -138,7 +152,7 @@ useEffect(() => {
   window.addEventListener(event, listener)
   return () => window.removeEventListener(event, listener)
 }, [event])`} />
-    <p>Kudzu coalesces committed dependency changes, awaits every affected cleanup in declaration order, and then runs new setups in declaration order. Dependencies must be direct signal identifiers or aliases holding JSON-safe primitives. Expressions, properties, ordinary locals, objects, spreads, and dynamic arrays are rejected. Effect callbacks remain inline and block-bodied; named or dynamic cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures remain unsupported. Routes without dependency effects do not load <code>kudzu-deps.js</code>.</p>
+    <p>Kudzu coalesces committed dependency changes, awaits every affected cleanup in declaration order, and then runs new setups in declaration order. Dependencies must be direct signal identifiers or aliases holding JSON-safe primitives. Expressions, properties, ordinary locals, objects, spreads, and dynamic arrays are rejected; keyed row effects also reject item-property dependencies. Effect callbacks remain inline and block-bodied; named or dynamic cleanup functions, cleanup parameters or generators, other return values, callback parameters, and non-serializable captures remain unsupported. Routes without dependency effects do not load <code>kudzu-deps.js</code>.</p>
   </section>
 }
 
