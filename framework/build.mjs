@@ -1738,6 +1738,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const specializedDeclarations = new WeakSet()
     const stateBackedComponentFunctions = new WeakSet()
     const stateBackedComponentRoots = []
+    let specializedImportIndex = 0
     for (const [name, component] of components) {
       const calls = jsxTagUses(sourceFile, name)
       const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component.function, settersByFunction.get(nearestFunction(call)) ?? new Map()))
@@ -1802,11 +1803,29 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         fail(dispatchCalls[0], `Reducer dispatch props require a component imported from a relative TypeScript module`)
       }
       const componentSource = component.getSourceFile()
-      if (clientImportBindings(componentSource, componentSource.fileName, sourceFiles).size) fail(dispatchCalls[0], "Imported reducer-dispatch components cannot use runtime imports")
+      const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
+      const packageImports = runtimeImportNames(componentSource, false)
       for (const call of dispatchCalls) {
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
         const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Reducer-dispatch")
         if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
+        for (const name of packageImports) if (referenceIdentifiers(specialization.root, name).length) fail(call, "Imported reducer-dispatch component handlers may only use relative TypeScript runtime imports")
+        const substitutions = new Map()
+        for (const [name, entry] of componentImports) {
+          const references = referenceIdentifiers(specialization.root, name)
+          if (!references.length) continue
+          if (references.some(reference => !insideJsxEventHandler(reference, specialization.root))) fail(call, `Imported reducer-dispatch component runtime import "${name}" may only be used inside event handlers`)
+          let local
+          do local = `__kDispatchImport${specializedImportIndex++}`
+          while (importBindings.has(local))
+          substitutions.set(name, factory.createIdentifier(local))
+          importBindings.set(local, { ...entry, local })
+        }
+        if (substitutions.size) {
+          specialization.root = substituteClone(specialization.root, substitutions, factory, context)
+          ts.setParentRecursive(specialization.root, false)
+          specialization.root.parent = call.parent
+        }
         synthesizeTree(specialization.root)
         componentSpecializations.set(call, specialization)
       }
@@ -2302,6 +2321,35 @@ function jsxCallHasDirectReducerProp(call, reducers) {
     const value = ts.isJsxAttribute(attribute) && attribute.initializer && ts.isJsxExpression(attribute.initializer) ? unwrapExpression(attribute.initializer.expression) : undefined
     return value && ts.isIdentifier(value) && reducers.has(value.text)
   })
+}
+
+function runtimeImportNames(sourceFile, relative) {
+  const names = new Set()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || !statement.importClause || statement.importClause.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text.startsWith(".") !== relative) continue
+    const clause = statement.importClause
+    if (clause.name) names.add(clause.name.text)
+    if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) names.add(clause.namedBindings.name.text)
+    if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) for (const entry of clause.namedBindings.elements) if (!entry.isTypeOnly) names.add(entry.name.text)
+  }
+  return names
+}
+
+function referenceIdentifiers(root, name) {
+  const references = []
+  const visit = node => {
+    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node) && !isShadowedIdentifier(node, root)) references.push(node)
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return references
+}
+
+function insideJsxEventHandler(node, root) {
+  for (let current = node.parent; current && current !== root.parent; current = current.parent) {
+    if (ts.isJsxAttribute(current) && /^on[A-Z]/.test(current.name.text)) return true
+  }
+  return false
 }
 
 function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions) {

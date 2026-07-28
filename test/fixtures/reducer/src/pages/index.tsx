@@ -10,6 +10,7 @@ function LocalControls({ send }: { send: (action: TodoAction) => void }) {
 
 export default function ReducerPage() {
   const [todos, dispatch] = useReducer(todoReducer, [])
+  const importedTitle = "Parent"
 
   function addTodos() {
     dispatch({ type: "add", title: "Read" })
@@ -20,6 +21,7 @@ export default function ReducerPage() {
     <button id="add" onClick={addTodos}>Add</button>
     <LocalControls send={dispatch} />
     <ImportedControls dispatch={dispatch} />
+    <span id="parent-title">{importedTitle}</span>
     <p id="count">{todos.length} todos</p>
     <ul>{todos.map(todo => <li key={todo.id}>{todo.title}</li>)}</ul>
   </main>

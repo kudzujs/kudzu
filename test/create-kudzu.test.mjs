@@ -19,6 +19,6 @@ test("creates a Kudzu project", async t => {
   assert.equal(result.status, 0, result.stderr)
   const packageJson = JSON.parse(await readFile(join(directory, "app/package.json"), "utf8"))
   const page = await readFile(join(directory, "app/src/pages/index.tsx"), "utf8")
-  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.6.12")
+  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.6.13")
   assert.match(page, /useState/)
 })

@@ -190,7 +190,7 @@ function Controls({ dispatch }: { dispatch: Dispatch<TodoAction> }) {
 return <Controls dispatch={dispatch} />
 ```
 
-Kudzu specializes that call at build time; no function prop or child component survives in the browser. Lazy initializers, package, namespace, local, async, and generator reducers, runtime imports in imported dispatch components, forwarding across another component, and reducer dispatch through context remain unsupported.
+Kudzu specializes that call at build time; no function prop or child component survives in the browser. Relative TypeScript constants and helpers used inside the child handler are renamed for call-site safety and bundled into the parent handler graph. Lazy initializers, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, forwarding across another component, and reducer dispatch through context remain unsupported.
 
 ## Reactive Attributes
 
