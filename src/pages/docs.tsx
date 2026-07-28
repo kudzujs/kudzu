@@ -9,7 +9,7 @@ export const metadata = {
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu",
-  url: "https://kudzujs.cloud/docs",
+  url: "https://kudzujs.cloud/docs/",
   image: "https://kudzujs.cloud/og-image.png",
   imageAlt: "Kudzu HTML-first TSX framework documentation",
   themeColor: "#8d52ff",

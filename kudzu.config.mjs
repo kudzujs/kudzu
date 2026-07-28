@@ -31,7 +31,7 @@ export default {
       if (!seo) continue
       const html = await readFile(file, "utf8")
       await writeFile(file, applySeo(html, seo))
-      if (seo.index) indexed.push(path)
+      if (seo.index) indexed.push(seo.canonical)
     }
     await writeFile(join(outDir, "sitemap.xml"), sitemap(indexed))
   }
@@ -50,14 +50,14 @@ function seoFor(path) {
   return {
     title: match[2] ? `${titleFromSlug(match[2])} | ${name} Blog Demo` : `${name} Blog Demo | Kudzu`,
     description,
-    canonical: `${origin}${showcase}`,
+    canonical: `${origin}${showcase}/`,
     type: match[2] ? "BlogPosting" : "WebPage",
     index: false
   }
 }
 
 function page(title, description, path, type) {
-  return { title, description, canonical: `${origin}${path === "/" ? "" : path}`, type, index: true }
+  return { title, description, canonical: `${origin}${path === "/" ? "/" : `${path}/`}`, type, index: true }
 }
 
 function applySeo(html, seo) {
@@ -76,9 +76,9 @@ function applySeo(html, seo) {
     .replace("</head>", `${tags}</head>`)
 }
 
-function sitemap(paths) {
-  const urls = [...new Set(paths)].sort((left, right) => left === "/" ? -1 : right === "/" ? 1 : left.localeCompare(right))
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(path => `  <url><loc>${origin}${path === "/" ? "/" : escapeHtml(path)}</loc></url>`).join("\n")}\n</urlset>\n`
+function sitemap(urls) {
+  const unique = [...new Set(urls)].sort()
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${unique.map(url => `  <url><loc>${escapeHtml(url)}</loc></url>`).join("\n")}\n</urlset>\n`
 }
 
 function titleFromSlug(slug) {

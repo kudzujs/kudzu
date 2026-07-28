@@ -15,7 +15,7 @@ export const metadata = {
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu",
-  url: "https://kudzujs.cloud/example",
+  url: "https://kudzujs.cloud/example/",
   image: "https://kudzujs.cloud/og-image.png",
   imageAlt: "Kudzu site example catalog",
   themeColor: "#8d52ff",

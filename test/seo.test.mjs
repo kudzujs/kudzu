@@ -17,17 +17,17 @@ test("generates canonical SEO output for Cloudflare static assets", async () => 
     await config.afterBuild({ outDir, routes })
 
     const sitemap = await readFile(join(outDir, "sitemap.xml"), "utf8")
-    assert.match(sitemap, /https:\/\/kudzujs\.cloud\/example\/blog\/personal<\/loc>/)
+    assert.match(sitemap, /https:\/\/kudzujs\.cloud\/example\/blog\/personal\/<\/loc>/)
     assert.doesNotMatch(sitemap, /\/demo/)
 
     const showcase = await readFile(join(outDir, "example/blog/personal/index.html"), "utf8")
     assert.match(showcase, /<title>Personal Blog Example and Source \| Kudzu<\/title>/)
-    assert.match(showcase, /rel="canonical" href="https:\/\/kudzujs\.cloud\/example\/blog\/personal"/)
+    assert.match(showcase, /rel="canonical" href="https:\/\/kudzujs\.cloud\/example\/blog\/personal\/"/)
     assert.doesNotMatch(showcase, /noindex/)
 
     const demo = await readFile(join(outDir, "example/blog/personal/demo/index.html"), "utf8")
     assert.match(demo, /name="robots" content="noindex,follow"/)
-    assert.match(demo, /rel="canonical" href="https:\/\/kudzujs\.cloud\/example\/blog\/personal"/)
+    assert.match(demo, /rel="canonical" href="https:\/\/kudzujs\.cloud\/example\/blog\/personal\/"/)
     assert.match(demo, /application\/ld\+json/)
   } finally {
     await rm(outDir, { recursive: true, force: true })
