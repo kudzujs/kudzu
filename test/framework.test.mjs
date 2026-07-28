@@ -1528,9 +1528,14 @@ test("compiles imported reducers to functional state updates", async t => {
   assert.match(html, /data-k-native-click/)
   assert.match(html, /data-k-list=/)
   assert.match(compiled, /useReducer\(todoReducer, \[\], "todos"\)/)
-  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 2)
+  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 4)
   assert.match(handlerSource, /return \w\+1/)
   assert.doesNotMatch(html, /data-k-on-click/)
+  assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedControls.js", import.meta.url)), false)
+  for (const event of plan.routes[0].events) {
+    assert.deepEqual(event.native.states, { todos: "s0" })
+    assert.equal("dispatch" in event.native.scope || "send" in event.native.scope, false)
+  }
 
   const state = new Map([["s0", []]])
   const commits = []
@@ -1634,9 +1639,11 @@ async function runReducerBrowserTest(fixture, chrome) {
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
   document.querySelector("#add").click()
+  document.querySelector("#local-add").click()
+  document.querySelector("#imported-add").click()
   await wait()
   const rows = [...document.querySelectorAll("li")].map(row => row.textContent).join(",")
-  if (document.querySelector("#count").textContent !== "2 todos" || rows !== "Read,Ship") throw new Error("reducer-dom")
+  if (document.querySelector("#count").textContent !== "4 todos" || rows !== "Read,Ship,Local,Imported") throw new Error("reducer-dom")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

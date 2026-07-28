@@ -180,7 +180,17 @@ const [todos, dispatch] = useReducer(todoReducer, [])
 dispatch({ type: "add", title: "Ship" })
 ```
 
-The reduced migration form requires `[state, dispatch]`, exactly two hook arguments, and a synchronous two-parameter reducer exported as a default or named value from a relative TypeScript module. Dispatches in compiled handlers lower to functional state updates; lazy initializers, package, namespace, local, async, and generator reducers are not supported. Reducer dispatch functions cannot be passed through props or context.
+The reduced migration form requires `[state, dispatch]`, exactly two hook arguments, and a synchronous two-parameter reducer exported as a default or named value from a relative TypeScript module. Dispatches in compiled handlers lower to functional state updates. A dispatch may cross one direct prop boundary into a same-file or relative-imported synchronous component whose intrinsic root contains the compiled handler:
+
+```tsx
+function Controls({ dispatch }: { dispatch: Dispatch<TodoAction> }) {
+  return <button onClick={() => dispatch({ type: "add", title: "Ship" })}>Add</button>
+}
+
+return <Controls dispatch={dispatch} />
+```
+
+Kudzu specializes that call at build time; no function prop or child component survives in the browser. Lazy initializers, package, namespace, local, async, and generator reducers, runtime imports in imported dispatch components, forwarding across another component, and reducer dispatch through context remain unsupported.
 
 ## Reactive Attributes
 

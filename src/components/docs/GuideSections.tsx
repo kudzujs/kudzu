@@ -127,7 +127,13 @@ return <p>{weather.temperature}° {weather.label}</p>`} />
 
 const [todos, dispatch] = useReducer(todoReducer, [])
 dispatch({ type: "add", title: "Ship" })`} />
-    <p>The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two arguments, and a synchronous two-parameter reducer imported by default or name from a relative TypeScript module. Lazy initializers, package, namespace, local, async, and generator reducers and passing dispatch through props or context remain unsupported.</p>
+    <p>A dispatch may cross one direct prop boundary into a same-file or relative-imported synchronous component. Kudzu specializes the call so the child handler compiles in the parent reducer scope.</p>
+    <CodeBlock code={`function Controls({ dispatch }: { dispatch: Dispatch<TodoAction> }) {
+  return <button onClick={() => dispatch({ type: "add", title: "Ship" })}>Add</button>
+}
+
+return <Controls dispatch={dispatch} />`} />
+    <p>The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two hook arguments, and a synchronous two-parameter reducer imported by default or name from a relative TypeScript module. Dispatch components require one destructured props parameter, one intrinsic root, no effects, a direct dispatch identifier prop, and inline or simple <code>const</code> handlers. Lazy initializers, package, namespace, local, async, and generator reducers, imported child runtime imports, second-hop forwarding, and reducer dispatch through context remain unsupported.</p>
     <h3 id="context">Context</h3>
     <p>Context passes default, nested, or reactive object values through component layers without retaining a browser component tree.</p>
     <CodeBlock code={`type ThemeValue = {

@@ -1774,6 +1774,43 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         stateBackedComponentRoots.push(specialization.root)
       }
     }
+    for (const [name, component] of components) {
+      const calls = jsxTagUses(sourceFile, name)
+      const dispatchCalls = calls.filter(call => jsxCallHasDirectReducerProp(call, reducersForNode(call, reducersByFunction)))
+      if (!dispatchCalls.length) continue
+      if (isExportedDeclaration(component.declaration)) fail(component.declaration, `Reducer-dispatch component ${name} cannot be exported`)
+      if (identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `Reducer-dispatch component ${name} may only be referenced as JSX`)
+      if (dispatchCalls.length !== calls.length) fail(component.declaration, `Reducer-dispatch component ${name} must receive a direct local reducer dispatch at every call`)
+      for (const call of dispatchCalls) {
+        if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
+        const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail, "Reducer-dispatch")
+        if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
+        componentSpecializations.set(call, specialization)
+      }
+      specializedDeclarations.add(component.declaration)
+    }
+    for (const [name, binding] of importBindings) {
+      if (binding.kind === "namespace") continue
+      const calls = jsxTagUses(sourceFile, name)
+      const dispatchCalls = calls.filter(call => jsxCallHasDirectReducerProp(call, reducersForNode(call, reducersByFunction)))
+      if (!dispatchCalls.length) continue
+      const imported = binding.kind === "default" ? "default" : binding.imported
+      let component
+      try {
+        component = resolveComponentExport(binding.target, imported, importedSource, sourceFiles)
+      } catch {
+        fail(dispatchCalls[0], `Reducer dispatch props require a component imported from a relative TypeScript module`)
+      }
+      const componentSource = component.getSourceFile()
+      if (clientImportBindings(componentSource, componentSource.fileName, sourceFiles).size) fail(dispatchCalls[0], "Imported reducer-dispatch components cannot use runtime imports")
+      for (const call of dispatchCalls) {
+        if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
+        const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Reducer-dispatch")
+        if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
+        synthesizeTree(specialization.root)
+        componentSpecializations.set(call, specialization)
+      }
+    }
     const rawRenderedLists = []
     const collectRenderedLists = node => {
       const specialization = componentSpecializations.get(node)
@@ -2259,6 +2296,14 @@ function jsxCallHasDirectStateProp(call, setters) {
   })
 }
 
+function jsxCallHasDirectReducerProp(call, reducers) {
+  const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+  return attributes.properties.some(attribute => {
+    const value = ts.isJsxAttribute(attribute) && attribute.initializer && ts.isJsxExpression(attribute.initializer) ? unwrapExpression(attribute.initializer.expression) : undefined
+    return value && ts.isIdentifier(value) && reducers.has(value.text)
+  })
+}
+
 function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions) {
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
@@ -2314,17 +2359,17 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
   visit(root)
 }
 
-function specializeComponentCall(call, component, sourceFile, factory, context, fail) {
-  if (component.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || component.asteriskToken) fail(component, "Keyed list components must be synchronous")
-  if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, "Keyed list components must use one destructured props parameter")
-  if (ts.isJsxElement(call) && call.children.some(child => !ts.isJsxText(child) || child.text.trim())) fail(call, "Keyed list component children are not supported")
+function specializeComponentCall(call, component, sourceFile, factory, context, fail, label = "Keyed list") {
+  if (component.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || component.asteriskToken) fail(component, `${label} components must be synchronous`)
+  if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, `${label} components must use one destructured props parameter`)
+  if (ts.isJsxElement(call) && call.children.some(child => !ts.isJsxText(child) || child.text.trim())) fail(call, `${label} component children are not supported`)
   const callAttributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
   const props = new Map()
   let key
   for (const attribute of callAttributes.properties) {
-    if (ts.isJsxSpreadAttribute(attribute)) fail(attribute, "Keyed list component prop spreads are not supported")
+    if (ts.isJsxSpreadAttribute(attribute)) fail(attribute, `${label} component prop spreads are not supported`)
     const name = attribute.name.getText()
-    if (props.has(name) || name === "key" && key) fail(attribute, `Duplicate keyed list component prop "${name}"`)
+    if (props.has(name) || name === "key" && key) fail(attribute, `Duplicate ${label.toLowerCase()} component prop "${name}"`)
     const value = !attribute.initializer
       ? factory.createTrue()
       : ts.isStringLiteral(attribute.initializer)
@@ -2338,12 +2383,12 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   const substitutions = new Map()
   const acceptedProps = new Set()
   for (const element of component.parameters[0].name.elements) {
-    if (element.dotDotDotToken || element.initializer || !ts.isIdentifier(element.name)) fail(element, "Keyed list component props cannot use rest, defaults, or nested destructuring")
+    if (element.dotDotDotToken || element.initializer || !ts.isIdentifier(element.name)) fail(element, `${label} component props cannot use rest, defaults, or nested destructuring`)
     const prop = (element.propertyName ?? element.name).getText()
     acceptedProps.add(prop)
     substitutions.set(element.name.text, props.get(prop) ?? factory.createIdentifier("undefined"))
   }
-  for (const prop of props.keys()) if (!acceptedProps.has(prop)) fail(call, `Unknown keyed list component prop "${prop}"`)
+  for (const prop of props.keys()) if (!acceptedProps.has(prop)) fail(call, `Unknown ${label.toLowerCase()} component prop "${prop}"`)
 
   let returned
   const calculations = []
@@ -2353,15 +2398,15 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   } else {
     const statements = [...component.body.statements]
     const last = statements.pop()
-    if (!last || !ts.isReturnStatement(last) || !last.expression) fail(component.body, "Keyed list component must end with one JSX return")
+    if (!last || !ts.isReturnStatement(last) || !last.expression) fail(component.body, `${label} component must end with one JSX return`)
     for (const statement of statements) {
       if (ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && ts.isIdentifier(statement.expression.expression) && statement.expression.expression.text === "useEffect") {
         effectCalls.push(statement.expression)
         continue
       }
-      if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, "Keyed list component locals must be single const declarations")
+      if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, `${label} component locals must be single const declarations`)
       const declaration = statement.declarationList.declarations[0]
-      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, "Keyed list component locals must be initialized identifiers")
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
       const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
       calculations.push(calculation)
       substitutions.set(declaration.name.text, calculation)
@@ -2369,11 +2414,11 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     returned = last.expression
   }
   let root = unwrapExpression(substituteClone(returned, substitutions, factory, context))
-  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, "Keyed list component must return one JSX element")
+  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, `${label} component must return one JSX element`)
   const tag = jsxTagName(root)
-  if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(returned, "Keyed list component must directly return an intrinsic JSX element")
+  if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(returned, `${label} component must directly return an intrinsic JSX element`)
   const rootAttributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
-  if (rootAttributes.properties.some(attribute => ts.isJsxAttribute(attribute) && attribute.name.text === "key")) fail(root, "Keyed list component intrinsic root cannot declare key")
+  if (rootAttributes.properties.some(attribute => ts.isJsxAttribute(attribute) && attribute.name.text === "key")) fail(root, `${label} component intrinsic root cannot declare key`)
   if (key) root = addJsxAttribute(root, cloneAst(key, factory, context), factory)
   ts.setParentRecursive(root, false)
   root.parent = call.parent
