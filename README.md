@@ -192,6 +192,15 @@ return <Controls dispatch={dispatch} />
 
 Kudzu specializes that call at build time; no function prop or child component survives in the browser. Relative TypeScript constants and helpers used inside the child handler are renamed for call-site safety and bundled into the parent handler graph. Lazy initializers, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, forwarding across another component, and reducer dispatch through context remain unsupported.
 
+That specialized component may pass one inline or simple `const` callback containing dispatch to one relative-imported synchronous child with an intrinsic root:
+
+```tsx
+const add = (title: string) => dispatch({ type: "add", title })
+return <Input onSubmit={add} />
+```
+
+Kudzu substitutes the callback into the child's compiled event handler at build time. This is not general function-prop serialization: only one nested specialized callback boundary is supported, and `useCallback`, further forwarding, effects, component roots, and callback use outside event handlers are rejected.
+
 ## Reactive Attributes
 
 `className`, `disabled`, controlled `value`, and controlled `checked` accept normal state-dependent TSX expressions. The same `value` binding works for inputs and selects:

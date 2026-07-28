@@ -133,7 +133,10 @@ dispatch({ type: "add", title: "Ship" })`} />
 }
 
 return <Controls dispatch={dispatch} />`} />
-    <p>Relative TypeScript constants and helpers used inside an imported child handler are bundled into the parent handler graph with collision-free local names. The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two hook arguments, and a synchronous two-parameter reducer imported by default or name from a relative TypeScript module. Dispatch components require one destructured props parameter, one intrinsic root, no effects, a direct dispatch identifier prop, and inline or simple <code>const</code> handlers. Lazy initializers, package, namespace, local, async, and generator reducers, package imports or child imports outside handlers, second-hop forwarding, and reducer dispatch through context remain unsupported.</p>
+    <p>Relative TypeScript constants and helpers used inside an imported child handler are bundled into the parent handler graph with collision-free local names. A specialized dispatch component may also pass one inline or simple <code>const</code> callback containing dispatch into one relative-imported synchronous intrinsic child.</p>
+    <CodeBlock code={`const add = (title: string) => dispatch({ type: "add", title })
+return <Input onSubmit={add} />`} />
+    <p>The callback is substituted into the child's compiled event handler; it is not serialized. The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two hook arguments, and a synchronous two-parameter reducer imported by default or name from a relative TypeScript module. Dispatch and callback components require one destructured props parameter, one intrinsic root, no effects, and inline or simple <code>const</code> handlers. Lazy initializers, package, namespace, local, async, and generator reducers, package imports or child imports outside handlers, <code>useCallback</code>, further forwarding, and reducer dispatch through context remain unsupported.</p>
     <h3 id="context">Context</h3>
     <p>Context passes default, nested, or reactive object values through component layers without retaining a browser component tree.</p>
     <CodeBlock code={`type ThemeValue = {

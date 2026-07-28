@@ -1739,6 +1739,56 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const stateBackedComponentFunctions = new WeakSet()
     const stateBackedComponentRoots = []
     let specializedImportIndex = 0
+    const mergeSpecializedImports = (root, componentSource, call) => {
+      const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
+      for (const name of runtimeImportNames(componentSource, false)) if (referenceIdentifiers(root, name).length) fail(call, "Imported specialized component handlers may only use relative TypeScript runtime imports")
+      const substitutions = new Map()
+      for (const [name, entry] of componentImports) {
+        const references = referenceIdentifiers(root, name)
+        if (!references.length) continue
+        if (references.some(reference => !insideJsxEventHandler(reference, root))) fail(call, `Imported specialized component runtime import "${name}" may only be used inside event handlers`)
+        let local
+        do local = `__kDispatchImport${specializedImportIndex++}`
+        while (importBindings.has(local))
+        substitutions.set(name, factory.createIdentifier(local))
+        importBindings.set(local, { ...entry, local })
+      }
+      if (!substitutions.size) return root
+      const merged = substituteClone(root, substitutions, factory, context)
+      ts.setParentRecursive(merged, false)
+      merged.parent = root.parent
+      return merged
+    }
+    const expandReducerCallbacks = (root, componentSource, call) => {
+      const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
+      const replacements = new WeakMap()
+      let count = 0
+      for (const [name, entry] of componentImports) {
+        if (entry.kind === "namespace") continue
+        const nestedCalls = jsxTagUses(root, name).filter(nestedCall => jsxCallHasReducerCallbackProp(nestedCall, reducersForNode(nestedCall, reducersByFunction)))
+        if (!nestedCalls.length) continue
+        const imported = entry.kind === "default" ? "default" : entry.imported
+        let nestedComponent
+        try {
+          nestedComponent = resolveComponentExport(entry.target, imported, importedSource, sourceFiles)
+        } catch {
+          fail(nestedCalls[0], "Reducer callback props require a component imported from a relative TypeScript module")
+        }
+        for (const nestedCall of nestedCalls) {
+          const nested = specializeComponentCall(nestedCall, nestedComponent, sourceFile, factory, context, fail, "Reducer-callback")
+          if (nested.effects.length) fail(nestedCall, "Reducer-callback components cannot declare effects")
+          nested.root = mergeSpecializedImports(nested.root, nestedComponent.getSourceFile(), nestedCall)
+          synthesizeTree(nested.root)
+          replacements.set(nestedCall, nested.root)
+          count++
+        }
+      }
+      if (!count) return root
+      const expanded = replaceSpecializedCalls(root, replacements, context)
+      ts.setParentRecursive(expanded, false)
+      expanded.parent = root.parent
+      return expanded
+    }
     for (const [name, component] of components) {
       const calls = jsxTagUses(sourceFile, name)
       const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component.function, settersByFunction.get(nearestFunction(call)) ?? new Map()))
@@ -1786,6 +1836,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
         const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail, "Reducer-dispatch")
         if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
+        specialization.root = expandReducerCallbacks(specialization.root, component.function.getSourceFile(), call)
         componentSpecializations.set(call, specialization)
       }
       specializedDeclarations.add(component.declaration)
@@ -1803,29 +1854,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         fail(dispatchCalls[0], `Reducer dispatch props require a component imported from a relative TypeScript module`)
       }
       const componentSource = component.getSourceFile()
-      const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
-      const packageImports = runtimeImportNames(componentSource, false)
       for (const call of dispatchCalls) {
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
         const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Reducer-dispatch")
         if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
-        for (const name of packageImports) if (referenceIdentifiers(specialization.root, name).length) fail(call, "Imported reducer-dispatch component handlers may only use relative TypeScript runtime imports")
-        const substitutions = new Map()
-        for (const [name, entry] of componentImports) {
-          const references = referenceIdentifiers(specialization.root, name)
-          if (!references.length) continue
-          if (references.some(reference => !insideJsxEventHandler(reference, specialization.root))) fail(call, `Imported reducer-dispatch component runtime import "${name}" may only be used inside event handlers`)
-          let local
-          do local = `__kDispatchImport${specializedImportIndex++}`
-          while (importBindings.has(local))
-          substitutions.set(name, factory.createIdentifier(local))
-          importBindings.set(local, { ...entry, local })
-        }
-        if (substitutions.size) {
-          specialization.root = substituteClone(specialization.root, substitutions, factory, context)
-          ts.setParentRecursive(specialization.root, false)
-          specialization.root.parent = call.parent
-        }
+        specialization.root = expandReducerCallbacks(specialization.root, componentSource, call)
+        specialization.root = mergeSpecializedImports(specialization.root, componentSource, call)
         synthesizeTree(specialization.root)
         componentSpecializations.set(call, specialization)
       }
@@ -2323,6 +2357,14 @@ function jsxCallHasDirectReducerProp(call, reducers) {
   })
 }
 
+function jsxCallHasReducerCallbackProp(call, reducers) {
+  const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+  return attributes.properties.some(attribute => {
+    const value = ts.isJsxAttribute(attribute) && attribute.initializer && ts.isJsxExpression(attribute.initializer) ? unwrapExpression(attribute.initializer.expression) : undefined
+    return value && referencedReducerDispatches(value, reducers, value).size
+  })
+}
+
 function runtimeImportNames(sourceFile, relative) {
   const names = new Set()
   for (const statement of sourceFile.statements) {
@@ -2416,7 +2458,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   let key
   for (const attribute of callAttributes.properties) {
     if (ts.isJsxSpreadAttribute(attribute)) fail(attribute, `${label} component prop spreads are not supported`)
-    const name = attribute.name.getText()
+    const name = attribute.name.text
     if (props.has(name) || name === "key" && key) fail(attribute, `Duplicate ${label.toLowerCase()} component prop "${name}"`)
     const value = !attribute.initializer
       ? factory.createTrue()
@@ -2492,6 +2534,11 @@ function substituteClone(root, substitutions, factory, context) {
     return ts.visitEachChild(clone, child => visit(child, nextShadowed), context)
   }
   return visit(root)
+}
+
+function replaceSpecializedCalls(root, replacements, context) {
+  const visit = node => replacements.get(node) ?? ts.visitEachChild(node, visit, context)
+  return ts.visitNode(root, visit)
 }
 
 function cloneAst(root, factory, context) {

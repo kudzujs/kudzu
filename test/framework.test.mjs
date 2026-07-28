@@ -1528,11 +1528,12 @@ test("compiles imported reducers to functional state updates", async t => {
   assert.match(html, /data-k-native-click/)
   assert.match(html, /data-k-list=/)
   assert.match(compiled, /useReducer\(todoReducer, \[\], "todos"\)/)
-  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 4)
+  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 5)
   assert.match(handlerSource, /return \w\+1/)
   assert.match(handlerSource, /Imported/)
   assert.doesNotMatch(html, /data-k-on-click/)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedControls.js", import.meta.url)), false)
+  assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedInput.js", import.meta.url)), false)
   for (const event of plan.routes[0].events) {
     assert.deepEqual(event.native.states, { todos: "s0" })
     assert.equal("dispatch" in event.native.scope || "send" in event.native.scope, false)
@@ -1568,7 +1569,7 @@ test("rejects package imports in reducer-dispatch child handlers", async t => {
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /Imported reducer-dispatch component handlers may only use relative TypeScript runtime imports/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Imported specialized component handlers may only use relative TypeScript runtime imports/)
 })
 
 test("mounts direct native handlers with browser event semantics", async t => {
@@ -1653,9 +1654,12 @@ try {
   document.querySelector("#add").click()
   document.querySelector("#local-add").click()
   document.querySelector("#imported-add").click()
+  const input = document.querySelector("#imported-input")
+  input.value = " Nested "
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))
   await wait()
   const rows = [...document.querySelectorAll("li")].map(row => row.textContent).join(",")
-  if (document.querySelector("#count").textContent !== "4 todos" || rows !== "Read,Ship,Local,Imported" || document.querySelector("#parent-title").textContent !== "Parent") throw new Error("reducer-dom")
+  if (document.querySelector("#count").textContent !== "5 todos" || rows !== "Read,Ship,Local,Imported,Nested" || document.querySelector("#parent-title").textContent !== "Parent") throw new Error("reducer-dom")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
