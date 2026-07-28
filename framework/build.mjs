@@ -2473,10 +2473,11 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   const substitutions = new Map()
   const acceptedProps = new Set()
   for (const element of component.parameters[0].name.elements) {
-    if (element.dotDotDotToken || element.initializer || !ts.isIdentifier(element.name)) fail(element, `${label} component props cannot use rest, defaults, or nested destructuring`)
-    const prop = (element.propertyName ?? element.name).getText()
+    if (element.dotDotDotToken || !ts.isIdentifier(element.name) || (element.initializer && label === "Keyed list")) fail(element, `${label} component props cannot use rest, defaults, or nested destructuring`)
+    if (element.initializer && !isPrimitiveDefaultLiteral(element.initializer)) fail(element.initializer, `${label} component prop defaults must be primitive literals`)
+    const prop = (element.propertyName ?? element.name).text
     acceptedProps.add(prop)
-    substitutions.set(element.name.text, props.get(prop) ?? factory.createIdentifier("undefined"))
+    substitutions.set(element.name.text, props.has(prop) ? props.get(prop) : element.initializer ?? factory.createIdentifier("undefined"))
   }
   for (const prop of props.keys()) if (!acceptedProps.has(prop)) fail(call, `Unknown ${label.toLowerCase()} component prop "${prop}"`)
 
@@ -2514,6 +2515,12 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   root.parent = call.parent
   const effects = effectCalls.map(source => ({ source, call: substituteClone(source, substitutions, factory, context) }))
   return { root, calculations, effects }
+}
+
+function isPrimitiveDefaultLiteral(node) {
+  return ts.isStringLiteral(node) || ts.isNumericLiteral(node) ||
+    (ts.isPrefixUnaryExpression(node) && (node.operator === ts.SyntaxKind.PlusToken || node.operator === ts.SyntaxKind.MinusToken) && ts.isNumericLiteral(node.operand)) ||
+    node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword
 }
 
 function substituteClone(root, substitutions, factory, context) {

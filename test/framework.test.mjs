@@ -1532,6 +1532,8 @@ test("compiles imported reducers to functional state updates", async t => {
   assert.match(handlerSource, /return \w\+1/)
   assert.match(handlerSource, /Imported/)
   assert.doesNotMatch(html, /data-k-on-click/)
+  assert.match(html, /id="imported-input" class="new-todo" data-priority="-1"/)
+  assert.doesNotMatch(html, /data-item=/)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedControls.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedInput.js", import.meta.url)), false)
   for (const event of plan.routes[0].events) {
@@ -1570,6 +1572,17 @@ test("rejects package imports in reducer-dispatch child handlers", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /Imported specialized component handlers may only use relative TypeScript runtime imports/)
+})
+
+test("rejects non-literal specialized component prop defaults", async t => {
+  const fixture = new URL("./fixtures/invalid-component-default", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/invalid-component-default/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/invalid-component-default/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Reducer-dispatch component prop defaults must be primitive literals/)
 })
 
 test("mounts direct native handlers with browser event semantics", async t => {

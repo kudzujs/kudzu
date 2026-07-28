@@ -201,6 +201,14 @@ return <Input onSubmit={add} />
 
 Kudzu substitutes the callback into the child's compiled event handler at build time. This is not general function-prop serialization: only one nested specialized callback boundary is supported, and `useCallback`, further forwarding, effects, component roots, and callback use outside event handlers are rejected.
 
+Reducer dispatch and callback components may use destructured string, finite-number, boolean, or `null` defaults. A missing prop is replaced during specialization; object, array, computed, and function-call defaults remain unsupported:
+
+```tsx
+function Input({ onSubmit, editing = false }) {
+  // ...
+}
+```
+
 ## Reactive Attributes
 
 `className`, `disabled`, controlled `value`, and controlled `checked` accept normal state-dependent TSX expressions. The same `value` binding works for inputs and selects:
