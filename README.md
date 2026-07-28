@@ -6,7 +6,7 @@
 
 HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
-Kudzu keeps the familiar function-component, props, children, event-handler, `useState`, and mount-effect shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers and mount effects compile to external ESM.
+Kudzu keeps the familiar function-component, props, children, event-handler, `useState`, `useReducer`, and mount-effect shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers and mount effects compile to external ESM.
 
 > Experimental `0.6.x`: the compiler API and supported TSX surface may change.
 
@@ -170,6 +170,17 @@ return <p>{weather.temperature}° {weather.label}</p>
 ```
 
 Derived text uses comment-bounded text nodes rather than wrapper elements, so table cells, options, SVG text, layout, and element selectors keep their authored structure.
+
+Reducer state uses the same immediate logical updates and batched DOM commit:
+
+```tsx
+import todoReducer from "../todoReducer"
+
+const [todos, dispatch] = useReducer(todoReducer, [])
+dispatch({ type: "add", title: "Ship" })
+```
+
+The reduced migration form requires `[state, dispatch]`, exactly two hook arguments, and a synchronous two-parameter reducer exported as a default or named value from a relative TypeScript module. Dispatches in compiled handlers lower to functional state updates; lazy initializers, package, namespace, local, async, and generator reducers are not supported. Reducer dispatch functions cannot be passed through props or context.
 
 ## Reactive Attributes
 
@@ -523,7 +534,7 @@ Supported:
 - Runtime bracket parameters with static fallback documents and host rewrite metadata
 - Static trusted `dangerouslySetInnerHTML`
 - Base-path deployments, multiple CSS files, and `afterBuild`
-- Primitive `useState` bindings
+- `useState` and relative-imported `useReducer` bindings
 - Mount-only `useEffect(fn, [])` compiled to route-specific ESM
 - Relative TypeScript module Workers owned by inline effects
 - Conditional and keyed-row effect ownership with cleanup on DOM removal

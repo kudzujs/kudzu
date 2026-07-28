@@ -1504,6 +1504,48 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   assert.deepEqual(commits, [["s0", 6], ["s0", 7]])
 })
 
+test("compiles imported reducers to functional state updates", async t => {
+  const fixture = new URL("./fixtures/reducer", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/reducer/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/reducer/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const html = await readFile(new URL("./fixtures/reducer/dist/index.html", import.meta.url), "utf8")
+  const handlerSource = await readFile(new URL("./fixtures/reducer/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const compiled = await readFile(new URL("./fixtures/reducer/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/reducer/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.match(html, /data-k-native-click/)
+  assert.match(html, /data-k-list=/)
+  assert.match(compiled, /useReducer\(todoReducer, \[\], "todos"\)/)
+  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 2)
+  assert.match(handlerSource, /return \w\+1/)
+  assert.doesNotMatch(html, /data-k-on-click/)
+
+  const state = new Map([["s0", []]])
+  const commits = []
+  const context = createNativeContext(state, { todos: "s0" }, (id, value) => commits.push([id, value]), plan.routes[0].events[0].native.scope)
+  const handlers = await import(`${new URL("./fixtures/reducer/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
+  handlers.handler0(context)
+  assert.deepEqual(state.get("s0"), [{ id: 1, title: "Read" }, { id: 2, title: "Ship" }])
+  await Promise.resolve()
+  assert.equal(commits.length, 1)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runReducerBrowserTest(fixture, chrome)
+})
+
+test("rejects reducers that are not relative imports", async t => {
+  t.after(async () => {
+    await rm(new URL("./fixtures/invalid-reducer/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/invalid-reducer/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL("./fixtures/invalid-reducer", import.meta.url), encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /useReducer\(\) reducers must be default or named imports from relative TypeScript modules/)
+})
+
 test("mounts direct native handlers with browser event semantics", async t => {
   const fixture = new URL("./fixtures/native-bubbling", import.meta.url)
   t.after(async () => {
@@ -1574,6 +1616,44 @@ test("rejects every unsupported native capture shape", () => {
     assert.throws(() => nativeBehavior("module", "handler", [], [["capture", value]]), new RegExp(`Native capture "capture" is not serializable: ${reason}`))
   }
 })
+
+async function runReducerBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  document.querySelector("#add").click()
+  await wait()
+  const rows = [...document.querySelectorAll("li")].map(row => row.textContent).join(",")
+  if (document.querySelector("#count").textContent !== "2 todos" || rows !== "Read,Ship") throw new Error("reducer-dom")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = 41000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await new Promise(resolve => setTimeout(resolve, 200))
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
 
 async function runDocsListBrowserTest(chrome) {
   const output = new URL("../dist/", import.meta.url)

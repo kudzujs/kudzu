@@ -121,6 +121,13 @@ const [weather, setWeather] = useState({ temperature: 28, label: "Warm" })
 return <p>{weather.temperature}° {weather.label}</p>`} />
     <p>Derived text patches a comment-bounded text node without adding a wrapper element. Table cells, options, SVG text, layout, and element selectors retain their authored structure.</p>
     <div className="docs-callout"><strong>Result</strong><span>Logical state increases by 2. Bound DOM nodes patch once.</span></div>
+    <h3 id="reducers">Reducers</h3>
+    <p>Reducer dispatch uses the same immediate logical state and batched DOM commit path without retaining a browser component.</p>
+    <CodeBlock code={`import todoReducer from "../todoReducer"
+
+const [todos, dispatch] = useReducer(todoReducer, [])
+dispatch({ type: "add", title: "Ship" })`} />
+    <p>The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two arguments, and a synchronous two-parameter reducer imported by default or name from a relative TypeScript module. Lazy initializers, package, namespace, local, async, and generator reducers and passing dispatch through props or context remain unsupported.</p>
     <h3 id="context">Context</h3>
     <p>Context passes default, nested, or reactive object values through component layers without retaining a browser component tree.</p>
     <CodeBlock code={`type ThemeValue = {

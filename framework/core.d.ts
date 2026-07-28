@@ -1,8 +1,11 @@
 export type StateSetter<T> = (value: T | ((previous: T) => T)) => void
+export type Reducer<State, Action> = (state: State, action: Action) => State
+export type Dispatch<Action> = (action: Action) => void
 export type EffectCleanup = () => void | Promise<void>
 export type EffectDependency = string | number | boolean | null
 
 export function useState<T>(initialValue: T): [T, StateSetter<T>]
+export function useReducer<State, Action>(reducer: Reducer<State, Action>, initialValue: State): [State, Dispatch<Action>]
 export function useEffect(effect: () => void | EffectCleanup | Promise<void>, dependencies: readonly EffectDependency[]): void
 export function useParams<Params extends Record<string, string> = Record<string, string>>(): Readonly<Params>
 

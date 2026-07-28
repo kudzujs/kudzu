@@ -73,6 +73,7 @@ export function LimitsSection() {
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
     <ul className="docs-limits">
       <li>Callback refs, mutable value refs, keyed-list refs, and reactive <code>dangerouslySetInnerHTML</code> are not supported.</li>
+      <li><code>useReducer</code> requires a synchronous two-parameter default or named reducer imported from a relative TypeScript module. Lazy initialization, package, namespace, local, async, and generator reducers and dispatch passed through props or context are not supported.</li>
       <li>Reactive conditional DOM is limited to the HTML namespace and is rejected inside SVG or MathML.</li>
       <li>Keyed lists require local-state maps and intrinsic roots or top-level local or relative-imported row components. Same-file or relative default, named/aliased, and direct named re-export wrappers may receive the state identifier directly and render the map under an intrinsic root. Package, namespace, and star-export wrappers, package and namespace row imports, reusable aliases, nested dynamic JSX, prop spreads, and derived-expression captures remain unsupported.</li>
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>

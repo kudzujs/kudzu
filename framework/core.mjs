@@ -2,6 +2,7 @@ import { serializeStyle } from "./style.js"
 
 const signalMarker = Symbol("kudzu.signal")
 const setterMarker = Symbol("kudzu.setter")
+const reducerDispatchMarker = Symbol("kudzu.reducerDispatch")
 const behaviorMarker = Symbol("kudzu.behavior")
 const nativeBehaviorMarker = Symbol("kudzu.nativeBehavior")
 const bindingMarker = Symbol("kudzu.binding")
@@ -33,6 +34,16 @@ export function useState(initialValue, name) {
   Object.defineProperty(setter, setterMarker, { value: id })
   renderContext.states[id] = { name: name ?? id, initialValue, ...(renderContext.scoped ? { lifetime: renderContext.renderScope } : {}) }
   return [signal, setter]
+}
+
+export function useReducer(reducer, initialValue, name) {
+  if (typeof reducer !== "function") throw new Error("useReducer() requires a reducer function")
+  const [state] = useState(initialValue, name)
+  const dispatch = () => {
+    throw new Error("Reducer dispatches are compiled into browser handlers")
+  }
+  Object.defineProperty(dispatch, reducerDispatchMarker, { value: state.id })
+  return [state, dispatch]
 }
 
 export function useParams() {
@@ -268,6 +279,7 @@ function serializeCapture(name, value, seen) {
   if (value?.[listItemMarker]) return { type: "list-item" }
   if (value?.[refMarker]) return { type: "ref", id: value.id }
   if (value?.[signalMarker]) return { type: "state", id: value.id }
+  if (typeof value === "function" && value[reducerDispatchMarker]) throw new Error(`Native capture "${name}" cannot contain a reducer dispatch`)
   if (typeof value === "function" && value[setterMarker]) return { type: "setter", id: value[setterMarker] }
   if (value === null || typeof value === "string" || typeof value === "boolean") return value
   if (typeof value === "number") {

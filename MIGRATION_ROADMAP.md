@@ -38,9 +38,11 @@ Kudzu already has the pieces below. Reuse them instead of creating parallel syst
 
 - Async components can fetch build-time data and still emit static HTML.
 - `getStaticPaths()` handles dynamic paths known during the build and passes page props.
-- `useState`, context, reactive text and attributes, conditionals, keyed lists, and normal ESM event handlers compile to direct DOM behavior.
+- `useState`, relative-imported `useReducer`, context, reactive text and attributes, conditionals, keyed lists, and normal ESM event handlers compile to direct DOM behavior.
 - Shared state, serialization, DOM commit batching, mount hooks, and cleanup hooks already exist in capability runtimes.
 - Imported relative TypeScript helpers, imported keyed-list row components, and same-file or relative-imported state-backed list wrappers already have build-time resolution paths.
+
+The TodoMVC React implementation at `tastejs/todomvc@ff43b02` supplied the first post-Goal-B migration blocker: reducer-owned todo state. Kudzu now accepts direct `[state, dispatch] = useReducer(reducer, initialValue)` with a synchronous two-parameter default or named reducer imported from a relative TypeScript module. Dispatch lowers to the existing functional state update path, so sequential actions observe current logical state and DOM work still batches once per turn. The focused empty keyed-list fixture emits 15,415 B raw/6,970 B gzip across its complete JavaScript graph; seven clean builds measured 358.8-406.5 ms with a 362.4 ms median. No reducer-specific runtime is emitted. Lazy initialization and reducer dispatch passed through props or context remain outside this reduced slice.
 
 For build-time data, prefer the existing form:
 

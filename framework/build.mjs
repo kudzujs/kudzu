@@ -1611,6 +1611,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       return imported
     }
     const settersByFunction = new Map()
+    const reducersByFunction = new Map()
     const functions = new Map()
     const components = new Map()
     const contexts = new Set()
@@ -1630,15 +1631,41 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     let usesListItem = false
 
     const collect = node => {
-      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer)) {
+      if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
         const callName = ts.isIdentifier(node.initializer.expression) ? node.initializer.expression.text : ""
-        const [stateElement, setterElement] = node.name.elements
-        if (callName === "useState" && stateElement && setterElement && ts.isBindingElement(stateElement) && ts.isBindingElement(setterElement) && ts.isIdentifier(stateElement.name) && ts.isIdentifier(setterElement.name)) {
+        if (callName === "useReducer") {
+          if (!ts.isArrayBindingPattern(node.name)) throw sourceNodeError(node.name, sourceFile, "useReducer() must use [state, dispatch] identifier destructuring")
+          const [stateElement, dispatchElement] = node.name.elements
+          if (node.name.elements.length !== 2 || !stateElement || !dispatchElement || !ts.isBindingElement(stateElement) || !ts.isBindingElement(dispatchElement) || !ts.isIdentifier(stateElement.name) || !ts.isIdentifier(dispatchElement.name)) throw sourceNodeError(node.name, sourceFile, "useReducer() must use [state, dispatch] identifier destructuring")
+          if (node.initializer.arguments.length !== 2) throw sourceNodeError(node.initializer, sourceFile, "useReducer() requires exactly a reducer and initial value")
+          const reducer = node.initializer.arguments[0]
+          if (!ts.isIdentifier(reducer) || !importBindings.has(reducer.text) || importBindings.get(reducer.text).kind === "namespace") throw sourceNodeError(reducer, sourceFile, "useReducer() reducers must be default or named imports from relative TypeScript modules")
+          const reducerImport = importBindings.get(reducer.text)
+          let reducerDeclaration
+          try {
+            reducerDeclaration = resolveComponentExport(reducerImport.target, reducerImport.kind === "default" ? "default" : reducerImport.imported, importedSource, sourceFiles)
+          } catch {
+            throw sourceNodeError(reducer, sourceFile, "useReducer() imports must resolve to a statically analyzable reducer function")
+          }
+          if (reducerDeclaration.parameters.length !== 2 || reducerDeclaration.asteriskToken || reducerDeclaration.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(reducer, sourceFile, "useReducer() reducers must be synchronous functions with exactly state and action parameters")
           const owner = nearestFunction(node)
-          if (owner) {
-            const setters = settersByFunction.get(owner) ?? new Map()
-            setters.set(setterElement.name.text, stateElement.name.text)
-            settersByFunction.set(owner, setters)
+          if (!owner) throw sourceNodeError(node, sourceFile, "useReducer() cannot be used outside a Kudzu component")
+          const setters = settersByFunction.get(owner) ?? new Map()
+          setters.set(dispatchElement.name.text, stateElement.name.text)
+          settersByFunction.set(owner, setters)
+          const reducers = reducersByFunction.get(owner) ?? new Map()
+          reducers.set(dispatchElement.name.text, { state: stateElement.name.text, reducer: reducer.text, import: reducerImport })
+          reducersByFunction.set(owner, reducers)
+        }
+        if (ts.isArrayBindingPattern(node.name)) {
+          const [stateElement, setterElement] = node.name.elements
+          if (callName === "useState" && stateElement && setterElement && ts.isBindingElement(stateElement) && ts.isBindingElement(setterElement) && ts.isIdentifier(stateElement.name) && ts.isIdentifier(setterElement.name)) {
+            const owner = nearestFunction(node)
+            if (owner) {
+              const setters = settersByFunction.get(owner) ?? new Map()
+              setters.set(setterElement.name.text, stateElement.name.text)
+              settersByFunction.set(owner, setters)
+            }
           }
         }
       }
@@ -1931,7 +1958,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         } else {
           compiledCallback = rewriteEffectWorkers(callback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
         }
-        const descriptor = compileNativeCallback(compiledCallback, setters, factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
+        const descriptor = compileNativeCallback(compiledCallback, setters, reducersForNode(node, reducersByFunction), factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
         for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
@@ -1948,7 +1975,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         ])
       }
 
-      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "useState" && node.initializer.arguments.length === 1) {
+      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && (node.initializer.expression.text === "useState" && node.initializer.arguments.length === 1 || node.initializer.expression.text === "useReducer" && node.initializer.arguments.length === 2)) {
         const stateElement = node.name.elements[0]
         if (!stateElement || !ts.isBindingElement(stateElement) || !ts.isIdentifier(stateElement.name)) return node
         const initializer = factory.updateCallExpression(node.initializer, node.initializer.expression, node.initializer.typeArguments, [
@@ -2030,7 +2057,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.text)) {
         const setters = settersForNode(node, settersByFunction)
-        const event = compileEvent(node.initializer.expression, setters, functions, factory, nativeHandlers, handlerUrl, listEventItems.get(node), importBindings, clientImports)
+        const event = compileEvent(node.initializer.expression, setters, reducersForNode(node, reducersByFunction), functions, factory, nativeHandlers, handlerUrl, listEventItems.get(node), importBindings, clientImports)
         if (event) {
           usesBehavior = true
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, event))
@@ -2656,15 +2683,15 @@ function factoryNull() {
   return ts.factory.createNull()
 }
 
-function compileEvent(expression, setters, functions, factory, nativeHandlers, handlerUrl, listItem, importBindings, clientImports) {
+function compileEvent(expression, setters, reducers, functions, factory, nativeHandlers, handlerUrl, listItem, importBindings, clientImports) {
   if (ts.isIdentifier(expression)) expression = functions.get(expression.text)
   if (!expression || (!ts.isArrowFunction(expression) && !ts.isFunctionExpression(expression) && !ts.isFunctionDeclaration(expression))) return undefined
 
-  const optimized = compileOptimizedEvent(expression, setters, factory)
+  const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters, factory)
   if (optimized) return optimized
 
   rejectWorkerConstructions(expression, expression.getSourceFile(), "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback")
-  const descriptor = compileNativeCallback(expression, setters, factory, nativeHandlers, importBindings, clientImports, "handler", listItem)
+  const descriptor = compileNativeCallback(expression, setters, reducers, factory, nativeHandlers, importBindings, clientImports, "handler", listItem)
   return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
     factory.createStringLiteral(handlerUrl),
     factory.createStringLiteral(descriptor.exportName),
@@ -2673,14 +2700,16 @@ function compileEvent(expression, setters, functions, factory, nativeHandlers, h
   ])
 }
 
-function compileNativeCallback(expression, setters, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false, snapshotNested = false) {
+function compileNativeCallback(expression, setters, reducers, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false, snapshotNested = false) {
   const allCaptures = nativeCaptureNames(expression, setters)
+  const usedReducers = referencedReducerDispatches(expression.body, reducers, expression)
   const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
+  imports.push(...[...usedReducers].map(name => reducers.get(name).import))
   const captures = new Set([...allCaptures].filter(name => !importBindings.has(name)))
   for (const entry of imports) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
   const exportName = `${prefix}${entries.length}`
-  entries.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), snapshotNested })
+  entries.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested })
   const value = name => deferValues
     ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
     : factory.createIdentifier(name)
@@ -2695,6 +2724,16 @@ function compileNativeCallback(expression, setters, factory, entries, importBind
       name === listItem ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, []) : value(name)
     ])))
   }
+}
+
+function referencedReducerDispatches(root, reducers, scopeRoot = root) {
+  const used = new Set()
+  const visit = node => {
+    if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, scopeRoot)) used.add(node.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return used
 }
 
 function nativeStateNames(expression, setters) {
@@ -2941,6 +2980,15 @@ function settersForNode(node, settersByFunction) {
     if (!ts.isFunctionDeclaration(current) && !ts.isFunctionExpression(current) && !ts.isArrowFunction(current)) continue
     const setters = settersByFunction.get(current)
     if (setters) return setters
+  }
+  return new Map()
+}
+
+function reducersForNode(node, reducersByFunction) {
+  for (let current = node.parent; current; current = current.parent) {
+    if (!ts.isFunctionDeclaration(current) && !ts.isFunctionExpression(current) && !ts.isArrowFunction(current)) continue
+    const reducers = reducersByFunction.get(current)
+    if (reducers) return reducers
   }
   return new Map()
 }
@@ -3242,7 +3290,7 @@ function relativeModulePath(from, to) {
   return path.startsWith(".") ? path : `./${path}`
 }
 
-function printNativeHandler({ exportName, expression, captures, setters, snapshotNested }) {
+function printNativeHandler({ exportName, expression, captures, setters, reducers = new Map(), snapshotNested }) {
   const factory = ts.factory
   const stateNames = new Set(setters.values())
   const snapshotNames = snapshotNested ? nestedStateNames(expression, setters) : new Set()
@@ -3251,6 +3299,16 @@ function printNativeHandler({ exportName, expression, captures, setters, snapsho
   const captureSnapshots = new Map([...captureSnapshotNames].map(name => [name, factory.createUniqueName("__kEffectCapture")]))
   const transformer = context => root => {
     const visitor = node => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && reducers.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
+        if (node.arguments.length !== 1) throw sourceNodeError(node, expression.getSourceFile(), "Reducer dispatches require exactly one action")
+        return reducerDispatch(factory, reducers.get(node.expression.text), ts.visitNode(node.arguments[0], visitor))
+      }
+      if (ts.isShorthandPropertyAssignment(node) && reducers.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        return factory.createPropertyAssignment(node.name, reducerReference(factory, reducers.get(node.name.text)))
+      }
+      if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        return reducerReference(factory, reducers.get(node.text))
+      }
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
         return factory.createCallExpression(
           factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"),
@@ -3355,6 +3413,17 @@ function setterReference(factory, stateName) {
     factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
     factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(stateName), factory.createIdentifier("value")])
   )
+}
+
+function reducerReference(factory, reducer) {
+  const action = factory.createUniqueName("__kAction")
+  return factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, action)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), reducerDispatch(factory, reducer, action))
+}
+
+function reducerDispatch(factory, reducer, action) {
+  const previous = factory.createUniqueName("__kPrevious")
+  const update = factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, previous)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createCallExpression(factory.createIdentifier(reducer.reducer), undefined, [previous, action]))
+  return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(reducer.state), update])
 }
 
 function printReactiveBinding({ exportName, expression, captures, states }) {
