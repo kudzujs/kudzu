@@ -1527,15 +1527,19 @@ test("compiles imported reducers to functional state updates", async t => {
   const plan = JSON.parse(await readFile(new URL("./fixtures/reducer/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   assert.match(html, /data-k-native-click/)
   assert.match(html, /data-k-list=/)
+  assert.match(html, /data-k-list-events=/)
   assert.match(compiled, /useReducer\(todoReducer, \[\], "todos"\)/)
-  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 5)
+  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 6)
   assert.match(handlerSource, /return \w\+1/)
   assert.match(handlerSource, /Imported/)
+  assert.match(handlerSource, /\.scope\("todo"\)/)
   assert.doesNotMatch(html, /data-k-on-click/)
   assert.match(html, /id="imported-input" class="new-todo" data-priority="-1"/)
   assert.doesNotMatch(html, /data-item=/)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedControls.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedInput.js", import.meta.url)), false)
+  assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedItem.js", import.meta.url)), false)
+  assert.ok(plan.routes[0].events.some(event => event.native.scope.todo?.type === "list-item"))
   for (const event of plan.routes[0].events) {
     assert.deepEqual(event.native.states, { todos: "s0" })
     assert.equal("dispatch" in event.native.scope || "send" in event.native.scope, false)
@@ -1671,8 +1675,11 @@ try {
   input.value = " Nested "
   input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))
   await wait()
-  const rows = [...document.querySelectorAll("li")].map(row => row.textContent).join(",")
-  if (document.querySelector("#count").textContent !== "5 todos" || rows !== "Read,Ship,Local,Imported,Nested" || document.querySelector("#parent-title").textContent !== "Parent") throw new Error("reducer-dom")
+  const titles = () => [...document.querySelectorAll("li span")].map(row => row.textContent).join(",")
+  if (document.querySelector("#count").textContent !== "5 todos" || titles() !== "Read,Ship,Local,Imported,Nested" || document.querySelector("#parent-title").textContent !== "Parent") throw new Error("reducer-dom")
+  document.querySelector('[data-id="2"] .remove').click()
+  await wait()
+  if (document.querySelector("#count").textContent !== "4 todos" || document.querySelector('[data-id="2"]') || titles() !== "Read,Local,Imported,Nested") throw new Error("reducer-keyed-row-dispatch")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

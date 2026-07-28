@@ -1,5 +1,6 @@
 import { useReducer } from "@kudzujs/core"
 import { ImportedControls } from "../ImportedControls"
+import { ImportedItem } from "../ImportedItem"
 import todoReducer from "../todoReducer"
 import type { TodoAction } from "../todoReducer"
 
@@ -23,6 +24,6 @@ export default function ReducerPage() {
     <ImportedControls dispatch={dispatch} />
     <span id="parent-title">{importedTitle}</span>
     <p id="count">{todos.length} todos</p>
-    <ul>{todos.map(todo => <li key={todo.id}>{todo.title}</li>)}</ul>
+    <ul>{todos.map(todo => <ImportedItem key={todo.id} todo={todo} dispatch={dispatch} />)}</ul>
   </main>
 }

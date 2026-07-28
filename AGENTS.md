@@ -13,7 +13,7 @@
 - Use Kudzu TSX, not React or Next.js.
 - Import framework APIs from `@kudzujs/core`.
 - Use function components, props, and children for composition.
-- Declare local state exactly like React with `useState`; reduced `useReducer` support requires a synchronous two-parameter reducer imported from a relative TypeScript module. Dispatch may cross one direct prop boundary into a specialized same-file or relative-imported synchronous component, and one inline or simple `const` callback containing dispatch may cross one additional relative-imported intrinsic component boundary. These reducer specializations accept destructured primitive literal prop defaults.
+- Declare local state exactly like React with `useState`; reduced `useReducer` support requires a synchronous two-parameter reducer imported from a relative TypeScript module. Dispatch may cross one direct prop boundary into a specialized same-file or relative-imported synchronous component, including a direct keyed row, and one inline or simple `const` callback containing dispatch may cross one additional relative-imported intrinsic component boundary. These reducer specializations accept destructured primitive literal prop defaults.
 - Event handlers use normal synchronous or async JavaScript. State setters update logical state immediately and DOM writes batch at synchronous-turn boundaries.
 - Command-only setter and `console.log(label, state)` handlers use the optimized behavior path; other handlers compile to external ESM.
 - Native handlers may capture serializable component locals and destructured props. Relative imported helpers and supported reducer imports compile into handler ESM; non-serializable captures remain unsupported.

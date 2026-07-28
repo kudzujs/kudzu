@@ -190,7 +190,7 @@ function Controls({ dispatch }: { dispatch: Dispatch<TodoAction> }) {
 return <Controls dispatch={dispatch} />
 ```
 
-Kudzu specializes that call at build time; no function prop or child component survives in the browser. Relative TypeScript constants and helpers used inside the child handler are renamed for call-site safety and bundled into the parent handler graph. Lazy initializers, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, forwarding across another component, and reducer dispatch through context remain unsupported.
+Kudzu specializes that call at build time; no function prop or child component survives in the browser. The direct child may also be a keyed row such as `todos.map(todo => <Item key={todo.id} todo={todo} dispatch={dispatch} />)`. Its inline or simple `const` event handler receives the latest keyed item, while relative TypeScript constants and helpers used inside the handler are renamed for call-site safety and bundled into the parent handler graph. Lazy initializers, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, further dispatch forwarding, reducer-dispatch keyed-row effects or local state, and reducer dispatch through context remain unsupported.
 
 That specialized component may pass one inline or simple `const` callback containing dispatch to one relative-imported synchronous child with an intrinsic root:
 

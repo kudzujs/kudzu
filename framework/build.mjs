@@ -1735,6 +1735,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       throw sourceNodeError(node, sourceFile, message)
     }
     const componentSpecializations = new WeakMap()
+    const reducerComponentCalls = new WeakSet()
     const specializedDeclarations = new WeakSet()
     const stateBackedComponentFunctions = new WeakSet()
     const stateBackedComponentRoots = []
@@ -1838,6 +1839,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
         specialization.root = expandReducerCallbacks(specialization.root, component.function.getSourceFile(), call)
         componentSpecializations.set(call, specialization)
+        reducerComponentCalls.add(call)
       }
       specializedDeclarations.add(component.declaration)
     }
@@ -1862,6 +1864,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         specialization.root = mergeSpecializedImports(specialization.root, componentSource, call)
         synthesizeTree(specialization.root)
         componentSpecializations.set(call, specialization)
+        reducerComponentCalls.add(call)
       }
     }
     const rawRenderedLists = []
@@ -1910,7 +1913,9 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         ...stateBackedComponentRoots.flatMap(root => jsxTagUses(root, name))
       ]
       for (const call of calls) {
-        const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
+        const specialization = reducerComponentCalls.has(call)
+          ? componentSpecializations.get(call)
+          : specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
         if (specialization.effects.length && !keyedComponentCalls.has(call)) fail(call, "Effectful keyed row components may only be used directly as keyed map rows")
         componentSpecializations.set(call, specialization)
       }
@@ -2499,7 +2504,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       const declaration = statement.declarationList.declarations[0]
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
       const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
-      calculations.push(calculation)
+      calculations.push({ name: declaration.name.text, expression: calculation })
       substitutions.set(declaration.name.text, calculation)
     }
     returned = last.expression
@@ -2514,13 +2519,42 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   ts.setParentRecursive(root, false)
   root.parent = call.parent
   const effects = effectCalls.map(source => ({ source, call: substituteClone(source, substitutions, factory, context) }))
-  return { root, calculations, effects }
+  return {
+    root,
+    calculations: calculations
+      .filter(calculation => label !== "Reducer-dispatch" || !isFunctionLike(calculation.expression) || !isEventOnlyComponentLocal(returned, calculation.name))
+      .map(calculation => calculation.expression),
+    effects
+  }
 }
 
 function isPrimitiveDefaultLiteral(node) {
   return ts.isStringLiteral(node) || ts.isNumericLiteral(node) ||
     (ts.isPrefixUnaryExpression(node) && (node.operator === ts.SyntaxKind.PlusToken || node.operator === ts.SyntaxKind.MinusToken) && ts.isNumericLiteral(node.operand)) ||
     node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword
+}
+
+function isEventOnlyComponentLocal(root, name) {
+  let found = false
+  let eventOnly = true
+  const visit = node => {
+    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node)) {
+      found = true
+      let parent = node.parent
+      while (parent && parent !== root) {
+        if (ts.isJsxAttribute(parent)) {
+          if (!/^on[A-Z]/.test(parent.name.text)) eventOnly = false
+          return
+        }
+        parent = parent.parent
+      }
+      eventOnly = false
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return found && eventOnly
 }
 
 function substituteClone(root, substitutions, factory, context) {
