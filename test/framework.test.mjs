@@ -400,6 +400,14 @@ test("rejects reactive conditionals in foreign namespaces", async () => {
   }, { styles: false }), /Reactive conditional DOM is not supported inside svg/)
 })
 
+test("normalizes React-shaped SVG presentation attributes", async () => {
+  const result = await renderPage(() => jsx("svg", {
+    viewBox: "0 0 24 24",
+    children: jsx("path", { fillRule: "evenodd", clipRule: "evenodd", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" })
+  }), { styles: false })
+  assert.match(result.html, /<svg viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><\/path><\/svg>/)
+})
+
 test("rejects unsafe or reserved reactive attributes", async () => {
   await assert.rejects(renderPage(() => jsx("button", { onclick: "alert(1)" }), { styles: false }), /onclick must use a camelCase event handler/)
   await assert.rejects(renderPage(() => jsx("div", { "data-k-bind-class": "user" }), { styles: false }), /reserved data-k-\* prefix/)
@@ -2675,14 +2683,14 @@ try {
   await wait()
   if (document.activeElement?.id !== "focus-target" || document.body.dataset.ref !== "focus-target") throw new Error("object-ref")
   if (document.querySelector("#object-state").textContent !== "28° Warm" || document.querySelector("#object-state").children.length) throw new Error("object-state-initial")
-  if (document.querySelector("#object-cell").textContent !== "WARM" || document.querySelector("#object-option").textContent !== "Warm" || document.querySelector("#object-svg").textContent !== "28" || document.querySelector("#object-condition").textContent !== "warm") throw new Error("object-context-initial")
+  if (document.querySelector("#object-cell").textContent !== "WARM" || document.querySelector("#object-option").textContent !== "Warm" || document.querySelector("#object-svg").textContent !== "28" || document.querySelector("#object-svg-path").getAttribute("stroke-width") !== "2" || document.querySelector("#object-svg-path").getAttribute("fill-rule") !== "evenodd" || document.querySelector("#object-condition").textContent !== "warm") throw new Error("object-context-initial")
   document.querySelector("#hide-object").click()
   await wait()
   if (document.querySelector("#object-condition") || document.querySelector("#object-state").textContent !== "0° Idle") throw new Error("object-condition-unmount")
   document.querySelector("#update-object").click()
   await wait()
   if (document.querySelector("#object-state").textContent !== "21° Cool" || document.querySelector("#object-state").children.length) throw new Error("object-state-update")
-  if (document.querySelector("#object-cell").textContent !== "COOL" || document.querySelector("#object-option").textContent !== "Cool" || document.querySelector("#object-svg").textContent !== "21" || document.querySelector("#object-condition").textContent !== "cool") throw new Error("object-context-update")
+  if (document.querySelector("#object-cell").textContent !== "COOL" || document.querySelector("#object-option").textContent !== "Cool" || document.querySelector("#object-svg").textContent !== "21" || document.querySelector("#object-svg-path").getAttribute("stroke-width") !== "1.5" || document.querySelector("#object-condition").textContent !== "cool") throw new Error("object-context-update")
   let lateListenerCalled = false
   document.querySelector("#controls").addEventListener("click", () => { lateListenerCalled = true })
   document.querySelector("#controls").click()

@@ -17,6 +17,28 @@ const contextMarker = Symbol("kudzu.context")
 const contextProviderMarker = Symbol("kudzu.contextProvider")
 const routeScopeMarker = Symbol("kudzu.routeScope")
 const noSelectValue = Symbol("kudzu.no-select-value")
+const svgAttributeAliases = {
+  clipRule: "clip-rule",
+  colorInterpolation: "color-interpolation",
+  colorInterpolationFilters: "color-interpolation-filters",
+  dominantBaseline: "dominant-baseline",
+  fillOpacity: "fill-opacity",
+  fillRule: "fill-rule",
+  floodColor: "flood-color",
+  floodOpacity: "flood-opacity",
+  shapeRendering: "shape-rendering",
+  stopColor: "stop-color",
+  stopOpacity: "stop-opacity",
+  strokeDasharray: "stroke-dasharray",
+  strokeDashoffset: "stroke-dashoffset",
+  strokeLinecap: "stroke-linecap",
+  strokeLinejoin: "stroke-linejoin",
+  strokeMiterlimit: "stroke-miterlimit",
+  strokeOpacity: "stroke-opacity",
+  strokeWidth: "stroke-width",
+  textAnchor: "text-anchor",
+  vectorEffect: "vector-effect"
+}
 
 let renderContext
 
@@ -576,6 +598,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   const childNamespace = tag === "svg" || tag === "math"
     ? tag
     : namespace === "svg" && tag === "foreignObject" ? undefined : namespace
+  const svg = tag === "svg" || namespace === "svg"
   let attributes = ""
   const attributeBindings = []
   const listAttributes = []
@@ -636,7 +659,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
       continue
     }
 
-    const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : rawName
+    const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : svg ? svgAttributeAliases[rawName] ?? rawName : rawName
     const propertyTarget = name === "class" || name === "disabled" || name === "value" || name === "checked" || name === "style"
     if (value?.[listFieldMarker]) {
       attributes += renderAttribute(name, value.value)

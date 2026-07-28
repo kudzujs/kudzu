@@ -211,5 +211,10 @@ return <>
       <div><code>checked</code><p>Updates the live boolean property for controlled checkboxes and radios.</p></div>
       <div><code>any attribute</code><p>Patches standard, <code>aria-*</code>, and <code>data-*</code> attributes without a compiler allowlist.</p></div>
     </div>
+    <h3>Inline SVG</h3>
+    <p>Static and reactive SVG presentation props use familiar React spellings. Kudzu preserves native names such as <code>viewBox</code> and maps aliases such as <code>fillRule</code>, <code>clipRule</code>, <code>strokeWidth</code>, <code>strokeLinecap</code>, <code>strokeLinejoin</code>, opacity/color props, <code>textAnchor</code>, and <code>vectorEffect</code> to SVG attributes.</p>
+    <CodeBlock code={`<svg viewBox="0 0 24 24">
+  <path fillRule="evenodd" strokeWidth={active ? 2 : 1} strokeLinecap="round" />
+</svg>`} />
   </section>
 }

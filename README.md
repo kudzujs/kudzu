@@ -208,6 +208,14 @@ Regular attributes use the same expressions without an allowlist:
 
 Kudzu compiles derived expressions to external ESM and patches only the bound DOM attribute or property. `aria-*` and `data-*` boolean values serialize as `"true"` or `"false"`; ordinary false values remove the attribute. Object `style` values use React-shaped camelCase properties, add `px` to nonzero dimensional numbers, and preserve unitless properties and CSS custom properties. Reactive `dangerouslySetInnerHTML` remains unsupported.
 
+Inline SVG accepts React-shaped presentation props for static and reactive values. Kudzu preserves native camelCase SVG names such as `viewBox` while mapping common aliases such as `fillRule`, `clipRule`, `strokeWidth`, `strokeLinecap`, `strokeLinejoin`, opacity/color props, `textAnchor`, and `vectorEffect` to their SVG attribute names:
+
+```tsx
+<svg viewBox="0 0 24 24">
+  <path fillRule="evenodd" strokeWidth={active ? 2 : 1} strokeLinecap="round" />
+</svg>
+```
+
 ## DOM Refs
 
 Use an object ref to access an element from a normal event handler:
@@ -544,6 +552,7 @@ Supported:
 - Direct text DOM patches
 - Reactive standard, `aria-*`, and `data-*` attributes
 - Reactive object `style` attributes
+- Static and reactive React-shaped SVG presentation attributes
 - Object DOM refs in native event handlers
 - Default, nested, and reactive context providers
 - Controlled `value` and `checked` form properties

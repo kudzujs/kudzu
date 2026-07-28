@@ -33,7 +33,10 @@ export default function NativeBubblingPage() {
     <p id="object-state">{weather.temperature}° {weather.label}</p>
     <table><tbody><tr><td id="object-cell">{weather.label.toUpperCase()}</td></tr></tbody></table>
     <select><option id="object-option">{weather.label}</option></select>
-    <svg><text id="object-svg">{weather.temperature}</text></svg>
+    <svg viewBox="0 0 24 24">
+      <path id="object-svg-path" fillRule="evenodd" clipRule="evenodd" strokeWidth={weather.temperature / 14} strokeLinecap="round" strokeLinejoin="round" />
+      <text id="object-svg">{weather.temperature}</text>
+    </svg>
     {weather.temperature > 0 && <aside id="object-condition">{weather.label.toLowerCase()}</aside>}
     <button id="hide-object" onClick={() => setWeather({ temperature: 0, label: "Idle" })}>Hide weather</button>
     <button id="update-object" onClick={() => setWeather(coolWeather())}>Update weather</button>
