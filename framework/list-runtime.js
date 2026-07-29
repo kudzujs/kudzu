@@ -6,6 +6,7 @@ const mountedLists = new WeakSet()
 const imports = __KUDZU_LIST_ASYNC_PARTS__ ? new Map() : undefined
 const revisions = __KUDZU_LIST_ASYNC_PARTS__ ? new WeakMap() : undefined
 const itemParts = new WeakMap()
+const listItems = new WeakMap()
 const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}${__KUDZU_LIST_EFFECTS__ ? ",[data-k-effects]" : ""}`
 
@@ -25,6 +26,9 @@ registerUnmountHook(unmountLists)
 if (typeof document !== "undefined") mountDom(document)
 
 function mountLists(root) {
+  let owner = root.nodeType === Node.ELEMENT_NODE ? root : root.parentElement
+  while (owner && !listItems.has(owner)) owner = owner.parentElement
+  if (owner) fillListParts(root, listItemParts(root), listItems.get(owner), 0)
   for (const start of matching(root, "template[data-k-list]")) {
     if (mountedLists.has(start)) continue
     mountedLists.add(start)
@@ -136,6 +140,7 @@ function updateList(list) {
       fillListItem(node, item)
       if (__KUDZU_LIST_ITEM_HOOKS__) notifyListItem(list.descriptor.state, node)
     }
+    listItems.set(node, item)
     next.push([token, node])
     values.set(token, value)
   }
@@ -234,6 +239,7 @@ function addListRoot(list, { item, key, token, value }) {
   if (__KUDZU_LIST_ROW_STATES__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)
   mapListItemParts(list.parts, node)
   fillListItem(node, item)
+  listItems.set(node, item)
   const parent = list.container ?? list.start.parentNode
   parent.insertBefore(node, list.boundary)
   if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) mountDom(node)

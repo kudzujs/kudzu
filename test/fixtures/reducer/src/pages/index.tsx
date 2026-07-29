@@ -19,7 +19,7 @@ export default function ReducerPage() {
   }
 
   const reverseTodos = () => dispatch({ type: "reverse" })
-  const restoreTodo = () => dispatch({ type: "restore", todo: { id: 2, title: "Restored" } })
+  const restoreTodo = () => dispatch({ type: "restore", todo: { id: 2, title: "Restored", edits: 0 } })
 
   return <main>
     <button id="add" onClick={addTodos}>Add</button>

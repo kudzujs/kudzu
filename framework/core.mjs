@@ -675,7 +675,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
       continue
     }
 
-    const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : svg ? svgAttributeAliases[rawName] ?? rawName : rawName
+    const name = rawName === "className" ? "class" : rawName === "htmlFor" ? "for" : rawName === "defaultValue" && tag === "input" ? "value" : svg ? svgAttributeAliases[rawName] ?? rawName : rawName
     const propertyTarget = name === "class" || name === "disabled" || name === "value" || name === "checked" || name === "style"
     if (value?.[listFieldMarker]) {
       attributes += renderAttribute(name, value.value)
