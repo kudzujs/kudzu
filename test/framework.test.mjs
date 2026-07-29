@@ -3,6 +3,7 @@ import { existsSync } from "node:fs"
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import { gzipSync } from "node:zlib"
+import { createConnection } from "node:net"
 import test from "node:test"
 import { build, normalizeNavigation, specializeRuntime } from "../framework/build.mjs"
 import { behavior, conditional, createContext, list, nativeBehavior, renderPage, useContext, useEffect, useParams, useRef, useState } from "../framework/core.mjs"
@@ -1724,7 +1725,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -1825,7 +1826,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=7000", "--dump-dom", `http://127.0.0.1:${port}/shop/product?initial=1`], { encoding: "utf8", timeout: 20000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -1865,7 +1866,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     for (const route of ["alpha", "beta", "outside"]) {
       const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/${route}`], { encoding: "utf8", timeout: 20000 })
@@ -2277,7 +2278,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2357,7 +2358,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2407,7 +2408,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2459,7 +2460,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2503,7 +2504,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2557,7 +2558,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2623,7 +2624,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2731,7 +2732,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2787,7 +2788,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2829,7 +2830,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/newsletter/posts/oak/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
@@ -2878,7 +2879,7 @@ http.createServer((request, response) => {
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
-  await new Promise(resolve => setTimeout(resolve, 200))
+  await waitForServer(port)
   try {
     const id = "550e8400-e29b-41d4-a716-446655440000"
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/포털/orgs/acme/items/${id}?view=full`], { encoding: "utf8", timeout: 15000 })
@@ -2887,4 +2888,17 @@ http.createServer((request, response) => {
   } finally {
     server.kill()
   }
+}
+
+async function waitForServer(port) {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const ready = await new Promise(resolve => {
+      const socket = createConnection({ host: "127.0.0.1", port })
+      socket.once("connect", () => { socket.destroy(); resolve(true) })
+      socket.once("error", () => { socket.destroy(); resolve(false) })
+    })
+    if (ready) return
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+  throw new Error(`Browser fixture server did not start on port ${port}`)
 }
