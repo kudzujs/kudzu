@@ -1529,21 +1529,22 @@ test("compiles imported reducers to functional state updates", async t => {
   assert.match(html, /data-k-list=/)
   assert.match(html, /data-k-list-events=/)
   assert.match(compiled, /useReducer\(todoReducer, \[\], "todos"\)/)
-  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 6)
+  assert.equal(handlerSource.match(/\.set\("todos",/g)?.length, 8)
   assert.match(handlerSource, /return \w\+1/)
   assert.match(handlerSource, /Imported/)
   assert.match(handlerSource, /\.scope\("todo"\)/)
-  assert.doesNotMatch(html, /data-k-on-click/)
+  assert.match(html, /class="edit-toggle" data-k-set-true-click=/)
   assert.match(html, /id="imported-input" class="new-todo" data-priority="-1"/)
   assert.doesNotMatch(html, /data-item=/)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedControls.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedInput.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedItem.js", import.meta.url)), false)
-  assert.ok(plan.routes[0].events.some(event => event.native.scope.todo?.type === "list-item"))
-  for (const event of plan.routes[0].events) {
+  assert.ok(plan.routes[0].events.some(event => event.native?.scope.todo?.type === "list-item"))
+  for (const event of plan.routes[0].events.filter(event => event.native && "todos" in event.native.states)) {
     assert.deepEqual(event.native.states, { todos: "s0" })
     assert.equal("dispatch" in event.native.scope || "send" in event.native.scope, false)
   }
+  assert.equal(plan.routes[0].lists[0].rowStates[0].id.endsWith(":$k"), true)
 
   const state = new Map([["s0", []]])
   const commits = []
@@ -1587,6 +1588,17 @@ test("rejects non-literal specialized component prop defaults", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /Reducer-dispatch component prop defaults must be primitive literals/)
+})
+
+test("rejects reducer component local state outside direct keyed rows", async t => {
+  const fixture = new URL("./fixtures/invalid-reducer-row-state", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/invalid-reducer-row-state/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/invalid-reducer-row-state/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Reducer-dispatch component useState\(\) is only supported in a direct keyed row/)
 })
 
 test("mounts direct native handlers with browser event semantics", async t => {
@@ -1677,9 +1689,25 @@ try {
   await wait()
   const titles = () => [...document.querySelectorAll("li span")].map(row => row.textContent).join(",")
   if (document.querySelector("#count").textContent !== "5 todos" || titles() !== "Read,Ship,Local,Imported,Nested" || document.querySelector("#parent-title").textContent !== "Parent") throw new Error("reducer-dom")
-  document.querySelector('[data-id="2"] .remove').click()
+  const editingRow = document.querySelector('[data-id="2"]')
+  editingRow.querySelector(".edit-toggle").click()
   await wait()
-  if (document.querySelector("#count").textContent !== "4 todos" || document.querySelector('[data-id="2"]') || titles() !== "Read,Local,Imported,Nested") throw new Error("reducer-keyed-row-dispatch")
+  if (document.querySelectorAll("li.editing").length !== 1 || document.querySelectorAll("input.edit").length !== 1 || !editingRow.classList.contains("editing") || !editingRow.querySelector("input.edit") || editingRow.outerHTML.includes("$k")) throw new Error("row-editing")
+  document.querySelector("#reverse").click()
+  await wait()
+  if (document.querySelector('[data-id="2"]') !== editingRow || !editingRow.classList.contains("editing") || !editingRow.querySelector("input.edit") || titles() !== "Nested,Imported,Local,Ship,Read") throw new Error("row-reorder")
+  editingRow.querySelector("input.edit").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+  await wait()
+  if (editingRow.classList.contains("editing") || editingRow.querySelector("input.edit")) throw new Error("row-native-handler")
+  editingRow.querySelector(".edit-toggle").click()
+  await wait()
+  editingRow.querySelector(".remove").click()
+  await wait()
+  if (document.querySelector("#count").textContent !== "4 todos" || document.querySelector('[data-id="2"]') || titles() !== "Nested,Imported,Local,Read") throw new Error("reducer-keyed-row-dispatch")
+  document.querySelector("#restore").click()
+  await wait()
+  const restored = document.querySelector('[data-id="2"]')
+  if (!restored || restored === editingRow || restored.classList.contains("editing") || restored.querySelector("input.edit") || document.querySelector("#count").textContent !== "5 todos") throw new Error("row-state-cleanup")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

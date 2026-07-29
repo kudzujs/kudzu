@@ -3,6 +3,7 @@ import { serializeStyle } from "./style.js"
 const signalMarker = Symbol("kudzu.signal")
 const setterMarker = Symbol("kudzu.setter")
 const reducerDispatchMarker = Symbol("kudzu.reducerDispatch")
+const reducerStateMarker = Symbol("kudzu.reducerState")
 const behaviorMarker = Symbol("kudzu.behavior")
 const nativeBehaviorMarker = Symbol("kudzu.nativeBehavior")
 const bindingMarker = Symbol("kudzu.binding")
@@ -47,20 +48,21 @@ export function useState(initialValue, name) {
     throw new Error("useState() can only run while rendering a Kudzu component")
   }
 
-  const id = nextRenderId("s")
+  const id = renderContext.listRoot || renderContext.listRowRoot ? nextRowRenderId("s", initialValue) : nextRenderId("s")
   const signal = createSignal(id, initialValue)
 
   const setter = () => {
     throw new Error("State setters are compiled into ordered browser behaviors")
   }
   Object.defineProperty(setter, setterMarker, { value: id })
-  renderContext.states[id] = { name: name ?? id, initialValue, ...(renderContext.scoped ? { lifetime: renderContext.renderScope } : {}) }
+  if (!renderContext.listTemplate) renderContext.states[id] = { name: name ?? id, initialValue, ...(renderContext.scoped ? { lifetime: renderContext.renderScope } : {}) }
   return [signal, setter]
 }
 
 export function useReducer(reducer, initialValue, name) {
   if (typeof reducer !== "function") throw new Error("useReducer() requires a reducer function")
   const [state] = useState(initialValue, name)
+  Object.defineProperty(state, reducerStateMarker, { value: true })
   const dispatch = () => {
     throw new Error("Reducer dispatches are compiled into browser handlers")
   }
@@ -198,8 +200,18 @@ export function binding(value, module, handler, states, scope) {
   return { [bindingMarker]: true, value, ...reactiveDescriptor(module, handler, states, scope) }
 }
 
+export function select(state, truthy, falsy) {
+  if (!state?.[signalMarker]) throw new Error("A reactive selection must target framework state")
+  return { [bindingMarker]: true, value: state.value ? truthy : falsy, state: state.id, truthy, falsy }
+}
+
 export function conditional(kind, value, truthy, falsy, module, handler, states, scope) {
   return { [conditionalMarker]: true, kind, value, truthy, falsy, ...reactiveDescriptor(module, handler, states, scope) }
+}
+
+export function stateConditional(kind, state, truthy, falsy) {
+  if (!state?.[signalMarker]) throw new Error("A reactive conditional must target framework state")
+  return { [conditionalMarker]: true, kind, value: state.value, truthy, falsy, state: state.id }
 }
 
 export function list(items, keyField, render) {
@@ -294,6 +306,7 @@ export function bindingValue(value) {
 }
 
 function bindingDescriptor(value) {
+  if (value.state) return { state: value.state, ...(Object.hasOwn(value, "truthy") ? { truthy: value.truthy, falsy: value.falsy } : {}) }
   return { module: value.module, handler: value.handler, states: value.states, scope: value.scope, scopeStates: value.scopeStates, scopeBindings: value.scopeBindings }
 }
 
@@ -334,7 +347,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowConditions: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -507,12 +520,13 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (!stateIds.size) return renderNode(node.value ? node.truthy() : node.falsy(), namespace, selectValue)
     if (namespace) throw new Error(`Reactive conditional DOM is not supported inside ${namespace}`)
 
-    const id = nextRenderId("c")
+    const id = renderContext.listRoot || renderContext.listRowRoot ? nextRowRenderId("c") : nextRenderId("c")
     renderContext.conditionDepth++
     const truthy = await renderNode(node.truthy(), namespace, selectValue)
     const falsy = await renderNode(node.falsy(), namespace, selectValue)
     renderContext.conditionDepth--
-    const metadata = { id, kind: node.kind, initial: node.value, ...descriptor }
+    const mount = truthy.includes("data-k-") || falsy.includes("data-k-") || truthy.includes("<!--k-text:") || falsy.includes("<!--k-text:")
+    const metadata = { id, kind: node.kind, initial: node.value, ...descriptor, ...(mount ? { mount: true } : {}) }
     for (const stateId of stateIds) renderContext.conditionStates.add(stateId)
     renderContext.conditions.push(metadata)
     renderContext.hasBehaviors = true
@@ -642,8 +656,10 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (/^on[A-Z]/.test(rawName)) {
         const event = rawName.slice(2).toLowerCase()
       if (value?.[behaviorMarker]) {
-        const commands = JSON.stringify(value.commands)
-        attributes += ` data-k-on-${event}='${escapeJsonAttribute(value.commands)}'`
+        const command = value.commands.length === 1 ? value.commands[0] : undefined
+        attributes += command?.[0] === "set" && command[2] === true
+          ? ` data-k-set-true-${event}="${escapeAttribute(command[1])}"`
+          : ` data-k-on-${event}='${escapeJsonAttribute(value.commands)}'`
         renderContext.events.push({ event, commands: value.commands })
       } else if (value?.[nativeBehaviorMarker]) {
         const template = { module: value.module, handler: value.handler, states: value.states, scope: value.scope }
@@ -720,15 +736,20 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 async function renderList(node, namespace, selectValue) {
   if (namespace) throw new Error(`Reactive keyed lists are not supported inside ${namespace}`)
   const id = nextRenderId("l")
-  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.items.value.map(item => item[node.keyField]) }
+  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.items.value.map(item => item[node.keyField]), ...(node.items[reducerStateMarker] ? { reducer: true } : {}) }
   renderContext.listDepth++
   const previousListFields = renderContext.listFields
   const previousListEffectOwners = renderContext.listEffectOwners
+  const previousListRowStates = renderContext.listRowStates
+  const previousListRowConditions = renderContext.listRowConditions
   try {
     renderContext.listTemplate = true
     renderContext.listEffectOwners = []
+    renderContext.listRowStates = []
+    renderContext.listRowConditions = []
     renderContext.listFields = new Set([node.keyField])
-    renderContext.listRoot = { id, state: node.items.id, template: true, effects: [], item: {} }
+    renderContext.listRoot = { id, state: node.items.id, template: true, effects: [], item: {}, rowIndexes: { s: 0, c: 0 } }
+    renderContext.listRowRoot = renderContext.listRoot
     const template = await renderNode(node.render({}), namespace, selectValue)
     if (template.includes("data-k-native-") || template.includes("data-k-effects=")) descriptor.mount = true
     if (template.includes("data-k-effects=")) descriptor.effects = true
@@ -738,13 +759,19 @@ async function renderList(node, namespace, selectValue) {
     if (template.includes("data-k-list-events")) descriptor.events = true
     if (template.includes("data-k-list-expression=")) descriptor.expressions = true
     if (template.includes("data-k-list-expression-attrs")) descriptor.expressionAttributes = true
+    if (renderContext.listRowStates.length) {
+      descriptor.rowStates = renderContext.listRowStates
+      if (renderContext.listRowConditions.length) descriptor.rowConditions = renderContext.listRowConditions.map(({ id }) => id)
+      descriptor.mount = true
+    }
     const seed = listSeed(node.items.value, renderContext.listFields)
     if (seed) descriptor.seed = seed
     let current = ""
     renderContext.listTemplate = false
     renderContext.listInitialMarkers = Boolean(descriptor.conditions)
     for (const item of node.items.value) {
-      renderContext.listRoot = { id, state: node.items.id, key: item[node.keyField], template: false, effects: [], item }
+      renderContext.listRoot = { id, state: node.items.id, key: item[node.keyField], template: false, effects: [], item, rowIndexes: { s: 0, c: 0 } }
+      renderContext.listRowRoot = renderContext.listRoot
       current += await renderNode(node.render(item), namespace, selectValue)
     }
     renderContext.lists.push(descriptor)
@@ -753,10 +780,13 @@ async function renderList(node, namespace, selectValue) {
     return `<template data-k-list='${escapeJsonAttribute(descriptor)}'>${template}</template>${current}<template data-k-list-end="${id}"></template>`
   } finally {
     renderContext.listRoot = undefined
+    renderContext.listRowRoot = undefined
     renderContext.listTemplate = false
     renderContext.listInitialMarkers = false
     renderContext.listFields = previousListFields
     renderContext.listEffectOwners = previousListEffectOwners
+    renderContext.listRowStates = previousListRowStates
+    renderContext.listRowConditions = previousListRowConditions
     renderContext.listDepth--
   }
 }
@@ -765,6 +795,24 @@ function nextRenderId(kind) {
   if (renderContext.scoped) return `${renderContext.renderScope === "layout" ? "l" : "r"}${kind}${renderContext.counters[renderContext.renderScope][kind]++}`
   const counters = { s: "nextState", r: "nextRef", c: "nextCondition", l: "nextList", e: "nextEffect", p: "nextParam" }
   return `${kind}${renderContext[counters[kind]]++}`
+}
+
+function nextRowRenderId(kind, initialValue) {
+  const root = renderContext.listRoot ?? renderContext.listRowRoot
+  const index = root.rowIndexes[kind]++
+  const entries = kind === "s" ? renderContext.listRowStates : renderContext.listRowConditions
+  if (renderContext.listTemplate) {
+    const id = `${nextRenderId(kind)}:$k`
+    entries[index] = kind === "s" ? { id, initialValue } : { id }
+    return id
+  }
+  const entry = entries[index]
+  if (!entry) throw new Error(`Keyed row ${kind === "s" ? "state hooks" : "conditionals"} must have the same order for every item`)
+  return rowRenderId(entry.id, root.key)
+}
+
+function rowRenderId(id, key) {
+  return id.replace("$k", encodeURIComponent(`${typeof key}:${key}`))
 }
 
 function optionValue(props) {

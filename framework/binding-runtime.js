@@ -30,7 +30,8 @@ export function patchBinding(node, target, value) {
   } else if (target === "class" && (value == null || value === false)) {
     node.removeAttribute("class")
   } else if (target === "class") {
-    node.setAttribute("class", String(value))
+    if (node.namespaceURI === "http://www.w3.org/1999/xhtml") node.className = String(value)
+    else node.setAttribute("class", String(value))
   } else if (value == null || (value === false && !isStringBooleanAttribute(target))) {
     node.removeAttribute(target)
   } else {
@@ -77,7 +78,7 @@ function mountBindings(root) {
     if (node.dataset.kBindAttrs) descriptors.push(...JSON.parse(node.dataset.kBindAttrs).map(({ target, ...descriptor }) => [target, descriptor]))
     for (const [target, descriptor] of descriptors) {
       if (descriptor.state) {
-        const binding = { node, target, read: () => browserState.get(descriptor.state) }
+        const binding = { node, target, read: Object.hasOwn(descriptor, "truthy") ? () => browserState.get(descriptor.state) ? descriptor.truthy : descriptor.falsy : () => browserState.get(descriptor.state) }
         register(bindingTargets, descriptor.state, binding)
         registrations.push([descriptor.state, binding])
         patchBinding(node, target, binding.read())
@@ -124,8 +125,8 @@ function mountConditions(root) {
     const truthy = start.content.querySelector("template[data-k-true]")
     const falsy = start.content.querySelector("template[data-k-false]")
     if (!end || !truthy || !falsy) continue
-    const condition = { start, end, truthy, falsy, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial) }
-    loadEvaluator(descriptor).then(evaluator => {
+    const condition = { start, end, truthy, falsy, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount }
+    const mount = evaluator => {
       if (!start.isConnected) return
       condition.read = evaluator.read
       const registrations = []
@@ -135,7 +136,9 @@ function mountConditions(root) {
       }
       conditionRegistrations.set(start, { condition, registrations })
       updateCondition(condition)
-    }).catch(error => console.error(error))
+    }
+    if (descriptor.state) mount({ read: () => browserState.get(descriptor.state), stateIds: [descriptor.state] })
+    else loadEvaluator(descriptor).then(mount).catch(error => console.error(error))
   }
 }
 
@@ -143,16 +146,16 @@ function updateCondition(condition) {
   const value = condition.read()
   const next = conditionKey(condition.kind, value)
   if (next === condition.current) return
-  removeConditionRange(condition.start, condition.end)
+  removeConditionRange(condition.start, condition.end, condition.mount)
   const truthy = Boolean(value)
   const falseText = condition.kind === "and" && !truthy ? renderFalsy(value) : ""
   const fragment = falseText
     ? textFragment(condition.end.ownerDocument, falseText)
     : (truthy ? condition.truthy : condition.falsy).content.cloneNode(true)
-  const nodes = [...fragment.childNodes]
+  const nodes = condition.mount ? [...fragment.childNodes] : undefined
   condition.end.parentNode.insertBefore(fragment, condition.end)
   condition.current = next
-  for (const node of nodes) mountDom(node)
+  if (condition.mount) for (const node of nodes) mountDom(node)
   const select = condition.start.closest("select[data-k-bind-value]")
   for (const binding of new Set((bindingRegistrations.get(select) ?? []).map(([, entry]) => entry))) {
     patchBinding(binding.node, binding.target, binding.read())
@@ -183,13 +186,16 @@ function unmountConditions(root) {
   }
 }
 
-function removeConditionRange(start, end) {
+function removeConditionRange(start, end, mount) {
+  if (start.nextSibling === end) return
   const range = start.ownerDocument.createRange()
   range.setStartAfter(start)
   range.setEndBefore(end)
-  const root = range.commonAncestorContainer
-  const nodes = matching(root, "*").filter(node => range.comparePoint(node, 0) === 0)
-  for (const node of nodes) if (!nodes.some(parent => parent !== node && parent.contains(node))) unmountDom(node)
+  if (mount) {
+    const root = range.commonAncestorContainer
+    const nodes = matching(root, "*").filter(node => range.comparePoint(node, 0) === 0)
+    for (const node of nodes) if (!nodes.some(parent => parent !== node && parent.contains(node))) unmountDom(node)
+  }
   range.deleteContents()
 }
 
@@ -208,6 +214,9 @@ function textFragment(document, value) {
 }
 
 function findEnd(start, id) {
+  for (let node = start.nextSibling; node; node = node.nextSibling) {
+    if (node.nodeType === Node.ELEMENT_NODE && node.matches("template[data-k-if-end]") && node.dataset.kIfEnd === id) return node
+  }
   return [...start.ownerDocument.querySelectorAll("template[data-k-if-end]")]
     .find(node => node.dataset.kIfEnd === id)
 }

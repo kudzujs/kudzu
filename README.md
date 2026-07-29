@@ -190,7 +190,7 @@ function Controls({ dispatch }: { dispatch: Dispatch<TodoAction> }) {
 return <Controls dispatch={dispatch} />
 ```
 
-Kudzu specializes that call at build time; no function prop or child component survives in the browser. The direct child may also be a keyed row such as `todos.map(todo => <Item key={todo.id} todo={todo} dispatch={dispatch} />)`. Its inline or simple `const` event handler receives the latest keyed item, while relative TypeScript constants and helpers used inside the handler are renamed for call-site safety and bundled into the parent handler graph. Lazy initializers, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, further dispatch forwarding, reducer-dispatch keyed-row effects or local state, and reducer dispatch through context remain unsupported.
+Kudzu specializes that call at build time; no function prop or child component survives in the browser. Reducers follow React's pure reducer contract. The direct child may also be a keyed row such as `todos.map(todo => <Item key={todo.id} todo={todo} dispatch={dispatch} />)`. Its inline or simple `const` event handler receives the latest keyed item. That row may declare one top-level `useState` with a primitive literal initial value; the existing list key owns its state across item updates and reorder, and removal releases it so a later re-add starts from the initializer. Reactive attributes and conditional DOM use the existing binding capability. Relative TypeScript constants and helpers used inside the handler are renamed for call-site safety and bundled into the parent handler graph. Lazy state or reducer initializers, multiple or non-keyed specialized local states, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, further dispatch forwarding, reducer-dispatch keyed-row effects, and reducer dispatch through context remain unsupported.
 
 That specialized component may pass one inline or simple `const` callback containing dispatch to one relative-imported synchronous child with an intrinsic root:
 
@@ -737,7 +737,21 @@ Each keyed row owns one effect depending on `item.name`. The measured actions re
 
 This is a post-initialization runtime microbenchmark, not an architecture-equivalent loading comparison. Kudzu and Astro emit all 1,000 rows in HTML while React, Vue, and Svelte use empty CSR shells, so their JavaScript, output, and build columns are observations rather than framework-size or startup claims. Once every target has 1,000 rows and effects ready, targeted changed-root notification reduces Kudzu's selected update from 6.2 to 3.4 ms, versus Vue at 4.7 ms, Svelte at 5.2 ms, and React at 12.3 ms. It adds 126 B gzip to Kudzu's initial graph. List reconciliation remains O(n), which dominates unrelated-field updates; Vue measures 2.3 ms there versus Kudzu's 2.9 ms. Astro is the hand-written direct-DOM lower bound.
 
-The general benchmark snapshot was collected on July 22, 2026 and the keyed-effect comparison on July 27, 2026 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
+### 1,000-item Keyed Row State
+
+Row 500 enters local edit state, the list reverses while preserving that row and its input DOM identity, then the row is removed and the same key is re-added with fresh non-editing state. Every target passed seven fresh-profile correctness runs; timings start at click and stop only after row order, unique IDs, labels, local state, and DOM identity match.
+
+| Framework | Initial rows | Initial JS gzip | Total output | Build | Edit | Reverse | Remove | Re-add |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Astro native | Yes | **373 B** | **83.7 KB** | 926 ms | **1.6 ms** | **5.9 ms** | **1.2 ms** | **1.4 ms** |
+| Kudzu | Yes | 8.5 KB | 570.7 KB | **449 ms** | 2.7 ms | 10.1 ms | 3.0 ms | 3.1 ms |
+| Vue CSR | No | 24.4 KB | 61.6 KB | 820 ms | 2.8 ms | 11.7 ms | 4.0 ms | 4.2 ms |
+| Svelte CSR | No | 13.1 KB | 33.8 KB | 918 ms | 2.6 ms | 47.9 ms | 4.5 ms | 5.4 ms |
+| React CSR | No | 59.4 KB | 189.5 KB | 1,074 ms | 5.9 ms | 26.4 ms | 9.0 ms | 6.5 ms |
+
+Kudzu builds fastest and beats React, Vue, and Svelte on all four operations. Pure reducer identity fast paths skip unchanged-item validation for reorder, one removal, and append while preserving direct keyed DOM identity. Astro remains the hand-written native lower bound. Kudzu's 570.7 KB output includes complete initial HTML plus per-row direct-patch descriptors; React, Vue, and Svelte ship CSR shells, so deploy size and loading architecture are not equivalent comparisons.
+
+The general benchmark snapshot was collected on July 22, 2026, the keyed-effect comparison on July 27, and keyed-row-state on July 28 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 
 ## Development
 

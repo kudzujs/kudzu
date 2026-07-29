@@ -1,4 +1,12 @@
 export function applyCommands(state, commands, commit, log = console.log) {
+  if (commands.length === 1 && commands[0][0] !== "log") {
+    const [operation, id, operand] = commands[0]
+    const current = state.get(id)
+    const value = operation === "add" ? current + operand : operand
+    state.set(id, value)
+    commit(id, value)
+    return
+  }
   const changed = new Set()
 
   for (const [operation, id, operand] of commands) {
@@ -18,6 +26,8 @@ export const browserState = new Map()
 const committers = []
 const mountHooks = []
 const unmountHooks = []
+const textTargets = new Map()
+const mountedText = new WeakSet()
 
 /* list-item-hooks */
 const listItemHooks = new Map()
@@ -50,15 +60,33 @@ export function registerUnmountHook(unmount) {
 }
 
 export function commitDom(id, value) {
-  for (const node of document.querySelectorAll(`[data-k-text="${id}"]`)) node.textContent = value
+  for (const node of textTargets.get(id) ?? []) {
+    if (node.isConnected) node.textContent = value
+    else textTargets.get(id).delete(node)
+  }
   for (const commit of committers) commit(id)
 }
 
 export function mountText(root) {
   for (const node of matching(root, "[data-k-text]")) {
+    if (mountedText.has(node)) continue
+    mountedText.add(node)
     const id = node.dataset.kText
     if (browserState.has(id)) node.textContent = browserState.get(id)
     else browserState.set(id, JSON.parse(node.dataset.kValue))
+    const targets = textTargets.get(id) ?? new Set()
+    targets.add(node)
+    textTargets.set(id, targets)
+  }
+}
+
+function unmountText(root) {
+  for (const node of matching(root, "[data-k-text]")) {
+    const id = node.dataset.kText
+    const targets = textTargets.get(id)
+    targets?.delete(node)
+    if (!targets?.size) textTargets.delete(id)
+    mountedText.delete(node)
   }
 }
 
@@ -69,6 +97,7 @@ export function mountDom(root) {
 
 export function unmountDom(root) {
   for (const unmount of unmountHooks) unmount(root)
+  unmountText(root)
 }
 
 if (typeof document !== "undefined") {
@@ -79,8 +108,14 @@ if (typeof document !== "undefined") {
   const eventNames = ["click", "input", "change"]
   for (const eventName of eventNames) {
     document.addEventListener(eventName, event => {
-      const target = event.target.closest(`[data-k-on-${eventName}]`)
+      const target = event.target.closest(`[data-k-set-true-${eventName}],[data-k-on-${eventName}]`)
       if (!target) return
+      const direct = target.dataset[`kSetTrue${capitalize(eventName)}`]
+      if (direct) {
+        browserState.set(direct, true)
+        commitDom(direct, true)
+        return
+      }
       const commands = target.dataset[`kOn${capitalize(eventName)}`]
       applyCommands(browserState, JSON.parse(commands), commitDom)
     })

@@ -189,6 +189,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasListExpressionAttributes = plans.some(plan => plan.lists.some(list => list.expressionAttributes))
   const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed))
   const hasListEffects = plans.some(plan => plan.lists.some(list => list.effects))
+  const hasListRowStates = plans.some(plan => plan.lists.some(list => list.rowStates))
   const hasItemDependencies = plans.some(plan => plan.effects.some(effect => effect.itemDependencies?.length))
   const hasListAsyncParts = hasListExpressions || hasListExpressionAttributes || hasListConditions
   const hasListMounts = hasListConditions || plans.some(plan => plan.lists.some(list => list.mount))
@@ -270,7 +271,8 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_LIST_EFFECTS__: String(hasListEffects),
       __KUDZU_LIST_ASYNC_PARTS__: String(hasListAsyncParts),
       __KUDZU_LIST_MOUNTS__: String(hasListMounts),
-      __KUDZU_LIST_ITEM_HOOKS__: String(hasItemDependencies)
+      __KUDZU_LIST_ITEM_HOOKS__: String(hasItemDependencies),
+      __KUDZU_LIST_ROW_STATES__: String(hasListRowStates)
     })
   }
   if (hasNativeHandlers) {
@@ -1629,6 +1631,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     let usesList = false
     let usesListEffects = false
     let usesListItem = false
+    let usesRowState = false
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -1736,10 +1739,26 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
     const componentSpecializations = new WeakMap()
     const reducerComponentCalls = new WeakSet()
+    const reducerRowStateCalls = []
     const specializedDeclarations = new WeakSet()
     const stateBackedComponentFunctions = new WeakSet()
     const stateBackedComponentRoots = []
     let specializedImportIndex = 0
+    const registerReducerRowState = (call, specialization) => {
+      if (!specialization.rowState) return
+      let owner
+      for (let current = call.parent; current; current = current.parent) {
+        if (isFunctionLike(current) && reducersByFunction.has(current)) {
+          owner = current
+          break
+        }
+      }
+      const setters = settersByFunction.get(owner) ?? new Map()
+      setters.set(specialization.rowState.setter, specialization.rowState.state)
+      settersByFunction.set(owner, setters)
+      reducerRowStateCalls.push(call)
+      usesRowState = true
+    }
     const mergeSpecializedImports = (root, componentSource, call) => {
       const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
       for (const name of runtimeImportNames(componentSource, false)) if (referenceIdentifiers(root, name).length) fail(call, "Imported specialized component handlers may only use relative TypeScript runtime imports")
@@ -1837,6 +1856,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
         const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail, "Reducer-dispatch")
         if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
+        registerReducerRowState(call, specialization)
         specialization.root = expandReducerCallbacks(specialization.root, component.function.getSourceFile(), call)
         componentSpecializations.set(call, specialization)
         reducerComponentCalls.add(call)
@@ -1860,6 +1880,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
         const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Reducer-dispatch")
         if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
+        registerReducerRowState(call, specialization)
         specialization.root = expandReducerCallbacks(specialization.root, componentSource, call)
         specialization.root = mergeSpecializedImports(specialization.root, componentSource, call)
         synthesizeTree(specialization.root)
@@ -1896,6 +1917,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       return tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase() ? [tag.text] : []
     }))
     const keyedComponentCalls = new Set(rawRenderedLists.map(({ parts }) => parts.root))
+    for (const call of reducerRowStateCalls) if (!keyedComponentCalls.has(call)) fail(call, "Reducer-dispatch component useState() is only supported in a direct keyed row")
     for (const name of listComponentNames) {
       let component = components.get(name)
       const local = Boolean(component)
@@ -1935,6 +1957,15 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         originalParts.callback.equalsGreaterThanToken,
         root
       )
+      if (specialization?.stateDeclarations.length) callback = factory.updateArrowFunction(
+        callback,
+        callback.modifiers,
+        callback.typeParameters,
+        callback.parameters,
+        callback.type,
+        callback.equalsGreaterThanToken,
+        factory.createBlock([...specialization.stateDeclarations, factory.createReturnStatement(root)], true)
+      )
       if (callback !== originalParts.callback) {
         ts.setParentRecursive(callback, false)
         callback.parent = originalParts.callback.parent
@@ -1945,7 +1976,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         calculation.parent = callback
         validateListExpression(calculation, parts.item, originalParts.root, fail)
       }
-      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions)
+      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization?.rowState)
       if (specialization?.effects.length) {
         usesListEffects = true
         const statements = specialization.effects.map(entry => {
@@ -2070,7 +2101,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         ])
       }
 
-      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && (node.initializer.expression.text === "useState" && node.initializer.arguments.length === 1 || node.initializer.expression.text === "useReducer" && node.initializer.arguments.length === 2)) {
+      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ((node.initializer.expression.text === "useState" || node.initializer.expression.text === "__kRowUseState") && node.initializer.arguments.length === 1 || node.initializer.expression.text === "useReducer" && node.initializer.arguments.length === 2)) {
         const stateElement = node.name.elements[0]
         if (!stateElement || !ts.isBindingElement(stateElement) || !ts.isIdentifier(stateElement.name)) return node
         const initializer = factory.updateCallExpression(node.initializer, node.initializer.expression, node.initializer.typeArguments, [
@@ -2170,8 +2201,14 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
 
     const behaviorImports = [factory.createImportSpecifier(false, factory.createIdentifier("behavior"), factory.createIdentifier("__kBehavior"))]
     if (nativeHandlers.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("nativeBehavior"), factory.createIdentifier("__kNativeBehavior")))
-    if (usesBinding) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
-    if (usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("conditional"), factory.createIdentifier("__kConditional")))
+    if (usesBinding) {
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("select"), factory.createIdentifier("__kSelect")))
+    }
+    if (usesConditional) {
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("conditional"), factory.createIdentifier("__kConditional")))
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("stateConditional"), factory.createIdentifier("__kStateConditional")))
+    }
     if (usesList) {
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("list"), factory.createIdentifier("__kList")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listExpression"), factory.createIdentifier("__kListExpression")))
@@ -2181,6 +2218,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
     if (usesListItem && !usesList) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
     if (usesListEffects) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useEffect"), factory.createIdentifier("__kListUseEffect")))
+    if (usesRowState) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useState"), factory.createIdentifier("__kRowUseState")))
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
@@ -2399,7 +2437,7 @@ function insideJsxEventHandler(node, root) {
   return false
 }
 
-function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions) {
+function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowState) {
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
   }
@@ -2424,6 +2462,13 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
       const condition = conditionalParts(expression)
       if (condition && containsJsx(expression)) {
         if (conditionDepth) fail(node, "Nested item conditions are not supported in keyed lists")
+        if (rowState && referencedStateNames(condition.condition, setters).has(rowState.state)) {
+          conditionDepth++
+          visit(condition.truthy)
+          visit(condition.falsy)
+          conditionDepth--
+          return
+        }
         if (!referencesIdentifier(condition.condition, item)) fail(node, "Keyed list item conditions must read the item")
         validateListExpression(condition.condition, item, node, fail)
         listConditions.set(node.expression, { ...condition, item })
@@ -2489,6 +2534,8 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   let returned
   const calculations = []
   const effectCalls = []
+  const stateDeclarations = []
+  let rowState
   if (!ts.isBlock(component.body)) {
     returned = component.body
   } else {
@@ -2502,6 +2549,25 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       }
       if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, `${label} component locals must be single const declarations`)
       const declaration = statement.declarationList.declarations[0]
+      if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState") {
+        if (label !== "Reducer-dispatch") fail(declaration, `${label} components cannot declare local state`)
+        if (rowState) throw sourceNodeError(declaration, component.getSourceFile(), "Reducer-dispatch keyed row components may declare exactly one top-level useState()")
+        if (declaration.initializer.arguments.length !== 1 || !isPrimitiveDefaultLiteral(declaration.initializer.arguments[0])) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Reducer-dispatch keyed row useState() must use one primitive literal initial value; lazy initialization is not supported")
+        if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), "Reducer-dispatch keyed row useState() must use [state, setter] identifier destructuring")
+        const suffix = Math.max(0, call.pos)
+        const state = `__kRowState${suffix}`
+        const setter = `__kRowSetter${suffix}`
+        substitutions.set(declaration.name.elements[0].name.text, factory.createIdentifier(state))
+        substitutions.set(declaration.name.elements[1].name.text, factory.createIdentifier(setter))
+        const binding = factory.createArrayBindingPattern([
+          factory.createBindingElement(undefined, undefined, factory.createIdentifier(state)),
+          factory.createBindingElement(undefined, undefined, factory.createIdentifier(setter))
+        ])
+        const initializer = factory.createCallExpression(factory.createIdentifier("__kRowUseState"), undefined, [cloneAst(declaration.initializer.arguments[0], factory, context)])
+        stateDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(binding, undefined, undefined, initializer)], ts.NodeFlags.Const)))
+        rowState = { state, setter }
+        continue
+      }
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
       const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
       calculations.push({ name: declaration.name.text, expression: calculation })
@@ -2509,6 +2575,15 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     }
     returned = last.expression
   }
+  let unsupportedState
+  const findUnsupportedState = node => {
+    if (unsupportedState) return
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useState") unsupportedState = node
+    ts.forEachChild(node, findUnsupportedState)
+  }
+  findUnsupportedState(returned)
+  for (const calculation of calculations) findUnsupportedState(calculation.expression)
+  if (unsupportedState) throw sourceNodeError(unsupportedState, component.getSourceFile(), label === "Reducer-dispatch" ? "Reducer-dispatch keyed row useState() must be one top-level const declaration" : `${label} components cannot declare local state`)
   let root = unwrapExpression(substituteClone(returned, substitutions, factory, context))
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, `${label} component must return one JSX element`)
   const tag = jsxTagName(root)
@@ -2524,7 +2599,9 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     calculations: calculations
       .filter(calculation => label !== "Reducer-dispatch" || !isFunctionLike(calculation.expression) || !isEventOnlyComponentLocal(returned, calculation.name))
       .map(calculation => calculation.expression),
-    effects
+    effects,
+    stateDeclarations,
+    rowState
   }
 }
 
@@ -2801,13 +2878,25 @@ function isJsxLocalValue(expression, known) {
 }
 
 function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl) {
+  const parts = conditionalParts(expression)
+  const state = parts && directStateIdentifier(parts.condition, setters)
+  if (state && isPrimitiveDefaultLiteral(parts.truthy) && isPrimitiveDefaultLiteral(parts.falsy)) {
+    return factory.createCallExpression(factory.createIdentifier("__kSelect"), undefined, [state, parts.truthy, parts.falsy])
+  }
   return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl))
 }
 
 function compileConditional(kind, expression, truthy, falsy, setters, factory, context, reactiveBindings, handlerUrl) {
-  const [initial, ...descriptor] = compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl)
+  const state = directStateIdentifier(expression, setters)
   const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
+  if (state) return factory.createCallExpression(factory.createIdentifier("__kStateConditional"), undefined, [factory.createStringLiteral(kind), state, thunk(truthy), thunk(falsy)])
+  const [initial, ...descriptor] = compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl)
   return factory.createCallExpression(factory.createIdentifier("__kConditional"), undefined, [factory.createStringLiteral(kind), initial, thunk(truthy), thunk(falsy), ...descriptor])
+}
+
+function directStateIdentifier(expression, setters) {
+  const value = unwrapExpression(expression)
+  return ts.isIdentifier(value) && new Set(setters.values()).has(value.text) ? value : undefined
 }
 
 function compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl) {

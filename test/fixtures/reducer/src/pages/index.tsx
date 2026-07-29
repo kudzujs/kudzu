@@ -18,8 +18,13 @@ export default function ReducerPage() {
     dispatch({ type: "add", title: "Ship" })
   }
 
+  const reverseTodos = () => dispatch({ type: "reverse" })
+  const restoreTodo = () => dispatch({ type: "restore", todo: { id: 2, title: "Restored" } })
+
   return <main>
     <button id="add" onClick={addTodos}>Add</button>
+    <button id="reverse" onClick={reverseTodos}>Reverse</button>
+    <button id="restore" onClick={restoreTodo}>Restore</button>
     <LocalControls send={dispatch} />
     <ImportedControls dispatch={dispatch} />
     <span id="parent-title">{importedTitle}</span>

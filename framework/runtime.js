@@ -24,7 +24,10 @@ if(typeof document!=="undefined"){
 
   const eventNames = ["click", "input", "change"]
   for(const eventName of eventNames)document.addEventListener(eventName,event=>{
-      const target=event.target.closest(`[data-k-on-${eventName}]`)
-      if(target)applyCommands(browserState,JSON.parse(target.getAttribute(`data-k-on-${eventName}`)),commitDom)
+      const target=event.target.closest(`[data-k-set-true-${eventName}],[data-k-on-${eventName}]`)
+      if(!target)return
+      const direct=target.getAttribute(`data-k-set-true-${eventName}`)
+      if(direct){browserState.set(direct,true);commitDom(direct,true)}
+      else applyCommands(browserState,JSON.parse(target.getAttribute(`data-k-on-${eventName}`)),commitDom)
     })
 }
