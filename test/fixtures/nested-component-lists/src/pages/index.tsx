@@ -33,6 +33,11 @@ export default function NestedComponentListsPage() {
       items: category.items.map(item => item.id === "a1" ? { ...item, title: "Sauna Restored", available: true } : item)
     })))}>Restore</button>
     <button data-action="reverse" onClick={() => setCategories(categories.map(category => ({ ...category, items: [...category.items].reverse() })))}>Reverse</button>
+    <button data-action="add" onClick={() => setCategories(categories.map(category => ({ ...category, items: [...category.items, { id: "a3", title: "Facial", available: true }] })))}>Add</button>
+    <button data-action="hide-added" onClick={() => setCategories(categories.map(category => ({
+      ...category,
+      items: category.items.map(item => item.id === "a3" ? { ...item, available: false } : item)
+    })))}>Hide added</button>
 
     <div data-local-categories>{categories.map(category => <section key={category.id} data-category={category.id}>
       <h2>{category.title}</h2>

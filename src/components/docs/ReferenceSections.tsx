@@ -75,13 +75,13 @@ export function BenchmarksSection() {
     <p>Row 500 enters edit state, survives reverse with the same row and input DOM nodes, then removal and re-add must create fresh non-editing state. Kudzu builds fastest and beats React, Vue, and Svelte on every operation. Astro is the hand-written native lower bound. Kudzu and Astro emit all initial rows; the other targets are CSR, so artifact sizes and loading architecture are not equivalent.</p>
     <h3>1,000-row nested child components</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "Initial JS gzip", "Build", "Child update + condition", "Child reverse", "Parent reverse", "Parent remove"]} rows={[
-      ["Astro native", "Yes", "287 B", "866 ms", "0.4 ms", "0.3 ms", "3.1 ms", "0.1 ms"],
-      ["Kudzu", "Yes", "6.5 KB", "404 ms", "1.3 ms", "0.4 ms", "4.7 ms", "0.7 ms"],
-      ["Svelte CSR", "No", "13.1 KB", "880 ms", "2.2 ms", "0.9 ms", "5.2 ms", "0.9 ms"],
-      ["Vue CSR", "No", "24.6 KB", "807 ms", "4.0 ms", "2.2 ms", "4.9 ms", "1.8 ms"],
-      ["React CSR", "No", "59.5 KB", "1,047 ms", "8.3 ms", "3.8 ms", "6.6 ms", "3.8 ms"]
+      ["Astro native", "Yes", "287 B", "871 ms", "0.4 ms", "0.2 ms", "3.2 ms", "0.2 ms"],
+      ["Kudzu", "Yes", "6.6 KB", "402 ms", "1.2 ms", "0.4 ms", "4.5 ms", "0.6 ms"],
+      ["Svelte CSR", "No", "13.1 KB", "868 ms", "2.2 ms", "0.8 ms", "5.2 ms", "1.1 ms"],
+      ["Vue CSR", "No", "24.6 KB", "792 ms", "4.2 ms", "2.3 ms", "5.1 ms", "2.1 ms"],
+      ["React CSR", "No", "59.5 KB", "1,037 ms", "9.2 ms", "4.3 ms", "7.5 ms", "3.8 ms"]
     ]} />
-    <p>The fixture renders 100 keyed parents with 10 keyed child components each. The selected update changes child text and flips its condition while preserving the child root; subsequent operations verify child and parent identity. Kudzu beats Svelte, Vue, and React on all four operations and Astro remains the native lower bound. Kudzu's complete initial HTML and repeated inert branch descriptors produce 677.5 KB raw deploy output, 25.5 KB as the sum of gzip-compressed files; the CSR targets omit initial rows, so output sizes are not architecture-equivalent.</p>
+    <p>The fixture renders 100 keyed parents with 10 keyed child components each. The selected update changes child text and flips its condition while preserving the child root; subsequent operations verify child and parent identity. Kudzu beats Svelte, Vue, and React on all four operations and Astro remains the native lower bound. Sharing inert child-condition branches through each live child-list prototype reduced Kudzu's HTML from 676,086 B to 509,086 B and total deploy output from 693,806 B to 527,256 B raw; the sum of gzip-compressed files is 24,476 B. The CSR targets omit initial rows, so output sizes are not architecture-equivalent.</p>
     <p>These results describe one matched fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves eligible application transitions; direct loads still transfer and render complete standalone documents.</p>
   </section>
 }

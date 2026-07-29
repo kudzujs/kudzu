@@ -585,7 +585,10 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
       ? ""
       : node.kind === "and" && !node.value ? escapeHtml(renderFalsy(node.value)) : node.value ? truthy : falsy
     const initial = renderContext.listTemplate ? "" : ` data-k-list-current="${escapeAttribute(key)}"`
-    return `<template data-k-list-condition='${escapeJsonAttribute(descriptor)}'${initial}><template data-k-list-true>${truthy}</template><template data-k-list-false>${falsy}</template></template>${current}<template data-k-list-condition-end></template>`
+    const branches = renderContext.listInitialMarkers && !renderContext.listTemplate && owner?.descriptor.ownerField
+      ? ""
+      : `<template data-k-list-true>${truthy}</template><template data-k-list-false>${falsy}</template>`
+    return `<template data-k-list-condition='${escapeJsonAttribute(descriptor)}'${initial}>${branches}</template>${current}<template data-k-list-condition-end></template>`
   }
   if (!node || typeof node !== "object" || !("type" in node)) {
     throw new Error(`Cannot render ${String(node)}`)

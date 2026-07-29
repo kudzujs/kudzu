@@ -927,6 +927,8 @@ test("specializes local and imported nested keyed row components", async t => {
   assert.equal(plan.lists.filter(list => list.ownerField === "items").length, 2)
   assert.equal(plan.lists.filter(list => list.ownerField === "items" && list.conditions).length, 2)
   assert.equal(plan.lists.filter(list => list.child).some(list => list.conditions), false)
+  assert.equal((html.match(/data-k-list-condition='/g) ?? []).length, 8)
+  assert.equal((html.match(/data-k-list-true/g) ?? []).length, 4)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runNestedComponentListBrowserTest(fixture, chrome)
 })
@@ -2575,6 +2577,14 @@ try {
   document.querySelector('[data-action="reverse"]').click()
   await wait()
   if (localItems()[0] !== localMassage || localItems()[1] !== localSauna || importedItems()[0] !== importedMassage || importedItems()[1] !== importedSauna) throw new Error("reverse")
+  document.querySelector('[data-action="add"]').click()
+  await wait()
+  const localFacial = local("a3")
+  const importedFacial = imported("a3")
+  if (!localFacial?.querySelector("strong[data-status]") || importedFacial?.querySelector("[data-status]")?.textContent !== "Available") throw new Error("added-condition")
+  document.querySelector('[data-action="hide-added"]').click()
+  await wait()
+  if (local("a3") !== localFacial || imported("a3") !== importedFacial || localFacial.querySelector("[data-status]") || importedFacial.querySelector("[data-status]")?.textContent !== "Unavailable") throw new Error("added-condition-update")
   document.body.dataset.nestedComponentListTest = "pass"
 } catch (error) {
   document.body.dataset.nestedComponentListTest = "fail-" + error.message

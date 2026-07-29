@@ -9,6 +9,7 @@ const itemParts = new WeakMap()
 const listItems = new WeakMap()
 const ownedLists = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
 const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
+const conditionTemplates = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}${__KUDZU_LIST_EFFECTS__ ? ",[data-k-effects]" : ""}`
 
 function commitLists(id) {
@@ -39,7 +40,12 @@ function mountLists(root) {
     if (__KUDZU_LIST_ROW_STATES__ && descriptor.rowStates) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index])
     const templateRoot = start.content.firstElementChild
     const parts = listItemPartPlan(templateRoot, descriptor.nested)
-    for (const root of roots) __KUDZU_LIST_CONDITIONS__ && descriptor.conditions ? listItemParts(root, descriptor.nested) : mapListItemParts(parts, root, descriptor.nested)
+    for (const root of roots) {
+      if (__KUDZU_LIST_CONDITIONS__ && descriptor.conditions) {
+        const initialParts = listItemParts(root, descriptor.nested)
+        mapListConditionTemplates(parts.conditions, initialParts.conditions)
+      } else mapListItemParts(parts, root, descriptor.nested)
+    }
     if (__KUDZU_LIST_SEEDS__ && descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
     const items = browserState.get(descriptor.state)
     const list = {
@@ -429,7 +435,7 @@ function listItemParts(root, nested = false) {
 function listItemPartPlan(template, nested = false) {
   const source = nested ? ownedElements(template) : [template, ...template.querySelectorAll("*")]
   const indexes = new Map(source.map((node, index) => [node, index]))
-  const parts = listItemParts(template)
+  const parts = listItemParts(template, nested)
   return {
     directTexts: parts.directTexts.map(([node, field]) => [indexes.get(node), field]),
     texts: __KUDZU_LIST_TEXT_RANGES__ ? parts.texts.map(([node, field]) => [indexes.get(node), field]) : [],
@@ -437,7 +443,7 @@ function listItemPartPlan(template, nested = false) {
     events: __KUDZU_LIST_EVENTS__ ? parts.events.map(([node, events]) => [indexes.get(node), events]) : [],
     expressions: __KUDZU_LIST_EXPRESSIONS__ ? parts.expressions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : [],
     expressionAttributes: __KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? parts.expressionAttributes.map(([node, attributes]) => [indexes.get(node), attributes]) : [],
-    conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor]) : [],
+    conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [indexes.get(node), descriptor, node]) : [],
     effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(node => indexes.get(node)) : []
   }
 }
@@ -459,6 +465,14 @@ function mapListItemParts(parts, root, nested = false) {
   })
 }
 
+function mapListConditionTemplates(planned, initial) {
+  if (planned.length !== initial.length) throw new Error("Keyed list condition markers do not match its template")
+  for (let index = 0; index < initial.length; index++) {
+    const marker = initial[index][0]
+    if (!marker.content.querySelector("template[data-k-list-true],template[data-k-list-false]")) conditionTemplates.set(marker, planned[index][2])
+  }
+}
+
 function updateListCondition(marker, kind, value, item) {
   const current = listConditionKey(kind, value)
   if (marker.dataset.kListCurrent === current) return
@@ -472,9 +486,12 @@ function updateListCondition(marker, kind, value, item) {
     node = next
   }
   const falseText = kind === "and" && !value ? renderFalsy(value) : ""
+  const selector = value ? "template[data-k-list-true]" : "template[data-k-list-false]"
+  const branch = marker.content.querySelector(selector) ?? conditionTemplates.get(marker)?.content.querySelector(selector)
+  if (!falseText && !branch) throw new Error("Keyed list condition marker has no branch template")
   const fragment = falseText
     ? marker.ownerDocument.createDocumentFragment()
-    : marker.content.querySelector(value ? "template[data-k-list-true]" : "template[data-k-list-false]").content.cloneNode(true)
+    : branch.content.cloneNode(true)
   if (falseText) fragment.append(marker.ownerDocument.createTextNode(falseText))
   const nodes = [...fragment.childNodes]
   const revision = (revisions.get(marker) ?? 0) + 1
