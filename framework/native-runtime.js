@@ -2,6 +2,11 @@ import { browserState, commitDom, registerMountHook, registerUnmountHook } from 
 import { deserialize } from "./serialization.js"
 
 const registrations = new WeakMap()
+const modules = new Map()
+
+export function registerNativeModules(entries) {
+  for (const [url, module] of entries) modules.set(url, module)
+}
 
 export function createNativeContext(state, stateIds, commit, serializedScope = {}) {
   const changed = new Set()
@@ -52,7 +57,6 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
 
 if (typeof document !== "undefined") {
   const eventNames = ["click", "input", "change", "submit", "keydown", "keyup"]
-  const modules = new Map([])
   const mount = root => mountNative(root, eventNames, modules)
   registerMountHook(mount)
   registerUnmountHook(unmountNative)

@@ -79,7 +79,7 @@ export default function HomePage() {
 npm run dev
 ```
 
-Pages live in `src/pages`; `index.tsx` maps to `/`. `npm run dev` serves locally on `127.0.0.1`, reloads the browser after successful rebuilds, and shows build failures in an error overlay. Across that full-page reload, compatible Kudzu logical state is briefly preserved by route-unique state variable name for the current pathname, query, and hash, including controlled properties, conditions, and keyed-list arrays. Renamed, removed, and duplicate-named state is skipped. Uncontrolled DOM state, focus, selection, and imperative DOM mutations are not preserved. Set `PORT` to change the default port of `3000`. The development client and state snapshot are dev-only; production output in `dist/` is unaffected.
+Pages live in `src/pages`; `index.tsx` maps to `/`. `npm run dev` serves locally on `127.0.0.1`, reloads the browser after successful rebuilds, and shows build failures in an error overlay. Across that full-page reload, compatible Kudzu logical state is briefly preserved by route-unique state variable name for the current pathname, query, and hash, including controlled properties, conditions, and keyed-list arrays. Renamed, removed, and duplicate-named state is skipped. Uncontrolled DOM state, focus, selection, and imperative DOM mutations are not preserved. The server starts at `PORT` or `3000` and increments until it finds an available port. Set `HOST=0.0.0.0` when a local reverse proxy or container must reach the server. The development client and state snapshot are dev-only; production output in `dist/` is unaffected.
 
 Dynamic static pages use bracket parameters and `getStaticPaths()`:
 

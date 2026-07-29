@@ -381,7 +381,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
       ? `<script type="module"${capability} src="${escapeAttribute(metadata.runtimeAsset ?? assetPath(metadata.base, "assets/kudzu.js"))}"></script>`
       : ""
     const nativeRuntime = renderContext.hasNativeBehaviors
-      ? `<script type="module"${capability} src="${assetPath(metadata.base, "assets/kudzu-native.js")}"></script>`
+      ? `<script type="module"${capability} src="${escapeAttribute(metadata.nativeAsset ?? assetPath(metadata.base, "assets/kudzu-native.js"))}"></script>`
       : ""
     const paramRuntime = renderContext.hasParams
       ? `<script type="module"${capability} src="${escapeAttribute(metadata.paramAsset)}"></script>`

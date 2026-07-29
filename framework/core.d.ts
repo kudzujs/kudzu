@@ -55,6 +55,7 @@ export function renderPage<Props = Record<string, never>>(
     base?: string
     runtimeAsset?: string
     effectAsset?: string
+    nativeAsset?: string
     paramAsset?: string
     runtimeParams?: string[]
     navigationAsset?: string

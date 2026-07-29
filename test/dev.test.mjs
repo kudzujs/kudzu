@@ -2,8 +2,9 @@ import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { readFile, rm, writeFile } from "node:fs/promises"
+import { createServer } from "node:http"
 import test from "node:test"
-import { parseDevPort } from "../framework/build.mjs"
+import { parseDevHost, parseDevPort } from "../framework/build.mjs"
 import { restoreState, snapshotState, stateSchema } from "../framework/dev-state.js"
 
 const fixture = new URL("./fixtures/dev/", import.meta.url)
@@ -19,6 +20,38 @@ test("parses PORT as a strict decimal integer", () => {
   assert.equal(parseDevPort("3001"), 3001)
   for (const value of ["0x10", "1e3", "1.5", "+1", "-1", "12x", "65536"]) {
     assert.throws(() => parseDevPort(value), /Invalid dev server port/)
+  }
+})
+
+test("uses HOST when the dev server must be reachable through a proxy", () => {
+  assert.equal(parseDevHost(undefined), "127.0.0.1")
+  assert.equal(parseDevHost("  "), "127.0.0.1")
+  assert.equal(parseDevHost(" 0.0.0.0 "), "0.0.0.0")
+})
+
+test("uses the next available port when PORT is occupied", async () => {
+  const blocker = createServer()
+  let server
+  try {
+    blocker.listen(0, "127.0.0.1")
+    await once(blocker, "listening")
+    const occupiedPort = blocker.address().port
+    server = spawn(process.execPath, [command, "dev"], {
+      cwd: fixture,
+      env: { ...process.env, PORT: String(occupiedPort) },
+      stdio: ["ignore", "pipe", "pipe"]
+    })
+    const url = await serverUrl(server)
+    assert.ok(Number(new URL(url).port) > occupiedPort)
+    assert.equal((await fetch(url)).status, 200)
+  } finally {
+    blocker.close()
+    if (server?.exitCode === null) {
+      server.kill()
+      await once(server, "exit")
+    }
+    await rm(new URL("./fixtures/dev/dist", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/dev/.kudzu", import.meta.url), { recursive: true, force: true })
   }
 })
 

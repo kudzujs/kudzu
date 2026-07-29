@@ -65,6 +65,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const plans = []
   const pageEntries = []
   const effectEntries = []
+  const nativeEntries = []
   const paramEntries = []
   const rewrites = []
   const emittedRoutes = new Set()
@@ -103,6 +104,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       const navigationGroup = navigationByRoute.get(applicationRoute)
       const navigable = Boolean(navigationGroup)
       const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
+      const nativePath = `native/${route ? `${route}/index` : "index"}.js`
       const paramPath = `params/${route}/index.js`
       if (emittedRoutes.has(routePath)) throw new Error(`Duplicate route: ${routePath}`)
       emittedRoutes.add(routePath)
@@ -126,6 +128,7 @@ export async function build({ quiet = false, minify = true } = {}) {
         base,
         runtimeAsset: runtimePlaceholder,
         effectAsset: assetPath(base, `assets/${effectPath}`),
+        nativeAsset: assetPath(base, `assets/${nativePath}`),
         paramAsset: assetPath(base, `assets/${paramPath}`),
         runtimeParams: runtimeSchema?.params,
         ...(navigable ? { navigationAsset: navigationGroup.assetPath, applicationId: navigationGroup.applicationId, layoutId: navigationGroup.layoutId, routeId: applicationRoute } : {})
@@ -141,6 +144,10 @@ export async function build({ quiet = false, minify = true } = {}) {
       plans.push({ route: routePath, ...result.plan })
       if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, usesDependencyRuntime, navigable })
       if (result.hasEffects) effectEntries.push({ path: effectPath, effects: runtimeEffects(result.plan.effects, navigable), paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime, navigable })
+      if (result.plan.events.some(event => event.native)) nativeEntries.push({
+        path: nativePath,
+        modules: [...new Set(result.plan.events.filter(event => event.native).map(event => event.native.module))]
+      })
       if (result.hasBehaviors) {
         behaviorCount++
         if (!usesDependencyRuntime) regularBehaviorCount++
@@ -196,8 +203,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasNestedStateCaptures = hasNestedCaptureState(plans)
   const hasSetterCaptures = hasCaptureType(plans, "setter")
   const hasEffectCaptures = plans.some(plan => plan.effects.some(effect => Object.keys(effect.scope).length))
-  const nativeModules = emittedHandlerModules.filter(module => module.hasNativeHandlers).map(module => assetPath(base, `assets/${module.path}`))
-  const hasNativeHandlers = nativeModules.length > 0
+  const hasNativeHandlers = nativeEntries.length > 0
   const hasEffects = effectEntries.length > 0
   const hasNavigableEffects = effectEntries.some(entry => entry.navigable)
   const hasNavigableOwners = effectEntries.some(entry => entry.navigable && entry.effects.some(effect => effect.owner))
@@ -279,9 +285,10 @@ export async function build({ quiet = false, minify = true } = {}) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
       .replace('"./serialization.js"', '"./kudzu-serialization.js"')
-    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), specializeNativeRuntime(nativeRuntime, nativeEvents, nativeModules), minify, {
+    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), specializeEvents(nativeRuntime, nativeEvents), minify, {
       "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
     })
+    for (const entry of nativeEntries) await printNativeEntry(entry, assetsDirectory, base, minify)
   }
   if (navigationGroups.length) {
     const navigationSource = await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8")
@@ -411,10 +418,13 @@ function specializeNavigationPatterns(source, enabled) {
 function fallback`)
 }
 
-function specializeNativeRuntime(source, events, modules) {
-  const imports = modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
-  const entries = modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
-  return `${imports}\n${specializeEvents(source, events).replace(/const modules = new Map\(\[[^\n]*\]\)/, `const modules = new Map([${entries}])`)}`
+async function printNativeEntry(entry, assetsDirectory, base, minify) {
+  const output = join(assetsDirectory, entry.path)
+  await mkdir(dirname(output), { recursive: true })
+  const imports = entry.modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
+  const registrations = entry.modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
+  const runtime = assetPath(base, "assets/kudzu-native.js")
+  await writeJavaScript(output, `import { registerNativeModules } from ${JSON.stringify(runtime)}\n${imports}\nregisterNativeModules([${registrations}])`, minify)
 }
 
 function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName) {
@@ -1360,8 +1370,13 @@ export function parseDevPort(value) {
   return port
 }
 
-export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
+export function parseDevHost(value) {
+  return value?.trim() || "127.0.0.1"
+}
+
+export async function dev({ port = parseDevPort(process.env.PORT), host = parseDevHost(process.env.HOST) } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid dev server port: ${port}`)
+  if (typeof host !== "string" || !host.trim()) throw new Error(`Invalid dev server host: ${host}`)
   const base = normalizeBase((await loadConfig()).base)
 
   let buildError
@@ -1431,7 +1446,8 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
     }
   })
 
-  server.listen(port, "127.0.0.1", () => console.log(`Kudzu dev server: http://127.0.0.1:${server.address().port}`))
+  const listeningPort = await listenDevServer(server, port, host)
+  console.log(`Kudzu dev server: http://${host}:${listeningPort}`)
 
   let timer
   let rebuilding = false
@@ -1464,6 +1480,32 @@ export async function dev({ port = parseDevPort(process.env.PORT) } = {}) {
     changedFile = event.filename
     clearTimeout(timer)
     timer = setTimeout(rebuild, 80)
+  }
+}
+
+async function listenDevServer(server, port, host) {
+  let candidate = port
+  while (true) {
+    try {
+      await new Promise((resolve, reject) => {
+        const onError = error => {
+          server.off("listening", onListening)
+          reject(error)
+        }
+        const onListening = () => {
+          server.off("error", onError)
+          resolve()
+        }
+        server.once("error", onError)
+        server.once("listening", onListening)
+        server.listen(candidate, host)
+      })
+      return server.address().port
+    } catch (error) {
+      if (error.code !== "EADDRINUSE" || candidate === 0 || candidate === 65535) throw error
+      console.log(`Port ${candidate} is in use, trying ${candidate + 1}`)
+      candidate++
+    }
   }
 }
 
