@@ -20,6 +20,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const config = await loadConfig()
   const base = normalizeBase(config.base)
   const configuredStyles = normalizeStyles(config.styles, base)
+  const publicDirectory = normalizePublicDirectory(config.publicDir)
   const navigationGroups = normalizeNavigation(config.navigation)
   const navigationRoutes = navigationGroups.flatMap(group => group.routes)
   const navigationByRoute = new Map(navigationGroups.flatMap(group => group.routes.map(route => [route, group])))
@@ -39,7 +40,8 @@ export async function build({ quiet = false, minify = true } = {}) {
 
   const projectFiles = await walk(sourceDirectory)
   const sourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file)).sort()
-  const cssFiles = projectFiles.filter(file => file.endsWith(".css")).sort()
+  const configuredStyleSources = new Set(configuredStyles.sources.map(style => style.source))
+  const cssFiles = projectFiles.filter(file => file.endsWith(".css") && !configuredStyleSources.has(file)).sort()
   if (!sourceFiles.length) throw new Error("No TypeScript files found in src/")
   const sourceFileSet = new Set(sourceFiles)
   const sourceIndex = new Map(await Promise.all(sourceFiles.map(async file => [file, await readFile(file, "utf8")])))
@@ -74,7 +76,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const renderedHandlerUrls = new Set()
   const styleUrls = [...new Set([
     ...cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)),
-    ...configuredStyles
+    ...configuredStyles.urls
   ])]
   const runtimePlaceholder = `/__kudzu_runtime_${randomUUID()}.js`
 
@@ -101,6 +103,9 @@ export async function build({ quiet = false, minify = true } = {}) {
       const route = runtimeSchema?.route ?? routeFromPage(pageFile, params)
       const applicationRoute = `/${route}`
       const routePath = withBase(base, `/${route}`)
+      const metadataContext = { route: routePath, params, props }
+      const configuredMetadata = await resolveDocumentMetadata(config.metadata, metadataContext, "kudzu.config metadata")
+      const pageMetadata = await resolveDocumentMetadata(module.metadata, metadataContext, `${relative(root, pageFile)} metadata`)
       const navigationGroup = navigationByRoute.get(applicationRoute)
       const navigable = Boolean(navigationGroup)
       const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
@@ -123,7 +128,8 @@ export async function build({ quiet = false, minify = true } = {}) {
         navigationGroup.routeRecords.push(routeRecord)
       }
       const result = await renderPage(module.default, {
-        ...(module.metadata ?? {}),
+        ...configuredMetadata,
+        ...pageMetadata,
         styles: styleUrls.length ? styleUrls : false,
         base,
         runtimeAsset: runtimePlaceholder,
@@ -175,7 +181,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const emittedHandlerModules = handlerModules.filter(module => renderedHandlerUrls.has(assetPath(base, `assets/${module.path}`)))
   const renderedEffects = new Set(plans.flatMap(plan => plan.effects.map(effect => `${effect.module}:${effect.handler}`)))
   const renderedWorkerReferences = workerReferences.filter(reference => renderedEffects.has(`${reference.module}:${reference.handler}`))
-  if (renderedWorkerReferences.length && await exists(join(root, "public", "assets", "workers"))) throw new Error("public/assets/workers collides with Kudzu's generated Worker asset namespace")
+  if (renderedWorkerReferences.length && await exists(join(publicDirectory, "assets", "workers"))) throw new Error("public/assets/workers collides with Kudzu's generated Worker asset namespace")
   const workerAssets = await emitWorkers(renderedWorkerReferences, sourceFileSet, assetsDirectory, base, minify)
   for (const module of emittedHandlerModules) {
     for (const reference of workerReferences) {
@@ -354,7 +360,18 @@ export async function build({ quiet = false, minify = true } = {}) {
     await mkdir(dirname(output), { recursive: true })
     await cp(file, output)
   }
-  if (await exists(join(root, "public"))) await cp(join(root, "public"), outputDirectory, { recursive: true })
+  for (const style of configuredStyles.sources) {
+    let css = await readFile(style.source, "utf8")
+    if (style.transform) {
+      const result = await style.transform(css, { source: style.source, output: style.output })
+      css = typeof result === "string" ? result : result?.css
+      if (typeof css !== "string") throw new Error(`${style.label}.transform must return CSS text or an object with a css string`)
+    }
+    const output = join(outputDirectory, style.output.slice(1))
+    await mkdir(dirname(output), { recursive: true })
+    await writeFile(output, css)
+  }
+  if (await exists(publicDirectory)) await cp(publicDirectory, outputDirectory, { recursive: true })
   if (config.afterBuild !== undefined) {
     if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
     await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites })
@@ -3897,16 +3914,49 @@ async function loadConfig() {
 }
 
 function normalizeStyles(value, base) {
-  if (value === undefined) return []
-  if (!Array.isArray(value)) throw new Error("kudzu.config styles must be an array of URLs")
-  return value.map((style, index) => {
-    if (typeof style !== "string" || !style) throw new Error(`kudzu.config styles[${index}] must be a non-empty URL`)
-    if (style.startsWith("//")) throw new Error(`kudzu.config styles[${index}] must be root-relative or an absolute HTTP URL`)
-    if (style.startsWith("/")) return withBase(base, style)
-    if (!/^https?:\/\//i.test(style)) throw new Error(`kudzu.config styles[${index}] must be root-relative or an absolute HTTP URL`)
-    try { new URL(style) } catch { throw new Error(`kudzu.config styles[${index}] must be root-relative or an absolute HTTP URL`) }
-    return style
-  })
+  if (value === undefined) return { urls: [], sources: [] }
+  if (!Array.isArray(value)) throw new Error("kudzu.config styles must be an array")
+  const urls = []
+  const sources = []
+  for (let index = 0; index < value.length; index++) {
+    const style = value[index]
+    const label = `kudzu.config styles[${index}]`
+    if (typeof style === "string") {
+      if (!style) throw new Error(`${label} must be a non-empty URL`)
+      if (style.startsWith("//")) throw new Error(`${label} must be root-relative or an absolute HTTP URL`)
+      if (style.startsWith("/")) {
+        urls.push(withBase(base, style))
+        continue
+      }
+      if (!/^https?:\/\//i.test(style)) throw new Error(`${label} must be root-relative or an absolute HTTP URL`)
+      try { new URL(style) } catch { throw new Error(`${label} must be root-relative or an absolute HTTP URL`) }
+      urls.push(style)
+      continue
+    }
+    if (!isPlainRecord(style) || Object.keys(style).some(key => !["source", "output", "transform"].includes(key))) throw new Error(`${label} must be a URL or a source style object`)
+    if (typeof style.source !== "string" || !style.source) throw new Error(`${label}.source must be a non-empty file path`)
+    if (typeof style.output !== "string" || !style.output.startsWith("/") || style.output.startsWith("//") || /[%?#\\\0]/.test(style.output) || style.output.split("/").includes("..") || !style.output.endsWith(".css")) throw new Error(`${label}.output must be a root-relative .css path without query, hash, or traversal`)
+    if (style.transform !== undefined && typeof style.transform !== "function") throw new Error(`${label}.transform must be a function`)
+    const entry = { label, source: resolve(root, style.source), output: style.output, transform: style.transform }
+    sources.push(entry)
+    urls.push(withBase(base, style.output))
+  }
+  return { urls, sources }
+}
+
+function normalizePublicDirectory(value) {
+  if (value === undefined) return join(root, "public")
+  if (typeof value !== "string" || !value) throw new Error("kudzu.config publicDir must be a non-empty directory path")
+  const directory = resolve(root, value)
+  if (directory === outputDirectory || directory === workDirectory) throw new Error("kudzu.config publicDir cannot be dist or .kudzu")
+  return directory
+}
+
+async function resolveDocumentMetadata(value, context, label) {
+  if (value === undefined) return {}
+  const metadata = typeof value === "function" ? await value(context) : value
+  if (!isPlainRecord(metadata)) throw new Error(`${label} must be a plain object or a function returning one`)
+  return metadata
 }
 
 export function normalizeNavigation(value) {

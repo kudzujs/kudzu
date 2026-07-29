@@ -33,36 +33,44 @@ export function listExpression(read: () => unknown, module: string, handler: str
 export function listItem(): unknown
 export function listConditional(kind: "and" | "ternary", read: () => unknown, truthy: () => unknown, falsy: () => unknown, module: string, handler: string): unknown
 
+export type PageMetadata = {
+  title?: string
+  description?: string
+  lang?: string
+  locale?: string
+  siteName?: string
+  type?: string
+  url?: string
+  image?: string
+  imageAlt?: string
+  twitterCard?: string
+  twitterImage?: string
+  themeColor?: string
+  icon?: string
+  appleTouchIcon?: string
+  manifest?: string
+  styles?: boolean | string[]
+  base?: string
+  runtimeAsset?: string
+  effectAsset?: string
+  nativeAsset?: string
+  paramAsset?: string
+  runtimeParams?: string[]
+  navigationAsset?: string
+  applicationId?: string
+  layoutId?: string
+  routeId?: string
+}
+
+export type MetadataContext<Props = Record<string, unknown>> = {
+  route: string
+  params: Record<string, string>
+  props: Props
+}
+
 export function renderPage<Props = Record<string, never>>(
   component: (props: Props) => unknown | Promise<unknown>,
-  metadata?: {
-    title?: string
-    description?: string
-    lang?: string
-    locale?: string
-    siteName?: string
-    type?: string
-    url?: string
-    image?: string
-    imageAlt?: string
-    twitterCard?: string
-    twitterImage?: string
-    themeColor?: string
-    icon?: string
-    appleTouchIcon?: string
-    manifest?: string
-    styles?: boolean | string[]
-    base?: string
-    runtimeAsset?: string
-    effectAsset?: string
-    nativeAsset?: string
-    paramAsset?: string
-    runtimeParams?: string[]
-    navigationAsset?: string
-    applicationId?: string
-    layoutId?: string
-    routeId?: string
-  },
+  metadata?: PageMetadata,
   props?: Props,
   layout?: (props: { children: unknown }) => unknown | Promise<unknown>
 ): Promise<{

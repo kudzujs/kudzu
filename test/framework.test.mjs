@@ -69,6 +69,24 @@ test("emits configured global styles in every document head", async t => {
   assert.equal(await readFile(new URL("./fixtures/global-styles/dist/assets/generated.css", import.meta.url), "utf8"), "main { color: rebeccapurple; }")
 })
 
+test("builds declarative document metadata, source styles, and public assets", async t => {
+  const fixture = new URL("./fixtures/config-authoring", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/config-authoring/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/config-authoring/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const ko = await readFile(new URL("./fixtures/config-authoring/dist/ko/index.html", import.meta.url), "utf8")
+  const en = await readFile(new URL("./fixtures/config-authoring/dist/en/index.html", import.meta.url), "utf8")
+  assert.match(ko, /^<!doctype html><html lang="ko"><head>.*<link rel="manifest" href="\/manifest\.json">.*<link rel="stylesheet" href="\/assets\/app\.css">/)
+  assert.match(ko, /<title>KO page<\/title>/)
+  assert.doesNotMatch(ko, /<script/)
+  assert.match(en, /^<!doctype html><html lang="en">/)
+  assert.equal(await readFile(new URL("./fixtures/config-authoring/dist/assets/app.css", import.meta.url), "utf8"), "main { color: rebeccapurple; }\n")
+  assert.deepEqual(JSON.parse(await readFile(new URL("./fixtures/config-authoring/dist/manifest.json", import.meta.url), "utf8")), { name: "Config fixture" })
+})
+
 test("renders page layouts with collision-free layout and route scopes", async t => {
   const fixture = new URL("./fixtures/layout-scopes", import.meta.url)
   const invalidPage = new URL("./fixtures/layout-scopes/src/pages/invalid.tsx", import.meta.url)

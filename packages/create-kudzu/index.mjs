@@ -26,10 +26,11 @@ const files = {
     type: "module",
     scripts: {
       dev: "kudzu dev",
-      build: "kudzu build"
+      build: "kudzu build",
+      check: "tsc --noEmit && kudzu build"
     },
     dependencies: {
-      "@kudzujs/core": "^0.6.21"
+      "@kudzujs/core": "^0.6.22"
     }
   }, null, 2)}\n`,
   "tsconfig.json": `${JSON.stringify({
@@ -44,6 +45,11 @@ const files = {
   }, null, 2)}\n`,
   ".gitignore": "node_modules/\ndist/\n.kudzu/\n",
   "src/pages/index.tsx": `import { useState } from "@kudzujs/core"
+
+export const metadata = {
+  title: "${name}",
+  description: "Built with Kudzu"
+}
 
 export default function HomePage() {
   const [count, setCount] = useState(0)
@@ -68,6 +74,18 @@ main { display: grid; min-height: 100vh; place-content: center; text-align: cent
 p { color: #cfa8ff; }
 h1 { font-size: clamp(3rem, 10vw, 7rem); margin: 0 0 2rem; }
 button { padding: .8rem 1.2rem; color: white; background: #8d52ff; border: 0; border-radius: .5rem; cursor: pointer; }
+`,
+  "README.md": `# ${name}
+
+\`src/pages/index.tsx\` maps to \`/\`. Add TSX files under \`src/pages\` for more routes; CSS under \`src\` is emitted and linked automatically.
+
+\`kudzu.config.mjs\` is optional. Add it only when the project needs a base path, external public directory, transformed source styles, global metadata, navigation groups, or post-build artifacts.
+
+\`\`\`bash
+npm run dev
+npm run check
+npm run build
+\`\`\`
 `
 }
 

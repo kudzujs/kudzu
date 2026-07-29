@@ -73,12 +73,14 @@ export default {
     <CodeBlock code={`// kudzu.config.mjs
 export default {
   base: "/newsletter",
-  styles: ["/assets/generated.css"],
+  publicDir: "../public",
+  styles: [{ source: "../src/styles/global.css", output: "/assets/styles.css", transform: css => transformCss(css) }],
+  metadata: ({ props }) => ({ lang: props.locale, manifest: "/manifest.json" }),
   async afterBuild({ outDir, routes, plans, rewrites, base }) {
-    // Write generated.css, RSS, sitemap, or search indexes.
+    // Write host rewrites, RSS, sitemap, or search indexes.
   }
 }`} />
-    <p>The base prefixes runtime, handler, stylesheet, icon, manifest, and dev-server URLs without nesting files under <code>dist</code>. Every CSS file under <code>src</code> is copied under <code>dist/assets</code> with its relative path and linked in deterministic order. Global <code>styles</code> follow those files in every document head, including files produced by <code>afterBuild()</code>. Page JSX must not render body stylesheets.</p>
+    <p>The base prefixes runtime, handler, stylesheet, icon, manifest, and dev-server URLs without nesting files under <code>dist</code>. Every CSS file under <code>src</code> is copied under <code>dist/assets</code> with its relative path and linked in deterministic order. Source style entries may transform CSS before writing their declared output. <code>publicDir</code> defaults to <code>public</code>. Config and page metadata may be objects or functions of route props; page metadata wins. Reserve <code>afterBuild()</code> for host rewrites and extra artifacts rather than HTML or stylesheet mutation. Page JSX must not render body stylesheets.</p>
     <h3>Trusted HTML</h3>
     <CodeBlock code={`<article dangerouslySetInnerHTML={{ __html: renderedNotionHtml }} />`} />
     <p>Raw HTML is not sanitized. It accepts trusted build-time content only; reactive values, children on the same element, void elements, and keyed-list raw HTML are rejected.</p>

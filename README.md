@@ -128,17 +128,25 @@ Static trusted HTML can be rendered without a transform layer:
 
 The HTML is intentionally not sanitized. Use only trusted or previously sanitized build-time content. Reactive raw HTML, children on the same element, void elements, and keyed-list raw HTML are rejected.
 
-Every CSS file under `src` is copied to the same relative path under `dist/assets` and linked in deterministic order. Stylesheets produced by another build step can be declared globally so Kudzu still emits them in every document `<head>`. Configured root-relative URLs receive `base`; absolute HTTP URLs are preserved. Project-page deployments and post-build artifacts use `kudzu.config.mjs`:
+Every CSS file under `src` is copied to the same relative path under `dist/assets` and linked in deterministic order. Configured root-relative URLs receive `base`; absolute HTTP URLs are preserved. A source style entry reads CSS, optionally transforms it, writes its declared output, and links it without an `afterBuild` file pipeline. `publicDir` defaults to `public` and may point elsewhere. Global or page `metadata` may be an object or a function of `{ route, params, props }`, so route props can set document language and head resources before rendering:
 
 ```js
 export default {
   base: "/newsletter",
-  styles: ["/assets/generated.css"],
+  publicDir: "../public",
+  styles: [{
+    source: "../src/styles/global.css",
+    output: "/assets/styles.css",
+    transform: css => transformCss(css)
+  }],
+  metadata: ({ props }) => ({ lang: props.locale, manifest: "/manifest.json" }),
   async afterBuild({ outDir, routes, plans, rewrites, base }) {
-    // Write generated.css, host rewrites, RSS, sitemap, or other static artifacts.
+    // Write host rewrites, RSS, sitemap, or other non-document artifacts.
   }
 }
 ```
+
+The transform may return CSS text or an object with a `css` string, matching common CSS processor results. Page-exported `metadata` takes precedence over config metadata and may use the same function form.
 
 Do not render `<link rel="stylesheet">` from page or component JSX. Kudzu rejects direct static body stylesheets with a source location and catches computed JSX stylesheet output during rendering. Trusted `dangerouslySetInnerHTML` remains unparsed and is responsible for its own resource tags.
 
