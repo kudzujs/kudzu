@@ -423,7 +423,8 @@ function listItemParts(root, nested = false) {
     if (__KUDZU_LIST_EXPRESSIONS__ && node.hasAttribute("data-k-list-expression")) parts.expressions.push([node, JSON.parse(node.dataset.kListExpression)])
     if (__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ && node.hasAttribute("data-k-list-expression-attrs")) parts.expressionAttributes.push([node, JSON.parse(node.dataset.kListExpressionAttrs)])
     if (__KUDZU_LIST_CONDITIONS__ && node.hasAttribute("data-k-list-condition")) {
-      parts.conditions.push([node, JSON.parse(node.dataset.kListCondition)])
+      const encoded = node.dataset.kListCondition || conditionTemplates.get(node)?.dataset.kListCondition
+      parts.conditions.push([node, encoded ? JSON.parse(encoded) : undefined])
       conditionOwners.set(node, root)
     }
     if (__KUDZU_LIST_EFFECTS__ && node.hasAttribute("data-k-effects")) parts.effects.push(node)
@@ -469,6 +470,7 @@ function mapListConditionTemplates(planned, initial) {
   if (planned.length !== initial.length) throw new Error("Keyed list condition markers do not match its template")
   for (let index = 0; index < initial.length; index++) {
     const marker = initial[index][0]
+    initial[index][1] ??= planned[index][1]
     if (!marker.content.querySelector("template[data-k-list-true],template[data-k-list-false]")) conditionTemplates.set(marker, planned[index][2])
   }
 }
