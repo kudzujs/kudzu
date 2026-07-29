@@ -104,6 +104,34 @@ return <><button onClick={create}>Create</button><button onClick={add}>Add</butt
 const rows = items.map(item =>
   <TreeRow key={item.id} name={item.name} onRemove={() => setItems(items.filter(entry => entry.id !== item.id))} />
 )`} />
+    <h3>Nested child components</h3>
+    <p>One child map may read a direct array property from its parent item. Its row may be intrinsic, declared in the same file, or imported from a relative TypeScript module. The component is specialized away at build time; existing parent and child keys retain DOM identity through updates and reorder.</p>
+    <CodeBlock code={`function ItemCard({ item, onSelect }: {
+  item: Item
+  onSelect: () => void
+}) {
+  return <li>
+    <span>{item.title}</span>
+    {item.available
+      ? <strong>Available</strong>
+      : <small>Unavailable</small>}
+    <button onClick={() => onSelect()}>Select</button>
+  </li>
+}
+
+return <main>{categories.map(category =>
+  <section key={category.id}>
+    <h2>{category.title}</h2>
+    <ul>{category.items.map(item =>
+      <ItemCard
+        key={item.id}
+        item={item}
+        onSelect={() => setSelected(item)}
+      />
+    )}</ul>
+  </section>
+)}</main>`} />
+    <div className="docs-callout"><strong>Nested scope</strong><span>The collection must be <code>parent.&lt;field&gt;</code>. Child handlers read the latest child item. One child-local <code>&amp;&amp;</code> or ternary condition is supported.</span></div>
     <p>The whole map may also live in a same-file or relative-imported wrapper receiving <code>items</code> directly from local state. Default, named/aliased, and direct named re-export wrappers are specialized to intrinsic DOM; package, namespace, star-export, derived-prop, and effectful wrappers remain unsupported.</p>
     <div className="list-demo">
       <div className="list-demo-actions"><span>LIVE KEYED LIST</span><button onClick={createTrees}>Create</button><button onClick={addTree}>Add</button><button onClick={reverseTrees}>Reverse</button></div>
@@ -113,7 +141,9 @@ const rows = items.map(item =>
       </li>)}</ul>
     </div>
     <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-    <p>Each item and nested object must be an ordinary plain object; null-prototype objects are rejected for JSON round-trip parity. The map may be direct JSX or one top-level immutable local rendered once as a JSX child. A row component accepts destructured props, top-level single-<code>const</code> calculations, and inline effects before one intrinsic return; it remains reusable because only each call site is specialized. One direct parent-property child map may likewise use a same-file or relative-imported intrinsic row component, child handler, and one child-local condition level; child effects and local state remain unsupported. Outer row effects mount after insertion and clean up on removal. Dependencies may be empty, direct primitive Kudzu state identifiers, or direct primitive item properties such as <code>[item.id]</code> and <code>[version, item.name]</code>. Selected field changes rerun only affected rows with the complete latest item; unrelated fields and reorder do nothing, while key changes remove and mount. Whole-item, computed, nested, derived, and prototype-sensitive dependencies are rejected. Direct item-property reads use compact markers. Derived item text, attributes, object styles, and single-level <code>&amp;&amp;</code> or ternary JSX conditions compile to external ESM evaluators and must remain pure and synchronous. Conditional branches patch only their bounded DOM and mount or unmount their handlers and effects. Mutation, Promise values, arbitrary calls, browser globals, component state, imported helpers used in calculations, and prototype-sensitive properties are rejected. Direct item handlers receive the latest JSON-safe item for their key. Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, conditions inside item conditions, multiple or deeper child lists, component tags below a specialized row root, fragments, refs, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+    <p>Each item and nested object must be an ordinary JSON-safe plain object with a unique string or finite-number key. Direct item reads use compact markers; pure synchronous derived text, attributes, object styles, and one item-local condition level compile to external evaluators.</p>
+    <p>Direct outer rows may own effects with empty, primitive state, or direct primitive item-property dependencies. Nested child rows do not support effects or local state. A changed key removes and remounts its row; reorder preserves it.</p>
+    <p>Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children props, conditions inside item conditions, multiple or deeper child lists, component tags below a specialized row root, fragments, refs, mutation, arbitrary calls, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
   </section>
 }
 

@@ -399,13 +399,30 @@ The original row component remains reusable across multiple lists and ordinary J
 One nested keyed map may read a direct array property of its parent item. This supports category/item data populated after mount while preserving both parent and child DOM identity across updates and reorder:
 
 ```tsx
+function ItemCard({ item, onSelect }: {
+  item: Item
+  onSelect: () => void
+}) {
+  return <li>
+    <span>{item.title}</span>
+    {item.available ? <strong>Available</strong> : <small>Unavailable</small>}
+    <button onClick={() => onSelect()}>Select</button>
+  </li>
+}
+
 {categories.map(category => <section key={category.id}>
   <h2>{category.title}</h2>
-  <ul>{category.items.map(item => <ItemCard key={item.id} item={item} />)}</ul>
+  <ul>{category.items.map(item => <ItemCard
+    key={item.id}
+    item={item}
+    onSelect={() => setSelected(item)}
+  />)}</ul>
 </section>)}
 ```
 
 The nested collection must be `parent.<field>`. Its child row may be intrinsic or a same-file or relative-imported component that specializes to one intrinsic root. Child handlers receive the latest child item, and one level of child-local `&&` or ternary JSX conditions patches bounded DOM without remounting the child row. A second child list, third nesting level, computed collection, parent-item capture from the child row, conditions inside child conditions, child effects, child component tags below the specialized row root, and child row-local state remain unsupported.
+
+In the matched 100-parent/1,000-child component benchmark, a selected child text and condition update measured 1.3 ms, child reverse 0.4 ms, parent reverse 4.7 ms, and parent removal 0.7 ms. Svelte measured 2.2/0.9/5.2/0.9 ms, Vue 4.0/2.2/4.9/1.8 ms, React 8.3/3.8/6.6/3.8 ms, and hand-written Astro/native 0.4/0.3/3.1/0.1 ms. Kudzu shipped 6.5 KB initial JavaScript gzip and complete initial HTML. Repeated inert condition templates increased its deploy output to 677.5 KB raw but 25.5 KB as the sum of gzip-compressed files; this is a current output-size cost, not a claim that the CSR artifacts are architecture-equivalent.
 
 Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root or top-level local or relative-imported row component, and `key={item.<field>}`. State-backed list wrappers use one destructured props parameter, an intrinsic return root, no effects, and a direct local-state prop. Same-file wrappers must be unexported and state-backed at every call; relative default, named/aliased, and direct named re-export wrappers are specialized per qualifying call. Row components accept destructured projected props, top-level single-`const` calculations and inline effects before one intrinsic return. Effect dependencies inside a direct outer row may be empty, direct primitive Kudzu state identifiers, or direct `item.<field>` properties whose selected values remain JSON-safe primitives. Whole-item, computed, nested, derived, `__proto__`, `prototype`, and `constructor` dependencies are rejected. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, imported helpers used inside calculations, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Package, namespace, and star-export list wrappers, package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, conditions nested inside item conditions, component tags below a specialized row root, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
