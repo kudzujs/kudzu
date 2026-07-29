@@ -909,6 +909,28 @@ test("compiles one-level nested keyed lists owned by parent rows", async t => {
   if (chrome) await runNestedListBrowserTest(fixture, chrome)
 })
 
+test("specializes local and imported nested keyed row components", async t => {
+  const fixture = new URL("./fixtures/nested-component-lists", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/nested-component-lists/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/nested-component-lists/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/nested-component-lists/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/nested-component-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/nested-component-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-local-item="a1"[\s\S]*SAUNA[\s\S]*data-imported-item="a1"[\s\S]*SAUNA/)
+  assert.doesNotMatch(component, /<LocalItem|<ImportedItem/)
+  assert.equal((component.match(/__kList\(/g) ?? []).length, 4)
+  assert.equal(plan.lists.length, 4)
+  assert.equal(plan.lists.filter(list => list.ownerField === "items").length, 2)
+  assert.equal(plan.lists.filter(list => list.ownerField === "items" && list.conditions).length, 2)
+  assert.equal(plan.lists.filter(list => list.child).some(list => list.conditions), false)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNestedComponentListBrowserTest(fixture, chrome)
+})
+
 test("specializes relative imported keyed list components", async t => {
   const fixture = new URL("./fixtures/imported-lists", import.meta.url)
   t.after(async () => {
@@ -1033,7 +1055,7 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-nested-computed", /Nested keyed list collections must be a direct property of the parent item/],
     ["list-invalid-nested-deep", /Keyed lists support at most one nested level/],
     ["list-invalid-nested-parent-capture", /Nested keyed list rows cannot capture the parent item/],
-    ["list-invalid-nested-condition", /Nested keyed list item conditions are not supported/],
+    ["list-invalid-nested-condition", /Nested item conditions are not supported in keyed lists/],
     ["list-invalid-mutation", /assignments and updates are not supported/],
     ["list-invalid-mutating-method", /mutating method "sort"/],
     ["list-invalid-promise", /arbitrary method "resolve"/],
@@ -2511,6 +2533,69 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-nested-list-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNestedComponentListBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const local = id => document.querySelector('[data-local-item="' + id + '"]')
+const imported = id => document.querySelector('[data-imported-item="' + id + '"]')
+const localItems = () => [...document.querySelectorAll("[data-local-item]")]
+const importedItems = () => [...document.querySelectorAll("[data-imported-item]")]
+try {
+  const localSauna = local("a1")
+  const importedSauna = imported("a1")
+  const localMassage = local("a2")
+  const importedMassage = imported("a2")
+  if (!localSauna?.querySelector("strong[data-status]") || importedSauna?.querySelector("[data-status]")?.textContent !== "Available") throw new Error("initial-available")
+  if (localMassage?.querySelector("[data-status]") || importedMassage?.querySelector("[data-status]")?.textContent !== "Unavailable") throw new Error("initial-unavailable")
+  document.querySelector('[data-action="update"]').click()
+  await wait()
+  if (local("a1") !== localSauna || imported("a1") !== importedSauna) throw new Error("update-remounted")
+  if (localSauna.querySelector("[data-label]").textContent !== "SAUNA PLUS" || localSauna.querySelector("[data-status]")) throw new Error("local-update")
+  if (importedSauna.querySelector("[data-label]").textContent !== "SAUNA PLUS" || importedSauna.querySelector("[data-status]")?.textContent !== "Unavailable") throw new Error("imported-update")
+  localSauna.querySelector("[data-select]").click()
+  importedSauna.querySelector("[data-select]").click()
+  importedSauna.querySelector("[data-status]").click()
+  await wait()
+  if (document.body.dataset.localSelected !== "Sauna Plus" || document.body.dataset.importedSelected !== "Sauna Plus" || document.body.dataset.importedStatus !== "status:Sauna Plus") throw new Error("latest-handler")
+  document.querySelector('[data-action="restore"]').click()
+  await wait()
+  if (local("a1") !== localSauna || imported("a1") !== importedSauna || !localSauna.querySelector("strong[data-status]") || importedSauna.querySelector("[data-status]")?.textContent !== "Available") throw new Error("condition-reentry")
+  importedSauna.querySelector("[data-status]").click()
+  await wait()
+  if (document.body.dataset.importedStatus !== "status:Sauna Restored") throw new Error("reentered-handler")
+  document.querySelector('[data-action="reverse"]').click()
+  await wait()
+  if (localItems()[0] !== localMassage || localItems()[1] !== localSauna || importedItems()[0] !== importedMassage || importedItems()[1] !== importedSauna) throw new Error("reverse")
+  document.body.dataset.nestedComponentListTest = "pass"
+} catch (error) {
+  document.body.dataset.nestedComponentListTest = "fail-" + error.message
+}
+`)
+  const port = 40600 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-nested-component-list-test="pass"/)
   } finally {
     server.kill()
   }

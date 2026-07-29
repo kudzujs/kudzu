@@ -1974,10 +1974,25 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       ts.forEachChild(node, rejectUnsupportedRenderControl)
     }
     rejectUnsupportedRenderControl(sourceFile)
-    const listComponentNames = new Set(rawRenderedLists.flatMap(({ parts }) => {
+    const nestedComponentCalls = new Set()
+    for (const { parts } of rawRenderedLists) {
+      const collectNestedComponents = node => {
+        if (ts.isJsxExpression(node) && node.expression) {
+          const nested = nestedKeyedListParts(node.expression, parts.item)
+          if (nested) {
+            const tag = jsxTagName(nested.root)
+            if (tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase()) nestedComponentCalls.add(nested.root)
+            return
+          }
+        }
+        ts.forEachChild(node, collectNestedComponents)
+      }
+      collectNestedComponents(parts.root)
+    }
+    const listComponentNames = new Set([...rawRenderedLists.flatMap(({ parts }) => {
       const tag = jsxTagName(parts.root)
       return tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase() ? [tag.text] : []
-    }))
+    }), ...[...nestedComponentCalls].map(call => jsxTagName(call).text)])
     const keyedComponentCalls = new Set(rawRenderedLists.map(({ parts }) => parts.root))
     for (const call of reducerRowStateCalls) if (!keyedComponentCalls.has(call)) fail(call, "Reducer-dispatch component useState() is only supported in a direct keyed row")
     for (const name of listComponentNames) {
@@ -2001,6 +2016,10 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           ? componentSpecializations.get(call)
           : specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
         if (specialization.effects.length && !keyedComponentCalls.has(call)) fail(call, "Effectful keyed row components may only be used directly as keyed map rows")
+        if (!local) {
+          specialization.root = mergeSpecializedImports(specialization.root, component.function.getSourceFile(), call)
+          synthesizeTree(specialization.root)
+        }
         componentSpecializations.set(call, specialization)
       }
       if (local) specializedDeclarations.add(component.declaration)
@@ -2038,7 +2057,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         calculation.parent = callback
         validateListExpression(calculation, parts.item, originalParts.root, fail)
       }
-      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization?.rowState, nestedLists)
+      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization?.rowState, nestedLists, componentSpecializations, factory)
       if (specialization?.effects.length) {
         usesListEffects = true
         const statements = specialization.effects.map(entry => {
@@ -2520,7 +2539,7 @@ function insideJsxEventHandler(node, root) {
   return false
 }
 
-function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowState, nestedLists) {
+function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowState, nestedLists, componentSpecializations, factory) {
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
   }
@@ -2550,14 +2569,33 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
         if (nestedList) fail(expression, "Keyed list rows support one nested keyed list")
         if (referenceIdentifiers(nested.callback, item).length) fail(nested.root, "Nested keyed list rows cannot capture the parent item")
         nestedList = nested
-        const nestedParts = { ...nested, state: parts.state, nested: true }
+        const specialization = componentSpecializations.get(nested.root)
+        const root = specialization?.root ?? nested.root
+        const callback = root === nested.root ? nested.callback : factory.updateArrowFunction(
+          nested.callback,
+          nested.callback.modifiers,
+          nested.callback.typeParameters,
+          nested.callback.parameters,
+          nested.callback.type,
+          nested.callback.equalsGreaterThanToken,
+          root
+        )
+        if (callback !== nested.callback) {
+          ts.setParentRecursive(callback, false)
+          callback.parent = nested.callback.parent
+        }
+        const nestedParts = { ...nested, root, callback, state: parts.state, nested: true }
+        for (const calculation of specialization?.calculations ?? []) {
+          ts.setParentRecursive(calculation, false)
+          calculation.parent = callback
+          validateListExpression(calculation, nested.item, nested.root, fail)
+        }
         nestedLists.set(expression, nestedParts)
-        validateKeyedList(nestedParts, sourceFile, listValues, listEventItems, listConditions, setters, undefined, nestedLists)
+        validateKeyedList(nestedParts, sourceFile, listValues, listEventItems, listConditions, setters, undefined, nestedLists, componentSpecializations, factory)
         return
       }
       const condition = conditionalParts(expression)
       if (condition && containsJsx(expression)) {
-        if (parts.nested) fail(node, "Nested keyed list item conditions are not supported")
         if (conditionDepth) fail(node, "Nested item conditions are not supported in keyed lists")
         if (rowState && referencedStateNames(condition.condition, setters).has(rowState.state)) {
           conditionDepth++

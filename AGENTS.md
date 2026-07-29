@@ -17,6 +17,7 @@
 - Event handlers use normal synchronous or async JavaScript. State setters update logical state immediately and DOM writes batch at synchronous-turn boundaries.
 - Command-only setter and `console.log(label, state)` handlers use the optimized behavior path; other handlers compile to external ESM.
 - Native handlers may capture serializable component locals and destructured props. Relative imported helpers and supported reducer imports compile into handler ESM; non-serializable captures remain unsupported.
+- One nested keyed map may read a direct parent-item array property. Its intrinsic, same-file, or relative-imported child row supports latest-item handlers and one item-local condition level; deeper lists, nested conditions, child effects, and child local state remain unsupported.
 - Put routes in `src/pages`; `index.tsx` maps to `/`.
 - Do not add a VDOM, hydration, state library, general component runtime, or default SPA router.
 - Run `npm run check` and `npm test` after changes.

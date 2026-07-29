@@ -568,6 +568,8 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
   if (node?.[listConditionalMarker]) {
     const descriptor = { kind: node.kind, module: node.module, handler: node.handler }
+    const owner = renderContext.listRoot ?? renderContext.listRowRoot
+    if (owner) owner.conditions = true
     const previousBranch = renderContext.listConditionalBranch
     renderContext.listConditionalBranch = true
     let truthy
@@ -765,13 +767,14 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listRowConditions = []
     renderContext.listRowLists = []
     renderContext.listFields = new Set([node.keyField])
-    renderContext.listRoot = { id, state: node.items.id, descriptor, template: true, effects: [], item: {}, rowIndexes: { s: 0, c: 0, l: 0 } }
-    renderContext.listRowRoot = renderContext.listRoot
+    const templateRoot = { id, state: node.items.id, descriptor, template: true, effects: [], item: {}, rowIndexes: { s: 0, c: 0, l: 0 } }
+    renderContext.listRoot = templateRoot
+    renderContext.listRowRoot = templateRoot
     const template = await renderNode(node.render({}), namespace, selectValue)
     if (template.includes("data-k-native-") || template.includes("data-k-effects=") || template.includes("data-k-list=")) descriptor.mount = true
     if (template.includes("data-k-list=")) descriptor.nested = true
     if (template.includes("data-k-effects=")) descriptor.effects = true
-    if (template.includes("data-k-list-condition")) descriptor.conditions = true
+    if (templateRoot.conditions) descriptor.conditions = true
     if (template.includes("data-k-list-text-end")) descriptor.textRanges = true
     if (template.includes("data-k-list-attrs")) descriptor.attributes = true
     if (template.includes("data-k-list-events")) descriptor.events = true
