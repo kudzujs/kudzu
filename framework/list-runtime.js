@@ -7,6 +7,7 @@ const imports = __KUDZU_LIST_ASYNC_PARTS__ ? new Map() : undefined
 const revisions = __KUDZU_LIST_ASYNC_PARTS__ ? new WeakMap() : undefined
 const itemParts = new WeakMap()
 const listItems = new WeakMap()
+const ownedLists = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
 const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}${__KUDZU_LIST_EFFECTS__ ? ",[data-k-effects]" : ""}`
 
@@ -37,8 +38,8 @@ function mountLists(root) {
     const roots = listRoots(start, end)
     if (__KUDZU_LIST_ROW_STATES__ && descriptor.rowStates) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index])
     const templateRoot = start.content.firstElementChild
-    const parts = listItemPartPlan(templateRoot)
-    for (const root of roots) __KUDZU_LIST_CONDITIONS__ && descriptor.conditions ? listItemParts(root) : mapListItemParts(parts, root)
+    const parts = listItemPartPlan(templateRoot, descriptor.nested)
+    for (const root of roots) __KUDZU_LIST_CONDITIONS__ && descriptor.conditions ? listItemParts(root, descriptor.nested) : mapListItemParts(parts, root, descriptor.nested)
     if (__KUDZU_LIST_SEEDS__ && descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
     const items = browserState.get(descriptor.state)
     const list = {
@@ -50,10 +51,18 @@ function mountLists(root) {
       values: new Map(),
       items: undefined,
       container: roots[0]?.parentNode,
-      boundary: end
+      boundary: end,
+      ...(__KUDZU_NESTED_LISTS__ && descriptor.ownerField ? { owner: listOwner(start) } : {})
     }
-    register(listTargets, descriptor.state, list)
-    listRegistrations.set(start, { state: descriptor.state, list })
+    if (__KUDZU_NESTED_LISTS__ && descriptor.ownerField) {
+      if (!list.owner) throw new Error("Nested keyed list has no parent row")
+      if (ownedLists.has(list.owner)) throw new Error("Keyed list rows support one nested keyed list")
+      ownedLists.set(list.owner, list)
+      listRegistrations.set(start, { list, owner: list.owner })
+    } else {
+      register(listTargets, descriptor.state, list)
+      listRegistrations.set(start, { state: descriptor.state, list })
+    }
     updateList(list)
   }
 }
@@ -65,9 +74,13 @@ function unmountLists(root) {
 function unregisterList(start) {
   const registration = listRegistrations.get(start)
   if (registration) {
-    const lists = listTargets.get(registration.state)
-    lists?.delete(registration.list)
-    if (!lists?.size) listTargets.delete(registration.state)
+    if (__KUDZU_NESTED_LISTS__ && registration.owner) {
+      if (ownedLists.get(registration.owner) === registration.list) ownedLists.delete(registration.owner)
+    } else {
+      const lists = listTargets.get(registration.state)
+      lists?.delete(registration.list)
+      if (!lists?.size) listTargets.delete(registration.state)
+    }
     if (__KUDZU_LIST_ROW_STATES__ && registration.list.descriptor.rowStates) for (const token of registration.list.roots.keys()) deleteRowStates(registration.list.descriptor, token)
   }
   listRegistrations.delete(start)
@@ -75,8 +88,12 @@ function unregisterList(start) {
 }
 
 function updateList(list) {
-  const items = browserState.get(list.descriptor.state)
-  if (!Array.isArray(items)) throw new Error("Keyed list state must remain an array")
+  const items = __KUDZU_NESTED_LISTS__ && list.descriptor.ownerField
+    ? listItems.get(list.owner)?.[list.descriptor.ownerField]
+    : browserState.get(list.descriptor.state)
+  if (!Array.isArray(items)) throw new Error(list.descriptor.ownerField ? `Nested keyed list property "${list.descriptor.ownerField}" must remain an array` : "Keyed list state must remain an array")
+  if (__KUDZU_NESTED_LISTS__ && (list.descriptor.child || list.descriptor.ownerField) && list.items && updateNestedList(list, items)) return
+  if (__KUDZU_NESTED_LISTS__ && list.descriptor.child) validateChildLists(items, list.descriptor.child)
   if (list.descriptor.reducer && list.items && updateReducerList(list, items)) return
   const entries = []
   const keys = new Set()
@@ -132,15 +149,14 @@ function updateList(list) {
       if (!node) throw new Error("Keyed list template has no root element")
       node.removeAttribute("data-k-list-root")
       if (__KUDZU_LIST_ROW_STATES__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)
-      mapListItemParts(list.parts, node)
-      fillListItem(node, item)
+      mapListItemParts(list.parts, node, list.descriptor.nested)
+      fillListItem(node, item, list.descriptor.nested)
       additions.append(node)
       added = true
     } else if (list.values.get(token) !== value) {
-      fillListItem(node, item)
+      fillListItem(node, item, list.descriptor.nested)
       if (__KUDZU_LIST_ITEM_HOOKS__) notifyListItem(list.descriptor.state, node)
     }
-    listItems.set(node, item)
     next.push([token, node])
     values.set(token, value)
   }
@@ -182,6 +198,75 @@ function updateList(list) {
   list.roots = new Map(next)
   list.values = values
   list.items = items
+}
+
+function updateNestedList(list, items) {
+  const previous = list.items
+  if (items === previous) return false
+  if (items.length === previous.length && items.every((item, index) => item === previous[index])) {
+    list.items = items
+    return true
+  }
+  if (items.length === previous.length && items.every((item, index) => item === previous[previous.length - index - 1])) {
+    const tokens = [...list.roots.keys()].reverse()
+    const parent = list.container ?? list.start.parentNode
+    const reordered = parent.ownerDocument.createDocumentFragment()
+    reordered.append(...tokens.map(token => list.roots.get(token)))
+    parent.insertBefore(reordered, list.boundary)
+    list.roots = new Map(tokens.map(token => [token, list.roots.get(token)]))
+    list.items = items
+    list.container ??= parent
+    return true
+  }
+  if (items.length === previous.length - 1) {
+    let removed = 0
+    while (removed < items.length && items[removed] === previous[removed]) removed++
+    if (items.every((item, index) => item === previous[index >= removed ? index + 1 : index])) {
+      removeListRoot(list, keyToken(previous[removed]?.[list.descriptor.key]))
+      list.roots = new Map(items.map(item => {
+        const token = keyToken(item[list.descriptor.key])
+        return [token, list.roots.get(token)]
+      }))
+      list.items = items
+      return true
+    }
+  }
+  if (items.length === previous.length + 1 && previous.every((item, index) => item === items[index])) {
+    const entry = nestedListEntry(list, items.at(-1))
+    if (list.roots.has(entry.token)) throw new Error(`Duplicate keyed list key: ${String(entry.key)}`)
+    addListRoot(list, entry)
+    list.items = items
+    return true
+  }
+  if (items.length !== previous.length) return false
+  let changed = -1
+  for (let index = 0; index < items.length; index++) {
+    if (items[index] === previous[index]) continue
+    if (changed !== -1) return false
+    changed = index
+  }
+  if (changed === -1) return false
+  const item = items[changed]
+  if (item?.[list.descriptor.key] !== previous[changed]?.[list.descriptor.key]) return false
+  const entry = nestedListEntry(list, item)
+  const node = list.roots.get(entry.token)
+  if (!node) return false
+  if (list.values.get(entry.token) !== entry.value) {
+    fillListItem(node, item, list.descriptor.nested)
+    if (__KUDZU_LIST_ITEM_HOOKS__) notifyListItem(list.descriptor.state, node)
+    list.values.set(entry.token, entry.value)
+  }
+  list.items = items
+  return true
+}
+
+function nestedListEntry(list, item) {
+  const key = item?.[list.descriptor.key]
+  if (!validListKey(key)) throw new Error(`Keyed list key "${list.descriptor.key}" must be a string or finite number`)
+  assertListItem(item)
+  if (list.descriptor.child) validateChildLists([item], list.descriptor.child)
+  assertListValue(item, new Set(), true)
+  return { item, key, token: keyToken(key), value: JSON.stringify(item) }
 }
 
 function updateReducerList(list, items) {
@@ -237,9 +322,8 @@ function addListRoot(list, { item, key, token, value }) {
   if (!node) throw new Error("Keyed list template has no root element")
   node.removeAttribute("data-k-list-root")
   if (__KUDZU_LIST_ROW_STATES__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)
-  mapListItemParts(list.parts, node)
-  fillListItem(node, item)
-  listItems.set(node, item)
+  mapListItemParts(list.parts, node, list.descriptor.nested)
+  fillListItem(node, item, list.descriptor.nested)
   const parent = list.container ?? list.start.parentNode
   parent.insertBefore(node, list.boundary)
   if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) mountDom(node)
@@ -257,11 +341,16 @@ function removeListRoot(list, token) {
   list.values.delete(token)
 }
 
-function fillListItem(root, item) {
+function fillListItem(root, item, nested = false) {
+  listItems.set(root, item)
   const revision = __KUDZU_LIST_ASYNC_PARTS__ ? (revisions.get(root) ?? 0) + 1 : 0
   if (__KUDZU_LIST_ASYNC_PARTS__) revisions.set(root, revision)
-  const parts = listItemParts(root)
+  const parts = listItemParts(root, nested)
   fillListParts(root, parts, item, revision)
+  if (__KUDZU_NESTED_LISTS__) {
+    const child = ownedLists.get(root)
+    if (child) updateList(child)
+  }
 }
 
 function fillListParts(root, parts, item, revision) {
@@ -317,11 +406,11 @@ function fillListParts(root, parts, item, revision) {
   }
 }
 
-function listItemParts(root) {
+function listItemParts(root, nested = false) {
   let parts = itemParts.get(root)
   if (parts) return parts
   parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [], conditions: [], effects: [] }
-  for (const node of matching(root, itemPartsSelector)) {
+  for (const node of nested ? ownedElements(root).filter(node => node.matches(itemPartsSelector)) : matching(root, itemPartsSelector)) {
     if (node.hasAttribute("data-k-list-text")) (node.tagName === "TEMPLATE" ? parts.texts : parts.directTexts).push([node, node.dataset.kListText])
     if (__KUDZU_LIST_ATTRIBUTES__ && node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, JSON.parse(node.dataset.kListAttrs)])
     if (__KUDZU_LIST_EVENTS__ && node.hasAttribute("data-k-list-events")) parts.events.push([node, node.dataset.kListEvents])
@@ -337,8 +426,8 @@ function listItemParts(root) {
   return parts
 }
 
-function listItemPartPlan(template) {
-  const source = [template, ...template.querySelectorAll("*")]
+function listItemPartPlan(template, nested = false) {
+  const source = nested ? ownedElements(template) : [template, ...template.querySelectorAll("*")]
   const indexes = new Map(source.map((node, index) => [node, index]))
   const parts = listItemParts(template)
   return {
@@ -353,8 +442,8 @@ function listItemPartPlan(template) {
   }
 }
 
-function mapListItemParts(parts, root) {
-  const target = [root, ...root.querySelectorAll("*")]
+function mapListItemParts(parts, root, nested = false) {
+  const target = nested ? ownedElements(root) : [root, ...root.querySelectorAll("*")]
   itemParts.set(root, {
     directTexts: parts.directTexts.map(([index, field]) => [target[index], field]),
     texts: __KUDZU_LIST_TEXT_RANGES__ ? parts.texts.map(([index, field]) => [target[index], field]) : [],
@@ -404,6 +493,49 @@ function listConditionKey(kind, value) {
 
 function renderFalsy(value) {
   return value === false || value == null || value === true ? "" : String(value)
+}
+
+function validateChildLists(items, child) {
+  for (const item of items) {
+    const children = item?.[child.field]
+    if (!Array.isArray(children)) throw new Error(`Nested keyed list property "${child.field}" must remain an array`)
+    const keys = new Set()
+    for (const entry of children) {
+      const key = entry?.[child.key]
+      if (!validListKey(key)) throw new Error(`Keyed list key "${child.key}" must be a string or finite number`)
+      assertListItem(entry)
+      assertListValue(entry, new Set(), true)
+      const token = keyToken(key)
+      if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
+      keys.add(token)
+    }
+  }
+}
+
+function listOwner(start) {
+  let owner = start.parentElement
+  while (owner && !listItems.has(owner)) owner = owner.parentElement
+  return owner
+}
+
+function ownedElements(root) {
+  const elements = []
+  const visit = node => {
+    elements.push(node)
+    for (let child = node.firstElementChild; child;) {
+      if (child.matches("template[data-k-list]")) {
+        const end = findEnd(child, JSON.parse(child.dataset.kList).id)
+        elements.push(child, end)
+        child = end.nextElementSibling
+      } else {
+        const next = child.nextElementSibling
+        visit(child)
+        child = next
+      }
+    }
+  }
+  visit(root)
+  return elements
 }
 
 function listRoots(start, end) {
@@ -585,8 +717,10 @@ function assertListValue(value, seen, root = false) {
 }
 
 function findEnd(start, id) {
-  return [...start.ownerDocument.querySelectorAll("template[data-k-list-end]")]
-    .find(node => node.dataset.kListEnd === id)
+  for (let node = start.nextElementSibling; node; node = node.nextElementSibling) {
+    if (node.matches("template[data-k-list-end]") && node.dataset.kListEnd === id) return node
+  }
+  throw new Error("Keyed list marker has no end")
 }
 
 function register(targets, id, entry) {

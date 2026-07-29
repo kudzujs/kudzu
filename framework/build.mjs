@@ -197,9 +197,10 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed))
   const hasListEffects = plans.some(plan => plan.lists.some(list => list.effects))
   const hasListRowStates = plans.some(plan => plan.lists.some(list => list.rowStates))
+  const hasNestedLists = plans.some(plan => plan.lists.some(list => list.ownerField))
   const hasItemDependencies = plans.some(plan => plan.effects.some(effect => effect.itemDependencies?.length))
   const hasListAsyncParts = hasListExpressions || hasListExpressionAttributes || hasListConditions
-  const hasListMounts = hasListConditions || plans.some(plan => plan.lists.some(list => list.mount))
+  const hasListMounts = hasListConditions || hasNestedLists || plans.some(plan => plan.lists.some(list => list.mount))
   const hasNestedStateCaptures = hasNestedCaptureState(plans)
   const hasSetterCaptures = hasCaptureType(plans, "setter")
   const hasEffectCaptures = plans.some(plan => plan.effects.some(effect => Object.keys(effect.scope).length))
@@ -278,7 +279,8 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_LIST_ASYNC_PARTS__: String(hasListAsyncParts),
       __KUDZU_LIST_MOUNTS__: String(hasListMounts),
       __KUDZU_LIST_ITEM_HOOKS__: String(hasItemDependencies),
-      __KUDZU_LIST_ROW_STATES__: String(hasListRowStates)
+      __KUDZU_LIST_ROW_STATES__: String(hasListRowStates),
+      __KUDZU_NESTED_LISTS__: String(hasNestedLists)
     })
   }
   if (hasNativeHandlers) {
@@ -1666,6 +1668,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const listValues = new WeakMap()
     const listEventItems = new WeakMap()
     const listConditions = new WeakMap()
+    const nestedLists = new WeakMap()
     const listEffectEntries = new WeakMap()
     let usesBehavior = false
     let usesBinding = false
@@ -2018,7 +2021,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         calculation.parent = callback
         validateListExpression(calculation, parts.item, originalParts.root, fail)
       }
-      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization?.rowState)
+      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization?.rowState, nestedLists)
       if (specialization?.effects.length) {
         usesListEffects = true
         const statements = specialization.effects.map(entry => {
@@ -2185,14 +2188,16 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       }
 
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const listParts = renderedLists.get(node)
+        const nestedParts = nestedLists.get(unwrapExpression(node.expression))
+        const listParts = renderedLists.get(node) ?? nestedParts
         if (listParts) {
           usesBehavior = true
           usesList = true
           return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, [
             listParts.state,
             factory.createStringLiteral(listParts.keyField),
-            ts.visitNode(listParts.callback, visitor)
+            ts.visitNode(listParts.callback, visitor),
+            ...(nestedParts ? [factory.createStringLiteral(listParts.ownerField)] : [])
           ]))
         }
         const conditional = conditionalParts(node.expression)
@@ -2395,6 +2400,25 @@ function keyedListParts(expression, setters) {
   return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
 }
 
+function nestedKeyedListParts(expression, parentItem) {
+  const value = unwrapExpression(expression)
+  if (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map") return undefined
+  const collection = value.expression.expression
+  if (!ts.isPropertyAccessExpression(collection) || !ts.isIdentifier(collection.expression) || collection.expression.text !== parentItem) return undefined
+  const callback = value.arguments[0]
+  if (!ts.isArrowFunction(callback) || callback.parameters.length !== 1 || !ts.isIdentifier(callback.parameters[0].name)) {
+    throw new Error("Nested keyed list map callback must be an arrow function with one identifier parameter")
+  }
+  const root = unwrapExpression(callback.body)
+  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) throw new Error("Nested keyed list map callback must return one JSX element")
+  const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
+  const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === "key")
+  const item = callback.parameters[0].name.text
+  const keyField = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression && directProperty(key.initializer.expression, item)
+  if (!keyField) throw new Error(`Nested keyed list root must have key={${item}.<field>}`)
+  return { callback, root, item, keyField, ownerField: collection.name.text }
+}
+
 function isStateBackedListComponentCall(call, component, setters) {
   if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) return false
   const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
@@ -2479,7 +2503,7 @@ function insideJsxEventHandler(node, root) {
   return false
 }
 
-function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowState) {
+function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowState, nestedLists) {
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
   }
@@ -2490,10 +2514,11 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
     if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
   }
   let conditionDepth = 0
+  let nestedList
   const visit = node => {
     if (ts.isJsxFragment(node)) fail(node, "Fragments are not supported in keyed lists")
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
-    if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, "Nested keyed lists are not supported")
+    if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, parts.nested ? "Keyed lists support at most one nested level" : "Nested keyed list collections must be a direct property of the parent item")
     if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, item)) fail(node, "Keyed list item spreads are not supported")
     if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.text)) {
       listEventItems.set(node, item)
@@ -2501,8 +2526,21 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
     }
     if (ts.isJsxExpression(node) && node.expression) {
       const expression = unwrapExpression(node.expression)
+      if (containsJsx(expression) && ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression) && expression.expression.name.text === "map") {
+        const nested = nestedKeyedListParts(expression, item)
+        if (!nested) fail(expression, parts.nested ? "Keyed lists support at most one nested level" : "Nested keyed list collections must be a direct property of the parent item")
+        if (parts.nested) fail(expression, "Keyed lists support at most one nested level")
+        if (nestedList) fail(expression, "Keyed list rows support one nested keyed list")
+        if (referenceIdentifiers(nested.callback, item).length) fail(nested.root, "Nested keyed list rows cannot capture the parent item")
+        nestedList = nested
+        const nestedParts = { ...nested, state: parts.state, nested: true }
+        nestedLists.set(expression, nestedParts)
+        validateKeyedList(nestedParts, sourceFile, listValues, listEventItems, listConditions, setters, undefined, nestedLists)
+        return
+      }
       const condition = conditionalParts(expression)
       if (condition && containsJsx(expression)) {
+        if (parts.nested) fail(node, "Nested keyed list item conditions are not supported")
         if (conditionDepth) fail(node, "Nested item conditions are not supported in keyed lists")
         if (rowState && referencedStateNames(condition.condition, setters).has(rowState.state)) {
           conditionDepth++

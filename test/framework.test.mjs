@@ -868,6 +868,29 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   if (chrome) await runListBrowserTest(fixture, chrome)
 })
 
+test("compiles one-level nested keyed lists owned by parent rows", async t => {
+  const fixture = new URL("./fixtures/nested-lists", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/nested-lists/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/nested-lists/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/nested-lists/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/nested-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/nested-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-category="c1"[\s\S]*Spa[\s\S]*data-item="a1"[\s\S]*Sauna[\s\S]*data-item="a2"[\s\S]*Massage/)
+  assert.doesNotMatch(html, /data-category="c2"|data-item="b1"/)
+  assert.equal((component.match(/__kList\(/g) ?? []).length, 2)
+  assert.match(component, /__kList\(categories, "id", item =>[\s\S]*, "items"\)/)
+  assert.equal(plan.lists.length, 2)
+  assert.deepEqual(plan.lists.map(list => list.state), ["s0", "s0"])
+  assert.equal(plan.lists.find(list => list.ownerField)?.ownerField, "items")
+  assert.deepEqual(plan.lists.find(list => list.child)?.child, { field: "items", key: "id" })
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNestedListBrowserTest(fixture, chrome)
+})
+
 test("specializes relative imported keyed list components", async t => {
   const fixture = new URL("./fixtures/imported-lists", import.meta.url)
   t.after(async () => {
@@ -988,7 +1011,11 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-concatenated-key", /require a direct string or numeric literal key/],
     ["list-invalid-duplicate", /Duplicate keyed list key: same/],
     ["list-invalid-fragment", /Fragments are not supported/],
-    ["list-invalid-nested", /Nested keyed lists are not supported/],
+    ["list-invalid-nested", /Nested keyed list collections must be a direct property of the parent item/],
+    ["list-invalid-nested-computed", /Nested keyed list collections must be a direct property of the parent item/],
+    ["list-invalid-nested-deep", /Keyed lists support at most one nested level/],
+    ["list-invalid-nested-parent-capture", /Nested keyed list rows cannot capture the parent item/],
+    ["list-invalid-nested-condition", /Nested keyed list item conditions are not supported/],
     ["list-invalid-mutation", /assignments and updates are not supported/],
     ["list-invalid-mutating-method", /mutating method "sort"/],
     ["list-invalid-promise", /arbitrary method "resolve"/],
@@ -2387,6 +2414,85 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNestedListBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const click = action => document.querySelector('[data-action="' + action + '"]').click()
+const categories = () => [...document.querySelectorAll("[data-categories] > [data-category]")]
+const items = category => [...category.querySelectorAll(":scope > [data-items] > [data-item]")]
+try {
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  await wait()
+  const spa = document.querySelector('[data-category="c1"]')
+  const dining = document.querySelector('[data-category="c2"]')
+  const sauna = spa.querySelector('[data-item="a1"]')
+  const massage = spa.querySelector('[data-item="a2"]')
+  if (categories().map(node => node.dataset.category).join(",") !== "c1,c2" || items(spa).map(node => node.dataset.item).join(",") !== "a1,a2") throw new Error("initial")
+  sauna.querySelector("[data-uncontrolled]").value = "preserved"
+  click("update")
+  await wait()
+  if (document.querySelector('[data-category="c1"]') !== spa || spa.querySelector('[data-item="a1"]') !== sauna) throw new Error("update-remounted")
+  if (spa.querySelector("h2").textContent !== "Wellness" || spa.querySelector("footer").textContent !== "Wellness" || spa.querySelector("[data-kind]").textContent !== "Other kind") throw new Error("outer-update")
+  if (sauna.querySelector("[data-title]").textContent !== "Sauna Plus" || sauna.querySelector("[data-price]").textContent !== "25") throw new Error("child-update")
+  if (massage.querySelector("[data-title]").textContent !== "Massage" || massage.querySelector("[data-price]").textContent !== "30") throw new Error("unchanged-child-update")
+  click("parent-reorder")
+  await wait()
+  if (categories()[0] !== dining || categories()[1] !== spa || spa.querySelector('[data-item="a1"]') !== sauna) throw new Error("parent-reorder")
+  click("child-reorder")
+  await wait()
+  if (items(spa)[0] !== massage || items(spa)[1] !== sauna || sauna.querySelector("[data-uncontrolled]").value !== "preserved") throw new Error("child-reorder")
+  sauna.querySelector("[data-select]").click()
+  await wait()
+  if (document.body.dataset.selected !== "Sauna Plus|25") throw new Error("latest-event")
+  click("child-remove")
+  await wait()
+  if (spa.querySelector('[data-item="a2"]') || spa.querySelector('[data-item="a1"]') !== sauna) throw new Error("child-remove")
+  click("child-readd")
+  await wait()
+  const readded = spa.querySelector('[data-item="a2"]')
+  if (!readded || readded === massage || readded.querySelector("[data-title]").textContent !== "Massage Re-added") throw new Error("child-readd")
+  readded.querySelector("[data-select]").click()
+  await wait()
+  if (document.body.dataset.selected !== "Massage Re-added|35") throw new Error("readded-event")
+  click("parent-remove")
+  await wait()
+  if (spa.isConnected || sauna.isConnected || document.querySelector('[data-category="c1"]')) throw new Error("parent-remove")
+  click("parent-readd")
+  await wait()
+  const restored = document.querySelector('[data-category="c1"]')
+  if (!restored || restored === spa || restored.querySelector('[data-item="a3"]')?.textContent !== "Facial40Select") throw new Error("parent-readd")
+  if (runtimeError) throw new Error("runtime-" + runtimeError)
+  document.body.dataset.nestedListTest = "pass"
+} catch (error) {
+  document.body.dataset.nestedListTest = "fail-" + error.message
+}
+`)
+  const port = 40500 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-nested-list-test="pass"/)
   } finally {
     server.kill()
   }

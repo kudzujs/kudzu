@@ -214,10 +214,18 @@ export function stateConditional(kind, state, truthy, falsy) {
   return { [conditionalMarker]: true, kind, value: state.value, truthy, falsy, state: state.id }
 }
 
-export function list(items, keyField, render) {
+export function list(items, keyField, render, ownerField) {
   if (!items?.[signalMarker] || !Array.isArray(items.value)) throw new Error("A keyed list must use local array state")
+  let values = items.value
+  if (ownerField) {
+    const owner = renderContext?.listRoot ?? renderContext?.listRowRoot
+    if (!owner) throw new Error("A nested keyed list must be rendered inside a keyed row")
+    renderContext.listFields?.add(ownerField)
+    values = renderContext.listTemplate ? [] : owner.item?.[ownerField]
+    if (!Array.isArray(values)) throw new Error(`Nested keyed list property "${ownerField}" must remain an array`)
+  }
   const keys = new Set()
-  for (const item of items.value) {
+  for (const item of values) {
     const key = item?.[keyField]
     if (!validListKey(key)) throw new Error(`Keyed list key "${keyField}" must be a string or finite number`)
     assertListItem(item)
@@ -226,7 +234,7 @@ export function list(items, keyField, render) {
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
     keys.add(token)
   }
-  return { [listMarker]: true, items, keyField, render }
+  return { [listMarker]: true, items, values, keyField, render, ownerField }
 }
 
 export function listField(read, field) {
@@ -347,7 +355,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowConditions: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -735,23 +743,33 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
 
 async function renderList(node, namespace, selectValue) {
   if (namespace) throw new Error(`Reactive keyed lists are not supported inside ${namespace}`)
-  const id = nextRenderId("l")
-  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.items.value.map(item => item[node.keyField]), ...(node.items[reducerStateMarker] ? { reducer: true } : {}) }
+  const ownerRoot = node.ownerField ? renderContext.listRoot ?? renderContext.listRowRoot : undefined
+  const ownerTemplate = Boolean(node.ownerField && renderContext.listTemplate)
+  const id = node.ownerField ? nextRowListId() : nextRenderId("l")
+  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map(item => item[node.keyField]), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.items[reducerStateMarker] ? { reducer: true } : {}) }
+  if (ownerTemplate) Object.assign(ownerRoot.descriptor, { child: { field: node.ownerField, key: node.keyField }, mount: true, nested: true })
   renderContext.listDepth++
+  const previousListRoot = renderContext.listRoot
+  const previousListRowRoot = renderContext.listRowRoot
+  const previousListTemplate = renderContext.listTemplate
+  const previousListInitialMarkers = renderContext.listInitialMarkers
   const previousListFields = renderContext.listFields
   const previousListEffectOwners = renderContext.listEffectOwners
   const previousListRowStates = renderContext.listRowStates
   const previousListRowConditions = renderContext.listRowConditions
+  const previousListRowLists = renderContext.listRowLists
   try {
     renderContext.listTemplate = true
     renderContext.listEffectOwners = []
     renderContext.listRowStates = []
     renderContext.listRowConditions = []
+    renderContext.listRowLists = []
     renderContext.listFields = new Set([node.keyField])
-    renderContext.listRoot = { id, state: node.items.id, template: true, effects: [], item: {}, rowIndexes: { s: 0, c: 0 } }
+    renderContext.listRoot = { id, state: node.items.id, descriptor, template: true, effects: [], item: {}, rowIndexes: { s: 0, c: 0, l: 0 } }
     renderContext.listRowRoot = renderContext.listRoot
     const template = await renderNode(node.render({}), namespace, selectValue)
-    if (template.includes("data-k-native-") || template.includes("data-k-effects=")) descriptor.mount = true
+    if (template.includes("data-k-native-") || template.includes("data-k-effects=") || template.includes("data-k-list=")) descriptor.mount = true
+    if (template.includes("data-k-list=")) descriptor.nested = true
     if (template.includes("data-k-effects=")) descriptor.effects = true
     if (template.includes("data-k-list-condition")) descriptor.conditions = true
     if (template.includes("data-k-list-text-end")) descriptor.textRanges = true
@@ -764,31 +782,45 @@ async function renderList(node, namespace, selectValue) {
       if (renderContext.listRowConditions.length) descriptor.rowConditions = renderContext.listRowConditions.map(({ id }) => id)
       descriptor.mount = true
     }
-    const seed = listSeed(node.items.value, renderContext.listFields)
+    const seed = node.ownerField ? undefined : listSeed(node.values, renderContext.listFields)
     if (seed) descriptor.seed = seed
     let current = ""
     renderContext.listTemplate = false
     renderContext.listInitialMarkers = Boolean(descriptor.conditions)
-    for (const item of node.items.value) {
-      renderContext.listRoot = { id, state: node.items.id, key: item[node.keyField], template: false, effects: [], item, rowIndexes: { s: 0, c: 0 } }
+    for (const item of node.values) {
+      renderContext.listRoot = { id, state: node.items.id, descriptor, key: item[node.keyField], template: false, effects: [], item, rowIndexes: { s: 0, c: 0, l: 0 } }
       renderContext.listRowRoot = renderContext.listRoot
       current += await renderNode(node.render(item), namespace, selectValue)
     }
-    renderContext.lists.push(descriptor)
+    if (!node.ownerField || ownerTemplate) renderContext.lists.push(descriptor)
     renderContext.hasBehaviors = true
     renderContext.hasLists = true
     return `<template data-k-list='${escapeJsonAttribute(descriptor)}'>${template}</template>${current}<template data-k-list-end="${id}"></template>`
   } finally {
-    renderContext.listRoot = undefined
-    renderContext.listRowRoot = undefined
-    renderContext.listTemplate = false
-    renderContext.listInitialMarkers = false
+    renderContext.listRoot = previousListRoot
+    renderContext.listRowRoot = previousListRowRoot
+    renderContext.listTemplate = previousListTemplate
+    renderContext.listInitialMarkers = previousListInitialMarkers
     renderContext.listFields = previousListFields
     renderContext.listEffectOwners = previousListEffectOwners
     renderContext.listRowStates = previousListRowStates
     renderContext.listRowConditions = previousListRowConditions
+    renderContext.listRowLists = previousListRowLists
     renderContext.listDepth--
   }
+}
+
+function nextRowListId() {
+  const root = renderContext.listRoot ?? renderContext.listRowRoot
+  const index = root.rowIndexes.l++
+  if (renderContext.listTemplate) {
+    const id = nextRenderId("l")
+    renderContext.listRowLists[index] = { id }
+    return id
+  }
+  const entry = renderContext.listRowLists[index]
+  if (!entry) throw new Error("Nested keyed lists must have the same order for every parent item")
+  return entry.id
 }
 
 function nextRenderId(kind) {

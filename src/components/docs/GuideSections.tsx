@@ -102,6 +102,7 @@ export default function Page() {
 }
 
 return <ItemList items={items} />`} />
+    <p>One nested keyed map may read a direct array property of its parent item, such as <code>category.items.map(item =&gt; &lt;li key={`{item.id}`}&gt;...&lt;/li&gt;)</code>. Kudzu preserves parent and child DOM identity when either level updates or reorders. The child row must have an intrinsic root and may capture its child item; computed collections, parent-item capture, a second child list, third-level nesting, child components, effects, conditions, and row-local state remain unsupported.</p>
   </section>
 }
 
