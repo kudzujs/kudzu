@@ -25,6 +25,11 @@ try {
     document.querySelector("[data-item]").click()
     await waitFor(() => document.querySelector('[data-route="item"]')?.dataset.id === "oak")
     if (document.querySelector('[data-shell="a"]') !== shell || document.querySelector("[data-layout-count]").textContent !== "A 1" || document.querySelector("[data-route-count]").textContent !== "Route 0" || document.body.dataset.itemEffect !== "oak") throw new Error("group-a-lifetimes")
+    const childStarts = [...document.querySelectorAll("template[data-k-list]")].filter(start => JSON.parse(start.dataset.kList).ownerField)
+    if (childStarts.length !== 1 || childStarts[0].content.firstElementChild || document.querySelector('[data-child="a1"]')?.textContent !== "OakAvailable") throw new Error("nested-navigation-mount")
+    document.querySelector("[data-add-child]").click()
+    await waitFor(() => document.querySelector('[data-child="a2"]'))
+    if (document.querySelector('[data-child="a2"]')?.textContent !== "PineUnavailable") throw new Error("nested-navigation-add")
     if (!notIntercepted("[data-cross]") || await requestCount("/app/beta") !== 0) throw new Error("cross-group")
     if (!notIntercepted("[data-native-exact]") || await requestCount("/app/items/native") !== 0) throw new Error("ungrouped-runtime-overlap")
     document.body.dataset.navigationGroupsTest = "pass"

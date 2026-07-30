@@ -11,6 +11,7 @@ const ownedLists = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
 const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const conditionTemplates = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}${__KUDZU_LIST_EFFECTS__ ? ",[data-k-effects]" : ""}`
+const childPrototypes = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -37,8 +38,9 @@ function mountLists(root) {
     const descriptor = JSON.parse(start.dataset.kList)
     const end = findEnd(start, descriptor.id)
     const roots = listRoots(start, end)
+    const nested = __KUDZU_NESTED_LISTS__ ? mountNestedPrototype(start, descriptor, roots) : undefined
+    const templateRoot = __KUDZU_NESTED_LISTS__ ? nested.templateRoot : start.content.firstElementChild
     if (__KUDZU_LIST_ROW_STATES__ && descriptor.rowStates) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index])
-    const templateRoot = start.content.firstElementChild
     const parts = listItemPartPlan(templateRoot, descriptor.nested)
     for (const root of roots) {
       if (__KUDZU_LIST_CONDITIONS__ && descriptor.conditions) {
@@ -51,6 +53,7 @@ function mountLists(root) {
     const list = {
       start,
       descriptor,
+      ...(__KUDZU_NESTED_LISTS__ ? { templateRoot, ...(nested.childPrototype ? { childPrototype: nested.childPrototype } : {}) } : {}),
       parts,
       seedFields: __KUDZU_LIST_SEEDS__ && descriptor.seed && Object.keys(descriptor.seed),
       roots: new Map(roots.map((node, index) => [keyToken(descriptor.keys[index]), node])),
@@ -58,7 +61,7 @@ function mountLists(root) {
       items: undefined,
       container: roots[0]?.parentNode,
       boundary: end,
-      ...(__KUDZU_NESTED_LISTS__ && descriptor.ownerField ? { owner: listOwner(start) } : {})
+      ...(__KUDZU_NESTED_LISTS__ && descriptor.ownerField ? { owner: nested.owner } : {})
     }
     if (__KUDZU_NESTED_LISTS__ && descriptor.ownerField) {
       if (!list.owner) throw new Error("Nested keyed list has no parent row")
@@ -150,10 +153,11 @@ function updateList(list) {
   for (const { item, key, token, value } of entries) {
     let node = list.roots.get(token)
     if (!node) {
-      node = list.start.content.firstElementChild?.cloneNode(true)
+      node = (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
       if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
       if (!node) throw new Error("Keyed list template has no root element")
       node.removeAttribute("data-k-list-root")
+      if (__KUDZU_NESTED_LISTS__ && list.childPrototype) childPrototypes.set(node, list.childPrototype)
       if (__KUDZU_LIST_ROW_STATES__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)
       mapListItemParts(list.parts, node, list.descriptor.nested)
       fillListItem(node, item, list.descriptor.nested)
@@ -323,10 +327,11 @@ function updateReducerList(list, items) {
 }
 
 function addListRoot(list, { item, key, token, value }) {
-  let node = list.start.content.firstElementChild?.cloneNode(true)
+  let node = (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
   if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
   if (!node) throw new Error("Keyed list template has no root element")
   node.removeAttribute("data-k-list-root")
+  if (__KUDZU_NESTED_LISTS__ && list.childPrototype) childPrototypes.set(node, list.childPrototype)
   if (__KUDZU_LIST_ROW_STATES__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)
   mapListItemParts(list.parts, node, list.descriptor.nested)
   fillListItem(node, item, list.descriptor.nested)
@@ -535,6 +540,31 @@ function listOwner(start) {
   let owner = start.parentElement
   while (owner && !listItems.has(owner)) owner = owner.parentElement
   return owner
+}
+
+function mountNestedPrototype(start, descriptor, roots) {
+  const owner = descriptor.ownerField ? listOwner(start) : undefined
+  const prototypeStart = owner ? childPrototypes.get(owner) : undefined
+  const templateRoot = prototypeStart?.content.firstElementChild ?? start.content.firstElementChild
+  if (!templateRoot) throw new Error("Nested keyed list has no shared row prototype")
+  const childPrototype = descriptor.child ? findChildPrototype(templateRoot, descriptor.child.field) : undefined
+  if (descriptor.child && !childPrototype) throw new Error("Keyed list template has no nested row prototype")
+  if (childPrototype) for (const root of roots) childPrototypes.set(root, childPrototype)
+  if (prototypeStart && start !== prototypeStart) start.content.replaceChildren()
+  return { owner, childPrototype, templateRoot }
+}
+
+function findChildPrototype(root, field) {
+  for (const element of root.children) {
+    if (element.matches("template[data-k-list]")) {
+      if (JSON.parse(element.dataset.kList).ownerField === field) return element
+      const nested = findChildPrototype(element.content, field)
+      if (nested) return nested
+    } else {
+      const nested = findChildPrototype(element, field)
+      if (nested) return nested
+    }
+  }
 }
 
 function ownedElements(root) {

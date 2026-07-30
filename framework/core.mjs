@@ -801,7 +801,8 @@ async function renderList(node, namespace, selectValue) {
     if (!node.ownerField || ownerTemplate) renderContext.lists.push(descriptor)
     renderContext.hasBehaviors = true
     renderContext.hasLists = true
-    return `<template data-k-list='${escapeJsonAttribute(descriptor)}'>${template}</template>${current}<template data-k-list-end="${id}"></template>`
+    const prototype = node.ownerField && !ownerTemplate ? "" : template
+    return `<template data-k-list='${escapeJsonAttribute(descriptor)}'>${prototype}</template>${current}<template data-k-list-end="${id}"></template>`
   } finally {
     renderContext.listRoot = previousListRoot
     renderContext.listRowRoot = previousListRowRoot
