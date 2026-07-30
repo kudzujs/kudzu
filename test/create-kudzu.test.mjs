@@ -20,7 +20,7 @@ test("creates a Kudzu project", async t => {
   const packageJson = JSON.parse(await readFile(join(directory, "app/package.json"), "utf8"))
   const page = await readFile(join(directory, "app/src/pages/index.tsx"), "utf8")
   const readme = await readFile(join(directory, "app/README.md"), "utf8")
-  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.6.26")
+  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.6.27")
   assert.equal(packageJson.scripts.check, "tsc --noEmit && kudzu build")
   assert.match(page, /useState/)
   assert.match(page, /export const metadata/)

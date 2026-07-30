@@ -546,7 +546,9 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (node?.[listMarker]) return renderList(node, namespace, selectValue)
   if (node?.[listFieldMarker]) {
     if (renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) renderContext.listFields?.add(node.field)
-    const marker = renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch ? ` data-k-list-text="${escapeAttribute(node.field)}"` : ""
+    const marker = renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch
+      ? sharedInitialListMarker() ? " data-k-list-text" : ` data-k-list-text="${escapeAttribute(node.field)}"`
+      : ""
     return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-text-end></template>`
   }
   if (node?.[listExpressionMarker]) {
@@ -727,12 +729,12 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
 
   if (attributeBindings.length) attributes += ` data-k-bind-attrs='${escapeJsonAttribute(attributeBindings)}'`
-  if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && listAttributes.length) attributes += ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
+  if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && listAttributes.length) attributes += sharedInitialListMarker() ? " data-k-list-attrs" : ` data-k-list-attrs='${escapeJsonAttribute(listAttributes)}'`
   if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && listExpressionAttributes.length) attributes += ` data-k-list-expression-attrs='${escapeJsonAttribute(listExpressionAttributes)}'`
   if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && listEvents.length) attributes += ` data-k-list-events='${escapeJsonAttribute(listEvents)}'`
   if ((renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) && directListText) {
     renderContext.listFields?.add(directListText.field)
-    attributes += ` data-k-list-text="${escapeAttribute(directListText.field)}"`
+    attributes += sharedInitialListMarker() ? " data-k-list-text" : ` data-k-list-text="${escapeAttribute(directListText.field)}"`
   }
 
   if (tag === "option" && selectValue !== noSelectValue && String(optionValue(props)) === (selectValue == null ? "" : String(selectValue))) attributes += " selected"
@@ -744,6 +746,11 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
   const children = rawHtml ?? (directListText ? escapeHtml(directListText.value ?? "") : await renderNode(props.children, childNamespace, childSelectValue))
   return `<${tag}${attributes}>${children}</${tag}>`
+}
+
+function sharedInitialListMarker() {
+  const owner = renderContext.listRoot ?? renderContext.listRowRoot
+  return renderContext.listInitialMarkers && !renderContext.listTemplate && !renderContext.listConditionalBranch && owner?.descriptor.ownerField
 }
 
 async function renderList(node, namespace, selectValue) {

@@ -6,9 +6,11 @@ type Category = { id: string; title: string; items: Item[] }
 
 function LocalItem({ item, onSelect }: { item: Item; onSelect: () => void }) {
   const label = item.title.toUpperCase()
-  return <li data-local-item={item.id}>
+  return <li data-local-item={item.id} title={item.title}>
+    <span data-direct>{item.title}</span>
+    <p data-range>{item.id}: {item.title}</p>
     <span data-label>{label}</span>
-    {item.available && <strong data-status>Available</strong>}
+    {item.available && <strong data-status title={item.title}><span data-branch>{item.title}</span>Available</strong>}
     <button data-select onClick={() => onSelect()}>Select</button>
   </li>
 }

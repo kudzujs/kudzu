@@ -75,15 +75,15 @@ export function BenchmarksSection() {
     <p>Row 500 enters edit state, survives reverse with the same row and input DOM nodes, then removal and re-add must create fresh non-editing state. Kudzu builds fastest and beats React, Vue, and Svelte on every operation. Astro is the hand-written native lower bound. Kudzu and Astro emit all initial rows; the other targets are CSR, so artifact sizes and loading architecture are not equivalent.</p>
     <h3>1,000-row nested child components</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "Initial JS gzip", "Build", "Child update + condition", "Child reverse", "Parent reverse", "Parent remove"]} rows={[
-      ["Astro native", "Yes", "287 B", "844 ms", "0.5 ms", "0.3 ms", "3.3 ms", "0.2 ms"],
-      ["Kudzu", "Yes", "6.8 KB", "392 ms", "1.1 ms", "0.4 ms", "4.7 ms", "0.7 ms"],
-      ["Svelte CSR", "No", "13.1 KB", "869 ms", "2.4 ms", "0.9 ms", "5.6 ms", "1.0 ms"],
-      ["Vue CSR", "No", "24.6 KB", "770 ms", "4.0 ms", "2.3 ms", "5.1 ms", "2.2 ms"],
-      ["React CSR", "No", "59.5 KB", "1,010 ms", "8.1 ms", "4.1 ms", "6.7 ms", "3.6 ms"]
+      ["Astro native", "Yes", "287 B", "888 ms", "0.5 ms", "0.3 ms", "3.6 ms", "0.2 ms"],
+      ["Kudzu", "Yes", "6.9 KB", "403 ms", "1.4 ms", "0.5 ms", "5.4 ms", "0.7 ms"],
+      ["Svelte CSR", "No", "13.1 KB", "882 ms", "2.2 ms", "0.9 ms", "5.4 ms", "0.9 ms"],
+      ["Vue CSR", "No", "24.6 KB", "796 ms", "4.0 ms", "2.1 ms", "4.6 ms", "1.8 ms"],
+      ["React CSR", "No", "59.5 KB", "1,044 ms", "8.5 ms", "3.9 ms", "6.8 ms", "3.8 ms"]
     ]} />
     <p>The fixture renders 100 keyed parents with 10 keyed child components each. The selected update changes child text and flips its condition while preserving the child root; reverse and removal operations also require child and parent identity. Kudzu beats Svelte, Vue, and React on all four operations. Astro remains the hand-written native lower bound.</p>
-    <div className="docs-callout"><strong>Shared nested output</strong><span>One child row prototype supplies inert condition branches and descriptors to every parent. HTML fell from 676,086 B to 369,586 B and total raw output from 693,806 B to 388,611 B. The compressed-file sum is 23,920 B.</span></div>
-    <p>The final prototype-sharing step saves 46,715 B raw over <code>v0.6.25</code> but adds 447 B aggregate gzip because the removed HTML compressed well and prototype lookup adds nested runtime code. Kudzu and Astro emit initial rows; the CSR targets do not, so output sizes are not architecture-equivalent.</p>
+    <div className="docs-callout"><strong>Shared nested output</strong><span>One child row prototype supplies inert branches and patch descriptors to every parent. HTML fell from 676,086 B to 339,586 B and total raw output from 693,806 B to 359,035 B. The compressed-file sum is 24,067 B.</span></div>
+    <p>Sharing text and attribute patch metadata saves 29,576 B raw over <code>v0.6.26</code> but adds 147 B aggregate gzip because the removed metadata compressed well. Kudzu and Astro emit initial rows; the CSR targets do not, so output sizes are not architecture-equivalent.</p>
     <p>These results describe one matched fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves eligible application transitions; direct loads still transfer and render complete standalone documents.</p>
   </section>
 }

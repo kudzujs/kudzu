@@ -30,7 +30,7 @@ const files = {
       check: "tsc --noEmit && kudzu build"
     },
     dependencies: {
-      "@kudzujs/core": "^0.6.26"
+      "@kudzujs/core": "^0.6.27"
     }
   }, null, 2)}\n`,
   "tsconfig.json": `${JSON.stringify({

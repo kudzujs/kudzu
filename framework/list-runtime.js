@@ -12,6 +12,7 @@ const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const conditionTemplates = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}${__KUDZU_LIST_EFFECTS__ ? ",[data-k-effects]" : ""}`
 const childPrototypes = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
+const itemPartPlans = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -44,6 +45,7 @@ function mountLists(root) {
     const parts = listItemPartPlan(templateRoot, descriptor.nested)
     for (const root of roots) {
       if (__KUDZU_LIST_CONDITIONS__ && descriptor.conditions) {
+        if (__KUDZU_NESTED_LISTS__ && descriptor.ownerField) itemPartPlans.set(root, parts)
         const initialParts = listItemParts(root, descriptor.nested)
         mapListConditionTemplates(parts.conditions, initialParts.conditions)
       } else mapListItemParts(parts, root, descriptor.nested)
@@ -423,7 +425,7 @@ function listItemParts(root, nested = false) {
   parts = { directTexts: [], texts: [], attributes: [], events: [], expressions: [], expressionAttributes: [], conditions: [], effects: [] }
   for (const node of nested ? ownedElements(root).filter(node => node.matches(itemPartsSelector)) : matching(root, itemPartsSelector)) {
     if (node.hasAttribute("data-k-list-text")) (node.tagName === "TEMPLATE" ? parts.texts : parts.directTexts).push([node, node.dataset.kListText])
-    if (__KUDZU_LIST_ATTRIBUTES__ && node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, JSON.parse(node.dataset.kListAttrs)])
+    if (__KUDZU_LIST_ATTRIBUTES__ && node.hasAttribute("data-k-list-attrs")) parts.attributes.push([node, node.dataset.kListAttrs ? JSON.parse(node.dataset.kListAttrs) : undefined])
     if (__KUDZU_LIST_EVENTS__ && node.hasAttribute("data-k-list-events")) parts.events.push([node, node.dataset.kListEvents])
     if (__KUDZU_LIST_EXPRESSIONS__ && node.hasAttribute("data-k-list-expression")) parts.expressions.push([node, JSON.parse(node.dataset.kListExpression)])
     if (__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ && node.hasAttribute("data-k-list-expression-attrs")) parts.expressionAttributes.push([node, JSON.parse(node.dataset.kListExpressionAttrs)])
@@ -434,8 +436,26 @@ function listItemParts(root, nested = false) {
     }
     if (__KUDZU_LIST_EFFECTS__ && node.hasAttribute("data-k-effects")) parts.effects.push(node)
   }
+  if (__KUDZU_NESTED_LISTS__) hydrateListItemParts(itemPartPlans.get(root), parts)
   itemParts.set(root, parts)
   return parts
+}
+
+function hydrateListItemParts(planned, initial) {
+  if (!planned) return
+  hydrateListItemPartValues(planned.directTexts, initial.directTexts, value => value === "")
+  if (__KUDZU_LIST_TEXT_RANGES__) hydrateListItemPartValues(planned.texts, initial.texts, value => value === "")
+  if (__KUDZU_LIST_ATTRIBUTES__) hydrateListItemPartValues(planned.attributes, initial.attributes, value => value === undefined)
+}
+
+function hydrateListItemPartValues(planned, initial, missing) {
+  let index = 0
+  for (const entry of initial) {
+    if (!missing(entry[1])) continue
+    if (!planned[index]) throw new Error("Keyed list item markers do not match its template")
+    entry[1] = planned[index++][1]
+  }
+  if (index !== planned.length) throw new Error("Keyed list item markers do not match its template")
 }
 
 function listItemPartPlan(template, nested = false) {
