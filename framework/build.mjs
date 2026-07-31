@@ -1694,6 +1694,7 @@ async function compile(file, sourceFiles, sourceIndex, base, workerReferences) {
   if (errors.length) {
     throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
   }
+  if (/(?:\bfrom\s*|\bimport\s*\(\s*)["']react["']/.test(result.outputText)) throw new Error(`${relative(root, file)} Runtime React module references are not supported`)
 
   const output = compiledPath(file)
   await mkdir(resolve(output, ".."), { recursive: true })
@@ -1724,7 +1725,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     ts.setParentRecursive(sourceFile, false)
     rejectOrdinaryWorkerImports(sourceFile, file, sourceFiles)
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
-    const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && statement.moduleSpecifier.text === "@kudzujs/core" && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
+    const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
     const importedSources = new Map()
     const importedSource = target => {
       let imported = importedSources.get(target)
@@ -2206,6 +2207,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
 
       if (hasLinkElements && (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) && isStylesheetLink(node)) {
         fail(node, "Stylesheets must be placed under src/ or declared in kudzu.config styles so Kudzu can emit them in <head>")
+      }
+
+      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react") {
+        if (!node.importClause) fail(node, "Side-effect React imports are not supported because Kudzu does not load the React runtime")
+        if (node.importClause.isTypeOnly) return node
+        return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral("@kudzujs/core"), node.attributes)
       }
 
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {

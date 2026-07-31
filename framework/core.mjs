@@ -20,6 +20,7 @@ const contextMarker = Symbol("kudzu.context")
 const contextProviderMarker = Symbol("kudzu.contextProvider")
 const routeScopeMarker = Symbol("kudzu.routeScope")
 const noSelectValue = Symbol("kudzu.no-select-value")
+export const Fragment = Symbol.for("kudzu.fragment")
 const svgAttributeAliases = {
   clipRule: "clip-rule",
   colorInterpolation: "color-interpolation",
@@ -169,6 +170,8 @@ export function useContext(context) {
   }
   return context.defaultValue
 }
+
+export default { Fragment }
 
 export function behavior(commands) {
   return {

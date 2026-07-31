@@ -8,7 +8,9 @@ HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
 Kudzu is designed so ordinary common React-shaped TSX can migrate with minimal source restructuring. It keeps familiar function components, props, children, collection rendering, conditions, event handlers, `useState`, reduced `useReducer`, refs, and effects, preferring compiler specialization over imperative DOM rewrites. This is a general migration model, not compatibility for one application. Static components compile to HTML; interactions compile to direct DOM capabilities and external ESM only where used.
 
-> Experimental `0.6.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.7.x`: the compiler API and supported TSX surface may change.
+
+**0.7.0:** React-source migration preview. Supported conventional `react` imports now compile to static HTML and capability-specific ESM without React, a VDOM, or hydration. See [release notes](./RELEASES.md#070---react-source-migration-preview).
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
@@ -57,6 +59,22 @@ Configure TypeScript:
 ```
 
 Make sure application TSX files are included by this `tsconfig.json`. Files outside its `include` may fall into an editor-inferred React project and incorrectly report a missing `react/jsx-runtime` or React event-type errors.
+
+Existing React migration source may retain conventional imports while components are moved under `src`:
+
+```tsx
+import React, { useState } from "react"
+
+export default function Header() {
+  const [open, setOpen] = useState(false)
+  return <React.Fragment>
+    <button onClick={() => setOpen(!open)}>{open ? "Close" : "Menu"}</button>
+    {open && <nav>Navigation</nav>}
+  </React.Fragment>
+}
+```
+
+Kudzu rewrites supported React imports to its compile-time APIs before evaluating the module; neither the React package nor a compatibility runtime enters the deploy output. Named `useState`, `useReducer`, `useEffect`, `useRef`, `createContext`, and `useContext` imports must retain those names. Default and namespace React imports currently support `Fragment`; named `Fragment` also works. Aliased hooks, `React.useState`, `memo`, `useMemo`, `useCallback`, React classes, and side-effect or dynamic React imports remain unsupported. A static route using these import forms still emits zero JavaScript.
 
 Create `src/pages/index.tsx`:
 

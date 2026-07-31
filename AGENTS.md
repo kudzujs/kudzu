@@ -11,8 +11,7 @@
 - Native document navigation is the default. Do not add an SPA router unless a real migration fixture proves it necessary and the user explicitly approves it.
 - Before planning migration-related framework work, read `MIGRATION_ROADMAP.md`. Follow its order and acceptance criteria instead of inventing a new architecture.
 
-- Use Kudzu TSX, not React or Next.js.
-- Import framework APIs from `@kudzujs/core`.
+- New Kudzu source imports framework APIs from `@kudzujs/core`. Migration input may retain supported named hook imports from `react` plus default, namespace, or named `Fragment`; the compiler must erase those React module references and must never emit or execute React.
 - Use function components, props, and children for composition.
 - Declare local state exactly like React with `useState`; reduced `useReducer` support requires a pure synchronous two-parameter reducer imported from a relative TypeScript module. Dispatch may cross one direct prop boundary into a specialized same-file or relative-imported synchronous component, including a direct keyed row, and one inline or simple `const` callback containing dispatch may cross one additional relative-imported intrinsic component boundary. These reducer specializations accept destructured primitive literal prop defaults.
 - Event handlers use normal synchronous or async JavaScript. State setters update logical state immediately and DOM writes batch at synchronous-turn boundaries.

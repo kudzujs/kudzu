@@ -3,6 +3,7 @@ export type Reducer<State, Action> = (state: State, action: Action) => State
 export type Dispatch<Action> = (action: Action) => void
 export type EffectCleanup = () => void | Promise<void>
 export type EffectDependency = string | number | boolean | null
+export const Fragment: unique symbol
 
 export function useState<T>(initialValue: T): [T, StateSetter<T>]
 export function useReducer<State, Action>(reducer: Reducer<State, Action>, initialValue: State): [State, Dispatch<Action>]
@@ -21,6 +22,9 @@ export interface Context<T> {
 
 export function createContext<T>(defaultValue: T): Context<T>
 export function useContext<T>(context: Context<T>): T
+
+declare const React: { Fragment: typeof Fragment }
+export default React
 
 export function behavior(commands: Array<["add" | "set" | "log", unknown, unknown]>): unknown
 export function nativeBehavior(module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown

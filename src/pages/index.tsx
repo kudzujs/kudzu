@@ -18,6 +18,7 @@ export const metadata = {
 
 export default function HomePage() {
   const [count, setCount] = useState(0)
+  const [releaseOpen, setReleaseOpen] = useState(true)
 
   function grow() {
     setCount(count + 1)
@@ -30,6 +31,7 @@ export default function HomePage() {
 
   return (
     <>
+      <div className="site-shell" data-site-shell inert={releaseOpen ? true : undefined}>
       <header className="site-header">
         <a className="brand" href="/">
           <img src="/icon-128.png" alt="Kudzu" />
@@ -47,7 +49,7 @@ export default function HomePage() {
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.6.19</span> HTML-FIRST TSX FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.7.0</span> REACT-SOURCE MIGRATION PREVIEW</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">
@@ -128,6 +130,40 @@ export default function Counter() {
         <p>A framework that grows only where it needs to.</p>
         <span>MIT · 2026</span>
       </footer>
+      </div>
+
+      {releaseOpen && <dialog
+        className="release-modal"
+        data-release-modal
+        open
+        aria-labelledby="release-title"
+        aria-describedby="release-summary"
+        aria-modal="true"
+        onKeyDown={(event: KeyboardEvent) => {
+          if (event.key === "Escape") setReleaseOpen(false)
+        }}
+      >
+        <article className="release-card">
+          <div className="release-meta">
+            <span>VERSION 0.7.0</span>
+            <span>JULY 2026</span>
+          </div>
+          <button className="release-close" autoFocus aria-label="Close release announcement" onClick={() => setReleaseOpen(false)}>×</button>
+          <p className="release-kicker">A NEW MIGRATION TRACK</p>
+          <h2 id="release-title">Bring React-shaped pages.<br /><em>Leave React behind.</em></h2>
+          <p id="release-summary">Kudzu 0.7.0 accepts supported conventional React imports as migration source, then ships complete HTML and only the direct DOM behavior the route needs.</p>
+          <div className="release-points" aria-label="Release highlights">
+            <div><strong>Familiar source</strong><span>Functions, props, fragments, hooks, and handlers keep their ordinary TSX shape.</span></div>
+            <div><strong>No React runtime</strong><span>No virtual DOM, hydration pass, or retained browser component tree.</span></div>
+            <div><strong>Static stays static</strong><span>Routes without interaction still ship zero JavaScript.</span></div>
+          </div>
+          <div className="release-actions">
+            <a className="primary-action" href="/docs#components">Read the migration guide</a>
+            <a href="https://github.com/kudzujs/kudzu/blob/v0.7.0/RELEASES.md">View 0.7.0 notes ↗</a>
+          </div>
+          <p className="release-boundary">Migration preview · supported React source only · no compatibility runtime</p>
+        </article>
+      </dialog>}
     </>
   )
 }

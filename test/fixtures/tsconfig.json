@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["*/src/**/*.ts", "*/src/**/*.tsx"],
+  "include": ["react.d.ts", "*/src/**/*.ts", "*/src/**/*.tsx"],
   "exclude": ["*/.kudzu", "*/dist"]
 }

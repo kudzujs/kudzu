@@ -29,6 +29,10 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /<head>.*<script type="module"[^>]+kudzu\.js.*<\/head><body/s)
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
+  assert.match(html, /data-site-shell="true"[^>]*inert/)
+  assert.match(html, /<dialog[^>]*data-release-modal="true"[^>]*open[^>]*aria-modal="true"/)
+  assert.match(html, /VERSION 0\.7\.0.*Bring React-shaped pages.*Leave React behind/s)
+  assert.match(html, /autoFocus[^>]*aria-label="Close release announcement"/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
   assert.match(component, /__kBehavior\(\[\["add", count, 1\]\]\)/)
@@ -37,19 +41,23 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.equal(runtime.trim().split("\n").length, 1)
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
   assert.doesNotMatch([html, docs, runtime].join("\n"), /sessionStorage|__kudzu_state|snapshotState|restoreState|__kudzu_dev/)
-  assert.doesNotMatch(html, /kudzu-binding\.js/)
+  assert.match(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
-  assert.doesNotMatch(html, /data-k-state=/)
+  assert.match(html, /data-k-state=/)
   assert.match(docs, /data-k-if=/)
   assert.match(docs, /kudzu-binding\.js/)
   assert.match(docs, /<script[^>]+kudzu-list\.js/)
   assert.match(docs, /LIVE KEYED LIST/)
   assert.match(docs, /Open menu/)
   assert.equal(home.states[0].name, "count")
+  assert.equal(home.states[1].name, "releaseOpen")
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
-  if (chrome) await runDocsListBrowserTest(chrome)
+  if (chrome) {
+    await runHomeReleaseBrowserTest(chrome)
+    await runDocsListBrowserTest(chrome)
+  }
 })
 
 test("emits configured global styles in every document head", async t => {
@@ -1088,6 +1096,45 @@ test("integrates ordinary React-shaped collection, component, condition, and key
   if (chrome) await runReactShapedIntegrationBrowserTest(fixture, chrome)
 })
 
+test("builds React-imported landing pages without the React runtime", async t => {
+  const fixture = new URL("./fixtures/landing-page-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/landing-page-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/landing-page-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/landing-page-migration/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/landing-page-migration/dist/static/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/landing-page-migration/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/landing-page-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(html, /Ship a faster landing page.*Static first.*Small runtime.*Built for the web/s)
+  assert.match(html, /aria-expanded="false"[^>]*data-k-bind-attrs/)
+  assert.match(html, /data-k-if=/)
+  assert.match(component, /import React, \{ useState \} from "@kudzujs\/core"/)
+  assert.match(component, /useState\(false, "menuOpen"\)/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.equal(plan.find(route => route.route === "/static").states.length, 0)
+  for (const directory of [new URL("./fixtures/landing-page-migration/.kudzu/", import.meta.url), new URL("./fixtures/landing-page-migration/dist/", import.meta.url)]) {
+    const files = (await readdir(directory, { recursive: true })).filter(file => /\.(?:html|js|mjs|json)$/.test(file))
+    const output = (await Promise.all(files.map(file => readFile(new URL(file, directory), "utf8")))).join("\n")
+    assert.doesNotMatch(output, /(?:\bfrom\s*|\bimport\s*\(\s*)["']react["']/)
+  }
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runLandingPageMigrationBrowserTest(fixture, chrome)
+})
+
+test("rejects side-effect React imports", async t => {
+  const fixture = new URL("./fixtures/landing-page-invalid-react", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/landing-page-invalid-react/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/landing-page-invalid-react/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:1:\d+ Side-effect React imports are not supported because Kudzu does not load the React runtime/)
+})
+
 test("specializes relative imported keyed list components", async t => {
   const fixture = new URL("./fixtures/imported-lists", import.meta.url)
   t.after(async () => {
@@ -1982,6 +2029,62 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runHomeReleaseBrowserTest(chrome) {
+  const output = new URL("../dist/", import.meta.url)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/release-browser-test.js"></script></body>'))
+  await writeFile(new URL("release-browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 80))
+try {
+  await wait()
+  const mode = new URL(location.href).searchParams.get("mode")
+  const modal = document.querySelector("[data-release-modal]")
+  const card = modal?.querySelector(".release-card")
+  const close = modal?.querySelector(".release-close")
+  const shell = document.querySelector("[data-site-shell]")
+  const points = modal?.querySelector(".release-points")
+  const rect = card?.getBoundingClientRect()
+  if (!modal || !card || !close || !shell?.hasAttribute("inert") || modal.getAttribute("aria-modal") !== "true") throw new Error("initial")
+  if (document.activeElement !== close) throw new Error("focus")
+  if (rect.left < 0 || rect.right > innerWidth || modal.scrollWidth > modal.clientWidth) throw new Error("overflow")
+  if (mode === "mobile") {
+    if (getComputedStyle(points).gridTemplateColumns.split(" ").length !== 1 || getComputedStyle(modal.querySelector(".release-actions")).flexDirection !== "column") throw new Error("mobile-layout")
+    modal.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+  } else {
+    close.click()
+  }
+  await wait()
+  if (document.querySelector("[data-release-modal]") || shell.hasAttribute("inert")) throw new Error("close")
+  document.body.dataset.releaseModalTest = "pass-" + mode
+} catch (error) {
+  document.body.dataset.releaseModalTest = "fail-" + error.message
+}
+`)
+  const port = 39900 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const pathname = new URL(request.url, "http://localhost").pathname
+  const file = path.join(root, pathname === "/" ? "index.html" : pathname.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    for (const [mode, size] of [["desktop", "1440,1000"], ["mobile", "390,844"]]) {
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--window-size=${size}`, "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/?mode=${mode}`], { encoding: "utf8", timeout: 15000 })
+      assert.equal(browser.status, 0, browser.stderr)
+      assert.match(browser.stdout, new RegExp(`data-release-modal-test="pass-${mode}"`))
+    }
   } finally {
     server.kill()
   }
@@ -3027,7 +3130,7 @@ try {
   document.body.dataset.flatKeyedRowHooksTest = "fail-" + error.message
 }
 `)
-  const port = 40800 + process.pid % 1000
+  const port = 40850 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3220,6 +3323,48 @@ http.createServer((request, response) => {
   }
 }
 
+async function runLandingPageMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  const toggle = document.querySelector("#menu-toggle")
+  if (!document.querySelector("[data-hero]") || document.querySelectorAll("[data-features] article").length !== 2 || toggle.getAttribute("aria-expanded") !== "false" || document.querySelector("#mobile-menu")) throw new Error("initial")
+  toggle.click()
+  await wait()
+  if (toggle.textContent.trim() !== "Close menu" || toggle.getAttribute("aria-expanded") !== "true" || !document.querySelector("#mobile-menu")) throw new Error("open")
+  toggle.click()
+  await wait()
+  if (toggle.textContent.trim() !== "Open menu" || toggle.getAttribute("aria-expanded") !== "false" || document.querySelector("#mobile-menu")) throw new Error("close")
+  document.body.dataset.landingMigrationTest = "pass"
+} catch (error) {
+  document.body.dataset.landingMigrationTest = "fail-" + error.message
+}
+`)
+  const port = 40800 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-landing-migration-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runComponentListBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -3345,7 +3490,7 @@ try {
 }
 
 `)
-  const port = 41000 + process.pid % 1000
+  const port = 41100 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3398,7 +3543,7 @@ try {
 await new Promise(resolve => setTimeout(resolve, 50))
 document.body.dataset.browserTest = document.querySelector("[data-only]").textContent === "after" ? "pass" : "fail-effect-only"
 `)
-  const port = 45000 + process.pid % 1000
+  const port = 45100 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3670,7 +3815,7 @@ try {
 }
 
 `)
-  const port = 43000 + process.pid % 1000
+  const port = 43100 + process.pid % 1000
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])

@@ -91,6 +91,7 @@ export function ComponentsSection() {
   return <section className="docs-section" id="components">
     <div className="docs-heading"><span>03</span><div><p>CORE</p><h2>Components</h2></div></div>
     <p>Ordinary common React-shaped TSX should migrate with minimal source restructuring. Use familiar function components, props, children, fragments, collections, hooks, and conditions; Kudzu prefers compiler specialization over imperative DOM rewrites. This product direction is not specific to one migrated application. Components run at build time and do not remain as a browser-side tree.</p>
+    <p>Migration source may retain conventional <code>react</code> imports for unaliased supported named hooks and default, namespace, or named <code>Fragment</code>. Kudzu rewrites them to compile-time APIs before evaluating the module; React is not loaded or emitted, and a static route remains JavaScript-free. Member hook calls, aliased hooks, <code>memo</code>, <code>useMemo</code>, and <code>useCallback</code> are not yet supported.</p>
     <CodeBlock code={`function Greeting({ name }: { name: string }) {
   return <h1>Hello {name}</h1>
 }
