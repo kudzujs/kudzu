@@ -57,33 +57,33 @@ export function BenchmarksSection() {
     <p>Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. The current seven-run matched commerce build measured Kudzu at 486.8 ms and React at 545.4 ms, making Kudzu 10.7% faster in that run. Kudzu shipped 88.1% less product JavaScript and measured 52.9% faster interaction and 43.4% faster product-to-cart navigation than React. Disabling the cache preserves byte-for-byte output. Generated-handler lowering and shared-Program experiments did not improve the combined median and were not retained.</p>
     <h3>1,000-row keyed effect</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Selected update", "Unrelated update", "Reverse"]} rows={[
-      ["Astro native", "Yes", "381 B", "1,022 ms", "0.4 ms", "0.2 ms", "5.5 ms"],
-      ["Kudzu", "Yes", "7,070 B", "437 ms", "3.4 ms", "2.9 ms", "7.8 ms"],
-      ["Vue CSR", "No", "25,091 B", "893 ms", "4.7 ms", "2.3 ms", "10.1 ms"],
-      ["Svelte CSR", "No", "12,848 B", "1,012 ms", "5.2 ms", "3.0 ms", "48.1 ms"],
-      ["React CSR", "No", "60,921 B", "1,132 ms", "12.3 ms", "6.8 ms", "19.0 ms"]
+      ["Astro native", "Yes", "381 B", "998 ms", "0.4 ms", "0.2 ms", "5.7 ms"],
+      ["Kudzu", "Yes", "8,264 B", "426 ms", "3.6 ms", "2.4 ms", "8.8 ms"],
+      ["Vue CSR", "No", "25,091 B", "935 ms", "5.8 ms", "2.4 ms", "10.5 ms"],
+      ["Svelte CSR", "No", "12,848 B", "1,040 ms", "5.7 ms", "4.1 ms", "58.1 ms"],
+      ["React CSR", "No", "60,921 B", "1,198 ms", "9.8 ms", "5.9 ms", "16.8 ms"]
     ]} />
-    <p>Each row owns one effect depending on its name. Browser timing starts only after every target has 1,000 rows and effects ready. Targeted changed-root notification reduced Kudzu's selected update from 6.2 to 3.4 ms, versus Vue at 4.7 ms, Svelte at 5.2 ms, and React at 12.3 ms. It adds 126 B gzip to Kudzu's initial graph. List reconciliation remains O(n), so Vue is faster on the unrelated detail update. Kudzu and Astro emit the initial rows while the other targets are CSR; JavaScript, output, and build values therefore are not architecture-equivalent comparisons.</p>
+    <p>Each row owns one effect depending on its name. Browser timing starts only after every target has 1,000 rows and effects ready. Kudzu's targeted changed-root update measures 3.6 ms, versus Vue at 5.8 ms, Svelte at 5.7 ms, and React at 9.8 ms. List reconciliation remains O(n); Kudzu and Vue both measure 2.4 ms on the unrelated detail update. Kudzu and Astro emit the initial rows while the other targets are CSR; JavaScript, output, and build values therefore are not architecture-equivalent comparisons.</p>
     <h3>1,000-row keyed local state</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
-      ["Astro native", "Yes", "373 B", "926 ms", "1.6 ms", "5.9 ms", "1.2 ms", "1.4 ms"],
-      ["Kudzu", "Yes", "8.5 KB", "449 ms", "2.7 ms", "10.1 ms", "3.0 ms", "3.1 ms"],
-      ["Vue CSR", "No", "24.4 KB", "820 ms", "2.8 ms", "11.7 ms", "4.0 ms", "4.2 ms"],
-      ["Svelte CSR", "No", "13.1 KB", "918 ms", "2.6 ms", "47.9 ms", "4.5 ms", "5.4 ms"],
-      ["React CSR", "No", "59.4 KB", "1,074 ms", "5.9 ms", "26.4 ms", "9.0 ms", "6.5 ms"]
+      ["Astro native", "Yes", "373 B", "903 ms", "1.6 ms", "5.7 ms", "1.2 ms", "1.3 ms"],
+      ["Kudzu", "Yes", "9.2 KB", "434 ms", "2.7 ms", "10.8 ms", "3.0 ms", "3.7 ms"],
+      ["Vue CSR", "No", "24.4 KB", "793 ms", "3.0 ms", "12.1 ms", "4.2 ms", "4.1 ms"],
+      ["Svelte CSR", "No", "13.1 KB", "911 ms", "2.8 ms", "50.4 ms", "4.6 ms", "5.9 ms"],
+      ["React CSR", "No", "59.4 KB", "1,054 ms", "6.2 ms", "25.8 ms", "9.1 ms", "6.7 ms"]
     ]} />
-    <p>Row 500 enters edit state, survives reverse with the same row and input DOM nodes, then removal and re-add must create fresh non-editing state. Kudzu builds fastest and beats React, Vue, and Svelte on every operation. Astro is the hand-written native lower bound. Kudzu and Astro emit all initial rows; the other targets are CSR, so artifact sizes and loading architecture are not equivalent.</p>
+    <p>Row 500 enters edit state, survives reverse with the same row and input DOM nodes, then removal and re-add must create fresh non-editing state. Thirty-one rotating fresh-profile runs give Kudzu the lowest framework median for every operation; the 0.1 ms displayed edit lead over Svelte is not statistically significant, while every other framework comparison is significant. Astro is the hand-written native lower bound from a separate seven-profile run. Kudzu and Astro emit all initial rows; the other targets are CSR, so artifact sizes and loading architecture are not equivalent.</p>
     <h3>1,000-row nested child components</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "Initial JS gzip", "Build", "Child update + condition", "Child reverse", "Parent reverse", "Parent remove"]} rows={[
-      ["Astro native", "Yes", "287 B", "888 ms", "0.5 ms", "0.3 ms", "3.6 ms", "0.2 ms"],
-      ["Kudzu", "Yes", "6.9 KB", "403 ms", "1.4 ms", "0.5 ms", "5.4 ms", "0.7 ms"],
-      ["Svelte CSR", "No", "13.1 KB", "882 ms", "2.2 ms", "0.9 ms", "5.4 ms", "0.9 ms"],
-      ["Vue CSR", "No", "24.6 KB", "796 ms", "4.0 ms", "2.1 ms", "4.6 ms", "1.8 ms"],
-      ["React CSR", "No", "59.5 KB", "1,044 ms", "8.5 ms", "3.9 ms", "6.8 ms", "3.8 ms"]
+      ["Astro native", "Yes", "287 B", "1,030 ms", "0.5 ms", "0.4 ms", "3.9 ms", "0.2 ms"],
+      ["Kudzu", "Yes", "7.0 KB", "477 ms", "1.3 ms", "0.4 ms", "5.0 ms", "0.7 ms"],
+      ["Svelte CSR", "No", "13.1 KB", "1,050 ms", "2.7 ms", "1.2 ms", "6.7 ms", "1.3 ms"],
+      ["Vue CSR", "No", "24.6 KB", "940 ms", "4.9 ms", "2.5 ms", "6.1 ms", "2.2 ms"],
+      ["React CSR", "No", "59.5 KB", "1,211 ms", "11.8 ms", "5.0 ms", "8.2 ms", "4.4 ms"]
     ]} />
     <p>The fixture renders 100 keyed parents with 10 keyed child components each. The selected update changes child text and flips its condition while preserving the child root; reverse and removal operations also require child and parent identity. Kudzu beats Svelte, Vue, and React on all four operations. Astro remains the hand-written native lower bound.</p>
-    <div className="docs-callout"><strong>Shared nested output</strong><span>One child row prototype supplies inert branches and patch descriptors to every parent. HTML fell from 676,086 B to 339,586 B and total raw output from 693,806 B to 359,035 B. The compressed-file sum is 24,067 B.</span></div>
-    <p>Sharing text and attribute patch metadata saves 29,576 B raw over <code>v0.6.26</code> but adds 147 B aggregate gzip because the removed metadata compressed well. Kudzu and Astro emit initial rows; the CSR targets do not, so output sizes are not architecture-equivalent.</p>
+    <div className="docs-callout"><strong>Shared nested output</strong><span>One child row prototype supplies inert branches and patch descriptors to every parent. The final fixture emits 339,601 B HTML and 359,271 B total raw output; the compressed-file sum is 24,173 B.</span></div>
+    <p>Ordinary flat-list output remains byte-for-byte equal to the pre-feature build because nested ownership and prototypes are capability-gated. Kudzu and Astro emit initial rows; the CSR targets do not, so output sizes are not architecture-equivalent.</p>
     <p>These results describe one matched fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves eligible application transitions; direct loads still transfer and render complete standalone documents.</p>
   </section>
 }
@@ -92,12 +92,12 @@ export function LimitsSection() {
   return <section className="docs-section" id="limits">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
     <ul className="docs-limits">
-      <li>Callback refs, mutable value refs, keyed-list refs, and reactive <code>dangerouslySetInnerHTML</code> are not supported.</li>
-      <li><code>useReducer</code> requires a pure synchronous two-parameter default or named reducer imported from a relative TypeScript module. Dispatch may cross one direct prop boundary into a specialized same-file or relative-imported synchronous component with an intrinsic root and compiled handler, including a direct keyed row whose event handler reads the latest item; relative TypeScript imports used inside that handler are bundled. A direct keyed row may declare one top-level primitive-literal <code>useState</code>; its key preserves state across updates and reorder and removal releases it. That component may pass one dispatch-containing callback into one relative-imported synchronous intrinsic child. These specialized reducer components accept destructured primitive literal prop defaults. Object, array, computed, and call defaults, multiple or non-keyed specialized local states, lazy state or reducer initialization, reducer-dispatch keyed-row effects, package, namespace, local, async, and generator reducers, package imports or child imports outside handlers, <code>useCallback</code>, further forwarding, and dispatch through context are not supported.</li>
+      <li>Object refs initialize directly with <code>null</code>, including refs declared by keyed row components. Callback refs, mutable value refs, non-<code>null</code> initializers, and reactive <code>dangerouslySetInnerHTML</code> are not supported.</li>
+      <li><code>useReducer</code> requires a pure synchronous two-parameter default or named reducer imported from a relative TypeScript module. Dispatch may cross one direct prop boundary into a specialized same-file or relative-imported synchronous component, including a keyed row with latest-item handlers and the ordinary keyed-row state/effect/ref capabilities. That component may pass one dispatch-containing callback into one relative-imported synchronous intrinsic child. These specializations accept destructured primitive literal prop defaults. Object, array, computed, and call defaults, non-keyed specialized local state, lazy state or reducer initialization, package, namespace, local, async, and generator reducers, package imports or child imports outside handlers, <code>useCallback</code>, further forwarding, and dispatch through context are not supported.</li>
       <li>Reactive conditional DOM and keyed-list boundaries are limited to the HTML namespace and are rejected inside SVG or MathML. Namespaced SVG attributes such as <code>xlinkHref</code> are not yet supported.</li>
-      <li>Keyed lists require local-state maps and intrinsic roots or top-level local or relative-imported row components. Same-file or relative default, named/aliased, and direct named re-export wrappers may receive the state identifier directly and render the outer map under an intrinsic root.</li>
-      <li>One nested keyed map may read a direct parent-item array property. Its intrinsic, same-file, or relative-imported child row supports latest-item handlers and one item-local condition level.</li>
-      <li>Computed nested collections, parent capture in child rows, multiple or deeper nested lists, conditions inside child conditions, child effects or local state, component tags below the specialized child root, package or namespace row imports, reusable aliases, prop spreads, and derived-expression captures remain unsupported.</li>
+      <li>Keyed lists require a local array-state anchor and intrinsic roots or specialized same-file/relative row components. One-use aliases may compose inline pure <code>filter</code>, direct-property <code>flatMap</code>, and <code>Array.from</code> selectors. Callbacks accept <code>(item)</code> or <code>(item, index)</code>; field keys own item identity and index keys own positional identity.</li>
+      <li>A keyed row may contain multiple sibling maps over direct parent-item array properties recursively without a numeric depth limit. Intrinsic, same-file, or relative-imported rows support recursive specialization, nested conditions, latest-item handlers, multiple directly serializable state slots, supported effects, and <code>null</code>-initialized object refs.</li>
+      <li>Computed child collections, parent capture in child rows, component cycles, package or namespace row imports, reusable aliases, prop spreads, derived-expression captures, lazy/dynamic row state, non-<code>null</code> refs, and arbitrary or asynchronous collection callbacks remain unsupported.</li>
       <li>Reactive statement control flow supports terminal returns and adjacent exhaustive JSX assignment; effectful branches, loops, <code>switch</code>, <code>try</code>, and later reassignment remain unsupported.</li>
       <li><code>useEffect</code> supports inline block-bodied callbacks, directly returned inline cleanup, DOM ownership in conditional and supported keyed rows, and literal arrays of direct JSON-safe primitive state or runtime parameter identifiers. Keyed rows also accept direct <code>item.&lt;field&gt;</code> properties whose values remain JSON-safe primitives. Whole-item, computed, nested, derived, prototype-sensitive, non-item property, ordinary local, object, spread, dynamic, named or dynamic cleanup, cleanup parameter or generator, async-cleanup, and other return forms are not supported.</li>
       <li>Relative TypeScript Workers are limited to unshadowed <code>new Worker(new URL("../name.worker.ts", import.meta.url), {`{ type: "module" }`})</code> directly inside an inline effect. Worker graphs allow relative TypeScript ESM runtime imports only; JSX, package runtime imports, import-equals declarations, dynamic imports, <code>require()</code>, outside-source paths, ordinary runtime imports of Worker source, event handlers, imported helpers, and imported keyed-row effects are rejected.</li>

@@ -448,7 +448,7 @@ test("renders object refs and rejects unsupported ref shapes", async () => {
     const inputRef = useRef(null)
     const [items] = useState([{ id: 1 }])
     return list(items, "id", () => jsx("input", { ref: inputRef }))
-  }, { styles: false }), /Refs are not supported in keyed lists/)
+  }, { styles: false }), /Refs in keyed lists must be declared by the keyed row component/)
 })
 
 test("renders static raw HTML and rejects reactive or conflicting content", async () => {
@@ -869,10 +869,14 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(html, /assets\/native\/index\.js/)
   assert.match(runtime, /kudzu-style\.js/)
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-style.js", import.meta.url)), true)
+  assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  assert.doesNotMatch(runtime, /collection-selector|selectCollection|Rendered collection/)
+  assert.doesNotMatch(runtime, /list-index|\.indexed|\.selector|kListConditionHandler|no matching template/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
   assert.match(runtime, /Keyed list state must remain an array/)
   assert.match(runtime, /Keyed list condition marker has no end/)
+  assert.match(runtime, /\.children\[/)
   assert.doesNotMatch(html, /data-k-effects|data-k-effect-item/)
   assert.doesNotMatch(runtime, /data-k-effects|kEffectItem/)
   assert.doesNotMatch(runtime, /\beval\b|new Function/)
@@ -880,13 +884,43 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(handlers, /as listExpression/)
   assert.match(handlers, /\.scope\("item"\)/)
   assert.doesNotMatch(handlers, /\beval\b|new Function/)
-  assert.equal(plan.lists.length, 3)
+  assert.equal(plan.lists.length, 4)
   assert.equal(plan.lists[0].state, "s0")
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runListBrowserTest(fixture, chrome)
 })
 
-test("compiles one-level nested keyed lists owned by parent rows", async t => {
+test("compiles synchronous rendered collection selectors and React positional keys", async t => {
+  const fixture = new URL("./fixtures/rendered-collections", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/rendered-collections/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/rendered-collections/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/rendered-collections/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/rendered-collections/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/rendered-collections/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/rendered-collections/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-stable[\s\S]*"keys":\["a","c"\]/)
+  assert.match(html, /data-from-map[\s\S]*0-Alpha[\s\S]*2-Gamma/)
+  assert.match(html, /data-flat[\s\S]*Xray/)
+  assert.match(html, /data-undefined[^>]*>[\s\S]*Alpha/)
+  assert.doesNotMatch(html.match(/<div data-undefined>[\s\S]*?<\/div>/)?.[0] ?? "", /Beta/)
+  assert.match(component, /JSON\.parse\("\[\[\\"filter\\"/)
+  assert.match(component, /__kList\(items, null/)
+  assert.ok(plan.lists.some(list => list.key === null && list.indexed))
+  assert.ok(plan.lists.some(list => list.selector?.some(operation => operation[0] === "flatMap")))
+  assert.doesNotMatch(runtime, /\beval\b|new Function|Promise|async /)
+  assert.equal(existsSync(new URL("./fixtures/rendered-collections/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  const invalid = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL("./fixtures/rendered-collections-invalid", import.meta.url), encoding: "utf8" })
+  assert.notEqual(invalid.status, 0)
+  assert.match(`${invalid.stdout}\n${invalid.stderr}`, /rendered-collections-invalid\/src\/pages\/index\.tsx:\d+:\d+ Rendered collection filter\(\) callback must be an arrow function/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runRenderedCollectionBrowserTest(fixture, chrome)
+})
+
+test("compiles arbitrarily deep keyed lists owned by immediate parent rows", async t => {
   const fixture = new URL("./fixtures/nested-lists", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/nested-lists/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -899,15 +933,40 @@ test("compiles one-level nested keyed lists owned by parent rows", async t => {
   const plan = JSON.parse(await readFile(new URL("./fixtures/nested-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /data-category="c1"[\s\S]*Spa[\s\S]*data-item="a1"[\s\S]*Sauna[\s\S]*data-item="a2"[\s\S]*Massage/)
   assert.doesNotMatch(html, /data-category="c2"|data-item="b1"/)
-  assert.equal((component.match(/__kList\(/g) ?? []).length, 2)
-  assert.match(component, /__kList\(categories, "id", item =>[\s\S]*, "items"\)/)
-  assert.equal(plan.lists.length, 2)
-  assert.deepEqual(plan.lists.map(list => list.state), ["s0", "s0"])
-  assert.equal(plan.lists.find(list => list.ownerField)?.ownerField, "items")
-  assert.deepEqual(plan.lists.find(list => list.child)?.child, { field: "items", key: "id" })
+  assert.equal((component.match(/__kList\(/g) ?? []).length, 6)
+  assert.match(component, /__kList\(categories, "id", item =>[\s\S]*, "items", JSON\.parse\("\[\]"\), false\)/)
+  assert.match(component, /__kList\(categories, "id", item =>[\s\S]*, "groups", JSON\.parse\("\[\]"\), false\)/)
+  assert.match(component, /__kList\(categories, "id", item =>[\s\S]*, "options", JSON\.parse\("\[\]"\), false\)/)
+  assert.equal((component.match(/, "badges", JSON\.parse\("\[\]"\), false\)/g) ?? []).length, 2)
+  assert.equal(plan.lists.length, 6)
+  assert.deepEqual(plan.lists.map(list => list.state), ["s0", "s0", "s0", "s0", "s0", "s0"])
+  assert.deepEqual(plan.lists.filter(list => list.ownerField).map(list => list.ownerField), ["options", "groups", "badges", "badges", "items"])
+  assert.deepEqual(plan.lists.filter(list => list.children).map(list => list.children.map(child => child.field)), [["options"], ["groups", "badges", "badges"], ["items"]])
+  assert.equal(new Set(plan.lists.flatMap(list => list.children ?? []).map(child => child.id)).size, 5)
   assert.equal((html.match(/data-k-list-root="l1"/g) ?? []).length, 1)
+  assert.equal((html.match(/data-k-list-root="l2"/g) ?? []).length, 1)
+  assert.equal((html.match(/data-k-list-root="l3"/g) ?? []).length, 1)
+  assert.doesNotMatch(html, /data-k-list-condition-handler/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runNestedListBrowserTest(fixture, chrome)
+})
+
+test("refreshes indexed nested rows and treats optional direct properties as empty", async t => {
+  const fixture = new URL("./fixtures/nested-indexed-optional", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/nested-indexed-optional/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/nested-indexed-optional/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const runtime = await readFile(new URL("./fixtures/nested-indexed-optional/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/nested-indexed-optional/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.ok(plan.lists.some(list => list.ownerField === "children" && list.indexed && !list.selector))
+  assert.ok(plan.lists.some(list => list.ownerField === "optional" && !list.selector))
+  assert.equal(existsSync(new URL("./fixtures/nested-indexed-optional/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  assert.doesNotMatch(runtime, /collection-selector|selectCollection/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNestedIndexedOptionalBrowserTest(fixture, chrome)
 })
 
 test("specializes local and imported nested keyed row components", async t => {
@@ -922,22 +981,111 @@ test("specializes local and imported nested keyed row components", async t => {
   const component = await readFile(new URL("./fixtures/nested-component-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/nested-component-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /data-local-item="a1"[\s\S]*SAUNA[\s\S]*data-imported-item="a1"[\s\S]*SAUNA/)
-  assert.doesNotMatch(component, /<LocalItem|<ImportedItem/)
+  assert.doesNotMatch(component, /<LocalItem|<LocalShell|<LocalStatus|<ImportedItem|<ImportedShell|<ImportedStatus/)
   assert.equal((component.match(/__kList\(/g) ?? []).length, 4)
   assert.equal(plan.lists.length, 4)
   assert.equal(plan.lists.filter(list => list.ownerField === "items").length, 2)
-  assert.equal(plan.lists.filter(list => list.ownerField === "items" && list.conditions).length, 2)
-  assert.equal(plan.lists.filter(list => list.child).some(list => list.conditions), false)
-  assert.equal((html.match(/data-k-list-condition(?=[ =>])/g) ?? []).length, 6)
-  assert.equal((html.match(/data-k-list-condition='/g) ?? []).length, 2)
-  assert.equal((html.match(/data-k-list-true/g) ?? []).length, 2)
+  assert.ok(plan.lists.some(list => list.rowStates?.length === 1 && list.rowRefs?.length === 1))
+  assert.ok(plan.effects.some(effect => effect.itemDependencies?.includes("title")))
+  assert.equal(plan.lists.filter(list => list.ownerField === "items" && list.conditions).length, 1)
+  assert.equal(plan.lists.filter(list => list.children).some(list => list.conditions), false)
+  assert.equal((html.match(/data-k-list-condition(?=[ =>])/g) ?? []).length, 7)
+  assert.equal((html.match(/data-k-list-condition='/g) ?? []).length, 3)
+  assert.equal((html.match(/data-k-list-true/g) ?? []).length, 3)
   assert.equal((html.match(/data-k-list-root="l1"/g) ?? []).length, 1)
   assert.equal((html.match(/data-k-list-root="l3"/g) ?? []).length, 1)
   assert.match(html, /data-local-item="a1"[^>]*title="Sauna"[^>]*data-k-list-attrs(?=[ >])/)
   assert.match(html, /data-direct[^>]*data-k-list-text(?=[ >])>Sauna/)
-  assert.match(html, /data-branch[^>]*data-k-list-text="title">Sauna/)
+  assert.match(html, /data-deep[^>]*data-k-list-text="title"/)
+  assert.match(html, /data-deep[^>]*>Sauna/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runNestedComponentListBrowserTest(fixture, chrome)
+})
+
+test("owns ordinary keyed-row hooks by structural site and ancestor key path", async t => {
+  const fixture = new URL("./fixtures/keyed-row-hooks", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/keyed-row-hooks/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/keyed-row-hooks/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/keyed-row-hooks/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/keyed-row-hooks/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/keyed-row-hooks/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-row-hooks/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /l0%3Dstring%3Ap1%2Fl1%3Dstring%3Ashared/)
+  assert.match(html, /data-k-ref=/)
+  assert.match(component, /__kRowUseState\(\{ updates: 0 \}/)
+  assert.match(component, /__kRowUseState\(\[\]/)
+  assert.match(component, /__kRowUseRef/)
+  assert.match(runtime, /structuredClone|structuredClone\w*/)
+  assert.match(runtime, /kRowPath/)
+  assert.equal(plan.lists.filter(list => list.rowStates).length, 3)
+  assert.equal(plan.lists.filter(list => list.rowRefs).length, 2)
+  assert.ok(plan.effects.some(effect => effect.dependencies?.some(id => id.includes("$k")) && effect.itemDependencies?.includes("label")))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runKeyedRowHooksBrowserTest(fixture, chrome)
+})
+
+test("owns flat keyed-row hooks without the nested-list capability", async t => {
+  const fixture = new URL("./fixtures/keyed-row-hooks-flat", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/keyed-row-hooks-flat/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/keyed-row-hooks-flat/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const runtime = await readFile(new URL("./fixtures/keyed-row-hooks-flat/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-row-hooks-flat/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.equal(plan.lists.length, 1)
+  assert.equal(plan.lists[0].ownerField, undefined)
+  assert.ok(plan.lists[0].rowStates?.length)
+  assert.doesNotMatch(runtime, /Nested keyed list has no parent row|ownedLists|childPrototypes/)
+  assert.doesNotMatch(runtime, /structuredClone|listIndexes|ownershipPaths|rowReplacements|kRowPath/)
+  const html = await readFile(new URL("./fixtures/keyed-row-hooks-flat/dist/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(html, /l0%3D/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runFlatKeyedRowHooksBrowserTest(fixture, chrome)
+})
+
+test("rejects lazy and dynamic keyed-row hook initializers with source locations", async t => {
+  for (const [name, pattern] of [
+    ["keyed-row-hooks-invalid-lazy", /src\/pages\/index\.tsx:4:\d+ Keyed row useState\(\) must use one directly serializable primitive, plain object, or array initial value; lazy and dynamic initializers are not supported/],
+    ["keyed-row-hooks-invalid-ref", /src\/pages\/index\.tsx:4:\d+ Keyed row useRef\(\) must use the direct initial value null/]
+  ]) {
+    const fixture = new URL(`./fixtures/${name}`, import.meta.url)
+    t.after(async () => {
+      await rm(new URL(`./fixtures/${name}/.kudzu`, import.meta.url), { recursive: true, force: true })
+      await rm(new URL(`./fixtures/${name}/dist`, import.meta.url), { recursive: true, force: true })
+    })
+    const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+    assert.notEqual(result.status, 0)
+    assert.match(`${result.stdout}\n${result.stderr}`, pattern)
+  }
+})
+
+test("integrates ordinary React-shaped collection, component, condition, and keyed-row hook authoring", async t => {
+  const fixture = new URL("./fixtures/react-shaped-integration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-shaped-integration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-shaped-integration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-shaped-integration/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-shaped-integration/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/react-shaped-integration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-stable[\s\S]*data-projection="a"[\s\S]*Alpha[\s\S]*data-projection="c"[\s\S]*Gamma/)
+  assert.match(html, /data-primary[\s\S]*data-secondary/)
+  assert.match(component, /const visible = undefined/)
+  assert.ok(plan.lists.some(list => list.selector?.map(operation => operation[0]).join(",") === "flatMap,filter"))
+  assert.ok(plan.lists.some(list => list.key === null && list.indexed))
+  assert.ok(plan.lists.some(list => list.children?.map(child => child.field).join(",") === "primary,secondary"))
+  assert.ok(plan.lists.some(list => list.rowStates?.length === 2 && list.rowRefs?.length === 1))
+  assert.ok(plan.effects.some(effect => effect.itemDependencies?.includes("label")))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runReactShapedIntegrationBrowserTest(fixture, chrome)
 })
 
 test("specializes relative imported keyed list components", async t => {
@@ -1062,9 +1210,9 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-fragment", /Fragments are not supported/],
     ["list-invalid-nested", /Nested keyed list collections must be a direct property of the parent item/],
     ["list-invalid-nested-computed", /Nested keyed list collections must be a direct property of the parent item/],
-    ["list-invalid-nested-deep", /Keyed lists support at most one nested level/],
     ["list-invalid-nested-parent-capture", /Nested keyed list rows cannot capture the parent item/],
-    ["list-invalid-nested-condition", /Nested item conditions are not supported in keyed lists/],
+    ["list-invalid-nested-prototype", /owner property "constructor" is not supported/],
+    ["list-invalid-component-cycle", /Keyed list component cycle: First -> Second -> First/],
     ["list-invalid-mutation", /assignments and updates are not supported/],
     ["list-invalid-mutating-method", /mutating method "sort"/],
     ["list-invalid-promise", /arbitrary method "resolve"/],
@@ -1340,7 +1488,10 @@ test("owns effects rendered by imported keyed row components", async t => {
   assert.doesNotMatch(itemOnlyEntry, /registerCommitter|dependencyIds/)
   assert.match(listRuntime, /notifyListItem/)
   assert.match(runtime, /registerListItemHook|notifyListItem/)
+  assert.match(listRuntime, /\.length<\w+\.length/)
   assert.doesNotMatch(stateOnlyEntry, /itemDependencies|listState|dependencyIds|keyed item dependency|registerListItemHook|notifyListItem/)
+  assert.doesNotMatch(entry, /kRowPath|specializeRowEffect|\$k/)
+  assert.doesNotMatch(listRuntime, /list-index|\.indexed|\.selector|ownershipPaths|rowReplacements|kRowPath/)
   assert.deepEqual(plan.effects.map(effect => [effect.owner, effect.list, effect.dependencies, effect.itemDependencies, effect.listState]), [["e0", true, undefined, ["id"], "s2"], ["e1", true, ["s1"], ["name"], "s2"]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runKeyedEffectBrowserTest(fixture, chrome)
@@ -1360,6 +1511,7 @@ test("omits keyed item notifications from state-only effect builds", async t => 
     "dist/assets/kudzu.js"
   ].map(path => readFile(new URL(path, `${fixture.href}/`), "utf8")))
   assert.doesNotMatch(output.join("\n"), /itemDependencies|listState|registerListItemHook|notifyListItem|keyed item dependency/)
+  assert.doesNotMatch(output.join("\n"), /\.length!==\w+\.items\.length/)
   assert.match(output[0], /registerCommitter/)
 })
 
@@ -1685,7 +1837,7 @@ test("rejects reducer component local state outside direct keyed rows", async t 
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /Reducer-dispatch component useState\(\) is only supported in a direct keyed row/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Keyed row hooks are only supported in direct keyed map rows/)
 })
 
 test("mounts direct native handlers with browser event semantics", async t => {
@@ -2419,6 +2571,7 @@ try {
   await wait()
   observer.disconnect()
   const oak = document.querySelector('[data-id="1"]')
+  const pineTable = document.querySelector('[data-row="2"]')
   if (movedOnUpdate) throw new Error("update-moved")
   if (oak.querySelector("span").textContent !== "RED OAK tree") throw new Error("update-text")
   if (oak.querySelector("small").textContent !== "Red oak" || oak.querySelector("[data-status]").textContent !== "Red oak complete" || !oak.querySelector("[data-and]")) throw new Error("update-branch")
@@ -2429,6 +2582,7 @@ try {
   await wait()
   const ordered = [...document.querySelectorAll("[data-list] > li")]
   if (ordered.map(node => node.dataset.id).join(",") !== "3,2,1" || ordered[2] !== oak || oak.querySelector("input").value !== "preserved") throw new Error("move")
+  if ([...document.querySelectorAll("tbody > tr")].map(node => node.dataset.row).join(",") !== "3,2,1") throw new Error("simple-move")
   oak.querySelector("[data-remove]").click()
   await wait()
   if (document.querySelector('[data-id="1"]') || document.querySelector('[data-row="1"]') || document.querySelectorAll("[data-list] > li").length !== 2) throw new Error("item-remove")
@@ -2437,10 +2591,53 @@ try {
   if (document.querySelector('[data-id="3"]') || document.querySelectorAll("[data-list] > li").length !== 1) throw new Error("new-item-handler")
   click("add")
   await wait()
+  click("append-many")
+  await wait()
+  const appended = [...document.querySelectorAll("[data-list] > li")]
+  if (appended.map(node => node.dataset.id).join(",") !== "2,3,4,5") throw new Error("bulk-append")
+  const hostileRow = document.querySelector('[data-row="5"]')
+  if ([...document.querySelectorAll("tbody > tr")].map(node => node.dataset.row).join(",") !== "2,3,4,5" || document.querySelector('[data-row="2"]') !== pineTable || hostileRow.querySelector("td").textContent !== "<img src=x onerror=alert(1)>&" || hostileRow.title !== '\" onmouseover=\"alert(1)' || hostileRow.querySelector("img")) throw new Error("simple-bulk-append")
+  const appendedTableRow = document.querySelector('[data-row="4"]')
+  click("update-appended")
+  await wait()
+  if (document.querySelector('[data-row="4"]') !== appendedTableRow || appendedTableRow.querySelector("td").textContent !== "White ash" || appendedTableRow.title !== "bright") throw new Error("simple-bulk-lazy-update")
+  click("reorder")
+  await wait()
+  if ([...document.querySelectorAll("tbody > tr")].map(node => node.dataset.row).join(",") !== "5,4,3,2" || document.querySelector('[data-row="4"]') !== appendedTableRow) throw new Error("simple-bulk-lazy-reorder")
+  click("remove-appended")
+  await wait()
+  if (appendedTableRow.isConnected || [...document.querySelectorAll("tbody > tr")].map(node => node.dataset.row).join(",") !== "5,3,2") throw new Error("simple-bulk-lazy-remove")
+  click("reorder")
+  await wait()
+  appended.at(-1).querySelector("[data-remove]").click()
+  await wait()
+  if (document.querySelector('[data-id="5"]')) throw new Error("bulk-latest-handler")
+  runtimeError = ""
+  const beforeInvalid = [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",")
+  click("invalidate-retained")
+  await wait()
+  if (!runtimeError.includes("JSON-safe values") || [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",") !== beforeInvalid) throw new Error("invalid-retained")
+  click("repair-retained")
+  await wait()
+  runtimeError = ""
   click("duplicate")
   await wait()
   const beforeDuplicate = [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",")
-  if (!runtimeError.includes("Duplicate keyed list key: 1") || [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",") !== beforeDuplicate) throw new Error("duplicate")
+  if (!runtimeError.includes("Duplicate keyed list key: 2") || [...document.querySelectorAll("[data-list] > li")].map(node => node.dataset.id).join(",") !== beforeDuplicate) throw new Error("duplicate")
+  const mixed = document.querySelector("[data-mixed-list]")
+  const mixedText = () => [...mixed.querySelectorAll(":scope > li")].map(node => node.textContent).join(",")
+  if (mixedText() !== "Numeric,String") throw new Error("mixed-key-initial")
+  click("update-mixed")
+  await wait()
+  if (mixedText() !== "Numeric updated,String updated") throw new Error("mixed-key-update")
+  runtimeError = ""
+  let mixedWrites = 0
+  const mixedObserver = new MutationObserver(records => { mixedWrites += records.length })
+  mixedObserver.observe(mixed, { childList: true, characterData: true, subtree: true })
+  click("invalidate-mixed-late")
+  await wait()
+  mixedObserver.disconnect()
+  if (!runtimeError.includes("JSON-safe values") || mixedWrites || mixedText() !== "Numeric updated,String updated") throw new Error("invalid-late-partial-write")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
@@ -2468,6 +2665,85 @@ http.createServer((request, response) => {
   }
 }
 
+async function runRenderedCollectionBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const click = action => document.querySelector('[data-action="' + action + '"]').click()
+const rows = selector => [...document.querySelectorAll(selector + " > li")]
+try {
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  const stable = rows("[data-stable]")
+  const positional = rows("[data-positional]")
+  if (stable.map(node => node.dataset.id).join(",") !== "a,c" || positional.map(node => node.dataset.id).join(",") !== "a,c") throw new Error("initial")
+  stable[1].querySelector("[data-pick]").click()
+  await wait()
+  if (document.body.dataset.pick !== "1:Gamma") throw new Error("initial-index-handler")
+  click("show")
+  await wait()
+  const shownStable = rows("[data-stable]")
+  const shownPositional = rows("[data-positional]")
+  if (shownStable[0] !== stable[0] || shownStable[2] !== stable[1] || shownStable.map(node => node.dataset.id).join(",") !== "a,b,c") throw new Error("stable-insert")
+  if (shownPositional[0] !== positional[0] || shownPositional[1] !== positional[1] || shownPositional.map(node => node.dataset.id).join(",") !== "a,b,c") throw new Error("positional-insert")
+  if (shownStable[2].querySelector("span").textContent !== "2:Gamma" || shownPositional[1].querySelector("span").textContent !== "1:Beta") throw new Error("index-content")
+  const shownBranch = shownStable[2].querySelector("[data-index-branch]")
+  shownBranch?.click()
+  await wait()
+  if (!shownBranch || shownBranch.textContent !== "2:Gamma" || document.body.dataset.branch !== "2:Gamma") throw new Error("index-condition-entry")
+  shownStable[2].querySelector("[data-pick]").click()
+  shownPositional[1].querySelector("[data-pick]").click()
+  await wait()
+  if (document.body.dataset.pick !== "2:Gamma" || document.body.dataset.position !== "1:Beta") throw new Error("latest-index-handler")
+  click("reverse")
+  await wait()
+  const reversedStable = rows("[data-stable]")
+  const reversedPositional = rows("[data-positional]")
+  if (reversedStable[0] !== stable[1] || reversedStable[2] !== stable[0] || reversedStable.map(node => node.dataset.id).join(",") !== "c,b,a") throw new Error("stable-reorder")
+  if (reversedPositional[0] !== positional[0] || reversedPositional[1] !== positional[1] || reversedPositional.map(node => node.dataset.id).join(",") !== "c,b,a") throw new Error("positional-reorder")
+  const reenteredBranch = reversedStable[2].querySelector("[data-index-branch]")
+  reenteredBranch?.click()
+  await wait()
+  if (!reenteredBranch || reenteredBranch.textContent !== "2:Alpha" || document.body.dataset.branch !== "2:Alpha") throw new Error("index-condition-reentry")
+  click("remove")
+  await wait()
+  if (rows("[data-stable]").map(node => node.dataset.id).join(",") !== "c,a" || rows("[data-positional]").map(node => node.dataset.id).join(",") !== "c,a") throw new Error("remove")
+  click("add-child")
+  await wait()
+  if (document.querySelector('[data-group="empty"] span')?.textContent !== "0:Zulu" || [...document.querySelectorAll("[data-flat] > i")].map(node => node.dataset.id).join(",") !== "z,x") throw new Error("optional-add")
+  const flatBefore = document.querySelector("[data-flat]").textContent
+  click("duplicate")
+  await wait()
+  if (!runtimeError.includes("Duplicate keyed list key: same") || document.querySelector("[data-flat]").textContent !== flatBefore) throw new Error("duplicate-flat-key")
+  document.body.dataset.renderedCollectionTest = "pass"
+} catch (error) {
+  document.body.dataset.renderedCollectionTest = "fail-" + error.message
+}
+`)
+  const port = 43000 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-rendered-collection-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runNestedListBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -2478,6 +2754,10 @@ const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 const click = action => document.querySelector('[data-action="' + action + '"]').click()
 const categories = () => [...document.querySelectorAll("[data-categories] > [data-category]")]
 const items = category => [...category.querySelectorAll(":scope > [data-items] > [data-item]")]
+const groups = item => [...item.querySelectorAll(":scope > [data-groups] > [data-group]")]
+const options = group => [...group.querySelectorAll(":scope > [data-options] > [data-option]")]
+const badges = item => [...item.querySelectorAll(":scope > [data-badges] > [data-badge]")]
+const badgeCopies = item => [...item.querySelectorAll(":scope > [data-badge-copy] > [data-badge-copy]")]
 try {
   let runtimeError = ""
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
@@ -2486,13 +2766,22 @@ try {
   const dining = document.querySelector('[data-category="c2"]')
   const sauna = spa.querySelector('[data-item="a1"]')
   const massage = spa.querySelector('[data-item="a2"]')
+  const morning = sauna.querySelector('[data-group="g1"]')
+  const tea = morning.querySelector('[data-option="o1"]')
   if (categories().map(node => node.dataset.category).join(",") !== "c1,c2" || items(spa).map(node => node.dataset.item).join(",") !== "a1,a2") throw new Error("initial")
+  if (groups(sauna).map(node => node.dataset.group).join(",") !== "g1" || morning.querySelector("[data-group-title]").textContent !== "Morning") throw new Error("deep-initial")
+  if (options(morning).map(node => node.dataset.option).join(",") !== "o1" || tea.textContent !== "Tea") throw new Error("recursive-initial")
+  const hot = sauna.querySelector('[data-badge="b1"]')
+  const hotCopy = sauna.querySelector('[data-badge-copy="b1"]')
+  if (badges(sauna).map(node => node.dataset.badge).join(",") !== "b1,b2" || badgeCopies(sauna).map(node => node.dataset.badgeCopy).join(",") !== "b1,b2") throw new Error("sibling-initial")
   sauna.querySelector("[data-uncontrolled]").value = "preserved"
   click("update")
   await wait()
   if (document.querySelector('[data-category="c1"]') !== spa || spa.querySelector('[data-item="a1"]') !== sauna) throw new Error("update-remounted")
   if (spa.querySelector("h2").textContent !== "Wellness" || spa.querySelector("footer").textContent !== "Wellness" || spa.querySelector("[data-kind]").textContent !== "Other kind") throw new Error("outer-update")
   if (sauna.querySelector("[data-title]").textContent !== "Sauna Plus" || sauna.querySelector("[data-price]").textContent !== "25") throw new Error("child-update")
+  if (sauna.querySelector('[data-group="g1"]') !== morning || morning.querySelector("[data-group-title]").textContent !== "Late Morning") throw new Error("deep-update")
+  if (morning.querySelector('[data-option="o1"]') !== tea || tea.textContent !== "Green Tea") throw new Error("recursive-update")
   if (massage.querySelector("[data-title]").textContent !== "Massage" || massage.querySelector("[data-price]").textContent !== "30") throw new Error("unchanged-child-update")
   click("parent-reorder")
   await wait()
@@ -2503,6 +2792,37 @@ try {
   sauna.querySelector("[data-select]").click()
   await wait()
   if (document.body.dataset.selected !== "Sauna Plus|25") throw new Error("latest-event")
+  click("group-add")
+  await wait()
+  const weekend = sauna.querySelector('[data-group="g4"]')
+  if (!weekend || groups(sauna).map(node => node.dataset.group).join(",") !== "g1,g4") throw new Error("deep-add")
+  weekend.querySelector("[data-group-select]").click()
+  await wait()
+  if (document.body.dataset.group !== "Weekend") throw new Error("deep-latest-event")
+  click("group-reorder")
+  await wait()
+  if (groups(sauna)[0] !== weekend || groups(sauna)[1] !== morning) throw new Error("deep-reorder")
+  click("option-add")
+  await wait()
+  const water = morning.querySelector('[data-option="o5"]')
+  if (!water || options(morning).map(node => node.dataset.option).join(",") !== "o1,o5") throw new Error("recursive-add")
+  water.click()
+  await wait()
+  if (document.body.dataset.option !== "Water") throw new Error("recursive-latest-event")
+  click("option-reorder")
+  await wait()
+  if (options(morning)[0] !== water || options(morning)[1] !== tea) throw new Error("recursive-reorder")
+  click("badge-update")
+  await wait()
+  if (sauna.querySelector('[data-badge="b1"]') !== hot || hot.textContent !== "Very Hot" || sauna.querySelector('[data-badge-copy="b1"]') !== hotCopy || hotCopy.textContent !== "Very Hot") throw new Error("sibling-update")
+  click("badge-add")
+  await wait()
+  const dry = sauna.querySelector('[data-badge="b5"]')
+  const dryCopy = sauna.querySelector('[data-badge-copy="b5"]')
+  if (!dry || !dryCopy || badges(sauna).map(node => node.dataset.badge).join(",") !== "b1,b2,b5" || badgeCopies(sauna).map(node => node.dataset.badgeCopy).join(",") !== "b1,b2,b5") throw new Error("sibling-add")
+  click("badge-reorder")
+  await wait()
+  if (badges(sauna)[0] !== dry || badges(sauna)[2] !== hot || badgeCopies(sauna)[0] !== dryCopy || badgeCopies(sauna)[2] !== hotCopy) throw new Error("sibling-reorder")
   click("child-remove")
   await wait()
   if (spa.querySelector('[data-item="a2"]') || spa.querySelector('[data-item="a1"]') !== sauna) throw new Error("child-remove")
@@ -2519,7 +2839,7 @@ try {
   click("parent-readd")
   await wait()
   const restored = document.querySelector('[data-category="c1"]')
-  if (!restored || restored === spa || restored.querySelector('[data-item="a3"]')?.textContent !== "Facial40Select") throw new Error("parent-readd")
+  if (!restored || restored === spa || restored.querySelector('[data-item="a3"] [data-title]')?.textContent !== "Facial" || restored.querySelector('[data-group="g5"] [data-group-title]')?.textContent !== "Anytime" || restored.querySelector('[data-option="o6"]')?.textContent !== "Mask") throw new Error("parent-readd")
   const childStarts = [...document.querySelectorAll("template[data-k-list]")].filter(start => JSON.parse(start.dataset.kList).ownerField)
   if (!childStarts.length || childStarts.some(start => start.content.firstElementChild)) throw new Error("shared-child-prototype")
   if (runtimeError) throw new Error("runtime-" + runtimeError)
@@ -2549,6 +2869,60 @@ http.createServer((request, response) => {
   }
 }
 
+async function runNestedIndexedOptionalBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const click = action => document.querySelector('[data-action="' + action + '"]').click()
+const rows = () => [...document.querySelectorAll("[data-children] > [data-child]")]
+try {
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  await wait()
+  const alpha = document.querySelector('[data-child="a"]')
+  const beta = document.querySelector('[data-child="b"]')
+  if (runtimeError || document.querySelector("[data-optional-child]") || !alpha || !beta || alpha.querySelector("span").textContent !== "0:Alpha" || !alpha.querySelector("[data-first]") || beta.querySelector("span").textContent !== "1:Beta") throw new Error(runtimeError ? "runtime-" + runtimeError : "initial")
+  click("reverse")
+  await wait()
+  if (runtimeError || rows()[0] !== beta || rows()[1] !== alpha || beta.querySelector("span").textContent !== "0:Beta" || !beta.querySelector("[data-first]") || alpha.querySelector("span").textContent !== "1:Alpha" || alpha.querySelector("[data-first]")) throw new Error(runtimeError ? "runtime-" + runtimeError : "reorder")
+  alpha.click()
+  await wait()
+  if (document.body.dataset.selected !== "1:Alpha") throw new Error("reorder-handler")
+  click("update")
+  await wait()
+  if (rows()[1] !== alpha || alpha.querySelector("span").textContent !== "1:Alpha updated") throw new Error("update")
+  alpha.click()
+  await wait()
+  if (document.body.dataset.selected !== "1:Alpha updated") throw new Error("update-handler")
+  document.body.dataset.nestedIndexedOptionalTest = "pass"
+} catch (error) {
+  document.body.dataset.nestedIndexedOptionalTest = "fail-" + error.message
+}
+`)
+  const port = 43500 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-nested-indexed-optional-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runNestedComponentListBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -2561,29 +2935,37 @@ const imported = id => document.querySelector('[data-imported-item="' + id + '"]
 const localItems = () => [...document.querySelectorAll("[data-local-item]")]
 const importedItems = () => [...document.querySelectorAll("[data-imported-item]")]
 try {
+  await import("/assets/kudzu-list.js")
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  window.addEventListener("unhandledrejection", event => { runtimeError = event.reason?.message || String(event.reason) })
   const localSauna = local("a1")
   const importedSauna = imported("a1")
   const localMassage = local("a2")
   const importedMassage = imported("a2")
   if (localSauna?.title !== "Sauna" || localSauna?.querySelector("[data-direct]")?.textContent !== "Sauna" || localSauna?.querySelector("[data-range]")?.textContent !== "a1: Sauna") throw new Error("initial-local-markers")
   if (importedSauna?.title !== "Sauna" || importedSauna?.querySelector("[data-direct]")?.textContent !== "Sauna" || importedSauna?.querySelector("[data-range]")?.textContent !== "a1: Sauna") throw new Error("initial-imported-markers")
-  if (!localSauna?.querySelector("strong[data-status]") || importedSauna?.querySelector("[data-status]")?.textContent !== "SaunaAvailable") throw new Error("initial-available")
-  if (localMassage?.querySelector("[data-status]") || importedMassage?.querySelector("[data-status]")?.textContent !== "MassageUnavailable") throw new Error("initial-unavailable")
+  const initialDeep = localSauna?.querySelector("[data-deep]")
+  if (!initialDeep || initialDeep.textContent !== "Sauna" || localSauna.querySelector("[data-featured]")?.textContent !== "SaunaFeatured" || importedSauna?.querySelector("[data-status]")?.textContent !== "Sauna0Available") throw new Error("initial-available")
+  if (localMassage?.querySelector("[data-status]") || importedMassage?.querySelector("[data-status]")?.textContent !== "Massage0Unavailable") throw new Error("initial-unavailable")
+  await wait()
+  if (importedSauna.querySelector("[data-status]").dataset.effect !== "status:Sauna:0") throw new Error("nested-hook-effect")
   document.querySelector('[data-action="update"]').click()
   await wait()
   if (local("a1") !== localSauna || imported("a1") !== importedSauna) throw new Error("update-remounted")
   if (localSauna.querySelector("[data-label]").textContent !== "SAUNA PLUS" || localSauna.querySelector("[data-status]")) throw new Error("local-update")
   if (localSauna.title !== "Sauna Plus" || localSauna.querySelector("[data-direct]").textContent !== "Sauna Plus" || localSauna.querySelector("[data-range]").textContent !== "a1: Sauna Plus") throw new Error("local-marker-update")
   if (importedSauna.title !== "Sauna Plus" || importedSauna.querySelector("[data-direct]").textContent !== "Sauna Plus" || importedSauna.querySelector("[data-range]").textContent !== "a1: Sauna Plus") throw new Error("imported-marker-update")
-  if (importedSauna.querySelector("[data-label]").textContent !== "SAUNA PLUS" || importedSauna.querySelector("[data-status]")?.textContent !== "Sauna PlusUnavailable" || importedSauna.querySelector("[data-status]")?.title !== "Sauna Plus") throw new Error("imported-update")
+  if (importedSauna.querySelector("[data-label]").textContent !== "SAUNA PLUS" || importedSauna.querySelector("[data-status]")?.textContent !== "Sauna Plus0Unavailable" || importedSauna.querySelector("[data-status]")?.title !== "Sauna Plus") throw new Error("imported-update")
   localSauna.querySelector("[data-select]").click()
   importedSauna.querySelector("[data-select]").click()
   importedSauna.querySelector("[data-status]").click()
   await wait()
-  if (document.body.dataset.localSelected !== "Sauna Plus" || document.body.dataset.importedSelected !== "Sauna Plus" || document.body.dataset.importedStatus !== "status:Sauna Plus") throw new Error("latest-handler")
+  if (document.body.dataset.localSelected !== "Sauna Plus" || document.body.dataset.importedSelected !== "Sauna Plus" || document.body.dataset.importedStatus !== "status:Sauna Plus" || importedSauna.querySelector("[data-status]").dataset.effect !== "status:Sauna Plus:1") throw new Error("latest-handler")
   document.querySelector('[data-action="restore"]').click()
   await wait()
-  if (local("a1") !== localSauna || imported("a1") !== importedSauna || localSauna.title !== "Sauna Restored" || localSauna.querySelector("[data-range]").textContent !== "a1: Sauna Restored" || !localSauna.querySelector("strong[data-status]") || importedSauna.querySelector("[data-status]")?.textContent !== "Sauna RestoredAvailable" || importedSauna.querySelector("[data-status]")?.title !== "Sauna Restored") throw new Error("condition-reentry")
+  const restoredDeep = localSauna.querySelector("[data-deep]")
+  if (local("a1") !== localSauna || imported("a1") !== importedSauna || localSauna.title !== "Sauna Restored" || localSauna.querySelector("[data-range]").textContent !== "a1: Sauna Restored" || !restoredDeep || restoredDeep === initialDeep || restoredDeep.textContent !== "Sauna Restored" || importedSauna.querySelector("[data-status]")?.textContent !== "Sauna Restored1Available" || importedSauna.querySelector("[data-status]")?.title !== "Sauna Restored") throw new Error("condition-reentry")
   importedSauna.querySelector("[data-status]").click()
   await wait()
   if (document.body.dataset.importedStatus !== "status:Sauna Restored") throw new Error("reentered-handler")
@@ -2594,10 +2976,11 @@ try {
   await wait()
   const localFacial = local("a3")
   const importedFacial = imported("a3")
-  if (localFacial?.title !== "Facial" || localFacial?.querySelector("[data-range]")?.textContent !== "a3: Facial" || !localFacial?.querySelector("strong[data-status]") || importedFacial?.querySelector("[data-status]")?.textContent !== "FacialAvailable") throw new Error("added-condition")
+  if (localFacial?.title !== "Facial" || localFacial?.querySelector("[data-range]")?.textContent !== "a3: Facial" || !localFacial?.querySelector("strong[data-status]") || importedFacial?.querySelector("[data-status]")?.textContent !== "Facial0Available") throw new Error("added-condition")
   document.querySelector('[data-action="hide-added"]').click()
   await wait()
-  if (local("a3") !== localFacial || imported("a3") !== importedFacial || localFacial.querySelector("[data-status]") || importedFacial.querySelector("[data-status]")?.textContent !== "FacialUnavailable" || importedFacial.querySelector("[data-range]")?.textContent !== "a3: Facial") throw new Error("added-condition-update")
+  if (local("a3") !== localFacial || imported("a3") !== importedFacial || localFacial.querySelector("[data-status]") || importedFacial.querySelector("[data-status]")?.textContent !== "Facial0Unavailable" || importedFacial.querySelector("[data-range]")?.textContent !== "a3: Facial") throw new Error("added-condition-update")
+  if (runtimeError) throw new Error("runtime-" + runtimeError)
   document.body.dataset.nestedComponentListTest = "pass"
 } catch (error) {
   document.body.dataset.nestedComponentListTest = "fail-" + error.message
@@ -2619,6 +3002,219 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-nested-component-list-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runFlatKeyedRowHooksBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  window.addEventListener("unhandledrejection", event => { runtimeError = event.reason?.message || String(event.reason) })
+  const row = document.querySelector('[data-row="b"]')
+  row.querySelector("[data-increment]").click()
+  await wait()
+  if (row.querySelector("[data-count]").textContent !== "1" || runtimeError) throw new Error(runtimeError || "state")
+  document.body.dataset.flatKeyedRowHooksTest = "pass"
+} catch (error) {
+  document.body.dataset.flatKeyedRowHooksTest = "fail-" + error.message
+}
+`)
+  const port = 40800 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-flat-keyed-row-hooks-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runKeyedRowHooksBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 60))
+const click = action => document.querySelector('[data-action="' + action + '"]').click()
+const parent = id => document.querySelector('[data-parent="' + id + '"]')
+const row = (parentId, site, itemId) => parent(parentId).querySelector('[data-site="' + site + '"] [data-row="' + site + ':' + parentId + ':' + itemId + '"]')
+const count = node => node.querySelector("[data-count]").textContent
+try {
+  await wait()
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  window.addEventListener("unhandledrejection", event => { runtimeError = event.reason?.message || String(event.reason) })
+  const p1 = parent("p1")
+  const p2 = parent("p2")
+  const one = row("p1", "primary", "shared")
+  const two = row("p2", "primary", "shared")
+  const positionalFirst = parent("p1").querySelector('[data-site="positional"] li')
+  if (!one || !two || one === two || one.querySelector("input").dataset.effectCount !== "0") throw new Error("initial")
+  one.querySelector("[data-increment]").click()
+  two.querySelector("[data-increment]").click()
+  two.querySelector("[data-increment]").click()
+  positionalFirst.querySelector("[data-increment]").click()
+  p1.querySelector("[data-parent-increment]").click()
+  await wait()
+  if (count(one) !== "1" || one.querySelector("[data-meta]").textContent !== "1" || one.querySelector("[data-label-count]").textContent !== "1" || count(two) !== "2") throw new Error("isolated-state-" + [count(one), one.querySelector("[data-meta]").textContent, one.querySelector("[data-label-count]").textContent, count(two)].join("-"))
+  if (p1.querySelector("[data-parent-visits]").textContent !== "1" || p1.querySelector("[data-parent-active]").textContent !== "inactive") throw new Error("parent-state")
+  one.querySelector("[data-focus]").click()
+  await wait()
+  if (document.activeElement !== one.querySelector("input") || document.body.dataset.refRead !== "primary:p1:shared") throw new Error("ref")
+  click("parent-reorder")
+  await wait()
+  if (parent("p1") !== p1 || parent("p2") !== p2 || row("p1", "primary", "shared") !== one || count(one) !== "1") throw new Error("parent-reorder")
+  click("child-reorder")
+  await wait()
+  if (row("p1", "primary", "shared") !== one || count(one) !== "1" || [...parent("p1").querySelectorAll('[data-site="primary"] li')].at(-1) !== one) throw new Error("child-reorder")
+  click("positional-reorder")
+  await wait()
+  const positionalAfter = parent("p1").querySelector('[data-site="positional"] li')
+  if (positionalAfter !== positionalFirst || count(positionalAfter) !== "1" || positionalAfter.dataset.row !== "positional:p1:last") throw new Error("positional-ownership")
+  const beforeRename = document.body.dataset.effectLog
+  click("rename")
+  await wait()
+  const renameLog = document.body.dataset.effectLog.slice(beforeRename.length)
+  if (!renameLog.includes("cleanup:primary:p1:shared:One shared:1") || !renameLog.includes("mount:primary:p1:shared:One renamed:1") || renameLog.includes("primary:p2")) throw new Error("effect-rerun")
+  const removedInputRef = one.querySelector("input").getAttribute("data-k-ref")
+  const beforeRemove = document.body.dataset.effectLog
+  click("remove")
+  await wait()
+  if (one.isConnected || document.querySelector('[data-k-ref="' + removedInputRef + '"]') || !document.body.dataset.effectLog.slice(beforeRemove.length).includes("cleanup:primary:p1:shared:One renamed:1")) throw new Error("remove")
+  click("readd")
+  await wait()
+  const readded = row("p1", "primary", "shared")
+  if (!readded || readded === one || count(readded) !== "0" || readded.querySelector("[data-meta]").textContent !== "0" || readded.querySelector("[data-label-count]").textContent !== "0" || readded.querySelector("input").dataset.effectCount !== "0") throw new Error("readd-reset")
+  if (runtimeError) throw new Error("runtime-" + runtimeError)
+  document.body.dataset.keyedRowHooksTest = "pass"
+} catch (error) {
+  document.body.dataset.keyedRowHooksTest = "fail-" + error.message
+}
+`)
+  const port = 40700 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-keyed-row-hooks-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runReactShapedIntegrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 60))
+const click = action => document.querySelector('[data-action="' + action + '"]').click()
+const projections = selector => [...document.querySelectorAll(selector + " > li")]
+const item = id => document.querySelector('[data-primary] [data-item="' + id + '"]')
+try {
+  let runtimeError = ""
+  window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
+  window.addEventListener("unhandledrejection", event => { runtimeError = event.reason?.message || String(event.reason) })
+  await wait()
+  const stable = projections("[data-stable]")
+  const positional = projections("[data-positional]")
+  const alpha = item("a")
+  const secondary = projections("[data-secondary]")
+  if (stable.map(node => node.dataset.projection).join(",") !== "a,c" || positional.map(node => node.dataset.projection).join(",") !== "a,c") throw new Error("initial-projections")
+  if (!alpha?.querySelector("[data-featured] [data-latest]") || secondary.map(node => node.dataset.secondaryItem).join(",") !== "x,y") throw new Error("initial-nested")
+  click("show")
+  await wait()
+  const shownStable = projections("[data-stable]")
+  const shownPositional = projections("[data-positional]")
+  if (shownStable[0] !== stable[0] || shownStable[2] !== stable[1] || shownStable.map(node => node.dataset.projection).join(",") !== "a,b,c") throw new Error("stable-filter")
+  if (shownPositional[0] !== positional[0] || shownPositional[1] !== positional[1] || shownPositional[1].dataset.projection !== "b") throw new Error("positional-filter")
+  alpha.querySelector("[data-increment]").click()
+  alpha.querySelector("[data-focus]").click()
+  await wait()
+  if (alpha.querySelector("[data-count]").textContent !== "1" || alpha.querySelector("[data-changes]").textContent !== "1" || document.activeElement !== alpha.querySelector("input") || document.body.dataset.ref !== "a") throw new Error("row-hooks")
+  click("reverse")
+  await wait()
+  const reversedStable = projections("[data-stable]")
+  const reversedPositional = projections("[data-positional]")
+  if (reversedStable[0] !== stable[1] || reversedStable[2] !== stable[0] || reversedStable.map(node => node.dataset.projection).join(",") !== "c,b,a") throw new Error("stable-reorder")
+  if (reversedPositional[0] !== positional[0] || reversedPositional[1] !== positional[1] || reversedPositional.map(node => node.dataset.projection).join(",") !== "c,b,a") throw new Error("positional-reorder")
+  if (item("a") !== alpha || alpha.querySelector("[data-count]").textContent !== "1" || projections("[data-secondary]").some((node, index) => node !== secondary[index])) throw new Error("independent-siblings")
+  click("branch")
+  await wait()
+  if (alpha.querySelector("[data-featured]") || alpha.querySelector("[data-status]")?.textContent !== "Standard") throw new Error("branch-exit")
+  const beforeRename = document.body.dataset.effects
+  click("rename")
+  await wait()
+  const renameEffects = document.body.dataset.effects.slice(beforeRename.length)
+  if (!renameEffects.includes("cleanup:a:Alpha:1") || !renameEffects.includes("mount:a:Alpha latest:1")) throw new Error("effect-dependency")
+  click("branch")
+  await wait()
+  const latest = alpha.querySelector("[data-latest]")
+  latest?.click()
+  await wait()
+  if (!latest || latest.textContent !== "Alpha latest" || document.body.dataset.latest !== "Alpha latest") throw new Error("branch-reentry")
+  const ref = alpha.querySelector("input").getAttribute("data-k-ref")
+  const beforeRemove = document.body.dataset.effects
+  click("remove")
+  await wait()
+  if (alpha.isConnected || document.querySelector('[data-k-ref="' + ref + '"]') || !document.body.dataset.effects.slice(beforeRemove.length).includes("cleanup:a:Alpha latest:1")) throw new Error("row-removal")
+  click("readd")
+  await wait()
+  const readded = item("a")
+  if (!readded || readded === alpha || readded.querySelector("[data-count]").textContent !== "0" || readded.querySelector("[data-changes]").textContent !== "0" || readded.querySelector("input").dataset.effectCount !== "0") throw new Error("row-readd")
+  if (projections("[data-secondary]").some((node, index) => node !== secondary[index]) || runtimeError) throw new Error(runtimeError ? "runtime-" + runtimeError : "sibling-lifecycle")
+  document.body.dataset.reactShapedIntegrationTest = "pass"
+} catch (error) {
+  document.body.dataset.reactShapedIntegrationTest = "fail-" + error.message
+}
+`)
+  const port = 40900 + process.pid % 1000
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=6000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-react-shaped-integration-test="pass"/)
   } finally {
     server.kill()
   }

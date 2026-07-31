@@ -6,7 +6,7 @@
 
 HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
-Kudzu keeps the familiar function-component, props, children, event-handler, `useState`, `useReducer`, and mount-effect shape. Static components compile to HTML. Simple interactions compile to small behavior commands, while normal sync or async JavaScript handlers and mount effects compile to external ESM.
+Kudzu is designed so ordinary common React-shaped TSX can migrate with minimal source restructuring. It keeps familiar function components, props, children, collection rendering, conditions, event handlers, `useState`, reduced `useReducer`, refs, and effects, preferring compiler specialization over imperative DOM rewrites. This is a general migration model, not compatibility for one application. Static components compile to HTML; interactions compile to direct DOM capabilities and external ESM only where used.
 
 > Experimental `0.6.x`: the compiler API and supported TSX surface may change.
 
@@ -198,7 +198,7 @@ function Controls({ dispatch }: { dispatch: Dispatch<TodoAction> }) {
 return <Controls dispatch={dispatch} />
 ```
 
-Kudzu specializes that call at build time; no function prop or child component survives in the browser. Reducers follow React's pure reducer contract. The direct child may also be a keyed row such as `todos.map(todo => <Item key={todo.id} todo={todo} dispatch={dispatch} />)`. Its inline or simple `const` event handler receives the latest keyed item. That row may declare one top-level `useState` with a primitive literal initial value; the existing list key owns its state across item updates and reorder, and removal releases it so a later re-add starts from the initializer. Reactive attributes and conditional DOM use the existing binding capability. Relative TypeScript constants and helpers used inside the handler are renamed for call-site safety and bundled into the parent handler graph. Lazy state or reducer initializers, multiple or non-keyed specialized local states, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, further dispatch forwarding, reducer-dispatch keyed-row effects, and reducer dispatch through context remain unsupported.
+Kudzu specializes that call at build time; no function prop or child component survives in the browser. Reducers follow React's pure reducer contract. The direct child may also be a keyed row such as `todos.map(todo => <Item key={todo.id} todo={todo} dispatch={dispatch} />)`. Its inline or simple `const` event handler receives the latest keyed item, and it has the same multiple serializable state, effect, condition, and object-ref support as other keyed rows. The list key path owns those hooks across item updates and reorder; removal cleans up and releases them. Relative TypeScript constants and helpers used inside the handler are renamed for call-site safety and bundled into the parent handler graph. Lazy state or reducer initializers, non-keyed specialized local state, package, namespace, local, async, and generator reducers, package imports or child imports used outside event handlers, further dispatch forwarding, and reducer dispatch through context remain unsupported.
 
 That specialized component may pass one inline or simple `const` callback containing dispatch to one relative-imported synchronous child with an intrinsic root:
 
@@ -264,7 +264,7 @@ return <>
 </>
 ```
 
-Kudzu resolves `current` when the handler reads it, so removed conditional elements return `null` without a component runtime. Refs must initialize with `null`; callback refs, mutable value refs, and refs inside keyed lists are not supported.
+Kudzu resolves `current` when the handler reads it, so removed conditional elements return `null` without a component runtime. Keyed row components may also declare object refs; the row key path scopes the ref and removal releases it. Refs must initialize directly with `null`; callback refs and mutable value refs are not supported.
 
 ## Context
 
@@ -394,9 +394,11 @@ function ItemList({ items }: { items: Item[] }) {
 return <ItemList items={items} />
 ```
 
-The original row component remains reusable across multiple lists and ordinary JSX. State-backed list wrappers and row components are specialized to intrinsic JSX at build time; no component function or component runtime is shipped to the browser. Kudzu emits initial items as static HTML, then adds, removes, updates, styles, conditional branches, and moves keyed elements directly. The map may appear directly in JSX, in one top-level immutable `const` rendered once as a JSX child, or in one synchronous wrapper receiving the state identifier as a direct prop. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Single-level item-local `&&` and ternary JSX conditions patch only their bounded branch and mount or unmount its handlers. Item-local handlers and effects receive the latest JSON-safe item for their key. Effects mount after a row is connected and clean up when it is removed. A direct primitive item dependency such as `[item.name]`, optionally mixed with state as `[version, item.name]`, reruns only rows whose selected value changed; the replacement setup receives the complete latest item. Unrelated fields and reorder do not rerun it, while a key change removes and mounts the row. The item remains stored once in shared list state; runtime descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
+The original row component remains reusable across multiple lists and ordinary JSX. State-backed list wrappers and row components are specialized to intrinsic JSX at build time; no component function or component runtime is shipped to the browser. Kudzu emits initial items as static HTML, then adds, removes, updates, styles, conditional branches, and moves keyed elements directly. The map may appear directly in JSX, in one top-level immutable `const` rendered once as a JSX child, or in one synchronous wrapper receiving the state identifier as a direct prop. Existing keys move without remounting, preserving uncontrolled descendant state. Direct `item.<field>` reads use compact markers; derived item expressions compile to external ESM evaluators. Nested item-local `&&` and ternary conditions patch bounded branches and mount or unmount their handlers. Item-local handlers and effects receive the latest JSON-safe item for their key. Effects mount after a row is connected and clean up when it is removed. A direct primitive item dependency such as `[item.name]`, optionally mixed with row or page state, reruns only rows whose selected values changed; unrelated fields and reorder do not rerun it, while removal cleans it up. The item remains stored once in shared list state; runtime descriptors carry a placeholder that the list runtime fills when mounting or updating the keyed root.
 
-One nested keyed map may read a direct array property of its parent item. This supports category/item data populated after mount while preserving both parent and child DOM identity across updates and reorder:
+Rendered collections may use one-use top-level aliases and analyzable pipelines over local array state. Inline arrow callbacks accept `(item)` or `(item, index)`; `filter()` supports pure synchronous expressions, `flatMap()` projects one direct array property, `Array.from()` accepts an optional pure mapper, and the final `map()` may use `key={item.field}` or positional `key={index}`. Field keys preserve the matching DOM node through filtering and reorder. Positional keys deliberately preserve the DOM node at each position while its item changes, matching React key semantics.
+
+A keyed row may contain multiple keyed maps over direct array properties of its item at any nesting depth. This supports recursively nested data populated after mount while preserving keyed DOM identity across updates and reorder:
 
 ```tsx
 function ItemCard({ item, onSelect }: {
@@ -407,6 +409,12 @@ function ItemCard({ item, onSelect }: {
     <span>{item.title}</span>
     {item.available ? <strong>Available</strong> : <small>Unavailable</small>}
     <button onClick={() => onSelect()}>Select</button>
+    <ul>{item.groups.map(group => <li key={group.id}>
+      <strong>{group.title}</strong>
+      {group.options.map(option => <button key={option.id} onClick={() => console.log(option.title)}>
+        {option.title}
+      </button>)}
+    </li>)}</ul>
   </li>
 }
 
@@ -420,24 +428,26 @@ function ItemCard({ item, onSelect }: {
 </section>)}
 ```
 
-The nested collection must be `parent.<field>`. Its child row may be intrinsic or a same-file or relative-imported component that specializes to one intrinsic root. Child handlers receive the latest child item, and one level of child-local `&&` or ternary JSX conditions patches bounded DOM without remounting the child row. A second child list, third nesting level, computed collection, parent-item capture from the child row, conditions inside child conditions, child effects, child component tags below the specialized row root, and child row-local state remain unsupported.
+Each nested collection must be `parent.<field>`, and a row may own multiple sibling child maps. There is no numeric nesting-depth limit. Nested rows may be intrinsic or recursively specialized through same-file and relative-imported components to one intrinsic root. They support nested item conditions, latest-item handlers, effects, object refs initialized with `null`, and multiple `useState` declarations whose initial values are directly serializable primitives, arrays, or plain objects. The structural list site plus ancestor key path owns each hook slot across updates and reorder; removal cleans up effects and releases state/ref ownership, so re-adding the key starts from its initial values. Computed nested collections, parent-item capture from a child row, component cycles, package or namespace row imports, and arbitrary collection callbacks remain unsupported.
 
 #### Nested list output
 
 Initial child rows remain complete HTML. Kudzu stores one child row prototype, including inert condition branches and descriptors, and reuses it across parent rows.
 
-- HTML: 676,086 B before sharing, 339,586 B after sharing.
-- Total deploy output: 693,806 B before sharing, 359,035 B after sharing.
-- Compressed-file sum: 24,067 B. Sharing text and attribute patch metadata saves 29,576 B raw over `v0.6.26` while adding 147 B gzip because the removed metadata compressed well.
-- Initial JavaScript: 6.9 KB gzip. Routes without nested lists compile out prototype and marker lookup.
+- HTML: 339,601 B.
+- Total deploy output: 359,271 B.
+- Compressed-file sum: 24,173 B.
+- Initial JavaScript: 7,204 B gzip. Routes without nested lists compile out prototype and marker lookup.
 
-In the matched 100-parent/1,000-child fixture, Kudzu measured 1.4/0.5/5.4/0.7 ms for child update and condition change, child reverse, parent reverse, and parent removal. Hand-written Astro/native measured 0.5/0.3/3.6/0.2 ms, Svelte 2.2/0.9/5.4/0.9 ms, Vue 4.0/2.1/4.6/1.8 ms, and React 8.5/3.9/6.8/3.8 ms. Kudzu and Astro emit initial rows while the CSR targets do not, so artifact sizes are not architecture-equivalent.
+In the matched 100-parent/1,000-child fixture, Kudzu measured 1.3/0.4/5.0/0.7 ms for child update and condition change, child reverse, parent reverse, and parent removal. Hand-written Astro/native measured 0.5/0.4/3.9/0.2 ms, Svelte 2.7/1.2/6.7/1.3 ms, Vue 4.9/2.5/6.1/2.2 ms, and React 11.8/5.0/8.2/4.4 ms. Kudzu and Astro emit initial rows while the CSR targets do not, so artifact sizes are not architecture-equivalent.
 
-Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. The current syntax requires a local-state `.map`, one identifier callback parameter, one intrinsic JSX root or top-level local or relative-imported row component, and `key={item.<field>}`. State-backed list wrappers use one destructured props parameter, an intrinsic return root, no effects, and a direct local-state prop. Same-file wrappers must be unexported and state-backed at every call; relative default, named/aliased, and direct named re-export wrappers are specialized per qualifying call. Row components accept destructured projected props, top-level single-`const` calculations and inline effects before one intrinsic return. Effect dependencies inside a direct outer row may be empty, direct primitive Kudzu state identifiers, or direct `item.<field>` properties whose selected values remain JSON-safe primitives. Whole-item, computed, nested, derived, `__proto__`, `prototype`, and `constructor` dependencies are rejected. A list alias may only be rendered once and cannot be read by other JavaScript. Derived expressions must be pure and synchronous: item reads, literals, operators, templates, approved read-only string/array methods, deterministic `Math` methods, and `String`/`Number`/`Boolean` conversion are supported. Component state, imported helpers used inside calculations, browser globals, Promise values, mutation, arbitrary calls, and prototype-sensitive properties are rejected. Package, namespace, and star-export list wrappers, package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, conditions nested inside item conditions, component tags below a specialized row root, refs, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
+Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. Collections must remain anchored to local array state; inline callbacks accept one or two identifier parameters, and row roots must be intrinsic JSX or supported same-file/relative components with `key={item.<field>}` or `key={index}`. State-backed list wrappers use one destructured props parameter, an intrinsic return root, no effects, and a direct local-state prop. Whole-item, computed, nested, derived, `__proto__`, `prototype`, and `constructor` effect dependencies are rejected. A collection alias may only be rendered once and cannot be read by other JavaScript. Collection callbacks and derived expressions must be pure and synchronous: supported reads, operators, templates, approved read-only methods, deterministic `Math`, and primitive conversion compile; imported callbacks, browser globals, promises, mutation, arbitrary calls, and prototype-sensitive properties fail. Lazy or dynamic keyed-row state initializers, non-`null` refs, callback refs, package/namespace/star row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, fragments, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 The focused wrapper fixture emits 1,393 B raw / 500 B gzip HTML and 10,719 B raw / 4,665 B gzip JavaScript across its route capabilities. After one warm-up, seven clean builds measured 314.1, 325.3, 322.3, 327.2, 336.1, 322.4, and 315.0 ms, with a 322.4 ms median.
 
 The three-wrapper relative-import fixture emits 2,279 B raw / 629 B gzip HTML and 11,370 B raw / 4,828 B gzip JavaScript, including one imported-wrapper item expression; its unused component handler module is not emitted. After one warm-up, seven clean builds measured 340.2, 349.4, 352.8, 335.0, 354.1, 364.3, and 349.5 ms, with a 349.5 ms median.
+
+The compact neutral integration fixture combines the ordinary migration shapes above: a `flatMap`/`filter` alias, `(item, index)`, stable and positional keys, sibling/deep same-file and relative component lists, three nested conditions, and keyed-row state/effect/ref lifecycles. It emits 13,898 B HTML and 39,387 B raw/14,655 B gzip JavaScript across 11 files (16,514 B total file-by-file gzip at level 9). Seven artifact-clean builds after one warm-up measured 515.185, 516.919, 486.594, 517.121, 436.251, 454.066, and 444.403 ms, with a 486.594 ms median. Seven fresh Chrome profiles measured 2.2 ms filter update, 1.2 ms flatMap reorder, 0.6 ms keyed-row state/effect rerun, 3.5 ms ref focus/read, 1.0 ms nested-condition re-entry, 0.8 ms removal cleanup, 2.1 ms re-add/reset, and 0.8/0.6/0.5 ms sibling-list update/add/reorder.
 
 ## Effects
 
@@ -631,6 +641,10 @@ Supported:
 - Conditional child `&&` and ternary DOM patches
 - Top-level and block-scoped JSX locals, terminal early returns, and exhaustive JSX assignment
 - Direct keyed local-state lists
+- Analyzable `filter`/direct-property `flatMap`/`Array.from` collection pipelines with item or positional keys
+- Multiple sibling and recursively deep direct-property child lists
+- Recursive same-file/relative keyed-row specialization with nested conditions and latest-item handlers
+- Keyed-row multiple serializable state slots, effects, and `null`-initialized object refs
 - Page-exported shared layouts with layout/route state lifetimes
 - Opt-in exact/runtime-route navigation with complete-document prefetch and native fallback
 - Layout- and route-lifetime effect mounts in navigation groups
@@ -639,8 +653,10 @@ Supported:
 Not implemented yet:
 
 - Reusable keyed-list aliases
+- Arbitrary, imported, mutating, or asynchronous collection callbacks
+- Lazy/dynamic keyed-row state initializers and callback refs
 - Server actions and request-time SSR
-- React package islands
+- React package/runtime/ecosystem compatibility or React islands
 - HMR and framework DevTools
 
 ## Benchmarks
@@ -752,21 +768,21 @@ Same content and CSS across every fixture:
 
 ### 1,000-item Keyed List
 
-The list starts with 1,000 keyed items, then updates every label, reverses the order, removes odd IDs, and adds 500 items. Browser timings are medians from seven fresh headless Chrome runs, measured when a DOM observer sees each expected result rather than at the next animation frame.
+The list starts with 1,000 keyed items, then updates every label, reverses the order, removes odd IDs, and adds 500 items. Kudzu, Next, React, Vue, and Svelte browser timings are medians from 31 rotating fresh headless Chrome profiles, measured when a DOM observer sees each expected result rather than at the next animation frame. The Astro and Qwik rows retain their earlier seven-profile measurements.
 
 | Framework | Initial content | Initial JS gzip | Total output | Build | Update | Reverse | Remove | Add | Operations total |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro | Yes | **324 B** | **43.6 KB** | 834 ms | **4.3 ms** | **3.8 ms** | **1.3 ms** | **3.1 ms** | **12.5 ms** |
-| Kudzu | Yes | 5.1 KB | 60.3 KB | **438 ms** | 7.5 ms | 7.0 ms | 1.8 ms | 6.9 ms | 23.2 ms |
-| Next.js | Yes | 182.2 KB | 695.2 KB | 2983 ms | 7.0 ms | 12.0 ms | 3.9 ms | 6.7 ms | 29.6 ms |
-| React CSR | No | 59.3 KB | 189.4 KB | 1020 ms | 9.5 ms | 11.7 ms | 3.8 ms | 5.3 ms | 30.3 ms |
-| Vue CSR | No | 24.3 KB | 61.3 KB | 773 ms | 11.4 ms | 9.5 ms | 4.1 ms | 6.6 ms | 31.6 ms |
-| Svelte CSR | No | 12.9 KB | 33.1 KB | 828 ms | 5.8 ms | 38.9 ms | 4.0 ms | 5.9 ms | 54.6 ms |
-| Qwik CSR | No | 22.2 KB | 64.1 KB | 594 ms | 9.1 ms | 22.2 ms | 30.8 ms | 19.0 ms | 81.1 ms |
+| Astro | Yes | **324 B** | **43.6 KB** | 920 ms | **4.4 ms** | **4.1 ms** | **1.5 ms** | **3.6 ms** | **13.6 ms** |
+| Kudzu | Yes | 6.7 KB | 65.9 KB | **380 ms** | **5.7 ms** | **7.3 ms** | **2.8 ms** | **5.6 ms** | **21.4 ms** |
+| Next.js | Yes | 182.2 KB | 695.2 KB | 3142 ms | 8.0 ms | 13.0 ms | 4.4 ms | 7.4 ms | 32.8 ms |
+| React CSR | No | 59.3 KB | 189.4 KB | 1074 ms | 9.7 ms | 12.6 ms | 4.3 ms | 5.9 ms | 32.5 ms |
+| Vue CSR | No | 24.3 KB | 61.3 KB | 791 ms | 11.0 ms | 9.7 ms | 4.4 ms | 6.7 ms | 31.8 ms |
+| Svelte CSR | No | 12.9 KB | 33.1 KB | 910 ms | 6.0 ms | 42.3 ms | 4.5 ms | 6.2 ms | 59.0 ms |
+| Qwik CSR | No | 22.2 KB | 64.1 KB | 634 ms | 10.6 ms | 25.6 ms | 36.5 ms | 22.1 ms | 94.8 ms |
 
-An intrinsic-root versus projected-prop row-component A/B build produced byte-for-byte identical `dist` output: 5,175 B JS gzip and 61,731 B total. Seven interleaved clean builds measured 467 ms and 455 ms. Browser operation medians totaled 23.7 ms and 23.9 ms respectively; because the deployed HTML and JavaScript are identical, the 0.2 ms difference is measurement variance rather than component runtime overhead.
+An intrinsic-root versus projected-prop row-component A/B build produced byte-for-byte identical `dist` output: 6,817 B JS gzip and 67,495 B total. Seven rotating clean builds measured 380 ms and 384 ms. In 31 paired fresh-profile rounds, no browser operation differed significantly; component specialization adds no deployed runtime overhead.
 
-Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu's keyed-list operations total 23.2 ms, 10.7 ms behind the hand-authored Astro baseline and 7.1 ms ahead of React across all four operations.
+Astro is the hand-authored native DOM baseline in the interactive fixtures. React, Vue, Svelte, and Qwik used client-rendered fixtures, while Kudzu and Astro emitted initial HTML; Qwik therefore did not exercise its SSR resumability advantage. Kudzu has the lowest median for every operation among the 31-profile framework targets, and every exact paired sign test is significant.
 
 ### 1,000-item Keyed Effect
 
@@ -774,29 +790,29 @@ Each keyed row owns one effect depending on `item.name`. The measured actions re
 
 | Framework | Initial rows | Initial JS gzip | Total output | Build | Selected update | Unrelated update | Reverse |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Astro native | Yes | **381 B** | **90,734 B** | 1,022 ms | **0.4 ms** | **0.2 ms** | **5.5 ms** |
-| Kudzu | Yes | 7,070 B | 221,056 B | **437 ms** | 3.4 ms | 2.9 ms | 7.8 ms |
-| Vue CSR | No | 25,091 B | 63,368 B | 893 ms | 4.7 ms | **2.3 ms** | 10.1 ms |
-| Svelte CSR | No | 12,848 B | 33,222 B | 1,012 ms | 5.2 ms | 3.0 ms | 48.1 ms |
-| React CSR | No | 60,921 B | 194,301 B | 1,132 ms | 12.3 ms | 6.8 ms | 19.0 ms |
+| Astro native | Yes | **381 B** | **90,734 B** | 998 ms | **0.4 ms** | **0.2 ms** | **5.7 ms** |
+| Kudzu | Yes | 8,264 B | 225,248 B | **426 ms** | 3.6 ms | 2.4 ms | 8.8 ms |
+| Vue CSR | No | 25,091 B | 63,368 B | 935 ms | 5.8 ms | 2.4 ms | 10.5 ms |
+| Svelte CSR | No | 12,848 B | 33,222 B | 1,040 ms | 5.7 ms | 4.1 ms | 58.1 ms |
+| React CSR | No | 60,921 B | 194,301 B | 1,198 ms | 9.8 ms | 5.9 ms | 16.8 ms |
 
-This is a post-initialization runtime microbenchmark, not an architecture-equivalent loading comparison. Kudzu and Astro emit all 1,000 rows in HTML while React, Vue, and Svelte use empty CSR shells, so their JavaScript, output, and build columns are observations rather than framework-size or startup claims. Once every target has 1,000 rows and effects ready, targeted changed-root notification reduces Kudzu's selected update from 6.2 to 3.4 ms, versus Vue at 4.7 ms, Svelte at 5.2 ms, and React at 12.3 ms. It adds 126 B gzip to Kudzu's initial graph. List reconciliation remains O(n), which dominates unrelated-field updates; Vue measures 2.3 ms there versus Kudzu's 2.9 ms. Astro is the hand-written direct-DOM lower bound.
+This is a post-initialization runtime microbenchmark, not an architecture-equivalent loading comparison. Kudzu and Astro emit all 1,000 rows in HTML while React, Vue, and Svelte use empty CSR shells, so their JavaScript, output, and build columns are observations rather than framework-size or startup claims. Once every target has 1,000 rows and effects ready, Kudzu's targeted changed-root path measures 3.6 ms versus Vue at 5.8 ms, Svelte at 5.7 ms, and React at 9.8 ms. List reconciliation remains O(n); Kudzu and Vue both measure 2.4 ms for the unrelated detail update. Astro is the hand-written direct-DOM lower bound.
 
 ### 1,000-item Keyed Row State
 
-Row 500 enters local edit state, the list reverses while preserving that row and its input DOM identity, then the row is removed and the same key is re-added with fresh non-editing state. Every target passed seven fresh-profile correctness runs; timings start at click and stop only after row order, unique IDs, labels, local state, and DOM identity match.
+Row 500 enters local edit state, the list reverses while preserving that row and its input DOM identity, then the row is removed and the same key is re-added with fresh non-editing state. Framework browser timings use 31 rotating fresh profiles; the native baseline retains its latest seven-profile run. Timings start at click and stop only after row order, unique IDs, labels, local state, and DOM identity match.
 
 | Framework | Initial rows | Initial JS gzip | Total output | Build | Edit | Reverse | Remove | Re-add |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Astro native | Yes | **373 B** | **83.7 KB** | 926 ms | **1.6 ms** | **5.9 ms** | **1.2 ms** | **1.4 ms** |
-| Kudzu | Yes | 8.5 KB | 570.7 KB | **449 ms** | 2.7 ms | 10.1 ms | 3.0 ms | 3.1 ms |
-| Vue CSR | No | 24.4 KB | 61.6 KB | 820 ms | 2.8 ms | 11.7 ms | 4.0 ms | 4.2 ms |
-| Svelte CSR | No | 13.1 KB | 33.8 KB | 918 ms | 2.6 ms | 47.9 ms | 4.5 ms | 5.4 ms |
-| React CSR | No | 59.4 KB | 189.5 KB | 1,074 ms | 5.9 ms | 26.4 ms | 9.0 ms | 6.5 ms |
+| Astro native | Yes | **373 B** | **83.7 KB** | 903 ms | **1.6 ms** | **5.7 ms** | **1.2 ms** | **1.3 ms** |
+| Kudzu | Yes | 9.2 KB | 572.9 KB | **434 ms** | **2.7 ms** | 10.8 ms | 3.0 ms | 3.7 ms |
+| Vue CSR | No | 24.4 KB | 61.6 KB | 793 ms | 3.0 ms | 12.1 ms | 4.2 ms | 4.1 ms |
+| Svelte CSR | No | 13.1 KB | 33.8 KB | 911 ms | 2.8 ms | 50.4 ms | 4.6 ms | 5.9 ms |
+| React CSR | No | 59.4 KB | 189.5 KB | 1,054 ms | 6.2 ms | 25.8 ms | 9.1 ms | 6.7 ms |
 
-Kudzu builds fastest and beats React, Vue, and Svelte on all four operations. Pure reducer identity fast paths skip unchanged-item validation for reorder, one removal, and append while preserving direct keyed DOM identity. Astro remains the hand-written native lower bound. Kudzu's 570.7 KB output includes complete initial HTML plus per-row direct-patch descriptors; React, Vue, and Svelte ship CSR shells, so deploy size and loading architecture are not equivalent comparisons.
+Kudzu builds fastest and has the lowest framework median for every operation. The 0.1 ms displayed edit lead over Svelte is not statistically significant (p = 0.572); every other framework comparison is significant. Stable identity fast paths preserve direct keyed DOM identity across reorder, removal, and append. Astro remains the hand-written native lower bound. Kudzu's 572.9 KB output includes complete initial HTML plus per-row direct-patch descriptors; React, Vue, and Svelte ship CSR shells, so deploy size and loading architecture are not equivalent comparisons.
 
-The general benchmark snapshot was collected on July 22, 2026, the keyed-effect comparison on July 27, and keyed-row-state on July 28 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
+The general benchmark snapshot was collected on July 22, 2026, the keyed-effect comparison on July 27, and the 31-profile keyed-list and keyed-row-state comparisons on July 30 with Node 24.14.0 on an Intel i5-9500. These results compare the selected one-page fixtures, not ecosystem maturity, browser interaction speed beyond the listed operations, or each framework's full rendering options. Build times vary with machine load and filesystem cache.
 
 ## Development
 

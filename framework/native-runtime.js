@@ -68,10 +68,21 @@ function mountNative(root, eventNames, modules) {
     for (const node of matching(root, `[data-k-native-${eventName}]`)) {
       const listeners = registrations.get(node) ?? new Map()
       if (listeners.has(eventName)) continue
+      let encoded = node.dataset[`kNative${capitalize(eventName)}`]
+      let native = JSON.parse(encoded)
+      let handler
+      let context = createNativeContext(browserState, native.states, commitDom, native.scope)
       const listener = event => {
         try {
-          const native = JSON.parse(node.dataset[`kNative${capitalize(eventName)}`])
-          const result = modules.get(native.module)[native.handler](createNativeContext(browserState, native.states, commitDom, native.scope), event)
+          const current = node.dataset[`kNative${capitalize(eventName)}`]
+          if (current !== encoded) {
+            native = JSON.parse(current)
+            encoded = current
+            context = createNativeContext(browserState, native.states, commitDom, native.scope)
+            handler = undefined
+          }
+          handler ??= modules.get(native.module)[native.handler]
+          const result = handler(context, event)
           if (result && typeof result.then === "function") result.catch(error => console.error(error))
         } catch (error) {
           console.error(error)

@@ -1,0 +1,48 @@
+import { useState } from "@kudzujs/core"
+
+type Item = { id: string; label: string; visible: boolean; marker?: string | null }
+type Group = { id: string; children: Item[] }
+
+const initialItems: Item[] = [
+  { id: "a", label: "Alpha", visible: true },
+  { id: "b", label: "Beta", visible: false, marker: null },
+  { id: "c", label: "Gamma", visible: true, marker: "set" }
+]
+
+export default function RenderedCollectionsPage() {
+  const [items, setItems] = useState(initialItems)
+  const [groups, setGroups] = useState<Group[]>([
+    { id: "empty", children: [] },
+    { id: "full", children: [{ id: "x", label: "Xray", visible: true }] }
+  ])
+  const visible = items.filter((item, index) => item.visible && index >= 0)
+
+  return <main>
+    <button data-action="show" onClick={() => setItems(items.map(item => item.id === "b" ? { ...item, visible: true } : item))}>Show beta</button>
+    <button data-action="reverse" onClick={() => setItems([...items].reverse())}>Reverse</button>
+    <button data-action="remove" onClick={() => setItems(items.filter(item => item.id !== "b"))}>Remove beta</button>
+    <button data-action="add-child" onClick={() => setGroups(groups.map(group => group.id === "empty" ? { ...group, children: [{ id: "z", label: "Zulu", visible: true }] } : group))}>Add child</button>
+    <button data-action="duplicate" onClick={() => setGroups(groups.map(group => ({ ...group, children: [{ id: "same", label: group.id, visible: true }] })))}>Duplicate</button>
+
+    <ul data-stable>{visible.map((item, index) => <li key={item.id} data-id={item.id}>
+      <span>{index}:{item.label}</span>
+      <button data-pick onClick={() => { document.body.dataset.pick = `${index}:${item.label}` }}>Pick</button>
+      {index === 0 ? <b data-first>First</b> : null}
+      {index === 2 ? <button data-index-branch onClick={() => { document.body.dataset.branch = `${index}:${item.label}` }}>{index}:{item.label}</button> : null}
+    </li>)}</ul>
+
+    <ol data-positional>{items.filter(item => item.visible).map((item, index) => <li key={index} data-id={item.id}>
+      <span>{index}:{item.label}</span>
+      <button data-pick onClick={() => { document.body.dataset.position = `${index}:${item.label}` }}>Pick</button>
+    </li>)}</ol>
+
+    <div data-from>{Array.from(items).filter(item => item.visible).map(item => <i key={item.id}>{item.label}</i>)}</div>
+    <div data-from-direct>{Array.from(items, (item, index) => <i key={item.id}>{index}:{item.label}</i>)}</div>
+    <div data-from-map>{Array.from(items, (item, index) => ({ id: item.id, label: `${index}-${item.label}`, visible: item.visible })).filter(item => item.visible).map(item => <i key={item.id}>{item.label}</i>)}</div>
+    <div data-flat>{groups.flatMap(group => group.children).map(item => <i key={item.id} data-id={item.id}>{item.label}</i>)}</div>
+    <div data-undefined>{items.filter(item => item.marker === undefined).map(item => <i key={item.id}>{item.label}</i>)}</div>
+    <section data-groups>{groups.map(group => <div key={group.id} data-group={group.id}>
+      {group.children?.filter(item => item.visible).map((item, index) => <span key={item.id}>{index}:{item.label}</span>)}
+    </div>)}</section>
+  </main>
+}

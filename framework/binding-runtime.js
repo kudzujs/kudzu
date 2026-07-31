@@ -157,8 +157,10 @@ function updateCondition(condition) {
   condition.current = next
   if (condition.mount) for (const node of nodes) mountDom(node)
   const select = condition.start.closest("select[data-k-bind-value]")
-  for (const binding of new Set((bindingRegistrations.get(select) ?? []).map(([, entry]) => entry))) {
-    patchBinding(binding.node, binding.target, binding.read())
+  if (select) {
+    for (const binding of new Set((bindingRegistrations.get(select) ?? []).map(([, entry]) => entry))) {
+      patchBinding(binding.node, binding.target, binding.read())
+    }
   }
 }
 

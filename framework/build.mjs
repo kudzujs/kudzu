@@ -195,6 +195,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
   const hasTextBindings = plans.some(plan => plan.bindings.some(binding => binding.target === "text"))
   const hasListConditions = plans.some(plan => plan.lists.some(list => list.conditions))
+  const hasDeepListConditions = plans.some(plan => plan.lists.some(list => list.conditionHandlers))
   const hasListTextRanges = plans.some(plan => plan.lists.some(list => list.textRanges))
   const hasListAttributes = plans.some(plan => plan.lists.some(list => list.attributes))
   const hasListEvents = plans.some(plan => plan.lists.some(list => list.events))
@@ -202,8 +203,14 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasListExpressionAttributes = plans.some(plan => plan.lists.some(list => list.expressionAttributes))
   const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed))
   const hasListEffects = plans.some(plan => plan.lists.some(list => list.effects))
-  const hasListRowStates = plans.some(plan => plan.lists.some(list => list.rowStates))
+  const hasListRowHooks = plans.some(plan => plan.lists.some(list => list.rowStates?.length || list.rowRefs?.length))
+  const hasListRowRefs = plans.some(plan => plan.lists.some(list => list.rowRefs?.length))
+  const hasComplexListRowState = plans.some(plan => plan.lists.some(list => list.rowStates?.some(state => state.initialValue !== null && typeof state.initialValue === "object")))
   const hasNestedLists = plans.some(plan => plan.lists.some(list => list.ownerField))
+  const hasCollectionSelectors = plans.some(plan => plan.lists.some(list => list.selector))
+  const hasListIndexes = plans.some(plan => plan.lists.some(list => list.indexed))
+  const hasListStableFastPaths = plans.some(plan => plan.lists.some(list => !list.children && !list.ownerField && list.key !== null && !list.indexed && !list.reducer && !list.selector))
+  const hasGeneralListRowHooks = hasListRowRefs || hasComplexListRowState || plans.some(plan => plan.lists.some(list => list.ownerField && (list.rowStates?.length || list.rowRefs?.length)))
   const hasItemDependencies = plans.some(plan => plan.effects.some(effect => effect.itemDependencies?.length))
   const hasListAsyncParts = hasListExpressions || hasListExpressionAttributes || hasListConditions
   const hasListMounts = hasListConditions || hasNestedLists || plans.some(plan => plan.lists.some(list => list.mount))
@@ -262,9 +269,49 @@ export async function build({ quiet = false, minify = true } = {}) {
     })
   }
   if (listCount) {
+    if (hasCollectionSelectors) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
     let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
+    listRuntime = hasCollectionSelectors
+      ? listRuntime.replace('"./collection-selector.js"', '"./kudzu-collection-selector.js"')
+      : listRuntime.replace(/^import \{ selectCollection \}[^\n]+\n/m, "")
+    if (!hasListIndexes) listRuntime = listRuntime
+      .replace("for (const [index, item] of items.entries()) {", "for (const item of items) {")
+      .replace("const key = list.descriptor.key === null ? index : item?.[list.descriptor.key]", "const key = item?.[list.descriptor.key]")
+      .replace("entries.push({ item, index, key, token, value:", "entries.push({ item, key, token, value:")
+      .replace("for (const { item, index, key, token, value } of entries) {", "for (const { item, key, token, value } of entries) {")
+      .replaceAll("fillListItem(node, item, list.descriptor.nested, index)", "fillListItem(node, item, list.descriptor.nested)")
+      .replace("function addListRoot(list, { item, index = list.roots.size, key, token, value })", "function addListRoot(list, { item, key, token, value })")
+      .replace("fillListParts(root, listItemParts(root), listItems.get(owner), 0, __KUDZU_LIST_INDEXES__ ? listIndexes.get(owner) ?? 0 : 0)", "fillListParts(root, listItemParts(root), listItems.get(owner), 0)")
+      .replace("function fillListItem(root, item, nested = false, index = 0)", "function fillListItem(root, item, nested = false)")
+      .replace("fillListParts(root, parts, item, revision, index)", "fillListParts(root, parts, item, revision)")
+      .replace("function fillListParts(root, parts, item, revision, index = 0)", "function fillListParts(root, parts, item, revision)")
+      .replaceAll('value?.type === "list-item" ? serializeItem(item) : value?.type === "list-index" ? index : value', 'value?.type === "list-item" ? serializeItem(item) : value')
+      .replaceAll("evaluate(descriptor, item, index)", "evaluate(descriptor, item)")
+      .replaceAll("evaluate({ module, handler }, item, index)", "evaluate({ module, handler }, item)")
+      .replace("updateListCondition(marker, descriptor.kind, value, item, index)", "updateListCondition(marker, descriptor.kind, value, item)")
+      .replace("function updateListCondition(marker, kind, value, item, index)", "function updateListCondition(marker, kind, value, item)")
+      .replace("fillListParts(marker, listItemParts(fragment), item, revision, index)", "fillListParts(marker, listItemParts(fragment), item, revision)")
+      .replace("function evaluate(descriptor, item, index)", "function evaluate(descriptor, item)")
+      .replace("exports[descriptor.handler](item, index)", "exports[descriptor.handler](item)")
+    if (!hasCollectionSelectors) listRuntime = listRuntime.replaceAll(" && !list.descriptor.selector", "")
+    if (!hasListIndexes) listRuntime = listRuntime
+      .replaceAll(" && !list.descriptor.indexed", "")
+      .replaceAll(" && list.descriptor.key !== null", "")
+      .replaceAll("list.descriptor.key !== null && !list.descriptor.indexed && ", "")
+      .replace("list.descriptor.key !== null && !list.descriptor.indexed && !list.descriptor.selector && list.values.size", "list.values.size")
+      .replace("(referenceOnly ? listItems.get(node) !== item : list.values.get(token) !== value) || list.descriptor.indexed || list.descriptor.key === null", "referenceOnly ? listItems.get(node) !== item : list.values.get(token) !== value")
+    if (hasListRowHooks && !hasGeneralListRowHooks) listRuntime = listRuntime
+      .replace(/\/\* general-row-hooks \*\/[\s\S]*?\/\* general-row-hooks-end \*\/\n/, "")
+      .replaceAll("initializeGeneralRowHooks", "initializeRowStates")
+      .replace("if (__KUDZU_LIST_ROW_HOOKS__) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index], roots[index], nested?.owner)", "if (__KUDZU_LIST_ROW_HOOKS__ && descriptor.rowStates) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index])")
+      .replaceAll("if (__KUDZU_LIST_ROW_HOOKS__) initializeRowStates(list.descriptor, key, node, list.owner)", "if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)")
+      .replace("for (const node of registration.list.roots.values()) deleteRowStates(registration.list.descriptor, ownershipPaths.get(node))", "for (const token of registration.list.roots.keys()) deleteFlatRowStates(registration.list.descriptor, token)")
+      .replaceAll("deleteRowStates(list.descriptor, ownershipPaths.get(node))", "deleteFlatRowStates(list.descriptor, token)")
+      .replace("  if (__KUDZU_LIST_ROW_HOOKS__) replaceRowIds(root, rowReplacements.get(root))\n", "")
+      .replace("  if (!replacements) return\n", "")
     if (!hasItemDependencies) listRuntime = listRuntime.replace(", notifyListItem", "")
+    if (!hasListStableFastPaths) listRuntime = listRuntime.replace(/\/\* stable-list-fast-path \*\/[\s\S]*?\/\* stable-list-fast-path-end \*\/\n/, "")
     const stylePatch = `  if (target === "style") {
     const style = serializeStyle(value)
     if (style) node.setAttribute("style", style)
@@ -275,6 +322,7 @@ export async function build({ quiet = false, minify = true } = {}) {
     if (listStyleCount) listRuntime = `import { serializeStyle } from "./kudzu-style.js"\n${listRuntime}`
     await writeBundledJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify, {
       __KUDZU_LIST_CONDITIONS__: String(hasListConditions),
+      __KUDZU_DEEP_LIST_CONDITIONS__: String(hasDeepListConditions),
       __KUDZU_LIST_TEXT_RANGES__: String(hasListTextRanges),
       __KUDZU_LIST_ATTRIBUTES__: String(hasListAttributes),
       __KUDZU_LIST_EVENTS__: String(hasListEvents),
@@ -285,9 +333,15 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_LIST_ASYNC_PARTS__: String(hasListAsyncParts),
       __KUDZU_LIST_MOUNTS__: String(hasListMounts),
       __KUDZU_LIST_ITEM_HOOKS__: String(hasItemDependencies),
-      __KUDZU_LIST_ROW_STATES__: String(hasListRowStates),
-      __KUDZU_NESTED_LISTS__: String(hasNestedLists)
+      __KUDZU_LIST_ROW_HOOKS__: String(hasListRowHooks),
+      __KUDZU_LIST_ROW_REFS__: String(hasListRowRefs),
+      __KUDZU_COMPLEX_LIST_ROW_STATE__: String(hasComplexListRowState),
+      __KUDZU_NESTED_LISTS__: String(hasNestedLists),
+      __KUDZU_COLLECTION_SELECTORS__: String(hasCollectionSelectors),
+      __KUDZU_LIST_INDEXES__: String(hasListIndexes),
+      __KUDZU_LIST_STABLE_FAST_PATHS__: String(hasListStableFastPaths)
     })
+    if (hasCollectionSelectors) await rm(join(assetsDirectory, "kudzu-collection-selector.js"))
   }
   if (hasNativeHandlers) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
@@ -1004,6 +1058,7 @@ function runtimeEffects(effects, lifetimes = false) {
 function printOwnedEffectEntry(imports, effects, entries) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasOrdinaryDependencies = effects.some(effect => effect.dependencies?.length)
+  const hasRowState = effects.some(effect => JSON.stringify([effect.dependencies, effect.states, effect.scope]).includes("$k"))
   return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
@@ -1018,9 +1073,16 @@ let scheduled = false
 let flushing = false
 let active = true
 for (const record of records) registerDependencies(record)
-function createRecord(effect, index) {
-  return { effect, index, ${hasItemDependencies ? "order: order++, " : ""}mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
+function createRecord(effect, index${hasRowState ? ", marker" : ""}) {
+  return { effect: ${hasRowState ? "marker ? specializeRowEffect(effect, marker) : effect" : "effect"}, index, ${hasItemDependencies ? "order: order++, " : ""}mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
 }
+${hasRowState ? `function specializeRowEffect(effect, marker) {
+  const path = marker.dataset.kRowPath
+  const id = value => typeof value === "string" ? value.replace("$k", path) : value
+  const capture = value => value?.type === "state" || value?.type === "setter" || value?.type === "ref" ? { ...value, id: id(value.id) } : value?.type === "array" ? { ...value, value: value.value.map(capture) } : value?.type === "object" ? { ...value, value: value.value.map(([key, entry]) => [key, capture(entry)]) } : value
+  return { ...effect, dependencies: effect.dependencies?.map(id), states: Object.fromEntries(Object.entries(effect.states).map(([name, value]) => [name, id(value)])), scope: Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, capture(value)])) }
+}
+` : ""}
 function registerDependencies(record) {
   for (const id of record.effect.dependencies ?? []) {
   const subscribers = dependencies.get(id) ?? new Set()
@@ -1053,7 +1115,7 @@ ${hasItemDependencies ? `for (const listState of new Set(effects.filter(effect =
       const rowRecords = JSON.parse(marker.dataset.kEffects).map(owner => {
         const template = listTemplates.get(owner)
         if (!template) throw new Error("Keyed row effect template was not emitted")
-        const record = createRecord(template.effect, template.index)
+        const record = createRecord(template.effect, template.index${hasRowState ? ", marker" : ""})
         registerDependencies(record)
         mount(record, marker)
         return record
@@ -1694,6 +1756,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     let usesListEffects = false
     let usesListItem = false
     let usesRowState = false
+    let usesRowRef = false
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -1779,7 +1842,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       const setters = settersByFunction.get(owner) ?? new Map()
       for (const [name, entries] of declarations) {
         for (const declaration of entries) {
-          const parts = keyedListParts(declaration.initializer, setters)
+          const parts = keyedListParts(declaration.initializer, setters, declarations, (target, message) => { throw sourceNodeError(target, sourceFile, message) })
           if (!parts) continue
           const uses = []
           const collectUses = node => {
@@ -1800,26 +1863,30 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       throw sourceNodeError(node, sourceFile, message)
     }
     const componentSpecializations = new WeakMap()
+    const expandedRowSpecializations = new WeakMap()
+    const nestedRowSpecializations = new Map()
     const reducerComponentCalls = new WeakSet()
-    const reducerRowStateCalls = []
+    const rowHookCalls = []
     const specializedDeclarations = new WeakSet()
     const stateBackedComponentFunctions = new WeakSet()
     const stateBackedComponentRoots = []
     let specializedImportIndex = 0
-    const registerReducerRowState = (call, specialization) => {
-      if (!specialization.rowState) return
+    const registerRowHooks = (call, specialization) => {
+      if (!specialization.rowStates.length && !specialization.rowRefs.length) return
       let owner
       for (let current = call.parent; current; current = current.parent) {
-        if (isFunctionLike(current) && reducersByFunction.has(current)) {
+        if (isFunctionLike(current) && settersByFunction.has(current)) {
           owner = current
           break
         }
       }
-      const setters = settersByFunction.get(owner) ?? new Map()
-      setters.set(specialization.rowState.setter, specialization.rowState.state)
+      if (!owner) owner = nearestFunction(call)
+      const setters = new Map(settersByFunction.get(owner))
+      for (const state of specialization.rowStates) setters.set(state.setter, state.state)
       settersByFunction.set(owner, setters)
-      reducerRowStateCalls.push(call)
-      usesRowState = true
+      rowHookCalls.push(call)
+      usesRowState ||= specialization.rowStates.length > 0
+      usesRowRef ||= specialization.rowRefs.length > 0
     }
     const mergeSpecializedImports = (root, componentSource, call) => {
       const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
@@ -1917,8 +1984,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       for (const call of dispatchCalls) {
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
         const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail, "Reducer-dispatch")
-        if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
-        registerReducerRowState(call, specialization)
+        registerRowHooks(call, specialization)
         specialization.root = expandReducerCallbacks(specialization.root, component.function.getSourceFile(), call)
         componentSpecializations.set(call, specialization)
         reducerComponentCalls.add(call)
@@ -1941,8 +2007,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       for (const call of dispatchCalls) {
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
         const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Reducer-dispatch")
-        if (specialization.effects.length) fail(call, "Reducer-dispatch components cannot declare effects")
-        registerReducerRowState(call, specialization)
+        registerRowHooks(call, specialization)
         specialization.root = expandReducerCallbacks(specialization.root, componentSource, call)
         specialization.root = mergeSpecializedImports(specialization.root, componentSource, call)
         synthesizeTree(specialization.root)
@@ -1958,8 +2023,11 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         return
       }
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction))
-        if (parts) rawRenderedLists.push({ node, parts })
+        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction), jsxLocalDeclarations.get(nearestFunction(node)), fail)
+        if (parts) {
+          for (const declaration of parts.aliasDeclarations ?? []) listLocalDeclarations.add(declaration)
+          rawRenderedLists.push({ node, parts })
+        }
       }
       ts.forEachChild(node, collectRenderedLists)
     }
@@ -1974,27 +2042,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       ts.forEachChild(node, rejectUnsupportedRenderControl)
     }
     rejectUnsupportedRenderControl(sourceFile)
-    const nestedComponentCalls = new Set()
-    for (const { parts } of rawRenderedLists) {
-      const collectNestedComponents = node => {
-        if (ts.isJsxExpression(node) && node.expression) {
-          const nested = nestedKeyedListParts(node.expression, parts.item)
-          if (nested) {
-            const tag = jsxTagName(nested.root)
-            if (tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase()) nestedComponentCalls.add(nested.root)
-            return
-          }
-        }
-        ts.forEachChild(node, collectNestedComponents)
-      }
-      collectNestedComponents(parts.root)
-    }
-    const listComponentNames = new Set([...rawRenderedLists.flatMap(({ parts }) => {
+    const listComponentNames = new Set(rawRenderedLists.flatMap(({ parts }) => {
       const tag = jsxTagName(parts.root)
       return tag && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toUpperCase() ? [tag.text] : []
-    }), ...[...nestedComponentCalls].map(call => jsxTagName(call).text)])
+    }))
     const keyedComponentCalls = new Set(rawRenderedLists.map(({ parts }) => parts.root))
-    for (const call of reducerRowStateCalls) if (!keyedComponentCalls.has(call)) fail(call, "Reducer-dispatch component useState() is only supported in a direct keyed row")
+    for (const call of rowHookCalls) if (!keyedComponentCalls.has(call)) fail(call, "Keyed row hooks are only supported in direct keyed map rows")
     for (const name of listComponentNames) {
       let component = components.get(name)
       const local = Boolean(component)
@@ -2007,28 +2060,100 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       if (local && isExportedDeclaration(component.declaration)) fail(component.declaration, `Keyed list component ${name} cannot be exported`)
       const declaredCalls = jsxTagUses(sourceFile, name)
       if (local && identifierReferenceCount(sourceFile, name) !== declaredCalls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
-      const calls = [
+      const calls = [...new Set([
         ...declaredCalls.filter(call => !stateBackedComponentFunctions.has(nearestFunction(call))),
         ...stateBackedComponentRoots.flatMap(root => jsxTagUses(root, name))
-      ]
+      ])]
       for (const call of calls) {
         const specialization = reducerComponentCalls.has(call)
           ? componentSpecializations.get(call)
-          : specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
+          : specializeComponentCall(call, component.function, sourceFile, factory, context, fail, "Keyed list", true)
+        registerRowHooks(call, specialization)
         if (specialization.effects.length && !keyedComponentCalls.has(call)) fail(call, "Effectful keyed row components may only be used directly as keyed map rows")
-        if (!local) {
-          specialization.root = mergeSpecializedImports(specialization.root, component.function.getSourceFile(), call)
-          synthesizeTree(specialization.root)
-        }
+        specialization.component = component.function
+        specialization.componentSource = component.function.getSourceFile()
+        specialization.imported = !local
         componentSpecializations.set(call, specialization)
       }
       if (local) specializedDeclarations.add(component.declaration)
     }
+    const expandKeyedComponents = (root, componentSource, trail = [], aggregate) => {
+      const replacements = new WeakMap()
+      let count = 0
+      const visit = (node, currentAggregate = aggregate) => {
+        if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) {
+          const nestedAggregate = { calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [] }
+          for (const argument of node.arguments) visit(argument, nestedAggregate)
+          if (nestedAggregate.hookDeclarations.length || nestedAggregate.effects.length) nestedRowSpecializations.set(`${node.pos}:${node.end}`, nestedAggregate)
+          return
+        }
+        const tag = jsxTagName(node)
+        if (tag && (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase())) {
+          if (!ts.isIdentifier(tag)) fail(node, "Keyed list components must use identifier JSX tags")
+          const name = tag.text
+          let component = localComponentDeclaration(componentSource, name)
+          let imported = false
+          if (!component) {
+            const binding = clientImportBindings(componentSource, componentSource.fileName, sourceFiles).get(name)
+            if (!binding || binding.kind === "namespace") fail(node, `Keyed list component ${name} must be declared locally or imported from a relative TypeScript module`)
+            component = resolveComponentExport(binding.target, binding.kind === "default" ? "default" : binding.imported, importedSource, sourceFiles)
+            imported = true
+          }
+          if (trail.includes(component)) {
+            const chain = [...trail, component].map(entry => entry.name?.text || "anonymous").join(" -> ")
+            fail(node, `Keyed list component cycle: ${chain}`)
+          }
+          const specialization = specializeComponentCall(node, component, sourceFile, factory, context, fail, "Keyed list", true)
+          registerRowHooks(node, specialization)
+          specialization.root = expandKeyedComponents(specialization.root, component.getSourceFile(), [...trail, component], specialization)
+          if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), node))
+          expandedRowSpecializations.set(specialization.root, specialization)
+          if (currentAggregate) {
+            currentAggregate.effects.push(...specialization.effects)
+            currentAggregate.hookDeclarations.push(...specialization.hookDeclarations)
+            currentAggregate.rowStates.push(...specialization.rowStates)
+            currentAggregate.rowRefs.push(...specialization.rowRefs)
+          }
+          replacements.set(node, specialization.root)
+          count++
+          return
+        }
+        ts.forEachChild(node, child => visit(child, currentAggregate))
+      }
+      visit(root)
+      if (!count) return root
+      const expanded = replaceSpecializedCalls(root, replacements, context)
+      ts.setParentRecursive(expanded, false)
+      expanded.parent = root.parent
+      return expanded
+    }
     const renderedLists = new WeakMap()
+    const prepareListCallback = (callback, root, specialization, item) => {
+      const statements = [...specialization.hookDeclarations]
+      if (specialization.effects.length) {
+        usesListEffects = true
+        statements.push(...specialization.effects.map(entry => {
+          const call = factory.updateCallExpression(entry.call, factory.createIdentifier("__kListUseEffect"), entry.call.typeArguments, entry.call.arguments)
+          synthesizeTree(call)
+          const effectSource = entry.source.getSourceFile()
+          listEffectEntries.set(call, { item, source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
+          return factory.createExpressionStatement(call)
+        }))
+      }
+      if (!statements.length) return callback
+      const prepared = factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, callback.parameters, callback.type, callback.equalsGreaterThanToken, factory.createBlock([...statements, factory.createReturnStatement(root)], true))
+      ts.setParentRecursive(prepared, false)
+      prepared.parent = callback.parent
+      return prepared
+    }
     for (const { node, parts: originalParts } of rawRenderedLists) {
       if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
-      const specialization = componentSpecializations.get(originalParts.root)
-      const root = specialization?.root ?? originalParts.root
+      const specialization = componentSpecializations.get(originalParts.root) ?? { root: originalParts.root, calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [] }
+      const componentSource = specialization.componentSource ?? sourceFile
+      specialization.root = expandKeyedComponents(specialization.root, componentSource, specialization.component ? [specialization.component] : [], specialization)
+      if (specialization.imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, originalParts.root))
+      if (specialization.root !== originalParts.root) componentSpecializations.set(originalParts.root, specialization)
+      const root = specialization.root
       let callback = root === originalParts.root ? originalParts.callback : factory.updateArrowFunction(
         originalParts.callback,
         originalParts.callback.modifiers,
@@ -2038,40 +2163,18 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         originalParts.callback.equalsGreaterThanToken,
         root
       )
-      if (specialization?.stateDeclarations.length) callback = factory.updateArrowFunction(
-        callback,
-        callback.modifiers,
-        callback.typeParameters,
-        callback.parameters,
-        callback.type,
-        callback.equalsGreaterThanToken,
-        factory.createBlock([...specialization.stateDeclarations, factory.createReturnStatement(root)], true)
-      )
       if (callback !== originalParts.callback) {
         ts.setParentRecursive(callback, false)
         callback.parent = originalParts.callback.parent
       }
+      callback = prepareListCallback(callback, root, specialization, originalParts.item)
       const parts = { ...originalParts, root, callback }
-      for (const calculation of specialization?.calculations ?? []) {
+      for (const calculation of specialization.calculations) {
         ts.setParentRecursive(calculation, false)
         calculation.parent = callback
         validateListExpression(calculation, parts.item, originalParts.root, fail)
       }
-      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization?.rowState, nestedLists, componentSpecializations, factory)
-      if (specialization?.effects.length) {
-        usesListEffects = true
-        const statements = specialization.effects.map(entry => {
-          const call = factory.updateCallExpression(entry.call, factory.createIdentifier("__kListUseEffect"), entry.call.typeArguments, entry.call.arguments)
-          synthesizeTree(call)
-          const effectSource = entry.source.getSourceFile()
-          listEffectEntries.set(call, { item: parts.item, source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
-          return factory.createExpressionStatement(call)
-        })
-        callback = factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, callback.parameters, callback.type, callback.equalsGreaterThanToken, factory.createBlock([...statements, factory.createReturnStatement(root)], true))
-        ts.setParentRecursive(callback, false)
-        callback.parent = originalParts.callback.parent
-        parts.callback = callback
-      }
+      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization.rowStates, nestedLists, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
       renderedLists.set(node, parts)
     }
 
@@ -2231,9 +2334,11 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           usesList = true
           return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, [
             listParts.state,
-            factory.createStringLiteral(listParts.keyField),
+            listParts.keyField === null ? factory.createNull() : factory.createStringLiteral(listParts.keyField),
             ts.visitNode(listParts.callback, visitor),
-            ...(nestedParts ? [factory.createStringLiteral(listParts.ownerField)] : [])
+            factory.createStringLiteral(listParts.ownerField ?? ""),
+            jsonExpression(listParts.selector ?? [], factory),
+            listParts.indexed ? factory.createTrue() : factory.createFalse()
           ]))
         }
         const conditional = conditionalParts(node.expression)
@@ -2297,11 +2402,13 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listExpression"), factory.createIdentifier("__kListExpression")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listField"), factory.createIdentifier("__kListField")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
+      behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listIndex"), factory.createIdentifier("__kListIndex")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listConditional"), factory.createIdentifier("__kListConditional")))
     }
     if (usesListItem && !usesList) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("listItem"), factory.createIdentifier("__kListItem")))
     if (usesListEffects) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useEffect"), factory.createIdentifier("__kListUseEffect")))
     if (usesRowState) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useState"), factory.createIdentifier("__kRowUseState")))
+    if (usesRowRef) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useRef"), factory.createIdentifier("__kRowUseRef")))
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
@@ -2418,41 +2525,159 @@ function containsRenderControl(root, knownLocals) {
   return found
 }
 
-function keyedListParts(expression, setters) {
+function keyedListParts(expression, setters, declarations, fail, aliases = new Set()) {
   const value = unwrapExpression(expression)
-  if (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map" || !ts.isIdentifier(value.expression.expression)) return undefined
-  const state = value.expression.expression
-  if (![...setters.values()].includes(state.text)) return undefined
-  const callback = value.arguments[0]
-  if (!ts.isArrowFunction(callback) || callback.parameters.length !== 1 || !ts.isIdentifier(callback.parameters[0].name)) {
-    throw new Error("Keyed list map callback must be an arrow function with one identifier parameter")
-  }
+  const directFrom = isArrayFromCall(value) && value.arguments.length === 2 && containsJsx(value.arguments[1])
+  if (!directFrom && (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map")) return undefined
+  const collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases)
+  if (!collection?.state) return undefined
+  if (directFrom) collection.selector.push(["from", undefined])
+  const callback = directFrom ? value.arguments[1] : value.arguments[0]
+  const parameters = collectionParameters(callback, "Keyed list map", fail)
   const root = unwrapExpression(callback.body)
-  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) throw new Error("Keyed list map callback must return one JSX element")
+  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(callback.body, "Keyed list map callback must return one JSX element")
   const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
   const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === "key")
-  const field = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression && directProperty(key.initializer.expression, callback.parameters[0].name.text)
-  if (!field) throw new Error(`Keyed list root must have key={${callback.parameters[0].name.text}.<field>}`)
-  return { state, callback, root, item: callback.parameters[0].name.text, keyField: field }
+  const keyExpression = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression
+  const field = keyExpression && directProperty(keyExpression, parameters.item)
+  const positional = Boolean(keyExpression && parameters.index && ts.isIdentifier(unwrapExpression(keyExpression)) && unwrapExpression(keyExpression).text === parameters.index)
+  if (!field && !positional) fail(key ?? root, `Keyed list root must have key={${parameters.item}.<field>} or key={${parameters.index ?? "index"}}`)
+  return { ...collection, callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : field }
 }
 
-function nestedKeyedListParts(expression, parentItem) {
+function nestedKeyedListParts(expression, parentItem, fail) {
   const value = unwrapExpression(expression)
   if (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map") return undefined
-  const collection = value.expression.expression
-  if (!ts.isPropertyAccessExpression(collection) || !ts.isIdentifier(collection.expression) || collection.expression.text !== parentItem) return undefined
+  const collection = renderedCollectionSource(value.expression.expression, new Map(), undefined, fail, new Set())
+  if (!collection?.ownerField || collection.parentItem !== parentItem) return undefined
   const callback = value.arguments[0]
-  if (!ts.isArrowFunction(callback) || callback.parameters.length !== 1 || !ts.isIdentifier(callback.parameters[0].name)) {
-    throw new Error("Nested keyed list map callback must be an arrow function with one identifier parameter")
-  }
+  const parameters = collectionParameters(callback, "Nested keyed list map", fail)
   const root = unwrapExpression(callback.body)
-  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) throw new Error("Nested keyed list map callback must return one JSX element")
+  if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(callback.body, "Nested keyed list map callback must return one JSX element")
   const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
   const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === "key")
-  const item = callback.parameters[0].name.text
-  const keyField = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression && directProperty(key.initializer.expression, item)
-  if (!keyField) throw new Error(`Nested keyed list root must have key={${item}.<field>}`)
-  return { callback, root, item, keyField, ownerField: collection.name.text }
+  const keyExpression = key && ts.isJsxAttribute(key) && key.initializer && ts.isJsxExpression(key.initializer) && key.initializer.expression
+  const keyField = keyExpression && directProperty(keyExpression, parameters.item)
+  const positional = Boolean(keyExpression && parameters.index && ts.isIdentifier(unwrapExpression(keyExpression)) && unwrapExpression(keyExpression).text === parameters.index)
+  if (!keyField && !positional) fail(key ?? root, `Nested keyed list root must have key={${parameters.item}.<field>} or key={${parameters.index ?? "index"}}`)
+  return { ...collection, callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : keyField }
+}
+
+function renderedCollectionSource(expression, setters, declarations, fail, aliases) {
+  const value = unwrapExpression(expression)
+  if (ts.isIdentifier(value)) {
+    if ([...setters.values()].includes(value.text)) return { state: value, selector: [] }
+    const entries = declarations?.get(value.text)
+    if (!entries) return undefined
+    if (entries.length !== 1 || aliases.has(value.text) || entries[0].node.parent?.parent?.parent !== nearestFunction(entries[0].node)?.body) fail(value, `Rendered collection alias "${value.text}" must be one top-level immutable local`)
+    if (identifierReferenceCount(nearestFunction(entries[0].node).body, value.text) !== 1) fail(value, `Rendered collection alias "${value.text}" may only be rendered once`)
+    aliases.add(value.text)
+    const source = renderedCollectionSource(entries[0].initializer, setters, declarations, fail, aliases)
+    aliases.delete(value.text)
+    return source && { ...source, aliasDeclarations: [...(source.aliasDeclarations ?? []), entries[0].node] }
+  }
+  if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) return { state: undefined, ownerField: value.name.text, selector: [], parentItem: value.expression.text }
+  if (ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression)) {
+    const method = value.expression.name.text
+    if (method === "filter") {
+      if (value.arguments.length !== 1) fail(value, "Rendered collection filter() requires one inline predicate")
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases)
+      if (!source) return undefined
+      const parameters = collectionParameters(value.arguments[0], "Rendered collection filter()", fail)
+      return { ...source, selector: [...source.selector, ["filter", collectionExpression(unwrapExpression(value.arguments[0].body), parameters, fail)]] }
+    }
+    if (method === "flatMap") {
+      if (value.arguments.length !== 1) fail(value, "Rendered collection flatMap() requires one inline projector")
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases)
+      if (!source) return undefined
+      const parameters = collectionParameters(value.arguments[0], "Rendered collection flatMap()", fail)
+      const field = directProperty(value.arguments[0].body, parameters.item)
+      if (!field) fail(value.arguments[0].body, `Rendered collection flatMap() projector must be ${parameters.item}.<field>`)
+      if (["__proto__", "constructor", "prototype"].includes(field)) fail(value.arguments[0].body, `Rendered collection property "${field}" is not supported`)
+      return { ...source, selector: [...source.selector, ["flatMap", field]] }
+    }
+  }
+  if (isArrayFromCall(value)) {
+    if (value.arguments.length < 1 || value.arguments.length > 2) fail(value, "Rendered Array.from() requires an anchor and optional inline mapper")
+    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases)
+    if (!source) return undefined
+    let mapper
+    if (value.arguments[1]) {
+      const parameters = collectionParameters(value.arguments[1], "Rendered Array.from() mapper", fail)
+      mapper = collectionExpression(unwrapExpression(value.arguments[1].body), parameters, fail)
+    }
+    return { ...source, selector: [...source.selector, ["from", mapper]] }
+  }
+}
+
+function isArrayFromCall(value) {
+  return ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression) && ts.isIdentifier(value.expression.expression) && value.expression.expression.text === "Array" && value.expression.name.text === "from"
+}
+
+function collectionParameters(callback, label, fail) {
+  if (!ts.isArrowFunction(callback) || callback.parameters.length < 1 || callback.parameters.length > 2 || callback.parameters.some(parameter => !ts.isIdentifier(parameter.name))) fail(callback, `${label} callback must be an arrow function with (item) or (item, index) identifier parameters`)
+  return { item: callback.parameters[0].name.text, index: callback.parameters[1]?.name.text }
+}
+
+function collectionExpression(expression, parameters, fail) {
+  const encode = node => {
+    node = unwrapExpression(node)
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isNumericLiteral(node)) return ["value", ts.isNumericLiteral(node) ? Number(node.text) : node.text]
+    if (node.kind === ts.SyntaxKind.TrueKeyword) return ["value", true]
+    if (node.kind === ts.SyntaxKind.FalseKeyword) return ["value", false]
+    if (node.kind === ts.SyntaxKind.NullKeyword) return ["value", null]
+    if (ts.isIdentifier(node)) {
+      if (node.text === parameters.item) return ["item"]
+      if (node.text === parameters.index) return ["index"]
+      if (node.text === "undefined") return ["undefined"]
+      fail(node, `Rendered collection expression identifier "${node.text}" is not allowed`)
+    }
+    if (ts.isPropertyAccessExpression(node)) {
+      if (["__proto__", "constructor", "prototype"].includes(node.name.text)) fail(node, `Rendered collection property "${node.name.text}" is not supported`)
+      return ["get", encode(node.expression), node.name.text, Boolean(node.questionDotToken)]
+    }
+    if (ts.isElementAccessExpression(node)) {
+      const key = node.argumentExpression
+      if (!ts.isStringLiteral(key) && !ts.isNumericLiteral(key)) fail(node, "Rendered collection computed properties require a direct string or numeric literal key")
+      if (ts.isStringLiteral(key) && ["__proto__", "constructor", "prototype"].includes(key.text)) fail(node, `Rendered collection property "${key.text}" is not supported`)
+      return ["get", encode(node.expression), ts.isNumericLiteral(key) ? Number(key.text) : key.text, Boolean(node.questionDotToken)]
+    }
+    if (ts.isPrefixUnaryExpression(node)) {
+      const operator = node.operator === ts.SyntaxKind.ExclamationToken ? "!" : node.operator === ts.SyntaxKind.PlusToken ? "+" : node.operator === ts.SyntaxKind.MinusToken ? "-" : undefined
+      if (!operator) fail(node, "Rendered collection expression uses an unsupported unary operator")
+      return ["unary", operator, encode(node.operand)]
+    }
+    if (ts.isTypeOfExpression(node)) return ["unary", "typeof", encode(node.expression)]
+    if (ts.isBinaryExpression(node)) {
+      const operator = node.operatorToken.getText()
+      if (!new Set(["&&", "||", "??", "===", "!==", "==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "/", "%"]).has(operator)) fail(node, `Rendered collection expression operator "${operator}" is not supported`)
+      return ["binary", operator, encode(node.left), encode(node.right)]
+    }
+    if (ts.isConditionalExpression(node)) return ["conditional", encode(node.condition), encode(node.whenTrue), encode(node.whenFalse)]
+    if (ts.isArrayLiteralExpression(node) && !node.elements.some(ts.isSpreadElement)) return ["array", ...node.elements.map(encode)]
+    if (ts.isObjectLiteralExpression(node)) return ["object", ...node.properties.map(property => {
+      if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name) && !ts.isNumericLiteral(property.name)) fail(property, "Rendered collection mapper objects require direct properties")
+      return [property.name.text, encode(property.initializer)]
+    })]
+    if (ts.isTemplateExpression(node)) return ["template", [node.head.text, ...node.templateSpans.map(span => span.literal.text)], node.templateSpans.map(span => encode(span.expression))]
+    if (ts.isCallExpression(node)) {
+      if (ts.isIdentifier(node.expression) && ["Boolean", "Number", "String"].includes(node.expression.text)) return ["global", node.expression.text, ...node.arguments.map(encode)]
+      if (ts.isPropertyAccessExpression(node.expression)) {
+        const method = node.expression.name.text
+        if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "Math" && pureMathMethods.has(method)) return ["math", method, ...node.arguments.map(encode)]
+        if (pureListMethods.has(method)) return ["call", encode(node.expression.expression), method, ...node.arguments.map(encode)]
+        if (mutatingListMethods.has(method)) fail(node, `Rendered collection expressions cannot call mutating method "${method}"`)
+      }
+      fail(node, "Rendered collection expressions cannot call arbitrary functions")
+    }
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isAwaitExpression(node) || ts.isNewExpression(node) || ts.isYieldExpression(node) || ts.isDeleteExpression(node) || ts.isPostfixUnaryExpression(node)) fail(node, "Rendered collection expressions must be pure and synchronous")
+    fail(node, "Rendered collection expression is not supported")
+  }
+  return encode(expression)
+}
+
+function jsonExpression(value, factory) {
+  return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("JSON"), "parse"), undefined, [factory.createStringLiteral(JSON.stringify(value))])
 }
 
 function isStateBackedListComponentCall(call, component, setters) {
@@ -2539,39 +2764,36 @@ function insideJsxEventHandler(node, root) {
   return false
 }
 
-function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowState, nestedLists, componentSpecializations, factory) {
+function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowStates, nestedLists, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback) {
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
   }
   const root = parts.root
   const item = parts.item
+  const nestedDiagnostic = "Nested keyed list collections must be a direct property of the parent item"
   const validateElement = node => {
     const tag = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName
     if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
   }
-  let conditionDepth = 0
-  let nestedList
   const visit = node => {
     if (ts.isJsxFragment(node)) fail(node, "Fragments are not supported in keyed lists")
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
-    if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, parts.nested ? "Keyed lists support at most one nested level" : "Nested keyed list collections must be a direct property of the parent item")
+    if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, nestedDiagnostic)
     if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, item)) fail(node, "Keyed list item spreads are not supported")
     if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.text)) {
-      listEventItems.set(node, item)
+      listEventItems.set(node, { item, index: parts.index })
       return
     }
     if (ts.isJsxExpression(node) && node.expression) {
       const expression = unwrapExpression(node.expression)
       if (containsJsx(expression) && ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression) && expression.expression.name.text === "map") {
-        const nested = nestedKeyedListParts(expression, item)
-        if (!nested) fail(expression, parts.nested ? "Keyed lists support at most one nested level" : "Nested keyed list collections must be a direct property of the parent item")
-        if (parts.nested) fail(expression, "Keyed lists support at most one nested level")
-        if (nestedList) fail(expression, "Keyed list rows support one nested keyed list")
+        const nested = nestedKeyedListParts(expression, item, fail)
+        if (!nested) fail(expression, nestedDiagnostic)
+        if (["__proto__", "constructor", "prototype"].includes(nested.ownerField)) fail(expression, `Nested keyed list owner property "${nested.ownerField}" is not supported`)
         if (referenceIdentifiers(nested.callback, item).length) fail(nested.root, "Nested keyed list rows cannot capture the parent item")
-        nestedList = nested
-        const specialization = componentSpecializations.get(nested.root)
+        const specialization = componentSpecializations.get(nested.root) ?? expandedRowSpecializations.get(nested.root) ?? nestedRowSpecializations.get(`${expression.pos}:${expression.end}`)
         const root = specialization?.root ?? nested.root
-        const callback = root === nested.root ? nested.callback : factory.updateArrowFunction(
+        let callback = root === nested.root ? nested.callback : factory.updateArrowFunction(
           nested.callback,
           nested.callback.modifiers,
           nested.callback.typeParameters,
@@ -2584,6 +2806,7 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
           ts.setParentRecursive(callback, false)
           callback.parent = nested.callback.parent
         }
+        callback = prepareListCallback(callback, root, specialization ?? { hookDeclarations: [], effects: [] }, nested.item)
         const nestedParts = { ...nested, root, callback, state: parts.state, nested: true }
         for (const calculation of specialization?.calculations ?? []) {
           ts.setParentRecursive(calculation, false)
@@ -2591,26 +2814,21 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
           validateListExpression(calculation, nested.item, nested.root, fail)
         }
         nestedLists.set(expression, nestedParts)
-        validateKeyedList(nestedParts, sourceFile, listValues, listEventItems, listConditions, setters, undefined, nestedLists, componentSpecializations, factory)
+        validateKeyedList(nestedParts, sourceFile, listValues, listEventItems, listConditions, setters, specialization?.rowStates ?? [], nestedLists, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
         return
       }
       const condition = conditionalParts(expression)
       if (condition && containsJsx(expression)) {
-        if (conditionDepth) fail(node, "Nested item conditions are not supported in keyed lists")
-        if (rowState && referencedStateNames(condition.condition, setters).has(rowState.state)) {
-          conditionDepth++
+        if (rowStates.some(rowState => referencedStateNames(condition.condition, setters).has(rowState.state))) {
           visit(condition.truthy)
           visit(condition.falsy)
-          conditionDepth--
           return
         }
-        if (!referencesIdentifier(condition.condition, item)) fail(node, "Keyed list item conditions must read the item")
-        validateListExpression(condition.condition, item, node, fail)
-        listConditions.set(node.expression, { ...condition, item })
-        conditionDepth++
+        if (!referencesIdentifier(condition.condition, item) && !(parts.index && referencesIdentifier(condition.condition, parts.index))) fail(node, "Keyed list item conditions must read the item or index")
+        validateListExpression(condition.condition, item, node, fail, parts.index)
+        listConditions.set(node.expression, { ...condition, item, index: parts.index })
         visit(condition.truthy)
         visit(condition.falsy)
-        conditionDepth--
         return
       }
       const field = directProperty(expression, item)
@@ -2622,10 +2840,10 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
         listValues.set(node.expression, { field })
         return
       }
-      if (referencesIdentifier(expression, item)) {
-        validateListExpression(expression, item, node, fail)
+      if (referencesIdentifier(expression, item) || parts.index && referencesIdentifier(expression, parts.index)) {
+        validateListExpression(expression, item, node, fail, parts.index)
         if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.text.toLowerCase())) fail(node, `Keyed list item ${node.parent.name.text} is not supported`)
-        listValues.set(node.expression, { item })
+        listValues.set(node.expression, { item, index: parts.index })
         return
       }
     }
@@ -2634,7 +2852,7 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
   visit(root)
 }
 
-function specializeComponentCall(call, component, sourceFile, factory, context, fail, label = "Keyed list") {
+function specializeComponentCall(call, component, sourceFile, factory, context, fail, label = "Keyed list", allowComponentRoot = false) {
   if (component.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || component.asteriskToken) fail(component, `${label} components must be synchronous`)
   if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, `${label} components must use one destructured props parameter`)
   if (ts.isJsxElement(call) && call.children.some(child => !ts.isJsxText(child) || child.text.trim())) fail(call, `${label} component children are not supported`)
@@ -2669,8 +2887,9 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   let returned
   const calculations = []
   const effectCalls = []
-  const stateDeclarations = []
-  let rowState
+  const hookDeclarations = []
+  const rowStates = []
+  const rowRefs = []
   if (!ts.isBlock(component.body)) {
     returned = component.body
   } else {
@@ -2685,11 +2904,9 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, `${label} component locals must be single const declarations`)
       const declaration = statement.declarationList.declarations[0]
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState") {
-        if (label !== "Reducer-dispatch") fail(declaration, `${label} components cannot declare local state`)
-        if (rowState) throw sourceNodeError(declaration, component.getSourceFile(), "Reducer-dispatch keyed row components may declare exactly one top-level useState()")
-        if (declaration.initializer.arguments.length !== 1 || !isPrimitiveDefaultLiteral(declaration.initializer.arguments[0])) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Reducer-dispatch keyed row useState() must use one primitive literal initial value; lazy initialization is not supported")
-        if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), "Reducer-dispatch keyed row useState() must use [state, setter] identifier destructuring")
-        const suffix = Math.max(0, call.pos)
+        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(declaration.initializer.arguments[0])) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Keyed row useState() must use one directly serializable primitive, plain object, or array initial value; lazy and dynamic initializers are not supported")
+        if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), "Keyed row useState() must use [state, setter] identifier destructuring")
+        const suffix = `${Math.max(0, call.pos)}_${rowStates.length}`
         const state = `__kRowState${suffix}`
         const setter = `__kRowSetter${suffix}`
         substitutions.set(declaration.name.elements[0].name.text, factory.createIdentifier(state))
@@ -2698,9 +2915,21 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(state)),
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(setter))
         ])
-        const initializer = factory.createCallExpression(factory.createIdentifier("__kRowUseState"), undefined, [cloneAst(declaration.initializer.arguments[0], factory, context)])
-        stateDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(binding, undefined, undefined, initializer)], ts.NodeFlags.Const)))
-        rowState = { state, setter }
+        const initialValue = cloneAst(declaration.initializer.arguments[0], factory, context)
+        synthesizeTree(initialValue)
+        const initializer = factory.createCallExpression(factory.createIdentifier("__kRowUseState"), undefined, [initialValue])
+        hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(binding, undefined, undefined, initializer)], ts.NodeFlags.Const)))
+        rowStates.push({ state, setter })
+        continue
+      }
+      if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useRef") {
+        if (declaration.initializer.arguments.length !== 1 || declaration.initializer.arguments[0].kind !== ts.SyntaxKind.NullKeyword) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Keyed row useRef() must use the direct initial value null")
+        if (!ts.isIdentifier(declaration.name)) throw sourceNodeError(declaration.name, component.getSourceFile(), "Keyed row useRef() must be assigned to one identifier")
+        const name = `__kRowRef${Math.max(0, call.pos)}_${rowRefs.length}`
+        substitutions.set(declaration.name.text, factory.createIdentifier(name))
+        const initializer = factory.createCallExpression(factory.createIdentifier("__kRowUseRef"), declaration.initializer.typeArguments?.map(type => cloneAst(type, factory, context)), [factory.createNull()])
+        hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(factory.createIdentifier(name), undefined, undefined, initializer)], ts.NodeFlags.Const)))
+        rowRefs.push({ name })
         continue
       }
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
@@ -2710,19 +2939,19 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     }
     returned = last.expression
   }
-  let unsupportedState
-  const findUnsupportedState = node => {
-    if (unsupportedState) return
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useState") unsupportedState = node
-    ts.forEachChild(node, findUnsupportedState)
+  let unsupportedHook
+  const findUnsupportedHook = node => {
+    if (unsupportedHook) return
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ["useState", "useRef"].includes(node.expression.text)) unsupportedHook = node
+    ts.forEachChild(node, findUnsupportedHook)
   }
-  findUnsupportedState(returned)
-  for (const calculation of calculations) findUnsupportedState(calculation.expression)
-  if (unsupportedState) throw sourceNodeError(unsupportedState, component.getSourceFile(), label === "Reducer-dispatch" ? "Reducer-dispatch keyed row useState() must be one top-level const declaration" : `${label} components cannot declare local state`)
+  findUnsupportedHook(returned)
+  for (const calculation of calculations) findUnsupportedHook(calculation.expression)
+  if (unsupportedHook) throw sourceNodeError(unsupportedHook, component.getSourceFile(), `Keyed row ${unsupportedHook.expression.text}() must be one top-level const declaration`)
   let root = unwrapExpression(substituteClone(returned, substitutions, factory, context))
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, `${label} component must return one JSX element`)
   const tag = jsxTagName(root)
-  if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(returned, `${label} component must directly return an intrinsic JSX element`)
+  if (!ts.isIdentifier(tag) || !allowComponentRoot && tag.text[0] !== tag.text[0].toLowerCase()) fail(returned, `${label} component must directly return an intrinsic JSX element`)
   const rootAttributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
   if (rootAttributes.properties.some(attribute => ts.isJsxAttribute(attribute) && attribute.name.text === "key")) fail(root, `${label} component intrinsic root cannot declare key`)
   if (key) root = addJsxAttribute(root, cloneAst(key, factory, context), factory)
@@ -2735,9 +2964,18 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       .filter(calculation => label !== "Reducer-dispatch" || !isFunctionLike(calculation.expression) || !isEventOnlyComponentLocal(returned, calculation.name))
       .map(calculation => calculation.expression),
     effects,
-    stateDeclarations,
-    rowState
+    hookDeclarations,
+    rowStates,
+    rowRefs
   }
+}
+
+function isSerializableStateLiteral(node) {
+  const value = unwrapExpression(node)
+  if (isPrimitiveDefaultLiteral(value)) return true
+  if (ts.isArrayLiteralExpression(value)) return value.elements.every(element => !ts.isSpreadElement(element) && !ts.isOmittedExpression(element) && isSerializableStateLiteral(element))
+  if (!ts.isObjectLiteralExpression(value)) return false
+  return value.properties.every(property => ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && property.name.text !== "__proto__" && isSerializableStateLiteral(property.initializer))
 }
 
 function isPrimitiveDefaultLiteral(node) {
@@ -2840,7 +3078,7 @@ function isStylesheetLink(node) {
 }
 
 function isContextProviderValue(node, contexts) {
-  if (node.name.getText() !== "value") return false
+  if (node.name.text !== "value") return false
   const element = node.parent?.parent
   const tag = ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element) ? element.tagName : undefined
   return ts.isPropertyAccessExpression(tag) && tag.name.text === "Provider" && ts.isIdentifier(tag.expression) && contexts.has(tag.expression.text)
@@ -2888,7 +3126,7 @@ const assignmentOperators = new Set([
   ts.SyntaxKind.QuestionQuestionEqualsToken
 ])
 
-function validateListExpression(expression, item, source, fail) {
+function validateListExpression(expression, item, source, fail, index) {
   const visit = node => {
     if (ts.isTypeNode(node)) return
     if (ts.isElementAccessExpression(node) && referencesIdentifier(node.expression, item)) {
@@ -2919,7 +3157,7 @@ function validateListExpression(expression, item, source, fail) {
         fail(source, "Derived keyed list item expressions cannot call arbitrary functions")
       }
     }
-    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && node.text !== item && !pureListGlobals.has(node.text)) {
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && node.text !== item && node.text !== index && !pureListGlobals.has(node.text)) {
       fail(source, `Derived keyed list item expression identifier "${node.text}" is not allowed`)
     }
     ts.forEachChild(node, visit)
@@ -2937,15 +3175,15 @@ function containsJsx(root) {
   return found
 }
 
-function compileListExpression(read, expression, item, factory, listExpressions, handlerUrl) {
+function compileListExpression(read, expression, item, factory, listExpressions, handlerUrl, index) {
   const exportName = `listExpression${listExpressions.length}`
-  listExpressions.push({ exportName, expression, item })
+  listExpressions.push({ exportName, expression, item, index })
   return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)])
 }
 
 function compileListConditional(entry, factory, listExpressions, handlerUrl) {
   const exportName = `listExpression${listExpressions.length}`
-  listExpressions.push({ exportName, expression: entry.condition, item: entry.item })
+  listExpressions.push({ exportName, expression: entry.condition, item: entry.item, index: entry.index })
   const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), entry.condition)
   const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
   return factory.createCallExpression(factory.createIdentifier("__kListConditional"), undefined, [
@@ -2957,7 +3195,7 @@ function compileListValue(expression, entry, factory, listExpressions, handlerUr
   const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expression)
   return entry.field
     ? factory.createCallExpression(factory.createIdentifier("__kListField"), undefined, [read, factory.createStringLiteral(entry.field)])
-    : compileListExpression(read, expression, entry.item, factory, listExpressions, handlerUrl)
+    : compileListExpression(read, expression, entry.item, factory, listExpressions, handlerUrl, entry.index)
 }
 
 function directProperty(expression, objectName) {
@@ -3126,7 +3364,11 @@ function compileNativeCallback(expression, setters, reducers, factory, entries, 
     ]))),
     scope: factory.createArrayLiteralExpression([...captures].map(name => factory.createArrayLiteralExpression([
       factory.createStringLiteral(name),
-      name === listItem ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, []) : value(name)
+      name === (typeof listItem === "string" ? listItem : listItem?.item)
+        ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, [])
+        : name === listItem?.index
+          ? factory.createCallExpression(factory.createIdentifier("__kListIndex"), undefined, [])
+          : value(name)
     ])))
   }
 }
@@ -3879,13 +4121,13 @@ function printReactiveBinding({ exportName, expression, captures, states }) {
   }
 }
 
-function printListExpression({ exportName, expression, item }) {
+function printListExpression({ exportName, expression, item, index }) {
   const declaration = ts.factory.createFunctionDeclaration(
     [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     undefined,
     exportName,
     undefined,
-    [ts.factory.createParameterDeclaration(undefined, undefined, item)],
+    [ts.factory.createParameterDeclaration(undefined, undefined, item), ts.factory.createParameterDeclaration(undefined, undefined, index ?? "__kIndex")],
     undefined,
     ts.factory.createBlock([ts.factory.createReturnStatement(expression)], true)
   )

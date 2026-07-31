@@ -90,7 +90,7 @@ export default {
 export function ComponentsSection() {
   return <section className="docs-section" id="components">
     <div className="docs-heading"><span>03</span><div><p>CORE</p><h2>Components</h2></div></div>
-    <p>Use function components, props, children, and fragments. Components run at build time and do not remain as a browser-side tree.</p>
+    <p>Ordinary common React-shaped TSX should migrate with minimal source restructuring. Use familiar function components, props, children, fragments, collections, hooks, and conditions; Kudzu prefers compiler specialization over imperative DOM rewrites. This product direction is not specific to one migrated application. Components run at build time and do not remain as a browser-side tree.</p>
     <CodeBlock code={`function Greeting({ name }: { name: string }) {
   return <h1>Hello {name}</h1>
 }
@@ -104,7 +104,7 @@ export default function Page() {
 }
 
 return <ItemList items={items} />`} />
-    <p>One nested keyed map may read a direct array property of its parent item, such as <code>category.items.map(item =&gt; &lt;ItemCard key={`{item.id}`} item={`{item}`} /&gt;)</code>. The child may be an intrinsic row or a same-file or relative-imported component specialized to one intrinsic root. Kudzu preserves parent and child DOM identity when either level updates or reorders; child handlers read the latest item and one child-local <code>&amp;&amp;</code> or ternary condition patches bounded DOM. Computed collections, parent capture, multiple or deeper child lists, nested conditions, child effects, child local state, and component tags below the specialized root remain unsupported.</p>
+    <p>A keyed row may map multiple direct array properties of its item recursively at any depth. Nested rows may be intrinsic or recursively specialized through same-file and relative-imported components. Kudzu preserves keyed DOM identity at every level; handlers read the latest item, nested conditions patch bounded DOM, and row key paths own multiple serializable state slots, effects, and <code>null</code>-initialized object refs. Computed child collections, parent capture, component cycles, lazy state, and callback refs remain unsupported.</p>
   </section>
 }
 
@@ -136,10 +136,10 @@ dispatch({ type: "add", title: "Ship" })`} />
 }
 
 return <Controls dispatch={dispatch} />`} />
-    <p>Relative TypeScript constants and helpers used inside an imported child handler are bundled into the parent handler graph with collision-free local names. The direct child may be a keyed row receiving its item and dispatch; its inline or simple <code>const</code> event handler reads the latest item from the existing list scope. That row may declare one top-level primitive-literal <code>useState</code>. The list key preserves its state across updates and reorder, removal releases it, and existing binding and conditional capabilities update only that row. A specialized dispatch component may also pass one inline or simple <code>const</code> callback containing dispatch into one relative-imported synchronous intrinsic child.</p>
+    <p>Relative TypeScript constants and helpers used inside an imported child handler are bundled into the parent handler graph with collision-free local names. The direct child may be a keyed row receiving its item and dispatch; its event handler reads the latest item and it has the same multiple serializable state, effect, condition, and object-ref support as other keyed rows. The key path preserves hooks across updates and reorder and releases them on removal. A specialized dispatch component may also pass one inline or simple <code>const</code> callback containing dispatch into one relative-imported synchronous intrinsic child.</p>
     <CodeBlock code={`const add = (title: string) => dispatch({ type: "add", title })
 return <Input onSubmit={add} />`} />
-    <p>The callback is substituted into the child's compiled event handler; it is not serialized. Dispatch and callback components may use destructured string, finite-number, boolean, or <code>null</code> defaults; missing props receive those values during specialization. The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two hook arguments, and a pure synchronous two-parameter reducer imported by default or name from a relative TypeScript module. Dispatch and callback components require one destructured props parameter, one intrinsic root, no effects, and inline or simple <code>const</code> handlers. Object, array, computed, and function-call defaults, multiple or non-keyed specialized local states, lazy state or reducer initialization, reducer-dispatch keyed-row effects, package, namespace, local, async, and generator reducers, package imports or child imports outside handlers, <code>useCallback</code>, further forwarding, and reducer dispatch through context remain unsupported.</p>
+    <p>The callback is substituted into the child's compiled event handler; it is not serialized. Dispatch and callback components may use destructured string, finite-number, boolean, or <code>null</code> defaults; missing props receive those values during specialization. The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two hook arguments, and a pure synchronous two-parameter reducer imported by default or name from a relative TypeScript module. A direct keyed row has the same multiple serializable state, effect, condition, and object-ref support as other keyed rows. Object, array, computed, and function-call defaults, non-keyed specialized local state, lazy state or reducer initialization, package, namespace, local, async, and generator reducers, package imports or child imports outside handlers, <code>useCallback</code>, further forwarding, and reducer dispatch through context remain unsupported.</p>
     <h3 id="context">Context</h3>
     <p>Context passes default, nested, or reactive object values through component layers without retaining a browser component tree.</p>
     <CodeBlock code={`type ThemeValue = {

@@ -131,7 +131,7 @@ return <main>{categories.map(category =>
     )}</ul>
   </section>
 )}</main>`} />
-    <div className="docs-callout"><strong>Nested scope</strong><span>The collection must be <code>parent.&lt;field&gt;</code>. Child handlers read the latest child item. One child-local <code>&amp;&amp;</code> or ternary condition is supported.</span></div>
+    <div className="docs-callout"><strong>Nested scope</strong><span>Each child collection must be <code>parent.&lt;field&gt;</code>. Multiple sibling maps are supported recursively without a numeric depth limit. Nested handlers read their latest item.</span></div>
     <p>The whole map may also live in a same-file or relative-imported wrapper receiving <code>items</code> directly from local state. Default, named/aliased, and direct named re-export wrappers are specialized to intrinsic DOM; package, namespace, star-export, derived-prop, and effectful wrappers remain unsupported.</p>
     <div className="list-demo">
       <div className="list-demo-actions"><span>LIVE KEYED LIST</span><button onClick={createTrees}>Create</button><button onClick={addTree}>Add</button><button onClick={reverseTrees}>Reverse</button></div>
@@ -141,9 +141,9 @@ return <main>{categories.map(category =>
       </li>)}</ul>
     </div>
     <div className="docs-callout"><strong>Keys</strong><span>Keys must be unique strings or finite numbers. Existing keys move rather than remount, preserving uncontrolled descendant DOM state.</span></div>
-    <p>Each item and nested object must be an ordinary JSON-safe plain object with a unique string or finite-number key. Direct item reads use compact markers; pure synchronous derived text, attributes, object styles, and one item-local condition level compile to external evaluators.</p>
-    <p>Direct outer rows may own effects with empty, primitive state, or direct primitive item-property dependencies. Nested child rows do not support effects or local state. A changed key removes and remounts its row; reorder preserves it.</p>
-    <p>Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children props, conditions inside item conditions, multiple or deeper child lists, component tags below a specialized row root, fragments, refs, mutation, arbitrary calls, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
+    <p>Each item and nested object must be an ordinary JSON-safe plain object with a unique string or finite-number key. Direct item reads use compact markers; pure synchronous derived text, attributes, object styles, and nested item conditions compile to external evaluators. One-use aliases may compose inline <code>filter</code>, direct-property <code>flatMap</code>, and <code>Array.from</code>; callbacks may use <code>(item, index)</code>, and <code>key={`{index}`}</code> intentionally owns DOM by position.</p>
+    <p>Any specialized keyed row may own multiple directly serializable state values, effects with supported primitive dependencies, and object refs initialized with <code>null</code>. Its structural site and ancestor key path preserve ownership through updates/reorder; removal cleans up and a re-add starts fresh.</p>
+    <p>Package or namespace row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children props, computed child collections, parent capture, component cycles, fragments, lazy/dynamic state initializers, callback refs, mutation, arbitrary collection callbacks, and <code>dangerouslySetInnerHTML</code> remain unsupported. Put keyed rows inside an explicit <code>tbody</code>, <code>thead</code>, or <code>tfoot</code>.</p>
   </section>
 }
 

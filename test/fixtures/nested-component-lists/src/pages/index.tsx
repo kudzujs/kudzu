@@ -1,18 +1,26 @@
 import { useState } from "@kudzujs/core"
 import ImportedItem from "../ImportedItem"
 
-type Item = { id: string; title: string; available: boolean }
+type Item = { id: string; title: string; available: boolean; featured: boolean }
 type Category = { id: string; title: string; items: Item[] }
 
-function LocalItem({ item, onSelect }: { item: Item; onSelect: () => void }) {
+function LocalStatus({ item }: { item: Item }) {
+  return <strong data-status title={item.title}>{item.featured ? <span data-featured>{item.title && <em data-deep>{item.title}</em>}Featured</span> : <small>Standard</small>}</strong>
+}
+
+function LocalShell({ item, onSelect }: { item: Item; onSelect: () => void }) {
   const label = item.title.toUpperCase()
   return <li data-local-item={item.id} title={item.title}>
     <span data-direct>{item.title}</span>
     <p data-range>{item.id}: {item.title}</p>
     <span data-label>{label}</span>
-    {item.available && <strong data-status title={item.title}><span data-branch>{item.title}</span>Available</strong>}
+    {item.available && <LocalStatus item={item} />}
     <button data-select onClick={() => onSelect()}>Select</button>
   </li>
+}
+
+function LocalItem({ item, onSelect }: { item: Item; onSelect: () => void }) {
+  return <LocalShell item={item} onSelect={onSelect} />
 }
 
 export default function NestedComponentListsPage() {
@@ -20,8 +28,8 @@ export default function NestedComponentListsPage() {
     id: "c1",
     title: "Spa",
     items: [
-      { id: "a1", title: "Sauna", available: true },
-      { id: "a2", title: "Massage", available: false }
+      { id: "a1", title: "Sauna", available: true, featured: true },
+      { id: "a2", title: "Massage", available: false, featured: false }
     ]
   }])
 
@@ -35,7 +43,7 @@ export default function NestedComponentListsPage() {
       items: category.items.map(item => item.id === "a1" ? { ...item, title: "Sauna Restored", available: true } : item)
     })))}>Restore</button>
     <button data-action="reverse" onClick={() => setCategories(categories.map(category => ({ ...category, items: [...category.items].reverse() })))}>Reverse</button>
-    <button data-action="add" onClick={() => setCategories(categories.map(category => ({ ...category, items: [...category.items, { id: "a3", title: "Facial", available: true }] })))}>Add</button>
+    <button data-action="add" onClick={() => setCategories(categories.map(category => ({ ...category, items: [...category.items, { id: "a3", title: "Facial", available: true, featured: true }] })))}>Add</button>
     <button data-action="hide-added" onClick={() => setCategories(categories.map(category => ({
       ...category,
       items: category.items.map(item => item.id === "a3" ? { ...item, available: false } : item)

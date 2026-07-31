@@ -107,17 +107,30 @@ if (typeof document !== "undefined") {
 
   const eventNames = ["click", "input", "change"]
   for (const eventName of eventNames) {
+    const directName = `kSetTrue${capitalize(eventName)}`
+    const commandsName = `kOn${capitalize(eventName)}`
+    const selector = `[data-k-set-true-${eventName}],[data-k-on-${eventName}]`
     document.addEventListener(eventName, event => {
-      const target = event.target.closest(`[data-k-set-true-${eventName}],[data-k-on-${eventName}]`)
-      if (!target) return
-      const direct = target.dataset[`kSetTrue${capitalize(eventName)}`]
+      const direct = event.target.dataset?.[directName]
       if (direct) {
         browserState.set(direct, true)
         commitDom(direct, true)
         return
       }
-      const commands = target.dataset[`kOn${capitalize(eventName)}`]
-      applyCommands(browserState, JSON.parse(commands), commitDom)
+      const commands = event.target.dataset?.[commandsName]
+      if (commands) {
+        applyCommands(browserState, JSON.parse(commands), commitDom)
+        return
+      }
+      const target = event.target.closest?.(selector)
+      if (!target) return
+      const inheritedDirect = target.dataset[directName]
+      if (inheritedDirect) {
+        browserState.set(inheritedDirect, true)
+        commitDom(inheritedDirect, true)
+        return
+      }
+      applyCommands(browserState, JSON.parse(target.dataset[commandsName]), commitDom)
     })
   }
 }
