@@ -1799,7 +1799,7 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
       if (!isLocalConst(node)) throw sourceNodeError(node, sourceFile, "React useMemo() local values must use const declarations")
       const callback = node.initializer.arguments[0]
       if (callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))) {
-        const expression = reactMemoExpression(callback)
+        const expression = lowerReactMemoCollectionExpression(reactMemoExpression(callback), factory)
         const owner = nearestFunction(node)
         if (owner && expression) {
           const entries = memoLocals.get(owner) ?? new Map()
@@ -1835,6 +1835,15 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
   const required = new Set()
   const imported = new Set()
   const visitor = node => {
+    if (ts.isVariableStatement(node)) {
+      const entries = memoLocals.get(nearestFunction(node))
+      if (entries) {
+        for (const declaration of node.declarationList.declarations) if (ts.isIdentifier(declaration.name) && entries.has(declaration.name.text) && declaration.initializer) ts.visitNode(declaration.initializer, visitor)
+        const declarations = node.declarationList.declarations.filter(declaration => !ts.isIdentifier(declaration.name) || !entries.has(declaration.name.text))
+        if (!declarations.length) return undefined
+        if (declarations.length !== node.declarationList.declarations.length) return factory.updateVariableStatement(node, node.modifiers, factory.updateVariableDeclarationList(node.declarationList, declarations.map(declaration => ts.visitEachChild(declaration, visitor, context))))
+      }
+    }
     if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
       const owner = nearestFunctionLike(node)
       const entry = memoLocals.get(owner)?.get(node.text)
@@ -1865,14 +1874,19 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
         if (callback.parameters.length || callback.asteriskToken || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(callback, sourceFile, "React useMemo() callback must be synchronous and parameterless")
         const dependency = node.arguments[1].elements.find(entry => !isReactCallbackDependency(entry))
         if (dependency) throw sourceNodeError(dependency, sourceFile, "React useMemo() dependencies must be identifiers or primitive literals")
-        const expression = reactMemoExpression(callback)
-        if (!expression || !isPureReactMemoExpression(expression)) throw sourceNodeError(callback.body, sourceFile, "React useMemo() callback must return one pure expression")
+        const expression = lowerReactMemoCollectionExpression(reactMemoExpression(callback), factory)
         const dependencies = new Set(node.arguments[1].elements.map(unwrapExpression).filter(ts.isIdentifier).map(entry => entry.text))
         const owner = nearestFunction(node)
         const states = owner ? ownerStateNames(owner) : new Set()
-        const unsupported = [...reactMemoReferenceNames(expression)].find(reference => !states.has(reference))
-        if (unsupported) throw sourceNodeError(expression, sourceFile, `React useMemo() pure expressions may only reference direct local state; found ${JSON.stringify(unsupported)}`)
-        const stale = [...states].find(state => referenceIdentifiers(expression, state).length && !dependencies.has(state))
+        const collectionState = expression && reactMemoCollectionState(expression, states, sourceFile)
+        if (!expression || !collectionState && !isPureReactMemoExpression(expression)) throw sourceNodeError(callback.body, sourceFile, "React useMemo() callback must return one pure expression or analyzable collection pipeline")
+        if (!collectionState) {
+          const unsupported = [...reactMemoReferenceNames(expression)].find(reference => !states.has(reference))
+          if (unsupported) throw sourceNodeError(expression, sourceFile, `React useMemo() pure expressions may only reference direct local state; found ${JSON.stringify(unsupported)}`)
+        }
+        const stale = collectionState
+          ? !dependencies.has(collectionState) ? collectionState : undefined
+          : [...states].find(state => referenceIdentifiers(expression, state).length && !dependencies.has(state))
         if (stale) throw sourceNodeError(node.arguments[1], sourceFile, `React useMemo() must list captured state ${JSON.stringify(stale)} as a dependency`)
         return ts.visitNode(expression, visitor)
       }
@@ -1939,6 +1953,27 @@ function reactMemoExpression(callback) {
   if (!ts.isBlock(callback.body)) return callback.body
   if (callback.body.statements.length !== 1 || !ts.isReturnStatement(callback.body.statements[0])) return undefined
   return callback.body.statements[0].expression
+}
+
+function lowerReactMemoCollectionExpression(expression, factory) {
+  if (!expression) return undefined
+  const visit = node => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && node.arguments.length === 1) {
+      return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("Array"), "from"), undefined, [visit(node.expression.expression), node.arguments[0]])
+    }
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["filter", "flatMap"].includes(node.expression.name.text)) {
+      return factory.updateCallExpression(node, factory.updatePropertyAccessExpression(node.expression, visit(node.expression.expression), node.expression.name), node.typeArguments, node.arguments)
+    }
+    if (isArrayFromCall(node)) return factory.updateCallExpression(node, node.expression, node.typeArguments, [visit(node.arguments[0]), ...node.arguments.slice(1)])
+    return node
+  }
+  return visit(expression)
+}
+
+function reactMemoCollectionState(expression, states, sourceFile) {
+  const setters = new Map([...states].map(state => [state, state]))
+  const fail = (node, message) => { throw sourceNodeError(node, sourceFile, message) }
+  return renderedCollectionSource(expression, setters, undefined, fail, new Set())?.state?.text
 }
 
 function reactMemoComponentExpression(identifier, sourceFile, factory, context) {
@@ -2898,7 +2933,7 @@ function isArrayFromCall(value) {
 }
 
 function collectionParameters(callback, label, fail) {
-  if (!ts.isArrowFunction(callback) || callback.parameters.length < 1 || callback.parameters.length > 2 || callback.parameters.some(parameter => !ts.isIdentifier(parameter.name))) fail(callback, `${label} callback must be an arrow function with (item) or (item, index) identifier parameters`)
+  if (!ts.isArrowFunction(callback) || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || callback.parameters.length < 1 || callback.parameters.length > 2 || callback.parameters.some(parameter => !ts.isIdentifier(parameter.name) || parameter.dotDotDotToken || parameter.initializer || parameter.questionToken)) fail(callback, `${label} callback must be a synchronous arrow function with (item) or (item, index) identifier parameters`)
   return { item: callback.parameters[0].name.text, index: callback.parameters[1]?.name.text }
 }
 

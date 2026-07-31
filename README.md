@@ -10,7 +10,7 @@ Kudzu is designed so ordinary common React-shaped TSX can migrate with minimal s
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**0.7.3:** React memo normalization. Same-file `memo`, inline `useCallback`, and direct-state expression `useMemo` now compile to existing Kudzu capabilities without React, a VDOM, or hydration. See [release notes](./RELEASES.md#073---react-memo-normalization).
+**0.7.4:** Memoized collection pipelines. React `useMemo` may retain analyzable `filter`, `map`, `flatMap`, and `Array.from` pipelines while compiling to existing keyed-list selectors without React, a VDOM, or hydration. See [release notes](./RELEASES.md#074---memoized-collection-pipelines).
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
@@ -74,7 +74,7 @@ export default function Header() {
 }
 ```
 
-Kudzu rewrites supported React imports to its compile-time APIs before evaluating the module; neither the React package nor a compatibility runtime enters the deploy output. Named or aliased `useState`, `useReducer`, `useEffect`, `useRef`, `createContext`, and `useContext` imports compile to their canonical forms. Default and namespace imports may call those APIs as direct members such as `React.useState`, and default, namespace, or named `Fragment` also works. `memo(Component)` is erased to a same-file component. Inline `useCallback(function, literalDependencies)` is erased to its function, while inline synchronous `useMemo` callbacks returning one expression over primitive literals and direct local state are inlined at same-component uses so existing bindings track that state. Both hooks require inert literal dependency arrays and complete captured-state dependencies; memo locals cannot be duplicated or captured by nested functions. React classes and side-effect or dynamic React imports remain unsupported. A static route using these forms still emits zero JavaScript.
+Kudzu rewrites supported React imports to its compile-time APIs before evaluating the module; neither the React package nor a compatibility runtime enters the deploy output. Named or aliased `useState`, `useReducer`, `useEffect`, `useRef`, `createContext`, and `useContext` imports compile to their canonical forms. Default and namespace imports may call those APIs as direct members such as `React.useState`, and default, namespace, or named `Fragment` also works. `memo(Component)` is erased to a same-file component. Inline `useCallback(function, literalDependencies)` is erased to its function, while inline synchronous `useMemo` callbacks may return one expression over primitive literals/direct local state or an analyzable `filter`, `map`, `flatMap`, and `Array.from` collection pipeline. Scalar expressions inline into existing bindings; collection pipelines lower to existing keyed-list selectors and preserve row identity. Both hooks require inert literal dependency arrays and complete captured-state dependencies; memo locals cannot be duplicated or captured by nested functions. React classes and side-effect or dynamic React imports remain unsupported. A static route using these forms still emits zero JavaScript.
 
 Create `src/pages/index.tsx`:
 

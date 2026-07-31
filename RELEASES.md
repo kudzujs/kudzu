@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.4 - Memoized collection pipelines
+
+Kudzu 0.7.4 lets ordinary React/Vite source retain analyzable collection work inside `useMemo` while reusing the existing keyed-list selector and DOM identity model.
+
+### New in 0.7.4
+
+- Inline `useMemo` callbacks accept collection pipelines rooted in direct local array state.
+- Existing `filter`, direct-property `flatMap`, and `Array.from` selector analysis is reused without a browser memo cache.
+- Intermediate `.map()` calls lower to the existing `Array.from(source, mapper)` selector operation.
+- Memo locals are removed from emitted server modules after their uses are inlined, so state signals never execute array methods during rendering.
+- State updates preserve keyed row DOM identity while adding, removing, filtering, mapping, and reordering selected values.
+- Collection callbacks must be synchronous arrows with plain `(item)` or `(item, index)` identifier parameters; async, rest, default, and optional parameters fail with source locations.
+- The React/Vite fixture verifies `filter + map`, selector generation, browser updates, and retained identity for an existing row.
+
+### Boundary
+
+Memoized collections use the existing statically analyzable collection subset. Arbitrary callbacks, external captures, asynchronous transforms, getters, and general-purpose memo caching remain unsupported. React, a VDOM, hydration, and a retained browser component tree are not emitted.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.4
+```
+
 ## 0.7.3 - React memo normalization
 
 Kudzu 0.7.3 accepts common React memo authoring forms while preserving build-time components, direct state bindings, static HTML, and capability-only JavaScript.

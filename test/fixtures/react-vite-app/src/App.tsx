@@ -11,8 +11,10 @@ const MemoBrand = preserve(Brand)
 export default function App() {
   const [menuOpen, setMenuOpen] = useMenuState(false)
   const [count, setCount] = React.useState(0)
+  const [items, setItems] = React.useState([{ id: "a", label: "Alpha", visible: true }, { id: "b", label: "Beta", visible: false }])
   const increment = useCallback(() => setCount(count + 1), [count])
   const doubled = derive(() => count * 2, [count])
+  const visibleItems = derive(() => items.filter(item => item.visible).map(item => ({ id: item.id, label: item.label })), [items])
   runEffect(() => {
     console.log("React Vite app mounted")
   }, [])
@@ -28,6 +30,8 @@ export default function App() {
       <h1>React Vite migration</h1>
       <button id="counter" onClick={increment}>Count {count}</button>
       <output id="doubled">Double {doubled}</output>
+      <button id="show-items" onClick={() => setItems(items.map(item => ({ ...item, visible: true })))}>Show items</button>
+      <ul id="memo-items">{visibleItems.map(item => <li key={item.id} data-item={item.id}>{item.label}</li>)}</ul>
     </main>
   </React.Fragment>
 }
