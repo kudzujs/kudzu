@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.0/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.1/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -33,9 +33,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /<head>.*<script type="module"[^>]+kudzu\.js.*<\/head><body/s)
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.0"/)
-  assert.match(release, /Kudzu 0\.7\.0.*Bring React-shaped source.*Ship without React/s)
-  assert.match(release, /React-source migration preview.*CURRENT BOUNDARY.*npm install @kudzujs\/core@\^0\.7\.0/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.1"/)
+  assert.match(release, /Kudzu 0\.7\.1.*Keep the imports.*Ship static assets/s)
+  assert.match(release, /VITE-STYLE LANDING ASSETS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.1/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1110,14 +1110,34 @@ test("builds React-imported landing pages without the React runtime", async t =>
   const html = await readFile(new URL("./fixtures/landing-page-migration/dist/index.html", import.meta.url), "utf8")
   const staticHtml = await readFile(new URL("./fixtures/landing-page-migration/dist/static/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/landing-page-migration/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const sections = await readFile(new URL("./fixtures/landing-page-migration/.kudzu/LandingSections.mjs", import.meta.url), "utf8")
+  const landingCss = await readFile(new URL("./fixtures/landing-page-migration/dist/assets/styles/landing.css", import.meta.url), "utf8")
+  const moduleCss = await readFile(new URL("./fixtures/landing-page-migration/dist/assets/styles/Hero.module.css", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/landing-page-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
   assert.match(html, /Ship a faster landing page.*Static first.*Small runtime.*Built for the web/s)
+  assert.match(html, /href="\/preview\/assets\/styles\/landing\.css".*href="\/preview\/assets\/styles\/Hero\.module\.css"/)
+  assert.match(html, /src="\/preview\/assets\/assets\/hero\.svg"/)
+  assert.match(html, /src="\/preview\/assets\/assets\/preview\.webp"/)
+  assert.match(html, /src="\/preview\/assets\/assets\/badge\.png"/)
+  assert.match(html, /class="k[0-9a-f]{8}_hero"/)
+  assert.match(staticHtml, /class="k[0-9a-f]{8}_hero"/)
+  assert.match(landingCss, /url\("\/preview\/assets\/assets\/landing\.woff2"\)/)
+  assert.match(landingCss, /url\("\.\.\/assets\/not-a-file\.png"\).*"url\(\.\.\/assets\/not-a-file\.png\)"/s)
+  assert.match(moduleCss, /\.k[0-9a-f]{8}_hero/)
+  assert.match(moduleCss, /url\("?\/preview\/assets\/assets\/module-mark\.svg\?v=1#leaf"?\)/)
   assert.match(html, /aria-expanded="false"[^>]*data-k-bind-attrs/)
   assert.match(html, /data-k-if=/)
   assert.match(component, /import React, \{ useState \} from "@kudzujs\/core"/)
   assert.match(component, /useState\(false, "menuOpen"\)/)
+  assert.doesNotMatch(sections, /(?:\.module\.css|\.webp\?url)/)
   assert.doesNotMatch(staticHtml, /<script/)
-  assert.equal(plan.find(route => route.route === "/static").states.length, 0)
+  assert.equal(plan.find(route => route.route === "/preview/static").states.length, 0)
+  for (const file of ["hero.svg", "preview.webp", "badge.png", "landing.woff2", "module-mark.svg"]) {
+    assert.deepEqual(
+      await readFile(new URL(`./fixtures/landing-page-migration/dist/assets/assets/${file}`, import.meta.url)),
+      await readFile(new URL(`./fixtures/landing-page-migration/src/assets/${file}`, import.meta.url))
+    )
+  }
   for (const directory of [new URL("./fixtures/landing-page-migration/.kudzu/", import.meta.url), new URL("./fixtures/landing-page-migration/dist/", import.meta.url)]) {
     const files = (await readdir(directory, { recursive: true })).filter(file => /\.(?:html|js|mjs|json)$/.test(file))
     const output = (await Promise.all(files.map(file => readFile(new URL(file, directory), "utf8")))).join("\n")
@@ -1150,9 +1170,10 @@ test("specializes relative imported keyed list components", async t => {
   const component = await readFile(new URL("./fixtures/imported-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const handlers = await readFile(new URL("./fixtures/imported-lists/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/imported-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
-  assert.match(html, /data-default-list.*data-default="1".*OAK.*data-aliased-list.*data-named="1".*data-barrel-list.*data-named="1"/s)
+  assert.match(html, /data-default-list.*class="k[0-9a-f]{8}_row" data-default="1" data-icon="\/assets\/components\/row\.svg".*OAK.*data-aliased-list.*data-named="1".*data-barrel-list.*data-named="1"/s)
   assert.equal((component.match(/__kList\(/g) ?? []).length, 3)
   assert.match(handlers, /as handler/)
+  assert.match(handlers, /row-icon.*\/assets\/components\/row\.svg/s)
   assert.equal(plan.lists.length, 3)
 })
 
@@ -3338,7 +3359,7 @@ async function runLandingPageMigrationBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
-  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/preview/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
@@ -3360,15 +3381,16 @@ try {
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
 http.createServer((request, response) => {
-  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
-  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  const pathname = request.url.startsWith("/preview") ? request.url.slice("/preview".length) : request.url
+  const file = path.join(root, pathname === "/" ? "index.html" : pathname.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1")
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
   await waitForServer(port)
   try {
-    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/preview/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-landing-migration-test="pass"/)
   } finally {

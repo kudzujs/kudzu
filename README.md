@@ -10,7 +10,7 @@ Kudzu is designed so ordinary common React-shaped TSX can migrate with minimal s
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**0.7.0:** React-source migration preview. Supported conventional `react` imports now compile to static HTML and capability-specific ESM without React, a VDOM, or hydration. See [release notes](./RELEASES.md#070---react-source-migration-preview).
+**0.7.1:** Vite-style landing assets. Common CSS, CSS Module, image, SVG, font, and `?url` imports now compile to static output without React, a VDOM, or hydration. See [release notes](./RELEASES.md#071---vite-style-landing-assets).
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
@@ -146,7 +146,7 @@ Static trusted HTML can be rendered without a transform layer:
 
 The HTML is intentionally not sanitized. Use only trusted or previously sanitized build-time content. Reactive raw HTML, children on the same element, void elements, and keyed-list raw HTML are rejected.
 
-Every CSS file under `src` is copied to the same relative path under `dist/assets` and linked in deterministic order. Configured root-relative URLs receive `base`; absolute HTTP URLs are preserved. A source style entry reads CSS, optionally transforms it, writes its declared output, and links it without an `afterBuild` file pipeline. `publicDir` defaults to `public` and may point elsewhere. Global or page `metadata` may be an object or a function of `{ route, params, props }`, so route props can set document language and head resources before rendering:
+Every CSS file under `src` is emitted to the same relative path under `dist/assets` and linked in deterministic order. Relative side-effect CSS imports are erased after validation. Default `.module.css` imports become deterministic scoped class maps at build time, while default imports of `.avif`, `.gif`, `.ico`, `.jpeg`, `.jpg`, `.otf`, `.png`, `.svg`, `.ttf`, `.webp`, `.woff`, or `.woff2` become base-prefixed asset URL strings; the same files accept `?url`. Relative CSS `url(...)` references are rewritten to base-prefixed URLs, preserve query/hash suffixes, and copy the referenced bytes under their source-relative `dist/assets` path. Data, fragment, root-relative, protocol-relative, and absolute CSS URLs remain unchanged. Other import queries, import hashes, attributes, named/namespace asset imports, and CSS Module `composes` are rejected. Configured root-relative URLs receive `base`; absolute HTTP URLs are preserved. A source style entry reads CSS, optionally transforms it, writes its declared output, and links it without an `afterBuild` file pipeline. `publicDir` defaults to `public` and may point elsewhere. Global or page `metadata` may be an object or a function of `{ route, params, props }`, so route props can set document language and head resources before rendering:
 
 ```js
 export default {

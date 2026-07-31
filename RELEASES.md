@@ -1,5 +1,30 @@
 # Kudzu Releases
 
+## 0.7.1 - Vite-style landing assets
+
+Kudzu 0.7.1 lets ordinary React/Vite landing-page source retain its common local stylesheet and static asset imports while preserving static HTML output and capability-only JavaScript.
+
+### New in 0.7.1
+
+- Relative side-effect CSS imports are validated and erased before server module evaluation.
+- Default CSS Module imports compile to deterministic scoped class maps with no client runtime.
+- Relative image, SVG, and font imports compile to base-aware URL strings; supported assets also accept `?url`.
+- Relative CSS `url(...)` references are rewritten to base-aware emitted URLs, preserving query and hash suffixes.
+- Referenced asset bytes are copied under deterministic source-relative `dist/assets` paths.
+- Static assets and CSS Modules work inside specialized relative keyed-row components.
+- Declaration files under `src` remain available to TypeScript but are excluded from executable module compilation.
+- The migration fixture verifies a non-root base, byte-identical assets, scoped classes, browser interaction, and zero JavaScript on its static route.
+
+### Boundary
+
+CSS Module `composes`, arbitrary import queries, import hashes/attributes, and named or namespace asset bindings fail at build time with source locations. React, a VDOM, hydration, and a retained browser component tree remain absent.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.1
+```
+
 ## 0.7.0 - React-source migration preview
 
 Kudzu 0.7.0 begins the migration track for ordinary React-shaped landing pages. Existing source may retain conventional supported imports from `react`; Kudzu rewrites those imports to compile-time APIs, pre-renders complete HTML, and emits only the route capabilities that are actually used. React, a virtual DOM, hydration, and a browser component tree are never emitted or executed.

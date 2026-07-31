@@ -1,7 +1,7 @@
 import { createServer } from "node:http"
 import { createHash, randomUUID } from "node:crypto"
-import { cp, mkdir, readFile, readdir, rm, stat, watch, writeFile } from "node:fs/promises"
-import { dirname, extname, join, relative, resolve, sep } from "node:path"
+import { cp, mkdir, readFile, readdir, realpath, rm, stat, watch, writeFile } from "node:fs/promises"
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
 import ts from "typescript"
@@ -13,6 +13,7 @@ const sourceDirectory = join(root, "src")
 const pagesDirectory = join(sourceDirectory, "pages")
 const workDirectory = join(root, ".kudzu")
 const outputDirectory = join(root, "dist")
+const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
 
 const devClient = (session, revision, schema) => `<script>(()=>{const show=event=>{let box=document.getElementById("__kudzu_error");if(!box){box=document.createElement("div");box.id="__kudzu_error";box.setAttribute("role","alert");box.setAttribute("aria-live","assertive");box.style.cssText="position:fixed;inset:0;z-index:2147483647;overflow:auto;padding:2rem;background:#200;color:#fff;font:16px/1.5 ui-monospace,monospace";const title=document.createElement("strong"),text=document.createElement("pre");title.textContent="Kudzu build error";text.style.whiteSpace="pre-wrap";box.append(title,text);document.body.append(box)}box.querySelector("pre").textContent=event.data};const schema=${inlineJson(schema)},route=location.pathname+location.search+location.hash,urls=[...document.querySelectorAll('script[type="module"][src]')].map(node=>node.src).filter(url=>/\\/assets\\/kudzu(?:-(?:binding|list|native))?\\.js$/.test(new URL(url).pathname));const devImport=import("/__kudzu_dev.js"),runtimeImports=Promise.allSettled(urls.map(url=>import(url)));const ready=(async()=>{const dev=await devImport,modules=await runtimeImports,runtime=modules.find(result=>result.status==="fulfilled"&&result.value.browserState instanceof Map&&typeof result.value.commitDom==="function")?.value;try{dev.restoreState(sessionStorage,route,runtime?.browserState,schema,runtime?.commitDom)}catch{}return{dev,runtime}})().catch(()=>({}));const events=new EventSource("/__kudzu_reload?session=${session}&revision=${revision}");let reloading=false;events.addEventListener("reload",async()=>{if(reloading)return;reloading=true;try{const{dev,runtime}=await ready;dev?.snapshotState(sessionStorage,route,runtime?.browserState,schema)}catch{}location.reload()});events.addEventListener("build-error",show)})()</script>`
 
@@ -39,18 +40,22 @@ export async function build({ quiet = false, minify = true } = {}) {
   await mkdir(outputDirectory, { recursive: true })
 
   const projectFiles = await walk(sourceDirectory)
-  const sourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file)).sort()
+  const sourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file) && !file.endsWith(".d.ts")).sort()
   const configuredStyleSources = new Set(configuredStyles.sources.map(style => style.source))
-  const cssFiles = projectFiles.filter(file => file.endsWith(".css") && !configuredStyleSources.has(file)).sort()
+  const discoveredCssFiles = projectFiles.filter(file => file.toLowerCase().endsWith(".css") && !configuredStyleSources.has(file)).sort()
   if (!sourceFiles.length) throw new Error("No TypeScript files found in src/")
   const sourceFileSet = new Set(sourceFiles)
   const sourceIndex = new Map(await Promise.all(sourceFiles.map(async file => [file, await readFile(file, "utf8")])))
+  const staticFiles = await safeStaticFiles(projectFiles)
+  const cssFiles = orderSourceStyles(discoveredCssFiles, sourceFiles, sourceIndex, staticFiles)
+  const importedAssets = new Set()
+  const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base)
 
   const handlerModules = []
   const workerReferences = []
   for (const file of sourceFiles) {
     if (file.endsWith(".worker.ts")) continue
-    const handlerModule = await compile(file, sourceFileSet, sourceIndex, base, workerReferences)
+    const handlerModule = await compile(file, sourceFileSet, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences)
     if (handlerModule) handlerModules.push(handlerModule)
   }
 
@@ -387,7 +392,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const file of clientModules) {
     const output = join(assetsDirectory, clientModulePath(file))
     await mkdir(resolve(output, ".."), { recursive: true })
-    await writeJavaScript(output, await compileClientModule(file, sourceFileSet), minify)
+    await writeJavaScript(output, await compileClientModule(file, sourceFileSet, staticFiles, importedAssets, cssModules, base), minify)
   }
   if (clientModules.length) {
     await bundle({
@@ -409,10 +414,20 @@ export async function build({ quiet = false, minify = true } = {}) {
   }
   const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
+  for (const file of new Set([...cssFiles, ...importedAssets])) {
+    const collision = join(publicDirectory, "assets", relative(sourceDirectory, file))
+    if (await exists(collision)) throw new Error(`${relative(root, collision)} collides with emitted source asset ${relative(root, file)}`)
+  }
   for (const file of cssFiles) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
     await mkdir(dirname(output), { recursive: true })
-    await cp(file, output)
+    await writeFile(output, cssOutputs.get(file))
+  }
+  for (const file of [...importedAssets].sort()) {
+    if (cssOutputs.has(file)) continue
+    const output = join(assetsDirectory, relative(sourceDirectory, file))
+    await mkdir(dirname(output), { recursive: true })
+    await writeFile(output, await readFile(file))
   }
   for (const style of configuredStyles.sources) {
     let css = await readFile(style.source, "utf8")
@@ -1670,7 +1685,7 @@ function escapeAttribute(value) {
   return escapeHtml(value).replaceAll('"', "&quot;").replaceAll("'", "&#39;")
 }
 
-async function compile(file, sourceFiles, sourceIndex, base, workerReferences) {
+async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences) {
   const source = sourceIndex.get(file)
   const nativeHandlers = []
   const effectHandlers = []
@@ -1686,7 +1701,7 @@ async function compile(file, sourceFiles, sourceIndex, base, workerReferences) {
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, clientImports, workerReferences)] },
+    transformers: { before: [createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences)] },
     reportDiagnostics: true
   })
 
@@ -1729,7 +1744,7 @@ function hasReactModuleReference(source, file) {
   return found
 }
 
-function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports, workerReferences) {
+function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences) {
   return context => sourceFile => {
     const factory = context.factory
     const hasLinkElements = /<link/i.test(sourceFile.text)
@@ -1901,10 +1916,23 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       usesRowState ||= specialization.rowStates.length > 0
       usesRowRef ||= specialization.rowRefs.length > 0
     }
-    const mergeSpecializedImports = (root, componentSource, call) => {
+    const mergeSpecializedImports = (root, componentSource, call, effects = []) => {
       const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
       for (const name of runtimeImportNames(componentSource, false)) if (referenceIdentifiers(root, name).length) fail(call, "Imported specialized component handlers may only use relative TypeScript runtime imports")
       const substitutions = new Map()
+      for (const statement of componentSource.statements) {
+        if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !isStaticImport(statement.moduleSpecifier.text)) continue
+        const entry = staticImportEntry(statement, componentSource, componentSource.fileName, staticFiles, importedAssets, cssModules, base, factory)
+        if (!entry?.name) continue
+        if (referenceIdentifiers(root, entry.name).length) substitutions.set(entry.name, entry.value)
+        for (const effect of effects) {
+          if (effect.source.getSourceFile() !== componentSource) continue
+          if (!referenceIdentifiers(effect.call, entry.name).length) continue
+          ts.setParentRecursive(effect.call, false)
+          effect.call = substituteClone(effect.call, new Map([[entry.name, entry.value]]), factory, context)
+          synthesizeTree(effect.call)
+        }
+      }
       for (const [name, entry] of componentImports) {
         const references = referenceIdentifiers(root, name)
         if (!references.length) continue
@@ -1939,7 +1967,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         for (const nestedCall of nestedCalls) {
           const nested = specializeComponentCall(nestedCall, nestedComponent, sourceFile, factory, context, fail, "Reducer-callback")
           if (nested.effects.length) fail(nestedCall, "Reducer-callback components cannot declare effects")
-          nested.root = mergeSpecializedImports(nested.root, nestedComponent.getSourceFile(), nestedCall)
+          nested.root = mergeSpecializedImports(nested.root, nestedComponent.getSourceFile(), nestedCall, nested.effects)
           synthesizeTree(nested.root)
           replacements.set(nestedCall, nested.root)
           count++
@@ -2022,7 +2050,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Reducer-dispatch")
         registerRowHooks(call, specialization)
         specialization.root = expandReducerCallbacks(specialization.root, componentSource, call)
-        specialization.root = mergeSpecializedImports(specialization.root, componentSource, call)
+        specialization.root = mergeSpecializedImports(specialization.root, componentSource, call, specialization.effects)
         synthesizeTree(specialization.root)
         componentSpecializations.set(call, specialization)
         reducerComponentCalls.add(call)
@@ -2119,7 +2147,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           const specialization = specializeComponentCall(node, component, sourceFile, factory, context, fail, "Keyed list", true)
           registerRowHooks(node, specialization)
           specialization.root = expandKeyedComponents(specialization.root, component.getSourceFile(), [...trail, component], specialization)
-          if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), node))
+          if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), node, specialization.effects))
           expandedRowSpecializations.set(specialization.root, specialization)
           if (currentAggregate) {
             currentAggregate.effects.push(...specialization.effects)
@@ -2164,7 +2192,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       const specialization = componentSpecializations.get(originalParts.root) ?? { root: originalParts.root, calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [] }
       const componentSource = specialization.componentSource ?? sourceFile
       specialization.root = expandKeyedComponents(specialization.root, componentSource, specialization.component ? [specialization.component] : [], specialization)
-      if (specialization.imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, originalParts.root))
+      if (specialization.imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, originalParts.root, specialization.effects))
       if (specialization.root !== originalParts.root) componentSpecializations.set(originalParts.root, specialization)
       const root = specialization.root
       let callback = root === originalParts.root ? originalParts.callback : factory.updateArrowFunction(
@@ -2228,6 +2256,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       }
 
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
+        if (isStaticImport(node.moduleSpecifier.text)) return staticImportEntry(node, sourceFile, file, staticFiles, importedAssets, cssModules, base, factory)?.replacement
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
         return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
@@ -2757,7 +2786,7 @@ function jsxCallHasReducerCallbackProp(call, reducers) {
 function runtimeImportNames(sourceFile, relative) {
   const names = new Set()
   for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement) || !statement.importClause || statement.importClause.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text.startsWith(".") !== relative) continue
+    if (!ts.isImportDeclaration(statement) || !statement.importClause || statement.importClause.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text.startsWith(".") !== relative || isStaticImport(statement.moduleSpecifier.text)) continue
     const clause = statement.importClause
     if (clause.name) names.add(clause.name.text)
     if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) names.add(clause.namedBindings.name.text)
@@ -3662,7 +3691,7 @@ function reducersForNode(node, reducersByFunction) {
 function clientImportBindings(sourceFile, file, sourceFiles) {
   const bindings = new Map()
   for (const node of sourceFile.statements) {
-    if (!ts.isImportDeclaration(node) || !node.importClause || node.importClause.isTypeOnly || !ts.isStringLiteral(node.moduleSpecifier) || !node.moduleSpecifier.text.startsWith(".")) continue
+    if (!ts.isImportDeclaration(node) || !node.importClause || node.importClause.isTypeOnly || !ts.isStringLiteral(node.moduleSpecifier) || !node.moduleSpecifier.text.startsWith(".") || isStaticImport(node.moduleSpecifier.text)) continue
     let target
     try {
       target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
@@ -3857,6 +3886,7 @@ async function collectClientModules(entries, sourceFiles) {
     for (const node of sourceFile.statements) {
       if ((!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) || !node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier) || !runtimeModuleReference(node)) continue
       if (!node.moduleSpecifier.text.startsWith(".")) throw new Error(`${relative(root, file)} Imported client helpers may only use relative runtime imports`)
+      if (isStaticImport(node.moduleSpecifier.text)) continue
       queue.push(resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles))
     }
   }
@@ -3869,12 +3899,13 @@ async function collectClientModules(entries, sourceFiles) {
   return [...modules].sort()
 }
 
-async function compileClientModule(file, sourceFiles) {
+async function compileClientModule(file, sourceFiles, staticFiles, importedAssets, cssModules, base) {
   const source = await readFile(file, "utf8")
   const transformer = context => sourceFile => {
     const factory = context.factory
     const visitor = node => {
       if (ts.isImportDeclaration(node) && runtimeModuleReference(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
+        if (isStaticImport(node.moduleSpecifier.text)) return staticImportEntry(node, sourceFile, file, staticFiles, importedAssets, cssModules, base, factory)?.replacement
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
         return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(relativeModulePath(clientModulePath(file), clientModulePath(target))), node.attributes)
       }
@@ -3907,6 +3938,225 @@ function resolveSourceImport(importer, specifier, sourceFiles) {
   const matches = candidates.filter(candidate => sourceFiles.has(candidate))
   if (matches.length !== 1) throw new Error(`${relative(root, importer)} Relative import ${JSON.stringify(specifier)} must resolve to one TypeScript file in src/`)
   return matches[0]
+}
+
+function staticImportExtension(specifier) {
+  return extname(specifier.split(/[?#]/, 1)[0]).toLowerCase()
+}
+
+function isStaticImport(specifier) {
+  const extension = staticImportExtension(specifier)
+  return extension === ".css" || staticAssetExtensions.has(extension)
+}
+
+function resolveStaticImport(importer, specifier, staticFiles) {
+  const target = resolve(dirname(importer), specifier.split(/[?#]/, 1)[0])
+  if (!staticFiles.has(target)) throw new Error(`${relative(root, importer)} Relative asset import ${JSON.stringify(specifier)} must resolve to an existing regular file under src/`)
+  return target
+}
+
+async function safeStaticFiles(files) {
+  const sourceRoot = await realpath(sourceDirectory)
+  const entries = await Promise.all(files.map(async file => {
+    try {
+      const target = await realpath(file)
+      const path = relative(sourceRoot, target)
+      if (path === ".." || path.startsWith(`..${sep}`) || isAbsolute(path) || !(await stat(target)).isFile()) return undefined
+      return file
+    } catch {
+      return undefined
+    }
+  }))
+  return new Set(entries.filter(Boolean))
+}
+
+function orderSourceStyles(cssFiles, sourceFiles, sourceIndex, staticFiles) {
+  const ordered = []
+  const seenStyles = new Set()
+  const seenSources = new Set()
+  const sourceSet = new Set(sourceFiles)
+  const visit = file => {
+    if (seenSources.has(file)) return
+    seenSources.add(file)
+    const sourceFile = parseSourceFile(file, sourceIndex.get(file))
+    for (const statement of sourceFile.statements) {
+      if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) continue
+      const specifier = statement.moduleSpecifier.text
+      if (staticImportExtension(specifier) === ".css") {
+        let target
+        try { target = resolveStaticImport(file, specifier, staticFiles) } catch { continue }
+        if (!seenStyles.has(target)) {
+          seenStyles.add(target)
+          ordered.push(target)
+        }
+        continue
+      }
+      if (isStaticImport(specifier)) continue
+      try { visit(resolveSourceImport(file, specifier, sourceSet)) } catch {}
+    }
+  }
+  for (const file of sourceFiles.filter(file => file.startsWith(`${pagesDirectory}${sep}`) && file.endsWith(".tsx"))) visit(file)
+  for (const file of sourceFiles) visit(file)
+  return [...ordered, ...cssFiles.filter(file => !seenStyles.has(file))]
+}
+
+async function prepareSourceStyles(cssFiles, staticFiles, importedAssets, base) {
+  const cssModules = new Map()
+  const cssOutputs = new Map()
+  for (const file of cssFiles) {
+    let css = rewriteCssUrls(await readFile(file, "utf8"), file, staticFiles, importedAssets, base)
+    if (file.toLowerCase().endsWith(".module.css")) {
+      if (/\bcomposes\s*:/i.test(maskCssCommentsAndStrings(css))) throw new Error(`${relative(root, file)} CSS Modules composes is not supported`)
+      const prefix = `k${createHash("sha256").update(relative(sourceDirectory, file).replaceAll(sep, "/")).digest("hex").slice(0, 8)}`
+      css = (await transform(css, { loader: "local-css", sourcefile: `${prefix}.css`, target: "es2022" })).code
+      const classes = {}
+      for (const match of css.matchAll(new RegExp(`\\.${prefix}_([_a-zA-Z][_a-zA-Z0-9-]*)`, "g"))) classes[match[1]] = match[0].slice(1)
+      cssModules.set(file, classes)
+    }
+    cssOutputs.set(file, css)
+  }
+  return { cssModules, cssOutputs }
+}
+
+function rewriteCssUrls(css, file, staticFiles, importedAssets, base) {
+  let output = ""
+  let cursor = 0
+  let index = 0
+  while (index < css.length) {
+    if (css.startsWith("/*", index)) {
+      index = css.indexOf("*/", index + 2)
+      index = index === -1 ? css.length : index + 2
+      continue
+    }
+    if (css[index] === '"' || css[index] === "'") {
+      index = cssStringEnd(css, index)
+      continue
+    }
+    if (css.slice(index, index + 3).toLowerCase() !== "url" || /[-_a-z\d]/i.test(css[index - 1] ?? "")) {
+      index++
+      continue
+    }
+    let open = index + 3
+    while (/\s/.test(css[open] ?? "")) open++
+    if (css[open] !== "(") {
+      index++
+      continue
+    }
+    let start = open + 1
+    while (/\s/.test(css[start] ?? "")) start++
+    const quote = css[start] === '"' || css[start] === "'" ? css[start] : ""
+    const valueStart = quote ? start + 1 : start
+    let end = valueStart
+    if (quote) {
+      end = cssStringEnd(css, start) - 1
+      if (css[end] !== quote) {
+        index = open + 1
+        continue
+      }
+    } else {
+      while (end < css.length && css[end] !== ")") end += css[end] === "\\" ? 2 : 1
+    }
+    let close = quote ? end + 1 : end
+    while (/\s/.test(css[close] ?? "")) close++
+    if (css[close] !== ")") {
+      index = open + 1
+      continue
+    }
+    const value = css.slice(valueStart, end).trim()
+    const replacement = rewriteCssUrl(value, quote, file, staticFiles, importedAssets, base)
+    output += css.slice(cursor, index) + (replacement ?? css.slice(index, close + 1))
+    cursor = close + 1
+    index = close + 1
+  }
+  return output + css.slice(cursor)
+}
+
+function rewriteCssUrl(value, quote, file, staticFiles, importedAssets, base) {
+  if (!value || value.startsWith("/") || value.startsWith("#") || value.startsWith("//") || /^[a-z][a-z\d+.-]*:/i.test(value)) return undefined
+  const split = value.search(/[?#]/)
+  const pathname = split === -1 ? value : value.slice(0, split)
+  const suffix = split === -1 ? "" : value.slice(split)
+  const target = resolve(dirname(file), pathname)
+  if (!staticFiles.has(target)) throw new Error(`${relative(root, file)} CSS URL ${JSON.stringify(value)} must resolve to an existing regular file under src/`)
+  importedAssets.add(target)
+  const url = assetPath(base, `assets/${relative(sourceDirectory, target).replaceAll(sep, "/")}`)
+  return `url(${quote || '"'}${url}${suffix}${quote || '"'})`
+}
+
+function cssStringEnd(css, start) {
+  const quote = css[start]
+  let index = start + 1
+  while (index < css.length) {
+    if (css[index] === "\\") index += 2
+    else if (css[index++] === quote) break
+    else if (css[index - 1] === "\n") break
+  }
+  return index
+}
+
+function maskCssCommentsAndStrings(css) {
+  const masked = [...css]
+  let index = 0
+  while (index < css.length) {
+    let end
+    if (css.startsWith("/*", index)) {
+      const close = css.indexOf("*/", index + 2)
+      end = close === -1 ? css.length : close + 2
+    } else if (css[index] === '"' || css[index] === "'") {
+      end = cssStringEnd(css, index)
+    } else {
+      index++
+      continue
+    }
+    for (; index < end; index++) if (masked[index] !== "\n") masked[index] = " "
+  }
+  return masked.join("")
+}
+
+function staticImportEntry(node, sourceFile, file, staticFiles, importedAssets, cssModules, base, factory) {
+  const specifier = node.moduleSpecifier.text
+  if (specifier.includes("\\") || specifier.includes("#")) throw sourceNodeError(node.moduleSpecifier, sourceFile, "Static asset imports require forward-slash paths without hash suffixes")
+  const queryIndex = specifier.indexOf("?")
+  const query = queryIndex === -1 ? "" : specifier.slice(queryIndex + 1)
+  if (query && query !== "url") throw sourceNodeError(node.moduleSpecifier, sourceFile, "Static asset imports support only the ?url query")
+  let target
+  try {
+    target = resolveStaticImport(file, specifier, staticFiles)
+  } catch (error) {
+    throw sourceNodeError(node.moduleSpecifier, sourceFile, error.message)
+  }
+  if (node.attributes) throw sourceNodeError(node.attributes, sourceFile, "Static asset import attributes are not supported")
+  const extension = staticImportExtension(specifier)
+  if (query === "url") {
+    if (!node.importClause?.name || node.importClause.isTypeOnly || node.importClause.namedBindings) throw sourceNodeError(node, sourceFile, "Static assets require one default import")
+    if (extension !== ".css") importedAssets.add(target)
+    const value = factory.createStringLiteral(assetPath(base, `assets/${relative(sourceDirectory, target).replaceAll(sep, "/")}`))
+    return staticImportReplacement(node.importClause.name.text, value, factory)
+  }
+  if (extension === ".css") {
+    const classes = cssModules.get(target)
+    if (!node.importClause) return undefined
+    if (!classes || !node.importClause.name || node.importClause.isTypeOnly || node.importClause.namedBindings) {
+      const message = classes ? "CSS Modules require one default import" : "CSS imports must be side-effect imports"
+      throw sourceNodeError(node.importClause, sourceFile, message)
+    }
+    const value = factory.createObjectLiteralExpression(Object.entries(classes).sort(([left], [right]) => left.localeCompare(right)).map(([name, scoped]) => factory.createPropertyAssignment(factory.createStringLiteral(name), factory.createStringLiteral(scoped))))
+    return staticImportReplacement(node.importClause.name.text, value, factory)
+  }
+  if (!node.importClause?.name || node.importClause.isTypeOnly || node.importClause.namedBindings) throw sourceNodeError(node, sourceFile, "Static assets require one default import")
+  importedAssets.add(target)
+  const value = factory.createStringLiteral(assetPath(base, `assets/${relative(sourceDirectory, target).replaceAll(sep, "/")}`))
+  return staticImportReplacement(node.importClause.name.text, value, factory)
+}
+
+function staticImportReplacement(name, value, factory) {
+  return {
+    name,
+    value,
+    replacement: factory.createVariableStatement(undefined, factory.createVariableDeclarationList([
+      factory.createVariableDeclaration(name, undefined, undefined, value)
+    ], ts.NodeFlags.Const))
+  }
 }
 
 function runtimeModuleReference(node) {

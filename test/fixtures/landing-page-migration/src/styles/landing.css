@@ -1,0 +1,13 @@
+@font-face {
+  font-family: "Landing Fixture";
+  src: url("../assets/landing.woff2") format("woff2");
+}
+
+body {
+  font-family: "Landing Fixture", sans-serif;
+}
+
+/* Documentation example: url("../assets/not-a-file.png") */
+body::before {
+  content: "url(../assets/not-a-file.png)";
+}
