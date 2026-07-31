@@ -2036,9 +2036,22 @@ http.createServer((request, response) => {
 
 async function runReleaseNotesBrowserTest(chrome) {
   const output = new URL("../dist/", import.meta.url)
+  const homeUrl = new URL("index.html", output)
   const htmlUrl = new URL("releases/0.7.0/index.html", output)
+  const homeHtml = await readFile(homeUrl, "utf8")
   const html = await readFile(htmlUrl, "utf8")
+  await writeFile(homeUrl, homeHtml.replace("</body>", '<script type="module" src="/home-mobile-test.js"></script></body>'))
   await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/release-browser-test.js"></script></body>'))
+  await writeFile(new URL("home-mobile-test.js", output), `
+try {
+  const copy = document.querySelector(".hero-copy")
+  const code = document.querySelector(".hero-code")
+  if (!copy || !code || copy.getBoundingClientRect().top >= code.getBoundingClientRect().top) throw new Error("hero-order")
+  document.body.dataset.homeMobileTest = "pass"
+} catch (error) {
+  document.body.dataset.homeMobileTest = "fail-" + error.message
+}
+`)
   await writeFile(new URL("release-browser-test.js", output), `
 try {
   const mode = new URL(location.href).searchParams.get("mode")
@@ -2077,6 +2090,9 @@ http.createServer((request, response) => {
       assert.equal(browser.status, 0, browser.stderr)
       assert.match(browser.stdout, new RegExp(`data-release-notes-test="pass-${mode}"`))
     }
+    const home = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--window-size=390,844", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(home.status, 0, home.stderr)
+    assert.match(home.stdout, /data-home-mobile-test="pass"/)
   } finally {
     server.kill()
   }

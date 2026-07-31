@@ -246,7 +246,7 @@ footer > span { font-family: var(--mono); }
   .site-header, main, footer { width: min(100% - 28px, 1200px); }
   nav a:first-child { display: none; }
   .hero { grid-template-columns: 1fr; padding-top: 90px; }
-  .hero-code { grid-row: 1; margin: 25px auto 10px; width: min(100%, 520px); }
+  .hero-code { margin: 25px auto 10px; width: min(100%, 520px); }
   h1 { font-size: clamp(58px, 17vw, 96px); }
   .signals { grid-template-columns: 1fr 1fr; }
   .signals div:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
