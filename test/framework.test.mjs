@@ -17,6 +17,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.0/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -29,10 +30,10 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /<head>.*<script type="module"[^>]+kudzu\.js.*<\/head><body/s)
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
-  assert.match(html, /data-site-shell="true"[^>]*inert/)
-  assert.match(html, /<dialog[^>]*data-release-modal="true"[^>]*open[^>]*aria-modal="true"/)
-  assert.match(html, /VERSION 0\.7\.0.*Bring React-shaped pages.*Leave React behind/s)
-  assert.match(html, /autoFocus[^>]*aria-label="Close release announcement"/)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.0"/)
+  assert.match(release, /Kudzu 0\.7\.0.*Bring React-shaped source.*Ship without React/s)
+  assert.match(release, /React-source migration preview.*CURRENT BOUNDARY.*npm install @kudzujs\/core@\^0\.7\.0/s)
+  assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
   assert.match(component, /__kBehavior\(\[\["add", count, 1\]\]\)/)
@@ -41,21 +42,20 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.equal(runtime.trim().split("\n").length, 1)
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
   assert.doesNotMatch([html, docs, runtime].join("\n"), /sessionStorage|__kudzu_state|snapshotState|restoreState|__kudzu_dev/)
-  assert.match(html, /kudzu-binding\.js/)
+  assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
-  assert.match(html, /data-k-state=/)
+  assert.doesNotMatch(html, /data-k-state=/)
   assert.match(docs, /data-k-if=/)
   assert.match(docs, /kudzu-binding\.js/)
   assert.match(docs, /<script[^>]+kudzu-list\.js/)
   assert.match(docs, /LIVE KEYED LIST/)
   assert.match(docs, /Open menu/)
   assert.equal(home.states[0].name, "count")
-  assert.equal(home.states[1].name, "releaseOpen")
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) {
-    await runHomeReleaseBrowserTest(chrome)
+    await runReleaseNotesBrowserTest(chrome)
     await runDocsListBrowserTest(chrome)
   }
 })
@@ -2034,36 +2034,28 @@ http.createServer((request, response) => {
   }
 }
 
-async function runHomeReleaseBrowserTest(chrome) {
+async function runReleaseNotesBrowserTest(chrome) {
   const output = new URL("../dist/", import.meta.url)
-  const htmlUrl = new URL("index.html", output)
+  const htmlUrl = new URL("releases/0.7.0/index.html", output)
   const html = await readFile(htmlUrl, "utf8")
   await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/release-browser-test.js"></script></body>'))
   await writeFile(new URL("release-browser-test.js", output), `
-const wait = () => new Promise(resolve => setTimeout(resolve, 80))
 try {
-  await wait()
   const mode = new URL(location.href).searchParams.get("mode")
-  const modal = document.querySelector("[data-release-modal]")
-  const card = modal?.querySelector(".release-card")
-  const close = modal?.querySelector(".release-close")
-  const shell = document.querySelector("[data-site-shell]")
-  const points = modal?.querySelector(".release-points")
-  const rect = card?.getBoundingClientRect()
-  if (!modal || !card || !close || !shell?.hasAttribute("inert") || modal.getAttribute("aria-modal") !== "true") throw new Error("initial")
-  if (document.activeElement !== close) throw new Error("focus")
-  if (rect.left < 0 || rect.right > innerWidth || modal.scrollWidth > modal.clientWidth) throw new Error("overflow")
+  const page = document.querySelector(".release-notes")
+  const hero = document.querySelector(".release-hero")
+  const story = document.querySelector(".release-story")
+  const features = document.querySelector(".release-feature-grid")
+  if (!page || !hero || !story || features?.children.length !== 6 || !document.querySelector('a[href="#start"]')) throw new Error("content")
+  if (document.documentElement.scrollWidth > document.documentElement.clientWidth || page.getBoundingClientRect().right > innerWidth) throw new Error("overflow")
   if (mode === "mobile") {
-    if (getComputedStyle(points).gridTemplateColumns.split(" ").length !== 1 || getComputedStyle(modal.querySelector(".release-actions")).flexDirection !== "column") throw new Error("mobile-layout")
-    modal.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+    if (getComputedStyle(story).gridTemplateColumns.split(" ").length !== 1 || getComputedStyle(features).gridTemplateColumns.split(" ").length !== 1) throw new Error("mobile-layout")
   } else {
-    close.click()
+    if (getComputedStyle(story).gridTemplateColumns.split(" ").length !== 2 || getComputedStyle(features).gridTemplateColumns.split(" ").length !== 3) throw new Error("desktop-layout")
   }
-  await wait()
-  if (document.querySelector("[data-release-modal]") || shell.hasAttribute("inert")) throw new Error("close")
-  document.body.dataset.releaseModalTest = "pass-" + mode
+  document.body.dataset.releaseNotesTest = "pass-" + mode
 } catch (error) {
-  document.body.dataset.releaseModalTest = "fail-" + error.message
+  document.body.dataset.releaseNotesTest = "fail-" + error.message
 }
 `)
   const port = 39900 + process.pid % 1000
@@ -2072,7 +2064,7 @@ const http = require("node:http"), fs = require("node:fs"), path = require("node
 const root = process.argv[1], port = Number(process.argv[2])
 http.createServer((request, response) => {
   const pathname = new URL(request.url, "http://localhost").pathname
-  const file = path.join(root, pathname === "/" ? "index.html" : pathname.slice(1))
+  const file = path.join(root, pathname === "/" ? "index.html" : pathname.endsWith("/") ? pathname.slice(1) + "index.html" : pathname.slice(1))
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1")
@@ -2081,9 +2073,9 @@ http.createServer((request, response) => {
   await waitForServer(port)
   try {
     for (const [mode, size] of [["desktop", "1440,1000"], ["mobile", "390,844"]]) {
-      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--window-size=${size}`, "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/?mode=${mode}`], { encoding: "utf8", timeout: 15000 })
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--window-size=${size}`, "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/releases/0.7.0/?mode=${mode}`], { encoding: "utf8", timeout: 15000 })
       assert.equal(browser.status, 0, browser.stderr)
-      assert.match(browser.stdout, new RegExp(`data-release-modal-test="pass-${mode}"`))
+      assert.match(browser.stdout, new RegExp(`data-release-notes-test="pass-${mode}"`))
     }
   } finally {
     server.kill()

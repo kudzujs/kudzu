@@ -1694,7 +1694,7 @@ async function compile(file, sourceFiles, sourceIndex, base, workerReferences) {
   if (errors.length) {
     throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
   }
-  if (/(?:\bfrom\s*|\bimport\s*\(\s*)["']react["']/.test(result.outputText)) throw new Error(`${relative(root, file)} Runtime React module references are not supported`)
+  if (hasReactModuleReference(result.outputText, file)) throw new Error(`${relative(root, file)} Runtime React module references are not supported`)
 
   const output = compiledPath(file)
   await mkdir(resolve(output, ".."), { recursive: true })
@@ -1715,6 +1715,18 @@ async function compile(file, sourceFiles, sourceIndex, base, workerReferences) {
   const moduleErrors = moduleResult.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
   return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports] }
+}
+
+function hasReactModuleReference(source, file) {
+  const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS)
+  let found = false
+  const visit = node => {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react") found = true
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require") && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === "react") found = true
+    if (!found) ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return found
 }
 
 function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, clientImports, workerReferences) {
