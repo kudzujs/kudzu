@@ -1746,6 +1746,7 @@ function hasReactModuleReference(source, file) {
 
 function normalizeReactMigrationSyntax(sourceFile, factory, context) {
   const supported = new Set(["createContext", "useContext", "useEffect", "useReducer", "useRef", "useState"])
+  const erased = new Set(["memo", "useCallback", "useMemo"])
   const aliases = new Map()
   const reactObjects = new Set()
   for (const statement of sourceFile.statements) {
@@ -1755,8 +1756,8 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
     if (bindings && ts.isNamespaceImport(bindings)) reactObjects.add(bindings.name.text)
     if (bindings && ts.isNamedImports(bindings)) for (const entry of bindings.elements) {
       const imported = (entry.propertyName ?? entry.name).text
-      if (!entry.isTypeOnly && (supported.has(imported) || imported === "useCallback")) aliases.set(entry.name.text, imported)
-      else if (!entry.isTypeOnly && (imported === "memo" || /^use[A-Z]/.test(imported))) throw sourceNodeError(entry, sourceFile, `React ${imported} is not supported by Kudzu migration input`)
+      if (!entry.isTypeOnly && (supported.has(imported) || erased.has(imported))) aliases.set(entry.name.text, imported)
+      else if (!entry.isTypeOnly && /^use[A-Z]/.test(imported)) throw sourceNodeError(entry, sourceFile, `React ${imported} is not supported by Kudzu migration input`)
     }
   }
   if (!aliases.size && !reactObjects.size) return sourceFile
@@ -1786,17 +1787,68 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
     if (ts.isIdentifier(node) && reactObjects.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile) && !(ts.isPropertyAccessExpression(node.parent) && node.parent.expression === node)) throw sourceNodeError(node, sourceFile, "React default or namespace imports may only be used for direct supported members or React.Fragment")
     if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && reactObjects.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
       const name = node.name.text
-      if (name !== "Fragment" && !(ts.isCallExpression(node.parent) && node.parent.expression === node && (supported.has(name) || name === "useCallback"))) throw sourceNodeError(node, sourceFile, `React.${name} is not supported; use a directly supported hook call or React.Fragment`)
+      if (name !== "Fragment" && !(ts.isCallExpression(node.parent) && node.parent.expression === node && (supported.has(name) || erased.has(name)))) throw sourceNodeError(node, sourceFile, `React.${name} is not supported; use a directly supported hook call or React.Fragment`)
     }
     ts.forEachChild(node, validate)
   }
   validate(sourceFile)
 
+  const memoLocals = new Map()
+  const collectMemoLocals = node => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && migrationCallName(node.initializer) === "useMemo") {
+      if (!isLocalConst(node)) throw sourceNodeError(node, sourceFile, "React useMemo() local values must use const declarations")
+      const callback = node.initializer.arguments[0]
+      if (callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback))) {
+        const expression = reactMemoExpression(callback)
+        const owner = nearestFunction(node)
+        if (owner && expression) {
+          const entries = memoLocals.get(owner) ?? new Map()
+          if (entries.has(node.name.text)) throw sourceNodeError(node.name, sourceFile, `React useMemo() local ${JSON.stringify(node.name.text)} must be unique within its component`)
+          entries.set(node.name.text, { declaration: node, expression })
+          memoLocals.set(owner, entries)
+        }
+      }
+    }
+    ts.forEachChild(node, collectMemoLocals)
+  }
+  collectMemoLocals(sourceFile)
+  const memoLocalIsShadowed = (node, owner, entry) => {
+    if (isShadowedByParameter(node, owner)) return true
+    const declarationStatement = entry.declaration.parent?.parent
+    for (let current = node.parent; current && current !== owner; current = current.parent) {
+      if (ts.isFunctionExpression(current) && current.name?.text === node.text) return true
+      if (ts.isBlock(current) && current.statements.some(statement => statement !== declarationStatement && statementDeclaresName(statement, node.text))) return true
+      if (ts.isCaseBlock(current) && current.clauses.some(clause => clause.statements.some(statement => statement !== declarationStatement && statementDeclaresName(statement, node.text)))) return true
+      if (ts.isCatchClause(current) && current.variableDeclaration && bindingNames(current.variableDeclaration.name).includes(node.text)) return true
+      if ((ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current)) && loopDeclaresName(current, node.text)) return true
+    }
+    return false
+  }
+  for (const [owner, entries] of memoLocals) for (const [name, entry] of entries) {
+    const visit = node => {
+      if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node) && nearestFunctionLike(node) !== owner && !memoLocalIsShadowed(node, owner, entry)) throw sourceNodeError(node, sourceFile, `React useMemo() local ${JSON.stringify(name)} cannot be captured by a nested function`)
+      ts.forEachChild(node, visit)
+    }
+    visit(owner.body)
+  }
+
   const required = new Set()
   const imported = new Set()
   const visitor = node => {
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
+      const owner = nearestFunctionLike(node)
+      const entry = memoLocals.get(owner)?.get(node.text)
+      if (entry && !memoLocalIsShadowed(node, owner, entry)) return ts.visitNode(cloneAst(entry.expression, factory, context), visitor)
+    }
     if (ts.isCallExpression(node)) {
       const name = migrationCallName(node)
+      if (name === "memo") {
+        if (node.arguments.length !== 1 || !(ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]) || ts.isIdentifier(node.arguments[0]))) throw sourceNodeError(node, sourceFile, "React memo() requires exactly one function component or component identifier")
+        if (ts.isIdentifier(node.arguments[0]) && isShadowedIdentifier(node.arguments[0], sourceFile)) throw sourceNodeError(node.arguments[0], sourceFile, "React memo() component identifiers must resolve to an unshadowed same-file top-level function")
+        const component = ts.isIdentifier(node.arguments[0]) ? reactMemoComponentExpression(node.arguments[0], sourceFile, factory, context) : node.arguments[0]
+        if (!component) throw sourceNodeError(node.arguments[0], sourceFile, "React memo() identifiers must name a same-file top-level function component")
+        return ts.visitNode(component, visitor)
+      }
       if (name === "useCallback") {
         if (node.arguments.length !== 2 || !ts.isArrayLiteralExpression(node.arguments[1]) || !(ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]))) throw sourceNodeError(node, sourceFile, "React useCallback() requires an inline function and a literal dependency array")
         const dependency = node.arguments[1].elements.find(entry => !isReactCallbackDependency(entry))
@@ -1806,6 +1858,23 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
         const stale = owner && [...ownerStateNames(owner)].find(state => referenceIdentifiers(node.arguments[0], state).length && !dependencies.has(state))
         if (stale) throw sourceNodeError(node.arguments[1], sourceFile, `React useCallback() must list captured state ${JSON.stringify(stale)} as a dependency`)
         return ts.visitNode(node.arguments[0], visitor)
+      }
+      if (name === "useMemo") {
+        if (node.arguments.length !== 2 || !ts.isArrayLiteralExpression(node.arguments[1]) || !(ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]))) throw sourceNodeError(node, sourceFile, "React useMemo() requires an inline function and a literal dependency array")
+        const callback = node.arguments[0]
+        if (callback.parameters.length || callback.asteriskToken || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(callback, sourceFile, "React useMemo() callback must be synchronous and parameterless")
+        const dependency = node.arguments[1].elements.find(entry => !isReactCallbackDependency(entry))
+        if (dependency) throw sourceNodeError(dependency, sourceFile, "React useMemo() dependencies must be identifiers or primitive literals")
+        const expression = reactMemoExpression(callback)
+        if (!expression || !isPureReactMemoExpression(expression)) throw sourceNodeError(callback.body, sourceFile, "React useMemo() callback must return one pure expression")
+        const dependencies = new Set(node.arguments[1].elements.map(unwrapExpression).filter(ts.isIdentifier).map(entry => entry.text))
+        const owner = nearestFunction(node)
+        const states = owner ? ownerStateNames(owner) : new Set()
+        const unsupported = [...reactMemoReferenceNames(expression)].find(reference => !states.has(reference))
+        if (unsupported) throw sourceNodeError(expression, sourceFile, `React useMemo() pure expressions may only reference direct local state; found ${JSON.stringify(unsupported)}`)
+        const stale = [...states].find(state => referenceIdentifiers(expression, state).length && !dependencies.has(state))
+        if (stale) throw sourceNodeError(node.arguments[1], sourceFile, `React useMemo() must list captured state ${JSON.stringify(stale)} as a dependency`)
+        return ts.visitNode(expression, visitor)
       }
       if (name && supported.has(name)) {
         required.add(name)
@@ -1820,7 +1889,7 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
         const entries = []
         for (const entry of bindings.elements) {
           const name = (entry.propertyName ?? entry.name).text
-          if (!entry.isTypeOnly && name === "useCallback") continue
+          if (!entry.isTypeOnly && erased.has(name)) continue
           if (!entry.isTypeOnly && supported.has(name)) {
             if (imported.has(name)) continue
             imported.add(name)
@@ -1866,11 +1935,52 @@ function isReactCallbackDependency(node) {
   return ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node) || node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword
 }
 
+function reactMemoExpression(callback) {
+  if (!ts.isBlock(callback.body)) return callback.body
+  if (callback.body.statements.length !== 1 || !ts.isReturnStatement(callback.body.statements[0])) return undefined
+  return callback.body.statements[0].expression
+}
+
+function reactMemoComponentExpression(identifier, sourceFile, factory, context) {
+  for (const statement of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === identifier.text && statement.body) {
+      const clone = cloneAst(statement, factory, context)
+      return factory.createFunctionExpression(clone.modifiers?.filter(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword), clone.asteriskToken, clone.name, clone.typeParameters, clone.parameters, clone.type, clone.body)
+    }
+    if (!ts.isVariableStatement(statement)) continue
+    const declaration = statement.declarationList.declarations.find(entry => ts.isIdentifier(entry.name) && entry.name.text === identifier.text)
+    if (declaration?.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) return cloneAst(declaration.initializer, factory, context)
+  }
+  return undefined
+}
+
+function isPureReactMemoExpression(node) {
+  node = unwrapExpression(node)
+  if (ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword) return true
+  if (ts.isParenthesizedExpression(node)) return isPureReactMemoExpression(node.expression)
+  if (ts.isPrefixUnaryExpression(node)) return ![ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator) && isPureReactMemoExpression(node.operand)
+  if (ts.isBinaryExpression(node)) return node.operatorToken.kind < ts.SyntaxKind.FirstAssignment && isPureReactMemoExpression(node.left) && isPureReactMemoExpression(node.right)
+  if (ts.isConditionalExpression(node)) return isPureReactMemoExpression(node.condition) && isPureReactMemoExpression(node.whenTrue) && isPureReactMemoExpression(node.whenFalse)
+  if (ts.isTemplateExpression(node)) return node.templateSpans.every(span => isPureReactMemoExpression(span.expression))
+  return false
+}
+
+function reactMemoReferenceNames(root) {
+  const names = new Set()
+  const visit = node => {
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node)) names.add(node.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(root)
+  return names
+}
+
 function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences) {
   return context => sourceFile => {
     const factory = context.factory
     const hasLinkElements = /<link/i.test(sourceFile.text)
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context)
+    ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     rejectOrdinaryWorkerImports(sourceFile, file, sourceFiles)
@@ -1881,6 +1991,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       let imported = importedSources.get(target)
       if (!imported) {
         imported = normalizeReactMigrationSyntax(parseSourceFile(target, sourceIndex.get(target)), factory, context)
+        ts.setParentRecursive(imported, false)
         imported = normalizeRenderControlFlow(imported, factory, context)
         ts.setParentRecursive(imported, false)
         importedSources.set(target, imported)
@@ -3722,6 +3833,11 @@ function nearestFunction(node) {
   for (let current = node.parent; current; current = current.parent) {
     if (ts.isFunctionDeclaration(current) || ts.isFunctionExpression(current) || ts.isArrowFunction(current)) return current
   }
+  return undefined
+}
+
+function nearestFunctionLike(node) {
+  for (let current = node.parent; current; current = current.parent) if (isFunctionLike(current)) return current
   return undefined
 }
 

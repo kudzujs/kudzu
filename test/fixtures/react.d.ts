@@ -4,11 +4,15 @@ declare module "react" {
   export function useState<T>(initialValue: T): [T, Dispatch<T>]
   export function useEffect(effect: () => void | (() => void), dependencies: readonly unknown[]): void
   export function useCallback<T extends (...args: never[]) => unknown>(callback: T, dependencies: readonly unknown[]): T
+  export function useMemo<T>(factory: () => T, dependencies: readonly unknown[]): T
+  export function memo<T>(component: T): T
 
   const React: {
     Fragment: typeof Fragment
     useState: typeof useState
     useCallback: typeof useCallback
+    useMemo: typeof useMemo
+    memo: typeof memo
   }
   export default React
 }

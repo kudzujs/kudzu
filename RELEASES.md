@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.3 - React memo normalization
+
+Kudzu 0.7.3 accepts common React memo authoring forms while preserving build-time components, direct state bindings, static HTML, and capability-only JavaScript.
+
+### New in 0.7.3
+
+- `memo(Component)` and aliased or direct-member equivalents lower to same-file build-time function components.
+- Inline `useCallback` wrappers continue to lower directly to analyzable handler functions without a browser memo cache.
+- Inline synchronous `useMemo` callbacks may return one expression over primitive literals and direct local state.
+- Memoized state expressions are inlined at same-component JSX uses so existing bindings update them without component rerenders.
+- Static pages wrapped in `memo` remain JavaScript-free.
+- Component shadowing, impure expressions, incomplete state dependencies, duplicate memo locals, and nested memo-local captures fail with source locations.
+- The React/Vite app fixture verifies repeated counter updates, derived `Double 2`/`Double 4` output, CSS and SVG assets, mount effects, and a zero-JavaScript static route.
+
+### Boundary
+
+`memo` identifiers must name unshadowed same-file top-level function components. `useMemo` locals must use unique `const` declarations, may reference only direct local state and primitive literals, and cannot cross nested function boundaries. No browser component cache, React runtime, VDOM, hydration, or retained component tree is emitted.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.3
+```
+
 ## 0.7.2 - React hook normalization
 
 Kudzu 0.7.2 accepts more ordinary React/Vite hook syntax while compiling through the existing static HTML and direct DOM capability paths.
