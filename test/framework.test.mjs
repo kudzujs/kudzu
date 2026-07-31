@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.1/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.2/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -33,9 +33,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /<head>.*<script type="module"[^>]+kudzu\.js.*<\/head><body/s)
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.1"/)
-  assert.match(release, /Kudzu 0\.7\.1.*Keep the imports.*Ship static assets/s)
-  assert.match(release, /VITE-STYLE LANDING ASSETS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.1/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.2"/)
+  assert.match(release, /Kudzu 0\.7\.2.*Keep the hooks.*Ship direct DOM/s)
+  assert.match(release, /REACT HOOK NORMALIZATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.2/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1147,6 +1147,34 @@ test("builds React-imported landing pages without the React runtime", async t =>
   if (chrome) await runLandingPageMigrationBrowserTest(fixture, chrome)
 })
 
+test("migrates aliased and member React hooks from a Vite-shaped app", async t => {
+  const fixture = new URL("./fixtures/react-vite-app", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-vite-app/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-vite-app/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-vite-app/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/react-vite-app/dist/static/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-vite-app/.kudzu/App.mjs", import.meta.url), "utf8")
+  assert.match(html, /href="\/app\/assets\/app\.css"/)
+  assert.match(html, /src="\/app\/assets\/logo\.svg"/)
+  assert.match(html, /aria-expanded="false"[^>]*data-k-bind-attrs/)
+  assert.match(html, /Count.*0/s)
+  assert.doesNotMatch(component, /useCallback|useMenuState|runEffect|React\.useState/)
+  assert.match(component, /useState\(false, "menuOpen"\)/)
+  assert.match(component, /useState\(0, "count"\)/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  for (const directory of [new URL("./fixtures/react-vite-app/.kudzu/", import.meta.url), new URL("./fixtures/react-vite-app/dist/", import.meta.url)]) {
+    const files = (await readdir(directory, { recursive: true })).filter(file => /\.(?:html|js|mjs|json)$/.test(file))
+    const output = (await Promise.all(files.map(file => readFile(new URL(file, directory), "utf8")))).join("\n")
+    assert.doesNotMatch(output, /(?:\bfrom\s*|\bimport\s*\(\s*)["']react["']/)
+  }
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runReactViteAppBrowserTest(fixture, chrome)
+})
+
 test("rejects side-effect React imports", async t => {
   const fixture = new URL("./fixtures/landing-page-invalid-react", import.meta.url)
   t.after(async () => {
@@ -1156,6 +1184,17 @@ test("rejects side-effect React imports", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:1:\d+ Side-effect React imports are not supported because Kudzu does not load the React runtime/)
+})
+
+test("rejects effectful React useCallback dependencies", async t => {
+  const fixture = new URL("./fixtures/react-hook-invalid", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-hook-invalid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-hook-invalid/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:4:\d+ React useCallback\(\) dependencies must be identifiers or primitive literals/)
 })
 
 test("specializes relative imported keyed list components", async t => {
@@ -3393,6 +3432,52 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/preview/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-landing-migration-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runReactViteAppBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/app/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  const counter = document.querySelector("#counter")
+  const menu = document.querySelector("#menu")
+  counter.click()
+  await wait()
+  if (counter.textContent.trim() !== "Count 1") throw new Error("member-state")
+  counter.click()
+  await wait()
+  if (counter.textContent.trim() !== "Count 2") throw new Error("callback-state")
+  menu.click()
+  await wait()
+  if (menu.textContent.trim() !== "Close" || menu.getAttribute("aria-expanded") !== "true" || !document.querySelector("nav")) throw new Error("aliased-state")
+  document.body.dataset.reactViteAppTest = "pass"
+} catch (error) {
+  document.body.dataset.reactViteAppTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const pathname = request.url.startsWith("/app") ? request.url.slice("/app".length) : request.url
+  const file = path.join(root, pathname === "/" ? "index.html" : pathname.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-react-vite-app-test="pass"/)
   } finally {
     server.kill()
   }

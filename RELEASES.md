@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.2 - React hook normalization
+
+Kudzu 0.7.2 accepts more ordinary React/Vite hook syntax while compiling through the existing static HTML and direct DOM capability paths.
+
+### New in 0.7.2
+
+- Supported hooks imported from `react` may retain aliases such as `useState as useMenuState` and `useEffect as runEffect`.
+- Default and namespace imports may use direct supported members such as `React.useState(...)`.
+- Inline React `useCallback` wrappers with literal inert dependencies are erased to their callback before Kudzu specialization.
+- Captured local state must appear in the callback dependency array, preserving an actionable boundary around stale React closures.
+- Unsupported members, indirect hook references, computed React members, and effectful dependency expressions fail with source locations.
+- Type-only React namespaces remain available to TypeScript and do not trigger runtime migration diagnostics.
+- A React/Vite-shaped app fixture verifies CSS, SVG assets, a non-root base, aliased state/effects, member state, repeated callback updates, browser interaction, and a zero-JavaScript static route.
+
+### Boundary
+
+`useCallback` requires an inline function and a literal array containing only identifiers or primitive literals. `memo`, `useMemo`, React classes, indirect hook references, side-effect React imports, and dynamic React imports remain unsupported. React, a VDOM, hydration, and a retained browser component tree are never emitted.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.2
+```
+
 ## 0.7.1 - Vite-style landing assets
 
 Kudzu 0.7.1 lets ordinary React/Vite landing-page source retain its common local stylesheet and static asset imports while preserving static HTML output and capability-only JavaScript.

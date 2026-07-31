@@ -1744,10 +1744,133 @@ function hasReactModuleReference(source, file) {
   return found
 }
 
+function normalizeReactMigrationSyntax(sourceFile, factory, context) {
+  const supported = new Set(["createContext", "useContext", "useEffect", "useReducer", "useRef", "useState"])
+  const aliases = new Map()
+  const reactObjects = new Set()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "react") continue
+    if (statement.importClause?.name) reactObjects.add(statement.importClause.name.text)
+    const bindings = statement.importClause?.namedBindings
+    if (bindings && ts.isNamespaceImport(bindings)) reactObjects.add(bindings.name.text)
+    if (bindings && ts.isNamedImports(bindings)) for (const entry of bindings.elements) {
+      const imported = (entry.propertyName ?? entry.name).text
+      if (!entry.isTypeOnly && (supported.has(imported) || imported === "useCallback")) aliases.set(entry.name.text, imported)
+      else if (!entry.isTypeOnly && (imported === "memo" || /^use[A-Z]/.test(imported))) throw sourceNodeError(entry, sourceFile, `React ${imported} is not supported by Kudzu migration input`)
+    }
+  }
+  if (!aliases.size && !reactObjects.size) return sourceFile
+
+  const migrationCallName = call => {
+    if (ts.isIdentifier(call.expression) && aliases.has(call.expression.text) && !isShadowedIdentifier(call.expression, sourceFile)) return aliases.get(call.expression.text)
+    if (ts.isPropertyAccessExpression(call.expression) && ts.isIdentifier(call.expression.expression) && reactObjects.has(call.expression.expression.text) && !isShadowedIdentifier(call.expression.expression, sourceFile)) return call.expression.name.text
+    return undefined
+  }
+  const ownerStateNames = owner => {
+    const names = new Set()
+    const collect = node => {
+      if (node !== owner && isFunctionLike(node)) return
+      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ["useReducer", "useState"].includes(migrationCallName(node.initializer))) {
+        const state = node.name.elements[0]
+        if (state && ts.isBindingElement(state) && ts.isIdentifier(state.name)) names.add(state.name.text)
+      }
+      ts.forEachChild(node, collect)
+    }
+    collect(owner)
+    return names
+  }
+
+  const validate = node => {
+    if (ts.isTypeNode(node)) return
+    if (ts.isIdentifier(node) && aliases.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile) && !(ts.isCallExpression(node.parent) && node.parent.expression === node)) throw sourceNodeError(node, sourceFile, `Aliased React ${aliases.get(node.text)} must be called directly`)
+    if (ts.isIdentifier(node) && reactObjects.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile) && !(ts.isPropertyAccessExpression(node.parent) && node.parent.expression === node)) throw sourceNodeError(node, sourceFile, "React default or namespace imports may only be used for direct supported members or React.Fragment")
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && reactObjects.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
+      const name = node.name.text
+      if (name !== "Fragment" && !(ts.isCallExpression(node.parent) && node.parent.expression === node && (supported.has(name) || name === "useCallback"))) throw sourceNodeError(node, sourceFile, `React.${name} is not supported; use a directly supported hook call or React.Fragment`)
+    }
+    ts.forEachChild(node, validate)
+  }
+  validate(sourceFile)
+
+  const required = new Set()
+  const imported = new Set()
+  const visitor = node => {
+    if (ts.isCallExpression(node)) {
+      const name = migrationCallName(node)
+      if (name === "useCallback") {
+        if (node.arguments.length !== 2 || !ts.isArrayLiteralExpression(node.arguments[1]) || !(ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]))) throw sourceNodeError(node, sourceFile, "React useCallback() requires an inline function and a literal dependency array")
+        const dependency = node.arguments[1].elements.find(entry => !isReactCallbackDependency(entry))
+        if (dependency) throw sourceNodeError(dependency, sourceFile, "React useCallback() dependencies must be identifiers or primitive literals")
+        const dependencies = new Set(node.arguments[1].elements.map(unwrapExpression).filter(ts.isIdentifier).map(entry => entry.text))
+        const owner = nearestFunction(node)
+        const stale = owner && [...ownerStateNames(owner)].find(state => referenceIdentifiers(node.arguments[0], state).length && !dependencies.has(state))
+        if (stale) throw sourceNodeError(node.arguments[1], sourceFile, `React useCallback() must list captured state ${JSON.stringify(stale)} as a dependency`)
+        return ts.visitNode(node.arguments[0], visitor)
+      }
+      if (name && supported.has(name)) {
+        required.add(name)
+        return factory.updateCallExpression(node, factory.createIdentifier(name), node.typeArguments, ts.visitNodes(node.arguments, visitor))
+      }
+    }
+    if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react") {
+      const clause = node.importClause
+      if (!clause) return node
+      let bindings = clause.namedBindings
+      if (bindings && ts.isNamedImports(bindings)) {
+        const entries = []
+        for (const entry of bindings.elements) {
+          const name = (entry.propertyName ?? entry.name).text
+          if (!entry.isTypeOnly && name === "useCallback") continue
+          if (!entry.isTypeOnly && supported.has(name)) {
+            if (imported.has(name)) continue
+            imported.add(name)
+            required.add(name)
+            entries.push(factory.createImportSpecifier(false, undefined, factory.createIdentifier(name)))
+          } else {
+            entries.push(entry)
+          }
+        }
+        bindings = entries.length ? factory.updateNamedImports(bindings, entries) : undefined
+      }
+      if (!clause.name && !bindings) return undefined
+      return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, clause.isTypeOnly, clause.name, bindings), node.moduleSpecifier, node.attributes)
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  let normalized = ts.visitNode(sourceFile, visitor)
+  const missing = [...required].filter(name => !imported.has(name)).sort()
+  if (!missing.length) return normalized
+  for (const name of missing) {
+    const collision = sourceFile.statements.some(statement => statementDeclaresName(statement, name) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name) && statement.moduleSpecifier.text !== "react")
+    if (collision) throw sourceNodeError(sourceFile, sourceFile, `React.${name} cannot be normalized because ${JSON.stringify(name)} is already declared`)
+  }
+  const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports(missing.map(name => factory.createImportSpecifier(false, undefined, factory.createIdentifier(name))))), factory.createStringLiteral("react"))
+  const statements = [...normalized.statements]
+  const lastImport = statements.findLastIndex(statement => ts.isImportDeclaration(statement))
+  statements.splice(lastImport + 1, 0, declaration)
+  normalized = factory.updateSourceFile(normalized, statements)
+  return normalized
+}
+
+function importDeclarationNames(statement) {
+  const names = []
+  if (statement.importClause?.name) names.push(statement.importClause.name.text)
+  const bindings = statement.importClause?.namedBindings
+  if (bindings && ts.isNamespaceImport(bindings)) names.push(bindings.name.text)
+  if (bindings && ts.isNamedImports(bindings)) for (const entry of bindings.elements) names.push(entry.name.text)
+  return names
+}
+
+function isReactCallbackDependency(node) {
+  node = unwrapExpression(node)
+  return ts.isIdentifier(node) || ts.isStringLiteral(node) || ts.isNumericLiteral(node) || node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword
+}
+
 function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences) {
   return context => sourceFile => {
     const factory = context.factory
     const hasLinkElements = /<link/i.test(sourceFile.text)
+    sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     rejectOrdinaryWorkerImports(sourceFile, file, sourceFiles)
@@ -1757,7 +1880,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const importedSource = target => {
       let imported = importedSources.get(target)
       if (!imported) {
-        imported = normalizeRenderControlFlow(parseSourceFile(target, sourceIndex.get(target)), factory, context)
+        imported = normalizeReactMigrationSyntax(parseSourceFile(target, sourceIndex.get(target)), factory, context)
+        imported = normalizeRenderControlFlow(imported, factory, context)
         ts.setParentRecursive(imported, false)
         importedSources.set(target, imported)
       }
@@ -3616,6 +3740,7 @@ function isShadowedIdentifier(node, scopeRoot) {
   if (isFunctionLike(scopeRoot) && functionVarDeclaresName(scopeRoot, node.text)) return true
   for (let current = node.parent; current; current = current.parent) {
     if (current === scopeRoot) break
+    if (ts.isFunctionExpression(current) && current.name?.text === node.text) return true
     if (ts.isBlock(current) && current.statements.some(statement => statementDeclaresName(statement, node.text))) return true
     if (ts.isCaseBlock(current) && current.clauses.some(clause => clause.statements.some(statement => statementDeclaresName(statement, node.text)))) return true
     if (ts.isCatchClause(current) && current.variableDeclaration && bindingNames(current.variableDeclaration.name).includes(node.text)) return true

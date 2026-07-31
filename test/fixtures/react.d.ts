@@ -2,9 +2,13 @@ declare module "react" {
   export function Fragment(props: { children?: unknown }): unknown
   export type Dispatch<T> = (value: T | ((previous: T) => T)) => void
   export function useState<T>(initialValue: T): [T, Dispatch<T>]
+  export function useEffect(effect: () => void | (() => void), dependencies: readonly unknown[]): void
+  export function useCallback<T extends (...args: never[]) => unknown>(callback: T, dependencies: readonly unknown[]): T
 
   const React: {
     Fragment: typeof Fragment
+    useState: typeof useState
+    useCallback: typeof useCallback
   }
   export default React
 }

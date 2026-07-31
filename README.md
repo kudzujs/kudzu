@@ -10,7 +10,7 @@ Kudzu is designed so ordinary common React-shaped TSX can migrate with minimal s
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**0.7.1:** Vite-style landing assets. Common CSS, CSS Module, image, SVG, font, and `?url` imports now compile to static output without React, a VDOM, or hydration. See [release notes](./RELEASES.md#071---vite-style-landing-assets).
+**0.7.2:** React hook normalization. Aliased hooks, direct members such as `React.useState`, and inline `useCallback` now compile to existing Kudzu capabilities without React, a VDOM, or hydration. See [release notes](./RELEASES.md#072---react-hook-normalization).
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
@@ -74,7 +74,7 @@ export default function Header() {
 }
 ```
 
-Kudzu rewrites supported React imports to its compile-time APIs before evaluating the module; neither the React package nor a compatibility runtime enters the deploy output. Named `useState`, `useReducer`, `useEffect`, `useRef`, `createContext`, and `useContext` imports must retain those names. Default and namespace React imports currently support `Fragment`; named `Fragment` also works. Aliased hooks, `React.useState`, `memo`, `useMemo`, `useCallback`, React classes, and side-effect or dynamic React imports remain unsupported. A static route using these import forms still emits zero JavaScript.
+Kudzu rewrites supported React imports to its compile-time APIs before evaluating the module; neither the React package nor a compatibility runtime enters the deploy output. Named or aliased `useState`, `useReducer`, `useEffect`, `useRef`, `createContext`, and `useContext` imports compile to their canonical forms. Default and namespace imports may call those APIs as direct members such as `React.useState`, and default, namespace, or named `Fragment` also works. Inline `useCallback(function, literalDependencies)` is erased to its function because Kudzu does not retain or rerender a browser component. `memo`, `useMemo`, React classes, and side-effect or dynamic React imports remain unsupported. A static route using these import forms still emits zero JavaScript.
 
 Create `src/pages/index.tsx`:
 
@@ -225,7 +225,7 @@ const add = (title: string) => dispatch({ type: "add", title })
 return <Input onSubmit={add} />
 ```
 
-Kudzu substitutes the callback into the child's compiled event handler at build time. This is not general function-prop serialization: only one nested specialized callback boundary is supported, and `useCallback`, further forwarding, effects, component roots, and callback use outside event handlers are rejected.
+Kudzu substitutes the callback into the child's compiled event handler at build time. An inline React `useCallback` wrapper is erased before this analysis. This is not general function-prop serialization: only one nested specialized callback boundary is supported, and further forwarding, effects, component roots, and callback use outside event handlers are rejected.
 
 Reducer dispatch and callback components may use destructured string, finite-number, boolean, or `null` defaults. A missing prop is replaced during specialization; object, array, computed, and function-call defaults remain unsupported:
 
