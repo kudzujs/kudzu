@@ -12,6 +12,9 @@ import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
 import { createNativeContext } from "../framework/native-runtime.js"
 
+let browserPort = 49000 + process.pid % 10000
+const nextBrowserPort = () => browserPort++
+
 test("builds TSX into HTML and behavior commands without React", async () => {
   await build({ quiet: true })
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
@@ -2013,7 +2016,7 @@ try {
   document.body.dataset.browserTest = "fail-" + error.message
 }
 `)
-  const port = 41000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2071,7 +2074,7 @@ try {
   document.body.dataset.releaseNotesTest = "fail-" + error.message
 }
 `)
-  const port = 39900 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2126,7 +2129,7 @@ try {
   document.body.dataset.docsListTest = "fail-" + error.message
 }
 `)
-  const port = 38000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2159,7 +2162,7 @@ async function runNavigationBrowserTest(fixture, chrome) {
     const html = await readFile(htmlUrl, "utf8")
     await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   }
-  const port = 45000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2210,7 +2213,7 @@ async function runNavigationGroupsBrowserTest(fixture, chrome) {
     const html = await readFile(htmlUrl, "utf8")
     await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   }
-  const port = 46000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2]), counts = new Map()
@@ -2333,7 +2336,7 @@ try {
   document.body.dataset.browserTest = "fail-" + error.message
 }
 `)
-  const port = 46500 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2365,7 +2368,7 @@ async function runWorkerEffectBrowserTest(fixture, chrome, workerPath) {
   const plainUrl = new URL("plain/index.html", output)
   const dashboardHtml = await readFile(dashboardUrl, "utf8")
   const plainHtml = await readFile(plainUrl, "utf8")
-  const port = 47500 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2]), counts = new Map()
@@ -2630,7 +2633,7 @@ try {
 
 `)
 
-  const port = 39000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2755,7 +2758,7 @@ try {
 }
 
 `)
-  const port = 40000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2834,7 +2837,7 @@ try {
   document.body.dataset.renderedCollectionTest = "fail-" + error.message
 }
 `)
-  const port = 43000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -2959,7 +2962,7 @@ try {
   document.body.dataset.nestedListTest = "fail-" + error.message
 }
 `)
-  const port = 40500 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3013,7 +3016,7 @@ try {
   document.body.dataset.nestedIndexedOptionalTest = "fail-" + error.message
 }
 `)
-  const port = 43500 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3097,7 +3100,7 @@ try {
   document.body.dataset.nestedComponentListTest = "fail-" + error.message
 }
 `)
-  const port = 40600 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3138,7 +3141,7 @@ try {
   document.body.dataset.flatKeyedRowHooksTest = "fail-" + error.message
 }
 `)
-  const port = 40850 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3222,7 +3225,7 @@ try {
   document.body.dataset.keyedRowHooksTest = "fail-" + error.message
 }
 `)
-  const port = 40700 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3310,7 +3313,7 @@ try {
   document.body.dataset.reactShapedIntegrationTest = "fail-" + error.message
 }
 `)
-  const port = 40900 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3352,7 +3355,7 @@ try {
   document.body.dataset.landingMigrationTest = "fail-" + error.message
 }
 `)
-  const port = 40800 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3402,7 +3405,7 @@ try {
   document.body.dataset.componentListTest = "fail-" + error.message
 }
 `)
-  const port = 40100 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3454,7 +3457,7 @@ try {
   document.body.dataset.importedComponentListTest = "fail-" + error.message
 }
 `)
-  const port = 40200 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3498,7 +3501,7 @@ try {
 }
 
 `)
-  const port = 41100 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3551,7 +3554,7 @@ try {
 await new Promise(resolve => setTimeout(resolve, 50))
 document.body.dataset.browserTest = document.querySelector("[data-only]").textContent === "after" ? "pass" : "fail-effect-only"
 `)
-  const port = 45100 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3618,7 +3621,7 @@ try {
   document.body.dataset.browserTest = "fail-" + error.message
 }
 `)
-  const port = 47000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3726,7 +3729,7 @@ try {
   document.body.dataset.browserTest = "fail-" + error.message
 }
 `)
-  const port = 48000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3782,7 +3785,7 @@ try {
 }
 
 `)
-  const port = 42000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3823,7 +3826,7 @@ try {
 }
 
 `)
-  const port = 43100 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
@@ -3870,7 +3873,7 @@ try {
 }
 
 `)
-  const port = 44000 + process.pid % 1000
+  const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2]), fallback = path.join(root, "orgs/[org]/items/[id]/index.html")
