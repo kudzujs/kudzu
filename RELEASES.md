@@ -1,5 +1,27 @@
 # Kudzu Releases
 
+## 0.7.5 - Class composition migration
+
+Kudzu 0.7.5 lets ordinary React source retain common direct `clsx` calls while compiling them to existing static and reactive class paths.
+
+### New in 0.7.5
+
+- Default and named `clsx` imports lower at build time for string and number literals, literal arrays, literal object conditions, and conditional expressions.
+- Dynamic object conditions reuse existing reactive class bindings without serializing or shipping the `clsx` function.
+- Static uses add no browser JavaScript, and the package import is erased from compiled modules.
+- Mixed React imports such as `import { useState, type ReactNode } from "react"` now erase type-only specifiers before runtime module rewriting.
+- The React/Vite fixture verifies initial class output, state-driven class updates in Chrome, package erasure, and mixed type imports.
+
+### Boundary
+
+`clsx` spreads, computed object keys, arbitrary calls, and indirect references remain unsupported. This is source lowering for a proven migration pattern, not package execution or a general React ecosystem runtime.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.5
+```
+
 ## 0.7.4 - Memoized collection pipelines
 
 Kudzu 0.7.4 lets ordinary React/Vite source retain analyzable collection work inside `useMemo` while reusing the existing keyed-list selector and DOM identity model.

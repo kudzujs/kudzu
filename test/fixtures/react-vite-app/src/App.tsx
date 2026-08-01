@@ -1,8 +1,9 @@
-import React, { memo as preserve, useCallback, useEffect as runEffect, useMemo as derive, useState as useMenuState } from "react"
+import React, { type ReactNode, memo as preserve, useCallback, useEffect as runEffect, useMemo as derive, useState as useMenuState } from "react"
+import clsx from "clsx"
 import "./app.css"
 import logo from "./logo.svg?url"
 
-function Brand() {
+function Brand(): ReactNode {
   return <strong>Compiler-grown UI</strong>
 }
 
@@ -31,7 +32,7 @@ export default function App() {
       <button id="counter" onClick={increment}>Count {count}</button>
       <output id="doubled">Double {doubled}</output>
       <button id="show-items" onClick={() => setItems(items.map(item => ({ ...item, visible: true })))}>Show items</button>
-      <ul id="memo-items">{visibleItems.map(item => <li key={item.id} data-item={item.id}>{item.label}</li>)}</ul>
+      <ul id="memo-items" className={clsx("items", { open: menuOpen })}>{visibleItems.map(item => <li key={item.id} data-item={item.id}>{item.label}</li>)}</ul>
     </main>
   </React.Fragment>
 }

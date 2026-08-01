@@ -1,4 +1,5 @@
 declare module "react" {
+  export type ReactNode = unknown
   export function Fragment(props: { children?: unknown }): unknown
   export type Dispatch<T> = (value: T | ((previous: T) => T)) => void
   export function useState<T>(initialValue: T): [T, Dispatch<T>]
@@ -15,6 +16,10 @@ declare module "react" {
     memo: typeof memo
   }
   export default React
+}
+
+declare module "clsx" {
+  export default function clsx(...values: unknown[]): string
 }
 
 declare module "*.png" {

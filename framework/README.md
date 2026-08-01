@@ -4,6 +4,8 @@ Kudzu specializes ordinary common React-shaped TSX so migrations need minimal so
 
 Migration source may retain conventional `react` imports for supported named or aliased hooks, direct members such as `React.useState`, same-file `memo`, inline `useCallback`, direct-state expression or analyzable collection-pipeline `useMemo`, and default, namespace, or named `Fragment`. `build.mjs` canonicalizes those forms and rewrites module references to `@kudzujs/core` before build-time evaluation. Memo wrappers are erased or inlined into existing bindings and keyed-list selectors because no browser component rerender or memo cache exists. Static routes remain JavaScript-free and emitted modules are checked for surviving React imports.
 
+Direct `clsx` calls over literal strings, numbers, arrays, object conditions, and conditional expressions are similarly lowered to ordinary concatenation and conditional expressions. The package import is erased, and dynamic classes continue through the existing binding compiler without serializing or shipping the `clsx` function.
+
 - `build.mjs`: TSX compilation, static, `getStaticPaths`, and runtime-fallback routes, base paths, CSS collection, post-build hooks, behavior extraction, static HTML output, and the development server.
 - `core.mjs`: server-side JSX rendering, state slots, context providers, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.

@@ -1744,6 +1744,53 @@ function hasReactModuleReference(source, file) {
   return found
 }
 
+function normalizeClsxSyntax(sourceFile, factory, context) {
+  const names = new Set()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "clsx") continue
+    if (statement.importClause?.name) names.add(statement.importClause.name.text)
+    const bindings = statement.importClause?.namedBindings
+    if (bindings && ts.isNamedImports(bindings)) for (const entry of bindings.elements) if (!entry.isTypeOnly && (entry.propertyName ?? entry.name).text === "clsx") names.add(entry.name.text)
+  }
+  if (!names.size) return sourceFile
+
+  const lower = node => {
+    node = unwrapExpression(node)
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isNumericLiteral(node)) return node
+    if (node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword) return factory.createStringLiteral("")
+    if (ts.isConditionalExpression(node)) return factory.updateConditionalExpression(node, node.condition, node.questionToken, lower(node.whenTrue), node.colonToken, lower(node.whenFalse))
+    if (ts.isArrayLiteralExpression(node)) return combine(node.elements.map(lower))
+    if (ts.isObjectLiteralExpression(node)) return combine(node.properties.map(property => {
+      if (!ts.isPropertyAssignment(property) || property.name && ts.isComputedPropertyName(property.name)) throw sourceNodeError(property, sourceFile, "clsx() object arguments require ordinary key/value properties")
+      const name = property.name
+      const value = name && (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) ? name.text : undefined
+      if (value === undefined) throw sourceNodeError(property, sourceFile, "clsx() object keys must be identifiers or literals")
+      return factory.createConditionalExpression(property.initializer, undefined, factory.createStringLiteral(value), undefined, factory.createStringLiteral(""))
+    }))
+    throw sourceNodeError(node, sourceFile, "clsx() arguments must be string/number literals, literal arrays, literal objects, or conditionals")
+  }
+  const combine = entries => entries.length ? entries.reduce((result, entry) => factory.createBinaryExpression(factory.createBinaryExpression(result, factory.createToken(ts.SyntaxKind.PlusToken), factory.createStringLiteral(" ")), factory.createToken(ts.SyntaxKind.PlusToken), entry)) : factory.createStringLiteral("")
+
+  const visitor = node => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && names.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) return combine(node.arguments.map(lower))
+    if (ts.isIdentifier(node) && names.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile) && !(ts.isCallExpression(node.parent) && node.parent.expression === node)) throw sourceNodeError(node, sourceFile, "clsx imports may only be called directly")
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "clsx") {
+      const clause = node.importClause
+      if (!clause || clause.isTypeOnly) return node
+      let bindings = clause.namedBindings
+      if (bindings && ts.isNamedImports(bindings)) {
+        const elements = bindings.elements.filter(entry => entry.isTypeOnly || (entry.propertyName ?? entry.name).text !== "clsx")
+        bindings = elements.length ? factory.updateNamedImports(bindings, elements) : undefined
+      }
+      const defaultName = clause.name && names.has(clause.name.text) ? undefined : clause.name
+      if (!defaultName && !bindings) return undefined
+      return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, clause.isTypeOnly, defaultName, bindings), node.moduleSpecifier, node.attributes)
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  return ts.visitNode(sourceFile, visitor)
+}
+
 function normalizeReactMigrationSyntax(sourceFile, factory, context) {
   const supported = new Set(["createContext", "useContext", "useEffect", "useReducer", "useRef", "useState"])
   const erased = new Set(["memo", "useCallback", "useMemo"])
@@ -1903,6 +1950,7 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context) {
         const entries = []
         for (const entry of bindings.elements) {
           const name = (entry.propertyName ?? entry.name).text
+          if (entry.isTypeOnly) continue
           if (!entry.isTypeOnly && erased.has(name)) continue
           if (!entry.isTypeOnly && supported.has(name)) {
             if (imported.has(name)) continue
@@ -2014,6 +2062,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
   return context => sourceFile => {
     const factory = context.factory
     const hasLinkElements = /<link/i.test(sourceFile.text)
+    sourceFile = normalizeClsxSyntax(sourceFile, factory, context)
+    ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
@@ -2025,7 +2075,9 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const importedSource = target => {
       let imported = importedSources.get(target)
       if (!imported) {
-        imported = normalizeReactMigrationSyntax(parseSourceFile(target, sourceIndex.get(target)), factory, context)
+        imported = normalizeClsxSyntax(parseSourceFile(target, sourceIndex.get(target)), factory, context)
+        ts.setParentRecursive(imported, false)
+        imported = normalizeReactMigrationSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
         imported = normalizeRenderControlFlow(imported, factory, context)
         ts.setParentRecursive(imported, false)
