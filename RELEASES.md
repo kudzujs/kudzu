@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.11 - Serializable defaults and rest props
+
+Kudzu 0.7.11 preserves common non-primitive defaults and direct rest forwarding across existing compiler-specialized component boundaries.
+
+### New in 0.7.11
+
+- Specialized collection wrappers, keyed rows, and reducer components accept directly serializable primitive, plain-object, and array literal prop defaults.
+- One final identifier rest binding may be forwarded exactly once to the component's direct intrinsic root.
+- Rest props expand into ordinary JSX attributes before existing event, binding, style, and keyed-row analysis, preserving source-order overrides without a runtime rest object.
+- Calling-component `const` prop spreads now resolve through lexical function scopes, including keyed row calls nested inside `map` callbacks.
+- Dynamic defaults, indirect or repeated rest use, rest-forwarded children, and prototype-sensitive rest properties fail with source-located diagnostics.
+- A React-shaped keyed row fixture proves object and array defaults, ARIA and event rest props, style output, and component erasure.
+- The repository README is now a concise project entry point; detailed APIs, limits, and benchmarks link to the maintained web documentation.
+
+### Boundary
+
+Defaults must be directly serializable literals. Rest must be one final identifier binding used exactly once as a spread on the direct intrinsic root. State collections still cross specialized wrapper boundaries as direct props. Exported reusable specialized rows, `forwardRef`, and `useId` remain fixture-driven work.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.11
+```
+
 ## 0.7.10 - Component composition
 
 Kudzu 0.7.10 preserves common component composition across existing compiler-specialized collection boundaries.

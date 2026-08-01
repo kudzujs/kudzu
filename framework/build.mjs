@@ -3358,34 +3358,40 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
   visit(root)
 }
 
-function directConstObjectLiteral(expression, call, sourceFile) {
+function directConstObjectLiteral(expression, call) {
   expression = unwrapExpression(expression)
   if (ts.isObjectLiteralExpression(expression)) return expression
   if (!ts.isIdentifier(expression)) return
-  const owner = nearestFunction(call)
-  const scope = owner?.body ?? sourceFile
-  if (!scope || !ts.isBlock(scope) && !ts.isSourceFile(scope)) return
-  const declarations = []
-  for (const statement of scope.statements) {
-    if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0) continue
-    for (const declaration of statement.declarationList.declarations) {
-      if (ts.isIdentifier(declaration.name) && declaration.name.text === expression.text && declaration.initializer && declaration.end < call.pos) declarations.push(declaration)
-    }
+  const scopes = []
+  for (let current = call.parent; current; current = current.parent) {
+    if (isFunctionLike(current) && ts.isBlock(current.body)) scopes.push(current.body)
+    if (ts.isSourceFile(current)) scopes.push(current)
   }
-  if (declarations.length !== 1) return
-  const initializer = unwrapExpression(declarations[0].initializer)
-  if (ts.isObjectLiteralExpression(initializer)) return initializer
+  for (const scope of scopes) {
+    const declarations = []
+    for (const statement of scope.statements) {
+      if (!ts.isVariableStatement(statement)) continue
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.name.text === expression.text) declarations.push({ declaration, constant: (statement.declarationList.flags & ts.NodeFlags.Const) !== 0 })
+      }
+    }
+    if (!declarations.length) continue
+    if (declarations.length !== 1 || !declarations[0].constant || !declarations[0].declaration.initializer || declarations[0].declaration.end >= call.pos) return
+    const initializer = unwrapExpression(declarations[0].declaration.initializer)
+    if (ts.isObjectLiteralExpression(initializer)) return initializer
+    return
+  }
 }
 
-function specializedSpreadEntries(expression, call, sourceFile, fail, label, seen = new Set()) {
-  const object = directConstObjectLiteral(expression, call, sourceFile)
+function specializedSpreadEntries(expression, call, fail, label, seen = new Set()) {
+  const object = directConstObjectLiteral(expression, call)
   if (!object) fail(expression, `${label} component prop spreads must use an inline object literal or one direct const object literal declared in the calling component`)
   if (seen.has(object)) fail(expression, `${label} component prop spreads cannot be circular`)
   seen.add(object)
   const entries = []
   for (const property of object.properties) {
     if (ts.isSpreadAssignment(property)) {
-      entries.push(...specializedSpreadEntries(property.expression, call, sourceFile, fail, label, seen))
+      entries.push(...specializedSpreadEntries(property.expression, call, fail, label, seen))
       continue
     }
     if (ts.isShorthandPropertyAssignment(property)) {
@@ -3447,6 +3453,37 @@ function flattenForwardedComponentChildren(root, factory, context) {
   return ts.visitNode(root, visit)
 }
 
+function expandSpecializedRest(root, returned, component, rest, entries, factory, context, fail, label) {
+  const sourceRoot = unwrapExpression(returned)
+  const sourceTag = jsxTagName(sourceRoot)
+  if (!sourceTag || !ts.isIdentifier(sourceTag) || sourceTag.text[0] !== sourceTag.text[0].toLowerCase()) {
+    fail(returned, `${label} component rest props must be forwarded exactly once to the direct intrinsic root`)
+  }
+  const sourceAttributes = ts.isJsxElement(sourceRoot) ? sourceRoot.openingElement.attributes : sourceRoot.attributes
+  const spreads = sourceAttributes.properties.filter(attribute => ts.isJsxSpreadAttribute(attribute) && ts.isIdentifier(unwrapExpression(attribute.expression)) && unwrapExpression(attribute.expression).text === rest.name)
+  const references = referenceIdentifiers(component.body, rest.name)
+  if (spreads.length !== 1 || references.length !== 1 || unwrapExpression(spreads[0].expression) !== references[0]) {
+    fail(rest.node, `${label} component rest props must be forwarded exactly once to the direct intrinsic root`)
+  }
+  for (const [name] of entries) {
+    if (["__proto__", "constructor", "prototype"].includes(name)) fail(rest.node, `${label} component rest prop ${JSON.stringify(name)} is not supported`)
+    if (name === "children") fail(rest.node, `${label} component rest props cannot forward children; destructure children explicitly`)
+  }
+  const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
+  const expanded = attributes.properties.flatMap(attribute => {
+    if (!ts.isJsxSpreadAttribute(attribute) || !ts.isIdentifier(unwrapExpression(attribute.expression)) || unwrapExpression(attribute.expression).text !== rest.name) return [attribute]
+    return entries.map(([name, value]) => factory.createJsxAttribute(factory.createIdentifier(name), factory.createJsxExpression(undefined, cloneAst(value, factory, context))))
+  })
+  const last = new Map()
+  expanded.forEach((attribute, index) => {
+    if (ts.isJsxAttribute(attribute)) last.set(attribute.name.text, index)
+  })
+  const properties = expanded.filter((attribute, index) => !ts.isJsxAttribute(attribute) || last.get(attribute.name.text) === index)
+  if (ts.isJsxSelfClosingElement(root)) return factory.updateJsxSelfClosingElement(root, root.tagName, root.typeArguments, factory.updateJsxAttributes(attributes, properties))
+  const opening = factory.updateJsxOpeningElement(root.openingElement, root.openingElement.tagName, root.openingElement.typeArguments, factory.updateJsxAttributes(attributes, properties))
+  return factory.updateJsxElement(root, opening, root.children, root.closingElement)
+}
+
 function specializeComponentCall(call, component, sourceFile, factory, context, fail, label = "Keyed list", allowComponentRoot = false) {
   if (component.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || component.asteriskToken) fail(component, `${label} components must be synchronous`)
   if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, `${label} components must use one destructured props parameter`)
@@ -3456,7 +3493,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   let key
   for (const attribute of callAttributes.properties) {
     if (ts.isJsxSpreadAttribute(attribute)) {
-      for (const [name, value, property] of specializedSpreadEntries(attribute.expression, call, sourceFile, fail, label)) {
+      for (const [name, value, property] of specializedSpreadEntries(attribute.expression, call, fail, label)) {
         if (["__proto__", "constructor", "prototype"].includes(name)) fail(property, `${label} component prop spread property ${JSON.stringify(name)} is not supported`)
         if (name === "key") fail(property, `${label} component prop spreads cannot declare key`)
         props.set(name, value)
@@ -3485,14 +3522,22 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   }
   const substitutions = new Map()
   const acceptedProps = new Set()
-  for (const element of component.parameters[0].name.elements) {
-    if (element.dotDotDotToken || !ts.isIdentifier(element.name)) fail(element, `${label} component props cannot use rest or nested destructuring`)
-    if (element.initializer && !isPrimitiveDefaultLiteral(element.initializer)) fail(element.initializer, `${label} component prop defaults must be primitive literals`)
+  let rest
+  const elements = component.parameters[0].name.elements
+  for (const [index, element] of elements.entries()) {
+    if (element.dotDotDotToken) {
+      if (!ts.isIdentifier(element.name) || element.propertyName || element.initializer || index !== elements.length - 1) fail(element, `${label} component rest props must be one final identifier binding`)
+      rest = { name: element.name.text, node: element }
+      continue
+    }
+    if (!ts.isIdentifier(element.name)) fail(element, `${label} component props cannot use nested destructuring`)
+    if (element.initializer && !isSerializableStateLiteral(element.initializer)) fail(element.initializer, `${label} component prop defaults must be directly serializable primitive, plain-object, or array literals`)
     const prop = (element.propertyName ?? element.name).text
     acceptedProps.add(prop)
     substitutions.set(element.name.text, props.has(prop) ? props.get(prop) : element.initializer ?? factory.createIdentifier("undefined"))
   }
-  for (const prop of props.keys()) if (!acceptedProps.has(prop)) fail(call, `Unknown ${label.toLowerCase()} component prop "${prop}"`)
+  const restEntries = [...props].filter(([prop]) => !acceptedProps.has(prop))
+  if (!rest) for (const [prop] of restEntries) fail(call, `Unknown ${label.toLowerCase()} component prop "${prop}"`)
 
   let returned
   const calculations = []
@@ -3559,6 +3604,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   for (const calculation of calculations) findUnsupportedHook(calculation.expression)
   if (unsupportedHook) throw sourceNodeError(unsupportedHook, component.getSourceFile(), `Keyed row ${unsupportedHook.expression.text}() must be one top-level const declaration`)
   let root = unwrapExpression(flattenForwardedComponentChildren(substituteClone(returned, substitutions, factory, context), factory, context))
+  if (rest) root = expandSpecializedRest(root, returned, component, rest, restEntries, factory, context, fail, label)
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, `${label} component must return one JSX element`)
   const tag = jsxTagName(root)
   if (!ts.isIdentifier(tag) || !allowComponentRoot && tag.text[0] !== tag.text[0].toLowerCase()) fail(returned, `${label} component must directly return an intrinsic JSX element`)

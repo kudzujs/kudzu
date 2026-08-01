@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.10/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.11/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.10"/)
-  assert.match(release, /Kudzu 0\.7\.10.*Spread the props.*Keep the children/s)
-  assert.match(release, /COMPONENT COMPOSITION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.10/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.11"/)
+  assert.match(release, /Kudzu 0\.7\.11.*Keep the defaults.*Forward the rest/s)
+  assert.match(release, /SERIALIZABLE DEFAULTS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.11/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1440,7 +1440,7 @@ test("shares lifecycle cleanup between conditional and list capabilities", async
 
 test("rejects unsupported keyed list expressions and duplicate initial keys", () => {
   for (const [fixture, message] of [
-    ["list-invalid-shape", /cannot use rest or nested destructuring/],
+    ["list-invalid-shape", /rest props must be forwarded exactly once to the direct intrinsic root/],
     ["list-invalid-condition", /Keyed list item conditions must read the item/],
     ["list-invalid-browser", /identifier "window" is not allowed/],
     ["list-invalid-capture", /identifier "suffix" is not allowed/],
@@ -1459,6 +1459,7 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-prototype", /property "constructor" is not supported|cannot read __proto__/],
     ["list-invalid-prototype-key", /property "__proto__" is not supported/],
     ["list-invalid-spread", /item spreads are not supported/],
+    ["component-rest-invalid-prototype", /component rest prop "constructor" is not supported/],
     ["list-invalid-style", /style must be an object/],
     ["component-list-invalid-mixed", /State-backed list component ItemList must receive its mapped prop from local state at every call/],
     ["list-invalid-alias-reuse", /Keyed list local "rows" must be rendered exactly once/],
@@ -1474,7 +1475,7 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
   }
 })
 
-test("specializes primitive prop defaults in keyed row components", async t => {
+test("specializes analyzable prop defaults and rest props in keyed rows", async t => {
   const fixture = new URL("./fixtures/keyed-component-default", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/keyed-component-default/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -1484,10 +1485,11 @@ test("specializes primitive prop defaults in keyed row components", async t => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/keyed-component-default/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/keyed-component-default/.kudzu/pages/index.mjs", import.meta.url), "utf8")
-  assert.match(html, /<li data-id="1" data-tone="quiet">/)
+  assert.match(html, /<li data-id="1" class="tree" data-kind="default" aria-label="Tree row" data-k-(?:on|native)-click[^>]*data-tone="quiet" title="row" style="color:forestgreen;opacity:0\.8">/)
   assert.match(html, />Oak<template data-k-list-text-end/)
+  assert.match(html, /<small>static \/ typed<\/small>/)
   assert.doesNotMatch(component, /_jsx\(Row|from ["']react["']/)
-  assert.match(component, /__kList\(.*"data-tone": "quiet"/s)
+  assert.match(component, /__kList\(.*className: "tree".*"data-kind": "default".*"aria-label": "Tree row".*"data-tone": "quiet"/s)
 })
 
 test("compiles mount effects to route-specific ESM", async t => {
@@ -2082,7 +2084,7 @@ test("rejects non-literal specialized component prop defaults", async t => {
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /Reducer-dispatch component prop defaults must be primitive literals/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Reducer-dispatch component prop defaults must be directly serializable primitive, plain-object, or array literals/)
 })
 
 test("rejects reducer component local state outside direct keyed rows", async t => {

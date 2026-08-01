@@ -60,7 +60,7 @@ The following are available building blocks, not future vertical roadmaps:
 - Function components, props, children, context, direct bindings, conditions, controlled form properties, refs, and synchronous or async handlers.
 - `useState`, reduced relative-imported `useReducer`, direct dispatch specialization, and reduced Zustand-shaped shared state proven by migration fixtures.
 - Mount and dependency effects with cleanup, route/layout lifetimes, conditional/keyed ownership, stale-write isolation, and relative TypeScript Workers.
-- Keyed local-state and imported static collections, pure selectors, nested direct-property lists, recursive row specialization, analyzable specialized prop spreads, forwarded JSX children, latest-item handlers, row state/effects/refs, and stable keyed identity.
+- Keyed local-state and imported static collections, pure selectors, nested direct-property lists, recursive row specialization, analyzable specialized prop spreads, serializable literal defaults, direct intrinsic rest forwarding, forwarded JSX children, latest-item handlers, row state/effects/refs, and stable keyed identity.
 - Complete-document native fallback and optional shared-layout navigation groups with parameter initialization, finite prefetch caching, focus, history, cleanup, and independent capability output.
 - React-shaped SVG presentation attributes, direct `clsx` lowering, relative TypeScript handler helpers, and source-located diagnostics.
 
@@ -91,11 +91,10 @@ This queue orders the next investigations by general migration value. Start only
 
 Investigate common component boundaries that currently force source restructuring:
 
-- non-primitive destructured defaults and rest where values remain analyzable;
 - exported and reused row/component functions;
 - common `forwardRef` and `useId` authoring shapes.
 
-Direct inline object spreads, direct `const` object spreads declared in the calling component, source-order overrides, and JSX children forwarded through specialized collection wrappers and keyed rows are complete. Dynamic/computed spread sources remain rejected with source diagnostics.
+Direct inline object spreads, direct `const` object spreads resolved through calling-component scopes, source-order overrides, directly serializable object/array defaults, direct intrinsic rest forwarding, and JSX children forwarded through specialized collection wrappers and keyed rows are complete. Dynamic/computed spread sources, computed defaults, indirect or repeated rest use, and prototype-sensitive rest properties remain rejected with source diagnostics.
 
 Acceptance: the fixture preserves component structure, static routes remain JavaScript-free, and no component function survives in the browser.
 
