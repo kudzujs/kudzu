@@ -10,11 +10,11 @@ Kudzu is designed so ordinary common React-shaped TSX can migrate with minimal s
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**0.7.8:** Static collection fast paths. Compiler-owned static filters reuse validated item metadata and detached row prototypes, making 1,000-row filtering match Vue and restoring filtered rows faster than React, Vue, and Svelte in the matched benchmark. See [release notes](./RELEASES.md#078---static-collection-fast-paths).
+**0.7.9:** Keyed-row prop defaults. Same-file and relative keyed row components retain destructured primitive literal defaults, with missing props substituted at compile time and no new browser runtime. See [release notes](./RELEASES.md#079---keyed-row-prop-defaults).
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
-Development target: [Goal A static business applications](./GOAL_A.md)
+Development direction: [React migration roadmap](./MIGRATION_ROADMAP.md)
 
 ## Install
 
@@ -465,7 +465,7 @@ Initial child rows remain complete HTML. Kudzu stores one child row prototype, i
 
 In the matched 100-parent/1,000-child fixture, Kudzu measured 1.3/0.4/5.0/0.7 ms for child update and condition change, child reverse, parent reverse, and parent removal. Hand-written Astro/native measured 0.5/0.4/3.9/0.2 ms, Svelte 2.7/1.2/6.7/1.3 ms, Vue 4.9/2.5/6.1/2.2 ms, and React 11.8/5.0/8.2/4.4 ms. Kudzu and Astro emit initial rows while the CSR targets do not, so artifact sizes are not architecture-equivalent.
 
-Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. Collections must remain anchored to local array state or a supported static named import; inline callbacks accept one or two identifier parameters, and row roots must be intrinsic JSX or supported same-file/relative components with `key={item.<field>}` or `key={index}`. State-backed list wrappers use one destructured props parameter, an intrinsic return root, no effects, and a direct local-state prop. Whole-item, computed, nested, derived, `__proto__`, `prototype`, and `constructor` effect dependencies are rejected. A collection alias may only be rendered once and cannot be read by other JavaScript. Collection callbacks and derived expressions must be pure and synchronous: supported reads, operators, templates, approved read-only methods, deterministic `Math`, and primitive conversion compile; imported callbacks, browser globals, promises, mutation, arbitrary calls, and prototype-sensitive properties fail. Lazy or dynamic keyed-row state initializers, non-`null` refs, callback refs, package/namespace/star row imports, same-file exported rows, reusable aliases, prop spreads/defaults/rest, children, fragments, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
+Each item must be an ordinary plain object with a unique string or finite-number key; nested data may contain only JSON-safe arrays, ordinary plain objects, and primitive values. Null-prototype objects are rejected to preserve JSON round-trip parity. Collections must remain anchored to local array state or a supported static named import; inline callbacks accept one or two identifier parameters, and row roots must be intrinsic JSX or supported same-file/relative components with `key={item.<field>}` or `key={index}`. Specialized keyed row components accept missing destructured string, finite-number, boolean, or `null` props with literal defaults. State-backed list wrappers use one destructured props parameter, an intrinsic return root, no effects, and a direct local-state prop. Whole-item, computed, nested, derived, `__proto__`, `prototype`, and `constructor` effect dependencies are rejected. A collection alias may only be rendered once and cannot be read by other JavaScript. Collection callbacks and derived expressions must be pure and synchronous: supported reads, operators, templates, approved read-only methods, deterministic `Math`, and primitive conversion compile; imported callbacks, browser globals, promises, mutation, arbitrary calls, and prototype-sensitive properties fail. Lazy or dynamic keyed-row state initializers, non-`null` refs, callback refs, package/namespace/star row imports, same-file exported rows, reusable aliases, prop spreads/rest, non-primitive defaults, children, fragments, and `dangerouslySetInnerHTML` remain unsupported. Keyed rows must be placed inside an explicit `<tbody>`, `<thead>`, or `<tfoot>`.
 
 The focused wrapper fixture emits 1,393 B raw / 500 B gzip HTML and 10,719 B raw / 4,665 B gzip JavaScript across its route capabilities. After one warm-up, seven clean builds measured 314.1, 325.3, 322.3, 327.2, 336.1, 322.4, and 315.0 ms, with a 322.4 ms median.
 
@@ -674,18 +674,21 @@ Supported:
 - Layout- and route-lifetime effect mounts in navigation groups
 - Conditional/keyed DOM-owned effects in navigation groups
 
-Not implemented yet:
+Selected current migration limits:
 
-- Reusable keyed-list aliases
-- Arbitrary, imported, mutating, or asynchronous collection callbacks
-- Lazy/dynamic keyed-row state initializers and callback refs
-- Server actions and request-time SSR
-- React package/runtime/ecosystem compatibility or React islands
-- HMR and framework DevTools
+- Common prop spreads/rest, wrapper `children` forwarding, `forwardRef`, and `useId` still need fixture-driven component specialization.
+- Hookful non-keyed imported components and pure lazy state/reducer initializers remain narrower than ordinary React.
+- Reusable collection aliases, computed child collections, imported pure transforms, and common immutable pagination/sorting forms need failing fixtures before expansion.
+- Effect dependencies remain limited to directly analyzable primitive signals and supported keyed-item properties.
+- Conditional/keyed ranges inside SVG and router-shaped package source remain separate compatibility work.
+- Arbitrary, mutating, asynchronous, or package collection callbacks remain deliberate static-analysis boundaries.
+- Server actions, request-time SSR, a React runtime/ecosystem layer, React islands, and a default SPA router are non-goals.
+
+See the [active fixture queue](./MIGRATION_ROADMAP.md#active-fixture-queue) for development order. Unsupported syntax is not automatically backlog work; a real React migration fixture must fail first.
 
 ## Benchmarks
 
-### Goal A Commerce Journey
+### Goal A Validation Fixture: Commerce Journey
 
 The matched fixture covers home, category, product, cart, checkout, and account routes with complete initial HTML, shared application layout state, product options, optimistic cart success and rejection, accessible errors, rollback, and product-to-cart navigation. Kudzu, React + Vite, Next.js, Nuxt, and SvelteKit render the same tested content and interactions.
 

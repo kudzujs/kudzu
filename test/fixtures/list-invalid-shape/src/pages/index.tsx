@@ -1,7 +1,7 @@
 import { useState } from "@kudzujs/core"
 
-function Row({ name = "Unknown" }: { name?: string }) {
-  return <li>{name}</li>
+function Row({ name, ...rest }: { name: string }) {
+  return <li>{name}{Object.keys(rest).length}</li>
 }
 
 export default function InvalidListPage() {

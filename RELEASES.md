@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.7.9 - Keyed-row prop defaults
+
+Kudzu 0.7.9 lets ordinary keyed row components retain destructured primitive literal prop defaults instead of restructuring every call site.
+
+### New in 0.7.9
+
+- Same-file and relative-imported keyed row components accept string, finite-number, boolean, and `null` defaults.
+- Missing props receive their default literals during existing component specialization.
+- The component call lowers to intrinsic keyed JSX; React imports and the component call do not enter browser output.
+- Rest and nested destructuring remain source-diagnosed, while object, array, computed, and call defaults remain rejected.
+- No browser runtime branch or shared asset bytes are added.
+- The product documents now define commerce and realtime dashboards as validation fixtures under one general React migration roadmap, not separate product verticals.
+
+### Boundary
+
+This release supports primitive literal defaults on compiler-specialized keyed rows. General prop spreads, rest bindings, non-primitive defaults, specialized `children`, `forwardRef`, and `useId` remain fixture-driven composition work.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.9
+```
+
 ## 0.7.8 - Static collection fast paths
 
 Kudzu 0.7.8 specializes compiler-owned static `filter` collections so repeated category changes avoid general keyed-list validation and reconciliation.

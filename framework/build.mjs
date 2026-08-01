@@ -3382,7 +3382,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   const substitutions = new Map()
   const acceptedProps = new Set()
   for (const element of component.parameters[0].name.elements) {
-    if (element.dotDotDotToken || !ts.isIdentifier(element.name) || (element.initializer && label === "Keyed list")) fail(element, `${label} component props cannot use rest, defaults, or nested destructuring`)
+    if (element.dotDotDotToken || !ts.isIdentifier(element.name)) fail(element, `${label} component props cannot use rest or nested destructuring`)
     if (element.initializer && !isPrimitiveDefaultLiteral(element.initializer)) fail(element.initializer, `${label} component prop defaults must be primitive literals`)
     const prop = (element.propertyName ?? element.name).text
     acceptedProps.add(prop)
