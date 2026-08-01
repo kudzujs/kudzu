@@ -213,6 +213,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasComplexListRowState = plans.some(plan => plan.lists.some(list => list.rowStates?.some(state => state.initialValue !== null && typeof state.initialValue === "object")))
   const hasNestedLists = plans.some(plan => plan.lists.some(list => list.ownerField))
   const hasCollectionSelectors = plans.some(plan => plan.lists.some(list => list.selector))
+  const hasStaticCollections = plans.some(plan => plan.lists.some(list => list.static))
   const hasListIndexes = plans.some(plan => plan.lists.some(list => list.indexed))
   const hasListStableFastPaths = plans.some(plan => plan.lists.some(list => !list.children && !list.ownerField && list.key !== null && !list.indexed && !list.reducer && !list.selector))
   const hasGeneralListRowHooks = hasListRowRefs || hasComplexListRowState || plans.some(plan => plan.lists.some(list => list.ownerField && (list.rowStates?.length || list.rowRefs?.length)))
@@ -343,6 +344,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_COMPLEX_LIST_ROW_STATE__: String(hasComplexListRowState),
       __KUDZU_NESTED_LISTS__: String(hasNestedLists),
       __KUDZU_COLLECTION_SELECTORS__: String(hasCollectionSelectors),
+      __KUDZU_STATIC_COLLECTIONS__: String(hasStaticCollections),
       __KUDZU_LIST_INDEXES__: String(hasListIndexes),
       __KUDZU_LIST_STABLE_FAST_PATHS__: String(hasListStableFastPaths)
     })

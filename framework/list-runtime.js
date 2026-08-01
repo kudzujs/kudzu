@@ -47,6 +47,7 @@ function mountLists(root) {
     const templateRoot = __KUDZU_NESTED_LISTS__ ? nested.templateRoot : start.content.firstElementChild
     if (__KUDZU_LIST_ROW_HOOKS__) for (let index = 0; index < roots.length; index++) initializeGeneralRowHooks(descriptor, descriptor.keys[index], roots[index], nested?.owner)
     const parts = listItemPartPlan(templateRoot, descriptor.nested)
+    const staticRows = __KUDZU_STATIC_COLLECTIONS__ && descriptor.static && parts.directFill ? new Map() : undefined
     for (const root of roots) {
       if (__KUDZU_LIST_CONDITIONS__ && descriptor.conditions) {
         if (__KUDZU_NESTED_LISTS__ && descriptor.ownerField) itemPartPlans.set(root, parts)
@@ -56,11 +57,16 @@ function mountLists(root) {
     }
     if (__KUDZU_LIST_SEEDS__ && descriptor.seed && !browserState.has(descriptor.state)) browserState.set(descriptor.state, roots.map((root, index) => seedListItem(root, descriptor, index)))
     const items = browserState.get(descriptor.state)
+    const staticEntries = __KUDZU_STATIC_COLLECTIONS__ && descriptor.static && descriptor.key !== null && !descriptor.indexed && descriptor.selector?.every(operation => operation[0] === "filter") && parts.directFill
+      ? cacheStaticListEntries(descriptor, items)
+      : undefined
     const list = {
       start,
       descriptor,
       ...(__KUDZU_NESTED_LISTS__ ? { templateRoot, ...(nested.childPrototypes?.size ? { childPrototypes: nested.childPrototypes } : {}) } : {}),
       parts,
+      ...(__KUDZU_STATIC_COLLECTIONS__ && staticRows ? { staticRows } : {}),
+      ...(__KUDZU_STATIC_COLLECTIONS__ && staticEntries ? { staticEntries, staticPositions: staticEntries.positions } : {}),
       seedFields: __KUDZU_LIST_SEEDS__ && descriptor.seed && Object.keys(descriptor.seed),
       roots: new Map(roots.map((node, index) => [keyToken(descriptor.keys[index]), node])),
       ...(__KUDZU_LIST_STABLE_FAST_PATHS__ ? { orderedRoots: roots } : {}),
@@ -132,6 +138,7 @@ function updateList(list) {
   if (__KUDZU_NESTED_LISTS__ && list.descriptor.children) validateChildLists(items, list.descriptor.children)
   if (list.descriptor.reducer && !list.descriptor.selector && list.descriptor.key !== null && list.items && updateReducerList(list, items)) return
   if (__KUDZU_LIST_STABLE_FAST_PATHS__ && list.descriptor.key !== null && !list.descriptor.indexed && !list.descriptor.selector && !list.descriptor.reducer && !list.descriptor.children && !list.descriptor.ownerField && list.items && updateStableList(list, items)) return
+  if (__KUDZU_STATIC_COLLECTIONS__ && list.staticEntries && updateStaticFilterList(list, items)) return
   const entries = []
   const keys = new Set()
   const seen = new Set()
@@ -188,14 +195,18 @@ function updateList(list) {
   for (const { item, index, key, token, value } of entries) {
     let node = list.roots.get(token)
     if (!node) {
-      node = (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
-      if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
+      const staticRoot = __KUDZU_STATIC_COLLECTIONS__ && list.staticRows?.get(token)?.cloneNode(true)
+      node = staticRoot ?? (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
+      if (!staticRoot && node?.dataset.kListRoot !== list.descriptor.id) node = undefined
       if (!node) throw new Error("Keyed list template has no root element")
       node.removeAttribute("data-k-list-root")
       if (__KUDZU_NESTED_LISTS__ && list.childPrototypes) childPrototypes.set(node, list.childPrototypes)
       if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner)
-      mapListItemParts(list.parts, node, list.descriptor.nested)
-      fillListItem(node, item, list.descriptor.nested, index)
+      if (staticRoot) listItems.set(node, item)
+      else if (list.parts.directFill) {
+        listItems.set(node, item)
+        fillStructuralListParts(list.parts, node, item)
+      } else fillListItem(node, item, list.descriptor.nested, index, mapListItemParts(list.parts, node, list.descriptor.nested))
       additions.append(node)
       added = true
     } else if ((referenceOnly ? listItems.get(node) !== item : list.values.get(token) !== value) || list.descriptor.indexed || list.descriptor.key === null) {
@@ -213,20 +224,38 @@ function updateList(list) {
     } else node.remove()
     if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) deleteRowStates(list.descriptor, ownershipPaths.get(node))
   }
+  let ordered = false
   if (added) {
-    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) {
-      const addedNodes = [...additions.childNodes]
-      parent.insertBefore(additions, list.boundary)
-      for (const node of addedNodes) mountDom(node)
+    const addedNodes = __KUDZU_LIST_MOUNTS__ && list.descriptor.mount ? [...additions.childNodes] : undefined
+    let seenAddition = false
+    let interleaved = false
+    for (const [, node] of next) {
+      if (node.parentNode === additions) seenAddition = true
+      else if (seenAddition) {
+        interleaved = true
+        break
+      }
+    }
+    if (interleaved) {
+      const run = parent.ownerDocument.createDocumentFragment()
+      for (const [, node] of next) {
+        if (node.parentNode === additions) run.append(node)
+        else if (run.firstChild) parent.insertBefore(run, node)
+      }
+      if (run.firstChild) parent.insertBefore(run, list.boundary)
+      ordered = true
     } else parent.insertBefore(additions, list.boundary)
+    if (addedNodes) for (const node of addedNodes) mountDom(node)
     list.container ??= parent
   }
   let anchor = list.boundary
   let misplaced = 0
-  for (let index = next.length - 1; index >= 0; index--) {
-    const node = next[index][1]
-    if (node.nextSibling !== anchor) misplaced++
-    anchor = node
+  if (!ordered) {
+    for (let index = next.length - 1; index >= 0; index--) {
+      const node = next[index][1]
+      if (node.nextSibling !== anchor) misplaced++
+      anchor = node
+    }
   }
   if (misplaced > next.length / 2) {
     const reordered = parent.ownerDocument.createDocumentFragment()
@@ -244,6 +273,68 @@ function updateList(list) {
   if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots = next.map(([, node]) => node)
   list.values = values
   list.items = items
+}
+
+function updateStaticFilterList(list, items) {
+  const entries = new Array(items.length)
+  for (let index = 0; index < items.length; index++) {
+    const entry = list.staticEntries.get(items[index])
+    if (!entry || !list.roots.has(entry.token) && !list.staticRows.has(entry.token)) return false
+    entries[index] = entry
+  }
+  let selectedIndex = 0
+  for (const [token, node] of list.roots) {
+    const position = list.staticPositions.get(token)
+    while (entries[selectedIndex]?.position < position) selectedIndex++
+    if (entries[selectedIndex]?.token === token) {
+      selectedIndex++
+      continue
+    }
+    list.staticRows.set(token, node)
+    node.remove()
+  }
+  const parent = list.container ?? list.start.parentNode
+  const run = parent.ownerDocument.createDocumentFragment()
+  const next = new Array(entries.length)
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index]
+    let node = list.roots.get(entry.token)
+    if (!node) {
+      node = list.staticRows.get(entry.token).cloneNode(true)
+      listItems.set(node, entry.item)
+      run.append(node)
+    } else if (run.firstChild) parent.insertBefore(run, node)
+    next[index] = [entry.token, node]
+  }
+  if (run.firstChild) parent.insertBefore(run, list.boundary)
+  list.roots = new Map(next)
+  if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots = next.map(([, node]) => node)
+  list.values.clear()
+  list.items = items
+  list.container ??= parent
+  return true
+}
+
+function cacheStaticListEntries(descriptor, items) {
+  if (!Array.isArray(items)) return undefined
+  const entries = new WeakMap()
+  const positions = new Map()
+  const keys = new Set()
+  const seen = new Set()
+  for (let position = 0; position < items.length; position++) {
+    const item = items[position]
+    assertListItem(item)
+    assertListValue(item, seen, true)
+    const key = item[descriptor.key]
+    if (!validListKey(key)) throw new Error(`Keyed list key "${descriptor.key}" must be a string or finite number`)
+    const token = keyToken(key)
+    if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
+    keys.add(token)
+    entries.set(item, { item, key, token, value: item, position })
+    positions.set(token, position)
+  }
+  entries.positions = positions
+  return entries
 }
 
 /* stable-list-fast-path */

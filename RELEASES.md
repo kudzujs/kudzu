@@ -1,5 +1,32 @@
 # Kudzu Releases
 
+## 0.7.8 - Static collection fast paths
+
+Kudzu 0.7.8 specializes compiler-owned static `filter` collections so repeated category changes avoid general keyed-list validation and reconciliation.
+
+### New in 0.7.8
+
+- Static source items, unique keys, source positions, and reference entries validate and cache once when the list mounts.
+- Structural rows removed by a filter become detached prototypes; restoration clones fresh DOM, preserving remount semantics without moving retained keys.
+- Interleaved additions insert only new contiguous runs instead of attaching additions and then reordering the complete list.
+- General local-state lists, dynamic selectors, indexed rows, handlers, effects, refs, and row state retain their existing reconciliation paths.
+- The capability is route-specific and compiles out when no compiler-owned static collection is rendered.
+- The matched route adds 648 B gzip compared with 0.7.7's initial implementation while reducing 500-row restoration from 13.2 ms to 3.6 ms.
+
+### Benchmark
+
+The matched fixture imports 1,000 alternating products, filters to 500, then restores all 1,000 while checking retained and remounted DOM identity. Thirty-one rotating fresh Chrome 150 profiles on an Apple M3 used 4x CPU throttling. Median visible/filter/restore times were Kudzu 37.8/8.4/3.6 ms, React 86.3/12.9/6.2 ms, Vue 54.1/8.4/4.3 ms, and Svelte 61.4/11.7/8.3 ms. React, Vue, and Svelte used Vite CSR shells while Kudzu emitted initial HTML, so visible-row and artifact comparisons are architecture-dependent.
+
+### Boundary
+
+The fast path requires a compiler-owned static source, field keys, filter-only selection, and structural rows without handlers, effects, refs, row state, or index dependencies. It is intended for ordinary catalog-sized collections, not direct rendering of 100,000 or 1,000,000 DOM rows; use pagination or windowing for those workloads.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.8
+```
+
 ## 0.7.7 - Imported memo collections
 
 Kudzu 0.7.7 lets ordinary React migration source filter an imported static catalog through state-dependent `useMemo` while reusing existing keyed-list reconciliation.

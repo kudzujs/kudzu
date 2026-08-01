@@ -2,6 +2,7 @@ import { serializeStyle } from "./style.js"
 import { selectCollection } from "./collection-selector.js"
 
 const signalMarker = Symbol("kudzu.signal")
+const internalStateMarker = Symbol("kudzu.internal-state")
 const setterMarker = Symbol("kudzu.setter")
 const reducerDispatchMarker = Symbol("kudzu.reducerDispatch")
 const reducerStateMarker = Symbol("kudzu.reducerState")
@@ -133,6 +134,7 @@ function createSignal(id, value) {
 function createInternalState(initialValue) {
   const id = nextRenderId("s")
   const signal = createSignal(id, initialValue)
+  signal[internalStateMarker] = true
   renderContext.states[id] = { name: id, initialValue, internal: true, ...(renderContext.scoped ? { lifetime: renderContext.renderScope } : {}) }
   return signal
 }
@@ -811,7 +813,7 @@ async function renderList(node, namespace, selectValue) {
   const ownerTemplate = Boolean(node.ownerField && renderContext.listTemplate)
   const rowList = node.ownerField ? nextRowList() : undefined
   const id = rowList?.id ?? nextRenderId("l")
-  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.selectorStates.length ? { selectorStates: Object.fromEntries(node.selectorStates.map(([name, state]) => [name, state.id])) } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
+  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(node.items[internalStateMarker] ? { static: true } : {}), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.selectorStates.length ? { selectorStates: Object.fromEntries(node.selectorStates.map(([name, state]) => [name, state.id])) } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
   if (ownerTemplate) {
     ownerRoot.descriptor.children ??= []
     ownerRoot.descriptor.children.push({ id, field: node.ownerField, key: node.keyField, ...(node.selector.length ? { selector: node.selector } : {}) })
