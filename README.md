@@ -10,7 +10,7 @@ Kudzu is designed so ordinary common React-shaped TSX can migrate with minimal s
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**0.7.5:** Class composition migration. Direct `clsx` calls compile to ordinary reactive class expressions without shipping the package, and mixed React type imports erase cleanly. See [release notes](./RELEASES.md#075---class-composition-migration).
+**0.7.6:** Zustand-shaped shared stores. Reduced `create(set => ...)` stores compile to persistent application-layout state and direct handler updates without shipping React or Zustand. See [release notes](./RELEASES.md#076---zustand-shaped-shared-stores).
 
 Documentation: [kudzujs.cloud/docs](https://kudzujs.cloud/docs)
 
@@ -77,6 +77,8 @@ export default function Header() {
 Kudzu rewrites supported React imports to its compile-time APIs before evaluating the module; neither the React package nor a compatibility runtime enters the deploy output. Named or aliased `useState`, `useReducer`, `useEffect`, `useRef`, `createContext`, and `useContext` imports compile to their canonical forms. Default and namespace imports may call those APIs as direct members such as `React.useState`, and default, namespace, or named `Fragment` also works. `memo(Component)` is erased to a same-file component. Inline `useCallback(function, literalDependencies)` is erased to its function, while inline synchronous `useMemo` callbacks may return one expression over primitive literals/direct local state or an analyzable `filter`, `map`, `flatMap`, and `Array.from` collection pipeline. Scalar expressions inline into existing bindings; collection pipelines lower to existing keyed-list selectors and preserve row identity. Both hooks require inert literal dependency arrays and complete captured-state dependencies; memo locals cannot be duplicated or captured by nested functions. React classes and side-effect or dynamic React imports remain unsupported. A static route using these forms still emits zero JavaScript.
 
 Direct default or named `clsx` imports compile away for string/number literals, literal arrays, literal object conditions, and conditional expressions. Kudzu lowers those calls to ordinary class expressions, so reactive classes reuse existing bindings without shipping `clsx`; spreads, computed object keys, arbitrary calls, and indirect references remain unsupported.
+
+Migration source may also retain a reduced Zustand store declared as one exported `const` initialized by a named `create` import. The initializer accepts `set`, returns exactly one directly serializable data property plus synchronous actions, and components select one direct property with `state => state.property`. A shared layout must select the store before its routes use it; Kudzu then owns the data as layout state, inlines action updates into existing handler ESM, and ships neither React nor Zustand. Derived selectors, multiple data properties, middleware, `get`, subscriptions, equality functions, persist/devtools wrappers, async actions, helper captures, replacement updates, and indirect action forwarding remain unsupported.
 
 Create `src/pages/index.tsx`:
 

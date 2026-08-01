@@ -22,6 +22,10 @@ declare module "clsx" {
   export default function clsx(...values: unknown[]): string
 }
 
+declare module "zustand" {
+  export function create<T>(initializer: (set: (update: Partial<T> | ((state: T) => Partial<T>)) => void) => T): <U>(selector: (state: T) => U) => U
+}
+
 declare module "*.png" {
   const url: string
   export default url

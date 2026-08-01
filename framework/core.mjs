@@ -73,6 +73,32 @@ export function useReducer(reducer, initialValue, name) {
   return [state, dispatch]
 }
 
+export function __kCreateStore(name, field, initialValue, actions) {
+  return selector => {
+    if (!renderContext) throw new Error("Zustand stores can only be read while rendering a Kudzu component")
+    let store = renderContext.stores.get(name)
+    if (!store) {
+      if (renderContext.scoped && renderContext.renderScope !== "layout") throw new Error(`Zustand store ${JSON.stringify(name)} must be initialized by the shared layout before route components use it`)
+      if (renderContext.listRoot || renderContext.listRowRoot || renderContext.listTemplate) throw new Error(`Zustand store ${JSON.stringify(name)} cannot be initialized inside a keyed row`)
+      const [state] = useState(initialValue, `${name}.${field}`)
+      store = { [field]: state }
+      for (const action of actions) {
+        const marker = () => {
+          throw new Error("Zustand actions are compiled into browser handlers")
+        }
+        Object.defineProperties(marker, {
+          [signalMarker]: { value: true },
+          id: { value: state.id },
+          value: { get: () => state.value }
+        })
+        store[action] = marker
+      }
+      renderContext.stores.set(name, store)
+    }
+    return selector(store)
+  }
+}
+
 export function useParams() {
   if (renderContext?.renderScope === "layout") throw new Error("useParams() is only supported in route scope")
   if (!renderContext?.runtimeParamNames?.length) throw new Error("useParams() requires export const runtimeParams = true on a bracket page")
@@ -368,7 +394,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }

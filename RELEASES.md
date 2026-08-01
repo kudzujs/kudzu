@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.7.6 - Zustand-shaped shared stores
+
+Kudzu 0.7.6 lets reduced React migration source retain a Zustand `create(set => ...)` store across an explicitly configured shared-layout navigation group.
+
+### New in 0.7.6
+
+- One exported store with one directly serializable data property and synchronous capture-free actions compiles to one ordinary layout-lifetime Kudzu state slot.
+- Components select the data or an action with direct forms such as `state => state.quantities` and `state => state.add`.
+- Selected actions inline through existing functional state updates, so repeated same-turn calls observe current logical state and DOM writes still batch.
+- Same-group navigation retains the store and layout DOM while incoming route bindings mount against the current value.
+- Neither React, Zustand, a subscription runtime, nor a generic external-store capability enters the deploy output.
+- The shopping fixture verifies two same-turn additions, product-to-cart retention, removal, layout DOM identity, package erasure, and source diagnostics in Chrome.
+
+### Boundary
+
+The shared layout must initialize the store before route consumers. Derived selectors, multiple data properties, middleware, `get`, subscriptions, equality functions, persist/devtools wrappers, async actions, helper captures, replacement updates, keyed-row initialization, and indirect action forwarding remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.6
+```
+
 ## 0.7.5 - Class composition migration
 
 Kudzu 0.7.5 lets ordinary React source retain common direct `clsx` calls while compiling them to existing static and reactive class paths.

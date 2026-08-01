@@ -1791,6 +1791,94 @@ function normalizeClsxSyntax(sourceFile, factory, context) {
   return ts.visitNode(sourceFile, visitor)
 }
 
+function analyzeZustandStores(sourceFile) {
+  const createNames = new Set()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "zustand") continue
+    const bindings = statement.importClause?.namedBindings
+    if (statement.importClause?.name || !bindings || !ts.isNamedImports(bindings)) throw sourceNodeError(statement, sourceFile, "Zustand migration input requires a named create import")
+    for (const entry of bindings.elements) {
+      if (entry.isTypeOnly) continue
+      if ((entry.propertyName ?? entry.name).text !== "create") throw sourceNodeError(entry, sourceFile, "Only Zustand create is supported")
+      createNames.add(entry.name.text)
+    }
+  }
+  const stores = new Map()
+  if (!createNames.size) return stores
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement) || !statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer || !ts.isCallExpression(declaration.initializer) || !ts.isIdentifier(declaration.initializer.expression) || !createNames.has(declaration.initializer.expression.text)) continue
+      const callback = declaration.initializer.arguments[0]
+      if (declaration.initializer.arguments.length !== 1 || !callback || (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) || callback.parameters.length !== 1 || !ts.isIdentifier(callback.parameters[0].name) || callback.asteriskToken || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(declaration.initializer, sourceFile, "Zustand create() requires one synchronous initializer with one set parameter")
+      const body = unwrapExpression(callback.body)
+      if (!ts.isObjectLiteralExpression(body)) throw sourceNodeError(callback.body, sourceFile, "Zustand create() initializer must return one object literal")
+      const data = []
+      const actions = new Map()
+      for (const property of body.properties) {
+        if (!ts.isPropertyAssignment(property) || !property.name || !(ts.isIdentifier(property.name) || ts.isStringLiteral(property.name))) throw sourceNodeError(property, sourceFile, "Zustand store entries must be ordinary properties")
+        const name = property.name.text
+        const value = unwrapExpression(property.initializer)
+        if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) actions.set(name, value)
+        else data.push({ name, value })
+      }
+      if (data.length !== 1 || !isSerializableStateLiteral(data[0].value)) throw sourceNodeError(body, sourceFile, "Zustand migration stores require exactly one directly serializable data property")
+      if (!actions.size) throw sourceNodeError(body, sourceFile, "Zustand migration stores require at least one action")
+      for (const [name, action] of actions) {
+        if (action.asteriskToken || action.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(action, sourceFile, `Zustand action ${JSON.stringify(name)} must be synchronous`)
+        const capture = [...nativeCaptureNames(action, new Map())].find(entry => entry !== callback.parameters[0].name.text)
+        if (capture) throw sourceNodeError(action, sourceFile, `Zustand action ${JSON.stringify(name)} cannot capture ${JSON.stringify(capture)}`)
+        const validateAction = node => {
+          if (ts.isAwaitExpression(node) || ts.isYieldExpression(node) || ts.isNewExpression(node)) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} must be synchronous`)
+          if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["then", "catch", "finally"].includes(node.expression.name.text)) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} cannot schedule asynchronous updates`)
+          if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === callback.parameters[0].name.text && !isShadowedIdentifier(node.expression, action)) {
+            if (nearestFunction(node) !== action) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} must call set directly`)
+            if (node.arguments.length !== 1) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} set() requires exactly one partial update`)
+          }
+          ts.forEachChild(node, validateAction)
+        }
+        validateAction(action.body)
+      }
+      stores.set(declaration.name.text, { name: declaration.name.text, setName: callback.parameters[0].name.text, field: data[0].name, initialValue: data[0].value, actions, declaration })
+    }
+  }
+  const visit = node => {
+    const recognized = ts.isIdentifier(node) && ts.isCallExpression(node.parent) && node.parent.expression === node && [...stores.values()].some(store => store.declaration.initializer === node.parent)
+    if (ts.isIdentifier(node) && createNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile) && !recognized) throw sourceNodeError(node, sourceFile, "Zustand create must directly initialize an exported const store")
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return stores
+}
+
+function normalizeZustandMigrationSyntax(sourceFile, factory, context) {
+  const stores = analyzeZustandStores(sourceFile)
+  if (!stores.size) {
+    const declaration = sourceFile.statements.find(statement => ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "zustand" && !statement.importClause?.isTypeOnly)
+    if (declaration) throw sourceNodeError(declaration, sourceFile, "Zustand create must directly initialize an exported const store")
+    return sourceFile
+  }
+  const identity = name => `${relative(sourceDirectory, sourceFile.fileName).replaceAll(sep, "/")}#${name}`
+  const visitor = node => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && stores.has(node.name.text)) {
+      const store = stores.get(node.name.text)
+      return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createCallExpression(factory.createIdentifier("__kCreateStore"), undefined, [
+        factory.createStringLiteral(identity(store.name)),
+        factory.createStringLiteral(store.field),
+        store.initialValue,
+        factory.createArrayLiteralExpression([...store.actions.keys()].map(name => factory.createStringLiteral(name)))
+      ]))
+    }
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "zustand") return undefined
+    return ts.visitEachChild(node, visitor, context)
+  }
+  const normalized = ts.visitNode(sourceFile, visitor)
+  const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports([factory.createImportSpecifier(false, undefined, factory.createIdentifier("__kCreateStore"))])), factory.createStringLiteral("@kudzujs/core"))
+  const statements = [...normalized.statements]
+  statements.splice(statements.findLastIndex(statement => ts.isImportDeclaration(statement)) + 1, 0, declaration)
+  return factory.updateSourceFile(normalized, statements)
+}
+
 function normalizeReactMigrationSyntax(sourceFile, factory, context) {
   const supported = new Set(["createContext", "useContext", "useEffect", "useReducer", "useRef", "useState"])
   const erased = new Set(["memo", "useCallback", "useMemo"])
@@ -2066,6 +2154,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
+    sourceFile = normalizeZustandMigrationSyntax(sourceFile, factory, context)
+    ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     rejectOrdinaryWorkerImports(sourceFile, file, sourceFiles)
@@ -2079,6 +2169,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         ts.setParentRecursive(imported, false)
         imported = normalizeReactMigrationSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
+        imported = normalizeZustandMigrationSyntax(imported, factory, context)
+        ts.setParentRecursive(imported, false)
         imported = normalizeRenderControlFlow(imported, factory, context)
         ts.setParentRecursive(imported, false)
         importedSources.set(target, imported)
@@ -2087,6 +2179,16 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
     const settersByFunction = new Map()
     const reducersByFunction = new Map()
+    const zustandStores = new Map()
+    const resolvedZustandStore = entry => {
+      const exportName = entry.kind === "default" ? "default" : entry.imported
+      const key = `${entry.target}:${exportName}`
+      if (zustandStores.has(key)) return zustandStores.get(key)
+      const targetSource = parseSourceFile(entry.target, sourceIndex.get(entry.target))
+      const store = analyzeZustandStores(targetSource).get(exportName)
+      zustandStores.set(key, store)
+      return store
+    }
     const functions = new Map()
     const components = new Map()
     const contexts = new Set()
@@ -2111,6 +2213,26 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
         const callName = ts.isIdentifier(node.initializer.expression) ? node.initializer.expression.text : ""
+        if (ts.isIdentifier(node.name) && callName && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace") {
+          const storeImport = importBindings.get(callName)
+          const store = resolvedZustandStore(storeImport)
+          if (store) {
+            const selector = node.initializer.arguments[0]
+            if (node.initializer.arguments.length !== 1 || !selector || !ts.isArrowFunction(selector) || selector.parameters.length !== 1 || !ts.isIdentifier(selector.parameters[0].name) || !ts.isPropertyAccessExpression(unwrapExpression(selector.body)) || !ts.isIdentifier(unwrapExpression(selector.body).expression) || unwrapExpression(selector.body).expression.text !== selector.parameters[0].name.text) throw sourceNodeError(node.initializer, sourceFile, "Zustand selectors must be direct arrows such as state => state.quantities")
+            const selected = unwrapExpression(selector.body).name.text
+            const owner = nearestFunction(node)
+            if (!owner) throw sourceNodeError(node, sourceFile, "Zustand stores cannot be used outside a Kudzu component")
+            const setters = settersByFunction.get(owner) ?? new Map()
+            if (selected === store.field) setters.set(`__kStoreState_${node.name.text}`, node.name.text)
+            else if (store.actions.has(selected)) {
+              setters.set(node.name.text, node.name.text)
+              const reducers = reducersByFunction.get(owner) ?? new Map()
+              reducers.set(node.name.text, { state: node.name.text, store, action: selected })
+              reducersByFunction.set(owner, reducers)
+            } else throw sourceNodeError(unwrapExpression(selector.body).name, sourceFile, `Zustand store ${JSON.stringify(store.name)} has no supported property ${JSON.stringify(selected)}`)
+            settersByFunction.set(owner, setters)
+          }
+        }
         if (callName === "useReducer") {
           if (!ts.isArrayBindingPattern(node.name)) throw sourceNodeError(node.name, sourceFile, "useReducer() must use [state, dispatch] identifier destructuring")
           const [stateElement, dispatchElement] = node.name.elements
@@ -3717,7 +3839,7 @@ function compileNativeCallback(expression, setters, reducers, factory, entries, 
   const allCaptures = nativeCaptureNames(expression, setters)
   const usedReducers = referencedReducerDispatches(expression.body, reducers, expression)
   const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
-  imports.push(...[...usedReducers].map(name => reducers.get(name).import))
+  imports.push(...[...usedReducers].map(name => reducers.get(name).import).filter(Boolean))
   const captures = new Set([...allCaptures].filter(name => !importBindings.has(name)))
   for (const entry of imports) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
@@ -4544,13 +4666,17 @@ function printNativeHandler({ exportName, expression, captures, setters, reducer
   const transformer = context => root => {
     const visitor = node => {
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && reducers.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
+        const reducer = reducers.get(node.expression.text)
+        if (reducer.store) return zustandActionDispatch(factory, reducer, node.arguments.map(argument => ts.visitNode(argument, visitor)))
         if (node.arguments.length !== 1) throw sourceNodeError(node, expression.getSourceFile(), "Reducer dispatches require exactly one action")
-        return reducerDispatch(factory, reducers.get(node.expression.text), ts.visitNode(node.arguments[0], visitor))
+        return reducerDispatch(factory, reducer, ts.visitNode(node.arguments[0], visitor))
       }
       if (ts.isShorthandPropertyAssignment(node) && reducers.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (reducers.get(node.name.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
         return factory.createPropertyAssignment(node.name, reducerReference(factory, reducers.get(node.name.text)))
       }
       if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (reducers.get(node.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
         return reducerReference(factory, reducers.get(node.text))
       }
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
@@ -4665,8 +4791,41 @@ function reducerReference(factory, reducer) {
 }
 
 function reducerDispatch(factory, reducer, action) {
+  if (reducer.store) return zustandActionDispatch(factory, reducer, [action])
   const previous = factory.createUniqueName("__kPrevious")
   const update = factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, previous)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createCallExpression(factory.createIdentifier(reducer.reducer), undefined, [previous, action]))
+  return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(reducer.state), update])
+}
+
+function zustandActionDispatch(factory, reducer, args) {
+  const previous = factory.createUniqueName("__kPrevious")
+  const current = factory.createUniqueName("__kStore")
+  const updateValue = factory.createUniqueName("__kUpdate")
+  const partial = factory.createUniqueName("__kPartial")
+  const action = factory.createUniqueName("__kAction")
+  const set = factory.createIdentifier(reducer.store.setName)
+  const merge = factory.createExpressionStatement(factory.createBinaryExpression(current, factory.createToken(ts.SyntaxKind.EqualsToken), factory.createObjectLiteralExpression([
+    factory.createSpreadAssignment(current),
+    factory.createSpreadAssignment(partial)
+  ])))
+  const setBody = factory.createBlock([
+    factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(partial, undefined, undefined, factory.createConditionalExpression(
+      factory.createBinaryExpression(factory.createTypeOfExpression(updateValue), factory.createToken(ts.SyntaxKind.EqualsEqualsEqualsToken), factory.createStringLiteral("function")),
+      undefined,
+      factory.createCallExpression(updateValue, undefined, [current]),
+      undefined,
+      updateValue
+    ))], ts.NodeFlags.Const)),
+    merge
+  ], true)
+  const body = factory.createBlock([
+    factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(current, undefined, undefined, factory.createObjectLiteralExpression([factory.createPropertyAssignment(reducer.store.field, previous)]))], ts.NodeFlags.Let)),
+    factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(set, undefined, undefined, factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, updateValue)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), setBody))], ts.NodeFlags.Const)),
+    factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(action, undefined, undefined, synthesizeTree(reducer.store.actions.get(reducer.action)))], ts.NodeFlags.Const)),
+    factory.createExpressionStatement(factory.createCallExpression(action, undefined, args)),
+    factory.createReturnStatement(factory.createPropertyAccessExpression(current, reducer.store.field))
+  ], true)
+  const update = factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, previous)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), body)
   return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(reducer.state), update])
 }
 

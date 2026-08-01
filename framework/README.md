@@ -6,6 +6,8 @@ Migration source may retain conventional `react` imports for supported named or 
 
 Direct `clsx` calls over literal strings, numbers, arrays, object conditions, and conditional expressions are similarly lowered to ordinary concatenation and conditional expressions. The package import is erased, and dynamic classes continue through the existing binding compiler without serializing or shipping the `clsx` function.
 
+Reduced Zustand migration stores lower to one ordinary layout-lifetime state slot. The compiler accepts one exported `create(set => ({ data, ...actions }))` store with one serializable data property, direct property selectors, and synchronous capture-free actions using one-argument merge-form `set`; selected actions reuse the reducer-style functional update compiler, so same-turn calls observe current logical state and DOM writes still batch. The shared layout must initialize the store before route consumers, outside keyed rows. No Zustand import, store subscription runtime, React hook, or generic external-store capability is emitted.
+
 - `build.mjs`: TSX compilation, static, `getStaticPaths`, and runtime-fallback routes, base paths, CSS collection, post-build hooks, behavior extraction, static HTML output, and the development server.
 - `core.mjs`: server-side JSX rendering, state slots, context providers, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.

@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.5/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.6/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -33,9 +33,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /<head>.*<script type="module"[^>]+kudzu\.js.*<\/head><body/s)
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.5"/)
-  assert.match(release, /Kudzu 0\.7\.5.*Compose the class.*Drop the runtime/s)
-  assert.match(release, /CLASS COMPOSITION MIGRATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.5/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.6"/)
+  assert.match(release, /Kudzu 0\.7\.6.*Keep the store.*Drop the runtime/s)
+  assert.match(release, /ZUSTAND-SHAPED SHARED STORES.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.6/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1181,6 +1181,47 @@ test("migrates aliased and member React hooks from a Vite-shaped app", async t =
   }
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runReactViteAppBrowserTest(fixture, chrome)
+})
+
+test("compiles a Zustand-shaped store into shared layout state", async t => {
+  const fixture = new URL("./fixtures/zustand-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/zustand-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/zustand-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const output = new URL("./fixtures/zustand-migration/dist/", import.meta.url)
+  const store = await readFile(new URL("./fixtures/zustand-migration/.kudzu/store.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/zustand-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  const emitted = (await Promise.all((await readdir(output, { recursive: true })).filter(file => /\.(?:html|js)$/.test(file)).map(file => readFile(new URL(file, output), "utf8")))).join("\n")
+  assert.match(store, /__kCreateStore\("store\.ts#useCart", "quantities", \{\}, \["add", "remove"\]\)/)
+  assert.doesNotMatch(emitted, /(?:from\s*|import\s*\()["'](?:react|zustand)["']/)
+  for (const route of plan.routes) assert.deepEqual(route.states, [{ id: "ls0", name: "store.ts#useCart.quantities", initialValue: {}, lifetime: "layout" }])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runZustandMigrationBrowserTest(fixture, chrome)
+})
+
+test("rejects derived Zustand selectors", async t => {
+  const fixture = new URL("./fixtures/zustand-invalid", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/zustand-invalid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/zustand-invalid/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:4:\d+ Zustand selectors must be direct arrows such as state => state\.quantities/)
+})
+
+test("rejects captured Zustand action helpers", async t => {
+  const fixture = new URL("./fixtures/zustand-invalid-action", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/zustand-invalid-action/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/zustand-invalid-action/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Zustand action "add" cannot capture "increment"/)
 })
 
 test("rejects side-effect React imports", async t => {
@@ -2495,7 +2536,7 @@ http.createServer((request, response) => {
       })()
     `, port + 1, new URL(".chrome-worker-profile", output))
     assert.notEqual(real.workerError, "true")
-    assert.ok(Number(real.generated) >= 1130)
+    assert.ok(Number(real.generated) >= 1130, `generated ${real.generated ?? "missing"}, elapsed ${real.elapsed ?? "missing"}, worker error ${real.workerError ?? "none"}`)
     assert.equal(real.batchSize, "10")
     assert.equal(real.buffered, "128")
     assert.equal(real.points, "24")
@@ -3513,6 +3554,58 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-react-vite-app-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runZustandMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const waitFor = async predicate => {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (predicate()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error("timeout")
+}
+try {
+  const header = document.querySelector("[data-cart-header]")
+  document.querySelector("[data-add]").click()
+  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "2")
+  document.querySelector('a[href="/cart"]').click()
+  await waitFor(() => document.querySelector('[data-route="cart"]') && document.querySelector("[data-oak-quantity]").textContent === "2")
+  if (document.querySelector("[data-cart-header]") !== header) throw new Error("shared-state")
+  document.querySelector("[data-remove]").click()
+  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "0" && document.querySelector("[data-oak-quantity]").textContent === "0")
+  document.querySelector('a[href="/"]').click()
+  await waitFor(() => document.querySelector('[data-route="product"]'))
+  if (document.querySelector("[data-cart-header]") !== header || document.querySelector("[data-cart-count]").textContent !== "0") throw new Error("layout-lifetime")
+  document.body.dataset.zustandMigrationTest = "pass"
+} catch (error) {
+  document.body.dataset.zustandMigrationTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const pathname = new URL(request.url, "http://localhost").pathname
+  const file = path.join(root, pathname === "/" ? "index.html" : path.extname(pathname) ? pathname.slice(1) : pathname.slice(1) + "/index.html")
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-zustand-migration-test="pass"/, browser.stdout.match(/<div class="error-code">([^<]+)/)?.[1] ?? browser.stderr)
   } finally {
     server.kill()
   }
