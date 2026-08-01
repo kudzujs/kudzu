@@ -100,7 +100,7 @@ export function ComponentsSection() {
 export default function Page() {
   return <Greeting name="Kudzu" />
 }`} />
-    <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. Specialized keyed row components may use destructured string, finite-number, boolean, or <code>null</code> defaults; omitted props receive those values at the call site. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
+    <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. Specialized wrappers and keyed rows accept JSX children plus inline or direct calling-component <code>const</code> object prop spreads, preserving source-order overrides. Specialized keyed row components may also use destructured string, finite-number, boolean, or <code>null</code> defaults; omitted props receive those values at the call site. Dynamic or computed spreads remain source-diagnosed. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
     <CodeBlock code={`function ItemList({ items }: { items: Item[] }) {
   return <ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>
 }

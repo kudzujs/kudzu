@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.9/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.10/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.9"/)
-  assert.match(release, /Kudzu 0\.7\.9.*Keep the default.*Erase the component/s)
-  assert.match(release, /KEYED-ROW PROP DEFAULTS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.9/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.10"/)
+  assert.match(release, /Kudzu 0\.7\.10.*Spread the props.*Keep the children/s)
+  assert.match(release, /COMPONENT COMPOSITION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.10/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1146,6 +1146,31 @@ test("builds React-imported landing pages without the React runtime", async t =>
   }
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runLandingPageMigrationBrowserTest(fixture, chrome)
+})
+
+test("specializes conventional component spreads and forwarded children", async t => {
+  const fixture = new URL("./fixtures/component-composition", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/component-composition/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/component-composition/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/component-composition/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/component-composition/dist/static/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/component-composition/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(html, /landing-shell.*Compose an ordinary landing page.*Kudzu capabilities.*Static first.*Complete HTML at first load.* Compiled <small>directly<\/small>/s)
+  assert.match(html, /data-feature="1".*data-feature="2"/s)
+  assert.match(staticHtml, /class="static-card" data-kind="static".*Static composition/s)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.equal(plan.find(route => route.route === "/static").states.length, 0)
+})
+
+test("rejects dynamic specialized component prop spreads with a source diagnostic", () => {
+  const fixture = new URL("./fixtures/component-composition-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Keyed list component prop spreads must use an inline object literal or one direct const object literal declared in the calling component/)
 })
 
 test("migrates aliased and member React hooks from a Vite-shaped app", async t => {

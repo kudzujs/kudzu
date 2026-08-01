@@ -3358,17 +3358,113 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
   visit(root)
 }
 
+function directConstObjectLiteral(expression, call, sourceFile) {
+  expression = unwrapExpression(expression)
+  if (ts.isObjectLiteralExpression(expression)) return expression
+  if (!ts.isIdentifier(expression)) return
+  const owner = nearestFunction(call)
+  const scope = owner?.body ?? sourceFile
+  if (!scope || !ts.isBlock(scope) && !ts.isSourceFile(scope)) return
+  const declarations = []
+  for (const statement of scope.statements) {
+    if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0) continue
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === expression.text && declaration.initializer && declaration.end < call.pos) declarations.push(declaration)
+    }
+  }
+  if (declarations.length !== 1) return
+  const initializer = unwrapExpression(declarations[0].initializer)
+  if (ts.isObjectLiteralExpression(initializer)) return initializer
+}
+
+function specializedSpreadEntries(expression, call, sourceFile, fail, label, seen = new Set()) {
+  const object = directConstObjectLiteral(expression, call, sourceFile)
+  if (!object) fail(expression, `${label} component prop spreads must use an inline object literal or one direct const object literal declared in the calling component`)
+  if (seen.has(object)) fail(expression, `${label} component prop spreads cannot be circular`)
+  seen.add(object)
+  const entries = []
+  for (const property of object.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      entries.push(...specializedSpreadEntries(property.expression, call, sourceFile, fail, label, seen))
+      continue
+    }
+    if (ts.isShorthandPropertyAssignment(property)) {
+      entries.push([property.name.text, property.name, property])
+      continue
+    }
+    if (!ts.isPropertyAssignment(property) || ts.isComputedPropertyName(property.name) || !ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name) && !ts.isNumericLiteral(property.name)) {
+      fail(property, `${label} component prop spreads must contain only direct properties`)
+    }
+    entries.push([property.name.text, property.initializer, property])
+  }
+  seen.delete(object)
+  return entries
+}
+
+function specializedCallChildren(call, factory) {
+  if (!ts.isJsxElement(call)) return []
+  return call.children.flatMap(child => {
+    if (ts.isJsxText(child)) {
+      const lines = child.text.split(/\r\n|\n|\r/)
+      const text = lines.length === 1
+        ? child.text
+        : lines.map((line, index) => {
+            let text = line.replace(/\t/g, " ")
+            if (index) text = text.trimStart()
+            if (index < lines.length - 1) text = text.trimEnd()
+            return text
+          }).filter(Boolean).join(" ")
+      return text ? [factory.createStringLiteral(text)] : []
+    }
+    if (ts.isJsxExpression(child)) return child.expression ? [child.expression] : []
+    return [child]
+  })
+}
+
+function flattenForwardedComponentChildren(root, factory, context) {
+  const forwarded = expression => {
+    const value = unwrapExpression(expression)
+    if (ts.isJsxElement(value) || ts.isJsxSelfClosingElement(value)) return [value]
+    if (ts.isJsxFragment(value)) return [...value.children]
+    if (ts.isArrayLiteralExpression(value) && !value.elements.some(ts.isSpreadElement)) {
+      return value.elements.flatMap(element => {
+        if (ts.isJsxFragment(element)) return [...element.children]
+        if (ts.isJsxElement(element) || ts.isJsxSelfClosingElement(element)) return [element]
+        return [factory.createJsxExpression(undefined, element)]
+      })
+    }
+  }
+  const visit = node => {
+    if (ts.isJsxElement(node)) {
+      const children = node.children.flatMap(child => {
+        const values = ts.isJsxExpression(child) && child.expression ? forwarded(child.expression) : undefined
+        return (values ?? [child]).map(entry => ts.visitNode(entry, visit))
+      })
+      return factory.updateJsxElement(node, ts.visitNode(node.openingElement, visit), children, ts.visitNode(node.closingElement, visit))
+    }
+    return ts.visitEachChild(node, visit, context)
+  }
+  return ts.visitNode(root, visit)
+}
+
 function specializeComponentCall(call, component, sourceFile, factory, context, fail, label = "Keyed list", allowComponentRoot = false) {
   if (component.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || component.asteriskToken) fail(component, `${label} components must be synchronous`)
   if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, `${label} components must use one destructured props parameter`)
-  if (ts.isJsxElement(call) && call.children.some(child => !ts.isJsxText(child) || child.text.trim())) fail(call, `${label} component children are not supported`)
   const callAttributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
   const props = new Map()
+  const directProps = new Set()
   let key
   for (const attribute of callAttributes.properties) {
-    if (ts.isJsxSpreadAttribute(attribute)) fail(attribute, `${label} component prop spreads are not supported`)
+    if (ts.isJsxSpreadAttribute(attribute)) {
+      for (const [name, value, property] of specializedSpreadEntries(attribute.expression, call, sourceFile, fail, label)) {
+        if (["__proto__", "constructor", "prototype"].includes(name)) fail(property, `${label} component prop spread property ${JSON.stringify(name)} is not supported`)
+        if (name === "key") fail(property, `${label} component prop spreads cannot declare key`)
+        props.set(name, value)
+      }
+      continue
+    }
     const name = attribute.name.text
-    if (props.has(name) || name === "key" && key) fail(attribute, `Duplicate ${label.toLowerCase()} component prop "${name}"`)
+    if (directProps.has(name) || name === "key" && key) fail(attribute, `Duplicate ${label.toLowerCase()} component prop "${name}"`)
     const value = !attribute.initializer
       ? factory.createTrue()
       : ts.isStringLiteral(attribute.initializer)
@@ -3377,7 +3473,15 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
           ? attribute.initializer.expression
           : factory.createIdentifier("undefined")
     if (name === "key") key = attribute
-    else props.set(name, value)
+    else {
+      props.set(name, value)
+      directProps.add(name)
+    }
+  }
+  const children = specializedCallChildren(call, factory)
+  if (children.length) {
+    if (directProps.has("children")) fail(call, `Duplicate ${label.toLowerCase()} component prop "children"`)
+    props.set("children", children.length === 1 ? children[0] : factory.createArrayLiteralExpression(children))
   }
   const substitutions = new Map()
   const acceptedProps = new Set()
@@ -3454,7 +3558,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   findUnsupportedHook(returned)
   for (const calculation of calculations) findUnsupportedHook(calculation.expression)
   if (unsupportedHook) throw sourceNodeError(unsupportedHook, component.getSourceFile(), `Keyed row ${unsupportedHook.expression.text}() must be one top-level const declaration`)
-  let root = unwrapExpression(substituteClone(returned, substitutions, factory, context))
+  let root = unwrapExpression(flattenForwardedComponentChildren(substituteClone(returned, substitutions, factory, context), factory, context))
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, `${label} component must return one JSX element`)
   const tag = jsxTagName(root)
   if (!ts.isIdentifier(tag) || !allowComponentRoot && tag.text[0] !== tag.text[0].toLowerCase()) fail(returned, `${label} component must directly return an intrinsic JSX element`)
@@ -3663,7 +3767,7 @@ function validateListExpression(expression, item, source, fail, index) {
         fail(source, "Derived keyed list item expressions cannot call arbitrary functions")
       }
     }
-    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && node.text !== item && node.text !== index && !pureListGlobals.has(node.text)) {
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isJsxSyntaxIdentifier(node) && node.text !== item && node.text !== index && !pureListGlobals.has(node.text)) {
       fail(source, `Derived keyed list item expression identifier "${node.text}" is not allowed`)
     }
     ts.forEachChild(node, visit)
@@ -3731,7 +3835,7 @@ function referencesIdentifier(root, name) {
 function identifierReferenceCount(root, name) {
   let count = 0
   const visit = node => {
-    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node)) count++
+    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node) && !ts.isJsxClosingElement(node.parent)) count++
     ts.forEachChild(node, visit)
   }
   visit(root)

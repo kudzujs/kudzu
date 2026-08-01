@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.7.10 - Component composition
+
+Kudzu 0.7.10 preserves common component composition across existing compiler-specialized collection boundaries.
+
+### New in 0.7.10
+
+- State-backed collection wrappers, keyed rows, and reducer specializations accept prop spreads from direct inline object literals or one direct `const` object literal declared in the calling component.
+- Spread and explicit props apply in source order, preserving ordinary override behavior.
+- Specialized components accept forwarded JSX children, including mixed text and element children, while still lowering to intrinsic DOM.
+- Non-self-closing specialized component tags are counted as one JSX use instead of treating the closing tag as another reference.
+- A conventional React-shaped landing fixture proves imported layout children, component spreads, keyed row children, interaction output, and a zero-JavaScript static route.
+- Dynamic, computed, circular, prototype-sensitive, and method/accessor spread shapes fail with source-located diagnostics.
+
+### Boundary
+
+Spread sources must be inline object literals or one direct `const` object literal declared in the calling component. State collections still cross the specialization boundary as direct props. Rest bindings, non-primitive defaults, exported reusable specialized rows, `forwardRef`, and `useId` remain fixture-driven work.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.10
+```
+
 ## 0.7.9 - Keyed-row prop defaults
 
 Kudzu 0.7.9 lets ordinary keyed row components retain destructured primitive literal prop defaults instead of restructuring every call site.
