@@ -141,6 +141,39 @@ return <Controls dispatch={dispatch} />`} />
     <CodeBlock code={`const add = (title: string) => dispatch({ type: "add", title })
 return <Input onSubmit={add} />`} />
     <p>The callback is substituted into the child's compiled event handler; it is not serialized. An inline React <code>useCallback</code> wrapper is erased before specialization. Dispatch and callback components may use destructured string, finite-number, boolean, or <code>null</code> defaults; missing props receive those values during specialization. The current migration form requires direct <code>[state, dispatch]</code> destructuring, exactly two hook arguments, and a pure synchronous two-parameter reducer imported by default or name from a relative TypeScript module. A direct keyed row has the same multiple serializable state, effect, condition, and object-ref support as other keyed rows. Object, array, computed, and function-call defaults, non-keyed specialized local state, lazy state or reducer initialization, package, namespace, local, async, and generator reducers, package imports or child imports outside handlers, further forwarding, and reducer dispatch through context remain unsupported.</p>
+    <h3 id="zustand">Zustand stores</h3>
+    <p>Migration source may retain a reduced Zustand store. Kudzu erases the package import, owns the data as one shared-layout state slot, and compiles selected actions into existing functional state updates. React, Zustand, subscriptions, and a generic store runtime are absent from the deploy output.</p>
+    <CodeBlock code={`import { create } from "zustand"
+
+type CartState = {
+  quantities: Record<string, number>
+  add: (id: string) => void
+}
+
+export const useCart = create<CartState>(set => ({
+  quantities: {},
+  add: id => set(state => ({
+    quantities: {
+      ...state.quantities,
+      [id]: (state.quantities[id] ?? 0) + 1,
+    },
+  })),
+}))`} />
+    <p>The shared layout must select the store before route components use it. This gives the store layout lifetime and lets same-group navigation preserve both its value and the layout DOM.</p>
+    <CodeBlock code={`export function ShopLayout({ children }: { children?: unknown }) {
+  const quantities = useCart(state => state.quantities)
+  return <>
+    <header>Cart {quantities.oak ?? 0}</header>
+    {children}
+  </>
+}
+
+export default function ProductPage() {
+  const add = useCart(state => state.add)
+  return <button onClick={() => add("oak")}>Add oak</button>
+}`} />
+    <p>Values survive enhanced navigation only within the configured group using that layout. A reload, direct document load, new tab, cross-group link, or native fallback creates a fresh document and restores the store initializer. Use an API or another durable backend when state must outlive the document session.</p>
+    <div className="docs-callout"><strong>Supported subset</strong><span>One exported store, one directly serializable data property, direct property selectors, and synchronous capture-free actions using one-argument merge-form set.</span></div>
     <h3 id="context">Context</h3>
     <p>Context passes default, nested, or reactive object values through component layers without retaining a browser component tree.</p>
     <CodeBlock code={`type ThemeValue = {

@@ -14,6 +14,7 @@ export function DocsSidebar() {
     <p>CORE</p>
     <a href="#components">Components</a>
     <a href="#state">State semantics</a>
+    <a href="#zustand">Zustand stores</a>
     <a href="#context">Context</a>
     <a href="#attributes">Reactive attributes</a>
     <a href="#conditionals">Conditional DOM</a>

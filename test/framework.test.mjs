@@ -33,6 +33,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /<head>.*<script type="module"[^>]+kudzu\.js.*<\/head><body/s)
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
+  assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(html, /class="release-banner" href="\/releases\/0\.7\.6"/)
   assert.match(release, /Kudzu 0\.7\.6.*Keep the store.*Drop the runtime/s)
   assert.match(release, /ZUSTAND-SHAPED SHARED STORES.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.6/s)
