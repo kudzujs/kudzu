@@ -31,7 +31,7 @@ export function nativeBehavior(module: string, handler: string, states: Array<[s
 export function binding(value: unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
 export function bindingValue(value: unknown): unknown
 export function conditional(kind: "and" | "ternary", value: unknown, truthy: () => unknown, falsy: () => unknown, module: string, handler: string, states: Array<[string, unknown]>, scope: Array<[string, unknown]>): unknown
-export function list(items: unknown, keyField: string | null, render: (item: unknown, index: number) => unknown, ownerField?: string, selector?: unknown[], indexed?: boolean): unknown
+export function list(items: unknown, keyField: string | null, render: (item: unknown, index: number) => unknown, ownerField?: string, selector?: unknown[], indexed?: boolean, selectorStates?: Array<[string, unknown]>): unknown
 export function listField(read: () => unknown, field: string): unknown
 export function listExpression(read: () => unknown, module: string, handler: string): unknown
 export function listItem(): unknown
@@ -89,7 +89,7 @@ export function renderPage<Props = Record<string, never>>(
   hasStateSeed: boolean
   handlerModules: string[]
   plan: {
-    states: Array<{ id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route" }>
+    states: Array<{ id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route"; internal?: true }>
     params: Array<{ name: string; id: string }>
     events: Array<{
       event: string

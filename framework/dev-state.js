@@ -2,9 +2,9 @@ const maxAge = 10000
 
 export function stateSchema(states) {
   const occurrences = new Map()
-  for (const { name } of states) if (typeof name === "string") occurrences.set(name, (occurrences.get(name) ?? 0) + 1)
-  return states.flatMap(({ id, name }) => {
-    return typeof id === "string" && occurrences.get(name) === 1 ? [[id, name]] : []
+  for (const { name, internal } of states) if (!internal && typeof name === "string") occurrences.set(name, (occurrences.get(name) ?? 0) + 1)
+  return states.flatMap(({ id, name, internal }) => {
+    return !internal && typeof id === "string" && occurrences.get(name) === 1 ? [[id, name]] : []
   })
 }
 

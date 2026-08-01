@@ -130,6 +130,13 @@ function createSignal(id, value) {
   }
 }
 
+function createInternalState(initialValue) {
+  const id = nextRenderId("s")
+  const signal = createSignal(id, initialValue)
+  renderContext.states[id] = { name: id, initialValue, internal: true, ...(renderContext.scoped ? { lifetime: renderContext.renderScope } : {}) }
+  return signal
+}
+
 export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup, itemDependencies = []) {
   if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
   if (typeof callback !== "function" || !Array.isArray(dependencies) || !module || !handler) throw new Error("useEffect() must be compiled with a literal dependency array")
@@ -247,8 +254,11 @@ export function stateConditional(kind, state, truthy, falsy) {
   return { [conditionalMarker]: true, kind, value: state.value, truthy, falsy, state: state.id }
 }
 
-export function list(items, keyField, render, ownerField, selector = [], indexed = false) {
-  if (!items?.[signalMarker] || !Array.isArray(items.value)) throw new Error("A keyed list must use local array state")
+export function list(items, keyField, render, ownerField, selector = [], indexed = false, selectorStates = []) {
+  if (Array.isArray(items)) items = createInternalState(items)
+  if (!items?.[signalMarker] || !Array.isArray(items.value)) throw new Error("A keyed list must use local array state or a supported imported static array")
+  const selectorStateMap = new Map(selectorStates)
+  for (const [name, state] of selectorStateMap) if (!state?.[signalMarker]) throw new Error(`Rendered collection selector state ${JSON.stringify(name)} must be framework state`)
   let values = items.value
   if (ownerField) {
     const owner = renderContext?.listRoot ?? renderContext?.listRowRoot
@@ -257,7 +267,7 @@ export function list(items, keyField, render, ownerField, selector = [], indexed
     values = renderContext.listTemplate ? [] : owner.item?.[ownerField]
     if (!Array.isArray(values) && values != null) throw new Error(`Nested keyed list property "${ownerField}" must remain an array`)
   }
-  values = selectCollection(values, selector)
+  values = selectCollection(values, selector, name => selectorStateMap.get(name)?.value)
   const keys = new Set()
   for (const [index, item] of values.entries()) {
     const key = keyField === null ? index : item?.[keyField]
@@ -268,7 +278,7 @@ export function list(items, keyField, render, ownerField, selector = [], indexed
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
     keys.add(token)
   }
-  return { [listMarker]: true, items, values, keyField, render, ownerField, selector, indexed }
+  return { [listMarker]: true, items, values, keyField, render, ownerField, selector, indexed, selectorStates }
 }
 
 export function listField(read, field) {
@@ -801,7 +811,7 @@ async function renderList(node, namespace, selectValue) {
   const ownerTemplate = Boolean(node.ownerField && renderContext.listTemplate)
   const rowList = node.ownerField ? nextRowList() : undefined
   const id = rowList?.id ?? nextRenderId("l")
-  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
+  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.selectorStates.length ? { selectorStates: Object.fromEntries(node.selectorStates.map(([name, state]) => [name, state.id])) } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
   if (ownerTemplate) {
     ownerRoot.descriptor.children ??= []
     ownerRoot.descriptor.children.push({ id, field: node.ownerField, key: node.keyField, ...(node.selector.length ? { selector: node.selector } : {}) })

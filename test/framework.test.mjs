@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.6/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.7/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.6"/)
-  assert.match(release, /Kudzu 0\.7\.6.*Keep the store.*Drop the runtime/s)
-  assert.match(release, /ZUSTAND-SHAPED SHARED STORES.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.6/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.7"/)
+  assert.match(release, /Kudzu 0\.7\.7.*Import the catalog.*Keep keyed identity/s)
+  assert.match(release, /IMPORTED MEMO COLLECTIONS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.7/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1182,6 +1182,38 @@ test("migrates aliased and member React hooks from a Vite-shaped app", async t =
   }
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runReactViteAppBrowserTest(fixture, chrome)
+})
+
+test("filters imported static collections with memoized state selectors", async t => {
+  const fixture = new URL("./fixtures/imported-memo-collection", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/imported-memo-collection/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/imported-memo-collection/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/imported-memo-collection/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/imported-memo-collection/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  const staticHtml = await readFile(new URL("./fixtures/imported-memo-collection/dist/static/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(component, /\b(?:useMemo|visible)\b/)
+  assert.equal(plan.states[1].internal, true)
+  assert.deepEqual(plan.lists[0].selectorStates, { category: "s0" })
+  assert.deepEqual(plan.lists[0].selector[0][1][2][2], ["state", "category"])
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.equal(existsSync(new URL("./fixtures/imported-memo-collection/dist/assets/modules/catalog.js", import.meta.url)), false)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runImportedMemoCollectionBrowserTest(fixture, chrome)
+})
+
+test("rejects missing imported collection memo dependencies", async t => {
+  const fixture = new URL("./fixtures/imported-memo-invalid", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/imported-memo-invalid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/imported-memo-invalid/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /React useMemo\(\) must list captured state "category" as a dependency/)
 })
 
 test("compiles a Zustand-shaped store into shared layout state", async t => {
@@ -3607,6 +3639,55 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-zustand-migration-test="pass"/, browser.stdout.match(/<div class="error-code">([^<]+)/)?.[1] ?? browser.stderr)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runImportedMemoCollectionBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const waitFor = async predicate => {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    if (predicate()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error("timeout")
+}
+try {
+  const rows = () => [...document.querySelectorAll("[data-product]")]
+  const oak = rows()[0]
+  const lamp = rows()[1]
+  document.querySelector('[data-category="field"]').click()
+  await waitFor(() => rows().length === 1)
+  if (rows()[0] !== oak || lamp.isConnected) throw new Error("filter-identity")
+  document.querySelector('[data-category="all"]').click()
+  await waitFor(() => rows().length === 2)
+  if (rows()[0] !== oak || rows()[1] === lamp || rows().map(row => row.dataset.product).join(",") !== "oak,lamp") throw new Error("restore-identity")
+  document.body.dataset.importedMemoCollectionTest = "pass"
+} catch (error) {
+  document.body.dataset.importedMemoCollectionTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-imported-memo-collection-test="pass"/)
   } finally {
     server.kill()
   }

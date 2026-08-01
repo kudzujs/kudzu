@@ -78,8 +78,14 @@ function mountLists(root) {
       ownedLists.set(list.owner, lists)
       listRegistrations.set(start, { list, owner: list.owner })
     } else {
-      register(listTargets, descriptor.state, list)
-      listRegistrations.set(start, { state: descriptor.state, list })
+      if (__KUDZU_COLLECTION_SELECTORS__ && descriptor.selectorStates) {
+        const states = [...new Set([descriptor.state, ...Object.values(descriptor.selectorStates)])]
+        for (const state of states) register(listTargets, state, list)
+        listRegistrations.set(start, { states, list })
+      } else {
+        register(listTargets, descriptor.state, list)
+        listRegistrations.set(start, { state: descriptor.state, list })
+      }
     }
     updateList(list)
   }
@@ -97,9 +103,17 @@ function unregisterList(start) {
       if (lists?.get(registration.list.descriptor.id) === registration.list) lists.delete(registration.list.descriptor.id)
       if (!lists?.size) ownedLists.delete(registration.owner)
     } else {
-      const lists = listTargets.get(registration.state)
-      lists?.delete(registration.list)
-      if (!lists?.size) listTargets.delete(registration.state)
+      if (__KUDZU_COLLECTION_SELECTORS__ && registration.states) {
+        for (const state of registration.states) {
+          const lists = listTargets.get(state)
+          lists?.delete(registration.list)
+          if (!lists?.size) listTargets.delete(state)
+        }
+      } else {
+        const lists = listTargets.get(registration.state)
+        lists?.delete(registration.list)
+        if (!lists?.size) listTargets.delete(registration.state)
+      }
     }
     if (__KUDZU_LIST_ROW_HOOKS__ && registration.list.descriptor.rowStates) for (const node of registration.list.roots.values()) deleteRowStates(registration.list.descriptor, ownershipPaths.get(node))
   }
@@ -112,7 +126,7 @@ function updateList(list) {
     ? listItems.get(list.owner)?.[list.descriptor.ownerField]
     : browserState.get(list.descriptor.state)
   if (__KUDZU_NESTED_LISTS__ && list.descriptor.ownerField && items == null) items = []
-  if (__KUDZU_COLLECTION_SELECTORS__) items = selectCollection(items, list.descriptor.selector)
+  if (__KUDZU_COLLECTION_SELECTORS__) items = selectCollection(items, list.descriptor.selector, name => browserState.get(list.descriptor.selectorStates?.[name]))
   if (!Array.isArray(items)) throw new Error(list.descriptor.ownerField ? `Nested keyed list property "${list.descriptor.ownerField}" must remain an array` : "Keyed list state must remain an array")
   if (__KUDZU_NESTED_LISTS__ && (list.descriptor.children || list.descriptor.ownerField) && !list.descriptor.indexed && !list.descriptor.selector && list.descriptor.key !== null && list.items && updateNestedList(list, items)) return
   if (__KUDZU_NESTED_LISTS__ && list.descriptor.children) validateChildLists(items, list.descriptor.children)

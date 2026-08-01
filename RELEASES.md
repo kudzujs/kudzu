@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.7.7 - Imported memo collections
+
+Kudzu 0.7.7 lets ordinary React migration source filter an imported static catalog through state-dependent `useMemo` while reusing existing keyed-list reconciliation.
+
+### New in 0.7.7
+
+- Named relative imports of exported JSON-safe `const` arrays can anchor analyzable collection pipelines.
+- Direct local-state reads in collection selectors invalidate the list when their declared state dependencies change.
+- Existing keys retain DOM identity through filtering and restoration; removed keys remount when restored.
+- Compiler-owned static collection state is excluded from development snapshot restoration.
+- Static routes remain JavaScript-free, and interactive routes ship no React runtime or browser memo cache.
+- Focused fixtures verify dependency diagnostics, static output, generated selectors, and browser DOM identity.
+
+### Boundary
+
+Static collections must be named relative imports of exported JSON-safe `const` arrays. Package, namespace, default, dynamic, mutable, and non-serializable collection sources remain unsupported, as do arbitrary callbacks and general-purpose memo caching.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.7
+```
+
 ## 0.7.6 - Zustand-shaped shared stores
 
 Kudzu 0.7.6 lets reduced React migration source retain a Zustand `create(set => ...)` store across an explicitly configured shared-layout navigation group.

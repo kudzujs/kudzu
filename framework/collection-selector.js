@@ -1,10 +1,10 @@
-export function selectCollection(anchor, selector = []) {
+export function selectCollection(anchor, selector = [], readState) {
   let values = anchor == null ? [] : anchor
   for (const operation of selector) {
-    if (operation[0] === "from") values = Array.from(values, operation[1] ? (item, index) => evaluateCollectionExpression(operation[1], item, index) : undefined)
+    if (operation[0] === "from") values = Array.from(values, operation[1] ? (item, index) => evaluateCollectionExpression(operation[1], item, index, readState) : undefined)
     else {
       if (!Array.isArray(values)) throw new Error("Rendered collection source must remain an array")
-      if (operation[0] === "filter") values = values.filter((item, index) => evaluateCollectionExpression(operation[1], item, index))
+      if (operation[0] === "filter") values = values.filter((item, index) => evaluateCollectionExpression(operation[1], item, index, readState))
       else if (operation[0] === "flatMap") values = values.flatMap(item => item?.[operation[1]] ?? [])
     }
   }
@@ -12,29 +12,33 @@ export function selectCollection(anchor, selector = []) {
   return values
 }
 
-function evaluateCollectionExpression(expression, item, index) {
+function evaluateCollectionExpression(expression, item, index, readState) {
   const [kind, ...parts] = expression
   if (kind === "value") return parts[0]
   if (kind === "undefined") return undefined
   if (kind === "item") return item
   if (kind === "index") return index
+  if (kind === "state") {
+    if (!readState) throw new Error(`Rendered collection state ${JSON.stringify(parts[0])} is not available`)
+    return readState(parts[0])
+  }
   if (kind === "get") {
-    const object = evaluateCollectionExpression(parts[0], item, index)
+    const object = evaluateCollectionExpression(parts[0], item, index, readState)
     return object == null && parts[2] ? undefined : object[parts[1]]
   }
   if (kind === "unary") {
-    const value = evaluateCollectionExpression(parts[1], item, index)
+    const value = evaluateCollectionExpression(parts[1], item, index, readState)
     if (parts[0] === "!") return !value
     if (parts[0] === "+") return +value
     if (parts[0] === "-") return -value
     if (parts[0] === "typeof") return typeof value
   }
   if (kind === "binary") {
-    const left = evaluateCollectionExpression(parts[1], item, index)
-    if (parts[0] === "&&") return left && evaluateCollectionExpression(parts[2], item, index)
-    if (parts[0] === "||") return left || evaluateCollectionExpression(parts[2], item, index)
-    if (parts[0] === "??") return left ?? evaluateCollectionExpression(parts[2], item, index)
-    const right = evaluateCollectionExpression(parts[2], item, index)
+    const left = evaluateCollectionExpression(parts[1], item, index, readState)
+    if (parts[0] === "&&") return left && evaluateCollectionExpression(parts[2], item, index, readState)
+    if (parts[0] === "||") return left || evaluateCollectionExpression(parts[2], item, index, readState)
+    if (parts[0] === "??") return left ?? evaluateCollectionExpression(parts[2], item, index, readState)
+    const right = evaluateCollectionExpression(parts[2], item, index, readState)
     if (parts[0] === "===") return left === right
     if (parts[0] === "!==") return left !== right
     if (parts[0] === "==") return left == right
@@ -49,15 +53,15 @@ function evaluateCollectionExpression(expression, item, index) {
     if (parts[0] === "/") return left / right
     if (parts[0] === "%") return left % right
   }
-  if (kind === "conditional") return evaluateCollectionExpression(parts[0], item, index) ? evaluateCollectionExpression(parts[1], item, index) : evaluateCollectionExpression(parts[2], item, index)
-  if (kind === "array") return parts.map(value => evaluateCollectionExpression(value, item, index))
-  if (kind === "object") return Object.fromEntries(parts.map(([key, value]) => [key, evaluateCollectionExpression(value, item, index)]))
-  if (kind === "template") return parts[0].map((text, offset) => text + (offset < parts[1].length ? evaluateCollectionExpression(parts[1][offset], item, index) : "")).join("")
+  if (kind === "conditional") return evaluateCollectionExpression(parts[0], item, index, readState) ? evaluateCollectionExpression(parts[1], item, index, readState) : evaluateCollectionExpression(parts[2], item, index, readState)
+  if (kind === "array") return parts.map(value => evaluateCollectionExpression(value, item, index, readState))
+  if (kind === "object") return Object.fromEntries(parts.map(([key, value]) => [key, evaluateCollectionExpression(value, item, index, readState)]))
+  if (kind === "template") return parts[0].map((text, offset) => text + (offset < parts[1].length ? evaluateCollectionExpression(parts[1][offset], item, index, readState) : "")).join("")
   if (kind === "call") {
-    const receiver = evaluateCollectionExpression(parts[0], item, index)
-    return receiver[parts[1]](...parts.slice(2).map(value => evaluateCollectionExpression(value, item, index)))
+    const receiver = evaluateCollectionExpression(parts[0], item, index, readState)
+    return receiver[parts[1]](...parts.slice(2).map(value => evaluateCollectionExpression(value, item, index, readState)))
   }
-  if (kind === "global") return globalThis[parts[0]](...parts.slice(1).map(value => evaluateCollectionExpression(value, item, index)))
-  if (kind === "math") return Math[parts[0]](...parts.slice(1).map(value => evaluateCollectionExpression(value, item, index)))
+  if (kind === "global") return globalThis[parts[0]](...parts.slice(1).map(value => evaluateCollectionExpression(value, item, index, readState)))
+  if (kind === "math") return Math[parts[0]](...parts.slice(1).map(value => evaluateCollectionExpression(value, item, index, readState)))
   throw new Error(`Unsupported rendered collection expression: ${String(kind)}`)
 }

@@ -115,6 +115,10 @@ test("does not restore a hook name after a same-named hook is inserted", () => {
   assert.deepEqual([...state], [["s0", "first"], ["s1", "second"]])
 })
 
+test("does not restore compiler-owned state", () => {
+  assert.deepEqual(stateSchema([{ id: "s0", name: "s0", internal: true }, { id: "s1", name: "count" }]), [["s1", "count"]])
+})
+
 test("rolls back every state and DOM commit when restoration commit fails", () => {
   const storage = memoryStorage()
   const schema = stateSchema([{ id: "s0", name: "count" }, { id: "s1", name: "items" }])
