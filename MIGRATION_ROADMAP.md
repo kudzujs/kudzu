@@ -58,7 +58,7 @@ The following are available building blocks, not future vertical roadmaps:
 - Async build-time components, `getStaticPaths()`, runtime path parameters, metadata, base paths, public assets, CSS, CSS Modules, and post-build hooks.
 - React import normalization for supported named/aliased hooks, direct `React.*` members, fragments, same-file `memo`, inline `useCallback`, direct intrinsic `forwardRef`, top-level `useId`, and analyzable `useMemo` expressions and collections.
 - Function components, props, children, context, direct bindings, conditions, controlled form properties, refs, and synchronous or async handlers.
-- `useState`, reduced relative-imported `useReducer`, direct dispatch specialization, and reduced Zustand-shaped shared state proven by migration fixtures.
+- `useState`, independent repeated non-keyed child state with conditional mount ownership, reduced relative-imported `useReducer`, direct dispatch specialization, and reduced Zustand-shaped shared state proven by migration fixtures.
 - Mount and dependency effects with cleanup, route/layout lifetimes, conditional/keyed ownership, stale-write isolation, and relative TypeScript Workers.
 - Keyed local-state and imported static collections, pure selectors, nested direct-property lists, recursive and directly exported row specialization, static/keyed component reuse, analyzable specialized prop spreads, serializable literal defaults, direct intrinsic rest forwarding, forwarded JSX children, latest-item handlers, row state/effects/refs, and stable keyed identity.
 - Complete-document native fallback and optional shared-layout navigation groups with parameter initialization, finite prefetch caching, focus, history, cleanup, and independent capability output.
@@ -91,8 +91,8 @@ This queue orders the next investigations by general migration value. Start only
 
 Investigate ordinary imported or same-file components that own local hooks outside the currently specialized keyed-row shapes:
 
+- Repeated non-keyed child local state and conditional removal/remount ownership are complete.
 - lazy `useState` and `useReducer` initialization with pure analyzable initializers;
-- non-keyed child local state;
 - direct primitive prop dependencies;
 - safe callback/ref ownership across one proven component boundary.
 

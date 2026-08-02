@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.14/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.15/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.14"/)
-  assert.match(release, /Kudzu 0\.7\.14.*Keep the wrapper.*Ship the element/s)
-  assert.match(release, /INTRINSIC FORWARDREF.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.14/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.15"/)
+  assert.match(release, /Kudzu 0\.7\.15.*Repeat the child.*Keep state independent/s)
+  assert.match(release, /CHILD STATE OWNERSHIP.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.15/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1212,6 +1212,35 @@ test("rejects indirect React forwardRef render functions", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React forwardRef\(\) requires exactly one inline render function/)
+})
+
+test("owns repeated non-keyed child state across ordinary component boundaries", async t => {
+  const fixture = new URL("./fixtures/non-keyed-child-state", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/non-keyed-child-state/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/non-keyed-child-state/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/non-keyed-child-state/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/non-keyed-child-state/dist/static/index.html", import.meta.url), "utf8")
+  const plans = JSON.parse(await readFile(new URL("./fixtures/non-keyed-child-state/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  const plan = plans.find(route => route.route === "/")
+  const initialPlan = plans.find(route => route.route === "/initial")
+  const initialHtml = await readFile(new URL("./fixtures/non-keyed-child-state/dist/initial/index.html", import.meta.url), "utf8")
+  assert.deepEqual(plan.states.map(state => state.id), ["s0", "s1", "s2", "s3", "s4", "s5"])
+  assert.deepEqual(plan.conditions.find(condition => condition.owned)?.owned, { true: [["s5", 0]], false: [] })
+  assert.deepEqual(JSON.parse(html.match(/data-k-state='([^']+)'/)[1]).map(([id]) => id), ["s0", "s1", "s2", "s3", "s4"])
+  assert.deepEqual(initialPlan.states.map(state => state.id), ["s0", "s1"])
+  assert.deepEqual(initialPlan.conditions[0].owned, { true: [["s1", 0]], false: [] })
+  assert.equal(initialHtml.match(/data-k-text="s1"/g)?.length, 2)
+  assert.doesNotMatch(initialHtml, /data-k-text="s2"/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  const assets = new URL("./fixtures/non-keyed-child-state/dist/assets/", import.meta.url)
+  const browserOutput = (await Promise.all((await readdir(assets, { recursive: true })).filter(file => file.endsWith(".js")).map(file => readFile(new URL(file, assets), "utf8")))).join("\n")
+  assert.doesNotMatch(browserOutput, /function (?:Toggle|ImportedToggle|OwnedCounter)\b|["']react["']/)
+  const chrome = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNonKeyedChildStateBrowserTest(fixture, chrome)
 })
 
 test("renders deterministic React useId values without browser JavaScript", async t => {
@@ -3529,6 +3558,69 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-keyed-row-hooks-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNonKeyedChildStateBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const toggle = id => document.querySelector('[data-toggle="' + id + '"]')
+try {
+  const { browserState } = await import("/assets/kudzu.js")
+  await wait()
+  const localA = toggle("local-a")
+  const localB = toggle("local-b")
+  const importedA = toggle("imported-a")
+  const importedB = toggle("imported-b")
+  localA.click()
+  await wait()
+  if (!localA.textContent.includes("on") || !localB.textContent.includes("off")) throw new Error("local-state-coupled")
+  importedB.click()
+  await wait()
+  if (!importedA.textContent.includes("off") || !importedB.textContent.includes("on")) throw new Error("imported-state-coupled")
+  document.querySelector('[data-action="show"]').click()
+  await wait()
+  const first = document.querySelector("[data-owned]")
+  const descriptor = [...document.querySelectorAll("template[data-k-if]")].map(node => JSON.parse(node.dataset.kIf)).find(entry => entry.owned)
+  const ownedId = descriptor.owned.true[0][0]
+  if (!first || first.textContent !== "Owned: 0" || browserState.get(ownedId) !== 0) throw new Error("initial-owned-state")
+  first.click()
+  await wait()
+  if (first.textContent !== "Owned: 1" || browserState.get(ownedId) !== 1) throw new Error("owned-update")
+  document.querySelector('[data-action="hide"]').click()
+  await wait()
+  if (document.querySelector("[data-owned]") || browserState.has(ownedId)) throw new Error("owned-unmount")
+  document.querySelector('[data-action="show"]').click()
+  await wait()
+  const second = document.querySelector("[data-owned]")
+  if (!second || second === first || second.textContent !== "Owned: 0" || browserState.get(ownedId) !== 0) throw new Error("owned-remount")
+  document.body.dataset.nonKeyedChildStateTest = "pass"
+} catch (error) {
+  document.body.dataset.nonKeyedChildStateTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-non-keyed-child-state-test="pass"/)
   } finally {
     server.kill()
   }

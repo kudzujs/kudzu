@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.7.15 - Child state ownership
+
+Kudzu 0.7.15 gives repeated ordinary child components independent state and adds explicit state ownership to reactive conditional branches without introducing a browser component tree.
+
+### New in 0.7.15
+
+- Repeated same-file and relative-imported child components receive distinct concrete state IDs.
+- Shared generated handler modules retain per-element state maps and serializable prop captures, so one child update cannot mutate its sibling.
+- Reactive conditional descriptors record only state created directly by each branch.
+- Conditional removal unmounts DOM capabilities and deletes the active branch's owned state slots.
+- Re-entry recreates primitive, object, or array state from serialized initial values instead of restoring stale state.
+- Initially active branches reuse their pre-rendered state IDs rather than executing the child component a second time.
+- Nested condition owners remain independent, and existing route/layout, keyed-row, effect, and navigation ownership behavior is preserved.
+- Static sibling routes remain JavaScript-free; no component registry, hook dispatcher, or generic rerender loop is emitted.
+
+### Measured fixture
+
+The focused three-route fixture rendered repeated same-file and imported toggles plus conditional removal/re-entry. A clean local build measured approximately 270 ms and emitted 10,815 B raw JavaScript across the two interactive routes; the static sibling route emitted no script. Chrome verified sibling isolation, state deletion on removal, fresh remount values, and stable initial active-branch IDs.
+
+### Boundary
+
+This release owns direct state created while rendering ordinary conditional branches. Lazy `useState`/`useReducer` initialization, broader primitive prop dependencies, and additional callback/ref ownership remain fixture-driven work. Browser output still contains only state and DOM capabilities, never component functions.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.15
+```
+
 ## 0.7.14 - Intrinsic forwardRef
 
 Kudzu 0.7.14 preserves conventional direct `forwardRef()` component authoring while erasing the wrapper into build-time intrinsic output.

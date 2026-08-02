@@ -412,7 +412,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -466,7 +466,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
     const listStates = new Set(renderContext.lists.map(list => list.state))
     const seededListStates = new Set(renderContext.lists.filter(list => list.seed && !renderContext.textStates.has(list.state) && !renderContext.conditionStates.has(list.state)).map(list => list.state))
     const initialState = renderContext.hasBehaviors
-      ? Object.entries(renderContext.states).filter(([id]) => (!renderContext.textStates.has(id) || renderContext.conditionStates.has(id)) && !seededListStates.has(id)).map(([id, entry]) => {
+      ? Object.entries(renderContext.states).filter(([id]) => !renderContext.conditionOwnedStates.has(id) && (!renderContext.textStates.has(id) || renderContext.conditionStates.has(id)) && !seededListStates.has(id)).map(([id, entry]) => {
         const compact = listStates.has(id) && compactListState(entry.initialValue)
         return compact ? [id, compact, 1] : [id, entry.initialValue]
       })
@@ -586,19 +586,32 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     if (namespace) throw new Error(`Reactive conditional DOM is not supported inside ${namespace}`)
 
     const id = renderContext.listRoot || renderContext.listRowRoot ? nextRowRenderId("c") : nextRenderId("c")
+    const renderBranch = async branch => {
+      const before = new Set(Object.keys(renderContext.states))
+      const html = await renderNode(branch(), namespace, selectValue)
+      const states = Object.keys(renderContext.states).filter(stateId => !before.has(stateId) && !renderContext.conditionOwnedStates.has(stateId))
+      for (const stateId of states) renderContext.conditionOwnedStates.add(stateId)
+      return { html, states: states.map(stateId => [stateId, renderContext.states[stateId].initialValue]) }
+    }
     renderContext.conditionDepth++
-    const truthy = await renderNode(node.truthy(), namespace, selectValue)
-    const falsy = await renderNode(node.falsy(), namespace, selectValue)
-    renderContext.conditionDepth--
-    const mount = truthy.includes("data-k-") || falsy.includes("data-k-") || truthy.includes("<!--k-text:") || falsy.includes("<!--k-text:")
-    const metadata = { id, kind: node.kind, initial: node.value, ...descriptor, ...(mount ? { mount: true } : {}) }
+    let truthy
+    let falsy
+    try {
+      truthy = await renderBranch(node.truthy)
+      falsy = await renderBranch(node.falsy)
+    } finally {
+      renderContext.conditionDepth--
+    }
+    const owned = truthy.states.length || falsy.states.length ? { true: truthy.states, false: falsy.states } : undefined
+    const mount = Boolean(owned) || truthy.html.includes("data-k-") || falsy.html.includes("data-k-") || truthy.html.includes("<!--k-text:") || falsy.html.includes("<!--k-text:")
+    const metadata = { id, kind: node.kind, initial: node.value, ...descriptor, ...(owned ? { owned } : {}), ...(mount ? { mount: true } : {}) }
     for (const stateId of stateIds) renderContext.conditionStates.add(stateId)
     renderContext.conditions.push(metadata)
     renderContext.hasBehaviors = true
     renderContext.hasBindings = true
     const encoded = escapeJsonAttribute(metadata)
-    const current = node.value ? truthy : node.kind === "and" ? await renderNode(node.value, namespace, selectValue) : falsy
-    return `<template data-k-if='${encoded}'><template data-k-true>${truthy}</template><template data-k-false>${falsy}</template></template>${current}<template data-k-if-end="${id}"></template>`
+    const current = node.value ? truthy.html : node.kind === "and" ? await renderNode(node.value, namespace, selectValue) : falsy.html
+    return `<template data-k-if='${encoded}'><template data-k-true>${truthy.html}</template><template data-k-false>${falsy.html}</template></template>${current}<template data-k-if-end="${id}"></template>`
   }
   if (node?.[listMarker]) return renderList(node, namespace, selectValue)
   if (node?.[listFieldMarker]) {

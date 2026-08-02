@@ -125,7 +125,8 @@ function mountConditions(root) {
     const truthy = start.content.querySelector("template[data-k-true]")
     const falsy = start.content.querySelector("template[data-k-false]")
     if (!end || !truthy || !falsy) continue
-    const condition = { start, end, truthy, falsy, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount }
+    const condition = { start, end, truthy, falsy, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount, owned: descriptor.owned }
+    mountConditionStates(condition, Boolean(descriptor.initial), false)
     const mount = evaluator => {
       if (!start.isConnected) return
       condition.read = evaluator.read
@@ -146,13 +147,16 @@ function updateCondition(condition) {
   const value = condition.read()
   const next = conditionKey(condition.kind, value)
   if (next === condition.current) return
+  const previous = condition.current === "true"
   removeConditionRange(condition.start, condition.end, condition.mount)
+  unmountConditionStates(condition, previous)
   const truthy = Boolean(value)
   const falseText = condition.kind === "and" && !truthy ? renderFalsy(value) : ""
   const fragment = falseText
     ? textFragment(condition.end.ownerDocument, falseText)
     : (truthy ? condition.truthy : condition.falsy).content.cloneNode(true)
   const nodes = condition.mount ? [...fragment.childNodes] : undefined
+  mountConditionStates(condition, truthy, true)
   condition.end.parentNode.insertBefore(fragment, condition.end)
   condition.current = next
   if (condition.mount) for (const node of nodes) mountDom(node)
@@ -183,9 +187,20 @@ function unmountConditions(root) {
   for (const start of matching(root, "template[data-k-if]")) {
     const registration = conditionRegistrations.get(start)
     for (const [id, condition] of registration?.registrations ?? []) conditionTargets.get(id)?.delete(condition)
+    if (registration?.condition) unmountConditionStates(registration.condition, registration.condition.current === "true")
     conditionRegistrations.delete(start)
     mountedConditions.delete(start)
   }
+}
+
+function mountConditionStates(condition, truthy, replace) {
+  for (const [id, initialValue] of condition.owned?.[truthy ? "true" : "false"] ?? []) {
+    if (replace || !browserState.has(id)) browserState.set(id, initialValue !== null && typeof initialValue === "object" ? structuredClone(initialValue) : initialValue)
+  }
+}
+
+function unmountConditionStates(condition, truthy) {
+  for (const [id] of condition.owned?.[truthy ? "true" : "false"] ?? []) browserState.delete(id)
 }
 
 function removeConditionRange(start, end, mount) {

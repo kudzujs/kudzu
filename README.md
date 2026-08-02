@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.14 - Intrinsic forwardRef.** Ordinary React-shaped components can retain direct `forwardRef()` wrappers while Kudzu separates ref from props and erases the wrapper into intrinsic output. Read the [release notes](./RELEASES.md#0714---intrinsic-forwardref) or open the [release page](https://kudzujs.cloud/releases/0.7.14).
+**Latest release: 0.7.15 - Child state ownership.** Repeated ordinary child components own independent state, while reactive conditional removal deletes child slots and remount recreates their initial values. Read the [release notes](./RELEASES.md#0715---child-state-ownership) or open the [release page](https://kudzujs.cloud/releases/0.7.15).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
