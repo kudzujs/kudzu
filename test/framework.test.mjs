@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.13/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.14/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.13"/)
-  assert.match(release, /Kudzu 0\.7\.13.*Keep the hook.*Ship the ID/s)
-  assert.match(release, /DETERMINISTIC USEID.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.13/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.14"/)
+  assert.match(release, /Kudzu 0\.7\.14.*Keep the wrapper.*Ship the element/s)
+  assert.match(release, /INTRINSIC FORWARDREF.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.14/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1179,6 +1179,39 @@ test("rejects dynamic specialized component prop spreads with a source diagnosti
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Keyed list component prop spreads must use an inline object literal or one direct const object literal declared in the calling component/)
+})
+
+test("erases React forwardRef across ordinary component boundaries", async t => {
+  const fixture = new URL("./fixtures/react-forward-ref", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-forward-ref/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-forward-ref/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-forward-ref/dist/index.html", import.meta.url), "utf8")
+  assert.match(html, /<input aria-label="Local input" name="local" data-local="true" data-k-ref="r0">/)
+  assert.match(html, /<input name="imported" aria-label="Imported input" data-imported="true" data-k-ref="r1">/)
+  assert.match(html, /<input aria-label="Optional ref" name="optional" data-local="true">/)
+  assert.doesNotMatch(html, /<script|\sref=/)
+  for (const file of ["ImportedInput.mjs", "pages/index.mjs"]) {
+    const output = await readFile(new URL(`./fixtures/react-forward-ref/.kudzu/${file}`, import.meta.url), "utf8")
+    assert.doesNotMatch(output, /["']react["']|forwardRef/)
+  }
+})
+
+test("rejects forwardRef without direct intrinsic ref forwarding", () => {
+  const fixture = new URL("./fixtures/react-forward-ref-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React forwardRef\(\) ref must be forwarded exactly once as ref=\{ref\} on the direct intrinsic root/)
+})
+
+test("rejects indirect React forwardRef render functions", () => {
+  const fixture = new URL("./fixtures/react-forward-ref-indirect-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React forwardRef\(\) requires exactly one inline render function/)
 })
 
 test("renders deterministic React useId values without browser JavaScript", async t => {

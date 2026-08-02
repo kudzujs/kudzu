@@ -56,7 +56,7 @@ Do not add `getStaticProps`, request-time SSR, an SPA router, a stream runtime, 
 The following are available building blocks, not future vertical roadmaps:
 
 - Async build-time components, `getStaticPaths()`, runtime path parameters, metadata, base paths, public assets, CSS, CSS Modules, and post-build hooks.
-- React import normalization for supported named/aliased hooks, direct `React.*` members, fragments, same-file `memo`, inline `useCallback`, top-level `useId`, and analyzable `useMemo` expressions and collections.
+- React import normalization for supported named/aliased hooks, direct `React.*` members, fragments, same-file `memo`, inline `useCallback`, direct intrinsic `forwardRef`, top-level `useId`, and analyzable `useMemo` expressions and collections.
 - Function components, props, children, context, direct bindings, conditions, controlled form properties, refs, and synchronous or async handlers.
 - `useState`, reduced relative-imported `useReducer`, direct dispatch specialization, and reduced Zustand-shaped shared state proven by migration fixtures.
 - Mount and dependency effects with cleanup, route/layout lifetimes, conditional/keyed ownership, stale-write isolation, and relative TypeScript Workers.
@@ -87,17 +87,7 @@ An unsupported item is not automatically backlog work. Arbitrary callbacks, pack
 
 This queue orders the next investigations by general migration value. Start only the highest item for which a real failing fixture exists.
 
-### 1. Ordinary Component Composition
-
-Investigate common component boundaries that currently force source restructuring:
-
-- common `forwardRef` authoring shapes.
-
-Direct inline object spreads, direct `const` object spreads resolved through calling-component scopes, source-order overrides, directly serializable object/array defaults, direct intrinsic rest forwarding, JSX children, directly exported same-file rows reused across static and keyed JSX sites, and deterministic top-level `useId` values in ordinary components are complete. Keyed-row `useId`, export-list/default aliases, non-JSX component references, dynamic/computed spread sources, computed defaults, indirect or repeated rest use, and prototype-sensitive rest properties remain rejected with source diagnostics.
-
-Acceptance: the fixture preserves component structure, static routes remain JavaScript-free, and no component function survives in the browser.
-
-### 2. Hookful Component Specialization
+### 1. Hookful Component Specialization
 
 Investigate ordinary imported or same-file components that own local hooks outside the currently specialized keyed-row shapes:
 
@@ -108,7 +98,7 @@ Investigate ordinary imported or same-file components that own local hooks outsi
 
 Acceptance: ownership is compiler-generated, removal cleans up exactly once, and no generic component runtime or rerender loop is introduced.
 
-### 3. Pure Collection Composition
+### 2. Pure Collection Composition
 
 Investigate common immutable collection source that remains awkward to migrate:
 
@@ -119,7 +109,7 @@ Investigate common immutable collection source that remains awkward to migrate:
 
 Mutation, arbitrary callbacks, promises, and package collection engines remain outside the queue. Large datasets require bounded visible output rather than giant DOM trees.
 
-### 4. Common Effect Dependencies
+### 3. Common Effect Dependencies
 
 Investigate effect forms common in ordinary React source:
 
@@ -130,11 +120,11 @@ Investigate effect forms common in ordinary React source:
 
 Acceptance: direct dependency comparison, cleanup-before-rerun, stale async isolation, and route/DOM ownership remain explicit.
 
-### 5. Structural SVG Rendering
+### 4. Structural SVG Rendering
 
 Investigate conditional and keyed ranges inside SVG plus namespaced attributes only when a real icon, chart-shell, or illustration fixture fails. Reuse existing condition/list ownership and attribute normalization; do not create an SVG renderer.
 
-### 6. Router-Shaped Source Lowering
+### 5. Router-Shaped Source Lowering
 
 Investigate conventional React Router source forms that can erase to existing behavior:
 
@@ -145,7 +135,7 @@ Investigate conventional React Router source forms that can erase to existing be
 
 This work must not add a default SPA router. Same-document transitions require explicit user approval and a measured fixture need.
 
-### 7. Repeated Package Patterns
+### 6. Repeated Package Patterns
 
 Broaden Zustand, `clsx`, reducer forwarding, Worker forms, or UI-package source only after multiple independent fixtures expose the same statically lowerable pattern. Prefer erasing a narrow authoring shape to executing the package or adding an adapter framework.
 

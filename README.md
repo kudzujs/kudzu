@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.13 - Deterministic useId.** Ordinary React-shaped components can retain top-level `useId()` calls while Kudzu emits stable static HTML IDs and no browser capability. Read the [release notes](./RELEASES.md#0713---deterministic-useid) or open the [release page](https://kudzujs.cloud/releases/0.7.13).
+**Latest release: 0.7.14 - Intrinsic forwardRef.** Ordinary React-shaped components can retain direct `forwardRef()` wrappers while Kudzu separates ref from props and erases the wrapper into intrinsic output. Read the [release notes](./RELEASES.md#0714---intrinsic-forwardref) or open the [release page](https://kudzujs.cloud/releases/0.7.14).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -78,7 +78,7 @@ ordinary React-shaped TSX
 ```
 
 - Function components execute at build time and do not survive as browser components.
-- `useState` and reduced `useReducer` compile to synchronous logical state and batched direct DOM writes; top-level `useId` becomes deterministic static HTML without browser JavaScript.
+- `useState` and reduced `useReducer` compile to synchronous logical state and batched direct DOM writes; top-level `useId` and direct intrinsic `forwardRef` authoring erase to static HTML without a component runtime.
 - Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities.
 - Build-known data and routes become complete HTML through async components and `getStaticPaths()`.
 - Native document navigation is the default; static routes do not load a client runtime.

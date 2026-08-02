@@ -1883,7 +1883,7 @@ function normalizeZustandMigrationSyntax(sourceFile, factory, context) {
 
 function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections = new Set()) {
   const supported = new Set(["createContext", "useContext", "useEffect", "useId", "useReducer", "useRef", "useState"])
-  const erased = new Set(["memo", "useCallback", "useMemo"])
+  const erased = new Set(["forwardRef", "memo", "useCallback", "useMemo"])
   const aliases = new Map()
   const reactObjects = new Set()
   for (const statement of sourceFile.statements) {
@@ -1988,6 +1988,7 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCol
     }
     if (ts.isCallExpression(node)) {
       const name = migrationCallName(node)
+      if (name === "forwardRef") return ts.visitNode(lowerReactForwardRef(node, sourceFile, factory), visitor)
       if (name === "memo") {
         if (node.arguments.length !== 1 || !(ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]) || ts.isIdentifier(node.arguments[0]))) throw sourceNodeError(node, sourceFile, "React memo() requires exactly one function component or component identifier")
         if (ts.isIdentifier(node.arguments[0]) && isShadowedIdentifier(node.arguments[0], sourceFile)) throw sourceNodeError(node.arguments[0], sourceFile, "React memo() component identifiers must resolve to an unshadowed same-file top-level function")
@@ -2072,6 +2073,60 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCol
   statements.splice(lastImport + 1, 0, declaration)
   normalized = factory.updateSourceFile(normalized, statements)
   return normalized
+}
+
+function lowerReactForwardRef(call, sourceFile, factory) {
+  const declaration = call.parent
+  const statement = declaration?.parent?.parent
+  if (!ts.isVariableDeclaration(declaration) || declaration.initializer !== call || !ts.isIdentifier(declaration.name) || !statement || !ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.parent !== sourceFile) {
+    throw sourceNodeError(call, sourceFile, "React forwardRef() must directly initialize one top-level const component")
+  }
+  if (call.arguments.length !== 1 || !ts.isArrowFunction(call.arguments[0]) && !ts.isFunctionExpression(call.arguments[0])) throw sourceNodeError(call, sourceFile, "React forwardRef() requires exactly one inline render function")
+  const callback = call.arguments[0]
+  if (callback.asteriskToken || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(callback, sourceFile, "React forwardRef() render function must be synchronous and cannot be a generator")
+  if (callback.parameters.length !== 2) throw sourceNodeError(callback, sourceFile, "React forwardRef() render function must declare exactly (props, ref)")
+  const [props, ref] = callback.parameters
+  if (props.dotDotDotToken || props.initializer || !ts.isIdentifier(props.name) && !ts.isObjectBindingPattern(props.name)) throw sourceNodeError(props, sourceFile, "React forwardRef() props must use one identifier or a flat object binding")
+  if (ref.dotDotDotToken || ref.initializer || !ts.isIdentifier(ref.name)) throw sourceNodeError(ref, sourceFile, "React forwardRef() ref parameter must be one identifier")
+
+  let elements
+  if (ts.isIdentifier(props.name)) {
+    elements = [
+      factory.createBindingElement(undefined, factory.createIdentifier("ref"), factory.createIdentifier(ref.name.text)),
+      factory.createBindingElement(factory.createToken(ts.SyntaxKind.DotDotDotToken), undefined, factory.createIdentifier(props.name.text))
+    ]
+  } else {
+    for (const element of props.name.elements) {
+      const property = (element.propertyName ?? element.name)
+      if (!ts.isIdentifier(element.name) || property.text === "ref") throw sourceNodeError(element, sourceFile, property.text === "ref" ? "React forwardRef() props must not declare ref; Kudzu supplies ref through the second parameter" : "React forwardRef() props must use one identifier or a flat object binding")
+    }
+    const rest = props.name.elements.findIndex(element => Boolean(element.dotDotDotToken))
+    elements = [...props.name.elements]
+    elements.splice(rest < 0 ? elements.length : rest, 0, factory.createBindingElement(undefined, factory.createIdentifier("ref"), factory.createIdentifier(ref.name.text)))
+  }
+
+  const last = ts.isBlock(callback.body) ? callback.body.statements.at(-1) : undefined
+  let returnCount = 0
+  const countReturns = node => {
+    if (node !== callback.body && isFunctionLike(node)) return
+    if (ts.isReturnStatement(node)) returnCount++
+    ts.forEachChild(node, countReturns)
+  }
+  countReturns(callback.body)
+  const returned = ts.isBlock(callback.body)
+    ? last && ts.isReturnStatement(last) ? last.expression : undefined
+    : callback.body
+  const root = returned && unwrapExpression(returned)
+  const tag = root && jsxTagName(root)
+  if ((ts.isBlock(callback.body) && returnCount !== 1) || !root || !ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root) || !ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) throw sourceNodeError(callback.body, sourceFile, "React forwardRef() render function must directly return one intrinsic JSX element")
+  const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
+  const forwarded = attributes.properties.filter(attribute => ts.isJsxAttribute(attribute) && attribute.name.text === "ref" && ts.isJsxExpression(attribute.initializer) && ts.isIdentifier(attribute.initializer.expression) && attribute.initializer.expression.text === ref.name.text)
+  if (forwarded.length !== 1 || referenceIdentifiers(callback.body, ref.name.text).length !== 1) throw sourceNodeError(ref, sourceFile, "React forwardRef() ref must be forwarded exactly once as ref={ref} on the direct intrinsic root")
+
+  const parameter = factory.updateParameterDeclaration(props, props.modifiers, undefined, factory.createObjectBindingPattern(elements), props.questionToken, props.type, undefined)
+  return ts.isArrowFunction(callback)
+    ? factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, [parameter], callback.type, callback.equalsGreaterThanToken, callback.body)
+    : factory.updateFunctionExpression(callback, callback.modifiers, undefined, callback.name, callback.typeParameters, [parameter], callback.type, callback.body)
 }
 
 function validateUseIdSyntax(sourceFile) {

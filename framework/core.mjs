@@ -708,6 +708,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   for (const [rawName, value] of Object.entries(props)) {
     if (rawName === "children" || rawName === "key") continue
     if (rawName === "ref") {
+      if (value == null) continue
       if (!value?.[refMarker]) throw new Error("ref must be created by useRef(null)")
       if (renderContext.listDepth && !value.row) throw new Error("Refs in keyed lists must be declared by the keyed row component")
       attributes += ` data-k-ref="${value.id}"`

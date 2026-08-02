@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.14 - Intrinsic forwardRef
+
+Kudzu 0.7.14 preserves conventional direct `forwardRef()` component authoring while erasing the wrapper into build-time intrinsic output.
+
+### New in 0.7.14
+
+- `forwardRef` may be imported directly or with an alias from `react`, or called as a direct default/namespace React member.
+- One top-level `const` component may wrap one inline synchronous `(props, ref)` render function.
+- The compiler removes `ref` from ordinary props and rest bindings before supplying it as the render function's second parameter.
+- The forwarded object ref must appear exactly once on the direct intrinsic root and reuses Kudzu's existing deterministic ref marker.
+- Components remain valid when the optional ref prop is omitted; `null` and `undefined` intrinsic refs emit no marker.
+- Same-file and relative-imported components compile without React, a wrapper function, hydration, or a browser component runtime.
+- Indirect callbacks, async/generator renders, callback or composed refs, fragments, component roots, nested targets, repeated forwarding, and `memo(forwardRef(...))` fail with source diagnostics.
+
+### Boundary
+
+This release intentionally supports one direct object-ref boundary. It does not add React ref objects, imperative handles, generic ref composition, or browser component instances. Existing keyed-row ownership checks still require refs used inside keyed lists to originate from that row.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.14
+```
+
 ## 0.7.13 - Deterministic useId
 
 Kudzu 0.7.13 preserves conventional top-level React `useId()` authoring while emitting deterministic static HTML IDs with no browser runtime.

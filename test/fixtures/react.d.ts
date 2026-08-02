@@ -2,7 +2,11 @@ declare module "react" {
   export type ReactNode = unknown
   export function Fragment(props: { children?: unknown }): unknown
   export type Dispatch<T> = (value: T | ((previous: T) => T)) => void
+  export type RefObject<T> = { readonly current: T | null }
+  export type ForwardedRef<T> = RefObject<T> | ((instance: T | null) => void) | null
+  export function forwardRef<T, P>(render: (props: P, ref: ForwardedRef<T>) => unknown): (props: P & { ref?: ForwardedRef<T> }) => unknown
   export function useId(): string
+  export function useRef<T>(initialValue: null): RefObject<T>
   export function useState<T>(initialValue: T): [T, Dispatch<T>]
   export function useEffect(effect: () => void | (() => void), dependencies: readonly unknown[]): void
   export function useCallback<T extends (...args: never[]) => unknown>(callback: T, dependencies: readonly unknown[]): T
@@ -11,7 +15,9 @@ declare module "react" {
 
   const React: {
     Fragment: typeof Fragment
+    forwardRef: typeof forwardRef
     useId: typeof useId
+    useRef: typeof useRef
     useState: typeof useState
     useCallback: typeof useCallback
     useMemo: typeof useMemo
