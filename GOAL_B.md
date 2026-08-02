@@ -102,6 +102,12 @@ The focused fixture emitted a 907 B raw / 477 B gzip Worker graph and an 11,388 
 
 These numbers are dated conformance evidence. They do not define a dashboard product target.
 
+## Reproducible 0.7.12 Rerun
+
+At commit `05e5cc2` on Apple M3 / macOS 26.5.2 / Node 25.6.1, `npm run benchmark` measured clean build times of 404.2, 401.3, 408.2, 404.4, 399.9, 408.8, and 402.0 ms after one warm-up, for a 404.2 ms median. The current Worker graph is 907 B raw / 475 B gzip; the complete dashboard window graph is 11,960 B raw / 5,365 B aggregate gzip.
+
+Chrome 150.0.7871.187 passed the tracked throughput, cadence, stale-write, bounded-history, and 30-cycle start/termination checks through the focused Worker browser test. These current values differ from the historical completion snapshot because shared window capabilities and the local toolchain changed; the historical values above remain release provenance, not current artifact claims.
+
 ## Non-Goals
 
 - Device, alarm, tenant, transport, chart, map, or widget product features.

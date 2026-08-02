@@ -319,7 +319,7 @@ This is source migration support, not a React compatibility runtime. Aliased hoo
 
 ### Measured fixture
 
-The two-route landing fixture retains React imports across relative components. Its static route has no script, while its interactive mobile-menu route emits 10,245 B raw / 5,030 B aggregate gzip JavaScript across seven capability files. Seven clean builds after one warm-up measured a 310.0 ms median on the development machine described in `MIGRATION_ROADMAP.md`.
+The two-route landing fixture retains React imports across relative components. Its static route has no script, while its interactive mobile-menu route emitted 10,245 B raw / 5,030 B aggregate gzip JavaScript across seven capability files in the 0.7.0 release snapshot. Seven clean builds after one warm-up measured a 310.0 ms median in that historical development environment; the original runner and raw array are not tracked in the current repository.
 
 ### Upgrade
 

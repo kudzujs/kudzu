@@ -37,7 +37,22 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <p>The Goal A fixture covers a matched six-route commerce journey with complete initial HTML, shared layout state, product options, optimistic cart success and rejection, accessible rollback, and product-to-cart navigation. Browser medians use seven rotating fresh Chrome profiles per target with 4x CPU slowdown, 100 ms latency, and 200 KiB/s throughput.</p>
+    <div className="docs-callout"><strong>Benchmark provenance</strong><span>The cross-framework tables below are historical matched snapshots from a local benchmark workspace that is not checked into this repository. Their runner, competitor fixtures, and raw arrays are unavailable in the current checkout, so they are not current 0.7.12 measurements and cannot be reproduced by CI. Architecture differences are stated with each table.</span></div>
+    <h3>Tracked Worker fixture</h3>
+    <CodeBlock language="shell" code={`npm run benchmark
+CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
+  node --test --test-name-pattern="bundles relative TypeScript Workers" test/framework.test.mjs`} />
+    <p>At commit <code>05e5cc2</code> on Apple M3, macOS 26.5.2, and Node 25.6.1, one warm-up plus seven clean builds measured 404.2, 401.3, 408.2, 404.4, 399.9, 408.8, and 402.0 ms, with a 404.2 ms median. The Worker graph measured 907 B raw / 475 B gzip and the complete dashboard window graph measured 11,960 B raw / 5,365 B aggregate gzip. Chrome 150.0.7871.187 passed throughput, cadence, bounded-history, stale-write, and 30-cycle lifecycle checks.</p>
+    <h3>Current 1,000-row keyed local state</h3>
+    <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
+      ["Kudzu", "Yes", "8,610 B", "238 ms", "0.5 ms", "4.2 ms", "1.3 ms", "1.9 ms"],
+      ["Vue CSR", "No", "24,018 B", "199 ms", "0.9 ms", "3.8 ms", "1.3 ms", "0.9 ms"],
+      ["Svelte CSR", "No", "13,686 B", "279 ms", "0.8 ms", "20.1 ms", "1.6 ms", "1.3 ms"],
+      ["React CSR", "No", "59,564 B", "186 ms", "2.1 ms", "7.5 ms", "2.4 ms", "1.9 ms"]
+    ]} />
+    <p>This corrected 0.7.12 rerun used 31 rotating unthrottled fresh Chrome 150 profiles per target and in-page <code>MutationObserver</code> completion timing. All 124 profiles passed row/input identity and removal/re-add reset checks. Kudzu led edit, tied Vue on remove, beat React and Svelte on reverse, and trailed Vue by 0.4 ms on reverse. A separate seven-profile 4x run measured Kudzu at 2.3/17.3/5.9/8.6 ms for edit/reverse/remove/re-add. The discarded external-CDP polling method added roughly 42–49 ms to reverse and unstable phase delay to short operations. Kudzu and the CSR targets have different initial-delivery architectures, so JavaScript, total output, and build values are not equivalent loading comparisons. The <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">raw performance record</a> contains environment, versions, methodology, caveats, and corrected distributions.</p>
+    <h3>Historical matched snapshots</h3>
+    <p>The historical Goal A fixture covers a matched six-route commerce journey with complete initial HTML, shared layout state, product options, optimistic cart success and rejection, accessible rollback, and product-to-cart navigation. Browser medians used seven rotating fresh Chrome profiles per target with 4x CPU slowdown, 100 ms latency, and 200 KiB/s throughput.</p>
     <h3>Desktop commerce</h3>
     <BenchmarkTable columns={["Target", "JS gzip", "Cold transfer", "Cold LCP", "Warm LCP", "Startup", "Heap", "Interaction", "Product → cart"]} rows={[
       ["Kudzu", "7,334 B", "35,260 B", "332 ms", "156 ms", "122.6 ms", "650,708 B", "4.8 ms", "5.6 ms"],
@@ -46,7 +61,7 @@ export function BenchmarksSection() {
       ["Nuxt", "67,620 B", "195,953 B", "324 ms", "224 ms", "247.9 ms", "1,721,348 B", "4.5 ms", "29.6 ms"],
       ["SvelteKit", "32,474 B", "90,939 B", "376 ms", "184 ms", "143.8 ms", "999,496 B", "6.3 ms", "21.8 ms"]
     ]} />
-    <p>Kudzu emits 35,355 deploy bytes. Its 7,334 B gzip product graph includes the 2,425 B navigation capability; all three sizes are unchanged because this top-level-only fixture retains the smaller specialized path. Validated near-viewport document prefetch reduced the original 128.7 ms product-to-cart transition to 5.6 ms in the current run without removing complete documents or native fallback.</p>
+    <p>The recorded fixture emitted 35,355 deploy bytes. Its 7,334 B gzip product graph included the 2,425 B navigation capability. Validated near-viewport document prefetch reduced the recorded 128.7 ms product-to-cart transition to 5.6 ms without removing complete documents or native fallback.</p>
     <h3>Desktop and mobile behavior</h3>
     <BenchmarkTable columns={["Profile", "Cold LCP", "Warm LCP", "Interaction", "Product → cart", "Reject feedback", "Rollback/error", "CLS"]} rows={[
       ["Desktop", "332 ms", "156 ms", "4.8 ms", "5.6 ms", "4.0 ms", "112.1 ms", "0"],
@@ -54,7 +69,7 @@ export function BenchmarksSection() {
     ]} />
     <p>The mobile row is retained from the previous matched run using a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput. Both profiles recorded zero cold and warm layout shift.</p>
     <h3>Build startup</h3>
-    <p>Initial runs found a repeatable 6–7% small-build loss from TypeScript and esbuild module startup. Kudzu now enables Node's native module compile cache before lazily loading the compiler. The current seven-run matched commerce build measured Kudzu at 486.8 ms and React at 545.4 ms, making Kudzu 10.7% faster in that run. Kudzu shipped 88.1% less product JavaScript and measured 52.9% faster interaction and 43.4% faster product-to-cart navigation than React. Disabling the cache preserves byte-for-byte output. Generated-handler lowering and shared-Program experiments did not improve the combined median and were not retained.</p>
+    <p>The recorded seven-run matched commerce build measured Kudzu at 486.8 ms and React at 545.4 ms, making Kudzu 10.7% faster in that historical run. It recorded 88.1% less product JavaScript, 52.9% faster interaction, and 43.4% faster product-to-cart navigation than React. The excluded workspace also found byte-for-byte output with the module cache disabled.</p>
     <h3>1,000-row keyed effect</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Selected update", "Unrelated update", "Reverse"]} rows={[
       ["Astro native", "Yes", "381 B", "998 ms", "0.4 ms", "0.2 ms", "5.7 ms"],
@@ -64,15 +79,6 @@ export function BenchmarksSection() {
       ["React CSR", "No", "60,921 B", "1,198 ms", "9.8 ms", "5.9 ms", "16.8 ms"]
     ]} />
     <p>Each row owns one effect depending on its name. Browser timing starts only after every target has 1,000 rows and effects ready. Kudzu's targeted changed-root update measures 3.6 ms, versus Vue at 5.8 ms, Svelte at 5.7 ms, and React at 9.8 ms. List reconciliation remains O(n); Kudzu and Vue both measure 2.4 ms on the unrelated detail update. Kudzu and Astro emit the initial rows while the other targets are CSR; JavaScript, output, and build values therefore are not architecture-equivalent comparisons.</p>
-    <h3>1,000-row keyed local state</h3>
-    <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
-      ["Astro native", "Yes", "373 B", "903 ms", "1.6 ms", "5.7 ms", "1.2 ms", "1.3 ms"],
-      ["Kudzu", "Yes", "9.2 KB", "434 ms", "2.7 ms", "10.8 ms", "3.0 ms", "3.7 ms"],
-      ["Vue CSR", "No", "24.4 KB", "793 ms", "3.0 ms", "12.1 ms", "4.2 ms", "4.1 ms"],
-      ["Svelte CSR", "No", "13.1 KB", "911 ms", "2.8 ms", "50.4 ms", "4.6 ms", "5.9 ms"],
-      ["React CSR", "No", "59.4 KB", "1,054 ms", "6.2 ms", "25.8 ms", "9.1 ms", "6.7 ms"]
-    ]} />
-    <p>Row 500 enters edit state, survives reverse with the same row and input DOM nodes, then removal and re-add must create fresh non-editing state. Thirty-one rotating fresh-profile runs give Kudzu the lowest framework median for every operation; the 0.1 ms displayed edit lead over Svelte is not statistically significant, while every other framework comparison is significant. Astro is the hand-written native lower bound from a separate seven-profile run. Kudzu and Astro emit all initial rows; the other targets are CSR, so artifact sizes and loading architecture are not equivalent.</p>
     <h3>1,000-row nested child components</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "Initial JS gzip", "Build", "Child update + condition", "Child reverse", "Parent reverse", "Parent remove"]} rows={[
       ["Astro native", "Yes", "287 B", "1,030 ms", "0.5 ms", "0.4 ms", "3.9 ms", "0.2 ms"],

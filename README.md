@@ -17,6 +17,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 - [Components and migration support](https://kudzujs.cloud/docs#components)
 - [Current limits](https://kudzujs.cloud/docs#limits)
 - [Benchmarks](https://kudzujs.cloud/docs#benchmarks)
+- [Raw performance records](./PERFORMANCE.md)
 - [React migration roadmap](./MIGRATION_ROADMAP.md)
 - [Release history](./RELEASES.md)
 

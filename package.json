@@ -51,6 +51,7 @@
     "dev": "node ./bin/kudzu.mjs dev",
     "check": "tsc --noEmit && tsc -p test/fixtures/tsconfig.json --noEmit && node ./bin/kudzu.mjs build",
     "test": "node --test test/*.test.mjs",
+    "benchmark": "node test/performance.mjs",
     "prepublishOnly": "npm run check && npm test",
     "deploy": "wrangler deploy",
     "preview": "wrangler dev"
