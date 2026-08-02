@@ -2546,7 +2546,6 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         const imported = binding.kind === "default" ? "default" : binding.imported
         component = { function: resolveComponentExport(binding.target, imported, importedSource, sourceFiles), declaration: undefined }
       }
-      if (local && isExportedDeclaration(component.declaration)) fail(component.declaration, `Keyed list component ${name} cannot be exported`)
       const declaredCalls = jsxTagUses(sourceFile, name)
       if (local && identifierReferenceCount(sourceFile, name) !== declaredCalls.length) fail(component.declaration, `Keyed list component ${name} may only be referenced as JSX`)
       const calls = [...new Set([

@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.12 - Exported row reuse
+
+Kudzu 0.7.12 lets directly exported same-file row components remain ordinary reusable source while every supported call still specializes to intrinsic DOM.
+
+### New in 0.7.12
+
+- Same-file keyed rows may use direct `export function Row` declarations.
+- Function-valued `export const Row = ...` declarations receive the same specialization.
+- One exported row may be reused across multiple keyed maps and ordinary static JSX sites.
+- Every discovered JSX call specializes independently; the exported declaration remains build-only and no component function or name enters browser assets.
+- Existing keyed identity, event handlers, conditions, styles, static callbacks, reorder, and removal behavior remain unchanged.
+- Non-JSX references and dynamic component aliases continue to fail with a source-located `may only be referenced as JSX` diagnostic.
+- Export-list and default-export aliases, exported state-backed wrappers, and exported reducer-dispatch components remain outside this direct-row fixture.
+
+### Boundary
+
+This release supports direct export modifiers on same-file keyed row function declarations and function-valued constants. Every local reference must remain a JSX call, and effectful row components may still only run at keyed sites. Imported rows retain their existing default, named, aliased, and direct named re-export support.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.12
+```
+
 ## 0.7.11 - Serializable defaults and rest props
 
 Kudzu 0.7.11 preserves common non-primitive defaults and direct rest forwarding across existing compiler-specialized component boundaries.

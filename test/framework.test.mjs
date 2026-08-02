@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.11/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.12/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.11"/)
-  assert.match(release, /Kudzu 0\.7\.11.*Keep the defaults.*Forward the rest/s)
-  assert.match(release, /SERIALIZABLE DEFAULTS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.11/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.12"/)
+  assert.match(release, /Kudzu 0\.7\.12.*Export the row.*Reuse the shape/s)
+  assert.match(release, /EXPORTED ROW REUSE.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.12/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -852,15 +852,21 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   const runtime = await readFile(new URL("./fixtures/lists/dist/assets/kudzu-list.js", import.meta.url), "utf8")
   const handlers = await readFile(new URL("./fixtures/lists/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  const browserFiles = (await readdir(new URL("./fixtures/lists/dist", import.meta.url), { recursive: true })).filter(file => file.endsWith(".js"))
+  const browserOutput = (await Promise.all(browserFiles.map(file => readFile(new URL(`./fixtures/lists/dist/${file}`, import.meta.url), "utf8")))).join("\n")
+  assert.match(component, /export function ItemRow/)
+  assert.match(component, /export const TableRow/)
+  assert.doesNotMatch(component, /_(?:jsx|jsxs)\((?:ItemRow|TableRow)/)
+  assert.doesNotMatch(browserOutput, /\b(?:ItemRow|TableRow)\b/)
   assert.match(component, /__kList\(items, "id"/)
   assert.match(component, /const rows = undefined/)
   assert.match(component, /const unusedRows = undefined/)
   assert.match(component, /__kListExpression/)
   assert.match(component, /__kListConditional/)
   assert.match(component, /__kListItem/)
-  assert.match(component, /function TableRow\(\{ item \}\)/)
+  assert.match(component, /const TableRow = \(\{ item \}\) =>/)
   assert.match(component, /"data-row": __kListField/)
-  assert.doesNotMatch(component.slice(component.indexOf("function ItemRow"), component.indexOf("function TableRow")), /__kList/)
+  assert.doesNotMatch(component.slice(component.indexOf("function ItemRow"), component.indexOf("export const TableRow")), /__kList/)
   assert.match(html, /<li data-id="1".*>.*Oak/)
   assert.match(html, /<tr data-row="2"/)
   assert.match(html, /data-static.*Static/)
@@ -1453,6 +1459,7 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-nested-parent-capture", /Nested keyed list rows cannot capture the parent item/],
     ["list-invalid-nested-prototype", /owner property "constructor" is not supported/],
     ["list-invalid-component-cycle", /Keyed list component cycle: First -> Second -> First/],
+    ["list-invalid-component-reference", /Keyed list component Row may only be referenced as JSX/],
     ["list-invalid-mutation", /assignments and updates are not supported/],
     ["list-invalid-mutating-method", /mutating method "sort"/],
     ["list-invalid-promise", /arbitrary method "resolve"/],

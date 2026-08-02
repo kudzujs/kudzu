@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.11 - Serializable defaults and rest props.** Specialized collection components retain directly serializable object/array defaults and direct intrinsic rest forwarding without adding a component runtime. Read the [release notes](./RELEASES.md#0711---serializable-defaults-and-rest-props) or open the [release page](https://kudzujs.cloud/releases/0.7.11).
+**Latest release: 0.7.12 - Exported row reuse.** Directly exported same-file row components can be reused across static and keyed JSX sites while every call still lowers to intrinsic DOM. Read the [release notes](./RELEASES.md#0712---exported-row-reuse) or open the [release page](https://kudzujs.cloud/releases/0.7.12).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

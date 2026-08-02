@@ -100,12 +100,20 @@ export function ComponentsSection() {
 export default function Page() {
   return <Greeting name="Kudzu" />
 }`} />
-    <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. Specialized wrappers and keyed rows accept JSX children plus inline or direct calling-component <code>const</code> object prop spreads, preserving source-order overrides. Missing destructured props may use directly serializable primitive, plain-object, or array literal defaults. One final identifier rest binding may be forwarded exactly once to the direct intrinsic root, where its attributes and events reuse existing analysis. Dynamic or computed spreads/defaults, indirect rest use, and prototype-sensitive rest properties remain source-diagnosed. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
+    <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. A same-file keyed row may use a direct <code>export function</code> or exported function-valued <code>const</code> and be reused across static and keyed JSX sites. Specialized wrappers and keyed rows accept JSX children plus inline or direct calling-component <code>const</code> object prop spreads, preserving source-order overrides. Missing destructured props may use directly serializable primitive, plain-object, or array literal defaults. One final identifier rest binding may be forwarded exactly once to the direct intrinsic root, where its attributes and events reuse existing analysis. Export-list/default aliases, non-JSX references, dynamic or computed spreads/defaults, indirect rest use, and prototype-sensitive rest properties remain source-diagnosed. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
     <CodeBlock code={`function ItemList({ items }: { items: Item[] }) {
   return <ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>
 }
 
 return <ItemList items={items} />`} />
+    <CodeBlock code={`export function ItemRow({ item }: { item: Item }) {
+  return <li>{item.name}</li>
+}
+
+return <>
+  <ItemRow item={featured} />
+  <ul>{items.map(item => <ItemRow key={item.id} item={item} />)}</ul>
+</>`} />
     <p>A keyed row may map multiple direct array properties of its item recursively at any depth. Nested rows may be intrinsic or recursively specialized through same-file and relative-imported components. Kudzu preserves keyed DOM identity at every level; handlers read the latest item, nested conditions patch bounded DOM, and row key paths own multiple serializable state slots, effects, and <code>null</code>-initialized object refs. Computed child collections, parent capture, component cycles, lazy state, and callback refs remain unsupported.</p>
   </section>
 }

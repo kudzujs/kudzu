@@ -5,7 +5,7 @@ type MixedItem = { id: number | string; name: string }
 
 type ItemRowProps = Omit<Item, "type"> & { onFinish: () => void; onRemove: () => void }
 
-function ItemRow({ id, name, tone, done, style, onFinish, onRemove }: ItemRowProps) {
+export function ItemRow({ id, name, tone, done, style, onFinish, onRemove }: ItemRowProps) {
   const rowClass = done ? "done" : "active"
   const ariaLabel = `${name} item`
   const rowStyle = { opacity: done ? 0.5 : 1, borderWidth: done ? 2 : 1, "--tone": tone }
@@ -17,7 +17,7 @@ function ItemRow({ id, name, tone, done, style, onFinish, onRemove }: ItemRowPro
   </li>
 }
 
-function TableRow({ item }: { item: Item }) {
+export const TableRow = ({ item }: { item: Item }) => {
   return <tr data-row={item.id} title={item.tone}><td>{item.name}</td></tr>
 }
 
