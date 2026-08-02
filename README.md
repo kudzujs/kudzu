@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.12 - Exported row reuse.** Directly exported same-file row components can be reused across static and keyed JSX sites while every call still lowers to intrinsic DOM. Read the [release notes](./RELEASES.md#0712---exported-row-reuse) or open the [release page](https://kudzujs.cloud/releases/0.7.12).
+**Latest release: 0.7.13 - Deterministic useId.** Ordinary React-shaped components can retain top-level `useId()` calls while Kudzu emits stable static HTML IDs and no browser capability. Read the [release notes](./RELEASES.md#0713---deterministic-useid) or open the [release page](https://kudzujs.cloud/releases/0.7.13).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -78,7 +78,7 @@ ordinary React-shaped TSX
 ```
 
 - Function components execute at build time and do not survive as browser components.
-- `useState` and reduced `useReducer` compile to synchronous logical state and batched direct DOM writes.
+- `useState` and reduced `useReducer` compile to synchronous logical state and batched direct DOM writes; top-level `useId` becomes deterministic static HTML without browser JavaScript.
 - Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities.
 - Build-known data and routes become complete HTML through async components and `getStaticPaths()`.
 - Native document navigation is the default; static routes do not load a client runtime.

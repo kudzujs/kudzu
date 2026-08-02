@@ -56,7 +56,7 @@ Do not add `getStaticProps`, request-time SSR, an SPA router, a stream runtime, 
 The following are available building blocks, not future vertical roadmaps:
 
 - Async build-time components, `getStaticPaths()`, runtime path parameters, metadata, base paths, public assets, CSS, CSS Modules, and post-build hooks.
-- React import normalization for supported named/aliased hooks, direct `React.*` members, fragments, same-file `memo`, inline `useCallback`, and analyzable `useMemo` expressions and collections.
+- React import normalization for supported named/aliased hooks, direct `React.*` members, fragments, same-file `memo`, inline `useCallback`, top-level `useId`, and analyzable `useMemo` expressions and collections.
 - Function components, props, children, context, direct bindings, conditions, controlled form properties, refs, and synchronous or async handlers.
 - `useState`, reduced relative-imported `useReducer`, direct dispatch specialization, and reduced Zustand-shaped shared state proven by migration fixtures.
 - Mount and dependency effects with cleanup, route/layout lifetimes, conditional/keyed ownership, stale-write isolation, and relative TypeScript Workers.
@@ -91,9 +91,9 @@ This queue orders the next investigations by general migration value. Start only
 
 Investigate common component boundaries that currently force source restructuring:
 
-- common `forwardRef` and `useId` authoring shapes.
+- common `forwardRef` authoring shapes.
 
-Direct inline object spreads, direct `const` object spreads resolved through calling-component scopes, source-order overrides, directly serializable object/array defaults, direct intrinsic rest forwarding, JSX children, and directly exported same-file rows reused across static and keyed JSX sites are complete. Export-list/default aliases, non-JSX component references, dynamic/computed spread sources, computed defaults, indirect or repeated rest use, and prototype-sensitive rest properties remain rejected with source diagnostics.
+Direct inline object spreads, direct `const` object spreads resolved through calling-component scopes, source-order overrides, directly serializable object/array defaults, direct intrinsic rest forwarding, JSX children, directly exported same-file rows reused across static and keyed JSX sites, and deterministic top-level `useId` values in ordinary components are complete. Keyed-row `useId`, export-list/default aliases, non-JSX component references, dynamic/computed spread sources, computed defaults, indirect or repeated rest use, and prototype-sensitive rest properties remain rejected with source diagnostics.
 
 Acceptance: the fixture preserves component structure, static routes remain JavaScript-free, and no component function survives in the browser.
 

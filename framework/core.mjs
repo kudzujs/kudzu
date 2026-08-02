@@ -47,6 +47,12 @@ const svgAttributeAliases = {
 
 let renderContext
 
+export function useId() {
+  if (!renderContext) throw new Error("useId() can only run while rendering a Kudzu component")
+  if (renderContext.listRoot || renderContext.listRowRoot || renderContext.listTemplate) throw new Error("useId() is not supported in keyed rows")
+  return `k-${nextRenderId("i")}`
+}
+
 export function useState(initialValue, name) {
   if (!renderContext) {
     throw new Error("useState() can only run while rendering a Kudzu component")
@@ -406,7 +412,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -910,7 +916,7 @@ function nextRowList() {
 
 function nextRenderId(kind) {
   if (renderContext.scoped) return `${renderContext.renderScope === "layout" ? "l" : "r"}${kind}${renderContext.counters[renderContext.renderScope][kind]++}`
-  const counters = { s: "nextState", r: "nextRef", c: "nextCondition", l: "nextList", e: "nextEffect", p: "nextParam" }
+  const counters = { s: "nextState", r: "nextRef", c: "nextCondition", l: "nextList", e: "nextEffect", p: "nextParam", i: "nextId" }
   return `${kind}${renderContext[counters[kind]]++}`
 }
 

@@ -1882,7 +1882,7 @@ function normalizeZustandMigrationSyntax(sourceFile, factory, context) {
 }
 
 function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections = new Set()) {
-  const supported = new Set(["createContext", "useContext", "useEffect", "useReducer", "useRef", "useState"])
+  const supported = new Set(["createContext", "useContext", "useEffect", "useId", "useReducer", "useRef", "useState"])
   const erased = new Set(["memo", "useCallback", "useMemo"])
   const aliases = new Map()
   const reactObjects = new Set()
@@ -2074,6 +2074,24 @@ function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCol
   return normalized
 }
 
+function validateUseIdSyntax(sourceFile) {
+  const imported = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useId"))
+  if (!imported) return
+  const visit = node => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useId" && !isShadowedIdentifier(node.expression, sourceFile)) {
+      if (node.arguments.length) throw sourceNodeError(node, sourceFile, "useId() does not accept arguments")
+      const declaration = node.parent
+      const statement = declaration?.parent?.parent
+      const owner = nearestFunction(node)
+      if (!ts.isVariableDeclaration(declaration) || declaration.initializer !== node || !ts.isIdentifier(declaration.name) || !statement || !ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || !owner || !ts.isBlock(owner.body) || statement.parent !== owner.body) {
+        throw sourceNodeError(node, sourceFile, "useId() must be assigned to one top-level const identifier in a component")
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+}
+
 function importDeclarationNames(statement) {
   const names = []
   if (statement.importClause?.name) names.push(statement.importClause.name.text)
@@ -2158,6 +2176,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections)
     ts.setParentRecursive(sourceFile, false)
+    validateUseIdSyntax(sourceFile)
     sourceFile = normalizeZustandMigrationSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
@@ -2173,6 +2192,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         ts.setParentRecursive(imported, false)
         imported = normalizeReactMigrationSyntax(imported, factory, context, importedSerializableCollectionNames(imported, target, sourceFiles, sourceIndex))
         ts.setParentRecursive(imported, false)
+        validateUseIdSyntax(imported)
         imported = normalizeZustandMigrationSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
         imported = normalizeRenderControlFlow(imported, factory, context)
@@ -3281,6 +3301,7 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
     if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
   }
   const visit = node => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useId") fail(node, "useId() is not supported in keyed rows")
     if (ts.isJsxFragment(node)) fail(node, "Fragments are not supported in keyed lists")
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
     if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, nestedDiagnostic)
@@ -3586,6 +3607,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         rowRefs.push({ name })
         continue
       }
+      if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useId") throw sourceNodeError(declaration.initializer, component.getSourceFile(), "useId() is not supported in keyed row components")
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
       const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
       calculations.push({ name: declaration.name.text, expression: calculation })

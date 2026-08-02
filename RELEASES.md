@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.7.13 - Deterministic useId
+
+Kudzu 0.7.13 preserves conventional top-level React `useId()` authoring while emitting deterministic static HTML IDs with no browser runtime.
+
+### New in 0.7.13
+
+- `useId` may be imported directly or with an alias from `react`, or called as a direct default/namespace React member.
+- Each top-level `const id = useId()` receives a stable build-time ID that can be reused by `id`, `htmlFor`, and ARIA ID-reference attributes.
+- Repeated component calls receive distinct IDs, while unchanged clean builds reproduce the same output.
+- Shared layouts and route content use separate ID namespaces during complete-document and enhanced navigation builds.
+- Static routes remain JavaScript-free; no hook dispatcher, hydration metadata, or browser component function is emitted.
+- Calls with arguments, non-top-level forms, and keyed-row ownership fail with source-located diagnostics.
+
+### Boundary
+
+`useId()` accepts no arguments and must initialize one top-level `const` identifier in an ordinary component. Keyed rows remain unsupported because cloned row templates require key-scoped rewriting of `id`, `for`, ARIA IDREF, and fragment-reference attributes; Kudzu rejects the unsafe shape instead of emitting duplicate IDs.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.13
+```
+
 ## 0.7.12 - Exported row reuse
 
 Kudzu 0.7.12 lets directly exported same-file row components remain ordinary reusable source while every supported call still specializes to intrinsic DOM.

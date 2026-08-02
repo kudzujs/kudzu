@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib"
 import { createConnection } from "node:net"
 import test from "node:test"
 import { build, normalizeNavigation, specializeRuntime } from "../framework/build.mjs"
-import { behavior, conditional, createContext, list, nativeBehavior, renderPage, useContext, useEffect, useParams, useRef, useState } from "../framework/core.mjs"
+import { behavior, conditional, createContext, list, nativeBehavior, renderPage, useContext, useEffect, useId, useParams, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.12/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.13/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.12"/)
-  assert.match(release, /Kudzu 0\.7\.12.*Export the row.*Reuse the shape/s)
-  assert.match(release, /EXPORTED ROW REUSE.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.12/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.13"/)
+  assert.match(release, /Kudzu 0\.7\.13.*Keep the hook.*Ship the ID/s)
+  assert.match(release, /DETERMINISTIC USEID.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.13/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -135,6 +135,8 @@ test("renders page layouts with collision-free layout and route scopes", async t
     return jsx("p", { children: count })
   }, { styles: false })
   assert.equal(legacy.html, `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kudzu</title></head><body><p><span data-k-text="s0" data-k-value='1'>1</span></p></body></html>`)
+  const ids = await renderPage(() => jsx("main", { id: useId() }), { styles: false }, {}, ({ children }) => jsx("div", { id: useId(), children }))
+  assert.match(ids.html, /<div id="k-li0">.*<main id="k-ri0"><\/main>.*<\/div>/)
   await assert.rejects(renderPage(() => null, { styles: false, runtimeParams: ["id"] }, {}, () => useParams()), /useParams\(\) is only supported in route scope/)
 
   await writeFile(invalidPage, "export const layout = 1\nexport default function Page() { return <main /> }\n")
@@ -1177,6 +1179,44 @@ test("rejects dynamic specialized component prop spreads with a source diagnosti
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Keyed list component prop spreads must use an inline object literal or one direct const object literal declared in the calling component/)
+})
+
+test("renders deterministic React useId values without browser JavaScript", async t => {
+  const fixture = new URL("./fixtures/react-use-id", import.meta.url)
+  const generated = [new URL("./fixtures/react-use-id/.kudzu", import.meta.url), new URL("./fixtures/react-use-id/dist", import.meta.url)]
+  t.after(async () => Promise.all(generated.map(directory => rm(directory, { recursive: true, force: true }))))
+
+  const build = () => spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  const first = build()
+  assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`)
+  const firstHtml = await readFile(new URL("./fixtures/react-use-id/dist/index.html", import.meta.url), "utf8")
+  assert.match(firstHtml, /<label for="k-i0">First name<\/label><input id="k-i0" aria-describedby="k-i0-hint"><small id="k-i0-hint">Required<\/small>/)
+  assert.match(firstHtml, /<label for="k-i1">Last name<\/label><input id="k-i1" aria-describedby="k-i1-hint"><small id="k-i1-hint">Required<\/small>/)
+  assert.match(firstHtml, /<label for="k-i2">Email<\/label><input id="k-i2">/)
+  assert.doesNotMatch(firstHtml, /<script|data-k-/)
+
+  await Promise.all(generated.map(directory => rm(directory, { recursive: true, force: true })))
+  const second = build()
+  assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`)
+  assert.equal(await readFile(new URL("./fixtures/react-use-id/dist/index.html", import.meta.url), "utf8"), firstHtml)
+  for (const file of ["Field.mjs", "pages/index.mjs"]) {
+    const output = await readFile(new URL(`./fixtures/react-use-id/.kudzu/${file}`, import.meta.url), "utf8")
+    assert.doesNotMatch(output, /["']react["']|React\.useId|makeId/)
+  }
+})
+
+test("rejects useId in keyed row components", () => {
+  const fixture = new URL("./fixtures/react-use-id-keyed-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ useId\(\) is not supported in keyed row components/)
+})
+
+test("rejects non-top-level React useId calls", () => {
+  const fixture = new URL("./fixtures/react-use-id-shape-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ useId\(\) must be assigned to one top-level const identifier in a component/)
 })
 
 test("migrates aliased and member React hooks from a Vite-shaped app", async t => {
