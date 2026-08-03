@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.18/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.19/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.18"/)
-  assert.match(release, /Kudzu 0\.7\.18.*Pass the signal.*Keep the child ordinary/s)
-  assert.match(release, /PRIMITIVE CHILD PROP DEPENDENCIES.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.18/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.19"/)
+  assert.match(release, /Kudzu 0\.7\.19.*Share the source.*Keep each list owned/s)
+  assert.match(release, /REUSABLE COLLECTION ALIASES.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.19/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -923,6 +923,7 @@ test("compiles synchronous rendered collection selectors and React positional ke
   const runtime = await readFile(new URL("./fixtures/rendered-collections/dist/assets/kudzu-list.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/rendered-collections/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /data-stable[\s\S]*"keys":\["a","c"\]/)
+  assert.match(html, /data-reused[\s\S]*"keys":\["a","c"\]/)
   assert.match(html, /data-from-map[\s\S]*0-Alpha[\s\S]*2-Gamma/)
   assert.match(html, /data-flat[\s\S]*Xray/)
   assert.match(html, /data-undefined[^>]*>[\s\S]*Alpha/)
@@ -936,6 +937,9 @@ test("compiles synchronous rendered collection selectors and React positional ke
   const invalid = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL("./fixtures/rendered-collections-invalid", import.meta.url), encoding: "utf8" })
   assert.notEqual(invalid.status, 0)
   assert.match(`${invalid.stdout}\n${invalid.stderr}`, /rendered-collections-invalid\/src\/pages\/index\.tsx:\d+:\d+ Rendered collection filter\(\) callback must be a synchronous arrow function/)
+  const invalidAlias = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL("./fixtures/rendered-collection-alias-invalid", import.meta.url), encoding: "utf8" })
+  assert.notEqual(invalidAlias.status, 0)
+  assert.match(`${invalidAlias.stdout}\n${invalidAlias.stderr}`, /rendered-collection-alias-invalid\/src\/pages\/index\.tsx:\d+:\d+ Rendered collection alias "visible" may only be used as a rendered collection source/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runRenderedCollectionBrowserTest(fixture, chrome)
 })
@@ -1205,6 +1209,21 @@ test("erases React forwardRef across ordinary component boundaries", async t => 
     const output = await readFile(new URL(`./fixtures/react-forward-ref/.kudzu/${file}`, import.meta.url), "utf8")
     assert.doesNotMatch(output, /["']react["']|forwardRef/)
   }
+})
+
+test("owns setter callbacks and object refs across one component boundary", async t => {
+  const fixture = new URL("./fixtures/callback-ref-ownership", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/callback-ref-ownership/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/callback-ref-ownership/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/callback-ref-ownership/dist/index.html", import.meta.url), "utf8")
+  assert.match(html, /id="local-button" data-k-ref="r0" data-k-on-click=/)
+  assert.match(html, /id="imported-button" data-k-ref="r1" data-k-on-click=/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runCallbackRefOwnershipBrowserTest(fixture, chrome)
 })
 
 test("rejects forwardRef without direct intrinsic ref forwarding", () => {
@@ -2406,6 +2425,59 @@ http.createServer((request, response) => {
   }
 }
 
+async function runCallbackRefOwnershipBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  document.querySelector("#local-button").click()
+  await wait()
+  document.querySelector("#imported-button").click()
+  await wait()
+  if (document.querySelector("#count").textContent !== "2") throw new Error("callbacks")
+  document.querySelector("#record-refs").click()
+  await wait()
+  if (document.body.dataset.refs !== "local-button,imported-button") throw new Error("mounted-refs")
+  const previousLocal = document.querySelector("#local-button")
+  document.querySelector("#toggle").click()
+  await wait()
+  document.querySelector("#record-refs").click()
+  await wait()
+  if (document.querySelector("#controls") || document.body.dataset.refs !== "none,none") throw new Error("removed-refs")
+  document.querySelector("#toggle").click()
+  await wait()
+  document.querySelector("#record-refs").click()
+  await wait()
+  if (document.querySelector("#local-button") === previousLocal || document.body.dataset.refs !== "local-button,imported-button") throw new Error("remounted-refs")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runReleaseNotesBrowserTest(chrome) {
   const output = new URL("../dist/", import.meta.url)
   const homeUrl = new URL("index.html", output)
@@ -3161,16 +3233,19 @@ try {
   let runtimeError = ""
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
   const stable = rows("[data-stable]")
+  const reused = rows("[data-reused]")
   const positional = rows("[data-positional]")
-  if (stable.map(node => node.dataset.id).join(",") !== "a,c" || positional.map(node => node.dataset.id).join(",") !== "a,c") throw new Error("initial")
+  if (stable.map(node => node.dataset.id).join(",") !== "a,c" || reused.map(node => node.dataset.id).join(",") !== "a,c" || positional.map(node => node.dataset.id).join(",") !== "a,c") throw new Error("initial")
   stable[1].querySelector("[data-pick]").click()
   await wait()
   if (document.body.dataset.pick !== "1:Gamma") throw new Error("initial-index-handler")
   click("show")
   await wait()
   const shownStable = rows("[data-stable]")
+  const shownReused = rows("[data-reused]")
   const shownPositional = rows("[data-positional]")
   if (shownStable[0] !== stable[0] || shownStable[2] !== stable[1] || shownStable.map(node => node.dataset.id).join(",") !== "a,b,c") throw new Error("stable-insert")
+  if (shownReused[0] !== reused[0] || shownReused[2] !== reused[1] || shownReused.map(node => node.dataset.id).join(",") !== "a,b,c") throw new Error("reused-insert")
   if (shownPositional[0] !== positional[0] || shownPositional[1] !== positional[1] || shownPositional.map(node => node.dataset.id).join(",") !== "a,b,c") throw new Error("positional-insert")
   if (shownStable[2].querySelector("span").textContent !== "2:Gamma" || shownPositional[1].querySelector("span").textContent !== "1:Beta") throw new Error("index-content")
   const shownBranch = shownStable[2].querySelector("[data-index-branch]")
@@ -3184,8 +3259,10 @@ try {
   click("reverse")
   await wait()
   const reversedStable = rows("[data-stable]")
+  const reversedReused = rows("[data-reused]")
   const reversedPositional = rows("[data-positional]")
   if (reversedStable[0] !== stable[1] || reversedStable[2] !== stable[0] || reversedStable.map(node => node.dataset.id).join(",") !== "c,b,a") throw new Error("stable-reorder")
+  if (reversedReused[0] !== reused[1] || reversedReused[2] !== reused[0] || reversedReused.map(node => node.dataset.id).join(",") !== "c,b,a") throw new Error("reused-reorder")
   if (reversedPositional[0] !== positional[0] || reversedPositional[1] !== positional[1] || reversedPositional.map(node => node.dataset.id).join(",") !== "c,b,a") throw new Error("positional-reorder")
   const reenteredBranch = reversedStable[2].querySelector("[data-index-branch]")
   reenteredBranch?.click()
@@ -3193,7 +3270,7 @@ try {
   if (!reenteredBranch || reenteredBranch.textContent !== "2:Alpha" || document.body.dataset.branch !== "2:Alpha") throw new Error("index-condition-reentry")
   click("remove")
   await wait()
-  if (rows("[data-stable]").map(node => node.dataset.id).join(",") !== "c,a" || rows("[data-positional]").map(node => node.dataset.id).join(",") !== "c,a") throw new Error("remove")
+  if (rows("[data-stable]").map(node => node.dataset.id).join(",") !== "c,a" || rows("[data-reused]").map(node => node.dataset.id).join(",") !== "c,a" || rows("[data-positional]").map(node => node.dataset.id).join(",") !== "c,a") throw new Error("remove")
   click("add-child")
   await wait()
   if (document.querySelector('[data-group="empty"] span')?.textContent !== "0:Zulu" || [...document.querySelectorAll("[data-flat] > i")].map(node => node.dataset.id).join(",") !== "z,x") throw new Error("optional-add")

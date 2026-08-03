@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.19 - Reusable collection aliases
+
+Kudzu 0.7.19 lets one immutable local collection alias feed multiple keyed list sites while preserving independent DOM identity, and formalizes setter callback and object-ref ownership across one ordinary component boundary.
+
+### New in 0.7.19
+
+- A top-level immutable local alias over a supported collection pipeline may be reused by multiple keyed `map` sites.
+- Every alias reference must remain a statically analyzable collection source; mixed reads such as `visible.length` fail with a source-located diagnostic instead of becoming stale build-time values.
+- Each list site retains its own keyed DOM identity through insertion, reorder, and removal while sharing the same state-backed selector.
+- Inline or simple `const` setter callbacks may cross one same-file or relative-imported component boundary to an event on the child's direct intrinsic root.
+- A `null`-initialized object ref may cross the same boundary; conditional removal resolves it to `null`, and remount points it at a fresh element.
+- These paths reuse compiler-owned behavior and ref descriptors without a callback registry, retained component instance, VDOM, or hydration.
+- The complete suite passes 107/107 tests with browser coverage for both reusable list identity and callback/ref conditional ownership.
+
+### Boundary
+
+Reusable aliases must be top-level immutable locals whose every reference is a supported collection source. Search, slice, pagination, sorting, mutation, imported transforms, arbitrary callbacks, callback refs, and forwarding beyond the proven component boundary remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.19
+```
+
 ## 0.7.18 - Primitive child prop dependencies
 
 Kudzu 0.7.18 formalizes direct JSON-safe primitive parent state as a reactive child prop across ordinary same-file and relative-imported components, without adding component specialization or a browser component tree.

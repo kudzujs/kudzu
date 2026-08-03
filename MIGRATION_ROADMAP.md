@@ -94,7 +94,7 @@ Investigate ordinary imported or same-file components that own local hooks outsi
 - Repeated non-keyed child local state and conditional removal/remount ownership are complete.
 - directly serializable lazy `useState` and `useReducer` initialization are complete;
 - direct primitive prop dependencies are complete for ordinary same-file and relative-imported children;
-- safe callback/ref ownership across one proven component boundary.
+- Safe callback/ref ownership across one proven component boundary is complete for inline or simple `const` setter callbacks and `null`-initialized object refs forwarded to a direct intrinsic root.
 
 Acceptance: ownership is compiler-generated, removal cleans up exactly once, and no generic component runtime or rerender loop is introduced.
 
@@ -102,7 +102,7 @@ Acceptance: ownership is compiler-generated, removal cleans up exactly once, and
 
 Investigate common immutable collection source that remains awkward to migrate:
 
-- reusable aliases with statically provable use sites;
+- Reusable aliases with statically provable use sites are complete for immutable local collection aliases feeding multiple keyed lists;
 - computed direct child collections;
 - imported pure synchronous transforms;
 - immutable search, slice, pagination, and sorting forms proven by fixtures.

@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.18 - Primitive child prop dependencies.** Direct JSON-safe primitive parent state remains reactive when passed to destructured same-file or imported child props, including child DOM bindings and conditionally owned effects. Read the [release notes](./RELEASES.md#0718---primitive-child-prop-dependencies) or open the [release page](https://kudzujs.cloud/releases/0.7.18).
+**Latest release: 0.7.19 - Reusable collection aliases.** One immutable local collection alias may feed multiple keyed lists when every reference remains statically analyzable; setter callbacks and object refs also have a proven one-boundary component contract. Read the [release notes](./RELEASES.md#0719---reusable-collection-aliases) or open the [release page](https://kudzujs.cloud/releases/0.7.19).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -79,7 +79,7 @@ ordinary React-shaped TSX
 
 - Function components execute at build time and do not survive as browser components.
 - `useState` and reduced `useReducer`, including directly serializable lazy initialization, compile to synchronous logical state and batched direct DOM writes; top-level `useId` and direct intrinsic `forwardRef` authoring erase to static HTML without a component runtime.
-- Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities.
+- Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities. Inline or simple `const` setter callbacks and object refs may cross one ordinary component boundary into a direct intrinsic root.
 - Build-known data and routes become complete HTML through async components and `getStaticPaths()`.
 - Native document navigation is the default; static routes do not load a client runtime.
 - Unsupported nearby patterns fail during the build with a source location and actionable boundary.

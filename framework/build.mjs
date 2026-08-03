@@ -2649,6 +2649,13 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       ts.forEachChild(node, collectRenderedLists)
     }
     collectRenderedLists(sourceFile)
+    const collectionAliasUses = new WeakSet(rawRenderedLists.flatMap(({ parts }) => parts.aliasUses ?? []))
+    const collectionAliasDeclarations = new Set(rawRenderedLists.flatMap(({ parts }) => parts.aliasDeclarations ?? []))
+    for (const declaration of collectionAliasDeclarations) {
+      const owner = nearestFunction(declaration)
+      const unsupported = identifierReferences(owner.body, declaration.name.text).find(reference => !collectionAliasUses.has(reference))
+      if (unsupported) fail(unsupported, `Rendered collection alias "${declaration.name.text}" may only be used as a rendered collection source`)
+    }
     const rejectUnsupportedRenderControl = node => {
       if (ts.isIfStatement(node) && containsRenderControl(node, jsxLocalsByFunction.get(nearestFunction(node)) ?? new Set())) {
         const setters = settersForNode(node, settersByFunction)
@@ -3196,11 +3203,10 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     const entries = declarations?.get(value.text)
     if (!entries) return undefined
     if (entries.length !== 1 || aliases.has(value.text) || entries[0].node.parent?.parent?.parent !== nearestFunction(entries[0].node)?.body) fail(value, `Rendered collection alias "${value.text}" must be one top-level immutable local`)
-    if (identifierReferenceCount(nearestFunction(entries[0].node).body, value.text) !== 1) fail(value, `Rendered collection alias "${value.text}" may only be rendered once`)
     aliases.add(value.text)
     const source = renderedCollectionSource(entries[0].initializer, setters, declarations, fail, aliases, importedCollections, stateNames)
     aliases.delete(value.text)
-    return source && { ...source, aliasDeclarations: [...(source.aliasDeclarations ?? []), entries[0].node] }
+    return source && { ...source, aliasDeclarations: [...(source.aliasDeclarations ?? []), entries[0].node], aliasUses: [...(source.aliasUses ?? []), value] }
   }
   if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) return { state: undefined, ownerField: value.name.text, selector: [], parentItem: value.expression.text }
   if (ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression)) {
@@ -4023,13 +4029,17 @@ function referencesIdentifier(root, name) {
 }
 
 function identifierReferenceCount(root, name) {
-  let count = 0
+  return identifierReferences(root, name).length
+}
+
+function identifierReferences(root, name) {
+  const references = []
   const visit = node => {
-    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node) && !ts.isJsxClosingElement(node.parent)) count++
+    if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node) && !ts.isJsxClosingElement(node.parent)) references.push(node)
     ts.forEachChild(node, visit)
   }
   visit(root)
-  return count
+  return references
 }
 
 function unwrapExpression(node) {

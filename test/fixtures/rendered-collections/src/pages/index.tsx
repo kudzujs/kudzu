@@ -31,6 +31,8 @@ export default function RenderedCollectionsPage() {
       {index === 2 ? <button data-index-branch onClick={() => { document.body.dataset.branch = `${index}:${item.label}` }}>{index}:{item.label}</button> : null}
     </li>)}</ul>
 
+    <ul data-reused>{visible.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+
     <ol data-positional>{items.filter(item => item.visible).map((item, index) => <li key={index} data-id={item.id}>
       <span>{index}:{item.label}</span>
       <button data-pick onClick={() => { document.body.dataset.position = `${index}:${item.label}` }}>Pick</button>
