@@ -103,7 +103,7 @@ Acceptance: ownership is compiler-generated, removal cleans up exactly once, and
 Investigate common immutable collection source that remains awkward to migrate:
 
 - Reusable aliases with statically provable use sites are complete for immutable local collection aliases feeding multiple keyed lists;
-- computed direct child collections;
+- Computed direct child collections are complete for one top-level `const` selector over a direct child property in a block-bodied keyed `map` callback;
 - imported pure synchronous transforms;
 - immutable search, slice, pagination, and sorting forms proven by fixtures.
 

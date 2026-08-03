@@ -2446,7 +2446,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       const setters = settersByFunction.get(owner) ?? new Map()
       for (const [name, entries] of declarations) {
         for (const declaration of entries) {
-          const parts = keyedListParts(declaration.initializer, setters, declarations, (target, message) => { throw sourceNodeError(target, sourceFile, message) }, new Set(), importedCollections)
+          const parts = keyedListParts(declaration.initializer, setters, declarations, (target, message) => { throw sourceNodeError(target, sourceFile, message) }, new Set(), importedCollections, factory, context)
           if (!parts) continue
           const uses = []
           const collectUses = node => {
@@ -2640,7 +2640,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         return
       }
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction), jsxLocalDeclarations.get(nearestFunction(node)), fail, new Set(), importedCollections)
+        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction), jsxLocalDeclarations.get(nearestFunction(node)), fail, new Set(), importedCollections, factory, context)
         if (parts) {
           for (const declaration of parts.aliasDeclarations ?? []) listLocalDeclarations.add(declaration)
           rawRenderedLists.push({ node, parts })
@@ -3157,16 +3157,29 @@ function containsRenderControl(root, knownLocals) {
   return found
 }
 
-function keyedListParts(expression, setters, declarations, fail, aliases = new Set(), importedCollections = new Set()) {
+function keyedListParts(expression, setters, declarations, fail, aliases = new Set(), importedCollections = new Set(), factory = ts.factory, context) {
   const value = unwrapExpression(expression)
   const directFrom = isArrayFromCall(value) && value.arguments.length === 2 && containsJsx(value.arguments[1])
   if (!directFrom && (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map")) return undefined
   const collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()))
   if (!collection?.state) return undefined
   if (directFrom) collection.selector.push(["from", undefined])
-  const callback = directFrom ? value.arguments[1] : value.arguments[0]
+  let callback = directFrom ? value.arguments[1] : value.arguments[0]
   const parameters = collectionParameters(callback, "Keyed list map", fail)
-  const root = unwrapExpression(callback.body)
+  let root = unwrapExpression(callback.body)
+  if (ts.isBlock(root)) {
+    if (!context || root.statements.length !== 2 || !ts.isVariableStatement(root.statements[0]) || (root.statements[0].declarationList.flags & ts.NodeFlags.Const) === 0 || root.statements[0].declarationList.declarations.length !== 1 || !ts.isReturnStatement(root.statements[1]) || !root.statements[1].expression) fail(root, "Block-bodied keyed list map callbacks require one computed child collection const and a final JSX return")
+    const declaration = root.statements[0].declarationList.declarations[0]
+    if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, "Computed child collections must initialize one const identifier")
+    const computed = renderedCollectionSource(declaration.initializer, new Map(), undefined, fail, new Set())
+    if (!computed?.ownerField || computed.parentItem !== parameters.item) fail(declaration.initializer, `Computed child collections must start from ${parameters.item}.<field>`)
+    const returned = root.statements[1].expression
+    if (identifierReferenceCount(returned, declaration.name.text) !== 1) fail(declaration.name, `Computed child collection alias "${declaration.name.text}" must be used exactly once`)
+    root = unwrapExpression(substituteClone(returned, new Map([[declaration.name.text, declaration.initializer]]), factory, context))
+    callback = factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, callback.parameters, callback.type, callback.equalsGreaterThanToken, root)
+    ts.setParentRecursive(callback, false)
+    callback.parent = value
+  }
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(callback.body, "Keyed list map callback must return one JSX element")
   const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
   const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === "key")

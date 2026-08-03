@@ -115,7 +115,7 @@ return <>
   <ItemRow item={featured} />
   <ul>{items.map(item => <ItemRow key={item.id} item={item} />)}</ul>
 </>`} />
-    <p>A keyed row may map multiple direct array properties of its item recursively at any depth. Nested rows may be intrinsic or recursively specialized through same-file and relative-imported components. Kudzu preserves keyed DOM identity at every level; handlers read the latest item, nested conditions patch bounded DOM, and row key paths own multiple serializable state slots, effects, and <code>null</code>-initialized object refs. Computed child collections, parent capture, component cycles, dynamic state, and callback refs remain unsupported.</p>
+    <p>A keyed row may map multiple direct array properties of its item recursively at any depth. A block-bodied keyed <code>map</code> callback may declare one top-level <code>const</code> computed from a direct child collection through the supported pure selector pipeline, then use that alias once as a nested keyed list source before its final JSX return. Nested rows may be intrinsic or recursively specialized through same-file and relative-imported components. Kudzu preserves keyed DOM identity at every level; handlers read the latest item, nested conditions patch bounded DOM, and row key paths own multiple serializable state slots, effects, and <code>null</code>-initialized object refs. Parent capture, multiple or mixed-use child aliases, component cycles, dynamic state, and callback refs remain unsupported.</p>
   </section>
 }
 

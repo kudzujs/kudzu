@@ -43,8 +43,11 @@ export default function RenderedCollectionsPage() {
     <div data-from-map>{Array.from(items, (item, index) => ({ id: item.id, label: `${index}-${item.label}`, visible: item.visible })).filter(item => item.visible).map(item => <i key={item.id}>{item.label}</i>)}</div>
     <div data-flat>{groups.flatMap(group => group.children).map(item => <i key={item.id} data-id={item.id}>{item.label}</i>)}</div>
     <div data-undefined>{items.filter(item => item.marker === undefined).map(item => <i key={item.id}>{item.label}</i>)}</div>
-    <section data-groups>{groups.map(group => <div key={group.id} data-group={group.id}>
-      {group.children?.filter(item => item.visible).map((item, index) => <span key={item.id}>{index}:{item.label}</span>)}
-    </div>)}</section>
+    <section data-groups>{groups.map(group => {
+      const visibleChildren = group.children.filter(item => item.visible)
+      return <div key={group.id} data-group={group.id}>
+        {visibleChildren.map((item, index) => <span key={item.id}>{index}:{item.label}</span>)}
+      </div>
+    })}</section>
   </main>
 }

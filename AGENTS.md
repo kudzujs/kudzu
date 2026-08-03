@@ -23,6 +23,7 @@
 - Command-only setter and `console.log(label, state)` handlers use the optimized behavior path; other handlers compile to external ESM.
 - Native handlers may capture serializable component locals and destructured props. Relative imported helpers and supported reducer imports compile into handler ESM; non-serializable captures remain unsupported.
 - A keyed row may contain multiple keyed maps over direct parent-item array properties at any nesting depth. Intrinsic, same-file, directly exported same-file, or relative-imported rows support recursive component specialization, static/keyed JSX reuse, destructured directly serializable literal prop defaults, direct analyzable prop spreads, direct intrinsic rest forwarding, forwarded JSX children, nested item conditions, latest-item handlers, multiple directly serializable `useState` values, effects, and object refs initialized with `null`; key paths own hook state across updates/reorder and release it on removal.
+- A block-bodied keyed `map` callback may declare one top-level `const` computed from a direct child collection through the supported pure selector pipeline and then return JSX. The alias must feed exactly one nested keyed list source.
 - An immutable local collection alias may feed multiple keyed list sites when every alias reference is a statically analyzable collection source. Mixed non-collection reads remain unsupported.
 - Put routes in `src/pages`; `index.tsx` maps to `/`.
 - Do not add a VDOM, hydration, state library, general component runtime, or default SPA router.

@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.19 - Reusable collection aliases.** One immutable local collection alias may feed multiple keyed lists when every reference remains statically analyzable; setter callbacks and object refs also have a proven one-boundary component contract. Read the [release notes](./RELEASES.md#0719---reusable-collection-aliases) or open the [release page](https://kudzujs.cloud/releases/0.7.19).
+**Latest release: 0.7.20 - Computed child collections.** A block-bodied keyed `map` callback may compute one direct child collection through the supported pure selector pipeline and use it as a nested keyed list source. Read the [release notes](./RELEASES.md#0720---computed-child-collections) or open the [release page](https://kudzujs.cloud/releases/0.7.20).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

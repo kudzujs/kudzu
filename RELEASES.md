@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.20 - Computed child collections
+
+Kudzu 0.7.20 accepts a common block-bodied keyed `map` callback that computes one direct child collection before returning JSX, without executing arbitrary callback code or adding a browser runtime path.
+
+### New in 0.7.20
+
+- A keyed `map` callback may contain one top-level `const` declaration followed by its final JSX return.
+- The `const` must start from a direct parent-item child property and may use the existing pure `filter`, direct-property `flatMap`, or `Array.from` selector pipeline.
+- The computed alias feeds exactly one nested keyed list source.
+- The compiler substitutes the proven calculation into the returned JSX before nested-list analysis, then reuses existing selector encoding and keyed ownership.
+- Child insertion, reorder, removal, indexes, and DOM identity retain the existing nested-list behavior.
+- Additional statements, multiple or mixed alias reads, parent capture, mutation, arbitrary calls, and asynchronous callbacks fail during compilation.
+- The complete suite passes 107/107 tests with browser coverage for dynamic computed-child insertion and source-diagnostic coverage for mixed alias use.
+
+### Boundary
+
+This release supports one direct-child collection `const` in a block-bodied keyed-map callback. Multiple calculations, aliases used outside one nested keyed list, imported transforms, parent captures, mutation, and async work remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.20
+```
+
 ## 0.7.19 - Reusable collection aliases
 
 Kudzu 0.7.19 lets one immutable local collection alias feed multiple keyed list sites while preserving independent DOM identity, and formalizes setter callback and object-ref ownership across one ordinary component boundary.
