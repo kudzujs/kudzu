@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.17 - Lazy reducer initialization
+
+Kudzu 0.7.17 lowers React-shaped `useReducer(reducer, initialArg, initializer)` calls into existing compiler-owned reducer state when the initializer is statically analyzable, and fixes capability-specialized keyed-list fallback paths.
+
+### New in 0.7.17
+
+- A synchronous one-parameter initializer may be inline, same-file, or imported from a relative TypeScript module.
+- The initial argument must be directly serializable, and the initializer result must be a primitive, plain-object, or array literal derived only from that argument.
+- The compiler substitutes the argument, emits fresh literal AST, and lowers the call to the existing two-argument reducer ownership path.
+- React migration imports and direct `@kudzujs/core` imports receive matching TypeScript overloads without adding a reducer runtime.
+- Dynamic calls, captures, defaults, rest parameters, async or generator functions, and non-literal results fail with source-located diagnostics.
+- Keyed-list builds now use the template fallback when static collection support is absent and preserve a zero index when index capability code is removed.
+- The complete suite passes 105/105 tests, including browser coverage for ordinary, nested, reducer-owned, effect-owned, and conditional keyed lists.
+
+### Boundary
+
+Kudzu does not execute initializer functions during compilation. It only substitutes a directly serializable argument into a directly serializable return expression. Reducer factories, package initializers, arbitrary computation, and captured values remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.17
+```
+
 ## 0.7.16 - Build-time lazy state
 
 Kudzu 0.7.16 accepts the common React-shaped `useState(() => initialValue)` form when the initializer directly returns a serializable literal, lowering it into existing compiler-owned state with no browser component runtime.

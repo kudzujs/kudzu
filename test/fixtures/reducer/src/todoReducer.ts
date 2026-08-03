@@ -3,6 +3,10 @@ import { nextId } from "./todoSupport"
 export type Todo = { id: number; title: string; edits: number }
 export type TodoAction = { type: "add"; title: string } | { type: "remove"; id: number } | { type: "update"; id: number; title: string } | { type: "reverse" } | { type: "restore"; todo: Todo }
 
+export function initializeTodos(title: string): Todo[] {
+  return [{ id: 1, title, edits: 0 }]
+}
+
 export default function todoReducer(todos: Todo[], action: TodoAction) {
   if (action.type === "add") return [...todos, { id: nextId(todos.length), title: action.title, edits: 0 }]
   if (action.type === "remove") return todos.filter(todo => todo.id !== action.id)

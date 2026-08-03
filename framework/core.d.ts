@@ -8,6 +8,7 @@ export const Fragment: unique symbol
 export function useId(): string
 export function useState<T>(initialValue: () => T): [T, StateSetter<T>]
 export function useState<T>(initialValue: T): [T, StateSetter<T>]
+export function useReducer<State, Action, InitialArg>(reducer: Reducer<State, Action>, initialArg: InitialArg, initializer: (initialArg: InitialArg) => State): [State, Dispatch<Action>]
 export function useReducer<State, Action>(reducer: Reducer<State, Action>, initialValue: State): [State, Dispatch<Action>]
 export function useEffect(effect: () => void | EffectCleanup | Promise<void>, dependencies: readonly EffectDependency[]): void
 export function useParams<Params extends Record<string, string> = Record<string, string>>(): Readonly<Params>

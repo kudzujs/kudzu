@@ -9,6 +9,8 @@ declare module "react" {
   export function useRef<T>(initialValue: null): RefObject<T>
   export function useState<T>(initialValue: () => T): [T, Dispatch<T>]
   export function useState<T>(initialValue: T): [T, Dispatch<T>]
+  export function useReducer<State, Action, InitialArg>(reducer: (state: State, action: Action) => State, initialArg: InitialArg, initializer: (initialArg: InitialArg) => State): [State, (action: Action) => void]
+  export function useReducer<State, Action>(reducer: (state: State, action: Action) => State, initialValue: State): [State, (action: Action) => void]
   export function useEffect(effect: () => void | (() => void), dependencies: readonly unknown[]): void
   export function useCallback<T extends (...args: never[]) => unknown>(callback: T, dependencies: readonly unknown[]): T
   export function useMemo<T>(factory: () => T, dependencies: readonly unknown[]): T

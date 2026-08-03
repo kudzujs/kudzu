@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.16 - Build-time lazy state.** Anonymous synchronous `useState` initializers may return directly serializable primitive, plain-object, or array literals without adding a browser runtime. Read the [release notes](./RELEASES.md#0716---build-time-lazy-state) or open the [release page](https://kudzujs.cloud/releases/0.7.16).
+**Latest release: 0.7.17 - Lazy reducer initialization.** React-shaped third-argument `useReducer` initializers may derive directly serializable state from a directly serializable initial argument, while keyed-list capability specialization now preserves fallback and index semantics. Read the [release notes](./RELEASES.md#0717---lazy-reducer-initialization) or open the [release page](https://kudzujs.cloud/releases/0.7.17).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -78,7 +78,7 @@ ordinary React-shaped TSX
 ```
 
 - Function components execute at build time and do not survive as browser components.
-- `useState` and reduced `useReducer` compile to synchronous logical state and batched direct DOM writes; top-level `useId` and direct intrinsic `forwardRef` authoring erase to static HTML without a component runtime.
+- `useState` and reduced `useReducer`, including directly serializable lazy initialization, compile to synchronous logical state and batched direct DOM writes; top-level `useId` and direct intrinsic `forwardRef` authoring erase to static HTML without a component runtime.
 - Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities.
 - Build-known data and routes become complete HTML through async components and `getStaticPaths()`.
 - Native document navigation is the default; static routes do not load a client runtime.

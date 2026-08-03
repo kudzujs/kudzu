@@ -2148,17 +2148,40 @@ function validateUseIdSyntax(sourceFile) {
   visit(sourceFile)
 }
 
-function normalizeLazyStateInitializers(sourceFile, factory, context) {
+function normalizeLazyStateInitializers(sourceFile, factory, context, file, sourceFiles, sourceIndex) {
   const bindings = new Set()
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || !["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text)) continue
     const named = statement.importClause?.namedBindings
     if (named && ts.isNamedImports(named)) for (const entry of named.elements) {
-      if (!entry.isTypeOnly && (entry.propertyName ?? entry.name).text === "useState" && entry.name.text === "useState") bindings.add("useState")
+      const imported = (entry.propertyName ?? entry.name).text
+      if (!entry.isTypeOnly && ["useReducer", "useState"].includes(imported) && entry.name.text === imported) bindings.add(imported)
     }
   }
   if (!bindings.size) return sourceFile
+  const imports = clientImportBindings(sourceFile, file, sourceFiles)
   const visitor = node => {
+    if (bindings.has("useReducer") && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useReducer" && !isShadowedIdentifier(node.expression, sourceFile) && node.arguments.length === 3) {
+      const initialArg = node.arguments[1]
+      const initializer = node.arguments[2]
+      let declaration
+      if (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) declaration = initializer
+      else if (ts.isIdentifier(initializer)) {
+        declaration = localComponentDeclaration(sourceFile, initializer.text)
+        const binding = imports.get(initializer.text)
+        if (!declaration && binding && binding.kind !== "namespace") {
+          try {
+            declaration = resolveComponentExport(binding.target, binding.kind === "default" ? "default" : binding.imported, target => parseSourceFile(target, sourceIndex.get(target)), sourceFiles)
+          } catch {}
+        }
+      }
+      if (!declaration || declaration.parameters.length !== 1 || !ts.isIdentifier(declaration.parameters[0].name) || declaration.parameters[0].initializer || declaration.parameters[0].dotDotDotToken || declaration.asteriskToken || declaration.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || ts.isFunctionExpression(initializer) && initializer.name) throw sourceNodeError(initializer, sourceFile, "Lazy useReducer() requires one inline, same-file, or relative-imported synchronous one-parameter initializer")
+      if (!isSerializableStateLiteral(initialArg)) throw sourceNodeError(initialArg, sourceFile, "Lazy useReducer() initial argument must be directly serializable")
+      const expression = reactMemoExpression(declaration)
+      const lowered = expression && substituteClone(expression, new Map([[declaration.parameters[0].name.text, initialArg]]), factory, context)
+      if (!lowered || !isSerializableStateLiteral(lowered)) throw sourceNodeError(initializer, sourceFile, "Lazy useReducer() initializer must directly return a serializable primitive, plain-object, or array literal derived only from its initial argument")
+      return factory.updateCallExpression(node, node.expression, node.typeArguments, [node.arguments[0], synthesizeSerializableStateLiteral(lowered, factory)])
+    }
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && bindings.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile) && node.arguments[0] && (ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]))) {
       const initializer = node.arguments[0]
       if (node.arguments.length !== 1 || initializer.parameters.length || initializer.asteriskToken || initializer.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || ts.isFunctionExpression(initializer) && initializer.name) throw sourceNodeError(initializer, sourceFile, "Lazy useState() requires one anonymous synchronous zero-parameter initializer")
@@ -2258,7 +2281,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections)
     ts.setParentRecursive(sourceFile, false)
     validateUseIdSyntax(sourceFile)
-    sourceFile = normalizeLazyStateInitializers(sourceFile, factory, context)
+    sourceFile = normalizeLazyStateInitializers(sourceFile, factory, context, file, sourceFiles, sourceIndex)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeZustandMigrationSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
@@ -2276,7 +2299,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         imported = normalizeReactMigrationSyntax(imported, factory, context, importedSerializableCollectionNames(imported, target, sourceFiles, sourceIndex))
         ts.setParentRecursive(imported, false)
         validateUseIdSyntax(imported)
-        imported = normalizeLazyStateInitializers(imported, factory, context)
+        imported = normalizeLazyStateInitializers(imported, factory, context, target, sourceFiles, sourceIndex)
         ts.setParentRecursive(imported, false)
         imported = normalizeZustandMigrationSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
@@ -3738,6 +3761,21 @@ function isSerializableStateLiteral(node) {
   if (ts.isArrayLiteralExpression(value)) return value.elements.every(element => !ts.isSpreadElement(element) && !ts.isOmittedExpression(element) && isSerializableStateLiteral(element))
   if (!ts.isObjectLiteralExpression(value)) return false
   return value.properties.every(property => ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && property.name.text !== "__proto__" && isSerializableStateLiteral(property.initializer))
+}
+
+function synthesizeSerializableStateLiteral(node, factory) {
+  node = unwrapExpression(node)
+  if (ts.isStringLiteral(node)) return factory.createStringLiteral(node.text)
+  if (ts.isNumericLiteral(node)) return factory.createNumericLiteral(node.text)
+  if (node.kind === ts.SyntaxKind.TrueKeyword) return factory.createTrue()
+  if (node.kind === ts.SyntaxKind.FalseKeyword) return factory.createFalse()
+  if (node.kind === ts.SyntaxKind.NullKeyword) return factory.createNull()
+  if (ts.isPrefixUnaryExpression(node)) return factory.createPrefixUnaryExpression(node.operator, synthesizeSerializableStateLiteral(node.operand, factory))
+  if (ts.isArrayLiteralExpression(node)) return factory.createArrayLiteralExpression(node.elements.map(element => synthesizeSerializableStateLiteral(element, factory)))
+  return factory.createObjectLiteralExpression(node.properties.map(property => {
+    const name = ts.isIdentifier(property.name) ? factory.createIdentifier(property.name.text) : ts.isNumericLiteral(property.name) ? factory.createNumericLiteral(property.name.text) : factory.createStringLiteral(property.name.text)
+    return factory.createPropertyAssignment(name, synthesizeSerializableStateLiteral(property.initializer, factory))
+  }))
 }
 
 function isPrimitiveDefaultLiteral(node) {
