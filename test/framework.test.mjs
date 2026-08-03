@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib"
 import { createConnection } from "node:net"
 import test from "node:test"
 import { build, normalizeNavigation, specializeRuntime } from "../framework/build.mjs"
-import { behavior, conditional, createContext, list, nativeBehavior, renderPage, useContext, useEffect, useId, useParams, useRef, useState } from "../framework/core.mjs"
+import { behavior, conditional, createContext, list, listConditional, nativeBehavior, renderPage, useContext, useEffect, useId, useParams, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.21/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.22/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.21"/)
-  assert.match(release, /Kudzu 0\.7\.21.*Compose the data.*Keep effects precise/s)
-  assert.match(release, /COMPOSABLE COLLECTIONS AND EFFECTS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.21/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.22"/)
+  assert.match(release, /Kudzu 0\.7\.22.*Draw reactively.*Navigate natively/s)
+  assert.match(release, /SVG STRUCTURES AND NATIVE LINKS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.22/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -425,12 +425,40 @@ test("escapes custom runtime asset URLs", async () => {
   assert.doesNotMatch(result.html, /<script data-injected>/)
 })
 
-test("rejects reactive conditionals in foreign namespaces", async () => {
-  await assert.rejects(renderPage(() => {
+test("renders reactive SVG structures and rejects reactive MathML structures", async () => {
+  const conditionalResult = await renderPage(() => {
     const [open] = useState(true)
     const branch = conditional("and", true, () => jsx("circle", {}), () => null, "/binding.js", "binding0", [["open", open]], [])
     return jsx("svg", { children: branch })
-  }, { styles: false }), /Reactive conditional DOM is not supported inside svg/)
+  }, { styles: false })
+  assert.match(conditionalResult.html, /data-k-svg-true="&lt;circle&gt;&lt;\/circle&gt;"/)
+
+  const listResult = await renderPage(() => {
+    const [items] = useState([{ id: 1 }])
+    return jsx("svg", { children: list(items, "id", item => jsx("circle", { "data-id": item.id })) })
+  }, { styles: false })
+  assert.match(listResult.html, /data-k-svg-template="&lt;circle data-k-list-root=/)
+
+  await assert.rejects(renderPage(() => {
+    const [open] = useState(true)
+    const branch = conditional("and", true, () => jsx("mi", {}), () => null, "/binding.js", "binding0", [["open", open]], [])
+    return jsx("math", { children: branch })
+  }, { styles: false }), /Reactive conditional DOM is not supported inside math/)
+
+  await assert.rejects(renderPage(() => {
+    const [items] = useState([{ id: 1 }])
+    return jsx("math", { children: list(items, "id", item => jsx("mi", { children: item.id })) })
+  }, { styles: false }), /Reactive keyed lists are not supported inside math/)
+
+  await assert.rejects(renderPage(() => {
+    const [items] = useState([{ id: 1, children: [{ id: 2 }] }])
+    return jsx("svg", { children: list(items, "id", () => jsx("g", { children: list(items, "id", child => jsx("circle", { "data-id": child.id }), "children") })) })
+  }, { styles: false }), /Nested reactive keyed lists are not supported inside svg/)
+
+  await assert.rejects(renderPage(() => {
+    const [items] = useState([{ id: 1, visible: true }])
+    return jsx("svg", { children: list(items, "id", item => jsx("g", { children: listConditional("and", () => item.visible, () => jsx("circle", {}), () => null, "/list.js", "condition0") })) })
+  }, { styles: false }), /Keyed row conditions are not supported inside svg/)
 })
 
 test("normalizes React-shaped SVG presentation attributes", async () => {
@@ -817,6 +845,7 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.match(html, /assets\/native\/index\.js/)
   assert.match(runtime, /template\[data-k-if\]/)
+  assert.doesNotMatch(runtime, /createContextualFragment/)
   assert.match(commandRuntime, /\["click"\]/)
   assert.match(nativeRuntime, /\["click"\]/)
   assert.match(serialization, /setter/)
@@ -896,6 +925,7 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
   assert.match(runtime, /Keyed list state must remain an array/)
   assert.match(runtime, /Keyed list condition marker has no end/)
+  assert.doesNotMatch(runtime, /createContextualFragment/)
   assert.match(runtime, /\.children\[/)
   assert.doesNotMatch(html, /data-k-effects|data-k-effect-item/)
   assert.doesNotMatch(runtime, /data-k-effects|kEffectItem/)
@@ -908,6 +938,30 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.equal(plan.lists[0].state, "s0")
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runListBrowserTest(fixture, chrome)
+})
+
+test("patches conditional and keyed SVG ranges in their namespace", async t => {
+  const fixture = new URL("./fixtures/svg-structures", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/svg-structures/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/svg-structures/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const html = await readFile(new URL("./fixtures/svg-structures/dist/index.html", import.meta.url), "utf8")
+  const bindingRuntime = await readFile(new URL("./fixtures/svg-structures/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
+  const listRuntime = await readFile(new URL("./fixtures/svg-structures/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/svg-structures/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-k-svg-true=/)
+  assert.match(html, /data-k-svg-template=/)
+  assert.match(bindingRuntime, /createContextualFragment/)
+  assert.match(listRuntime, /createContextualFragment/)
+  assert.equal(plan.conditions[0].svg, true)
+  assert.equal(plan.lists[0].svg, true)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSvgStructureBrowserTest(fixture, chrome)
 })
 
 test("compiles synchronous rendered collection selectors and React positional keys", async t => {
@@ -1385,15 +1439,38 @@ test("migrates aliased and member React hooks from a Vite-shaped app", async t =
   assert.match(html, /id="memo-items" class="items "/)
   assert.doesNotMatch(component, /from "clsx"/)
   assert.doesNotMatch(html, /data-item="b"/)
+  assert.match(staticHtml, /<a href="\/app\/about\?tab=all#top" class="about-link">About<\/a>/)
+  assert.doesNotMatch(await readFile(new URL("./fixtures/react-vite-app/.kudzu/pages/static.mjs", import.meta.url), "utf8"), /RouterLink|react-router-dom/)
   assert.ok(plan.lists.some(list => list.selector?.map(operation => operation[0]).join(",") === "filter,from"))
   assert.doesNotMatch(staticHtml, /<script/)
   for (const directory of [new URL("./fixtures/react-vite-app/.kudzu/", import.meta.url), new URL("./fixtures/react-vite-app/dist/", import.meta.url)]) {
     const files = (await readdir(directory, { recursive: true })).filter(file => /\.(?:html|js|mjs|json)$/.test(file))
     const output = (await Promise.all(files.map(file => readFile(new URL(file, directory), "utf8")))).join("\n")
-    assert.doesNotMatch(output, /(?:\bfrom\s*|\bimport\s*\(\s*)["']react["']/)
+    assert.doesNotMatch(output, /(?:\bfrom\s*|\bimport\s*\(\s*)["'](?:react|react-router-dom)["']/)
   }
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runReactViteAppBrowserTest(fixture, chrome)
+})
+
+test("rejects dynamic React Router Link destinations", () => {
+  const fixture = new URL("./fixtures/react-router-link-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router Link requires a static root-relative to="\/path"/)
+})
+
+test("rejects React Router NavLink active-route semantics", () => {
+  const fixture = new URL("./fixtures/react-router-nav-link-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router NavLink active-route semantics cannot be erased to a native anchor/)
+})
+
+test("rejects React Router Link traversal outside base", () => {
+  const fixture = new URL("./fixtures/react-router-link-traversal-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router Link requires a safe static root-relative to="\/path"/)
 })
 
 test("filters imported static collections with memoized state selectors", async t => {
@@ -1994,7 +2071,7 @@ if (document.body.dataset.cleanup !== "local:1") throw new Error("repeat")
   assert.equal(browser.status, 0, `${browser.stdout}\n${browser.stderr}`)
 })
 
-test("reruns primitive dependency effects after cleanup", async t => {
+test("reruns multiple primitive dependency effects after cleanup", async t => {
   const fixture = new URL("./fixtures/effect-dependencies", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/effect-dependencies/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -2034,17 +2111,24 @@ await import(${JSON.stringify(entryUrl.href)})
 const runtime = await import(${JSON.stringify(runtimeUrl.href)})
 const initial = "|setup 0:1|second setup 0|parity setup even|named setup 0"
 if (document.body.dataset.effectLog !== initial) throw new Error("initial")
+runtime.applyCommands(runtime.browserState, [["add", "s1", 1]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+const pageRerun = initial + "|cleanup 0:1|setup 0:2"
+if (document.body.dataset.effectLog !== pageRerun) throw new Error("second-dependency: " + document.body.dataset.effectLog)
 runtime.applyCommands(runtime.browserState, [["add", "s0", 1], ["add", "s1", 1]], runtime.commitDom)
 await new Promise(resolve => setTimeout(resolve, 0))
-const rerun = initial + "|cleanup 0:1|second cleanup 0|parity cleanup even|named cleanup 0|setup 1:2|second setup 1|parity setup odd|named setup 1"
+const rerun = pageRerun + "|cleanup 0:2|second cleanup 0|parity cleanup even|named cleanup 0|setup 1:3|second setup 1|parity setup odd|named setup 1"
 if (document.body.dataset.effectLog !== rerun) throw new Error("rerun: " + document.body.dataset.effectLog)
 runtime.applyCommands(runtime.browserState, [["add", "s0", 2]], runtime.commitDom)
 await new Promise(resolve => setTimeout(resolve, 0))
-const sameParity = rerun + "|cleanup 1:2|second cleanup 1|named cleanup 1|setup 3:2|second setup 3|named setup 3"
+const sameParity = rerun + "|cleanup 1:3|second cleanup 1|named cleanup 1|setup 3:3|second setup 3|named setup 3"
 if (document.body.dataset.effectLog !== sameParity) throw new Error("equal-derived: " + document.body.dataset.effectLog)
+runtime.applyCommands(runtime.browserState, [["set", "s1", 3]], runtime.commitDom)
+await new Promise(resolve => setTimeout(resolve, 0))
+if (document.body.dataset.effectLog !== sameParity) throw new Error("equal-direct: " + document.body.dataset.effectLog)
 listeners.get("pagehide")({ persisted: false })
 await new Promise(resolve => setTimeout(resolve, 0))
-if (document.body.dataset.effectLog !== sameParity + "|cleanup 3:2|parity cleanup odd|named cleanup 3|second cleanup 3") throw new Error("dispose: " + document.body.dataset.effectLog)
+if (document.body.dataset.effectLog !== sameParity + "|cleanup 3:3|parity cleanup odd|named cleanup 3|second cleanup 3") throw new Error("dispose: " + document.body.dataset.effectLog)
 `], { encoding: "utf8" })
   assert.equal(browser.status, 0, `${browser.stdout}\n${browser.stderr}`)
 })
@@ -3117,6 +3201,68 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runSvgStructureBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const click = selector => document.querySelector(selector).click()
+const SVG = "http://www.w3.org/2000/svg"
+try {
+  const dots = () => [...document.querySelectorAll("[data-dot]")]
+  await waitFor(() => dots().length === 2 && document.querySelector("[data-visible]"), "initial")
+  if ([document.querySelector("[data-visible]"), ...dots(), ...dots().flatMap(dot => [...dot.children])].some(node => node.namespaceURI !== SVG)) throw new Error("initial-namespace")
+  const oak = document.querySelector('[data-dot="1"]')
+  click("[data-toggle]")
+  await waitFor(() => document.querySelector("[data-hidden]"), "hidden")
+  if (document.querySelector("[data-hidden]").namespaceURI !== SVG || document.querySelector("[data-visible]")) throw new Error("conditional-namespace")
+  click("[data-toggle]")
+  await waitFor(() => document.querySelector("[data-visible]"), "visible")
+  click("[data-add]")
+  await waitFor(() => dots().length === 3, "add")
+  if (document.querySelector('[data-dot="3"]').namespaceURI !== SVG) throw new Error("added-namespace")
+  click("[data-rename]")
+  await waitFor(() => document.querySelector('[data-dot="1"] text').textContent === "Red oak", "rename")
+  if (document.querySelector('[data-dot="1"] circle').getAttribute("fill") !== "crimson") throw new Error("attribute")
+  click("[data-reorder]")
+  await waitFor(() => dots().map(dot => dot.dataset.dot).join(",") === "3,2,1", "reorder")
+  if (dots().at(-1) !== oak) throw new Error("identity")
+  click("[data-remove]")
+  await waitFor(() => dots().map(dot => dot.dataset.dot).join(",") === "3,1", "remove")
+  document.body.dataset.svgStructureTest = "pass"
+} catch (error) {
+  document.body.dataset.svgStructureTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-svg-structure-test="pass"/)
   } finally {
     server.kill()
   }

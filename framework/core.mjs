@@ -588,7 +588,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     const descriptor = bindingDescriptor(node)
     const stateIds = reactiveStateIds(descriptor)
     if (!stateIds.size) return renderNode(node.value ? node.truthy() : node.falsy(), namespace, selectValue)
-    if (namespace) throw new Error(`Reactive conditional DOM is not supported inside ${namespace}`)
+    if (namespace === "math") throw new Error("Reactive conditional DOM is not supported inside math")
 
     const id = renderContext.listRoot || renderContext.listRowRoot ? nextRowRenderId("c") : nextRenderId("c")
     const renderBranch = async branch => {
@@ -609,14 +609,17 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
     const owned = truthy.states.length || falsy.states.length ? { true: truthy.states, false: falsy.states } : undefined
     const mount = Boolean(owned) || truthy.html.includes("data-k-") || falsy.html.includes("data-k-") || truthy.html.includes("<!--k-text:") || falsy.html.includes("<!--k-text:")
-    const metadata = { id, kind: node.kind, initial: node.value, ...descriptor, ...(owned ? { owned } : {}), ...(mount ? { mount: true } : {}) }
+    const metadata = { id, kind: node.kind, initial: node.value, ...descriptor, ...(namespace === "svg" ? { svg: true } : {}), ...(owned ? { owned } : {}), ...(mount ? { mount: true } : {}) }
     for (const stateId of stateIds) renderContext.conditionStates.add(stateId)
     renderContext.conditions.push(metadata)
     renderContext.hasBehaviors = true
     renderContext.hasBindings = true
     const encoded = escapeJsonAttribute(metadata)
     const current = node.value ? truthy.html : node.kind === "and" ? await renderNode(node.value, namespace, selectValue) : falsy.html
-    return `<template data-k-if='${encoded}'><template data-k-true>${truthy.html}</template><template data-k-false>${falsy.html}</template></template>${current}<template data-k-if-end="${id}"></template>`
+    const branches = namespace === "svg"
+      ? ` data-k-svg-true="${escapeAttribute(truthy.html)}" data-k-svg-false="${escapeAttribute(falsy.html)}"></template>`
+      : `><template data-k-true>${truthy.html}</template><template data-k-false>${falsy.html}</template></template>`
+    return `<template data-k-if='${encoded}'${branches}${current}<template data-k-if-end="${id}"></template>`
   }
   if (node?.[listMarker]) return renderList(node, namespace, selectValue)
   if (node?.[listFieldMarker]) {
@@ -644,6 +647,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     return `<!--k-text:${id}-->${escapeHtml(node.value ?? "")}<!--k-text-end-->`
   }
   if (node?.[listConditionalMarker]) {
+    if (namespace === "svg") throw new Error("Keyed row conditions are not supported inside svg")
     const descriptor = { kind: node.kind, module: node.module, handler: node.handler }
     const owner = renderContext.listRoot ?? renderContext.listRowRoot
     if (owner) owner.conditions = true
@@ -833,12 +837,13 @@ function sharedInitialListMarker() {
 }
 
 async function renderList(node, namespace, selectValue) {
-  if (namespace) throw new Error(`Reactive keyed lists are not supported inside ${namespace}`)
+  if (namespace === "math") throw new Error("Reactive keyed lists are not supported inside math")
+  if (namespace === "svg" && node.ownerField) throw new Error("Nested reactive keyed lists are not supported inside svg")
   const ownerRoot = node.ownerField ? renderContext.listRoot ?? renderContext.listRowRoot : undefined
   const ownerTemplate = Boolean(node.ownerField && renderContext.listTemplate)
   const rowList = node.ownerField ? nextRowList() : undefined
   const id = rowList?.id ?? nextRenderId("l")
-  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(node.items[internalStateMarker] ? { static: true } : {}), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.selectorStates.length ? { selectorStates: Object.fromEntries(node.selectorStates.map(([name, state]) => [name, state.id])) } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
+  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(namespace === "svg" ? { svg: true } : {}), ...(node.items[internalStateMarker] ? { static: true } : {}), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.selectorStates.length ? { selectorStates: Object.fromEntries(node.selectorStates.map(([name, state]) => [name, state.id])) } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
   if (ownerTemplate) {
     ownerRoot.descriptor.children ??= []
     ownerRoot.descriptor.children.push({ id, field: node.ownerField, key: node.keyField, ...(node.selector.length ? { selector: node.selector } : {}) })
@@ -904,7 +909,8 @@ async function renderList(node, namespace, selectValue) {
     renderContext.hasBehaviors = true
     renderContext.hasLists = true
     const prototype = node.ownerField && !ownerTemplate ? "" : template
-    return `<template data-k-list='${escapeJsonAttribute(descriptor)}'>${prototype}</template>${current}<template data-k-list-end="${id}"></template>`
+    const svgTemplate = namespace === "svg" ? ` data-k-svg-template="${escapeAttribute(prototype)}"` : ""
+    return `<template data-k-list='${escapeJsonAttribute(descriptor)}'${svgTemplate}>${namespace === "svg" ? "" : prototype}</template>${current}<template data-k-list-end="${id}"></template>`
   } finally {
     renderContext.listRoot = previousListRoot
     renderContext.listRowRoot = previousListRowRoot

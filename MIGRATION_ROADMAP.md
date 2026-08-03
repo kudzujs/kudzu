@@ -116,19 +116,19 @@ Investigate effect forms common in ordinary React source:
 - destructured primitive props backed directly by parent state are complete;
 - Simple derived primitive locals are complete for top-level immutable pure expressions over direct state, with derived-value comparison and latest setup/cleanup evaluation;
 - Same-component top-level simple `const` effect setup and directly returned cleanup functions are complete;
-- multiple direct dependencies without adding a scheduler.
+- Multiple direct dependencies are complete through the existing commit batching path; each value is compared with `Object.is`, and same-turn changes rerun the effect once without a component scheduler.
 
 Acceptance: direct dependency comparison, cleanup-before-rerun, stale async isolation, and route/DOM ownership remain explicit.
 
 ### 4. Structural SVG Rendering
 
-Investigate conditional and keyed ranges inside SVG plus namespaced attributes only when a real icon, chart-shell, or illustration fixture fails. Reuse existing condition/list ownership and attribute normalization; do not create an SVG renderer.
+Reactive conditionals and flat intrinsic keyed lists inside SVG are complete. SVG-only branch and row prototypes are parsed in their actual parent namespace while reusing existing condition/list ownership; routes without structural SVG compile out that path. Keyed-item conditions, nested SVG lists, MathML structures, and namespaced attributes remain unsupported until a fixture proves them necessary. No SVG renderer is introduced.
 
 ### 5. Router-Shaped Source Lowering
 
 Investigate conventional React Router source forms that can erase to existing behavior:
 
-- `Link` to native anchors;
+- Named or aliased React Router `Link` with one static root-relative `to` is complete; it erases to a base-aware native anchor with no router runtime;
 - route parameters to `getStaticPaths()` or the runtime pathname reader;
 - query reads to build-time props or a minimal URL reader;
 - imperative navigation to native document navigation where semantics match.

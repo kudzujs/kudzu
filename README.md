@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.21 - Composable collections and effects.** Relative pure collection transforms, slice pagination, reactive search, immutable sorting, derived primitive effect dependencies, and simple named setup/cleanup functions now lower into existing compiler-owned capabilities. Read the [release notes](./RELEASES.md#0721---composable-collections-and-effects) or open the [release page](https://kudzujs.cloud/releases/0.7.21).
+**Latest release: 0.7.22 - SVG structures and native links.** Reactive SVG conditionals and flat keyed lists preserve their namespace, while supported React Router `Link` authoring erases to base-aware native anchors with zero router runtime. Read the [release notes](./RELEASES.md#0722---svg-structures-and-native-links) or open the [release page](https://kudzujs.cloud/releases/0.7.22).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -82,6 +82,7 @@ ordinary React-shaped TSX
 - Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities. Inline or simple `const` setter callbacks and object refs may cross one ordinary component boundary into a direct intrinsic root.
 - Build-known data and routes become complete HTML through async components and `getStaticPaths()`.
 - Native document navigation is the default; static routes do not load a client runtime.
+- A named or aliased React Router `Link` with a static root-relative `to` erases to a base-aware native anchor; no router package or runtime is emitted.
 - Unsupported nearby patterns fail during the build with a source location and actionable boundary.
 
 Migration input may retain supported imports from `react`; Kudzu erases those references and never emits or executes React. New Kudzu source should import framework APIs from `@kudzujs/core`.

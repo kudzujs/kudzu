@@ -37,6 +37,12 @@ declare module "zustand" {
   export function create<T>(initializer: (set: (update: Partial<T> | ((state: T) => Partial<T>)) => void) => T): <U>(selector: (state: T) => U) => U
 }
 
+declare module "react-router-dom" {
+  export type To = string
+  export function Link(props: { to: To; children?: unknown; className?: string; target?: string; rel?: string }): unknown
+  export function NavLink(props: { to: To; children?: unknown; className?: string }): unknown
+}
+
 declare module "*.png" {
   const url: string
   export default url

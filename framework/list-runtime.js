@@ -44,7 +44,7 @@ function mountLists(root) {
     const end = findEnd(start, descriptor.id)
     const roots = listRoots(start, end)
     const nested = __KUDZU_NESTED_LISTS__ ? mountNestedPrototype(start, descriptor, roots) : undefined
-    const templateRoot = __KUDZU_NESTED_LISTS__ ? nested.templateRoot : start.content.firstElementChild
+    const templateRoot = __KUDZU_NESTED_LISTS__ ? nested.templateRoot : listTemplateRoot(start, descriptor)
     if (__KUDZU_LIST_ROW_HOOKS__) for (let index = 0; index < roots.length; index++) initializeGeneralRowHooks(descriptor, descriptor.keys[index], roots[index], nested?.owner)
     const parts = listItemPartPlan(templateRoot, descriptor.nested)
     const staticRows = __KUDZU_STATIC_COLLECTIONS__ && descriptor.static && parts.directFill ? new Map() : undefined
@@ -63,7 +63,8 @@ function mountLists(root) {
     const list = {
       start,
       descriptor,
-      ...(__KUDZU_NESTED_LISTS__ ? { templateRoot, ...(nested.childPrototypes?.size ? { childPrototypes: nested.childPrototypes } : {}) } : {}),
+      templateRoot,
+      ...(__KUDZU_NESTED_LISTS__ && nested.childPrototypes?.size ? { childPrototypes: nested.childPrototypes } : {}),
       parts,
       ...(__KUDZU_STATIC_COLLECTIONS__ && staticRows ? { staticRows } : {}),
       ...(__KUDZU_STATIC_COLLECTIONS__ && staticEntries ? { staticEntries, staticPositions: staticEntries.positions } : {}),
@@ -196,7 +197,7 @@ function updateList(list) {
     let node = list.roots.get(token)
     if (!node) {
       const staticRoot = __KUDZU_STATIC_COLLECTIONS__ ? list.staticRows?.get(token)?.cloneNode(true) : undefined
-      node = staticRoot ?? (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
+      node = staticRoot ?? list.templateRoot?.cloneNode(true)
       if (!staticRoot && node?.dataset.kListRoot !== list.descriptor.id) node = undefined
       if (!node) throw new Error("Keyed list template has no root element")
       node.removeAttribute("data-k-list-root")
@@ -360,7 +361,7 @@ function updateStableList(list, items) {
     keys.add(token)
     if (index < previous.length && (key !== previous[index][keyField] || appending && item !== previous[index])) stable = false
     if (!stable || items.length === previous.length + 1 || index < previous.length) continue
-    let node = (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
+    let node = list.templateRoot?.cloneNode(true)
     if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
     if (!node) throw new Error("Keyed list template has no root element")
     node.removeAttribute("data-k-list-root")
@@ -545,7 +546,7 @@ function updateReducerList(list, items) {
 }
 
 function addListRoot(list, { item, index = list.roots.size, key, token, value }) {
-  let node = (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
+  let node = list.templateRoot?.cloneNode(true)
   if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
   if (!node) throw new Error("Keyed list template has no root element")
   node.removeAttribute("data-k-list-root")
@@ -862,13 +863,20 @@ function listOwner(start) {
 function mountNestedPrototype(start, descriptor, roots) {
   const owner = descriptor.ownerField ? listOwner(start) : undefined
   const prototypeStart = owner ? childPrototypes.get(owner)?.get(descriptor.id) : undefined
-  const templateRoot = prototypeStart?.content.firstElementChild ?? start.content.firstElementChild
+  const templateRoot = prototypeStart?.content.firstElementChild ?? listTemplateRoot(start, descriptor)
   if (!templateRoot) throw new Error("Nested keyed list has no shared row prototype")
   const prototypes = descriptor.children && new Map(descriptor.children.map(child => [child.id, findChildPrototype(templateRoot, child.id)]))
   if (prototypes && [...prototypes.values()].some(prototype => !prototype)) throw new Error("Keyed list template has no nested row prototype")
   if (prototypes?.size) for (const root of roots) childPrototypes.set(root, prototypes)
   if (prototypeStart && start !== prototypeStart) start.content.replaceChildren()
   return { owner, childPrototypes: prototypes, templateRoot }
+}
+
+function listTemplateRoot(start, descriptor) {
+  if (!__KUDZU_SVG_LISTS__ || !descriptor.svg) return start.content.firstElementChild
+  const range = start.ownerDocument.createRange()
+  range.selectNode(start)
+  return range.createContextualFragment(start.dataset.kSvgTemplate).firstElementChild
 }
 
 function findChildPrototype(root, id) {

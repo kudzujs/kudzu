@@ -122,10 +122,10 @@ function mountConditions(root) {
     mountedConditions.add(start)
     const descriptor = JSON.parse(start.dataset.kIf)
     const end = findEnd(start, descriptor.id)
-    const truthy = start.content.querySelector("template[data-k-true]")
-    const falsy = start.content.querySelector("template[data-k-false]")
+    const truthy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgTrue : start.content.querySelector("template[data-k-true]")
+    const falsy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgFalse : start.content.querySelector("template[data-k-false]")
     if (!end || !truthy || !falsy) continue
-    const condition = { start, end, truthy, falsy, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount, owned: descriptor.owned }
+    const condition = { start, end, truthy, falsy, svg: globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount, owned: descriptor.owned }
     mountConditionStates(condition, Boolean(descriptor.initial), false)
     const mount = evaluator => {
       if (!start.isConnected) return
@@ -154,7 +154,9 @@ function updateCondition(condition) {
   const falseText = condition.kind === "and" && !truthy ? renderFalsy(value) : ""
   const fragment = falseText
     ? textFragment(condition.end.ownerDocument, falseText)
-    : (truthy ? condition.truthy : condition.falsy).content.cloneNode(true)
+    : globalThis.__KUDZU_SVG_CONDITIONS__ && condition.svg
+      ? svgFragment(condition.start, truthy ? condition.truthy : condition.falsy)
+      : (truthy ? condition.truthy : condition.falsy).content.cloneNode(true)
   const nodes = condition.mount ? [...fragment.childNodes] : undefined
   mountConditionStates(condition, truthy, true)
   condition.end.parentNode.insertBefore(fragment, condition.end)
@@ -228,6 +230,12 @@ function textFragment(document, value) {
   const fragment = document.createDocumentFragment()
   fragment.append(document.createTextNode(value))
   return fragment
+}
+
+function svgFragment(marker, markup) {
+  const range = marker.ownerDocument.createRange()
+  range.selectNode(marker)
+  return range.createContextualFragment(markup)
 }
 
 function findEnd(start, id) {

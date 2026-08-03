@@ -199,7 +199,9 @@ export async function build({ quiet = false, minify = true } = {}) {
   const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
   const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
   const hasTextBindings = plans.some(plan => plan.bindings.some(binding => binding.target === "text"))
+  const hasSvgConditions = plans.some(plan => plan.conditions.some(condition => condition.svg))
   const hasListConditions = plans.some(plan => plan.lists.some(list => list.conditions))
+  const hasSvgLists = plans.some(plan => plan.lists.some(list => list.svg))
   const hasDeepListConditions = plans.some(plan => plan.lists.some(list => list.conditionHandlers))
   const hasListTextRanges = plans.some(plan => plan.lists.some(list => list.textRanges))
   const hasListAttributes = plans.some(plan => plan.lists.some(list => list.attributes))
@@ -272,6 +274,7 @@ export async function build({ quiet = false, minify = true } = {}) {
     if (navigationRoutes.length) bindingRuntime = specializeNavigationTextDescriptors(bindingRuntime)
     await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify, {
       "globalThis.__KUDZU_TEXT_BINDINGS__": String(hasTextBindings),
+      "globalThis.__KUDZU_SVG_CONDITIONS__": String(hasSvgConditions),
       "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures)
     })
   }
@@ -349,7 +352,8 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_COLLECTION_SELECTORS__: String(hasCollectionSelectors),
       __KUDZU_STATIC_COLLECTIONS__: String(hasStaticCollections),
       __KUDZU_LIST_INDEXES__: String(hasListIndexes),
-      __KUDZU_LIST_STABLE_FAST_PATHS__: String(hasListStableFastPaths)
+      __KUDZU_LIST_STABLE_FAST_PATHS__: String(hasListStableFastPaths),
+      __KUDZU_SVG_LISTS__: String(hasSvgLists)
     })
     if (hasCollectionSelectors && !hasDerivedEffectDependencies) await rm(join(assetsDirectory, "kudzu-collection-selector.js"))
   }
@@ -1734,7 +1738,8 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   if (errors.length) {
     throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
   }
-  if (hasReactModuleReference(result.outputText, file)) throw new Error(`${relative(root, file)} Runtime React module references are not supported`)
+  const packageReference = emittedPackageReference(result.outputText, file, new Set(["react", "react-router-dom"]))
+  if (packageReference) throw new Error(`${relative(root, file)} Runtime ${packageReference} module references are not supported`)
 
   const output = compiledPath(file)
   await mkdir(resolve(output, ".."), { recursive: true })
@@ -1757,16 +1762,86 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports] }
 }
 
-function hasReactModuleReference(source, file) {
+function emittedPackageReference(source, file, packages) {
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS)
-  let found = false
+  let found
   const visit = node => {
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react") found = true
-    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require") && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === "react") found = true
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && packages.has(node.moduleSpecifier.text)) found = node.moduleSpecifier.text
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === "require") && ts.isStringLiteral(node.arguments[0]) && packages.has(node.arguments[0].text)) found = node.arguments[0].text
     if (!found) ts.forEachChild(node, visit)
   }
   visit(sourceFile)
   return found
+}
+
+function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
+  const links = new Set()
+  for (const statement of sourceFile.statements) {
+    if ((ts.isExportDeclaration(statement) || ts.isImportDeclaration(statement)) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react-router-dom") {
+      if (ts.isExportDeclaration(statement)) throw sourceNodeError(statement, sourceFile, "React Router exports are not supported; import Link directly where it renders")
+      const clause = statement.importClause
+      if (clause?.isTypeOnly) continue
+      if (!clause) throw sourceNodeError(statement, sourceFile, "Side-effect React Router imports are not supported")
+      if (clause.name) throw sourceNodeError(clause.name, sourceFile, "React Router default imports are not supported; use a named Link import")
+      const bindings = clause.namedBindings
+      if (!bindings || ts.isNamespaceImport(bindings)) throw sourceNodeError(bindings ?? statement, sourceFile, "React Router namespace imports are not supported; use a named Link import")
+      for (const entry of bindings.elements) {
+        if (entry.isTypeOnly) continue
+        const imported = (entry.propertyName ?? entry.name).text
+        if (imported === "NavLink") throw sourceNodeError(entry, sourceFile, "React Router NavLink active-route semantics cannot be erased to a native anchor")
+        if (imported !== "Link") throw sourceNodeError(entry, sourceFile, `React Router ${imported} is not supported; only named Link imports can be erased to native anchors`)
+        links.add(entry.name.text)
+      }
+    }
+  }
+  if (!links.size) return sourceFile
+
+  const routerProps = new Set(["discover", "end", "prefetch", "preventScrollReset", "relative", "reloadDocument", "replace", "state", "viewTransition"])
+  const attributes = attributesNode => {
+    const output = []
+    let destination
+    for (const property of attributesNode.properties) {
+      if (ts.isJsxSpreadAttribute(property)) throw sourceNodeError(property, sourceFile, "React Router Link does not support spread attributes during native anchor lowering")
+      const name = property.name.text
+      if (name === "href") throw sourceNodeError(property, sourceFile, "React Router Link must not declare href; Kudzu derives it from to")
+      if (routerProps.has(name)) throw sourceNodeError(property, sourceFile, `React Router Link prop ${JSON.stringify(name)} cannot be erased to a native anchor`)
+      if (name !== "to") {
+        output.push(ts.visitEachChild(property, visitor, context))
+        continue
+      }
+      if (destination !== undefined) throw sourceNodeError(property, sourceFile, "React Router Link requires exactly one to attribute")
+      if (!property.initializer || !ts.isStringLiteral(property.initializer)) throw sourceNodeError(property, sourceFile, 'React Router Link requires a static root-relative to="/path"')
+      destination = property.initializer.text
+      const pathname = destination.match(/^[^?#]*/)[0]
+      let decoded
+      try { decoded = decodeURIComponent(pathname) } catch { throw sourceNodeError(property.initializer, sourceFile, 'React Router Link requires a safe static root-relative to="/path"') }
+      if (!destination.startsWith("/") || destination.startsWith("//") || /%(?:2f|5c)/i.test(pathname) || /[\\\0]/.test(decoded) || decoded.split("/").includes("..") || [...decoded].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159)) throw sourceNodeError(property.initializer, sourceFile, 'React Router Link requires a safe static root-relative to="/path"')
+      output.push(factory.createJsxAttribute(factory.createIdentifier("href"), factory.createStringLiteral(withBase(base, destination))))
+    }
+    if (destination === undefined) throw sourceNodeError(attributesNode.parent, sourceFile, "React Router Link requires exactly one static root-relative to attribute")
+    return factory.updateJsxAttributes(attributesNode, output)
+  }
+  const importedLink = tag => ts.isIdentifier(tag) && links.has(tag.text) && !isShadowedIdentifier(tag, sourceFile)
+  const visitor = node => {
+    if (ts.isJsxElement(node) && importedLink(node.openingElement.tagName)) {
+      const opening = factory.updateJsxOpeningElement(node.openingElement, factory.createIdentifier("a"), node.openingElement.typeArguments, attributes(node.openingElement.attributes))
+      const closing = factory.updateJsxClosingElement(node.closingElement, factory.createIdentifier("a"))
+      return factory.updateJsxElement(node, opening, ts.visitNodes(node.children, visitor), closing)
+    }
+    if (ts.isJsxSelfClosingElement(node) && importedLink(node.tagName)) return factory.updateJsxSelfClosingElement(node, factory.createIdentifier("a"), node.typeArguments, attributes(node.attributes))
+    if (ts.isIdentifier(node) && links.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router Link imports may only be used as direct JSX elements")
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-router-dom") {
+      const clause = node.importClause
+      if (!clause || clause.isTypeOnly) return node
+      const bindings = clause.namedBindings
+      if (!bindings || !ts.isNamedImports(bindings)) return node
+      const elements = bindings.elements.filter(entry => entry.isTypeOnly || (entry.propertyName ?? entry.name).text !== "Link")
+      if (!elements.length) return undefined
+      return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, clause.isTypeOnly, undefined, factory.updateNamedImports(bindings, elements)), node.moduleSpecifier, node.attributes)
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  return ts.visitNode(sourceFile, visitor)
 }
 
 function normalizeClsxSyntax(sourceFile, factory, context) {
@@ -2298,6 +2373,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const factory = context.factory
     const hasLinkElements = /<link/i.test(sourceFile.text)
     const importedCollections = importedSerializableCollectionNames(sourceFile, file, sourceFiles, sourceIndex)
+    sourceFile = normalizeReactRouterSyntax(sourceFile, factory, context, base)
+    ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeClsxSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections)
@@ -2316,7 +2393,9 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const importedSource = target => {
       let imported = importedSources.get(target)
       if (!imported) {
-        imported = normalizeClsxSyntax(parseSourceFile(target, sourceIndex.get(target)), factory, context)
+        imported = normalizeReactRouterSyntax(parseSourceFile(target, sourceIndex.get(target)), factory, context, base)
+        ts.setParentRecursive(imported, false)
+        imported = normalizeClsxSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
         imported = normalizeReactMigrationSyntax(imported, factory, context, importedSerializableCollectionNames(imported, target, sourceFiles, sourceIndex))
         ts.setParentRecursive(imported, false)

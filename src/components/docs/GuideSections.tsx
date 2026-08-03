@@ -49,6 +49,16 @@ export default function ItemPage() {
 }`} />
     <p><code>getStaticPaths()</code> and <code>runtimeParams</code> are mutually exclusive. Parameters occupy complete path segments and malformed, separator, control, and traversal-like values are rejected. Static hosts must try exact files first and then internally rewrite matching paths to the generated fallback while preserving the URL. Ordered rewrite metadata is available to <code>afterBuild()</code>.</p>
     <h3 id="navigation">Application navigation</h3>
+    <p>Native anchors are the default. Migration input may retain a named or aliased React Router <code>Link</code> when <code>to</code> is one static root-relative path; Kudzu applies the configured base, emits an ordinary anchor, and removes the package import.</p>
+    <CodeBlock code={`import { Link as RouterLink } from "react-router-dom"
+
+<RouterLink to="/products?sort=name#results" className="nav-link">
+  Products
+</RouterLink>
+
+// With base: "/app", emits:
+// <a href="/app/products?sort=name#results" class="nav-link">Products</a>`} />
+    <p>Dynamic or relative destinations, <code>NavLink</code>, router-only props, spreads, default or namespace imports, and non-JSX uses are rejected rather than approximating React Router semantics. Ordinary authored <code>&lt;a href&gt;</code> values remain unchanged.</p>
     <p>Emitted exact and runtime-parameter routes may share a page-exported layout and opt into same-document navigation while every URL remains a complete standalone document.</p>
     <CodeBlock code={`// src/pages/product.tsx
 export { Shell as layout } from "../components/Shell"
@@ -80,7 +90,7 @@ export default {
     // Write host rewrites, RSS, sitemap, or search indexes.
   }
 }`} />
-    <p>The base prefixes runtime, handler, stylesheet, icon, manifest, and dev-server URLs without nesting files under <code>dist</code>. Every CSS file under <code>src</code> is copied under <code>dist/assets</code> with its relative path and linked in deterministic order. Source style entries may transform CSS before writing their declared output. <code>publicDir</code> defaults to <code>public</code>. Config and page metadata may be objects or functions of route props; page metadata wins. Reserve <code>afterBuild()</code> for host rewrites and extra artifacts rather than HTML or stylesheet mutation. Page JSX must not render body stylesheets.</p>
+    <p>The base prefixes runtime, handler, stylesheet, icon, manifest, lowered React Router <code>Link</code>, and dev-server URLs without nesting files under <code>dist</code>. Ordinary authored anchor URLs remain under application control. Every CSS file under <code>src</code> is copied under <code>dist/assets</code> with its relative path and linked in deterministic order. Source style entries may transform CSS before writing their declared output. <code>publicDir</code> defaults to <code>public</code>. Config and page metadata may be objects or functions of route props; page metadata wins. Reserve <code>afterBuild()</code> for host rewrites and extra artifacts rather than HTML or stylesheet mutation. Page JSX must not render body stylesheets.</p>
     <h3>Trusted HTML</h3>
     <CodeBlock code={`<article dangerouslySetInnerHTML={{ __html: renderedNotionHtml }} />`} />
     <p>Raw HTML is not sanitized. It accepts trusted build-time content only; reactive values, children on the same element, void elements, and keyed-list raw HTML are rejected.</p>
@@ -222,14 +232,15 @@ useEffect(async () => {
   window.addEventListener("resize", onResize)
   return () => window.removeEventListener("resize", onResize)
 }, [])`} />
-    <p>Primitive state and runtime parameter identifiers may trigger cleanup and rerun without rerunning the component.</p>
+    <p>One or more primitive state and runtime parameter identifiers may trigger cleanup and rerun without rerunning the component.</p>
     <CodeBlock code={`const [event, setEvent] = useState("resize")
+const [capture, setCapture] = useState(false)
 
 useEffect(() => {
   const listener = () => console.log(event)
-  window.addEventListener(event, listener)
-  return () => window.removeEventListener(event, listener)
-}, [event])`} />
+  window.addEventListener(event, listener, capture)
+  return () => window.removeEventListener(event, listener, capture)
+}, [event, capture])`} />
     <p>Kudzu coalesces committed dependency changes, awaits every affected cleanup in declaration order, and then runs new setups in declaration order. Dependencies may be direct signal identifiers, aliases holding JSON-safe primitives, destructured ordinary child props passed directly from parent state, or one top-level immutable local derived through a supported pure primitive expression from direct state. Derived dependencies subscribe to their source states but compare the calculated value with <code>Object.is</code>; setup and cleanup evaluate the latest expression. Effect setup and directly returned cleanup callbacks may each be one top-level simple <code>const</code> function in the same component; Kudzu substitutes them into the existing handler. A keyed row may also use direct primitive properties such as <code>[item.id]</code> or <code>[version, item.name]</code>; only rows whose selected values changed rerun, reorder does not rerun, and key changes remount. Whole-item, nested, prototype-sensitive, object, spread, arbitrary-call, and dynamic dependencies are rejected. Indirect or dynamically selected callbacks, callback parameters, cleanup parameters or generators, cross-component references, and non-serializable captures remain unsupported. Routes without dependency effects do not load <code>kudzu-deps.js</code>.</p>
     <p>An effect may own a relative TypeScript module Worker. Kudzu emits its graph separately and creates it only when the effect mounts.</p>
     <CodeBlock code={`useEffect(() => {
@@ -270,9 +281,10 @@ return <>
       <div><code>any attribute</code><p>Patches standard, <code>aria-*</code>, and <code>data-*</code> attributes without a compiler allowlist.</p></div>
     </div>
     <h3>Inline SVG</h3>
-    <p>Static and reactive SVG presentation props use familiar React spellings. Kudzu preserves native names such as <code>viewBox</code> and maps aliases such as <code>fillRule</code>, <code>clipRule</code>, <code>strokeWidth</code>, <code>strokeLinecap</code>, <code>strokeLinejoin</code>, opacity/color props, <code>textAnchor</code>, and <code>vectorEffect</code> to SVG attributes.</p>
+    <p>Static and reactive SVG presentation props use familiar React spellings. Kudzu preserves native names such as <code>viewBox</code> and maps aliases such as <code>fillRule</code>, <code>clipRule</code>, <code>strokeWidth</code>, <code>strokeLinecap</code>, <code>strokeLinejoin</code>, opacity/color props, <code>textAnchor</code>, and <code>vectorEffect</code> to SVG attributes. Reactive conditionals and flat intrinsic keyed lists create replacement nodes in the surrounding SVG namespace while preserving keyed identity.</p>
     <CodeBlock code={`<svg viewBox="0 0 24 24">
-  <path fillRule="evenodd" strokeWidth={active ? 2 : 1} strokeLinecap="round" />
+  {active && <path fillRule="evenodd" strokeWidth={2} strokeLinecap="round" />}
+  {points.map(point => <circle key={point.id} cx={point.x} cy={point.y} r="2" />)}
 </svg>`} />
   </section>
 }

@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.7.22 - SVG structures and native links
+
+Kudzu 0.7.22 extends ordinary React-shaped structural authoring into SVG and erases the common React Router `Link` form to native navigation without adding an SVG renderer or router runtime.
+
+### New in 0.7.22
+
+- Reactive conditional branches inside SVG parse replacement markup in the actual SVG parent context and retain existing DOM ownership semantics.
+- Flat intrinsic keyed lists inside SVG support add, update, reorder, and removal while preserving keyed identity and the SVG namespace.
+- SVG fragment construction is compiled out of HTML-only condition and list builds; the measured matched fixture added 333 B raw / 79 B aggregate gzip JavaScript.
+- A named or aliased `Link` import from `react-router-dom` with one static root-relative `to` lowers to a native `<a href>`, receives the configured `base`, and erases the package import.
+- Dynamic or relative Link destinations, traversal, `NavLink`, router-only props, spreads, default/namespace imports, and non-JSX uses fail with source diagnostics.
+- Effect dependency arrays are explicitly proven for multiple direct primitive states or supported props through existing commit batching and `Object.is` comparison.
+- The complete suite passes 111/111 tests with Chrome coverage for SVG namespace, conditional replacement, keyed identity, Link erasure, and zero-JavaScript static output.
+
+### Measured fixture
+
+On the recorded Intel i5-9500 / Chrome 142 environment, 1,000-row SVG medians were 0.8 ms conditional, 1.9 ms update, 8.3 ms reverse, 2.4 ms remove, and 3.5 ms add. The matched HTML control measured 0.7, 1.8, 8.3, 2.5, and 3.6 ms. Link and native-anchor controls emitted byte-identical 248 B HTML and zero JavaScript. Full methodology and raw arrays are in `PERFORMANCE.md`.
+
+### Boundary
+
+Structural SVG currently supports reactive conditionals and flat intrinsic keyed lists. Keyed-item conditions, nested SVG lists, reactive MathML, and namespaced attributes remain unsupported. React Router lowering accepts only direct named or aliased `Link` JSX with one safe static root-relative destination and native anchor props. Native document navigation remains the default; no SPA router is included.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.22
+```
+
 ## 0.7.21 - Composable collections and effects
 
 Kudzu 0.7.21 expands ordinary React-shaped collection pipelines and effect authoring while preserving keyed identity, derived dependency semantics, and capability-specific browser output.
