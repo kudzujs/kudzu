@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.17 - Lazy reducer initialization.** React-shaped third-argument `useReducer` initializers may derive directly serializable state from a directly serializable initial argument, while keyed-list capability specialization now preserves fallback and index semantics. Read the [release notes](./RELEASES.md#0717---lazy-reducer-initialization) or open the [release page](https://kudzujs.cloud/releases/0.7.17).
+**Latest release: 0.7.18 - Primitive child prop dependencies.** Direct JSON-safe primitive parent state remains reactive when passed to destructured same-file or imported child props, including child DOM bindings and conditionally owned effects. Read the [release notes](./RELEASES.md#0718---primitive-child-prop-dependencies) or open the [release page](https://kudzujs.cloud/releases/0.7.18).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

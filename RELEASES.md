@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.18 - Primitive child prop dependencies
+
+Kudzu 0.7.18 formalizes direct JSON-safe primitive parent state as a reactive child prop across ordinary same-file and relative-imported components, without adding component specialization or a browser component tree.
+
+### New in 0.7.18
+
+- A direct parent state identifier passed to a destructured child prop remains the same compiler-owned signal.
+- Child text and attribute bindings update directly when the parent primitive changes.
+- Child `useEffect` dependency arrays may reference that destructured prop and reuse the parent state ID.
+- Repeated child calls share the parent signal while retaining independent effect records and captures.
+- Conditional child insertion mounts its effect, parent updates run cleanup before setup, and removal cleans up exactly once.
+- Same-file and relative-imported children receive matching behavior; React and component functions remain absent from browser output.
+- The complete suite passes 106/106 tests with browser coverage for binding updates, dependency order, conditional mount, rerun, and removal.
+
+### Boundary
+
+The prop must be a direct JSON-safe primitive parent state identifier. Derived expressions, object or array dependencies, computed prop forwarding, and broader callback/ref ownership remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.18
+```
+
 ## 0.7.17 - Lazy reducer initialization
 
 Kudzu 0.7.17 lowers React-shaped `useReducer(reducer, initialArg, initializer)` calls into existing compiler-owned reducer state when the initializer is statically analyzable, and fixes capability-specialized keyed-list fallback paths.

@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.17/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.18/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.17"/)
-  assert.match(release, /Kudzu 0\.7\.17.*Pass the argument.*Keep the reducer pure/s)
-  assert.match(release, /LAZY REDUCER INITIALIZATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.17/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.18"/)
+  assert.match(release, /Kudzu 0\.7\.18.*Pass the signal.*Keep the child ordinary/s)
+  assert.match(release, /PRIMITIVE CHILD PROP DEPENDENCIES.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.18/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1251,6 +1251,28 @@ test("owns repeated non-keyed child state across ordinary component boundaries",
   assert.doesNotMatch(browserOutput, /function (?:Toggle|ImportedToggle|OwnedCounter)\b|["']react["']/)
   const chrome = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runNonKeyedChildStateBrowserTest(fixture, chrome)
+})
+
+test("preserves direct primitive state props in child bindings and effects", async t => {
+  const fixture = new URL("./fixtures/primitive-prop-dependencies", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/primitive-prop-dependencies/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/primitive-prop-dependencies/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/primitive-prop-dependencies/dist/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/primitive-prop-dependencies/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /data-status="Local">Local: <span data-k-text="s0"/)
+  assert.match(html, /data-status="Imported">Imported: <span data-k-text="s0"/)
+  assert.deepEqual(plan.effects.map(effect => effect.dependencies), [["s0"], ["s0"], ["s0"]])
+  assert.match(plan.effects[2].owner, /^e\d+$/)
+  assert.equal(plan.conditions[0].mount, true)
+  const assets = new URL("./fixtures/primitive-prop-dependencies/dist/assets/", import.meta.url)
+  const browserOutput = (await Promise.all((await readdir(assets, { recursive: true })).filter(file => file.endsWith(".js")).map(file => readFile(new URL(file, assets), "utf8")))).join("\n")
+  assert.doesNotMatch(browserOutput, /function (?:LocalStatus|ImportedStatus)\b|["']react["']/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runPrimitivePropDependencyBrowserTest(fixture, chrome)
 })
 
 test("rejects dynamic lazy useState initializers", () => {
@@ -3651,6 +3673,54 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-non-keyed-child-state-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runPrimitivePropDependencyBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  await wait()
+  if (document.body.dataset.propLog !== "|mount Local:1|mount Imported:1") throw new Error("initial-effects:" + document.body.dataset.propLog)
+  document.querySelector('[data-action="show"]').click()
+  await wait()
+  if (document.body.dataset.propLog !== "|mount Local:1|mount Imported:1|mount Conditional:1") throw new Error("conditional-mount:" + document.body.dataset.propLog)
+  document.querySelector('[data-action="increment"]').click()
+  await wait()
+  const statuses = [...document.querySelectorAll("[data-status]")].map(node => node.textContent).join("|")
+  if (statuses !== "Local: 2|Imported: 2|Conditional: 2") throw new Error("bindings:" + statuses)
+  const expected = "|mount Local:1|mount Imported:1|mount Conditional:1|cleanup Local:1|cleanup Imported:1|cleanup Conditional:1|mount Local:2|mount Imported:2|mount Conditional:2"
+  if (document.body.dataset.propLog !== expected) throw new Error("dependency-effects:" + document.body.dataset.propLog)
+  document.querySelector('[data-action="hide"]').click()
+  await wait()
+  if (document.querySelector('[data-status="Conditional"]') || document.body.dataset.propLog !== expected + "|cleanup Conditional:2") throw new Error("conditional-cleanup:" + document.body.dataset.propLog)
+  document.body.dataset.primitivePropDependencyTest = "pass"
+} catch (error) {
+  document.body.dataset.primitivePropDependencyTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-primitive-prop-dependency-test="pass"/)
   } finally {
     server.kill()
   }

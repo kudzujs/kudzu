@@ -93,7 +93,7 @@ Investigate ordinary imported or same-file components that own local hooks outsi
 
 - Repeated non-keyed child local state and conditional removal/remount ownership are complete.
 - directly serializable lazy `useState` and `useReducer` initialization are complete;
-- direct primitive prop dependencies;
+- direct primitive prop dependencies are complete for ordinary same-file and relative-imported children;
 - safe callback/ref ownership across one proven component boundary.
 
 Acceptance: ownership is compiler-generated, removal cleans up exactly once, and no generic component runtime or rerender loop is introduced.
@@ -113,7 +113,7 @@ Mutation, arbitrary callbacks, promises, and package collection engines remain o
 
 Investigate effect forms common in ordinary React source:
 
-- destructured primitive props;
+- destructured primitive props backed directly by parent state are complete;
 - simple derived primitive locals;
 - common named callback or cleanup forms that remain statically resolvable;
 - multiple direct dependencies without adding a scheduler.
