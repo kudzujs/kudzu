@@ -287,6 +287,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       .replace("entries.push({ item, index, key, token, value:", "entries.push({ item, key, token, value:")
       .replace("for (const { item, index, key, token, value } of entries) {", "for (const { item, key, token, value } of entries) {")
       .replaceAll("fillListItem(node, item, list.descriptor.nested, index)", "fillListItem(node, item, list.descriptor.nested)")
+      .replace("fillListItem(node, item, list.descriptor.nested, index, mapListItemParts", "fillListItem(node, item, list.descriptor.nested, 0, mapListItemParts")
       .replace("function addListRoot(list, { item, index = list.roots.size, key, token, value })", "function addListRoot(list, { item, key, token, value })")
       .replace("fillListParts(root, listItemParts(root), listItems.get(owner), 0, __KUDZU_LIST_INDEXES__ ? listIndexes.get(owner) ?? 0 : 0)", "fillListParts(root, listItemParts(root), listItems.get(owner), 0)")
       .replace("function fillListItem(root, item, nested = false, index = 0)", "function fillListItem(root, item, nested = false)")

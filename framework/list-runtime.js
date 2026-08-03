@@ -195,7 +195,7 @@ function updateList(list) {
   for (const { item, index, key, token, value } of entries) {
     let node = list.roots.get(token)
     if (!node) {
-      const staticRoot = __KUDZU_STATIC_COLLECTIONS__ && list.staticRows?.get(token)?.cloneNode(true)
+      const staticRoot = __KUDZU_STATIC_COLLECTIONS__ ? list.staticRows?.get(token)?.cloneNode(true) : undefined
       node = staticRoot ?? (__KUDZU_NESTED_LISTS__ ? list.templateRoot : list.start.content.firstElementChild)?.cloneNode(true)
       if (!staticRoot && node?.dataset.kListRoot !== list.descriptor.id) node = undefined
       if (!node) throw new Error("Keyed list template has no root element")
