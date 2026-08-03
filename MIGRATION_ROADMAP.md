@@ -92,7 +92,7 @@ This queue orders the next investigations by general migration value. Start only
 Investigate ordinary imported or same-file components that own local hooks outside the currently specialized keyed-row shapes:
 
 - Repeated non-keyed child local state and conditional removal/remount ownership are complete.
-- lazy `useState` and `useReducer` initialization with pure analyzable initializers;
+- directly serializable lazy `useState` initialization is complete; lazy `useReducer` initialization remains;
 - direct primitive prop dependencies;
 - safe callback/ref ownership across one proven component boundary.
 

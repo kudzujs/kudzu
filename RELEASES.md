@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.7.16 - Build-time lazy state
+
+Kudzu 0.7.16 accepts the common React-shaped `useState(() => initialValue)` form when the initializer directly returns a serializable literal, lowering it into existing compiler-owned state with no browser component runtime.
+
+### New in 0.7.16
+
+- Anonymous synchronous zero-argument lazy initializers may directly return primitive, plain-object, or array literals.
+- The compiler lowers those functions before state analysis, so ordinary, repeated, imported, conditional, and keyed-row state reuse existing ownership paths.
+- Conditional removal still deletes owned state, and remount recreates a fresh clone of the serialized object or array initializer.
+- React migration imports and direct `@kudzujs/core` imports receive the same behavior and TypeScript inference.
+- Dynamic calls, captures, parameters, async or generator functions, named function expressions, and multi-statement bodies fail with source-located diagnostics.
+- Static routes remain JavaScript-free; lazy initializer functions are absent from generated component and browser modules.
+
+### Boundary
+
+This release evaluates no arbitrary user code at build time. Initializers must directly return data the compiler can already serialize. Lazy `useReducer` initialization and dynamic state factories remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.16
+```
+
 ## 0.7.15 - Child state ownership
 
 Kudzu 0.7.15 gives repeated ordinary child components independent state and adds explicit state ownership to reactive conditional branches without introducing a browser component tree.

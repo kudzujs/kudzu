@@ -6,6 +6,7 @@ export type EffectDependency = string | number | boolean | null
 export const Fragment: unique symbol
 
 export function useId(): string
+export function useState<T>(initialValue: () => T): [T, StateSetter<T>]
 export function useState<T>(initialValue: T): [T, StateSetter<T>]
 export function useReducer<State, Action>(reducer: Reducer<State, Action>, initialValue: State): [State, Dispatch<Action>]
 export function useEffect(effect: () => void | EffectCleanup | Promise<void>, dependencies: readonly EffectDependency[]): void

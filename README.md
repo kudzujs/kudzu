@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.15 - Child state ownership.** Repeated ordinary child components own independent state, while reactive conditional removal deletes child slots and remount recreates their initial values. Read the [release notes](./RELEASES.md#0715---child-state-ownership) or open the [release page](https://kudzujs.cloud/releases/0.7.15).
+**Latest release: 0.7.16 - Build-time lazy state.** Anonymous synchronous `useState` initializers may return directly serializable primitive, plain-object, or array literals without adding a browser runtime. Read the [release notes](./RELEASES.md#0716---build-time-lazy-state) or open the [release page](https://kudzujs.cloud/releases/0.7.16).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

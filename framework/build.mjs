@@ -2147,6 +2147,31 @@ function validateUseIdSyntax(sourceFile) {
   visit(sourceFile)
 }
 
+function normalizeLazyStateInitializers(sourceFile, factory, context) {
+  const bindings = new Set()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || !["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text)) continue
+    const named = statement.importClause?.namedBindings
+    if (named && ts.isNamedImports(named)) for (const entry of named.elements) {
+      if (!entry.isTypeOnly && (entry.propertyName ?? entry.name).text === "useState" && entry.name.text === "useState") bindings.add("useState")
+    }
+  }
+  if (!bindings.size) return sourceFile
+  const visitor = node => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && bindings.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile) && node.arguments[0] && (ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]))) {
+      const initializer = node.arguments[0]
+      if (node.arguments.length !== 1 || initializer.parameters.length || initializer.asteriskToken || initializer.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || ts.isFunctionExpression(initializer) && initializer.name) throw sourceNodeError(initializer, sourceFile, "Lazy useState() requires one anonymous synchronous zero-parameter initializer")
+      const expression = ts.isBlock(initializer.body)
+        ? initializer.body.statements.length === 1 && ts.isReturnStatement(initializer.body.statements[0]) ? initializer.body.statements[0].expression : undefined
+        : initializer.body
+      if (!expression || !isSerializableStateLiteral(expression)) throw sourceNodeError(initializer.body, sourceFile, "Lazy useState() initializer must return one directly serializable primitive, plain-object, or array literal")
+      return factory.updateCallExpression(node, node.expression, node.typeArguments, [cloneAst(expression, factory, context)])
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  return ts.visitNode(sourceFile, visitor)
+}
+
 function importDeclarationNames(statement) {
   const names = []
   if (statement.importClause?.name) names.push(statement.importClause.name.text)
@@ -2232,6 +2257,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections)
     ts.setParentRecursive(sourceFile, false)
     validateUseIdSyntax(sourceFile)
+    sourceFile = normalizeLazyStateInitializers(sourceFile, factory, context)
+    ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeZustandMigrationSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeRenderControlFlow(sourceFile, factory, context)
@@ -2248,6 +2275,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         imported = normalizeReactMigrationSyntax(imported, factory, context, importedSerializableCollectionNames(imported, target, sourceFiles, sourceIndex))
         ts.setParentRecursive(imported, false)
         validateUseIdSyntax(imported)
+        imported = normalizeLazyStateInitializers(imported, factory, context)
+        ts.setParentRecursive(imported, false)
         imported = normalizeZustandMigrationSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
         imported = normalizeRenderControlFlow(imported, factory, context)
@@ -3634,7 +3663,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, `${label} component locals must be single const declarations`)
       const declaration = statement.declarationList.declarations[0]
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState") {
-        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(declaration.initializer.arguments[0])) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Keyed row useState() must use one directly serializable primitive, plain object, or array initial value; lazy and dynamic initializers are not supported")
+        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(declaration.initializer.arguments[0])) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Keyed row useState() must use one directly serializable primitive, plain object, or array initial value; dynamic initializers are not supported")
         if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), "Keyed row useState() must use [state, setter] identifier destructuring")
         const suffix = `${Math.max(0, call.pos)}_${rowStates.length}`
         const state = `__kRowState${suffix}`
