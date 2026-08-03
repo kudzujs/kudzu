@@ -213,6 +213,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasComplexListRowState = plans.some(plan => plan.lists.some(list => list.rowStates?.some(state => state.initialValue !== null && typeof state.initialValue === "object")))
   const hasNestedLists = plans.some(plan => plan.lists.some(list => list.ownerField))
   const hasCollectionSelectors = plans.some(plan => plan.lists.some(list => list.selector))
+  const hasDerivedEffectDependencies = plans.some(plan => plan.effects.some(effect => effect.dependencyExpressions?.length))
   const hasStaticCollections = plans.some(plan => plan.lists.some(list => list.static))
   const hasListIndexes = plans.some(plan => plan.lists.some(list => list.indexed))
   const hasListStableFastPaths = plans.some(plan => plan.lists.some(list => !list.children && !list.ownerField && list.key !== null && !list.indexed && !list.reducer && !list.selector))
@@ -274,8 +275,9 @@ export async function build({ quiet = false, minify = true } = {}) {
       "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures)
     })
   }
+  if (hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
   if (listCount) {
-    if (hasCollectionSelectors) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
+    if (hasCollectionSelectors && !hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
     let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
     listRuntime = hasCollectionSelectors
@@ -349,7 +351,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       __KUDZU_LIST_INDEXES__: String(hasListIndexes),
       __KUDZU_LIST_STABLE_FAST_PATHS__: String(hasListStableFastPaths)
     })
-    if (hasCollectionSelectors) await rm(join(assetsDirectory, "kudzu-collection-selector.js"))
+    if (hasCollectionSelectors && !hasDerivedEffectDependencies) await rm(join(assetsDirectory, "kudzu-collection-selector.js"))
   }
   if (hasNativeHandlers) {
     const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
@@ -522,6 +524,7 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
   const hasCleanup = effects.some(effect => effect.cleanup)
   const hasDependencies = effects.some(effect => effect.dependencies?.length || effect.itemDependencies?.length)
   const hasOwners = effects.some(effect => effect.owner)
+  const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -533,12 +536,13 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
       ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}\nconst { browserState, commitDom } = __kRuntime`
       : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
+    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-collection-selector.js")))}`] : []),
     ...(paramPath ? [`import ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, paramPath)))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
   if (hasOwners) return printOwnedEffectEntry(imports, effects, entries)
-  if (effects.length === 1 && effects[0].dependencies?.length === 1) return printSingleDependencyEffect(imports, effects[0], hasCleanup)
+  if (effects.length === 1 && effects[0].dependencies?.length === 1 && !hasDependencyExpressions) return printSingleDependencyEffect(imports, effects[0], hasCleanup)
   const disposal = hasCleanup ? `
 let disposed = false
 const dispose = root => {
@@ -616,6 +620,7 @@ async function flush() {
   }
 }
 function readDependencies(record) {
+${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
   return (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
     if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
@@ -689,6 +694,7 @@ addEventListener("pagehide", event => {
 }
 
 function printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+  const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -698,6 +704,7 @@ function printNavigableEffectEntry(effects, output, handlerModules, assetsDirect
   const imports = [
     `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
+    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-collection-selector.js")))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
@@ -765,6 +772,7 @@ function mount(lifetime) {
     }
   }
   function readDependencies(record) {
+${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
     return (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
       if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
@@ -809,6 +817,7 @@ function mount(lifetime) {
 
 function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
+  const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -818,6 +827,7 @@ function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsD
   const imports = [
     `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
+    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-collection-selector.js")))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
@@ -986,6 +996,7 @@ function mount(lifetime) {
     }
   }
   function readDependencies(record) {
+${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
     const values = (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
       if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
@@ -1063,6 +1074,7 @@ function runtimeEffects(effects, lifetimes = false) {
     module: effect.module,
     handler: effect.handler,
     ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
+    ...(effect.dependencyExpressions ? { dependencyExpressions: effect.dependencyExpressions, dependencyStates: effect.dependencyStates } : {}),
     ...(effect.itemDependencies ? { itemDependencies: effect.itemDependencies, listState: effect.listState } : {}),
     ...(effect.cleanup ? { cleanup: true } : {}),
     ...(effect.owner ? { owner: effect.owner } : {}),
@@ -1073,10 +1085,19 @@ function runtimeEffects(effects, lifetimes = false) {
   }))
 }
 
+function printDerivedDependencyRead(state) {
+  return `    if (record.effect.dependencyExpressions) return record.effect.dependencyExpressions.map(expression => {
+      const value = __kEvaluateDependency(expression, undefined, undefined, name => ${state}.get(record.effect.dependencyStates[name]))
+      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() derived dependency must remain a JSON-safe primitive")
+      return value
+    })`
+}
+
 function printOwnedEffectEntry(imports, effects, entries) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasOrdinaryDependencies = effects.some(effect => effect.dependencies?.length)
-  const hasRowState = effects.some(effect => JSON.stringify([effect.dependencies, effect.states, effect.scope]).includes("$k"))
+  const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasRowState = effects.some(effect => JSON.stringify([effect.dependencies, effect.dependencyStates, effect.states, effect.scope]).includes("$k"))
   return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
@@ -1098,7 +1119,7 @@ ${hasRowState ? `function specializeRowEffect(effect, marker) {
   const path = marker.dataset.kRowPath
   const id = value => typeof value === "string" ? value.replace("$k", path) : value
   const capture = value => value?.type === "state" || value?.type === "setter" || value?.type === "ref" ? { ...value, id: id(value.id) } : value?.type === "array" ? { ...value, value: value.value.map(capture) } : value?.type === "object" ? { ...value, value: value.value.map(([key, entry]) => [key, capture(entry)]) } : value
-  return { ...effect, dependencies: effect.dependencies?.map(id), states: Object.fromEntries(Object.entries(effect.states).map(([name, value]) => [name, id(value)])), scope: Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, capture(value)])) }
+  return { ...effect, dependencies: effect.dependencies?.map(id), dependencyStates: effect.dependencyStates && Object.fromEntries(Object.entries(effect.dependencyStates).map(([name, value]) => [name, id(value)])), states: Object.fromEntries(Object.entries(effect.states).map(([name, value]) => [name, id(value)])), scope: Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, capture(value)])) }
 }
 ` : ""}
 function registerDependencies(record) {
@@ -1240,6 +1261,7 @@ async function flush() {
   }
 }
 function readDependencies(record) {
+${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
   const values = (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
     if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
@@ -2222,7 +2244,7 @@ function lowerReactMemoCollectionExpression(expression, factory) {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && node.arguments.length === 1) {
       return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("Array"), "from"), undefined, [visit(node.expression.expression), node.arguments[0]])
     }
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["filter", "flatMap"].includes(node.expression.name.text)) {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["filter", "flatMap", "slice", "toSorted"].includes(node.expression.name.text)) {
       return factory.updateCallExpression(node, factory.updatePropertyAccessExpression(node.expression, visit(node.expression.expression), node.expression.name), node.typeArguments, node.arguments)
     }
     if (isArrayFromCall(node)) return factory.updateCallExpression(node, node.expression, node.typeArguments, [visit(node.arguments[0]), ...node.arguments.slice(1)])
@@ -2308,6 +2330,13 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         importedSources.set(target, imported)
       }
       return imported
+    }
+    const importedCollectionTransforms = new Map()
+    for (const [name, binding] of importBindings) {
+      if (binding.kind === "namespace") continue
+      try {
+        importedCollectionTransforms.set(name, resolveComponentExport(binding.target, binding.kind === "default" ? "default" : binding.imported, target => parseSourceFile(target, sourceIndex.get(target)), sourceFiles))
+      } catch {}
     }
     const settersByFunction = new Map()
     const reducersByFunction = new Map()
@@ -2446,7 +2475,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       const setters = settersByFunction.get(owner) ?? new Map()
       for (const [name, entries] of declarations) {
         for (const declaration of entries) {
-          const parts = keyedListParts(declaration.initializer, setters, declarations, (target, message) => { throw sourceNodeError(target, sourceFile, message) }, new Set(), importedCollections, factory, context)
+          const parts = keyedListParts(declaration.initializer, setters, declarations, (target, message) => { throw sourceNodeError(target, sourceFile, message) }, new Set(), importedCollections, factory, context, importedCollectionTransforms)
           if (!parts) continue
           const uses = []
           const collectUses = node => {
@@ -2640,7 +2669,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         return
       }
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction), jsxLocalDeclarations.get(nearestFunction(node)), fail, new Set(), importedCollections, factory, context)
+        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction), jsxLocalDeclarations.get(nearestFunction(node)), fail, new Set(), importedCollections, factory, context, importedCollectionTransforms)
         if (parts) {
           for (const declaration of parts.aliasDeclarations ?? []) listLocalDeclarations.add(declaration)
           rawRenderedLists.push({ node, parts })
@@ -2855,14 +2884,24 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           fail(target, message)
         }
         if (node.arguments.length !== 2) effectFail(node, "useEffect() requires exactly a callback and literal dependency array")
-        const [callback, dependencies] = node.arguments
-        if (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) effectFail(callback, "useEffect() callback must be an inline function")
+        const [callbackArgument, dependencies] = node.arguments
+        const effectOwner = nearestFunction(node)
+        const resolveEffectFunction = expression => {
+          if (!ts.isIdentifier(expression)) return undefined
+          const entries = jsxLocalDeclarations.get(effectOwner)?.get(expression.text)
+          if (entries?.length !== 1 || entries[0].node.parent?.parent?.parent !== effectOwner?.body) return undefined
+          const initializer = entries[0].initializer
+          return ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer) ? initializer : undefined
+        }
+        let callback = ts.isArrowFunction(callbackArgument) || ts.isFunctionExpression(callbackArgument) ? callbackArgument : resolveEffectFunction(callbackArgument)
+        if (!callback) effectFail(callbackArgument, "useEffect() callback must be inline or one top-level const function")
         if (ts.isFunctionExpression(callback) && callback.name) effectFail(callback, "useEffect() callback function must be anonymous")
         if (callback.asteriskToken) effectFail(callback, "useEffect() callback cannot be a generator")
         if (callback.parameters.length) effectFail(callback, "useEffect() callback cannot declare parameters")
         if (!ts.isArrayLiteralExpression(dependencies)) effectFail(dependencies, "useEffect() dependencies must be a literal array")
         const itemDependencies = []
         const ordinaryDependencies = []
+        const setters = settersForNode(node, settersByFunction)
         let dependencyItem = listEffect?.item
         for (const dependency of dependencies.elements) {
           const value = unwrapExpression(dependency)
@@ -2879,24 +2918,74 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         }
         const invalidDependency = ordinaryDependencies.find(dependency => !ts.isIdentifier(dependency))
         if (invalidDependency) effectFail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
-        if (!nearestFunction(node)) fail(node, "useEffect() cannot be used outside a Kudzu component")
+        const dependencyExpressions = []
+        const dependencyStates = new Map()
+        const dependencySubstitutions = new Map()
+        const subscriptionDependencies = []
+        let hasDerivedDependency = false
+        const stateNames = new Set(setters.values())
+        const localDeclarations = jsxLocalDeclarations.get(nearestFunction(node))
+        for (const dependency of ordinaryDependencies) {
+          const entries = localDeclarations?.get(dependency.text)
+          const initializer = entries?.length === 1 ? entries[0].initializer : undefined
+          const directAlias = initializer && ts.isIdentifier(unwrapExpression(initializer)) && stateNames.has(unwrapExpression(initializer).text)
+          const derivedStates = initializer && !directAlias ? referencedStateNames(initializer, setters) : new Set()
+          if (derivedStates.size) {
+            const usedStates = new Set()
+            const expression = collectionExpression(initializer, {}, effectFail, stateNames, usedStates)
+            if (!usedStates.size) effectFail(dependency, `useEffect() derived dependency "${dependency.text}" must read direct primitive state`)
+            dependencyExpressions.push(expression)
+            for (const name of usedStates) {
+              subscriptionDependencies.push(factory.createIdentifier(name))
+              dependencyStates.set(name, factory.createIdentifier(name))
+            }
+            dependencySubstitutions.set(dependency.text, initializer)
+            hasDerivedDependency = true
+          } else {
+            subscriptionDependencies.push(dependency)
+            dependencyExpressions.push(["state", dependency.text])
+            dependencyStates.set(dependency.text, dependency)
+          }
+        }
+        if (!hasDerivedDependency) {
+          dependencyExpressions.length = 0
+          dependencyStates.clear()
+        }
+        if (!effectOwner) fail(node, "useEffect() cannot be used outside a Kudzu component")
         if (!ts.isBlock(callback.body)) effectFail(callback, "useEffect() callback must use a block body")
+        const cleanupSubstitutions = new Map()
+        const collectNamedCleanups = current => {
+          if (current !== callback && isFunctionLike(current)) return
+          if (ts.isReturnStatement(current) && current.expression && ts.isIdentifier(unwrapExpression(current.expression))) {
+            const cleanup = resolveEffectFunction(unwrapExpression(current.expression))
+            if (cleanup) cleanupSubstitutions.set(unwrapExpression(current.expression).text, cleanup)
+          }
+          ts.forEachChild(current, collectNamedCleanups)
+        }
+        collectNamedCleanups(callback.body)
+        if (cleanupSubstitutions.size) {
+          callback = substituteClone(callback, cleanupSubstitutions, factory, context)
+          ts.setParentRecursive(callback, false)
+          callback.parent = callbackArgument.parent
+        }
         const returns = effectReturns(callback)
         if (returns.invalid) effectFail(returns.invalid, "useEffect() return values must be inline cleanup functions")
         const invalidCleanup = returns.cleanups.find(cleanup => cleanup.parameters.length || cleanup.asteriskToken)
         if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
         if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
-        const setters = settersForNode(node, settersByFunction)
         const callbackSource = listEffect?.sourceFile ?? sourceFile
         const callbackFile = callbackSource.fileName
         const workerStart = workerReferences.length
-        let compiledCallback
+        let compiledCallback = dependencySubstitutions.size ? substituteClone(callback, dependencySubstitutions, factory, context) : callback
+        if (compiledCallback !== callback) {
+          ts.setParentRecursive(compiledCallback, false)
+          compiledCallback.parent = callback.parent
+        }
         if (listEffect && callbackFile !== file) {
           const originalCallback = listEffect.source.arguments[0]
           rejectWorkerConstructions(originalCallback, callbackSource, "Relative TypeScript Worker construction in imported keyed-row effects is not supported; construct the Worker in a directly compiled page or local component effect")
-          compiledCallback = callback
         } else {
-          compiledCallback = rewriteEffectWorkers(callback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
+          compiledCallback = rewriteEffectWorkers(compiledCallback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
         }
         const descriptor = compileNativeCallback(compiledCallback, setters, reducersForNode(node, reducersByFunction), factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
         for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
@@ -2904,14 +2993,16 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         usesBehavior = true
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
           callback,
-          factory.createArrayLiteralExpression(ordinaryDependencies),
+          factory.createArrayLiteralExpression(hasDerivedDependency ? subscriptionDependencies : ordinaryDependencies),
           factory.createStringLiteral(handlerUrl),
           factory.createStringLiteral(descriptor.exportName),
           descriptor.states,
           descriptor.scope,
           factory.createStringLiteral(listEffect ? sourceLocation(listEffect.source, listEffect.sourceFile) : sourceLocation(node, sourceFile)),
           returns.cleanup ? factory.createTrue() : factory.createFalse(),
-          factory.createArrayLiteralExpression(itemDependencies.map(field => factory.createStringLiteral(field)))
+          factory.createArrayLiteralExpression(itemDependencies.map(field => factory.createStringLiteral(field))),
+          hasDerivedDependency ? jsonExpression(dependencyExpressions, factory) : factory.createArrayLiteralExpression(),
+          factory.createArrayLiteralExpression([...dependencyStates].map(([name, state]) => factory.createArrayLiteralExpression([factory.createStringLiteral(name), state])))
         ])
       }
 
@@ -3157,11 +3248,11 @@ function containsRenderControl(root, knownLocals) {
   return found
 }
 
-function keyedListParts(expression, setters, declarations, fail, aliases = new Set(), importedCollections = new Set(), factory = ts.factory, context) {
+function keyedListParts(expression, setters, declarations, fail, aliases = new Set(), importedCollections = new Set(), factory = ts.factory, context, importedCollectionTransforms = new Map()) {
   const value = unwrapExpression(expression)
   const directFrom = isArrayFromCall(value) && value.arguments.length === 2 && containsJsx(value.arguments[1])
   if (!directFrom && (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map")) return undefined
-  const collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()))
+  const collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()), importedCollectionTransforms, factory, context)
   if (!collection?.state) return undefined
   if (directFrom) collection.selector.push(["from", undefined])
   let callback = directFrom ? value.arguments[1] : value.arguments[0]
@@ -3171,7 +3262,7 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
     if (!context || root.statements.length !== 2 || !ts.isVariableStatement(root.statements[0]) || (root.statements[0].declarationList.flags & ts.NodeFlags.Const) === 0 || root.statements[0].declarationList.declarations.length !== 1 || !ts.isReturnStatement(root.statements[1]) || !root.statements[1].expression) fail(root, "Block-bodied keyed list map callbacks require one computed child collection const and a final JSX return")
     const declaration = root.statements[0].declarationList.declarations[0]
     if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, "Computed child collections must initialize one const identifier")
-    const computed = renderedCollectionSource(declaration.initializer, new Map(), undefined, fail, new Set())
+    const computed = renderedCollectionSource(declaration.initializer, new Map(), undefined, fail, new Set(), new Set(), new Set(), importedCollectionTransforms, factory, context)
     if (!computed?.ownerField || computed.parentItem !== parameters.item) fail(declaration.initializer, `Computed child collections must start from ${parameters.item}.<field>`)
     const returned = root.statements[1].expression
     if (identifierReferenceCount(returned, declaration.name.text) !== 1) fail(declaration.name, `Computed child collection alias "${declaration.name.text}" must be used exactly once`)
@@ -3208,7 +3299,7 @@ function nestedKeyedListParts(expression, parentItem, fail) {
   return { ...collection, callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : keyField }
 }
 
-function renderedCollectionSource(expression, setters, declarations, fail, aliases, importedCollections = new Set(), stateNames = new Set()) {
+function renderedCollectionSource(expression, setters, declarations, fail, aliases, importedCollections = new Set(), stateNames = new Set(), importedCollectionTransforms = new Map(), factory = ts.factory, context) {
   const value = unwrapExpression(expression)
   if (ts.isIdentifier(value)) {
     if ([...setters.values()].includes(value.text)) return { state: value, selector: [], selectorStates: new Set() }
@@ -3217,16 +3308,30 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     if (!entries) return undefined
     if (entries.length !== 1 || aliases.has(value.text) || entries[0].node.parent?.parent?.parent !== nearestFunction(entries[0].node)?.body) fail(value, `Rendered collection alias "${value.text}" must be one top-level immutable local`)
     aliases.add(value.text)
-    const source = renderedCollectionSource(entries[0].initializer, setters, declarations, fail, aliases, importedCollections, stateNames)
+    const source = renderedCollectionSource(entries[0].initializer, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
     aliases.delete(value.text)
     return source && { ...source, aliasDeclarations: [...(source.aliasDeclarations ?? []), entries[0].node], aliasUses: [...(source.aliasUses ?? []), value] }
   }
   if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) return { state: undefined, ownerField: value.name.text, selector: [], parentItem: value.expression.text }
+  if (ts.isCallExpression(value) && ts.isIdentifier(value.expression) && importedCollectionTransforms.has(value.expression.text)) {
+    const transform = importedCollectionTransforms.get(value.expression.text)
+    const parameter = transform.parameters[0]
+    if (value.arguments.length !== 1 || transform.parameters.length !== 1 || transform.asteriskToken || transform.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || !parameter || !ts.isIdentifier(parameter.name) || parameter.dotDotDotToken || parameter.initializer || parameter.questionToken) fail(value, `Imported collection transform "${value.expression.text}" must be synchronous with exactly one identifier parameter and one argument`)
+    const returned = ts.isBlock(transform.body)
+      ? transform.body.statements.length === 1 && ts.isReturnStatement(transform.body.statements[0]) ? transform.body.statements[0].expression : undefined
+      : transform.body
+    if (!returned) fail(value, `Imported collection transform "${value.expression.text}" must contain only one returned collection expression`)
+    const transformSource = renderedCollectionSource(returned, new Map([[parameter.name.text, parameter.name.text]]), undefined, fail, new Set(), new Set(), new Set([parameter.name.text]))
+    if (!transformSource?.state || transformSource.state.text !== parameter.name.text || transformSource.selectorStates.size) fail(value, `Imported collection transform "${value.expression.text}" must return a supported pure pipeline rooted only in its parameter`)
+    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+    if (!source) fail(value.arguments[0], `Imported collection transform "${value.expression.text}" requires a supported collection argument`)
+    return { ...source, selector: [...source.selector, ...transformSource.selector] }
+  }
   if (ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression)) {
     const method = value.expression.name.text
     if (method === "filter") {
       if (value.arguments.length !== 1) fail(value, "Rendered collection filter() requires one inline predicate")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames)
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
       if (!source) return undefined
       const parameters = collectionParameters(value.arguments[0], "Rendered collection filter()", fail)
       const selectorStates = new Set(source.selectorStates)
@@ -3234,7 +3339,7 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     }
     if (method === "flatMap") {
       if (value.arguments.length !== 1) fail(value, "Rendered collection flatMap() requires one inline projector")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames)
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
       if (!source) return undefined
       const parameters = collectionParameters(value.arguments[0], "Rendered collection flatMap()", fail)
       const field = directProperty(value.arguments[0].body, parameters.item)
@@ -3242,10 +3347,31 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
       if (["__proto__", "constructor", "prototype"].includes(field)) fail(value.arguments[0].body, `Rendered collection property "${field}" is not supported`)
       return { ...source, selector: [...source.selector, ["flatMap", field]] }
     }
+    if (method === "slice") {
+      if (value.arguments.length < 1 || value.arguments.length > 2) fail(value, "Rendered collection slice() requires a start and optional end")
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+      if (!source) return undefined
+      const selectorStates = new Set(source.selectorStates)
+      const start = collectionExpression(value.arguments[0], {}, fail, stateNames, selectorStates)
+      const end = value.arguments[1] && collectionExpression(value.arguments[1], {}, fail, stateNames, selectorStates)
+      return { ...source, selector: [...source.selector, ["slice", start, end]], selectorStates }
+    }
+    if (method === "toSorted") {
+      if (value.arguments.length !== 1) fail(value, "Rendered collection toSorted() requires one inline comparator")
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+      if (!source) return undefined
+      const comparator = value.arguments[0]
+      const parameters = collectionParameters(comparator, "Rendered collection toSorted()", fail)
+      if (comparator.parameters.length !== 2 || ts.isBlock(comparator.body)) fail(comparator, "Rendered collection toSorted() comparator must be a synchronous expression arrow with (left, right) identifier parameters")
+      const selectorStates = new Set(source.selectorStates)
+      const expression = collectionExpression(comparator.body, parameters, fail, stateNames, selectorStates)
+      return { ...source, selector: [...source.selector, ["sort", expression]], selectorStates }
+    }
+    if (method === "sort") fail(value, "Rendered collections cannot use mutating sort(); use toSorted()")
   }
   if (isArrayFromCall(value)) {
     if (value.arguments.length < 1 || value.arguments.length > 2) fail(value, "Rendered Array.from() requires an anchor and optional inline mapper")
-    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames)
+    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
     if (!source) return undefined
     let mapper
     if (value.arguments[1]) {
@@ -3932,7 +4058,7 @@ function jsxTagUses(root, name) {
   return uses
 }
 
-const pureListMethods = new Set(["at", "charAt", "charCodeAt", "concat", "endsWith", "includes", "indexOf", "join", "lastIndexOf", "padEnd", "padStart", "repeat", "replace", "replaceAll", "slice", "startsWith", "substring", "toLowerCase", "toUpperCase", "trim", "trimEnd", "trimStart"])
+const pureListMethods = new Set(["at", "charAt", "charCodeAt", "concat", "endsWith", "includes", "indexOf", "join", "lastIndexOf", "localeCompare", "padEnd", "padStart", "repeat", "replace", "replaceAll", "slice", "startsWith", "substring", "toLowerCase", "toUpperCase", "trim", "trimEnd", "trimStart"])
 const mutatingListMethods = new Set(["copyWithin", "fill", "pop", "push", "reverse", "shift", "sort", "splice", "unshift"])
 const pureMathMethods = new Set(["abs", "ceil", "floor", "max", "min", "pow", "round", "sign", "sqrt", "trunc"])
 const pureListGlobals = new Set(["Boolean", "Infinity", "Math", "NaN", "Number", "String", "undefined"])

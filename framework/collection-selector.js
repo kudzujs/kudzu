@@ -6,13 +6,15 @@ export function selectCollection(anchor, selector = [], readState) {
       if (!Array.isArray(values)) throw new Error("Rendered collection source must remain an array")
       if (operation[0] === "filter") values = values.filter((item, index) => evaluateCollectionExpression(operation[1], item, index, readState))
       else if (operation[0] === "flatMap") values = values.flatMap(item => item?.[operation[1]] ?? [])
+      else if (operation[0] === "slice") values = values.slice(evaluateCollectionExpression(operation[1], undefined, undefined, readState), operation[2] && evaluateCollectionExpression(operation[2], undefined, undefined, readState))
+      else if (operation[0] === "sort") values = [...values].sort((left, right) => evaluateCollectionExpression(operation[1], left, right, readState))
     }
   }
   if (!Array.isArray(values)) throw new Error("Rendered collection source must remain an array")
   return values
 }
 
-function evaluateCollectionExpression(expression, item, index, readState) {
+export function evaluateCollectionExpression(expression, item, index, readState) {
   const [kind, ...parts] = expression
   if (kind === "value") return parts[0]
   if (kind === "undefined") return undefined

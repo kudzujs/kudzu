@@ -1,4 +1,7 @@
+/// <reference lib="es2023.array" />
+
 import { useState } from "@kudzujs/core"
+import { selectVisible } from "../selectVisible"
 
 type Item = { id: string; label: string; visible: boolean; marker?: string | null }
 type Group = { id: string; children: Item[] }
@@ -15,7 +18,13 @@ export default function RenderedCollectionsPage() {
     { id: "empty", children: [] },
     { id: "full", children: [{ id: "x", label: "Xray", visible: true }] }
   ])
+  const [page, setPage] = useState(0)
+  const [query, setQuery] = useState("")
   const visible = items.filter((item, index) => item.visible && index >= 0)
+  const importedVisible = selectVisible(items)
+  const pageItems = items.slice(page * 2, page * 2 + 2)
+  const searchedItems = items.filter(item => item.label.toLowerCase().includes(query.toLowerCase()))
+  const sortedItems = items.toSorted((left, right) => left.label.localeCompare(right.label))
 
   return <main>
     <button data-action="show" onClick={() => setItems(items.map(item => item.id === "b" ? { ...item, visible: true } : item))}>Show beta</button>
@@ -23,6 +32,10 @@ export default function RenderedCollectionsPage() {
     <button data-action="remove" onClick={() => setItems(items.filter(item => item.id !== "b"))}>Remove beta</button>
     <button data-action="add-child" onClick={() => setGroups(groups.map(group => group.id === "empty" ? { ...group, children: [{ id: "z", label: "Zulu", visible: true }] } : group))}>Add child</button>
     <button data-action="duplicate" onClick={() => setGroups(groups.map(group => ({ ...group, children: [{ id: "same", label: group.id, visible: true }] })))}>Duplicate</button>
+    <button data-action="page-previous" onClick={() => setPage(0)}>Previous page</button>
+    <button data-action="page-next" onClick={() => setPage(1)}>Next page</button>
+    <button data-action="search" onClick={() => setQuery("mm")}>Search gamma</button>
+    <button data-action="search-clear" onClick={() => setQuery("")}>Clear search</button>
 
     <ul data-stable>{visible.map((item, index) => <li key={item.id} data-id={item.id}>
       <span>{index}:{item.label}</span>
@@ -32,6 +45,14 @@ export default function RenderedCollectionsPage() {
     </li>)}</ul>
 
     <ul data-reused>{visible.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+
+    <ul data-imported>{importedVisible.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+
+    <ul data-page>{pageItems.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+
+    <ul data-search>{searchedItems.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+
+    <ul data-sorted>{sortedItems.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
 
     <ol data-positional>{items.filter(item => item.visible).map((item, index) => <li key={index} data-id={item.id}>
       <span>{index}:{item.label}</span>

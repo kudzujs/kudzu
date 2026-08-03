@@ -1,5 +1,30 @@
 # Kudzu Releases
 
+## 0.7.21 - Composable collections and effects
+
+Kudzu 0.7.21 expands ordinary React-shaped collection pipelines and effect authoring while preserving keyed identity, derived dependency semantics, and capability-specific browser output.
+
+### New in 0.7.21
+
+- A relative-imported named or default synchronous one-parameter function may directly return a supported pure collection pipeline; Kudzu composes its selector without executing or shipping the function.
+- Immutable `slice(start, end?)` accepts numeric literals and supported direct primitive state expressions for bounded pagination.
+- Pure `filter` predicates may combine direct primitive state with supported string methods for reactive search.
+- Expression-bodied `toSorted((left, right) => ...)` comparators compile into immutable selector sorting; mutating `sort()` fails with a source diagnostic.
+- A top-level immutable primitive local derived from direct state may appear in an effect dependency array. Source commits schedule comparison, but unchanged derived results do not rerun the effect.
+- Derived expressions are substituted into setup and cleanup handlers, so reruns and final disposal observe the latest value.
+- Same-component top-level simple `const` setup and directly returned cleanup functions are statically substituted into effect handlers; indirect aliases remain unsupported.
+- The complete suite passes 107/107 tests with browser coverage for pagination, search, sorted identity, derived equality, cleanup order, and named effect functions.
+
+### Boundary
+
+Collection transforms must be relative, synchronous, capture-free, one-parameter functions with one returned supported pipeline. Slice bounds and sort comparators reject arbitrary calls; `sort()` remains unsupported. Derived effect locals must be pure primitive expressions over direct state. Effect function references must be direct top-level `const` functions in the same component; dynamic selection, parameters, and cross-component references remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.21
+```
+
 ## 0.7.20 - Computed child collections
 
 Kudzu 0.7.20 accepts a common block-bodied keyed `map` callback that computes one direct child collection before returning JSX, without executing arbitrary callback code or adding a browser runtime path.

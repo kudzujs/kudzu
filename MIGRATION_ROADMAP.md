@@ -104,8 +104,8 @@ Investigate common immutable collection source that remains awkward to migrate:
 
 - Reusable aliases with statically provable use sites are complete for immutable local collection aliases feeding multiple keyed lists;
 - Computed direct child collections are complete for one top-level `const` selector over a direct child property in a block-bodied keyed `map` callback;
-- imported pure synchronous transforms;
-- immutable search, slice, pagination, and sorting forms proven by fixtures.
+- Relative-imported pure synchronous transforms are complete for named or default one-parameter functions returning one supported selector pipeline;
+- Immutable `slice(start, end?)` pagination, reactive `filter`/string-method search, and expression-bodied `toSorted((left, right) => ...)` are complete.
 
 Mutation, arbitrary callbacks, promises, and package collection engines remain outside the queue. Large datasets require bounded visible output rather than giant DOM trees.
 
@@ -114,8 +114,8 @@ Mutation, arbitrary callbacks, promises, and package collection engines remain o
 Investigate effect forms common in ordinary React source:
 
 - destructured primitive props backed directly by parent state are complete;
-- simple derived primitive locals;
-- common named callback or cleanup forms that remain statically resolvable;
+- Simple derived primitive locals are complete for top-level immutable pure expressions over direct state, with derived-value comparison and latest setup/cleanup evaluation;
+- Same-component top-level simple `const` effect setup and directly returned cleanup functions are complete;
 - multiple direct dependencies without adding a scheduler.
 
 Acceptance: direct dependency comparison, cleanup-before-rerun, stale async isolation, and route/DOM ownership remain explicit.
