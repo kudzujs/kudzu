@@ -49,7 +49,7 @@ async function mountInitial() {
     const record = matchRoute(location.pathname)
     if (!record) throw new Error("Initial navigation route does not match")
     const capabilities = await loadCapabilities(validate(document, record))
-    capabilities.params?.(location.pathname)
+    capabilities.params?.(location.pathname, location.search)
     layoutDispose = await capabilities.effects?.mountLayoutEffects?.() ?? noDispose
     routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
   } catch (error) {
@@ -130,7 +130,7 @@ async function navigate(url, push) {
     if (current !== revision) return
     await routeDispose()
     if (current !== revision) return
-    commit(incoming, parsed.nodes, capabilities.params, url.pathname)
+    commit(incoming, parsed.nodes, capabilities.params, url.pathname, url.search)
     committed = true
     routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
     if (push) history.pushState(null, "", url)
@@ -175,7 +175,7 @@ function validate(incoming, record) {
   return { nodes, assets: [...new Set(assets)] }
 }
 
-function commit(incoming, incomingNodes, initializeParams, pathname) {
+function commit(incoming, incomingNodes, initializeParams, pathname, search) {
   const start = document.querySelector("template[data-k-route-start]")
   const end = document.querySelector("template[data-k-route-end]")
   if (!start || !end || document.querySelectorAll("template[data-k-route-start],template[data-k-route-end]").length !== 2) throw new Error("Current route markers are invalid")
@@ -189,7 +189,7 @@ function commit(incoming, incomingNodes, initializeParams, pathname) {
   document.body.dataset.kRoute = incoming.body.dataset.kRoute
   const nodes = incomingNodes.map(node => document.importNode(node, true))
   end.before(...nodes)
-  initializeParams?.(pathname)
+  initializeParams?.(pathname, search)
   for (const node of nodes) mountDom(node)
 }
 

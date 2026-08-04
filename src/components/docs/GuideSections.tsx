@@ -49,6 +49,16 @@ export default function ItemPage() {
 }`} />
     <p><code>getStaticPaths()</code> and <code>runtimeParams</code> are mutually exclusive. Parameters occupy complete path segments and malformed, separator, control, and traversal-like values are rejected. Static hosts must try exact files first and then internally rewrite matching paths to the generated fallback while preserving the URL. Ordered rewrite metadata is available to <code>afterBuild()</code>.</p>
     <p>Migration input may retain a named or aliased <code>useParams</code> import from <code>react-router-dom</code> in this runtime route shape. Kudzu redirects a direct zero-argument call to the same pathname reader and removes the router package import. New Kudzu source should continue importing <code>useParams</code> from <code>@kudzujs/core</code>. Build-known <code>getStaticPaths()</code> routes receive their values through page props instead.</p>
+    <h3>Query parameters</h3>
+    <p>Read-only migration source may retain a named or aliased React Router <code>useSearchParams</code> call. One top-level tuple binding and direct static <code>get()</code> locals become nullable route signals backed by a minimal <code>URLSearchParams</code> capability.</p>
+    <CodeBlock code={`import { useSearchParams } from "react-router-dom"
+
+export default function SearchPage() {
+  const [searchParams] = useSearchParams()
+  const query = searchParams.get("q")
+  return <p data-query={query}>{query}</p>
+}`} />
+    <p>The static fallback renders missing query values as blank text and omits nullable attributes. Browser initialization uses native decoding semantics before route effects mount. Setter destructuring, dynamic names, <code>getAll</code>, <code>has</code>, aliases, wrapped fallback expressions, and indirect reads are rejected. Routes without query reads emit no parameter module.</p>
     <h3 id="navigation">Application navigation</h3>
     <p>Native anchors are the default. Migration input may retain a named or aliased React Router <code>Link</code> when <code>to</code> is one static root-relative path; Kudzu applies the configured base, emits an ordinary anchor, and removes the package import.</p>
     <CodeBlock code={`import { Link as RouterLink } from "react-router-dom"

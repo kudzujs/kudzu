@@ -24,7 +24,7 @@ try {
     await waitFor(() => document.querySelector("[data-layout-count]").textContent === "A 1")
     document.querySelector("[data-item]").click()
     await waitFor(() => document.querySelector('[data-route="item"]')?.dataset.id === "oak")
-    if (document.querySelector('[data-shell="a"]') !== shell || document.querySelector("[data-layout-count]").textContent !== "A 1" || document.querySelector("[data-route-count]").textContent !== "Route 0" || document.body.dataset.itemEffect !== "oak") throw new Error("group-a-lifetimes")
+    if (document.querySelector('[data-shell="a"]') !== shell || document.querySelector("[data-layout-count]").textContent !== "A 1" || document.querySelector("[data-route-count]").textContent !== "Route 0" || document.querySelector('[data-route="item"]').dataset.view !== "full" || document.body.dataset.itemEffect !== "oak:full") throw new Error("group-a-lifetimes")
     const childStarts = [...document.querySelectorAll("template[data-k-list]")].filter(start => JSON.parse(start.dataset.kList).ownerField)
     if (childStarts.length !== 1 || childStarts[0].content.firstElementChild || document.querySelector('[data-child="a1"]')?.textContent !== "OakAvailable") throw new Error("nested-navigation-mount")
     document.querySelector("[data-update-child]").click()

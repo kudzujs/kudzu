@@ -44,16 +44,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.7.23">
-        <span>v0.7.23</span>
-        <strong>Router-shaped runtime params</strong>
+      <a className="release-banner" href="/releases/0.7.24">
+        <span>v0.7.24</span>
+        <strong>Router-shaped query reads</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.7.23</span> REACT-SOURCE MIGRATION</p>
+            <p className="eyebrow"><span>v0.7.24</span> REACT-SOURCE MIGRATION</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">

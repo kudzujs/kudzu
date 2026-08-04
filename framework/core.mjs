@@ -123,6 +123,22 @@ export function useParams() {
   return renderContext.params
 }
 
+export function useSearchParam(name) {
+  if (!renderContext) throw new Error("useSearchParam() can only run while rendering a Kudzu component")
+  if (renderContext?.renderScope === "layout") throw new Error("useSearchParam() is only supported in route scope")
+  if (typeof name !== "string") throw new Error("useSearchParam() requires a string name")
+  let signal = renderContext.searchParams.get(name)
+  if (!signal) {
+    const id = nextRenderId("p")
+    signal = createSignal(id, null)
+    renderContext.searchParams.set(name, signal)
+    renderContext.searchParamEntries.push({ name, id })
+  }
+  renderContext.hasBehaviors = true
+  renderContext.hasParams = true
+  return signal
+}
+
 function createSignal(id, value) {
   return {
     [signalMarker]: true,
@@ -416,7 +432,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -496,6 +512,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
       plan: {
         states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
         params: renderContext.paramEntries,
+        searchParams: renderContext.searchParamEntries,
         events: renderContext.events,
         effects: renderContext.effects,
         bindings: renderContext.bindings,
@@ -560,7 +577,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (node?.[signalMarker]) {
     renderContext.textStates.add(node.id)
     if (renderContext.conditionDepth || renderContext.listDepth) renderContext.conditionStates.add(node.id)
-    return `<span data-k-text="${node.id}" data-k-value='${escapeJsonAttribute(node.value)}'>${escapeHtml(node.value)}</span>`
+    return `<span data-k-text="${node.id}" data-k-value='${escapeJsonAttribute(node.value)}'>${escapeHtml(node.value ?? "")}</span>`
   }
   if (typeof node === "string" || typeof node === "number" || typeof node === "bigint") {
     return escapeHtml(node)

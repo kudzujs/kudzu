@@ -9,7 +9,7 @@ export function ShellA({ children }: { children?: unknown }) {
     <button data-layout-count onClick={() => setCount(value => value + 1)}>A {count}</button>
     <nav>
       <a data-alpha href="/app/alpha">Alpha</a>
-      <a data-item href="/app/items/oak">Item</a>
+      <a data-item href="/app/items/oak?view=full">Item</a>
       <a data-cross href="/app/beta">Beta</a>
       <a data-outside href="/app/outside">Outside</a>
       <a data-native-exact href="/app/items/native">Native item</a>

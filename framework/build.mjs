@@ -115,7 +115,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       const navigable = Boolean(navigationGroup)
       const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
       const nativePath = `native/${route ? `${route}/index` : "index"}.js`
-      const paramPath = `params/${route}/index.js`
+      const paramPath = `params/${route ? `${route}/index` : "index"}.js`
       if (emittedRoutes.has(routePath)) throw new Error(`Duplicate route: ${routePath}`)
       emittedRoutes.add(routePath)
       emittedApplicationRoutes.add(applicationRoute)
@@ -153,7 +153,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       const usesDependencyRuntime = !navigable && hasDependencies && !result.plan.effects.some(effect => effect.owner) && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
       pageEntries.push({ route, html: result.html, usesDependencyRuntime })
       plans.push({ route: routePath, ...result.plan })
-      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, usesDependencyRuntime, navigable })
+      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, searchParams: result.plan.searchParams, usesDependencyRuntime, navigable })
       if (result.hasEffects) effectEntries.push({ path: effectPath, effects: runtimeEffects(result.plan.effects, navigable), paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime, navigable })
       if (result.plan.events.some(event => event.native)) nativeEntries.push({
         path: nativePath,
@@ -386,7 +386,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const entry of paramEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify)
+    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, entry.searchParams, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify)
   }
   for (const entry of effectEntries) {
     const output = join(assetsDirectory, entry.path)
@@ -482,7 +482,7 @@ async function mountInitial() {
     const record = matchRoute(location.pathname)
     if (!record) throw new Error("Initial navigation route does not match")
     const capabilities = await loadCapabilities(validate(document, record))
-    capabilities.params?.(location.pathname)
+    capabilities.params?.(location.pathname, location.search)
     layoutDispose = await capabilities.effects?.mountLayoutEffects?.() ?? noDispose
     routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
   } catch (error) {
@@ -493,7 +493,7 @@ async function mountInitial() {
     .replace("  await ready\n", "")
     .replace("    const capabilities = await loadCapabilities(parsed)\n", "    await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n")
     .replace("    await routeDispose()\n    if (current !== revision) return\n", "")
-    .replace("    commit(incoming, parsed.nodes, capabilities.params, url.pathname)\n", "    commit(incoming, parsed.nodes)\n")
+    .replace("    commit(incoming, parsed.nodes, capabilities.params, url.pathname, url.search)\n", "    commit(incoming, parsed.nodes)\n")
     .replace("    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose\n", "")
     .replace(`
 async function loadCapabilities(parsed) {
@@ -1406,14 +1406,14 @@ async function invokeCleanup() {
 }${disposal}`
 }
 
-function printParamEntry(schema, params, output, assetsDirectory, base, runtimeName, navigable) {
-  const prefix = navigable ? "export function initializeParams(pathname) {\n" : "let pathname = location.pathname\n"
+function printParamEntry(schema, params, searchParams, output, assetsDirectory, base, runtimeName, navigable) {
+  const signature = searchParams.length ? "pathname, search" : "pathname"
+  const prefix = navigable ? `export function initializeParams(${signature}) {\n` : `${schema ? "let pathname = location.pathname\n" : ""}${searchParams.length ? "let search = location.search\n" : ""}`
   const suffix = navigable ? "\n}" : ""
-  return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}
-const base = ${inlineJson(browserPath(base).slice(1).split("/").filter(Boolean).map(segment => decodeURIComponent(segment)))}
+  const pathname = schema ? `const base = ${inlineJson(browserPath(base).slice(1).split("/").filter(Boolean).map(segment => decodeURIComponent(segment)))}
 const schema = ${inlineJson(schema.segments)}
 const params = ${inlineJson(params)}
-${prefix}let path = pathname
+let path = pathname
 if (base.length) {
   const pathSegments = path.slice(1).split("/")
   if (pathSegments.length < base.length || base.some((segment, index) => decodeSegment(pathSegments[index], false) !== segment)) throw new Error("Runtime route is outside the configured base")
@@ -1441,7 +1441,17 @@ function decodeSegment(raw, param) {
   const decodedDots = value.replace(/%2e/gi, ".")
   if (param && (!value || value === "." || value === ".." || decodedDots === "." || decodedDots === ".." || /[\\/?#]/.test(value) || [...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159) || /%(?:2f|5c)/i.test(value))) throw new Error("Runtime route parameter is invalid")
   return value
-}${suffix}`
+}
+` : ""
+  const query = searchParams.length ? `const query = new URLSearchParams(search)
+for (const param of ${inlineJson(searchParams)}) {
+  const value = query.get(param.name)
+  browserState.set(param.id, value)
+  commitDom(param.id, value)
+}
+` : ""
+  return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}
+${prefix}${pathname}${query}${suffix}`
 }
 
 function hasCaptureType(value, type) {
@@ -1777,26 +1787,80 @@ function emittedPackageReference(source, file, packages) {
 function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
   const links = new Set()
   const params = new Set()
+  const searchHooks = new Set()
   for (const statement of sourceFile.statements) {
     if ((ts.isExportDeclaration(statement) || ts.isImportDeclaration(statement)) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react-router-dom") {
       if (ts.isExportDeclaration(statement)) throw sourceNodeError(statement, sourceFile, "React Router exports are not supported; import Link directly where it renders")
       const clause = statement.importClause
       if (clause?.isTypeOnly) continue
       if (!clause) throw sourceNodeError(statement, sourceFile, "Side-effect React Router imports are not supported")
-      if (clause.name) throw sourceNodeError(clause.name, sourceFile, "React Router default imports are not supported; use named Link or useParams imports")
+      if (clause.name) throw sourceNodeError(clause.name, sourceFile, "React Router default imports are not supported; use named Link, useParams, or useSearchParams imports")
       const bindings = clause.namedBindings
-      if (!bindings || ts.isNamespaceImport(bindings)) throw sourceNodeError(bindings ?? statement, sourceFile, "React Router namespace imports are not supported; use named Link or useParams imports")
+      if (!bindings || ts.isNamespaceImport(bindings)) throw sourceNodeError(bindings ?? statement, sourceFile, "React Router namespace imports are not supported; use named Link, useParams, or useSearchParams imports")
       for (const entry of bindings.elements) {
         if (entry.isTypeOnly) continue
         const imported = (entry.propertyName ?? entry.name).text
         if (imported === "NavLink") throw sourceNodeError(entry, sourceFile, "React Router NavLink active-route semantics cannot be erased to a native anchor")
         if (imported === "Link") links.add(entry.name.text)
         else if (imported === "useParams") params.add(entry.name.text)
-        else throw sourceNodeError(entry, sourceFile, `React Router ${imported} is not supported; only named Link and useParams imports can be lowered`)
+        else if (imported === "useSearchParams") searchHooks.add(entry.name.text)
+        else throw sourceNodeError(entry, sourceFile, `React Router ${imported} is not supported; only named Link, useParams, and useSearchParams imports can be lowered`)
       }
     }
   }
-  if (!links.size && !params.size) return sourceFile
+  if (!links.size && !params.size && !searchHooks.size) return sourceFile
+
+  let searchHelper = "__kUseSearchParam"
+  while (sourceFile.text.includes(searchHelper)) searchHelper += "_"
+  const searchDeclarations = new Set()
+  const searchReads = new Map()
+  const searchObjects = []
+  const collectSearchHooks = node => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && searchHooks.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
+      const declaration = node.parent
+      const statement = declaration?.parent?.parent
+      const owner = nearestFunction(node)
+      const first = ts.isVariableDeclaration(declaration) && ts.isArrayBindingPattern(declaration.name) ? declaration.name.elements[0] : undefined
+      if (node.questionDotToken || node.arguments.length || node.typeArguments?.length || !ts.isVariableDeclaration(declaration) || declaration.initializer !== node || !isLocalConst(declaration) || !owner || statement?.parent !== owner.body || !ts.isBindingElement(first) || !ts.isIdentifier(first.name) || declaration.name.elements.length !== 1) {
+        throw sourceNodeError(node, sourceFile, "React Router useSearchParams must use one top-level const [params] = useSearchParams() without a setter")
+      }
+      const entry = { name: first.name.text, declaration, statement, owner }
+      searchDeclarations.add(declaration)
+      searchObjects.push(entry)
+    }
+    ts.forEachChild(node, collectSearchHooks)
+  }
+  collectSearchHooks(sourceFile)
+  const searchObjectShadowed = (node, entry) => {
+    for (let current = node.parent; current && current !== entry.owner; current = current.parent) {
+      if (isFunctionLike(current) && (current.parameters.some(parameter => bindingNames(parameter.name).includes(entry.name)) || functionVarDeclaresName(current, entry.name))) return true
+      if (ts.isBlock(current) && current.statements.some(statement => statement !== entry.statement && statementDeclaresName(statement, entry.name))) return true
+      if (ts.isCaseBlock(current) && current.clauses.some(clause => clause.statements.some(statement => statement !== entry.statement && statementDeclaresName(statement, entry.name)))) return true
+      if (ts.isCatchClause(current) && current.variableDeclaration && bindingNames(current.variableDeclaration.name).includes(entry.name)) return true
+      if ((ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current)) && loopDeclaresName(current, entry.name)) return true
+    }
+    return false
+  }
+  for (const entry of searchObjects) {
+    const collectReads = node => {
+      if (ts.isIdentifier(node) && node.text === entry.name && isReferenceIdentifier(node) && !searchObjectShadowed(node, entry)) {
+        const property = node.parent
+        const call = property?.parent
+        const declaration = call?.parent
+        const statement = declaration?.parent?.parent
+        if (!ts.isPropertyAccessExpression(property) || property.expression !== node || property.name.text !== "get" || !ts.isCallExpression(call) || call.expression !== property || call.questionDotToken || call.typeArguments?.length || call.arguments.length !== 1 || !ts.isStringLiteral(call.arguments[0])) {
+          throw sourceNodeError(node, sourceFile, 'React Router search parameters only support direct get("static-name") reads')
+        }
+        if (!ts.isVariableDeclaration(declaration) || declaration.initializer !== call || !ts.isIdentifier(declaration.name) || !isLocalConst(declaration) || statement?.parent !== entry.owner.body) {
+          throw sourceNodeError(call, sourceFile, "React Router search parameter get() must directly initialize one top-level const identifier")
+        }
+        searchReads.set(call, call.arguments[0])
+        return
+      }
+      ts.forEachChild(node, collectReads)
+    }
+    collectReads(entry.owner.body)
+  }
 
   const routerProps = new Set(["discover", "end", "prefetch", "preventScrollReset", "relative", "reloadDocument", "replace", "state", "viewTransition"])
   const attributes = attributesNode => {
@@ -1825,6 +1889,12 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
   }
   const importedLink = tag => ts.isIdentifier(tag) && links.has(tag.text) && !isShadowedIdentifier(tag, sourceFile)
   const visitor = node => {
+    if (ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => searchDeclarations.has(declaration))) {
+      const declarations = node.declarationList.declarations.filter(declaration => !searchDeclarations.has(declaration))
+      if (!declarations.length) return undefined
+      return factory.updateVariableStatement(node, node.modifiers, factory.updateVariableDeclarationList(node.declarationList, declarations.map(declaration => ts.visitEachChild(declaration, visitor, context))))
+    }
+    if (ts.isCallExpression(node) && searchReads.has(node)) return factory.createCallExpression(factory.createIdentifier(searchHelper), undefined, [searchReads.get(node)])
     if (ts.isJsxElement(node) && importedLink(node.openingElement.tagName)) {
       const opening = factory.updateJsxOpeningElement(node.openingElement, factory.createIdentifier("a"), node.openingElement.typeArguments, attributes(node.openingElement.attributes))
       const closing = factory.updateJsxClosingElement(node.closingElement, factory.createIdentifier("a"))
@@ -1837,20 +1907,25 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
     }
     if (ts.isIdentifier(node) && links.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router Link imports may only be used as direct JSX elements")
     if (ts.isIdentifier(node) && params.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useParams imports may only be called directly")
+    if (ts.isIdentifier(node) && searchHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useSearchParams imports may only be used by the supported read-only pattern")
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-router-dom") {
       const clause = node.importClause
       if (!clause || clause.isTypeOnly) return node
       const bindings = clause.namedBindings
       if (!bindings || !ts.isNamedImports(bindings)) return node
-      const elements = bindings.elements.filter(entry => entry.isTypeOnly || !["Link", "useParams"].includes((entry.propertyName ?? entry.name).text))
+      const elements = bindings.elements.filter(entry => entry.isTypeOnly || !["Link", "useParams", "useSearchParams"].includes((entry.propertyName ?? entry.name).text))
       if (!elements.length) return undefined
       return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, clause.isTypeOnly, undefined, factory.updateNamedImports(bindings, elements)), node.moduleSpecifier, node.attributes)
     }
     return ts.visitEachChild(node, visitor, context)
   }
   const normalized = ts.visitNode(sourceFile, visitor)
-  if (!params.size) return normalized
-  const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports([...params].map(name => factory.createImportSpecifier(false, name === "useParams" ? undefined : factory.createIdentifier("useParams"), factory.createIdentifier(name))))), factory.createStringLiteral("@kudzujs/core"))
+  if (!params.size && !searchHooks.size) return normalized
+  const imports = [
+    ...[...params].map(name => factory.createImportSpecifier(false, name === "useParams" ? undefined : factory.createIdentifier("useParams"), factory.createIdentifier(name))),
+    ...(searchHooks.size ? [factory.createImportSpecifier(false, factory.createIdentifier("useSearchParam"), factory.createIdentifier(searchHelper))] : [])
+  ]
+  const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports(imports)), factory.createStringLiteral("@kudzujs/core"))
   const statements = [...normalized.statements]
   statements.splice(statements.findLastIndex(statement => ts.isImportDeclaration(statement)) + 1, 0, declaration)
   return factory.updateSourceFile(normalized, statements)

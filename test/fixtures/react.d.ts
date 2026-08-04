@@ -42,6 +42,7 @@ declare module "react-router-dom" {
   export function Link(props: { to: To; children?: unknown; className?: string; target?: string; rel?: string }): unknown
   export function NavLink(props: { to: To; children?: unknown; className?: string }): unknown
   export function useParams<Params extends Record<string, string> = Record<string, string>>(): Readonly<Params>
+  export function useSearchParams(): [URLSearchParams, (next: URLSearchParams) => void]
 }
 
 declare module "*.png" {

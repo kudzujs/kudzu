@@ -130,7 +130,7 @@ Investigate conventional React Router source forms that can erase to existing be
 
 - Named or aliased React Router `Link` with one static root-relative `to` is complete; it erases to a base-aware native anchor with no router runtime;
 - Named or aliased React Router `useParams()` is complete for `runtimeParams = true` bracket routes through the existing pathname reader; build-known `getStaticPaths()` routes continue to receive params through props;
-- query reads to build-time props or a minimal URL reader;
+- Read-only named or aliased React Router `useSearchParams()` is complete for one top-level tuple binding and direct static `get("name")` locals; each key lowers to a nullable route signal initialized by a minimal `URLSearchParams` reader;
 - imperative navigation to native document navigation where semantics match.
 
 This work must not add a default SPA router. Same-document transitions require explicit user approval and a measured fixture need.

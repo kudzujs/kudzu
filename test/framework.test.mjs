@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.23/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.24/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.23"/)
-  assert.match(release, /Kudzu 0\.7\.23.*Keep route source.*Drop the router/s)
-  assert.match(release, /ROUTER-SHAPED RUNTIME PARAMS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.23/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.24"/)
+  assert.match(release, /Kudzu 0\.7\.24.*Read the URL.*Ship only the reader/s)
+  assert.match(release, /ROUTER-SHAPED QUERY READS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.24/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1482,6 +1482,52 @@ test("rejects indirect React Router useParams references", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router useParams imports may only be called directly/)
+})
+
+test("lowers read-only React Router search parameters to URL signals", async t => {
+  const fixture = new URL("./fixtures/react-router-search-params", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-router-search-params/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-router-search-params/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-router-search-params/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/react-router-search-params/dist/about/index.html", import.meta.url), "utf8")
+  const params = await readFile(new URL("./fixtures/react-router-search-params/dist/assets/params/index.js", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-router-search-params/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/react-router-search-params/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /assets\/params\/index\.js/)
+  assert.doesNotMatch(html, />null</)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.match(params, /location\.search.*new URLSearchParams/)
+  assert.doesNotMatch(params, /location\.pathname|Runtime route|decodeSegment/)
+  assert.match(component, /useSearchParam as __kUseSearchParam/)
+  assert.doesNotMatch(component, /useQuery|useSearchParams|react-router-dom/)
+  assert.deepEqual(plan.params, [])
+  assert.deepEqual(plan.searchParams, [
+    { name: "q", id: "p0" },
+    { name: "empty", id: "p1" },
+    { name: "missing", id: "p2" },
+    { name: "dup", id: "p3" },
+    { name: "encoded", id: "p4" }
+  ])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSearchParamBrowserTest(fixture, chrome)
+})
+
+test("rejects React Router search parameter setters", () => {
+  const fixture = new URL("./fixtures/react-router-search-params-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router useSearchParams must use one top-level const \[params\] = useSearchParams\(\) without a setter/)
+})
+
+test("rejects dynamic React Router search parameter names", () => {
+  const fixture = new URL("./fixtures/react-router-search-read-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router search parameters only support direct get\("static-name"\) reads/)
 })
 
 test("filters imported static collections with memoized state selectors", async t => {
@@ -4757,6 +4803,56 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/newsletter/posts/oak/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runSearchParamBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  const expected = "vine leaf||null|first|/oak"
+  await waitFor(() => document.body.dataset.effectQuery === expected, "effect")
+  const main = document.querySelector("main")
+  if (main.dataset.query !== "vine leaf" || main.dataset.empty !== "" || main.hasAttribute("data-missing") || main.dataset.encoded !== "/oak") throw new Error("attributes")
+  if (document.querySelector("[data-query-text]").textContent !== "vine leaf" || document.querySelector("[data-empty-text]").textContent !== "" || document.querySelector("[data-missing-text]").textContent !== "" || document.querySelector("[data-duplicate-text]").textContent !== "first" || document.querySelector("[data-encoded-text]").textContent !== "/oak") throw new Error("text")
+  if (document.querySelector("[data-next]").getAttribute("href") !== "/?q=next") throw new Error("link")
+  document.querySelector("button").click()
+  await waitFor(() => document.body.dataset.eventQuery === expected, "event")
+  document.body.dataset.searchParamTest = "pass"
+} catch (error) {
+  document.body.dataset.searchParamTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  const file = path.join(root, url.pathname === "/" ? "index.html" : url.pathname.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const query = "?q=vine+leaf&empty=&dup=first&dup=second&encoded=%2Foak"
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/${query}`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-search-param-test="pass"/)
   } finally {
     server.kill()
   }

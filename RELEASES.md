@@ -1,5 +1,30 @@
 # Kudzu Releases
 
+## 0.7.24 - Router-shaped query reads
+
+Kudzu 0.7.24 accepts a narrow read-only React Router `useSearchParams()` shape and lowers each static query read to a nullable route signal backed by native `URLSearchParams`, without adding a router runtime.
+
+### New in 0.7.24
+
+- A named or aliased `useSearchParams` import may initialize one top-level `const [params]` tuple without a setter.
+- Direct top-level `const value = params.get("literal")` reads lower to cached nullable query signals.
+- The route-specific parameter module uses native `URLSearchParams.get()` semantics for missing, empty, duplicate, plus-encoded, Unicode, and percent-encoded values.
+- Static fallback HTML renders missing query text as blank and omits nullable attributes; browser values initialize before route effects mount.
+- Query signals compose with direct text and attributes, effect dependencies, native handlers, React Router Link lowering, and configured same-document navigation.
+- Routes without query reads emit no parameter module or query branch.
+- Setter tuples, dynamic names, other methods, aliases, wrapped expressions, and indirect reads fail with source diagnostics.
+- The complete suite passes 115/115 tests with Chrome coverage for standalone and navigation-group query initialization.
+
+### Boundary
+
+The supported migration shape is one top-level `const [params] = useSearchParams()` and one or more top-level direct `const value = params.get("literal")` reads. Query setters, `getAll`, `has`, iteration, dynamic names, aliases, inline JSX calls, fallback wrappers, layout ownership, and general URLSearchParams semantics remain unsupported. Native document navigation remains the default; no SPA router is included.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.24
+```
+
 ## 0.7.23 - Router-shaped runtime params
 
 Kudzu 0.7.23 accepts the conventional React Router `useParams()` source shape on runtime bracket routes and redirects it to the existing capability-specific pathname reader without shipping React Router.

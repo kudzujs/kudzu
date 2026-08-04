@@ -1,4 +1,5 @@
 import { useEffect, useParams, useState } from "@kudzujs/core"
+import { useSearchParams } from "react-router-dom"
 import { ShellA } from "../../ShellA"
 
 export const layout = ShellA
@@ -6,12 +7,14 @@ export const runtimeParams = true
 
 export default function Item() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const view = searchParams.get("view")
   const [count, setCount] = useState(0)
   const [groups, setGroups] = useState([{ id: "g1", items: [{ id: "a1", label: "Oak", available: true }] }])
   useEffect(() => {
-    document.body.dataset.itemEffect = id
-  }, [id])
-  return <main data-route="item" data-id={id}>
+    document.body.dataset.itemEffect = `${id}:${view}`
+  }, [id, view])
+  return <main data-route="item" data-id={id} data-view={view}>
     <h1>Item {id}</h1>
     <button data-route-count onClick={() => setCount(value => value + 1)}>Route {count}</button>
     <button data-update-child onClick={() => setGroups(groups.map(group => ({ ...group, items: group.items.map(item => item.id === "a1" ? { ...item, label: "Ash", available: false } : item) })))}>Update child</button>
