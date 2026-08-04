@@ -109,3 +109,86 @@ HTML add:        [3.7,3.2,3.1,3.7,4.2,6.6,11.7,8.8,3.3,6.7,3.3,5.5,3.1,3.0,3.0,3
 The browser ranges were SVG conditional 0.6–1.5 ms, update 1.5–3.8 ms, reverse 7.3–12.8 ms, remove 2.1–8.9 ms, add 2.9–13.0 ms; HTML conditional 0.5–4.1 ms, update 1.4–5.1 ms, reverse 6.2–27.8 ms, remove 2.0–10.2 ms, add 2.9–11.7 ms. Measurements cover DOM mutation completion, not paint/compositing, and use unthrottled synthetic clicks. The SVG and HTML markup is behavior-matched but not byte-identical, so total HTML/output differences are not attributed solely to namespace support.
 
 The maintained Worker benchmark also passed on this worktree: build runs `[874.5, 778.5, 757.3, 880.3, 713.7, 672.8, 515.3]` ms, median 757.3 ms; Worker graph 907 B raw / 477 B gzip; window graph 11,960 B raw / 5,353 B gzip. Its historical M3 build timings are not comparable to this Linux machine.
+
+## 2026-08-04 Large React Migration
+
+Measured on Intel Core i5-9500, Linux 6.17.0-19-generic, Node 24.14.0, npm 11.9.0, and Chrome 142.0.7444.175. The worktree was based on Kudzu 0.7.25 with unreleased React-compatible JSX typing, setter-adapter component specialization, and TypeScript-only collection-wrapper unwrapping.
+
+The generated Trailboard fixture contains 2,000 imported records, 500 initially rendered keyed cards, one reactive search reducing the list to one card, one keyed row-local state update, and 53 routes including 50 report pages. React/Vite has 60 source files, 2,561 lines, and 279,966 bytes; Kudzu has 58 source files, 2,440 lines, and 273,752 bytes because file routes replace the React root/router entries.
+
+Builds received one warm-up followed by seven alternating clean TypeScript-check plus production-build runs. Browser targets alternated across seven runs, each with a new Chrome profile and warm local server. An in-page async evaluation measured navigation start to the expected 500-card DOM, event dispatch to the one-card filtered DOM, and click dispatch to the row-local state attribute update.
+
+### Medians
+
+| Metric | React/Vite | Kudzu | Kudzu difference |
+|---|---:|---:|---:|
+| Clean typecheck + build | 3,188.27 ms | 2,759.69 ms | -13.44% |
+| Initial 500-card DOM | 261.80 ms | 280.10 ms | +6.99% |
+| Filter 500 cards to one | 13.90 ms | 28.30 ms | +103.60% |
+| Toggle keyed row state | 5.80 ms | 5.30 ms | -8.62% |
+| JavaScript gzip | 97,885 B | 12,191 B | -87.55% |
+
+Kudzu's filter path is the clear loss in this fixture and is the next measured optimization candidate. Initial readiness and row-local state are in overlapping fresh-profile ranges, while the build and JavaScript-size wins are material.
+
+### Selector Optimization Follow-up
+
+The collection evaluator was changed to cache selector state reads for one execution and avoid recursive rest-array allocation, `slice()`, and `map()` in hot expression nodes. A second seven-run alternating fresh-profile measurement used the same fixture and method.
+
+| Metric | Baseline | Optimized | Change |
+|---|---:|---:|---:|
+| Kudzu filter 500 cards to one | 28.30 ms | 22.00 ms | -22.26% |
+| React filter control | 13.90 ms | 13.60 ms | -2.16% |
+| Kudzu gap versus React | +103.60% | +61.76% | -41.84 points |
+| Kudzu JavaScript gzip | 12,191 B | 12,310 B | +0.98% |
+
+The allocation/state-cache change materially improves the path without changing list ownership or cleanup semantics. The remaining gap is concentrated in generic keyed reconciliation and per-row ownership cleanup when 499 mounted rows are removed at once. An attempted detached batch cleanup was discarded because it broke the remove-all/add-new-key transition; it is not part of the retained change.
+
+```text
+Optimized Kudzu filter: [22.8, 22.5, 20.8, 19.2, 22.0, 22.5, 20.7]
+Optimized React filter: [14.9, 14.9, 15.6, 12.9, 13.6, 13.4, 12.9]
+```
+
+### Indexed Row Release Follow-up
+
+Profiling separated selector evaluation, which took about 3 ms, from the remaining per-row lifecycle work. The compiler now marks keyed rows for direct state-indexed release only when they have row-local state but no row effects, nested lists, or shared text targets. Binding and condition registrations are released by state ID; all other row shapes retain the existing DOM-owned unmount path.
+
+Because the seven-run ranges overlapped, the final isolated measurement used one warm-up and 21 alternating samples:
+
+| Metric | React/Vite | Kudzu | Kudzu difference |
+|---|---:|---:|---:|
+| Clean typecheck + build | 3,024.33 ms | 2,664.58 ms | -11.90% |
+| Initial 500-card DOM | 256.90 ms | 256.00 ms | -0.35% |
+| Filter 500 cards to one | 13.90 ms | 13.50 ms | -2.88% |
+| Toggle keyed row state | 5.70 ms | 5.30 ms | -7.02% |
+| JavaScript gzip | 97,885 B | 12,442 B | -87.29% |
+
+The final Kudzu filter median is 52.30% below the preserved 28.30 ms baseline and 2.88% faster than React on the matched operation. The fast path adds 132 B gzip over the selector-only follow-up. Raw 21-run arrays and generated reports are stored in the benchmark fixture.
+
+### Artifacts
+
+| Target | HTML raw / gzip | CSS raw / gzip | JS raw / gzip |
+|---|---:|---:|---:|
+| React/Vite | 168 / 143 B | 3,649 / 1,365 B | 465,830 / 97,885 B |
+| Kudzu | 702,854 / 65,355 B | 4,225 / 1,442 B | 30,175 / 12,191 B |
+
+React/Vite emits one CSR shell, while Kudzu's HTML total includes 53 complete documents. The initial-readiness comparison therefore measures the product delivery difference rather than equivalent markup. Gzip totals sum files independently; clients do not download all 53 Kudzu documents for one route.
+
+### Raw Build Times
+
+```text
+React: [3156.83, 3190.33, 3155.66, 3188.27, 3115.12, 3201.29, 3268.69]
+Kudzu: [2777.83, 2792.51, 2659.28, 2655.26, 2706.48, 2759.69, 2812.61]
+```
+
+### Raw Browser Times
+
+```text
+React initial: [293.3, 230.8, 272.6, 292.0, 261.8, 261.8, 235.7]
+Kudzu initial: [277.3, 280.6, 287.9, 292.4, 276.1, 254.8, 280.1]
+React filter:  [13.9, 15.5, 15.3, 14.4, 13.0, 13.5, 13.8]
+Kudzu filter:  [28.3, 31.7, 29.1, 28.9, 26.4, 24.4, 24.1]
+React toggle:  [5.7, 6.1, 5.8, 5.8, 5.6, 5.8, 5.7]
+Kudzu toggle:  [5.2, 5.4, 5.3, 5.6, 5.3, 5.2, 5.3]
+```
+
+The reproducible fixture, benchmark harness, environment record, and JSON results are under `/home/kft/Documents/etc/demo/large-benchmark`.

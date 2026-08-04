@@ -1,4 +1,4 @@
-import { browserState, mountDom, registerCommitter, registerMountHook, registerUnmountHook, unmountDom } from "./shared-runtime.js"
+import { browserState, mountDom, registerCommitter, registerMountHook, registerStateReleaseHook, registerUnmountHook, releaseState, unmountDom } from "./shared-runtime.js"
 import { deserialize } from "./serialization.js"
 import { serializeStyle } from "./style.js"
 
@@ -63,6 +63,7 @@ registerMountHook(mountBindings)
 registerMountHook(mountConditions)
 registerUnmountHook(unmountBindings)
 registerUnmountHook(unmountConditions)
+registerStateReleaseHook(releaseBindings)
 
 if (typeof document !== "undefined") mountDom(document)
 
@@ -195,6 +196,21 @@ function unmountConditions(root) {
   }
 }
 
+function releaseBindings(id) {
+  for (const binding of bindingTargets.get(id) ?? []) {
+    for (const [bindingId, entry] of bindingRegistrations.get(binding.node) ?? []) bindingTargets.get(bindingId)?.delete(entry)
+    bindingRegistrations.delete(binding.node)
+  }
+  bindingTargets.delete(id)
+  for (const condition of conditionTargets.get(id) ?? []) {
+    const registration = conditionRegistrations.get(condition.start)
+    for (const [conditionId, entry] of registration?.registrations ?? []) conditionTargets.get(conditionId)?.delete(entry)
+    unmountConditionStates(condition, condition.current === "true")
+    conditionRegistrations.delete(condition.start)
+  }
+  conditionTargets.delete(id)
+}
+
 function mountConditionStates(condition, truthy, replace) {
   for (const [id, initialValue] of condition.owned?.[truthy ? "true" : "false"] ?? []) {
     if (replace || !browserState.has(id)) browserState.set(id, initialValue !== null && typeof initialValue === "object" ? structuredClone(initialValue) : initialValue)
@@ -202,7 +218,7 @@ function mountConditionStates(condition, truthy, replace) {
 }
 
 function unmountConditionStates(condition, truthy) {
-  for (const [id] of condition.owned?.[truthy ? "true" : "false"] ?? []) browserState.delete(id)
+  for (const [id] of condition.owned?.[truthy ? "true" : "false"] ?? []) releaseState(id)
 }
 
 function removeConditionRange(start, end, mount) {

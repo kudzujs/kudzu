@@ -1,5 +1,10 @@
 declare module "react" {
-  export type ReactNode = unknown
+  export interface ReactElement {
+    type: any
+    props: any
+    key: string | null
+  }
+  export type ReactNode = ReactElement | string | number | bigint | boolean | null | undefined | Iterable<ReactNode>
   export function Fragment(props: { children?: unknown }): unknown
   export type Dispatch<T> = (value: T | ((previous: T) => T)) => void
   export type RefObject<T> = { readonly current: T | null }

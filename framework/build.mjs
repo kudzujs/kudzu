@@ -2842,6 +2842,45 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         stateBackedComponentRoots.push(specialization.root)
       }
     }
+    const specializeSetterCallbacks = (call, component, callbackProps, imported) => {
+      if (componentSpecializations.has(call)) fail(call, "Setter callback props cannot be combined with another component specialization")
+      if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, "Setter-callback components must use one destructured props parameter")
+      for (const prop of callbackProps) {
+        const element = component.parameters[0].name.elements.find(entry => !entry.dotDotDotToken && (entry.propertyName ?? entry.name).getText() === prop)
+        if (!element || !ts.isIdentifier(element.name)) fail(call, `Setter-callback component must destructure callback prop ${JSON.stringify(prop)}`)
+        const references = []
+        const collectReferences = node => {
+          if (ts.isIdentifier(node) && node.text === element.name.text && isReferenceIdentifier(node)) references.push(node)
+          ts.forEachChild(node, collectReferences)
+        }
+        collectReferences(component.body)
+        if (references.length !== 1) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be used exactly once in the component`)
+      }
+      const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Setter-callback")
+      if (specialization.effects.length || specialization.hookDeclarations.length) fail(call, "Setter-callback components cannot declare hooks")
+      if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), call, specialization.effects))
+      componentSpecializations.set(call, specialization)
+    }
+    for (const [name, component] of components) {
+      for (const call of jsxTagUses(sourceFile, name)) {
+        const callbackProps = jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functions, reducersForNode(call, reducersByFunction))
+        if (callbackProps.length) specializeSetterCallbacks(call, component.function, callbackProps, false)
+      }
+    }
+    for (const [name, binding] of importBindings) {
+      if (binding.kind === "namespace") continue
+      const calls = jsxTagUses(sourceFile, name)
+      const callbackCalls = calls.map(call => ({ call, callbackProps: jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functions, reducersForNode(call, reducersByFunction)) })).filter(entry => entry.callbackProps.length)
+      if (!callbackCalls.length) continue
+      const imported = binding.kind === "default" ? "default" : binding.imported
+      let component
+      try {
+        component = resolveComponentExport(binding.target, imported, importedSource, sourceFiles)
+      } catch {
+        fail(callbackCalls[0].call, "Setter callback props require a component imported from a relative TypeScript module")
+      }
+      for (const { call, callbackProps } of callbackCalls) specializeSetterCallbacks(call, component, callbackProps, true)
+    }
     for (const [name, component] of components) {
       const calls = jsxTagUses(sourceFile, name)
       const dispatchCalls = calls.filter(call => jsxCallHasDirectReducerProp(call, reducersForNode(call, reducersByFunction)))
@@ -3719,6 +3758,17 @@ function jsxCallHasDirectStateProp(call, setters) {
   })
 }
 
+function jsxSetterCallbackProps(call, setters, functions, reducers) {
+  const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+  return attributes.properties.flatMap(attribute => {
+    if (!ts.isJsxAttribute(attribute) || !/^on[A-Z]/.test(attribute.name.text) || !attribute.initializer || !ts.isJsxExpression(attribute.initializer) || !attribute.initializer.expression) return []
+    const value = unwrapExpression(attribute.initializer.expression)
+    if (ts.isIdentifier(value) && setters.has(value.text)) return [attribute.name.text]
+    const callback = ts.isArrowFunction(value) || ts.isFunctionExpression(value) ? value : ts.isIdentifier(value) ? functions.get(value.text) : undefined
+    return callback && !nativeCaptureNames(callback, setters).size && !referencedReducerDispatches(callback.body, reducers, callback).size && referencedStateNames(callback.body, setters, callback).size ? [attribute.name.text] : []
+  })
+}
+
 function jsxCallHasDirectReducerProp(call, reducers) {
   const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
   return attributes.properties.some(attribute => {
@@ -4404,7 +4454,7 @@ function identifierReferences(root, name) {
 }
 
 function unwrapExpression(node) {
-  return ts.isParenthesizedExpression(node) ? unwrapExpression(node.expression) : node
+  return ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isNonNullExpression(node) || ts.isSatisfiesExpression(node) ? unwrapExpression(node.expression) : node
 }
 
 function isLocalConst(node) {
@@ -4712,6 +4762,7 @@ function isReferenceIdentifier(node) {
       (ts.isVariableDeclaration(parent) && parent.name === node) ||
       (ts.isParameter(parent) && parent.name === node) ||
       (ts.isFunctionDeclaration(parent) && parent.name === node) ||
+      (ts.isJsxAttribute(parent) && parent.name === node) ||
       (ts.isBindingElement(parent) && (parent.name === node || parent.propertyName === node)) ||
       ts.isImportSpecifier(parent) || ts.isImportClause(parent)) return false
   return true

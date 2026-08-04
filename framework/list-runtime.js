@@ -1,4 +1,4 @@
-import { browserState, mountDom, notifyListItem, registerCommitter, registerMountHook, registerUnmountHook, unmountDom } from "./shared-runtime.js"
+import { browserState, mountDom, notifyListItem, registerCommitter, registerMountHook, registerUnmountHook, releaseState, unmountDom } from "./shared-runtime.js"
 import { selectCollection } from "./collection-selector.js"
 
 const listTargets = new Map()
@@ -219,7 +219,8 @@ function updateList(list) {
   }
   for (const [token, node] of list.roots) {
     if (keys.has(token)) continue
-    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) {
+    if (list.descriptor.fastRelease) node.remove()
+    else if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) {
       unmountDom(node)
       node.remove()
     } else node.remove()
@@ -565,7 +566,7 @@ function addListRoot(list, { item, index = list.roots.size, key, token, value })
 
 function removeListRoot(list, token) {
   const node = list.roots.get(token)
-  if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) unmountDom(node)
+  if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount && !list.descriptor.fastRelease) unmountDom(node)
   node.remove()
   if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) deleteRowStates(list.descriptor, ownershipPaths.get(node))
   list.roots.delete(token)
@@ -1035,7 +1036,7 @@ function initializeRowStates(descriptor, key, root) {
 }
 
 function deleteFlatRowStates(descriptor, token) {
-  for (const state of descriptor.rowStates) browserState.delete(flatRowStateId(state.id, token))
+  for (const state of descriptor.rowStates) releaseState(flatRowStateId(state.id, token))
 }
 
 function flatRowStateId(id, token) {
@@ -1044,7 +1045,7 @@ function flatRowStateId(id, token) {
 
 function deleteRowStates(descriptor, path) {
   const statePath = descriptor.ownerField ? path : [path.at(-1).slice(path.at(-1).indexOf("=") + 1)]
-  for (const state of descriptor.rowStates) browserState.delete(rowStateId(state.id, statePath))
+  for (const state of descriptor.rowStates) releaseState(rowStateId(state.id, statePath))
 }
 function rowStateId(id, path) {
   return id.replace("$k", encodeURIComponent(path.join("/")))

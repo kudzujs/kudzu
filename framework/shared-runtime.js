@@ -26,6 +26,7 @@ export const browserState = new Map()
 const committers = []
 const mountHooks = []
 const unmountHooks = []
+const stateReleaseHooks = []
 const textTargets = new Map()
 const mountedText = new WeakSet()
 
@@ -57,6 +58,15 @@ export function registerMountHook(mount) {
 
 export function registerUnmountHook(unmount) {
   unmountHooks.push(unmount)
+}
+
+export function registerStateReleaseHook(release) {
+  stateReleaseHooks.push(release)
+}
+
+export function releaseState(id) {
+  for (const release of stateReleaseHooks) release(id)
+  browserState.delete(id)
 }
 
 export function commitDom(id, value) {

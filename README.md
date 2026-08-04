@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.25 - Router-shaped native navigation.** Supported React Router `useNavigate()` calls now lower to base-aware native document navigation through `location.assign()` or `location.replace()`, with no router runtime. Read the [release notes](./RELEASES.md#0725---router-shaped-native-navigation) or open the [release page](https://kudzujs.cloud/releases/0.7.25).
+**Latest release: 0.7.26 - React-shaped migration and faster lists.** React-compatible JSX typing, setter-adapter specialization, imported collection normalization, and indexed keyed-row release make ordinary migrations easier while moving the measured 500-card search ahead of React. Read the [release notes](./RELEASES.md#0726---react-shaped-migration-and-faster-lists) or open the [release page](https://kudzujs.cloud/releases/0.7.26).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -79,7 +79,7 @@ ordinary React-shaped TSX
 
 - Function components execute at build time and do not survive as browser components.
 - `useState` and reduced `useReducer`, including directly serializable lazy initialization, compile to synchronous logical state and batched direct DOM writes; top-level `useId` and direct intrinsic `forwardRef` authoring erase to static HTML without a component runtime.
-- Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities. Inline or simple `const` setter callbacks and object refs may cross one ordinary component boundary into a direct intrinsic root.
+- Conditions, keyed collections, attributes, events, refs, effects, and supported component boundaries compile to route-specific capabilities. A direct setter may cross one ordinary component boundary through one value-adapter event call; inline or simple `const` setter callbacks and object refs may cross the same direct intrinsic boundary.
 - Build-known data and routes become complete HTML through async components and `getStaticPaths()`.
 - Native document navigation is the default; static routes do not load a client runtime.
 - A named or aliased React Router `Link` with a static root-relative `to` erases to a base-aware native anchor; no router package or runtime is emitted.

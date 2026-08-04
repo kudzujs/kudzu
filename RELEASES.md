@@ -1,5 +1,32 @@
 # Kudzu Releases
 
+## 0.7.26 - React-shaped migration and faster lists
+
+Kudzu 0.7.26 broadens ordinary React-shaped migration input and removes repeated keyed-row cleanup scans, making the matched 500-card search faster than React without adding a VDOM, hydration, or a retained component tree.
+
+### New in 0.7.26
+
+- JSX typing accepts React 19 `ReactNode`-shaped component output while preserving Kudzu's compile-time element model.
+- Intrinsic DOM handlers retain contextual event typing through migration-compatible JSX declarations.
+- A direct setter or one-call value-adapter callback may cross one supported component boundary, covering ordinary controlled search inputs without serializing a function.
+- Imported static collections wrapped in TypeScript-only assertions such as `as const` remain analyzable and erase normally.
+- Collection selector execution caches state reads and avoids recursive rest-array, `slice()`, and `map()` allocation in hot expression paths.
+- Safe keyed rows with local state but no row effects, nested lists, or shared text targets release binding and condition registrations directly by state ID instead of rescanning every removed subtree.
+- Rows outside that proven boundary continue through the existing DOM-owned unmount path.
+- A 21-run alternating fresh-profile benchmark measured the 500-card filter at 13.5 ms for Kudzu and 13.9 ms for React, making Kudzu 2.88% faster and 52.30% faster than its preserved 28.3 ms baseline.
+- The same benchmark measured Kudzu's build 11.90% faster, keyed row toggle 7.02% faster, and emitted JavaScript 87.29% smaller by aggregate gzip.
+- The complete suite passes 118/118 tests, including remove-all, unseen-key remount, and fresh row-state coverage for the indexed release path.
+
+### Boundary
+
+Indexed row release is compiler-selected only when cleanup can be proven from row-owned state IDs and the row has no effects, nested lists, or shared text targets. Effectful, nested, and otherwise lifecycle-bearing rows retain the general ownership cleanup path. Setter adapters remain limited to one supported component boundary and one direct intrinsic handler call. React remains migration input only and is never emitted or executed.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.26
+```
+
 ## 0.7.25 - Router-shaped native navigation
 
 Kudzu 0.7.25 accepts a narrow React Router `useNavigate()` source shape and lowers safe static destinations to native full-document navigation without shipping React Router or adding an SPA runtime.

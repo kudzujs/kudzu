@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.25/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.26/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.25"/)
-  assert.match(release, /Kudzu 0\.7\.25.*Call navigate.*Leave the router behind/s)
-  assert.match(release, /ROUTER-SHAPED NATIVE NAVIGATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.25/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.26"/)
+  assert.match(release, /Kudzu 0\.7\.26.*Bring the app.*Beat the baseline/s)
+  assert.match(release, /REACT-SHAPED MIGRATION AND FASTER LISTS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.26/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1144,6 +1144,7 @@ test("owns flat keyed-row hooks without the nested-list capability", async t => 
   assert.equal(plan.lists.length, 1)
   assert.equal(plan.lists[0].ownerField, undefined)
   assert.ok(plan.lists[0].rowStates?.length)
+  assert.equal(plan.lists[0].fastRelease, true)
   assert.doesNotMatch(runtime, /Nested keyed list has no parent row|ownedLists|childPrototypes/)
   assert.doesNotMatch(runtime, /structuredClone|listIndexes|ownershipPaths|rowReplacements|kRowPath/)
   const html = await readFile(new URL("./fixtures/keyed-row-hooks-flat/dist/index.html", import.meta.url), "utf8")
@@ -1301,8 +1302,16 @@ test("owns setter callbacks and object refs across one component boundary", asyn
   const html = await readFile(new URL("./fixtures/callback-ref-ownership/dist/index.html", import.meta.url), "utf8")
   assert.match(html, /id="local-button" data-k-ref="r0" data-k-on-click=/)
   assert.match(html, /id="imported-button" data-k-ref="r1" data-k-on-click=/)
+  assert.match(html, /id="imported-search" data-k-native-input=/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runCallbackRefOwnershipBrowserTest(fixture, chrome)
+})
+
+test("rejects repeated setter adapter callback use", () => {
+  const fixture = new URL("./fixtures/setter-adapter-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/Adapter\.tsx:\d+:\d+ Setter-callback prop "onValueChange" must be used exactly once in the component/)
 })
 
 test("rejects forwardRef without direct intrinsic ref forwarding", () => {
@@ -2629,6 +2638,11 @@ async function runCallbackRefOwnershipBrowserTest(fixture, chrome) {
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
+  const search = document.querySelector("#imported-search")
+  search.value = "cedar"
+  search.dispatchEvent(new InputEvent("input", { bubbles: true }))
+  await wait()
+  if (document.querySelector("#query").textContent !== "cedar") throw new Error("adapted-callback")
   document.querySelector("#local-button").click()
   await wait()
   document.querySelector("#imported-button").click()
@@ -3857,9 +3871,19 @@ try {
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
   window.addEventListener("unhandledrejection", event => { runtimeError = event.reason?.message || String(event.reason) })
   const row = document.querySelector('[data-row="b"]')
-  row.querySelector("[data-increment]").click()
+  row.querySelector("[data-toggle]").click()
   await wait()
-  if (row.querySelector("[data-count]").textContent !== "1" || runtimeError) throw new Error(runtimeError || "state")
+  if (row.querySelector("[data-toggle]").getAttribute("aria-pressed") !== "true" || row.querySelector("[data-status]").textContent !== "Saved" || runtimeError) throw new Error(runtimeError || "state")
+  document.querySelector("[data-remove]").click()
+  await wait()
+  if (document.querySelector("li")) throw new Error("remove")
+  document.querySelector("[data-readd]").click()
+  await wait()
+  const readded = document.querySelector('[data-row="c"]')
+  if (!readded || readded === row || readded.querySelector("[data-toggle]").getAttribute("aria-pressed") !== "false" || readded.querySelector("[data-status]").textContent !== "Save") throw new Error("readd-reset")
+  readded.querySelector("[data-toggle]").click()
+  await wait()
+  if (readded.querySelector("[data-status]").textContent !== "Saved" || runtimeError) throw new Error(runtimeError || "readd-state")
   document.body.dataset.flatKeyedRowHooksTest = "pass"
 } catch (error) {
   document.body.dataset.flatKeyedRowHooksTest = "fail-" + error.message

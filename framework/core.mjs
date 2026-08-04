@@ -908,6 +908,7 @@ async function renderList(node, namespace, selectValue) {
       descriptor.rowRefs = renderContext.listRowRefs.map(({ id }) => id)
       descriptor.mount = true
     }
+    if (descriptor.rowStates && !descriptor.effects && !descriptor.nested && !template.includes("data-k-text")) descriptor.fastRelease = true
     const seed = node.ownerField || node.selector.length || node.keyField === null ? undefined : listSeed(node.values, renderContext.listFields)
     if (seed) descriptor.seed = seed
     let current = ""
