@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.7.28 - Nested component specialization
+
+Kudzu 0.7.28 recursively specializes components rendered inside setter-adapter children, allowing conventional optional UI such as an imported hookful Tooltip to remain declarative without adding a browser component runtime.
+
+### New in 0.7.28
+
+- Setter-adapter children may recursively render synchronous same-file or relative-imported components.
+- Nested component props, defaults, JSX children, static assets, handlers, and relative TypeScript imports reuse the existing call-site specialization path.
+- Nested `useState()`, `useId()`, `useRef()`, and supported effects join the outer generated owner on unconditional or statically truthy paths.
+- Literal `&&` and ternary conditions fold before specialization, so omitted and false optional components allocate no hooks or browser capabilities.
+- Recursive component cycles, namespace/package components, and unresolved component imports retain source diagnostics.
+- Hookful nested components on dynamic paths fail instead of receiving incorrect unconditional ownership.
+- Setter callbacks cannot cross a second component boundary.
+- A migration-derived FIRE `AgeInput` now restores its imported hookful `Tooltip`, including generated ARIA identity and hover/focus state.
+- The complete suite passes 122/122 tests with Chrome coverage for nested tooltip state, omitted optional UI, and existing parent/child lifecycle behavior.
+
+### Boundary
+
+Nested hooks are accepted only when the nested component is unconditional or guarded by a statically truthy literal after outer prop substitution. Dynamic conditional hook ownership and forwarding the setter through another component remain unsupported. Components still erase to intrinsic HTML and route-specific capabilities; React is never emitted or executed.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.28
+```
+
 ## 0.7.27 - Stateful component migration
 
 Kudzu 0.7.27 lets ordinary setter-adapter components keep their local hooks and derived render values while compiling them into static HTML plus existing route-specific capabilities, not a browser component runtime.

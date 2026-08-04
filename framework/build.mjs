@@ -2851,6 +2851,89 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       expanded.parent = root.parent
       return expanded
     }
+    const staticConditionValue = expression => {
+      const value = unwrapExpression(expression)
+      if (value.kind === ts.SyntaxKind.TrueKeyword) return true
+      if (value.kind === ts.SyntaxKind.FalseKeyword || value.kind === ts.SyntaxKind.NullKeyword || ts.isIdentifier(value) && value.text === "undefined") return false
+      if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) return Boolean(value.text)
+      if (ts.isNumericLiteral(value)) return Number(value.text) !== 0
+      return undefined
+    }
+    const foldSetterStaticConditions = root => {
+      const visit = node => {
+        if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+          const condition = staticConditionValue(node.left)
+          if (condition !== undefined) return condition ? ts.visitNode(node.right, visit) : node.left
+        }
+        if (ts.isConditionalExpression(node)) {
+          const condition = staticConditionValue(node.condition)
+          if (condition !== undefined) return ts.visitNode(condition ? node.whenTrue : node.whenFalse, visit)
+        }
+        return ts.visitEachChild(node, visit, context)
+      }
+      const folded = ts.visitNode(root, visit)
+      ts.setParentRecursive(folded, false)
+      folded.parent = root.parent
+      return folded
+    }
+    const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters) => {
+      root = foldSetterStaticConditions(root)
+      const replacements = new WeakMap()
+      let count = 0
+      const visit = (node, dynamic = false) => {
+        if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+          visit(node.left, dynamic)
+          visit(node.right, true)
+          return
+        }
+        if (ts.isConditionalExpression(node)) {
+          visit(node.condition, dynamic)
+          visit(node.whenTrue, true)
+          visit(node.whenFalse, true)
+          return
+        }
+        const tag = jsxTagName(node)
+        if (tag && (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase())) {
+          if (!ts.isIdentifier(tag)) fail(node, "Nested setter-callback components must use identifier JSX tags")
+          const name = tag.text
+          let component = localComponentDeclaration(componentSource, name)
+          let imported = false
+          if (!component) {
+            const binding = clientImportBindings(componentSource, componentSource.fileName, sourceFiles).get(name)
+            if (!binding || binding.kind === "namespace") fail(node, `Nested setter-callback component ${name} must be declared locally or imported from a relative TypeScript module`)
+            component = resolveComponentExport(binding.target, binding.kind === "default" ? "default" : binding.imported, importedSource, sourceFiles)
+            imported = true
+          }
+          if (trail.includes(component)) {
+            const chain = [...trail, component].map(entry => entry.name?.text || "anonymous").join(" -> ")
+            fail(node, `Nested setter-callback component cycle: ${chain}`)
+          }
+          const setters = new Map(parentSetters)
+          for (const state of aggregate.ordinaryStates) setters.set(state.setter, state.state)
+          if (jsxSetterCallbackProps(node, setters, functions, reducersForNode(node, reducersByFunction)).length) fail(node, "Setter callbacks cannot cross a second component boundary")
+          const nested = specializeComponentCall(node, component, sourceFile, factory, context, fail, "Nested setter-callback", true, true, new Set(setters.values()))
+          if (dynamic && (nested.hookDeclarations.length || nested.effects.length)) fail(node, "Hookful nested setter-callback components require an unconditional or statically truthy render path")
+          nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters)
+          if (imported) synthesizeTree(nested.root = mergeSpecializedImports(nested.root, component.getSourceFile(), node, nested.effects))
+          aggregate.calculations.push(...nested.calculations)
+          aggregate.effects.push(...nested.effects)
+          aggregate.hookDeclarations.push(...nested.hookDeclarations)
+          aggregate.ordinaryStates.push(...nested.ordinaryStates)
+          aggregate.ordinaryRefs.push(...nested.ordinaryRefs)
+          aggregate.usesComponentId ||= nested.usesComponentId
+          replacements.set(node, nested.root)
+          count++
+          return
+        }
+        ts.forEachChild(node, child => visit(child, dynamic))
+      }
+      visit(root)
+      if (!count) return root
+      const expanded = replaceSpecializedCalls(root, replacements, context)
+      ts.setParentRecursive(expanded, false)
+      expanded.parent = root.parent
+      return expanded
+    }
     for (const [name, component] of components) {
       const calls = jsxTagUses(sourceFile, name)
       const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component.function, settersByFunction.get(nearestFunction(call)) ?? new Map()))
@@ -2915,6 +2998,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           for (const effect of specialization.effects) effect.call = substituteClone(effect.call, substitutions, factory, context)
         }
       }
+      specialization.root = expandSetterComponents(specialization.root, component.getSourceFile(), [component], specialization, settersForNode(call, settersByFunction))
       if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), call, specialization.effects))
       if (specialization.hookDeclarations.length || specialization.effects.length) {
         const owner = nearestFunction(call)

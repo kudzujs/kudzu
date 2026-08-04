@@ -41,7 +41,8 @@ export default function Page() {
     <button id="record-refs" onClick={recordRefs}>Record refs</button>
     <button id="set-age" onClick={() => setAge(42)}>Set age</button>
     {shown && <section id="controls">
-      <ImportedAgeInput value={age} onChange={setAge} />
+      <ImportedAgeInput value={age} onChange={setAge} tooltip="Current age help" />
+      <ImportedAgeInput id="age-input-plain" value={age} onChange={setAge} />
       <LocalButton buttonRef={localRef} onPress={() => setCount(count + 1)} />
       <ImportedButton buttonRef={importedRef} onPress={increment} />
     </section>}

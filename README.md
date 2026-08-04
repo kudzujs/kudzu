@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.27 - Stateful component migration.** Setter-adapter children can retain ordinary state, IDs, refs, effects, prop-synchronized drafts, and derived JSX locals while Kudzu still emits no browser component runtime. Read the [release notes](./RELEASES.md#0727---stateful-component-migration) or open the [release page](https://kudzujs.cloud/releases/0.7.27).
+**Latest release: 0.7.28 - Nested component specialization.** Setter-adapter children may recursively render same-file and imported components, including hookful optional UI on statically known paths, without shipping a component runtime. Read the [release notes](./RELEASES.md#0728---nested-component-specialization) or open the [release page](https://kudzujs.cloud/releases/0.7.28).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
