@@ -1790,7 +1790,7 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
   const searchHooks = new Set()
   const navigateHooks = new Set()
   for (const statement of sourceFile.statements) {
-    if ((ts.isExportDeclaration(statement) || ts.isImportDeclaration(statement)) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react-router-dom") {
+    if ((ts.isExportDeclaration(statement) || ts.isImportDeclaration(statement)) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react-router-dom") {
       if (ts.isExportDeclaration(statement)) throw sourceNodeError(statement, sourceFile, "React Router exports are not supported; import Link directly where it renders")
       const clause = statement.importClause
       if (clause?.isTypeOnly) continue
@@ -2584,6 +2584,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const listConditions = new WeakMap()
     const nestedLists = new WeakMap()
     const listEffectEntries = new WeakMap()
+    const componentEffectEntries = new WeakMap()
     let usesBehavior = false
     let usesBinding = false
     let usesConditional = false
@@ -2592,6 +2593,10 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     let usesListItem = false
     let usesRowState = false
     let usesRowRef = false
+    let usesComponentState = false
+    let usesComponentId = false
+    let usesComponentRef = false
+    let usesComponentEffects = false
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -2717,7 +2722,47 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const fail = (node, message) => {
       throw sourceNodeError(node, sourceFile, message)
     }
+    const resolveReactiveJsxExpression = (expression, owner, setters) => {
+      const declarations = jsxLocalDeclarations.get(owner)
+      if (!declarations) return expression
+      const substitutions = new Map()
+      const resolving = []
+      const resolve = (name, reference) => {
+        if (substitutions.has(name)) return
+        const entries = declarations.get(name)
+        if (!entries?.length) return
+        if (jsxLocalsByFunction.get(owner)?.has(name)) return
+        if (entries.length !== 1 || entries[0].node.parent?.parent?.parent !== owner?.body) return
+        const cycle = resolving.indexOf(name)
+        if (cycle >= 0) fail(reference, `Reactive JSX local cycle: ${[...resolving.slice(cycle), name].join(" -> ")}`)
+        resolving.push(name)
+        const initializer = entries[0].initializer
+        const visit = node => {
+          if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isShadowedByParameter(node, initializer) && declarations.has(node.text)) resolve(node.text, node)
+          ts.forEachChild(node, visit)
+        }
+        visit(initializer)
+        substitutions.set(name, substituteClone(initializer, substitutions, factory, context))
+        resolving.pop()
+      }
+      const visit = node => {
+        if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression) && declarations.has(node.text)) resolve(node.text, node)
+        ts.forEachChild(node, visit)
+      }
+      visit(expression)
+      if (!substitutions.size) return expression
+      const expanded = substituteClone(expression, substitutions, factory, context)
+      ts.setParentRecursive(expanded, false)
+      expanded.parent = expression.parent
+      const usedStates = referencedStateNames(expanded, setters)
+      if (!usedStates.size) return expression
+      const captures = captureNames(expanded, expanded, setters)
+      const allowedNames = new Set([...setters.values(), ...captures])
+      collectionExpression(expanded, {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
+      return expanded
+    }
     const componentSpecializations = new WeakMap()
+    const setterHookHelpers = new WeakMap()
     const expandedRowSpecializations = new WeakMap()
     const nestedRowSpecializations = new Map()
     const reducerComponentCalls = new WeakSet()
@@ -2856,9 +2901,56 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         collectReferences(component.body)
         if (references.length !== 1) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be used exactly once in the component`)
       }
-      const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Setter-callback")
-      if (specialization.effects.length || specialization.hookDeclarations.length) fail(call, "Setter-callback components cannot declare hooks")
+      const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Setter-callback", false, true, new Set(settersForNode(call, settersByFunction).values()))
+      if (specialization.hookDeclarations.length || specialization.effects.length) {
+        const substitutions = new Map()
+        const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+        for (const attribute of attributes.properties) {
+          if (!ts.isJsxAttribute(attribute) || !callbackProps.includes(attribute.name.text) || !attribute.initializer || !ts.isJsxExpression(attribute.initializer) || !ts.isIdentifier(attribute.initializer.expression)) continue
+          const callback = functions.get(attribute.initializer.expression.text)
+          if (callback) substitutions.set(attribute.initializer.expression.text, callback)
+        }
+        if (substitutions.size) {
+          specialization.root = substituteClone(specialization.root, substitutions, factory, context)
+          for (const effect of specialization.effects) effect.call = substituteClone(effect.call, substitutions, factory, context)
+        }
+      }
       if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), call, specialization.effects))
+      if (specialization.hookDeclarations.length || specialization.effects.length) {
+        const owner = nearestFunction(call)
+        const name = `KSetterComponent${Math.max(0, call.pos)}`
+        const effectStatements = specialization.effects.map(entry => {
+          const effectCall = factory.updateCallExpression(entry.call, factory.createIdentifier("__kComponentUseEffect"), entry.call.typeArguments, entry.call.arguments)
+          synthesizeTree(effectCall)
+          const effectSource = entry.source.getSourceFile()
+          componentEffectEntries.set(effectCall, { source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
+          return factory.createExpressionStatement(effectCall)
+        })
+        const helper = factory.createFunctionDeclaration(
+          undefined,
+          undefined,
+          name,
+          undefined,
+          [],
+          undefined,
+          factory.createBlock([...specialization.hookDeclarations, ...effectStatements, factory.createReturnStatement(specialization.root)], true)
+        )
+        ts.setParentRecursive(helper, false)
+        helper.parent = owner.body
+        const helpers = setterHookHelpers.get(owner.body) ?? []
+        helpers.push(helper)
+        setterHookHelpers.set(owner.body, helpers)
+        const setters = new Map(settersForNode(call, settersByFunction))
+        for (const state of specialization.ordinaryStates) setters.set(state.setter, state.state)
+        settersByFunction.set(helper, setters)
+        usesComponentState ||= specialization.ordinaryStates.length > 0
+        usesComponentId ||= specialization.usesComponentId
+        usesComponentRef ||= specialization.ordinaryRefs.length > 0
+        usesComponentEffects ||= specialization.effects.length > 0
+        specialization.root = factory.createJsxSelfClosingElement(factory.createIdentifier(name), undefined, factory.createJsxAttributes([]))
+        ts.setParentRecursive(specialization.root, false)
+        specialization.root.parent = call.parent
+      }
       componentSpecializations.set(call, specialization)
     }
     for (const [name, component] of components) {
@@ -3114,6 +3206,9 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
 
     const visitor = node => {
+      if (ts.isBlock(node) && setterHookHelpers.has(node)) {
+        return ts.visitEachChild(factory.updateBlock(node, [...setterHookHelpers.get(node), ...node.statements]), visitor, context)
+      }
       if (specializedDeclarations.has(node)) return node
       if (componentSpecializations.has(node)) return ts.visitNode(componentSpecializations.get(node).root, visitor)
 
@@ -3139,9 +3234,11 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       }
 
       const listEffect = ts.isCallExpression(node) ? listEffectEntries.get(node) : undefined
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && (hasUseEffectImport && node.expression.text === "useEffect" || listEffect)) {
+      const componentEffect = ts.isCallExpression(node) ? componentEffectEntries.get(node) : undefined
+      const specializedEffect = listEffect ?? componentEffect
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && (hasUseEffectImport && node.expression.text === "useEffect" || specializedEffect)) {
         const effectFail = (target, message) => {
-          if (listEffect) throw sourceNodeError(listEffect.source, listEffect.sourceFile, message)
+          if (specializedEffect) throw sourceNodeError(specializedEffect.source, specializedEffect.sourceFile, message)
           fail(target, message)
         }
         if (node.arguments.length !== 2) effectFail(node, "useEffect() requires exactly a callback and literal dependency array")
@@ -3234,7 +3331,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         const invalidCleanup = returns.cleanups.find(cleanup => cleanup.parameters.length || cleanup.asteriskToken)
         if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
         if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
-        const callbackSource = listEffect?.sourceFile ?? sourceFile
+        const callbackSource = specializedEffect?.sourceFile ?? sourceFile
         const callbackFile = callbackSource.fileName
         const workerStart = workerReferences.length
         let compiledCallback = dependencySubstitutions.size ? substituteClone(callback, dependencySubstitutions, factory, context) : callback
@@ -3248,7 +3345,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         } else {
           compiledCallback = rewriteEffectWorkers(compiledCallback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
         }
-        const descriptor = compileNativeCallback(compiledCallback, setters, reducersForNode(node, reducersByFunction), factory, effectHandlers, listEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
+        const descriptor = compileNativeCallback(compiledCallback, setters, reducersForNode(node, reducersByFunction), factory, effectHandlers, specializedEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
         for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
@@ -3259,7 +3356,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           factory.createStringLiteral(descriptor.exportName),
           descriptor.states,
           descriptor.scope,
-          factory.createStringLiteral(listEffect ? sourceLocation(listEffect.source, listEffect.sourceFile) : sourceLocation(node, sourceFile)),
+          factory.createStringLiteral(specializedEffect ? sourceLocation(specializedEffect.source, specializedEffect.sourceFile) : sourceLocation(node, sourceFile)),
           returns.cleanup ? factory.createTrue() : factory.createFalse(),
           factory.createArrayLiteralExpression(itemDependencies.map(field => factory.createStringLiteral(field))),
           hasDerivedDependency ? jsonExpression(dependencyExpressions, factory) : factory.createArrayLiteralExpression(),
@@ -3267,7 +3364,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         ])
       }
 
-      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ((node.initializer.expression.text === "useState" || node.initializer.expression.text === "__kRowUseState") && node.initializer.arguments.length === 1 || node.initializer.expression.text === "useReducer" && node.initializer.arguments.length === 2)) {
+      if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ((node.initializer.expression.text === "useState" || node.initializer.expression.text === "__kRowUseState" || node.initializer.expression.text === "__kComponentUseState") && node.initializer.arguments.length === 1 || node.initializer.expression.text === "useReducer" && node.initializer.arguments.length === 2)) {
         const stateElement = node.name.elements[0]
         if (!stateElement || !ts.isBindingElement(stateElement) || !ts.isIdentifier(stateElement.name)) return node
         const initializer = factory.updateCallExpression(node.initializer, node.initializer.expression, node.initializer.typeArguments, [
@@ -3331,18 +3428,20 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           if (compiled !== node.expression) return factory.updateJsxExpression(node, compiled)
         }
         const setters = settersForNode(node, settersByFunction)
-        const usedStates = referencedStateNames(node.expression, setters)
-        const captures = captureNames(node.expression, node.expression, setters)
-        if ((usedStates.size || captures.size) && !ts.isIdentifier(node.expression) && !containsJsx(node.expression)) {
+        const expression = resolveReactiveJsxExpression(node.expression, nearestFunction(node), setters)
+        const usedStates = referencedStateNames(expression, setters)
+        const captures = captureNames(expression, expression, setters)
+        if ((usedStates.size || captures.size) && !ts.isIdentifier(expression) && !containsJsx(expression)) {
           usesBehavior = true
           usesBinding = true
-          return factory.updateJsxExpression(node, compileReactiveBinding(node.expression, setters, factory, context, reactiveBindings, handlerUrl))
+          return factory.updateJsxExpression(node, compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl))
         }
       }
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && !isContextProviderValue(node, contexts) && !/^on/i.test(node.name.text) && !["key", "ref", "dangerouslysetinnerhtml"].includes(node.name.text.toLowerCase())) {
-        const expression = node.initializer.expression
+        const sourceExpression = node.initializer.expression
         const setters = settersForNode(node, settersByFunction)
+        const expression = resolveReactiveJsxExpression(sourceExpression, nearestFunction(node), setters)
         const usedStates = referencedStateNames(expression, setters)
         const captures = captureNames(expression, expression, setters)
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression)) {
@@ -3393,6 +3492,10 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     if (usesListEffects) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useEffect"), factory.createIdentifier("__kListUseEffect")))
     if (usesRowState) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useState"), factory.createIdentifier("__kRowUseState")))
     if (usesRowRef) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useRef"), factory.createIdentifier("__kRowUseRef")))
+    if (usesComponentState) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useState"), factory.createIdentifier("__kComponentUseState")))
+    if (usesComponentId) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useId"), factory.createIdentifier("__kComponentUseId")))
+    if (usesComponentRef) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useRef"), factory.createIdentifier("__kComponentUseRef")))
+    if (usesComponentEffects) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useEffect"), factory.createIdentifier("__kComponentUseEffect")))
     if (usesBinding || usesConditional) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("bindingValue"), factory.createIdentifier("__kBindingValue")))
     const behaviorImport = factory.createImportDeclaration(
       undefined,
@@ -4029,7 +4132,7 @@ function expandSpecializedRest(root, returned, component, rest, entries, factory
   return factory.updateJsxElement(root, opening, root.children, root.closingElement)
 }
 
-function specializeComponentCall(call, component, sourceFile, factory, context, fail, label = "Keyed list", allowComponentRoot = false) {
+function specializeComponentCall(call, component, sourceFile, factory, context, fail, label = "Keyed list", allowComponentRoot = false, ordinaryHooks = false, ordinaryStateNames = new Set()) {
   if (component.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || component.asteriskToken) fail(component, `${label} components must be synchronous`)
   if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, `${label} components must use one destructured props parameter`)
   const callAttributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
@@ -4090,6 +4193,9 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   const hookDeclarations = []
   const rowStates = []
   const rowRefs = []
+  const ordinaryStates = []
+  const ordinaryRefs = []
+  let usesComponentId = false
   if (!ts.isBlock(component.body)) {
     returned = component.body
   } else {
@@ -4104,35 +4210,52 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       if (!ts.isVariableStatement(statement) || (statement.declarationList.flags & ts.NodeFlags.Const) === 0 || statement.declarationList.declarations.length !== 1) fail(statement, `${label} component locals must be single const declarations`)
       const declaration = statement.declarationList.declarations[0]
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState") {
-        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(declaration.initializer.arguments[0])) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Keyed row useState() must use one directly serializable primitive, plain object, or array initial value; dynamic initializers are not supported")
-        if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), "Keyed row useState() must use [state, setter] identifier destructuring")
-        const suffix = `${Math.max(0, call.pos)}_${rowStates.length}`
-        const state = `__kRowState${suffix}`
-        const setter = `__kRowSetter${suffix}`
+        const hookLabel = ordinaryHooks ? "Setter-callback component" : "Keyed row"
+        const initialArgument = declaration.initializer.arguments[0]
+        const propReceiver = ordinaryHooks && initialArgument && ts.isCallExpression(initialArgument) && initialArgument.arguments.length === 0 && !initialArgument.questionDotToken && ts.isPropertyAccessExpression(initialArgument.expression) && !initialArgument.expression.questionDotToken && initialArgument.expression.name.text === "toString" && ts.isIdentifier(initialArgument.expression.expression) ? initialArgument.expression.expression : undefined
+        const substitutedProp = propReceiver ? substitutions.get(propReceiver.text) : undefined
+        const propStringInitializer = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) && ordinaryStateNames.has(unwrapExpression(substitutedProp).text)
+        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propStringInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct primitive state prop.toString()" : ""}; other dynamic initializers are not supported`)
+        if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), `${hookLabel} useState() must use [state, setter] identifier destructuring`)
+        const suffix = `${Math.max(0, call.pos)}_${ordinaryHooks ? ordinaryStates.length : rowStates.length}`
+        const state = ordinaryHooks ? `__kComponentState${suffix}` : `__kRowState${suffix}`
+        const setter = ordinaryHooks ? `__kComponentSetter${suffix}` : `__kRowSetter${suffix}`
         substitutions.set(declaration.name.elements[0].name.text, factory.createIdentifier(state))
         substitutions.set(declaration.name.elements[1].name.text, factory.createIdentifier(setter))
         const binding = factory.createArrayBindingPattern([
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(state)),
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(setter))
         ])
-        const initialValue = cloneAst(declaration.initializer.arguments[0], factory, context)
+        const initialValue = propStringInitializer ? substituteClone(initialArgument, substitutions, factory, context) : cloneAst(initialArgument, factory, context)
         synthesizeTree(initialValue)
-        const initializer = factory.createCallExpression(factory.createIdentifier("__kRowUseState"), undefined, [initialValue])
+        const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseState" : "__kRowUseState"), undefined, [initialValue])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(binding, undefined, undefined, initializer)], ts.NodeFlags.Const)))
-        rowStates.push({ state, setter })
+        if (ordinaryHooks) ordinaryStates.push({ state, setter })
+        else rowStates.push({ state, setter })
         continue
       }
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useRef") {
-        if (declaration.initializer.arguments.length !== 1 || declaration.initializer.arguments[0].kind !== ts.SyntaxKind.NullKeyword) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Keyed row useRef() must use the direct initial value null")
-        if (!ts.isIdentifier(declaration.name)) throw sourceNodeError(declaration.name, component.getSourceFile(), "Keyed row useRef() must be assigned to one identifier")
-        const name = `__kRowRef${Math.max(0, call.pos)}_${rowRefs.length}`
+        const hookLabel = ordinaryHooks ? "Setter-callback component" : "Keyed row"
+        if (declaration.initializer.arguments.length !== 1 || declaration.initializer.arguments[0].kind !== ts.SyntaxKind.NullKeyword) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useRef() must use the direct initial value null`)
+        if (!ts.isIdentifier(declaration.name)) throw sourceNodeError(declaration.name, component.getSourceFile(), `${hookLabel} useRef() must be assigned to one identifier`)
+        const refs = ordinaryHooks ? ordinaryRefs : rowRefs
+        const name = `${ordinaryHooks ? "__kComponentRef" : "__kRowRef"}${Math.max(0, call.pos)}_${refs.length}`
         substitutions.set(declaration.name.text, factory.createIdentifier(name))
-        const initializer = factory.createCallExpression(factory.createIdentifier("__kRowUseRef"), declaration.initializer.typeArguments?.map(type => cloneAst(type, factory, context)), [factory.createNull()])
+        const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseRef" : "__kRowUseRef"), declaration.initializer.typeArguments?.map(type => cloneAst(type, factory, context)), [factory.createNull()])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(factory.createIdentifier(name), undefined, undefined, initializer)], ts.NodeFlags.Const)))
-        rowRefs.push({ name })
+        refs.push({ name })
         continue
       }
-      if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useId") throw sourceNodeError(declaration.initializer, component.getSourceFile(), "useId() is not supported in keyed row components")
+      if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useId") {
+        if (!ordinaryHooks) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "useId() is not supported in keyed row components")
+        if (declaration.initializer.arguments.length || !ts.isIdentifier(declaration.name)) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Setter-callback component useId() must initialize one top-level const identifier without arguments")
+        const name = `__kComponentId${Math.max(0, call.pos)}_${hookDeclarations.length}`
+        substitutions.set(declaration.name.text, factory.createIdentifier(name))
+        const initializer = factory.createCallExpression(factory.createIdentifier("__kComponentUseId"), undefined, [])
+        hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(factory.createIdentifier(name), undefined, undefined, initializer)], ts.NodeFlags.Const)))
+        usesComponentId = true
+        continue
+      }
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
       const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
       calculations.push({ name: declaration.name.text, expression: calculation })
@@ -4143,12 +4266,12 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   let unsupportedHook
   const findUnsupportedHook = node => {
     if (unsupportedHook) return
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ["useState", "useRef"].includes(node.expression.text)) unsupportedHook = node
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ["useState", "useRef", "useId"].includes(node.expression.text)) unsupportedHook = node
     ts.forEachChild(node, findUnsupportedHook)
   }
   findUnsupportedHook(returned)
   for (const calculation of calculations) findUnsupportedHook(calculation.expression)
-  if (unsupportedHook) throw sourceNodeError(unsupportedHook, component.getSourceFile(), `Keyed row ${unsupportedHook.expression.text}() must be one top-level const declaration`)
+  if (unsupportedHook) throw sourceNodeError(unsupportedHook, component.getSourceFile(), `${ordinaryHooks ? "Setter-callback component" : "Keyed row"} ${unsupportedHook.expression.text}() must be one top-level const declaration`)
   let root = unwrapExpression(flattenForwardedComponentChildren(substituteClone(returned, substitutions, factory, context), factory, context))
   if (rest) root = expandSpecializedRest(root, returned, component, rest, restEntries, factory, context, fail, label)
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(returned, `${label} component must return one JSX element`)
@@ -4168,7 +4291,10 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     effects,
     hookDeclarations,
     rowStates,
-    rowRefs
+    rowRefs,
+    ordinaryStates,
+    ordinaryRefs,
+    usesComponentId
   }
 }
 

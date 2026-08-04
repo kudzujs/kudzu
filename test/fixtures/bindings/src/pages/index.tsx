@@ -14,10 +14,13 @@ export default function BindingPage() {
   const [flag, setFlag] = useState(false)
   const [choice] = useState("Grown")
   const activeClass = "is-active"
+  const decoratedName = `${name}!`
+  const derivedStatus = `${decoratedName}:${active ? "active" : "idle"}`
 
   return (
     <main>
       <div className={active ? activeClass : "idle"}>{name}</div>
+      <div data-derived title={derivedStatus}>{derivedStatus}</div>
       <div className={JSON.stringify({ active })}>Object shorthand</div>
       <StaticBadge active={true} />
       <StaticBadge active={active} />

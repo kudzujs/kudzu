@@ -1,5 +1,8 @@
 import { useNavigate as useRouteNavigation } from "react-router-dom"
 
+const metadata = { title: "Navigate fixture" }
+export { metadata }
+
 export default function Page() {
   const navigate = useRouteNavigation()
 

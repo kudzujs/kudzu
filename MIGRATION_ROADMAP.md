@@ -94,7 +94,7 @@ Investigate ordinary imported or same-file components that own local hooks outsi
 - Repeated non-keyed child local state and conditional removal/remount ownership are complete.
 - directly serializable lazy `useState` and `useReducer` initialization are complete;
 - direct primitive prop dependencies are complete for ordinary same-file and relative-imported children;
-- Safe callback/ref ownership across one proven component boundary is complete for direct setters invoked once by a direct intrinsic event handler, inline or simple `const` setter callbacks using direct forwarding or the same adapter shape, and `null`-initialized object refs.
+- Safe callback/ref ownership across one proven component boundary is complete for direct setters invoked once by a direct intrinsic event handler, inline or simple `const` setter callbacks using direct forwarding or the same adapter shape, child-owned serializable state, direct primitive prop `.toString()` string-state initialization, IDs, effects, and `null`-initialized object refs.
 
 Acceptance: ownership is compiler-generated, removal cleans up exactly once, and no generic component runtime or rerender loop is introduced.
 

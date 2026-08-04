@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.7.27 - Stateful component migration
+
+Kudzu 0.7.27 lets ordinary setter-adapter components keep their local hooks and derived render values while compiling them into static HTML plus existing route-specific capabilities, not a browser component runtime.
+
+### New in 0.7.27
+
+- Same-file and relative-imported children receiving one supported setter callback may own multiple directly serializable `useState()` values.
+- A child string draft may initialize from one direct primitive state prop through zero-argument `.toString()`, covering conventional controlled age and numeric inputs.
+- Setter-adapter children may use deterministic build-time `useId()` values and `null`-initialized object refs.
+- Supported child effects reuse existing route ESM, dependency comparison, cleanup, conditional ownership, and stale-work isolation.
+- Conditional removal deletes child state, resolves refs to `null`, and runs cleanup; remount creates fresh ownership and prop dependency effects synchronize drafts to the latest parent value.
+- Inline and simple `const` parent callbacks continue to specialize into the generated child helper instead of becoming serialized function captures.
+- Reactive JSX text and attributes may read recursively chained top-level immutable locals built from supported pure primitive state expressions.
+- Impure derived render calls, non-null child refs, unsupported dynamic state initializers, repeated callback use, and wider callback forwarding retain source-located diagnostics.
+- React Router normalization now safely ignores local export declarations without module specifiers.
+- A migration-derived FIRE age input verifies local draft editing, parent updates, blur validation, effect synchronization, and remount after a hidden parent update.
+- The complete suite passes 121/121 tests, including same-file/imported hook ownership and Chrome lifecycle coverage.
+
+### Boundary
+
+This remains one compiler-specialized component boundary with one supported setter callback use. Prop-derived state initialization accepts only a direct primitive state prop's zero-argument `.toString()`; other dynamic initializers remain unsupported. Refs must initialize with `null`, effects must use the existing supported callback and dependency forms, and React is never emitted or executed.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.27
+```
+
 ## 0.7.26 - React-shaped migration and faster lists
 
 Kudzu 0.7.26 broadens ordinary React-shaped migration input and removes repeated keyed-row cleanup scans, making the matched 500-card search faster than React without adding a VDOM, hydration, or a retained component tree.

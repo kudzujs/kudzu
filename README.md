@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.26 - React-shaped migration and faster lists.** React-compatible JSX typing, setter-adapter specialization, imported collection normalization, and indexed keyed-row release make ordinary migrations easier while moving the measured 500-card search ahead of React. Read the [release notes](./RELEASES.md#0726---react-shaped-migration-and-faster-lists) or open the [release page](https://kudzujs.cloud/releases/0.7.26).
+**Latest release: 0.7.27 - Stateful component migration.** Setter-adapter children can retain ordinary state, IDs, refs, effects, prop-synchronized drafts, and derived JSX locals while Kudzu still emits no browser component runtime. Read the [release notes](./RELEASES.md#0727---stateful-component-migration) or open the [release page](https://kudzujs.cloud/releases/0.7.27).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
