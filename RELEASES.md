@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.7.25 - Router-shaped native navigation
+
+Kudzu 0.7.25 accepts a narrow React Router `useNavigate()` source shape and lowers safe static destinations to native full-document navigation without shipping React Router or adding an SPA runtime.
+
+### New in 0.7.25
+
+- A named or aliased `useNavigate` import may initialize one top-level `const` identifier in a component.
+- Direct calls from nested browser callbacks with one safe static root-relative destination lower to `globalThis.location.assign()`.
+- Exactly `{ replace: true }` lowers to `globalThis.location.replace()`.
+- Configured `base` is applied while query strings and fragments are preserved.
+- The React Router import and navigate binding are erased from emitted component code.
+- Dynamic or relative destinations, render-time calls, passed aliases, optional calls, and other navigation options fail with source diagnostics.
+- Native document navigation remains deliberate even when enhanced navigation is configured.
+- Unaffected destination routes remain complete static documents with zero JavaScript.
+- The complete suite passes 117/117 tests with Chrome coverage for base-aware full-document navigation.
+
+### Boundary
+
+The supported migration shape is one top-level `const navigate = useNavigate()` and direct calls from nested browser callbacks. Destinations must be safe static root-relative strings. Only the absent options argument and exactly `{ replace: true }` are supported; dynamic values, relative paths, deltas, state, relative routing, scroll options, aliases, and render-time calls remain unsupported. No SPA router is included.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.25
+```
+
 ## 0.7.24 - Router-shaped query reads
 
 Kudzu 0.7.24 accepts a narrow read-only React Router `useSearchParams()` shape and lowers each static query read to a nullable route signal backed by native `URLSearchParams`, without adding a router runtime.

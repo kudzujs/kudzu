@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.24/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.25/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.24"/)
-  assert.match(release, /Kudzu 0\.7\.24.*Read the URL.*Ship only the reader/s)
-  assert.match(release, /ROUTER-SHAPED QUERY READS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.24/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.25"/)
+  assert.match(release, /Kudzu 0\.7\.25.*Call navigate.*Leave the router behind/s)
+  assert.match(release, /ROUTER-SHAPED NATIVE NAVIGATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.25/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1475,6 +1475,34 @@ test("rejects React Router Link traversal outside base", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router Link requires a safe static root-relative to="\/path"/)
+})
+
+test("lowers React Router imperative navigation to native document navigation", async t => {
+  const fixture = new URL("./fixtures/react-router-navigate", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-router-navigate/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-router-navigate/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/react-router-navigate/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/react-router-navigate/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const item = await readFile(new URL("./fixtures/react-router-navigate/dist/items/oak/index.html", import.meta.url), "utf8")
+  const login = await readFile(new URL("./fixtures/react-router-navigate/dist/login/index.html", import.meta.url), "utf8")
+  assert.match(handler, /globalThis\.location\.assign\("\/app\/items\/oak\?view=full#details"\)/)
+  assert.match(handler, /globalThis\.location\.replace\("\/app\/login"\)/)
+  assert.doesNotMatch(component, /useRouteNavigation|useNavigate|react-router-dom/)
+  assert.doesNotMatch(item, /<script/)
+  assert.doesNotMatch(login, /<script/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNavigateBrowserTest(fixture, chrome)
+})
+
+test("rejects dynamic React Router imperative navigation destinations", () => {
+  const fixture = new URL("./fixtures/react-router-navigate-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router useNavigate requires a static root-relative navigate\("\/path"\) destination/)
 })
 
 test("rejects indirect React Router useParams references", () => {
@@ -4853,6 +4881,43 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/${query}`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-search-param-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNavigateBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const script = '<script type="module" src="/app/browser-test.js"></script>'
+  for (const path of ["index.html", "items/oak/index.html"]) {
+    const url = new URL(path, output)
+    await writeFile(url, (await readFile(url, "utf8")).replace("</body>", `${script}</body>`))
+  }
+  await writeFile(new URL("browser-test.js", output), `
+if (location.pathname === "/app/items/oak") {
+  if (location.search === "?view=full" && location.hash === "#details") document.body.dataset.navigateTest = "pass"
+} else {
+  document.querySelector("[data-open]").click()
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  const relative = url.pathname.replace(/^\\/app\\/?/, "")
+  const file = path.join(root, relative && path.extname(relative) ? relative : path.join(relative, "index.html"))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-navigate-test="pass"/)
   } finally {
     server.kill()
   }

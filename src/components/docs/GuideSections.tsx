@@ -70,6 +70,14 @@ export default function SearchPage() {
 // With base: "/app", emits:
 // <a href="/app/products?sort=name#results" class="nav-link">Products</a>`} />
     <p>Dynamic or relative destinations, <code>NavLink</code>, router-only props, spreads, default or namespace imports, and non-JSX uses are rejected rather than approximating React Router semantics. Ordinary authored <code>&lt;a href&gt;</code> values remain unchanged.</p>
+    <p>Imperative migration source may use one top-level named or aliased <code>useNavigate()</code> binding. Direct calls inside browser callbacks lower to native document navigation after Kudzu applies the configured base.</p>
+    <CodeBlock code={`import { useNavigate } from "react-router-dom"
+
+export function CheckoutButton() {
+  const navigate = useNavigate()
+  return <button onClick={() => navigate("/checkout")}>Checkout</button>
+}`} />
+    <p>A one-argument call uses <code>location.assign()</code>; exactly <code>{`{ replace: true }`}</code> uses <code>location.replace()</code>. Destinations must be safe static root-relative strings. Dynamic and relative destinations, render-time calls, passed aliases, and other options are rejected. This remains native document navigation rather than an SPA router.</p>
     <p>Emitted exact and runtime-parameter routes may share a page-exported layout and opt into same-document navigation while every URL remains a complete standalone document.</p>
     <CodeBlock code={`// src/pages/product.tsx
 export { Shell as layout } from "../components/Shell"
