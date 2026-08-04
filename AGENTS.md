@@ -10,6 +10,7 @@
 - A small compiler-generated capability module is not a general client runtime. Route-specific effects and runtime path-parameter readers are allowed when the browser is the only place the value can exist.
 - Native document navigation is the default. Do not add an SPA router unless a real migration fixture proves it necessary and the user explicitly approves it.
 - Migration input may use a named or aliased `Link` import from `react-router-dom` with exactly one static root-relative `to` and native anchor props. The compiler prefixes `base`, lowers it to `<a href>`, and erases the package import. Dynamic or relative destinations, `NavLink`, router-only props, default/namespace imports, and non-JSX uses remain unsupported.
+- A named or aliased `useParams` import from `react-router-dom` may be called directly without runtime arguments on a bracket page exporting `runtimeParams = true`. The compiler redirects it to Kudzu's existing pathname reader and erases the package import; build-known `getStaticPaths()` routes continue to use props.
 - Before planning migration-related framework work, read `MIGRATION_ROADMAP.md`. Follow its order and acceptance criteria instead of inventing a new architecture.
 
 - New Kudzu source imports framework APIs from `@kudzujs/core`. Migration input may retain supported named hook imports from `react` plus default, namespace, or named `Fragment`; the compiler must erase those React module references and must never emit or execute React.

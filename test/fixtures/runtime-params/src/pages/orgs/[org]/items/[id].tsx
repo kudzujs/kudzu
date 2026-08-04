@@ -1,4 +1,5 @@
-import { useEffect, useParams, useState } from "@kudzujs/core"
+import { useEffect, useState } from "@kudzujs/core"
+import { Link as RouterLink, useParams as useRouteParams } from "react-router-dom"
 
 export const runtimeParams = true
 
@@ -7,7 +8,7 @@ function ParamValue({ value }: { value: string }) {
 }
 
 export default function RuntimeItemPage() {
-  const { org, id } = useParams<{ org: string; id: string }>()
+  const { org, id } = useRouteParams<{ org: string; id: string }>()
   const [status, setStatus] = useState("pending")
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function RuntimeItemPage() {
     <ParamValue value={id} />
     <p data-derived>{`Item ${id} in ${org}`}</p>
     <p data-status>{status}</p>
+    <RouterLink data-help to="/help">Help</RouterLink>
     <a data-edit href={`/포털/orgs/${org}/items/${id}/edit`}>Edit</a>
     <button onClick={mark}>Mark</button>
   </main>

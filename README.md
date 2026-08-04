@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.22 - SVG structures and native links.** Reactive SVG conditionals and flat keyed lists preserve their namespace, while supported React Router `Link` authoring erases to base-aware native anchors with zero router runtime. Read the [release notes](./RELEASES.md#0722---svg-structures-and-native-links) or open the [release page](https://kudzujs.cloud/releases/0.7.22).
+**Latest release: 0.7.23 - Router-shaped runtime params.** Named or aliased React Router `useParams()` authoring now redirects to Kudzu's existing route-specific pathname reader with no router runtime. Read the [release notes](./RELEASES.md#0723---router-shaped-runtime-params) or open the [release page](https://kudzujs.cloud/releases/0.7.23).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -83,6 +83,7 @@ ordinary React-shaped TSX
 - Build-known data and routes become complete HTML through async components and `getStaticPaths()`.
 - Native document navigation is the default; static routes do not load a client runtime.
 - A named or aliased React Router `Link` with a static root-relative `to` erases to a base-aware native anchor; no router package or runtime is emitted.
+- A direct named or aliased React Router `useParams()` call on a `runtimeParams` bracket route reuses Kudzu's route-specific pathname reader.
 - Unsupported nearby patterns fail during the build with a source location and actionable boundary.
 
 Migration input may retain supported imports from `react`; Kudzu erases those references and never emits or executes React. New Kudzu source should import framework APIs from `@kudzujs/core`.

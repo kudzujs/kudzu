@@ -1776,25 +1776,27 @@ function emittedPackageReference(source, file, packages) {
 
 function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
   const links = new Set()
+  const params = new Set()
   for (const statement of sourceFile.statements) {
     if ((ts.isExportDeclaration(statement) || ts.isImportDeclaration(statement)) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react-router-dom") {
       if (ts.isExportDeclaration(statement)) throw sourceNodeError(statement, sourceFile, "React Router exports are not supported; import Link directly where it renders")
       const clause = statement.importClause
       if (clause?.isTypeOnly) continue
       if (!clause) throw sourceNodeError(statement, sourceFile, "Side-effect React Router imports are not supported")
-      if (clause.name) throw sourceNodeError(clause.name, sourceFile, "React Router default imports are not supported; use a named Link import")
+      if (clause.name) throw sourceNodeError(clause.name, sourceFile, "React Router default imports are not supported; use named Link or useParams imports")
       const bindings = clause.namedBindings
-      if (!bindings || ts.isNamespaceImport(bindings)) throw sourceNodeError(bindings ?? statement, sourceFile, "React Router namespace imports are not supported; use a named Link import")
+      if (!bindings || ts.isNamespaceImport(bindings)) throw sourceNodeError(bindings ?? statement, sourceFile, "React Router namespace imports are not supported; use named Link or useParams imports")
       for (const entry of bindings.elements) {
         if (entry.isTypeOnly) continue
         const imported = (entry.propertyName ?? entry.name).text
         if (imported === "NavLink") throw sourceNodeError(entry, sourceFile, "React Router NavLink active-route semantics cannot be erased to a native anchor")
-        if (imported !== "Link") throw sourceNodeError(entry, sourceFile, `React Router ${imported} is not supported; only named Link imports can be erased to native anchors`)
-        links.add(entry.name.text)
+        if (imported === "Link") links.add(entry.name.text)
+        else if (imported === "useParams") params.add(entry.name.text)
+        else throw sourceNodeError(entry, sourceFile, `React Router ${imported} is not supported; only named Link and useParams imports can be lowered`)
       }
     }
   }
-  if (!links.size) return sourceFile
+  if (!links.size && !params.size) return sourceFile
 
   const routerProps = new Set(["discover", "end", "prefetch", "preventScrollReset", "relative", "reloadDocument", "replace", "state", "viewTransition"])
   const attributes = attributesNode => {
@@ -1829,19 +1831,29 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
       return factory.updateJsxElement(node, opening, ts.visitNodes(node.children, visitor), closing)
     }
     if (ts.isJsxSelfClosingElement(node) && importedLink(node.tagName)) return factory.updateJsxSelfClosingElement(node, factory.createIdentifier("a"), node.typeArguments, attributes(node.attributes))
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && params.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
+      if (node.questionDotToken || node.arguments.length || (node.typeArguments?.length ?? 0) > 1) throw sourceNodeError(node, sourceFile, "React Router useParams must be called directly without runtime arguments and with at most one type argument")
+      return node
+    }
     if (ts.isIdentifier(node) && links.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router Link imports may only be used as direct JSX elements")
+    if (ts.isIdentifier(node) && params.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useParams imports may only be called directly")
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-router-dom") {
       const clause = node.importClause
       if (!clause || clause.isTypeOnly) return node
       const bindings = clause.namedBindings
       if (!bindings || !ts.isNamedImports(bindings)) return node
-      const elements = bindings.elements.filter(entry => entry.isTypeOnly || (entry.propertyName ?? entry.name).text !== "Link")
+      const elements = bindings.elements.filter(entry => entry.isTypeOnly || !["Link", "useParams"].includes((entry.propertyName ?? entry.name).text))
       if (!elements.length) return undefined
       return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, clause.isTypeOnly, undefined, factory.updateNamedImports(bindings, elements)), node.moduleSpecifier, node.attributes)
     }
     return ts.visitEachChild(node, visitor, context)
   }
-  return ts.visitNode(sourceFile, visitor)
+  const normalized = ts.visitNode(sourceFile, visitor)
+  if (!params.size) return normalized
+  const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports([...params].map(name => factory.createImportSpecifier(false, name === "useParams" ? undefined : factory.createIdentifier("useParams"), factory.createIdentifier(name))))), factory.createStringLiteral("@kudzujs/core"))
+  const statements = [...normalized.statements]
+  statements.splice(statements.findLastIndex(statement => ts.isImportDeclaration(statement)) + 1, 0, declaration)
+  return factory.updateSourceFile(normalized, statements)
 }
 
 function normalizeClsxSyntax(sourceFile, factory, context) {

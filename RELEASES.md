@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.23 - Router-shaped runtime params
+
+Kudzu 0.7.23 accepts the conventional React Router `useParams()` source shape on runtime bracket routes and redirects it to the existing capability-specific pathname reader without shipping React Router.
+
+### New in 0.7.23
+
+- Named or aliased `useParams` imports from `react-router-dom` may be called directly on bracket pages exporting `runtimeParams = true`.
+- One optional TypeScript type argument is preserved through normalization while the runtime call remains argument-free.
+- The React Router binding is redirected to `@kudzujs/core`; no `react-router-dom` module reference survives emitted code.
+- Mixed `Link` and `useParams` imports lower together: Link becomes a base-aware native anchor and params reuse the pathname reader.
+- Runtime parameter values retain existing secure decoding, direct DOM bindings, effects, handlers, and navigation-group lifecycle behavior.
+- Indirect references, runtime arguments, default/namespace imports, and unsupported router hooks fail with source diagnostics.
+- The complete suite passes 112/112 tests with browser coverage for multi-parameter paths and mixed Link/params migration input.
+
+### Boundary
+
+React Router `useParams()` lowering requires a direct named or aliased zero-argument call on a bracket route exporting `runtimeParams = true`. Build-known `getStaticPaths()` routes continue to receive params through page props. Catch-all routes, optional segments, indirect calls, runtime arguments, and other router hooks remain unsupported. No SPA router or shared router runtime is added.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.23
+```
+
 ## 0.7.22 - SVG structures and native links
 
 Kudzu 0.7.22 extends ordinary React-shaped structural authoring into SVG and erases the common React Router `Link` form to native navigation without adding an SVG renderer or router runtime.

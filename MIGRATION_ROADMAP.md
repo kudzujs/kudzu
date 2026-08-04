@@ -129,7 +129,7 @@ Reactive conditionals and flat intrinsic keyed lists inside SVG are complete. SV
 Investigate conventional React Router source forms that can erase to existing behavior:
 
 - Named or aliased React Router `Link` with one static root-relative `to` is complete; it erases to a base-aware native anchor with no router runtime;
-- route parameters to `getStaticPaths()` or the runtime pathname reader;
+- Named or aliased React Router `useParams()` is complete for `runtimeParams = true` bracket routes through the existing pathname reader; build-known `getStaticPaths()` routes continue to receive params through props;
 - query reads to build-time props or a minimal URL reader;
 - imperative navigation to native document navigation where semantics match.
 
