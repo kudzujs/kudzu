@@ -6136,7 +6136,7 @@ function scopeRead(factory, name) {
 
 function compileEventCommand(expression, setters, factory) {
   if (ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression) && ts.isIdentifier(expression.expression.expression) && expression.expression.expression.text === "console" && expression.expression.name.text === "log" && expression.arguments.length === 2 && ts.isStringLiteral(expression.arguments[0]) && ts.isIdentifier(expression.arguments[1]) && [...setters.values()].includes(expression.arguments[1].text)) {
-    return command(factory, "log", expression.arguments[1], expression.arguments[0])
+    return command(factory, "log", expression.arguments[1], factory.createStringLiteral(expression.arguments[0].text))
   }
 
   if (!ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || expression.arguments.length !== 1) return undefined
@@ -6153,7 +6153,7 @@ function compileEventCommand(expression, setters, factory) {
     if (value.body.operatorToken.kind !== ts.SyntaxKind.PlusToken && value.body.operatorToken.kind !== ts.SyntaxKind.MinusToken) return undefined
     return command(factory, "add", state, numericExpression(factory, Number(value.body.right.text), value.body.operatorToken.kind === ts.SyntaxKind.MinusToken))
   }
-  if (isPrimitiveLiteral(value)) return command(factory, "set", state, value)
+  if (isPrimitiveLiteral(value)) return command(factory, "set", state, synthesizeSerializableStateLiteral(value, factory))
   return undefined
 }
 
@@ -6162,7 +6162,7 @@ function command(factory, operation, state, value) {
 }
 
 function isPrimitiveLiteral(node) {
-  return ts.isStringLiteral(node) || ts.isNumericLiteral(node) || node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword
+  return isPrimitiveDefaultLiteral(node)
 }
 
 function numericExpression(factory, value, negative) {

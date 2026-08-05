@@ -3,17 +3,27 @@ import { useSearchParams } from "react-router-dom"
 
 export function useCounter() {
   const [count, setCount] = useState(0)
+  const [status, setStatus] = useState("ready")
+  const [offset, setOffset] = useState(1)
+  const [selection, setSelection] = useState<string | null>("chosen")
   const [storageReady, setStorageReady] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
   const increment = useCallback(() => {
     const nextCount = count + 1
     setCount(nextCount)
+    setStatus("changed")
     setSearchParams(previous => {
       const next = new URLSearchParams(previous)
       next.set("count", String(nextCount))
       return next
     }, { replace: true })
   }, [count])
+  const reset = useCallback(() => {
+    setCount(0)
+    setStatus("ready")
+    setOffset(-1)
+    setSelection(null)
+  }, [])
   useEffect(() => {
     try {
       const raw = globalThis.localStorage.getItem("kudzu-counter")
@@ -30,5 +40,5 @@ export function useCounter() {
       globalThis.localStorage.setItem("kudzu-counter", String(count))
     } catch {}
   }, [storageReady, count])
-  return { count, setCount, increment }
+  return { count, setCount, status, setStatus, offset, setOffset, selection, setSelection, increment, reset }
 }

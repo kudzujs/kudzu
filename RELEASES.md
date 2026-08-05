@@ -1,5 +1,27 @@
 # Kudzu Releases
 
+## 0.8.1 - Custom-hook reset actions
+
+Kudzu 0.8.1 compiles direct multi-state reset callbacks returned by relative custom hooks into one existing behavior command, keeping conventional hook ownership without adding a callback runtime.
+
+### New in 0.8.1
+
+- Returned custom-hook callbacks may reset their exposed state/setter pairs to direct string, number, negative-number, boolean, or `null` literals in one batched commit.
+- Imported callback literals are synthesized before command emission, fixing source-range corruption when optimized behavior commands originate in another module.
+- The FIRE Standard calculator now owns its twelve-field reset inside `useStandardParams()`; existing dependency effects update URL parameters and local storage after the same commit.
+- A React/Vite migration fixture verifies exact optimized command output plus browser updates for multiple reset values.
+- Static routes and routes without reset actions add no JavaScript or runtime capability.
+
+### Boundary
+
+Reset callbacks may capture only directly returned state/setter pairs and use direct literal setter calls. Private defaults, helper-indirect setters, dynamic values, timers, clipboard work, aliases, and arbitrary callback graphs remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.1
+```
+
 ## 0.8.0 - URL-backed custom hooks
 
 Kudzu 0.8.0 migrates practical relative React custom hooks that combine local state, effects, direct actions, writable URL search parameters, and guarded browser storage while preserving static HTML and route-specific capabilities.

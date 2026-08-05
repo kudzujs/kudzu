@@ -98,9 +98,13 @@ This queue orders the next investigations by general migration value. Start only
 - Production Tailwind output, Inter assets, direct native SVG charts, and Excel export compose without adding Tailwind, Recharts, or a package runtime to Kudzu.
 - FIRE migration validation covers all fourteen routes, URL/storage updates and reload, reset, presets, chart identity, Quiz recommendation, keyed Debt updates, Excel workbook creation, and zero-JavaScript Home/Books/Apps output.
 
-### 1. Compiler-Known Custom Actions
+### Completed In 0.8.1
 
-Investigate direct custom-hook actions such as reset, debounced update, and clipboard copy after their state, URL, and storage dependencies are supported. Compile each proven action to existing setter or event capabilities rather than serializing arbitrary closures.
+- A direct custom-hook reset action may batch literal updates across its returned state/setter pairs. Imported callback literals are synthesized into existing behavior commands, and the FIRE Standard reset now remains owned by its hook while URL and storage effects observe the same commit.
+
+### 1. Timed And Platform Custom Actions
+
+Investigate debounced update and clipboard copy only when a migration fixture requires them. Compile each proven action to existing event/effect capabilities rather than serializing arbitrary closures.
 
 Acceptance: callback identity and captures are statically known, timers and cleanup have explicit ownership, and unsupported indirect calls fail at build time.
 

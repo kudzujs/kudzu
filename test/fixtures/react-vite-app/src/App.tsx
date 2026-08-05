@@ -21,7 +21,7 @@ function SecondaryCounter() {
 export default function App() {
   const typeChecked: TypeOnly = { label: "Compiler-grown UI" }
   const [menuOpen, setMenuOpen] = useMenuState(false)
-  const { count, setCount, increment } = useCounter()
+  const { count, setCount, status, setStatus, offset, setOffset, selection, setSelection, increment, reset } = useCounter()
   const [items, setItems] = React.useState([{ id: "a", label: "Alpha", visible: true }, { id: "b", label: "Beta", visible: false }])
   const doubled = count * 2
   const summary = calculateSummary(count, 3)
@@ -41,6 +41,10 @@ export default function App() {
       <h1>React Vite migration</h1>
       <small>{typeChecked.label}</small>
       <button id="counter" onClick={increment}>Count {count}</button>
+      <button id="reset" onClick={reset}>Reset</button>
+      <output id="status">{status}</output>
+      <output id="offset">{offset}</output>
+      <output id="selection">{selection}</output>
       <output id="doubled">Double {doubled}</output>
       <output id="summary">Summary {summary.total} / {summary.remaining}</output>
       <SecondaryCounter />

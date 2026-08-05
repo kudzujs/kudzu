@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.0 - URL-backed custom hooks.** Relative React custom hooks, reachable source graphs, imported structured calculations and static collections, event-only package ESM, and native SVG now compose across a fourteen-route FIRE migration without adding React or a hook runtime. Read the [release notes](./RELEASES.md#080---url-backed-custom-hooks) or open the [release page](https://kudzujs.cloud/releases/0.8.0).
+**Latest release: 0.8.1 - Custom-hook reset actions.** Relative custom hooks can batch direct primitive state resets into one behavior command, including imported negative and null literals, while dependent URL and storage effects observe the same commit. Read the [release notes](./RELEASES.md#081---custom-hook-reset-actions) or open the [release page](https://kudzujs.cloud/releases/0.8.1).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
