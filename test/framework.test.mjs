@@ -3576,7 +3576,7 @@ try {
   const alpha = document.querySelector('[data-point="a"]')
   const tooltip = document.querySelector("#point-tooltip")
   if (alpha.namespaceURI !== "http://www.w3.org/2000/svg") throw new Error("namespace")
-  alpha.focus()
+  alpha.dispatchEvent(new FocusEvent("focus"))
   await waitFor(() => tooltip.textContent === "Alpha" && !tooltip.hidden, "focus-tooltip")
   click(1)
   await waitFor(() => ids() === "a,c,b" && alpha.getAttribute("cx") === "15", "insert")
