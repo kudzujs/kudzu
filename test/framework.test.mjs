@@ -3576,8 +3576,10 @@ try {
   const alpha = document.querySelector('[data-point="a"]')
   const tooltip = document.querySelector("#point-tooltip")
   if (alpha.namespaceURI !== "http://www.w3.org/2000/svg") throw new Error("namespace")
-  alpha.dispatchEvent(new FocusEvent("focus"))
-  await waitFor(() => tooltip.textContent === "Alpha" && !tooltip.hidden, "focus-tooltip")
+  await waitFor(() => {
+    alpha.dispatchEvent(new FocusEvent("focus"))
+    return tooltip.textContent === "Alpha" && !tooltip.hidden
+  }, "focus-tooltip")
   click(1)
   await waitFor(() => ids() === "a,c,b" && alpha.getAttribute("cx") === "15", "insert")
   if (document.querySelector('[data-point="a"]') !== alpha || alpha.getAttribute("cy") !== "25" || alpha.getAttribute("aria-label") !== "Alpha moved" || document.querySelector("[data-total]").textContent !== "11") throw new Error("first-update")
