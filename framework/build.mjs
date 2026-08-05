@@ -2722,6 +2722,24 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const fail = (node, message) => {
       throw sourceNodeError(node, sourceFile, message)
     }
+    const validateReactiveJsxExpression = (expression, allowedNames) => {
+      const value = unwrapExpression(expression)
+      const formatAccess = ts.isCallExpression(value) && !value.questionDotToken && ts.isPropertyAccessExpression(value.expression) && !value.expression.questionDotToken && value.expression.name.text === "format" ? value.expression : undefined
+      const formatter = formatAccess && unwrapExpression(formatAccess.expression)
+      const constructor = formatter && ts.isNewExpression(formatter) && ts.isPropertyAccessExpression(formatter.expression) && formatter.expression.name.text === "NumberFormat" && ts.isIdentifier(formatter.expression.expression) && formatter.expression.expression.text === "Intl" ? formatter : undefined
+      if (!constructor) {
+        collectionExpression(value, {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
+        return
+      }
+      const intl = constructor.expression.expression
+      if (!isUnshadowedGlobal(intl, sourceFile)) fail(intl, "Reactive JSX Intl.NumberFormat requires the unshadowed global Intl object")
+      if (constructor.arguments?.length !== 1 || !ts.isStringLiteral(constructor.arguments[0])) fail(constructor, "Reactive JSX Intl.NumberFormat requires exactly one static string locale")
+      const rounded = value.arguments.length === 1 ? unwrapExpression(value.arguments[0]) : undefined
+      const roundAccess = rounded && ts.isCallExpression(rounded) && !rounded.questionDotToken && rounded.arguments.length === 1 && ts.isPropertyAccessExpression(rounded.expression) && !rounded.expression.questionDotToken && rounded.expression.name.text === "round" && ts.isIdentifier(rounded.expression.expression) && rounded.expression.expression.text === "Math" ? rounded.expression : undefined
+      if (!roundAccess) fail(value, "Reactive JSX Intl.NumberFormat format() requires exactly Math.round(expression)")
+      if (!isUnshadowedGlobal(roundAccess.expression, sourceFile)) fail(roundAccess.expression, "Reactive JSX Intl.NumberFormat requires the unshadowed global Math object")
+      collectionExpression(rounded.arguments[0], {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
+    }
     const resolveReactiveJsxExpression = (expression, owner, setters) => {
       const declarations = jsxLocalDeclarations.get(owner)
       if (!declarations) return expression
@@ -2758,7 +2776,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       if (!usedStates.size) return expression
       const captures = captureNames(expanded, expanded, setters)
       const allowedNames = new Set([...setters.values(), ...captures])
-      collectionExpression(expanded, {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
+      validateReactiveJsxExpression(expanded, allowedNames)
       return expanded
     }
     const componentSpecializations = new WeakMap()

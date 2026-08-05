@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.7.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.29 - Hermetic TypeScript checks.** Project and fixture typechecks no longer inherit unrelated ambient types or third-party declarations from ancestor `node_modules` directories. Read the [release notes](./RELEASES.md#0729---hermetic-typescript-checks) or open the [release page](https://kudzujs.cloud/releases/0.7.29).
+**Latest release: 0.7.30 - Reactive number formatting.** Fixed-locale `Intl.NumberFormat` display chains now remain reactive, restoring comma-formatted controlled inputs without broadening arbitrary render calls. Read the [release notes](./RELEASES.md#0730---reactive-number-formatting) or open the [release page](https://kudzujs.cloud/releases/0.7.30).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

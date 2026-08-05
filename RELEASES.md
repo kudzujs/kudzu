@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.7.30 - Reactive number formatting
+
+Kudzu 0.7.30 supports fixed-locale `Intl.NumberFormat` display chains in reactive JSX locals, restoring conventional comma-formatted controlled inputs while preserving narrow render-call validation.
+
+### New in 0.7.30
+
+- Reactive text and attributes accept `new Intl.NumberFormat("literal").format(Math.round(expression))` over supported state-derived primitive expressions.
+- Initial HTML is formatted during the build and existing binding ESM reevaluates the same native expression after state changes.
+- No collection selector opcode, shared formatting runtime, hydration, or browser component instance is added.
+- Locale values must be direct string literals; dynamic locales and options remain unsupported.
+- Optional calls, aliases, shadowed `Intl` or `Math`, arbitrary constructors, and other render calls retain source diagnostics.
+- A migration-derived FIRE `CurrencyInput` restores `100,000` annual and `8,333` monthly display while preserving annualized state updates.
+- The complete suite passes 123/123 tests, including emitted evaluator and invalid dynamic-locale coverage.
+
+### Boundary
+
+This is display formatting only. The accepted expression requires one static locale and exactly `Math.round(expression)` as the format argument. Collection selectors and effect dependency expressions keep their existing pure expression language.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.30
+```
+
 ## 0.7.29 - Hermetic TypeScript checks
 
 Kudzu 0.7.29 makes project and migration-fixture typechecks independent of unrelated ambient types and package declarations installed in ancestor directories.

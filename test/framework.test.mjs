@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.29/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.7.30/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.29"/)
-  assert.match(release, /Kudzu 0\.7\.29.*Check the project.*Not the parent folder/s)
-  assert.match(release, /HERMETIC TYPESCRIPT CHECKS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.29/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.30"/)
+  assert.match(release, /Kudzu 0\.7\.30.*Keep the number live.*Format the output/s)
+  assert.match(release, /REACTIVE NUMBER FORMATTING.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.30/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -728,6 +728,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(html, /<select data-k-bind-value=.*<option>Kudzu<\/option><option selected>Grown<\/option><\/select>/)
   assert.match(html, /class="waiting" data-k-bind-class=.*aria-checked="false" data-state="closed" hidden title="Inactive" data-k-bind-attrs=/)
   assert.match(html, /style="color:red;width:8px;opacity:0.5;--accent:1" data-k-bind-style=/)
+  assert.match(html, /<output data-formatted="true" title="12" data-k-bind-attrs=.*>.*12.*<\/output>/)
   assert.match(html, /class="prop-active">Static prop/)
   assert.match(html, /class="prop-idle" data-k-bind-class=.*>Static prop/)
   assert.match(html, /class="nested-idle" data-k-bind-class=.*>Nested/)
@@ -748,8 +749,10 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(bindings, /as binding0/)
   assert.match(bindings, /\.get\("active"\)/)
   assert.doesNotMatch(bindings, /activeClass|decoratedName|derivedStatus/)
+  assert.match(bindings, /new Intl\.NumberFormat\("en-US"\)\.format\(Math\.round/)
+  assert.doesNotMatch(bindings, /displayValue|formattedValue/)
   assert.doesNotMatch(bindings, /\beval\b|new Function/)
-  assert.equal(plan.bindings.length, 21)
+  assert.equal(plan.bindings.length, 23)
   assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
 
   const evaluators = await import(`${new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
@@ -766,6 +769,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.equal(evaluators.binding6(context), false)
   assert.equal(evaluators.binding7(context), "Kudzu!")
   assert.ok(Object.values(evaluators).some(evaluate => evaluate(context) === "Kudzu!:active"))
+  assert.ok(Object.values(evaluators).some(evaluate => evaluate(context) === "1,235"))
 
   const attributes = new Map()
   let value = "old"
@@ -818,6 +822,13 @@ test("rejects impure reactive JSX locals", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Reactive JSX local expressions cannot call arbitrary functions/)
+})
+
+test("rejects dynamic reactive Intl locales", () => {
+  const fixture = new URL("./fixtures/reactive-local-invalid-intl", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Reactive JSX Intl\.NumberFormat requires exactly one static string locale/)
 })
 
 test("compiles conditional DOM branches with nested behavior", async t => {

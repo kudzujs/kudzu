@@ -16,6 +16,8 @@ export default function BindingPage() {
   const activeClass = "is-active"
   const decoratedName = `${name}!`
   const derivedStatus = `${decoratedName}:${active ? "active" : "idle"}`
+  const displayValue = active ? 1234.6 : 12.2
+  const formattedValue = new Intl.NumberFormat("en-US").format(Math.round(displayValue))
 
   return (
     <main>
@@ -44,6 +46,7 @@ export default function BindingPage() {
         title={active ? "Active" : "Inactive"}
       />
       <div style={{ color: active ? "green" : "red", width: active ? 12 : 8, opacity: active ? 1 : 0.5, "--accent": active ? 2 : 1 }}>Styled</div>
+      <output data-formatted title={formattedValue}>{formattedValue}</output>
     </main>
   )
 }
