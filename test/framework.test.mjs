@@ -12,7 +12,8 @@ import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
 import { createNativeContext } from "../framework/native-runtime.js"
 
-let browserPort = 49000 + process.pid % 10000
+// Keep fixture listeners outside the ephemeral range used by headless Chrome.
+let browserPort = 10000 + process.pid % 10000
 const nextBrowserPort = () => browserPort++
 
 test("builds TSX into HTML and behavior commands without React", async () => {
@@ -5160,7 +5161,7 @@ http.createServer((request, response) => {
 }
 
 async function waitForServer(port) {
-  for (let attempt = 0; attempt < 100; attempt++) {
+  for (let attempt = 0; attempt < 400; attempt++) {
     const ready = await new Promise(resolve => {
       const socket = createConnection({ host: "127.0.0.1", port })
       socket.once("connect", () => { socket.destroy(); resolve(true) })
