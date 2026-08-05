@@ -291,7 +291,9 @@ export function stateConditional(kind, state, truthy, falsy) {
   return { [conditionalMarker]: true, kind, value: state.value, truthy, falsy, state: state.id }
 }
 
-export function list(items, keyField, render, ownerField, selector = [], indexed = false, selectorStates = []) {
+export function list(items, keyField, render, ownerField, selector = [], indexed = false, selectorStates = [], staticCollection = false) {
+  const source = items?.[bindingMarker] ? bindingDescriptor(items) : undefined
+  if (source) items = createInternalState(items.value)
   if (Array.isArray(items)) items = createInternalState(items)
   if (!items?.[signalMarker] || !Array.isArray(items.value)) throw new Error("A keyed list must use local array state or a supported imported static array")
   const selectorStateMap = new Map(selectorStates)
@@ -315,7 +317,7 @@ export function list(items, keyField, render, ownerField, selector = [], indexed
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
     keys.add(token)
   }
-  return { [listMarker]: true, items, values, keyField, render, ownerField, selector, indexed, selectorStates }
+  return { [listMarker]: true, items, values, keyField, render, ownerField, selector, indexed, static: staticCollection, selectorStates, source }
 }
 
 export function listField(read, field) {
@@ -870,7 +872,8 @@ async function renderList(node, namespace, selectValue) {
   const ownerTemplate = Boolean(node.ownerField && renderContext.listTemplate)
   const rowList = node.ownerField ? nextRowList() : undefined
   const id = rowList?.id ?? nextRenderId("l")
-  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(namespace === "svg" ? { svg: true } : {}), ...(node.items[internalStateMarker] ? { static: true } : {}), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.selectorStates.length ? { selectorStates: Object.fromEntries(node.selectorStates.map(([name, state]) => [name, state.id])) } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
+  const descriptor = { id, state: node.items.id, key: node.keyField, keys: node.values.map((item, index) => node.keyField === null ? index : item[node.keyField]), ...(namespace === "svg" ? { svg: true } : {}), ...(node.static || node.items[internalStateMarker] && !node.source ? { static: true } : {}), ...(node.source ? { source: node.source } : {}), ...(node.ownerField ? { ownerField: node.ownerField } : {}), ...(node.selector.length ? { selector: node.selector } : {}), ...(node.selectorStates.length ? { selectorStates: Object.fromEntries(node.selectorStates.map(([name, state]) => [name, state.id])) } : {}), ...(node.indexed ? { indexed: true } : {}), ...(!node.selector.length && node.keyField !== null && node.items[reducerStateMarker] ? { reducer: true } : {}) }
+  if (node.source) renderContext.hasBindings = true
   if (ownerTemplate) {
     ownerRoot.descriptor.children ??= []
     ownerRoot.descriptor.children.push({ id, field: node.ownerField, key: node.keyField, ...(node.selector.length ? { selector: node.selector } : {}) })
@@ -919,8 +922,10 @@ async function renderList(node, namespace, selectValue) {
       descriptor.mount = true
     }
     if (descriptor.rowStates && !descriptor.effects && !descriptor.nested && !template.includes("data-k-text")) descriptor.fastRelease = true
-    const seed = node.ownerField || node.selector.length || node.keyField === null ? undefined : listSeed(node.values, renderContext.listFields)
+    const valueSeed = node.ownerField || node.keyField === null ? undefined : listSeed(node.values, renderContext.listFields)
+    const seed = node.selector.length ? undefined : valueSeed
     if (seed) descriptor.seed = seed
+    else if (valueSeed) descriptor.valueSeed = valueSeed
     let current = ""
     renderContext.listTemplate = false
     renderContext.listInitialMarkers = Boolean(descriptor.conditions)

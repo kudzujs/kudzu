@@ -1,8 +1,10 @@
 import { browserState, mountDom, notifyListItem, registerCommitter, registerMountHook, registerUnmountHook, releaseState, unmountDom } from "./shared-runtime.js"
 import { selectCollection } from "./collection-selector.js"
+const loadListEvaluator = descriptor => import("./binding-runtime.js").then(module => module.loadEvaluator(descriptor))
 
 const listTargets = new Map()
 const listRegistrations = new WeakMap()
+const listLoads = new WeakMap()
 const mountedLists = new WeakSet()
 const imports = __KUDZU_LIST_ASYNC_PARTS__ ? new Map() : undefined
 const revisions = __KUDZU_LIST_ASYNC_PARTS__ ? new WeakMap() : undefined
@@ -68,7 +70,8 @@ function mountLists(root) {
       parts,
       ...(__KUDZU_STATIC_COLLECTIONS__ && staticRows ? { staticRows } : {}),
       ...(__KUDZU_STATIC_COLLECTIONS__ && staticEntries ? { staticEntries, staticPositions: staticEntries.positions } : {}),
-      seedFields: __KUDZU_LIST_SEEDS__ && descriptor.seed && Object.keys(descriptor.seed),
+      seedFields: __KUDZU_LIST_SEEDS__ && (descriptor.seed || descriptor.valueSeed) && Object.keys(descriptor.seed ?? descriptor.valueSeed),
+      valueSeed: __KUDZU_LIST_SEEDS__ && (descriptor.seed ?? descriptor.valueSeed),
       roots: new Map(roots.map((node, index) => [keyToken(descriptor.keys[index]), node])),
       ...(__KUDZU_LIST_STABLE_FAST_PATHS__ ? { orderedRoots: roots } : {}),
       values: new Map(),
@@ -84,6 +87,17 @@ function mountLists(root) {
       lists.set(descriptor.id, list)
       ownedLists.set(list.owner, lists)
       listRegistrations.set(start, { list, owner: list.owner })
+    } else if (descriptor.source) {
+      const load = {}
+      listLoads.set(start, load)
+      loadListEvaluator(descriptor.source).then(evaluator => {
+        if (listLoads.get(start) !== load || !start.isConnected) return
+        list.sourceEvaluator = evaluator
+        const states = [...new Set([...evaluator.stateIds, ...(__KUDZU_COLLECTION_SELECTORS__ ? Object.values(descriptor.selectorStates ?? {}) : [])])]
+        for (const state of states) register(listTargets, state, list)
+        listRegistrations.set(start, { states, list })
+        updateList(list)
+      }).catch(error => console.error(error))
     } else {
       if (__KUDZU_COLLECTION_SELECTORS__ && descriptor.selectorStates) {
         const states = [...new Set([descriptor.state, ...Object.values(descriptor.selectorStates)])]
@@ -94,7 +108,7 @@ function mountLists(root) {
         listRegistrations.set(start, { state: descriptor.state, list })
       }
     }
-    updateList(list)
+    if (!descriptor.source) updateList(list)
   }
 }
 
@@ -103,6 +117,7 @@ function unmountLists(root) {
 }
 
 function unregisterList(start) {
+  listLoads.delete(start)
   const registration = listRegistrations.get(start)
   if (registration) {
     if (__KUDZU_NESTED_LISTS__ && registration.owner) {
@@ -110,7 +125,7 @@ function unregisterList(start) {
       if (lists?.get(registration.list.descriptor.id) === registration.list) lists.delete(registration.list.descriptor.id)
       if (!lists?.size) ownedLists.delete(registration.owner)
     } else {
-      if (__KUDZU_COLLECTION_SELECTORS__ && registration.states) {
+      if ((__KUDZU_COLLECTION_SELECTORS__ || registration.list.descriptor.source) && registration.states) {
         for (const state of registration.states) {
           const lists = listTargets.get(state)
           lists?.delete(registration.list)
@@ -129,6 +144,7 @@ function unregisterList(start) {
 }
 
 function updateList(list) {
+  if (list.sourceEvaluator) browserState.set(list.descriptor.state, list.sourceEvaluator.read())
   let items = __KUDZU_NESTED_LISTS__ && list.descriptor.ownerField
     ? listItems.get(list.owner)?.[list.descriptor.ownerField]
     : browserState.get(list.descriptor.state)
@@ -148,12 +164,25 @@ function updateList(list) {
     const key = list.descriptor.key === null ? index : item?.[list.descriptor.key]
     if (!validListKey(key)) throw new Error(`Keyed list key "${list.descriptor.key}" must be a string or finite number`)
     assertListItem(item)
-    const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed, !referenceOnly) : undefined
+    const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.valueSeed, !referenceOnly) : undefined
     if (seededValue === undefined) assertListValue(item, seen, true)
     const token = keyToken(key)
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
     keys.add(token)
     entries.push({ item, index, key, token, value: referenceOnly ? item : seededValue === undefined ? JSON.stringify(item) : seededValue })
+  }
+  if (list.items === undefined && list.parts.directFill && entries.length === list.roots.size) {
+    const roots = __KUDZU_LIST_STABLE_FAST_PATHS__ ? list.orderedRoots : [...list.roots.values()]
+    if (entries.every((entry, index) => list.roots.get(entry.token) === roots[index])) {
+      for (let index = 0; index < entries.length; index++) {
+        const entry = entries[index]
+        listItems.set(roots[index], entry.item)
+        if (__KUDZU_LIST_INDEXES__) listIndexes.set(roots[index], index)
+        if (!referenceOnly) list.values.set(entry.token, entry.value)
+      }
+      list.items = items
+      return
+    }
   }
   if (list.descriptor.key !== null && !list.descriptor.indexed && !list.descriptor.selector && (referenceOnly || list.values.size) && entries.every(entry => {
     const root = list.roots.get(entry.token)
@@ -349,19 +378,18 @@ function updateStableList(list, items) {
   const seen = new Set()
   const keyField = list.descriptor.key
   const fragment = list.start.ownerDocument.createDocumentFragment()
-  let stable = true
   for (let index = 0; index < items.length; index++) {
     const item = items[index]
     assertListItem(item)
-    const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed, !referenceOnly) : undefined
+    const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.valueSeed, !referenceOnly) : undefined
     if (seededValue === undefined) assertListValue(item, seen, true)
     const key = item[keyField]
     if (!validListKey(key)) throw new Error(`Keyed list key "${keyField}" must be a string or finite number`)
     const token = keyToken(key)
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
     keys.add(token)
-    if (index < previous.length && (key !== previous[index][keyField] || appending && item !== previous[index])) stable = false
-    if (!stable || items.length === previous.length + 1 || index < previous.length) continue
+    if (index < previous.length && (key !== previous[index][keyField] || appending && item !== previous[index])) return false
+    if (items.length === previous.length + 1 || index < previous.length) continue
     let node = list.templateRoot?.cloneNode(true)
     if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
     if (!node) throw new Error("Keyed list template has no root element")
@@ -371,13 +399,12 @@ function updateStableList(list, items) {
     else fillListItem(node, item, list.descriptor.nested, index, mapListItemParts(list.parts, node, list.descriptor.nested))
     fragment.append(node)
   }
-  if (!stable) return false
   if (appending) {
     if (items.length === previous.length + 1) {
       const item = items.at(-1)
       const key = item[keyField]
       const token = keyToken(key)
-      const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed, !referenceOnly) : undefined
+      const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.valueSeed, !referenceOnly) : undefined
       addListRoot(list, { item, index: previous.length, key, token, value: referenceOnly ? item : seededValue === undefined ? JSON.stringify(item) : seededValue })
       if (referenceOnly) list.values.clear()
       list.items = items
@@ -391,7 +418,7 @@ function updateStableList(list, items) {
       list.roots.set(token, node)
       list.orderedRoots.push(node)
       if (!referenceOnly) {
-        const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed) : undefined
+        const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.valueSeed) : undefined
         list.values.set(token, seededValue === undefined ? JSON.stringify(item) : seededValue)
       }
       node = node.nextSibling
@@ -414,7 +441,7 @@ function updateStableList(list, items) {
       const item = items[index]
       if (item === previous[index]) continue
       const token = keyToken(item[keyField])
-      const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed) : undefined
+      const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.valueSeed) : undefined
       const value = seededValue === undefined ? JSON.stringify(item) : seededValue
       if (list.values.get(token) !== value) {
         const node = list.orderedRoots[index]
@@ -535,7 +562,7 @@ function updateReducerList(list, items) {
     if (!validListKey(key)) throw new Error(`Keyed list key "${list.descriptor.key}" must be a string or finite number`)
     assertListItem(item)
     const seen = new Set()
-    const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.descriptor.seed) : undefined
+    const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.valueSeed) : undefined
     if (seededValue === undefined) assertListValue(item, seen, true)
     const token = keyToken(key)
     if (list.roots.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
@@ -574,11 +601,12 @@ function removeListRoot(list, token) {
 }
 
 function fillListItem(root, item, nested = false, index = 0, parts = listItemParts(root, nested)) {
+  const previous = listItems.get(root)
   listItems.set(root, item)
   if (__KUDZU_LIST_INDEXES__) listIndexes.set(root, index)
   const revision = __KUDZU_LIST_ASYNC_PARTS__ ? (revisions.get(root) ?? 0) + 1 : 0
   if (__KUDZU_LIST_ASYNC_PARTS__) revisions.set(root, revision)
-  fillListParts(root, parts, item, revision, index)
+  fillListParts(root, parts, item, revision, index, previous)
   if (__KUDZU_NESTED_LISTS__) {
     const children = ownedLists.get(root)
     if (children) for (const child of children.values()) updateList(child)
@@ -586,7 +614,7 @@ function fillListItem(root, item, nested = false, index = 0, parts = listItemPar
   if (__KUDZU_LIST_ROW_HOOKS__) replaceRowIds(root, rowReplacements.get(root))
 }
 
-function fillListParts(root, parts, item, revision, index = 0) {
+function fillListParts(root, parts, item, revision, index = 0, previous) {
   if (__KUDZU_LIST_EFFECTS__) for (const node of parts.effects) node.dataset.kEffectItem = JSON.stringify(item)
   for (const [node, field] of parts.directTexts) {
     const text = item?.[field]
@@ -603,7 +631,10 @@ function fillListParts(root, parts, item, revision, index = 0) {
   }
   if (__KUDZU_LIST_ATTRIBUTES__) {
     for (const [node, attributes] of parts.attributes) {
-      for (const [target, field] of attributes) patchBinding(node, target, item?.[field])
+      for (const [target, field] of attributes) {
+        if (previous && Object.is(previous[field], item?.[field])) continue
+        patchBinding(node, target, item?.[field], true)
+      }
     }
   }
   if (__KUDZU_LIST_EVENTS__) {
@@ -978,7 +1009,7 @@ function serializeItem(value) {
   return { type: "object", nullPrototype: false, value: Object.entries(value).map(([key, entry]) => [key, serializeItem(entry)]) }
 }
 
-function patchBinding(node, target, value) {
+function patchBinding(node, target, value, write = false) {
   /* list-style */
   if (target === "disabled") {
     node.toggleAttribute("disabled", Boolean(value))
@@ -995,7 +1026,7 @@ function patchBinding(node, target, value) {
     node.removeAttribute(target)
   } else {
     const next = value === true && !isStringBooleanAttribute(target) ? "" : String(value)
-    if (node.getAttribute(target) !== next) node.setAttribute(target, next)
+    if (write || node.getAttribute(target) !== next) node.setAttribute(target, next)
   }
 }
 

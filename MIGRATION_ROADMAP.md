@@ -102,15 +102,20 @@ This queue orders the next investigations by general migration value. Start only
 
 - A direct custom-hook reset action may batch literal updates across its returned state/setter pairs. Imported callback literals are synthesized into existing behavior commands, and the FIRE Standard reset now remains owned by its hook while URL and storage effects observe the same commit.
 
+### Completed After 0.8.1
+
+- A direct array field from one top-level synchronous relative calculation result may feed a keyed intrinsic list. Route-specific evaluator ESM refreshes a compiler-owned array anchor before the existing list reconciler runs, preserving keyed SVG namespace, latest item handlers, and DOM identity without a chart or component runtime.
+- The FIRE Standard projection exposes eleven calculated yearly points as accessible keyed SVG circles. Input commits update coordinates and labels while retaining every year node alongside the existing reactive path.
+
 ### 1. Timed And Platform Custom Actions
 
 Investigate debounced update and clipboard copy only when a migration fixture requires them. Compile each proven action to existing event/effect capabilities rather than serializing arbitrary closures.
 
 Acceptance: callback identity and captures are statically known, timers and cleanup have explicit ownership, and unsupported indirect calls fail at build time.
 
-### 2. Calculated Collections And Chart Detail
+### 2. Expanded Chart Interaction
 
-Investigate calculated array fields used as keyed table/chart sources plus accessible selected-point tooltips and detailed projection/debt series. Prefer direct SVG bindings and keyed SVG rows; add no chart runtime unless a reduced fixture proves native output insufficient.
+Investigate accessible selected-point tooltips and detailed Withdrawal/Debt series after a reduced migration fixture proves the interaction. Prefer direct SVG bindings and keyed SVG rows; add no chart runtime unless native output is measurably insufficient.
 
 Acceptance: accessible static SVG is present initially, updates preserve element identity, and unaffected routes ship no chart JavaScript.
 

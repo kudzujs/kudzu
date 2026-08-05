@@ -181,7 +181,7 @@ test("enhances configured emitted routes sharing one layout", async t => {
   for (const html of [product, cart, chart, broken, item, newItem, genericItem]) {
     assert.match(html, /^<!doctype html>.*<body[^>]+data-k-application="a-a8d4d2fb8e9e69eb"[^>]+data-k-layout="l-a8d4d2fb8e9e69eb".*data-k-route-start.*data-k-route-end.*<\/body><\/html>$/s)
     assert.match(html, /data-k-route="\/(?:product|cart|chart|broken|items\/(?:\[id\]|new)|\[section\]\/\[id\])"/)
-    assert.equal((html.match(/kudzu-navigation\.js/g) ?? []).length, 1)
+    assert.equal((html.match(/<script[^>]+kudzu-navigation\.js/g) ?? []).length, 1)
   }
   assert.doesNotMatch(outside, /data-k-(?:application|layout)|kudzu-navigation\.js|data-k-capability/)
   assert.match(navigation, /popstate/)
@@ -1009,6 +1009,38 @@ test("patches conditional and keyed SVG ranges in their namespace", async t => {
 
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runSvgStructureBrowserTest(fixture, chrome)
+})
+
+test("reevaluates calculated collection fields through keyed SVG lists", async t => {
+  const fixture = new URL("./fixtures/calculated-collections", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/calculated-collections/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/calculated-collections/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const html = await readFile(new URL("./fixtures/calculated-collections/dist/index.html", import.meta.url), "utf8")
+  const ordinaryHtml = await readFile(new URL("./fixtures/calculated-collections/dist/ordinary/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/calculated-collections/dist/static/index.html", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("./fixtures/calculated-collections/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/calculated-collections/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  const route = plan.find(entry => entry.route === "/")
+
+  assert.match(html, /<svg[^>]+data-chart.*<circle[^>]+data-point="a"[^>]+cx="10"[^>]+aria-label="Alpha".*<circle[^>]+data-point="b"/s)
+  assert.match(html, /data-k-list='[^']+"source":\{"module":"\/assets\/handlers\/pages\/index\.js","handler":"binding\d+"/)
+  assert.equal(route.lists[0].source.handler, "binding1")
+  assert.equal(route.lists[0].selector, undefined)
+  assert.doesNotMatch(runtime, /selectCollection/)
+  assert.match(runtime, /import\("\.\/kudzu-binding\.js"\)/)
+  assert.doesNotMatch(runtime, /kTextBindings/)
+  assert.equal(existsSync(new URL("./fixtures/calculated-collections/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  assert.match(ordinaryHtml, /kudzu-list\.js/)
+  assert.doesNotMatch(ordinaryHtml, /kudzu-binding\.js/)
+  assert.doesNotMatch(staticHtml, /<script/)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runCalculatedCollectionsBrowserTest(fixture, chrome)
 })
 
 test("compiles synchronous rendered collection selectors and React positional keys", async t => {
@@ -3511,6 +3543,64 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-svg-structure-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runCalculatedCollectionsBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const points = () => [...document.querySelectorAll("[data-point]")]
+const ids = () => points().map(point => point.dataset.point).join(",")
+const click = phase => document.querySelector('[data-phase="' + phase + '"]').click()
+try {
+  await waitFor(() => ids() === "a,b", "initial")
+  const alpha = document.querySelector('[data-point="a"]')
+  if (alpha.namespaceURI !== "http://www.w3.org/2000/svg") throw new Error("namespace")
+  click(1)
+  await waitFor(() => ids() === "a,c,b" && alpha.getAttribute("cx") === "15", "insert")
+  if (document.querySelector('[data-point="a"]') !== alpha || alpha.getAttribute("cy") !== "25" || alpha.getAttribute("aria-label") !== "Alpha moved" || document.querySelector("[data-total]").textContent !== "11") throw new Error("first-update")
+  if (document.querySelector('[data-point="c"]').namespaceURI !== "http://www.w3.org/2000/svg") throw new Error("insert-namespace")
+  click(2)
+  await waitFor(() => ids() === "c,a", "reorder")
+  if (points().at(-1) !== alpha || alpha.getAttribute("cx") !== "20" || alpha.getAttribute("aria-label") !== "Alpha reordered" || document.querySelector('[data-point="b"]')) throw new Error("reorder-update")
+  alpha.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+  await waitFor(() => document.body.dataset.selected === "Alpha reordered", "latest-handler")
+  click(3)
+  await waitFor(() => ids() === "a", "remove")
+  if (points()[0] !== alpha || alpha.getAttribute("cy") !== "35" || alpha.getAttribute("aria-label") !== "Alpha final" || document.querySelector("[data-total]").textContent !== "13") throw new Error("final-update")
+  document.body.dataset.calculatedCollectionsTest = "pass"
+} catch (error) {
+  document.body.dataset.calculatedCollectionsTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-calculated-collections-test="pass"/)
   } finally {
     server.kill()
   }

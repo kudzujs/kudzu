@@ -268,7 +268,7 @@ function register(targets, id, entry) {
   targets.set(id, entries)
 }
 
-async function loadEvaluator(descriptor) {
+export async function loadEvaluator(descriptor) {
   let modulePromise = imports.get(descriptor.module)
   if (!modulePromise) {
     modulePromise = import(descriptor.module)

@@ -63,6 +63,7 @@ function eligibleClick(event, anchor) {
 }
 
 function eligibleAnchor(anchor) {
+  if (!anchor) return false
   if (anchor.hasAttribute("download") || anchor.hasAttribute("data-k-native") || !["", "_self"].includes(anchor.target)) return false
   if (anchor.relList?.contains("external")) return false
   const url = new URL(anchor.href)
@@ -125,8 +126,7 @@ async function navigate(url, push) {
       catch { documentResult = await fetchDocument(url, record, request.signal) }
     } else documentResult = await fetchDocument(url, record, request.signal)
     documents.set(url.href, Promise.resolve(documentResult))
-    const { incoming, parsed } = documentResult
-    const capabilities = await loadCapabilities(parsed)
+    const { incoming, parsed, capabilities } = documentResult
     if (current !== revision) return
     await routeDispose()
     if (current !== revision) return
@@ -157,7 +157,8 @@ async function fetchDocument(url, record, signal) {
   const response = await fetch(url, { signal, redirect: "manual", headers: { accept: "text/html" } })
   if (!response.ok || response.redirected || response.type === "opaqueredirect" || !response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("Navigation response is not successful nonredirected HTML")
   const incoming = new DOMParser().parseFromString(await response.text(), "text/html")
-  return { incoming, parsed: validate(incoming, record), record }
+  const parsed = validate(incoming, record)
+  return { incoming, parsed, capabilities: await loadCapabilities(parsed), record }
 }
 
 function validate(incoming, record) {

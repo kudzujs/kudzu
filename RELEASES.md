@@ -1,5 +1,30 @@
 # Kudzu Releases
 
+## 0.8.2 - Calculated keyed collections
+
+Kudzu 0.8.2 lets one direct array field from a synchronous relative calculation result drive an intrinsic keyed list, preserving static HTML and existing DOM ownership while improving list and navigation hot paths.
+
+### New in 0.8.2
+
+- A top-level `const result = calculate(state)` may feed `result.items.map(...)` when the relative synchronous helper returns a JSON-safe array field.
+- Route-specific evaluator ESM refreshes a compiler-owned array anchor after source-state commits; the existing keyed reconciler retains keys, current handlers, and SVG namespaces.
+- Initial structural rows hydrate list bookkeeping without repeating DOM writes, retained direct attributes skip redundant DOM reads, and stable-list fallback avoids duplicate validation.
+- Immutable local filter sources with unused ordinary `useState` setters use the existing static-filter restoration path while indirect custom-hook and reducer mutation paths remain dynamic.
+- Required route modules emit `modulepreload` hints, and navigation prefetch resolves validated destination capabilities before commit while preserving complete-document fallback and cleanup ordering.
+- Navigation prefetch safely ignores focus and pointer targets outside anchors.
+- Calculated collection fixtures verify insert, reorder, removal, retained identity, latest handlers, scalar bindings, SVG namespace, and zero JavaScript on unaffected static routes.
+- The complete suite passes 133/133 tests, and the FIRE migration retains all chart nodes and acceptance behavior.
+
+### Boundary
+
+The calculation must be one top-level immutable result from a synchronous relative TypeScript function, and the consumed field must remain a JSON-safe array. Indirect result aliases, dynamic fields, nested calculated SVG lists, package calculations, and asynchronous helpers remain unsupported. Static-filter specialization applies only when an ordinary local setter is provably unused; lifecycle-bearing and indirectly mutable collections retain the general path.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.2
+```
+
 ## 0.8.1 - Custom-hook reset actions
 
 Kudzu 0.8.1 compiles direct multi-state reset callbacks returned by relative custom hooks into one existing behavior command, keeping conventional hook ownership without adding a callback runtime.

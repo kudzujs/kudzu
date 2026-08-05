@@ -209,13 +209,14 @@ export async function build({ quiet = false, minify = true } = {}) {
   const hasListEvents = plans.some(plan => plan.lists.some(list => list.events))
   const hasListExpressions = plans.some(plan => plan.lists.some(list => list.expressions))
   const hasListExpressionAttributes = plans.some(plan => plan.lists.some(list => list.expressionAttributes))
-  const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed))
+  const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed || list.valueSeed))
   const hasListEffects = plans.some(plan => plan.lists.some(list => list.effects))
   const hasListRowHooks = plans.some(plan => plan.lists.some(list => list.rowStates?.length || list.rowRefs?.length))
   const hasListRowRefs = plans.some(plan => plan.lists.some(list => list.rowRefs?.length))
   const hasComplexListRowState = plans.some(plan => plan.lists.some(list => list.rowStates?.some(state => state.initialValue !== null && typeof state.initialValue === "object")))
   const hasNestedLists = plans.some(plan => plan.lists.some(list => list.ownerField))
   const hasCollectionSelectors = plans.some(plan => plan.lists.some(list => list.selector))
+  const hasCalculatedCollections = plans.some(plan => plan.lists.some(list => list.source))
   const hasDerivedEffectDependencies = plans.some(plan => plan.effects.some(effect => effect.dependencyExpressions?.length))
   const hasStaticCollections = plans.some(plan => plan.lists.some(list => list.static))
   const hasListIndexes = plans.some(plan => plan.lists.some(list => list.indexed))
@@ -237,7 +238,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const entry of pageEntries) {
     const routeDirectory = join(outputDirectory, entry.route)
     await mkdir(routeDirectory, { recursive: true })
-    const html = entry.html.replace(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/${runtimeName(entry.usesDependencyRuntime)}`)))
+    const html = preloadModules(entry.html.replace(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/${runtimeName(entry.usesDependencyRuntime)}`))))
     await writeFile(join(routeDirectory, "index.html"), html)
   }
   if (navigationRoutes.length || behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
@@ -284,6 +285,9 @@ export async function build({ quiet = false, minify = true } = {}) {
     if (hasCollectionSelectors && !hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
     let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
       .replace('"./shared-runtime.js"', '"./kudzu.js"')
+    listRuntime = hasCalculatedCollections
+      ? listRuntime.replace('"./binding-runtime.js"', '"./kudzu-binding.js"')
+      : listRuntime.replace(/^const loadListEvaluator[^\n]+\n/m, "")
     listRuntime = hasCollectionSelectors
       ? listRuntime.replace('"./collection-selector.js"', '"./kudzu-collection-selector.js"')
       : listRuntime.replace(/^import \{ selectCollection \}[^\n]+\n/m, "")
@@ -297,8 +301,8 @@ export async function build({ quiet = false, minify = true } = {}) {
       .replace("function addListRoot(list, { item, index = list.roots.size, key, token, value })", "function addListRoot(list, { item, key, token, value })")
       .replace("fillListParts(root, listItemParts(root), listItems.get(owner), 0, __KUDZU_LIST_INDEXES__ ? listIndexes.get(owner) ?? 0 : 0)", "fillListParts(root, listItemParts(root), listItems.get(owner), 0)")
       .replace("function fillListItem(root, item, nested = false, index = 0)", "function fillListItem(root, item, nested = false)")
-      .replace("fillListParts(root, parts, item, revision, index)", "fillListParts(root, parts, item, revision)")
-      .replace("function fillListParts(root, parts, item, revision, index = 0)", "function fillListParts(root, parts, item, revision)")
+      .replace("fillListParts(root, parts, item, revision, index, previous)", "fillListParts(root, parts, item, revision, previous)")
+      .replace("function fillListParts(root, parts, item, revision, index = 0, previous)", "function fillListParts(root, parts, item, revision, previous)")
       .replaceAll('value?.type === "list-item" ? serializeItem(item) : value?.type === "list-index" ? index : value', 'value?.type === "list-item" ? serializeItem(item) : value')
       .replaceAll("evaluate(descriptor, item, index)", "evaluate(descriptor, item)")
       .replaceAll("evaluate({ module, handler }, item, index)", "evaluate({ module, handler }, item)")
@@ -459,6 +463,13 @@ export async function build({ quiet = false, minify = true } = {}) {
   if (!quiet) console.log(`Built ${plans.length} page(s), ${behaviorCount} interactive page(s) into dist/`)
 }
 
+function preloadModules(html) {
+  const scripts = [...html.matchAll(/<script type="module"[^>]* src="([^"]+)"[^>]*><\/script>/g)]
+  if (!scripts.length) return html
+  const links = [...new Set(scripts.map(match => match[1]))].map(href => `<link rel="modulepreload" href="${href}">`).join("")
+  return html.replace(scripts[0][0], `${links}${scripts[0][0]}`)
+}
+
 function specializeEvents(source, events) {
   return source.replace(/const eventNames = \[[^\n]+\]/, `const eventNames = ${JSON.stringify(events)}`)
 }
@@ -492,10 +503,11 @@ async function mountInitial() {
 }
 `, "")
     .replace("  await ready\n", "")
-    .replace("    const capabilities = await loadCapabilities(parsed)\n", "    await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n")
+    .replace("    const { incoming, parsed, capabilities } = documentResult\n", "    const { incoming, parsed } = documentResult\n")
     .replace("    await routeDispose()\n    if (current !== revision) return\n", "")
     .replace("    commit(incoming, parsed.nodes, capabilities.params, url.pathname, url.search)\n", "    commit(incoming, parsed.nodes)\n")
     .replace("    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose\n", "")
+    .replace("  return { incoming, parsed, capabilities: await loadCapabilities(parsed), record }\n", "  await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n  return { incoming, parsed, record }\n")
     .replace(`
 async function loadCapabilities(parsed) {
   const modules = await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))
@@ -1508,7 +1520,7 @@ async function writeBundledJavaScript(file, source, minify, define) {
     stdin: { contents: source, resolveDir: dirname(file), sourcefile: file },
     bundle: true,
     write: false,
-    external: ["./kudzu.js", "./kudzu-serialization.js", "./kudzu-style.js"],
+    external: ["./kudzu.js", "./kudzu-binding.js", "./kudzu-serialization.js", "./kudzu-style.js"],
     define,
     format: "esm",
     target: "es2022",
@@ -2655,6 +2667,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       } catch {}
     }
     const settersByFunction = new Map()
+    const localStateSettersByFunction = new Map()
     const reducersByFunction = new Map()
     const zustandStores = new Map()
     const resolvedZustandStore = entry => {
@@ -2813,6 +2826,9 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
               const setters = settersByFunction.get(owner) ?? new Map()
               setters.set(setterElement.name.text, stateElement.name.text)
               settersByFunction.set(owner, setters)
+              const localSetters = localStateSettersByFunction.get(owner) ?? new Set()
+              localSetters.add(setterElement.name.text)
+              localStateSettersByFunction.set(owner, localSetters)
             }
           }
         }
@@ -3327,7 +3343,23 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         return
       }
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, settersForNode(node, settersByFunction), jsxLocalDeclarations.get(nearestFunction(node)), fail, new Set(), importedCollections, factory, context, importedCollectionTransforms)
+        const owner = nearestFunction(node)
+        const setters = settersForNode(node, settersByFunction)
+        const staticCollection = state => [...(localStateSettersByFunction.get(owner) ?? [])].some(setter => setters.get(setter) === state && !referenceIdentifiers(owner.body, setter).length)
+        const calculatedCollection = expression => {
+          const value = unwrapExpression(expression)
+          if (!ts.isPropertyAccessExpression(value) || !ts.isIdentifier(value.expression)) return undefined
+          const entries = jsxLocalDeclarations.get(nearestFunction(node))?.get(value.expression.text)
+          if (!entries?.length) return undefined
+          const initializer = entries.length === 1 ? unwrapExpression(entries[0].initializer) : undefined
+          if (!initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || !importBindings.has(initializer.expression.text)) return undefined
+          if (entries[0].node.parent?.parent?.parent !== nearestFunction(entries[0].node)?.body) fail(value.expression, `Calculated collection result "${value.expression.text}" must be one top-level immutable local`)
+          validateImportedCalculation(initializer, value.name.text)
+          const expanded = resolveReactiveJsxExpression(value, nearestFunction(node), setters)
+          if (expanded === value || !referencedStateNames(expanded, setters).size) fail(value, "Calculated collection fields must directly depend on local state")
+          return expanded
+        }
+        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, setters, jsxLocalDeclarations.get(owner), fail, new Set(), importedCollections, factory, context, importedCollectionTransforms, calculatedCollection, staticCollection)
         if (parts) {
           for (const declaration of parts.aliasDeclarations ?? []) listLocalDeclarations.add(declaration)
           rawRenderedLists.push({ node, parts })
@@ -3731,15 +3763,21 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if (listParts) {
           usesBehavior = true
           usesList = true
+          let listSource = listParts.state
+          if (listParts.calculation) {
+            usesBinding = true
+            listSource = compileReactiveBinding(listParts.calculation, settersForNode(node, settersByFunction), factory, context, reactiveBindings, handlerUrl, importBindings, clientImports)
+          }
           const arguments_ = [
-            listParts.state,
+            listSource,
             listParts.keyField === null ? factory.createNull() : factory.createStringLiteral(listParts.keyField),
             ts.visitNode(listParts.callback, visitor),
             factory.createStringLiteral(listParts.ownerField ?? ""),
             jsonExpression(listParts.selector ?? [], factory),
             listParts.indexed ? factory.createTrue() : factory.createFalse()
           ]
-          if (listParts.selectorStates?.size) arguments_.push(factory.createArrayLiteralExpression([...listParts.selectorStates].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
+          if (listParts.selectorStates?.size || listParts.static) arguments_.push(factory.createArrayLiteralExpression([...(listParts.selectorStates ?? [])].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
+          if (listParts.static) arguments_.push(factory.createTrue())
           return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, arguments_))
         }
         const conditional = conditionalParts(node.expression)
@@ -3932,12 +3970,12 @@ function containsRenderControl(root, knownLocals) {
   return found
 }
 
-function keyedListParts(expression, setters, declarations, fail, aliases = new Set(), importedCollections = new Set(), factory = ts.factory, context, importedCollectionTransforms = new Map()) {
+function keyedListParts(expression, setters, declarations, fail, aliases = new Set(), importedCollections = new Set(), factory = ts.factory, context, importedCollectionTransforms = new Map(), calculatedCollection, staticCollection) {
   const value = unwrapExpression(expression)
   const directFrom = isArrayFromCall(value) && value.arguments.length === 2 && containsJsx(value.arguments[1])
   if (!directFrom && (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map")) return undefined
-  const collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()), importedCollectionTransforms, factory, context)
-  if (!collection?.state) return undefined
+  const collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()), importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
+  if (!collection?.state && !collection?.calculation) return undefined
   if (directFrom) collection.selector.push(["from", undefined])
   let callback = directFrom ? value.arguments[1] : value.arguments[0]
   const parameters = collectionParameters(callback, "Keyed list map", fail)
@@ -3962,7 +4000,7 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
   const field = keyExpression && directProperty(keyExpression, parameters.item)
   const positional = Boolean(keyExpression && parameters.index && ts.isIdentifier(unwrapExpression(keyExpression)) && unwrapExpression(keyExpression).text === parameters.index)
   if (!field && !positional) fail(key ?? root, `Keyed list root must have key={${parameters.item}.<field>} or key={${parameters.index ?? "index"}}`)
-  return { ...collection, callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : field }
+  return { ...collection, static: collection.static && (!collection.localStatic || collection.selector.length > 0), callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : field }
 }
 
 function nestedKeyedListParts(expression, parentItem, fail) {
@@ -3983,20 +4021,27 @@ function nestedKeyedListParts(expression, parentItem, fail) {
   return { ...collection, callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : keyField }
 }
 
-function renderedCollectionSource(expression, setters, declarations, fail, aliases, importedCollections = new Set(), stateNames = new Set(), importedCollectionTransforms = new Map(), factory = ts.factory, context) {
+function renderedCollectionSource(expression, setters, declarations, fail, aliases, importedCollections = new Set(), stateNames = new Set(), importedCollectionTransforms = new Map(), factory = ts.factory, context, calculatedCollection, staticCollection) {
   const value = unwrapExpression(expression)
   if (ts.isIdentifier(value)) {
-    if ([...setters.values()].includes(value.text)) return { state: value, selector: [], selectorStates: new Set() }
+    if ([...setters.values()].includes(value.text)) {
+      const localStatic = staticCollection?.(value.text)
+      return { state: value, static: localStatic, localStatic, selector: [], selectorStates: new Set() }
+    }
     if (importedCollections.has(value.text)) return { state: value, static: true, selector: [], selectorStates: new Set() }
     const entries = declarations?.get(value.text)
     if (!entries) return undefined
     if (entries.length !== 1 || aliases.has(value.text) || entries[0].node.parent?.parent?.parent !== nearestFunction(entries[0].node)?.body) fail(value, `Rendered collection alias "${value.text}" must be one top-level immutable local`)
     aliases.add(value.text)
-    const source = renderedCollectionSource(entries[0].initializer, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+    const source = renderedCollectionSource(entries[0].initializer, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
     aliases.delete(value.text)
     return source && { ...source, aliasDeclarations: [...(source.aliasDeclarations ?? []), entries[0].node], aliasUses: [...(source.aliasUses ?? []), value] }
   }
-  if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) return { state: undefined, ownerField: value.name.text, selector: [], parentItem: value.expression.text }
+  if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) {
+    const calculation = calculatedCollection?.(value)
+    if (calculation) return { calculation, selector: [], selectorStates: new Set() }
+    return { state: undefined, ownerField: value.name.text, selector: [], parentItem: value.expression.text }
+  }
   if (ts.isCallExpression(value) && ts.isIdentifier(value.expression) && importedCollectionTransforms.has(value.expression.text)) {
     const transform = importedCollectionTransforms.get(value.expression.text)
     const parameter = transform.parameters[0]
@@ -4007,7 +4052,7 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     if (!returned) fail(value, `Imported collection transform "${value.expression.text}" must contain only one returned collection expression`)
     const transformSource = renderedCollectionSource(returned, new Map([[parameter.name.text, parameter.name.text]]), undefined, fail, new Set(), new Set(), new Set([parameter.name.text]))
     if (!transformSource?.state || transformSource.state.text !== parameter.name.text || transformSource.selectorStates.size) fail(value, `Imported collection transform "${value.expression.text}" must return a supported pure pipeline rooted only in its parameter`)
-    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
     if (!source) fail(value.arguments[0], `Imported collection transform "${value.expression.text}" requires a supported collection argument`)
     return { ...source, selector: [...source.selector, ...transformSource.selector] }
   }
@@ -4015,7 +4060,7 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     const method = value.expression.name.text
     if (method === "filter") {
       if (value.arguments.length !== 1) fail(value, "Rendered collection filter() requires one inline predicate")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
       if (!source) return undefined
       const parameters = collectionParameters(value.arguments[0], "Rendered collection filter()", fail)
       const selectorStates = new Set(source.selectorStates)
@@ -4023,7 +4068,7 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     }
     if (method === "flatMap") {
       if (value.arguments.length !== 1) fail(value, "Rendered collection flatMap() requires one inline projector")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
       if (!source) return undefined
       const parameters = collectionParameters(value.arguments[0], "Rendered collection flatMap()", fail)
       const field = directProperty(value.arguments[0].body, parameters.item)
@@ -4033,7 +4078,7 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     }
     if (method === "slice") {
       if (value.arguments.length < 1 || value.arguments.length > 2) fail(value, "Rendered collection slice() requires a start and optional end")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
       if (!source) return undefined
       const selectorStates = new Set(source.selectorStates)
       const start = collectionExpression(value.arguments[0], {}, fail, stateNames, selectorStates)
@@ -4042,7 +4087,7 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
     }
     if (method === "toSorted") {
       if (value.arguments.length !== 1) fail(value, "Rendered collection toSorted() requires one inline comparator")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
       if (!source) return undefined
       const comparator = value.arguments[0]
       const parameters = collectionParameters(comparator, "Rendered collection toSorted()", fail)
@@ -4055,7 +4100,7 @@ function renderedCollectionSource(expression, setters, declarations, fail, alias
   }
   if (isArrayFromCall(value)) {
     if (value.arguments.length < 1 || value.arguments.length > 2) fail(value, "Rendered Array.from() requires an anchor and optional inline mapper")
-    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context)
+    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
     if (!source) return undefined
     let mapper
     if (value.arguments[1]) {
