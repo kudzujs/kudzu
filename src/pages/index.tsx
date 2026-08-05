@@ -44,16 +44,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.8.1">
-        <span>v0.8.1</span>
-        <strong>Custom-hook reset actions</strong>
+      <a className="release-banner" href="/releases/0.8.3">
+        <span>v0.8.3</span>
+        <strong>Native interaction composition</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.8.1</span> BATCH HOOK ACTIONS</p>
+            <p className="eyebrow"><span>v0.8.3</span> NATIVE INTERACTIONS</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">

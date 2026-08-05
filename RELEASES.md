@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.8.3 - Native interaction composition
+
+Kudzu 0.8.3 characterizes ordinary clipboard, debounce, and accessible SVG point interactions through existing route-specific capabilities instead of dedicated browser runtimes.
+
+### New in 0.8.3
+
+- Direct async handlers and directly returned relative custom-hook callbacks may call native `navigator.clipboard.writeText()` while application state owns success and permission-failure feedback.
+- Dependency effects may own debounced synchronization with `setTimeout()` and directly returned `clearTimeout()` cleanup; dependency changes and conditional unmount cancel pending work.
+- Calculated keyed SVG points may use focus, click, Space, and Enter handlers to update parent state rendered in an external accessible HTML tooltip.
+- Retained SVG rows preserve DOM identity and read the latest point labels after recalculation and reorder.
+- Clipboard, timer, and chart-specific runtimes remain absent, and unaffected static sibling routes continue to ship zero JavaScript.
+- The complete suite passes 133/133 tests with focused Chrome coverage for clipboard success/failure, latest-only debounce, unmount cleanup, fresh remount, accessible tooltip input, and retained SVG identity.
+
+### Boundary
+
+Debounce requires explicit effect ownership and direct cleanup. Private timer refs, unowned delayed event writes, intervals, arbitrary callback graphs, keyed-item SVG conditions, nested calculated SVG lists, and chart runtimes remain unsupported until a reduced migration fixture proves they are necessary.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.3
+```
+
 ## 0.8.2 - Calculated keyed collections
 
 Kudzu 0.8.2 lets one direct array field from a synchronous relative calculation result drive an intrinsic keyed list, preserving static HTML and existing DOM ownership while improving list and navigation hot paths.

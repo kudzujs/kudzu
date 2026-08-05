@@ -24,6 +24,14 @@ export function useCounter() {
     setOffset(-1)
     setSelection(null)
   }, [])
+  const copy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(String(count))
+      setStatus("copied")
+    } catch {
+      setStatus("copy failed")
+    }
+  }, [count])
   useEffect(() => {
     try {
       const raw = globalThis.localStorage.getItem("kudzu-counter")
@@ -40,5 +48,5 @@ export function useCounter() {
       globalThis.localStorage.setItem("kudzu-counter", String(count))
     } catch {}
   }, [storageReady, count])
-  return { count, setCount, status, setStatus, offset, setOffset, selection, setSelection, increment, reset }
+  return { count, setCount, status, setStatus, offset, setOffset, selection, setSelection, increment, reset, copy }
 }

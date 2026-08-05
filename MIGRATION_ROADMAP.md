@@ -102,20 +102,27 @@ This queue orders the next investigations by general migration value. Start only
 
 - A direct custom-hook reset action may batch literal updates across its returned state/setter pairs. Imported callback literals are synthesized into existing behavior commands, and the FIRE Standard reset now remains owned by its hook while URL and storage effects observe the same commit.
 
-### Completed After 0.8.1
+### Completed In 0.8.2
 
 - A direct array field from one top-level synchronous relative calculation result may feed a keyed intrinsic list. Route-specific evaluator ESM refreshes a compiler-owned array anchor before the existing list reconciler runs, preserving keyed SVG namespace, latest item handlers, and DOM identity without a chart or component runtime.
 - The FIRE Standard projection exposes eleven calculated yearly points as accessible keyed SVG circles. Input commits update coordinates and labels while retaining every year node alongside the existing reactive path.
 
-### 1. Timed And Platform Custom Actions
+### Characterized In 0.8.3
 
-Investigate debounced update and clipboard copy only when a migration fixture requires them. Compile each proven action to existing event/effect capabilities rather than serializing arbitrary closures.
+- A direct clipboard action returned by a relative custom hook compiles through existing async native-handler ESM, including application-owned success and rejection state, without a clipboard runtime.
+- A dependency effect using `setTimeout()` with directly returned `clearTimeout()` cleanup provides debounced synchronization; dependency changes and conditional unmount cancel pending work through existing effect ownership.
+- The React/Vite migration fixture verifies latest-only debounce commits, unmount cancellation, fresh remount, clipboard success/failure, and zero JavaScript on its static sibling.
+- Parent state plus focus, keyboard, and click handlers on calculated keyed SVG points drives an external accessible tooltip through existing native-handler and binding ESM. Recalculation preserves point identity and gives retained handlers the latest labels; the static sibling remains JavaScript-free.
+
+### 1. Timer-Backed Custom Actions
+
+Direct clipboard callbacks and effect-owned debounce require no new framework capability. Investigate a returned custom-hook action with private timer ownership only when a migration fixture proves that the ordinary effect form is insufficient. Compile the exact proven action to existing event/effect ownership rather than serializing arbitrary closures or adding a scheduler.
 
 Acceptance: callback identity and captures are statically known, timers and cleanup have explicit ownership, and unsupported indirect calls fail at build time.
 
 ### 2. Expanded Chart Interaction
 
-Investigate accessible selected-point tooltips and detailed Withdrawal/Debt series after a reduced migration fixture proves the interaction. Prefer direct SVG bindings and keyed SVG rows; add no chart runtime unless native output is measurably insufficient.
+Accessible selected-point tooltips require no new framework capability. Investigate detailed Withdrawal/Debt series only after a reduced migration fixture proves additional interaction is needed. Prefer direct SVG bindings and keyed SVG rows; add no chart runtime unless native output is measurably insufficient.
 
 Acceptance: accessible static SVG is present initially, updates preserve element identity, and unaffected routes ship no chart JavaScript.
 

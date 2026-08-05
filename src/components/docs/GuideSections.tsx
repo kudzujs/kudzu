@@ -251,6 +251,11 @@ useEffect(async () => {
   setItems(await response.json())
 }, [])`} />
     <p>Effects may update text, attributes, conditions, and keyed lists. They may directly return an inline cleanup function. A document effect cleans up when the document leaves outside the browser back-forward cache; an effect in a conditional branch or supported keyed row mounts and cleans up with that DOM owner.</p>
+    <p>Use the same ownership for debounced synchronization: create <code>setTimeout()</code> work in a dependency effect and directly return <code>clearTimeout()</code>. Dependency changes and DOM/route removal cancel pending work without a timer runtime.</p>
+    <CodeBlock code={`useEffect(() => {
+  const timer = setTimeout(() => setSaved(draft), 150)
+  return () => clearTimeout(timer)
+}, [draft])`} />
     <CodeBlock code={`useEffect(() => {
   const onResize = () => console.log(window.innerWidth)
   window.addEventListener("resize", onResize)
@@ -305,7 +310,7 @@ return <>
       <div><code>any attribute</code><p>Patches standard, <code>aria-*</code>, and <code>data-*</code> attributes without a compiler allowlist.</p></div>
     </div>
     <h3>Inline SVG</h3>
-    <p>Static and reactive SVG presentation props use familiar React spellings. Kudzu preserves native names such as <code>viewBox</code> and maps aliases such as <code>fillRule</code>, <code>clipRule</code>, <code>strokeWidth</code>, <code>strokeLinecap</code>, <code>strokeLinejoin</code>, opacity/color props, <code>textAnchor</code>, and <code>vectorEffect</code> to SVG attributes. Reactive conditionals and flat intrinsic keyed lists create replacement nodes in the surrounding SVG namespace while preserving keyed identity.</p>
+    <p>Static and reactive SVG presentation props use familiar React spellings. Kudzu preserves native names such as <code>viewBox</code> and maps aliases such as <code>fillRule</code>, <code>clipRule</code>, <code>strokeWidth</code>, <code>strokeLinecap</code>, <code>strokeLinejoin</code>, opacity/color props, <code>textAnchor</code>, and <code>vectorEffect</code> to SVG attributes. Reactive conditionals and flat intrinsic keyed lists create replacement nodes in the surrounding SVG namespace while preserving keyed identity. For an accessible selected-point tooltip, use ordinary focus, keyboard, and click handlers on keyed SVG points to update parent state rendered in an external HTML element with <code>role="tooltip"</code>; retained handlers read the latest point after updates.</p>
     <CodeBlock code={`<svg viewBox="0 0 24 24">
   {active && <path fillRule="evenodd" strokeWidth={2} strokeLinecap="round" />}
   {points.map(point => <circle key={point.id} cx={point.x} cy={point.y} r="2" />)}

@@ -153,6 +153,7 @@ export function EventsSection() {
     <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
     <p>Native handlers use direct DOM listeners with normal <code>currentTarget</code>, bubbling, default-action, and propagation semantics. Handler modules load before listener registration, so <code>preventDefault()</code>, <code>stopPropagation()</code>, and <code>stopImmediatePropagation()</code> work synchronously as expected.</p>
     <p>Native handlers may call default, named, or namespace helpers from relative TypeScript modules. Kudzu bundles the reachable helper graph into handler ESM and shared chunks. Helper runtime imports must remain relative; package imports, dynamic imports, JSX helpers, and direct imported event callbacks are rejected.</p>
+    <p>Direct async handlers and directly returned relative custom-hook callbacks may use native <code>navigator.clipboard.writeText()</code>. Keep permission failure handling and user feedback in application state; Kudzu emits no clipboard API or runtime of its own.</p>
     <p>Object refs resolve DOM elements when a native handler reads <code>current</code>. They initialize with <code>null</code> and need no effect or hydration lifecycle.</p>
     <CodeBlock code={`const inputRef = useRef<HTMLInputElement>(null)
 
@@ -167,6 +168,14 @@ return <><input ref={inputRef} /><button onClick={() => inputRef.current?.focus(
 async function loadStatus() {
   const response = await fetch("/api/status")
   setStatus(normalizeStatus(await response.json()))
+}`} />
+    <CodeBlock code={`const copy = async () => {
+  try {
+    await navigator.clipboard.writeText(value)
+    setStatus("copied")
+  } catch {
+    setStatus("copy failed")
+  }
 }`} />
   </section>
 }

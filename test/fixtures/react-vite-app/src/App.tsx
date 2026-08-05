@@ -18,10 +18,28 @@ function SecondaryCounter() {
   return <button id="secondary" onClick={increment}>Secondary {secondary}</button>
 }
 
+function DebouncedEditor() {
+  const [draft, setDraft] = useMenuState("")
+  const [saved, setSaved] = useMenuState("")
+  runEffect(() => {
+    const timer = setTimeout(() => {
+      document.body.dataset.debounceCommit = draft
+      setSaved(draft)
+    }, 80)
+    return () => clearTimeout(timer)
+  }, [draft])
+
+  return <section id="debounced-editor">
+    <input id="draft" value={draft} onInput={event => setDraft(event.currentTarget.value)} />
+    <output id="debounced">{saved}</output>
+  </section>
+}
+
 export default function App() {
   const typeChecked: TypeOnly = { label: "Compiler-grown UI" }
   const [menuOpen, setMenuOpen] = useMenuState(false)
-  const { count, setCount, status, setStatus, offset, setOffset, selection, setSelection, increment, reset } = useCounter()
+  const { count, setCount, status, setStatus, offset, setOffset, selection, setSelection, increment, reset, copy } = useCounter()
+  const [editorOpen, setEditorOpen] = useMenuState(true)
   const [items, setItems] = React.useState([{ id: "a", label: "Alpha", visible: true }, { id: "b", label: "Beta", visible: false }])
   const doubled = count * 2
   const summary = calculateSummary(count, 3)
@@ -42,6 +60,9 @@ export default function App() {
       <small>{typeChecked.label}</small>
       <button id="counter" onClick={increment}>Count {count}</button>
       <button id="reset" onClick={reset}>Reset</button>
+      <button id="copy" onClick={copy}>Copy count</button>
+      <button id="editor-toggle" onClick={() => setEditorOpen(!editorOpen)}>Toggle editor</button>
+      {editorOpen && <DebouncedEditor />}
       <output id="status">{status}</output>
       <output id="offset">{offset}</output>
       <output id="selection">{selection}</output>

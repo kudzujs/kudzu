@@ -3,6 +3,7 @@ import { calculate } from "../calculate"
 
 export default function Page() {
   const [phase, setPhase] = useState(0)
+  const [selected, setSelected] = useState("")
   const result = calculate(phase)
 
   return <main>
@@ -11,7 +12,8 @@ export default function Page() {
     <button data-phase="3" onClick={() => setPhase(3)}>Remove again</button>
     <output data-total>{result.total}</output>
     <svg data-chart viewBox="0 0 100 50" aria-label="Calculated points">
-      {result.points.map(point => <circle key={point.id} data-point={point.id} cx={point.x} cy={point.y} r="4" aria-label={point.label} onClick={() => { document.body.dataset.selected = point.label }} />)}
+      {result.points.map(point => <circle key={point.id} data-point={point.id} cx={point.x} cy={point.y} r="4" role="button" tabIndex={0} aria-label={point.label} aria-describedby="point-tooltip" onClick={() => { document.body.dataset.selected = point.label; setSelected(point.label) }} onFocus={() => setSelected(point.label)} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelected(point.label) } }} />)}
     </svg>
+    <p id="point-tooltip" role="tooltip" aria-live="polite" hidden={!selected}>{selected || "No point selected"}</p>
   </main>
 }
