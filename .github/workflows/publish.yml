@@ -46,7 +46,7 @@ jobs:
           if npm view "@kudzujs/core@$(node -p "require('./package.json').version")" version >/dev/null 2>&1; then
             echo "@kudzujs/core is already published"
           else
-            npm publish
+            npm publish --ignore-scripts
           fi
 
       - name: Publish create-kudzu
@@ -55,5 +55,5 @@ jobs:
           if npm view "create-kudzu@$(node -p "require('./package.json').version")" version >/dev/null 2>&1; then
             echo "create-kudzu is already published"
           else
-            npm publish
+            npm publish --ignore-scripts
           fi
