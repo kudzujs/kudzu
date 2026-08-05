@@ -1,0 +1,59 @@
+name: Publish npm
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to publish, for example v0.7.30
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - run: npm install --global "npm@^11.5.1"
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+
+      - name: Verify release tag
+        run: test "v$(node -p "require('./package.json').version")" = "$RELEASE_TAG"
+
+      - name: Publish @kudzujs/core
+        run: |
+          if npm view "@kudzujs/core@$(node -p "require('./package.json').version")" version >/dev/null 2>&1; then
+            echo "@kudzujs/core is already published"
+          else
+            npm publish
+          fi
+
+      - name: Publish create-kudzu
+        working-directory: packages/create-kudzu
+        run: |
+          if npm view "create-kudzu@$(node -p "require('./package.json').version")" version >/dev/null 2>&1; then
+            echo "create-kudzu is already published"
+          else
+            npm publish
+          fi
