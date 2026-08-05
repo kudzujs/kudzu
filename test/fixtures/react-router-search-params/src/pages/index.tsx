@@ -2,7 +2,7 @@ import { useEffect } from "@kudzujs/core"
 import { Link, useSearchParams as useQuery } from "react-router-dom"
 
 export default function Page() {
-  const [searchParams] = useQuery()
+  const [searchParams, setSearchParams] = useQuery()
   const query = searchParams.get("q")
   const empty = searchParams.get("empty")
   const missing = searchParams.get("missing")
@@ -25,5 +25,16 @@ export default function Page() {
     <p data-encoded-text>{encoded}</p>
     <Link data-next to="/?q=next">Next</Link>
     <button onClick={mark}>Mark</button>
+    <button data-push onClick={() => setSearchParams(previous => {
+      const next = new URLSearchParams(previous)
+      next.set("q", "pushed")
+      return next
+    })}>Push query</button>
+    <button data-replace onClick={() => setSearchParams(previous => {
+      const next = new URLSearchParams(previous)
+      next.set("q", "replaced")
+      next.delete("empty")
+      return next
+    }, { replace: true })}>Replace query</button>
   </main>
 }

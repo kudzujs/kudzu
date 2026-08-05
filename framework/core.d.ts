@@ -13,6 +13,7 @@ export function useReducer<State, Action>(reducer: Reducer<State, Action>, initi
 export function useEffect(effect: () => void | EffectCleanup | Promise<void>, dependencies: readonly EffectDependency[]): void
 export function useParams<Params extends Record<string, string> = Record<string, string>>(): Readonly<Params>
 export function useSearchParam(name: string): string | null
+export function useSearchParamsWriter(): [undefined, undefined]
 
 export interface RefObject<T> {
   readonly current: T | null
@@ -96,6 +97,7 @@ export function renderPage<Props = Record<string, never>>(
     states: Array<{ id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route"; internal?: true }>
     params: Array<{ name: string; id: string }>
     searchParams: Array<{ name: string; id: string }>
+    searchParamsWritable: boolean
     events: Array<{
       event: string
       commands?: Array<[string, string, unknown]>

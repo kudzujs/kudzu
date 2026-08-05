@@ -20,7 +20,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.7.30/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.0/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -34,9 +34,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.7\.30"/)
-  assert.match(release, /Kudzu 0\.7\.30.*Keep the number live.*Format the output/s)
-  assert.match(release, /REACTIVE NUMBER FORMATTING.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.7\.30/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.0"/)
+  assert.match(release, /Kudzu 0\.8\.0.*Keep the React shape.*Own the browser capability/s)
+  assert.match(release, /URL-BACKED CUSTOM HOOKS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.0/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -824,6 +824,27 @@ test("rejects impure reactive JSX locals", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Reactive JSX local expressions cannot call arbitrary functions/)
 })
 
+test("rejects asynchronous imported reactive calculations", () => {
+  const fixture = new URL("./fixtures/reactive-imported-calculation-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Reactive imported calculations must be synchronous functions/)
+})
+
+test("rejects imported reactive calculations without object results", () => {
+  const fixture = new URL("./fixtures/reactive-imported-calculation-shape-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Reactive imported calculations must return a plain object/)
+})
+
+test("rejects imported reactive calculations with fallthrough paths", () => {
+  const fixture = new URL("./fixtures/reactive-imported-calculation-fallthrough-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Reactive imported calculations must return a plain object/)
+})
+
 test("rejects dynamic reactive Intl locales", () => {
   const fixture = new URL("./fixtures/reactive-local-invalid-intl", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
@@ -1482,6 +1503,7 @@ test("migrates aliased and member React hooks from a Vite-shaped app", async t =
   const html = await readFile(new URL("./fixtures/react-vite-app/dist/index.html", import.meta.url), "utf8")
   const staticHtml = await readFile(new URL("./fixtures/react-vite-app/dist/static/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/react-vite-app/.kudzu/App.mjs", import.meta.url), "utf8")
+  const hook = await readFile(new URL("./fixtures/react-vite-app/.kudzu/useCounter.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/react-vite-app/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/app/")
   assert.match(html, /href="\/app\/assets\/app\.css"/)
   assert.match(html, /src="\/app\/assets\/logo\.svg"/)
@@ -1490,8 +1512,11 @@ test("migrates aliased and member React hooks from a Vite-shaped app", async t =
   assert.match(html, /Compiler-grown UI.*Double.*0/s)
   assert.doesNotMatch(component, /\b(?:ReactNode|useCallback|useMemo|useMenuState|runEffect|preserve|derive)\b|React\.useState/)
   assert.match(component, /useState\(false, "menuOpen"\)/)
-  assert.match(component, /useState\(0, "count"\)/)
-  assert.doesNotMatch(component, /const (?:doubled|visibleItems)\b/)
+  assert.match(component, /useCounter\(\)/)
+  assert.match(hook, /useState\(0, "count"\)/)
+  assert.equal(existsSync(new URL("./fixtures/react-vite-app/.kudzu/Unused.mjs", import.meta.url)), false)
+  assert.equal(existsSync(new URL("./fixtures/react-vite-app/.kudzu/TypeOnly.mjs", import.meta.url)), false)
+  assert.doesNotMatch(component, /const visibleItems\b/)
   assert.match(html, /id="memo-items".*data-item="a".*Alpha/s)
   assert.match(html, /id="memo-items" class="items "/)
   assert.doesNotMatch(component, /from "clsx"/)
@@ -1507,6 +1532,13 @@ test("migrates aliased and member React hooks from a Vite-shaped app", async t =
   }
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runReactViteAppBrowserTest(fixture, chrome)
+})
+
+test("rejects aliased relative custom hook results", () => {
+  const fixture = new URL("./fixtures/custom-hook-alias-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Relative custom hook results must use direct identifier shorthand without aliases, defaults, or rest/)
 })
 
 test("rejects dynamic React Router Link destinations", () => {
@@ -1565,7 +1597,7 @@ test("rejects indirect React Router useParams references", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router useParams imports may only be called directly/)
 })
 
-test("lowers read-only React Router search parameters to URL signals", async t => {
+test("lowers writable React Router search parameters to URL signals", async t => {
   const fixture = new URL("./fixtures/react-router-search-params", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/react-router-search-params/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -1582,9 +1614,11 @@ test("lowers read-only React Router search parameters to URL signals", async t =
   assert.doesNotMatch(html, />null</)
   assert.doesNotMatch(staticHtml, /<script|data-k-/)
   assert.match(params, /location\.search.*new URLSearchParams/)
+  assert.match(params, /replaceState.*pushState/)
+  assert.match(params, /__kSetSearchParams/)
   assert.doesNotMatch(params, /location\.pathname|Runtime route|decodeSegment/)
   assert.match(component, /useSearchParam as __kUseSearchParam/)
-  assert.doesNotMatch(component, /useQuery|useSearchParams|react-router-dom/)
+  assert.doesNotMatch(component, /useQuery|react-router-dom|\buseSearchParams\(/)
   assert.deepEqual(plan.params, [])
   assert.deepEqual(plan.searchParams, [
     { name: "q", id: "p0" },
@@ -1593,15 +1627,16 @@ test("lowers read-only React Router search parameters to URL signals", async t =
     { name: "dup", id: "p3" },
     { name: "encoded", id: "p4" }
   ])
+  assert.equal(plan.searchParamsWritable, true)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runSearchParamBrowserTest(fixture, chrome)
 })
 
-test("rejects React Router search parameter setters", () => {
+test("rejects indirect React Router search parameter updaters", () => {
   const fixture = new URL("./fixtures/react-router-search-params-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router useSearchParams must use one top-level const \[params\] = useSearchParams\(\) without a setter/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router search parameter setters require one synchronous inline updater with one identifier parameter/)
 })
 
 test("rejects dynamic React Router search parameter names", () => {
@@ -1631,6 +1666,20 @@ test("filters imported static collections with memoized state selectors", async 
   assert.equal(existsSync(new URL("./fixtures/imported-memo-collection/dist/assets/modules/catalog.js", import.meta.url)), false)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runImportedMemoCollectionBrowserTest(fixture, chrome)
+})
+
+test("folds directly mapped imported static collections without JavaScript", async t => {
+  const fixture = new URL("./fixtures/imported-static-fold", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/imported-static-fold/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/imported-static-fold/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/imported-static-fold/dist/index.html", import.meta.url), "utf8")
+  assert.match(html, /<ul><li>Alpha<\/li><li>Beta<\/li><\/ul>/)
+  assert.doesNotMatch(html, /<script|data-k-/)
+  assert.match(await readFile(new URL("./fixtures/imported-static-fold/dist/shadow/index.html", import.meta.url), "utf8"), /<li>Gamma<\/li>/)
 })
 
 test("rejects missing imported collection memo dependencies", async t => {
@@ -1791,7 +1840,7 @@ test("specializes relative imported state-backed list components", async t => {
 
 test("rejects package imported and cyclic re-exported keyed list components", () => {
   for (const [fixture, message] of [
-    ["imported-list-invalid-package", /must be declared locally or imported from a relative TypeScript module/],
+    ["imported-list-invalid-package", /Package import "Row" may only be referenced directly inside JSX event handlers/],
     ["imported-list-invalid-cycle", /Imported keyed list component re-export cycle/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL(`./fixtures/${fixture}`, import.meta.url), encoding: "utf8" })
@@ -2363,6 +2412,41 @@ test("does not promote effect-only builds to the shared runtime", async t => {
   assert.equal(existsSync(new URL("./fixtures/effect-isolation/dist/assets/kudzu-serialization.js", import.meta.url)), false)
 })
 
+test("bundles package imports used only by direct event handlers", async t => {
+  const fixture = new URL("./fixtures/event-package", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/event-package/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/event-package/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/event-package/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/event-package/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  assert.doesNotMatch(component, /typescript|\bts\b/)
+  assert.match(handler, /5\.9\./)
+})
+
+test("rejects package imports used during rendering", () => {
+  const fixture = new URL("./fixtures/event-package-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Package import "ts" may only be referenced directly inside JSX event handlers/)
+})
+
+test("rejects side-effect package imports", () => {
+  const fixture = new URL("./fixtures/event-package-side-effect-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Side-effect package import "typescript" is not supported/)
+})
+
+test("rejects dynamic package imports", () => {
+  const fixture = new URL("./fixtures/event-package-dynamic-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Dynamic package import "typescript" is not supported/)
+})
+
 test("compiles normal async JavaScript handlers to external ESM", async t => {
   const fixture = new URL("./fixtures/native", import.meta.url)
   t.after(async () => {
@@ -2573,7 +2657,7 @@ test("rejects unsupported imports in client helpers", async t => {
     await rm(new URL("./fixtures/native-invalid-require/dist", import.meta.url), { recursive: true, force: true })
   })
   for (const [fixture, message] of [
-    ["native-invalid-helper", /Imported client helpers may only use relative runtime imports/],
+    ["native-invalid-helper", /Package import "ts" may only be referenced directly inside JSX event handlers/],
     ["native-invalid-require", /require\(\) is not supported in imported client helpers/]
   ]) {
     const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], {
@@ -4303,18 +4387,24 @@ async function runReactViteAppBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
-  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/app/browser-test.js"></script></body>'))
+  await writeFile(htmlUrl, html.replace("<head>", '<head><script>localStorage.setItem("kudzu-counter", "4")</script>').replace("</body>", '<script type="module" src="/app/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
   const counter = document.querySelector("#counter")
+  const secondary = document.querySelector("#secondary")
   const menu = document.querySelector("#menu")
+  await wait()
+  if (counter.textContent.trim() !== "Count 4") throw new Error("storage-restore")
   counter.click()
   await wait()
-  if (counter.textContent.trim() !== "Count 1" || document.querySelector("#doubled").textContent.trim() !== "Double 2") throw new Error("member-state")
+  if (counter.textContent.trim() !== "Count 5" || document.querySelector("#doubled").textContent.trim() !== "Double 10" || document.querySelector("#summary").textContent.trim() !== "Summary 15 / 15" || location.search !== "?count=5" || localStorage.getItem("kudzu-counter") !== "5") throw new Error("member-state")
   counter.click()
   await wait()
-  if (counter.textContent.trim() !== "Count 2" || document.querySelector("#doubled").textContent.trim() !== "Double 4") throw new Error("callback-state")
+  if (counter.textContent.trim() !== "Count 6" || document.querySelector("#doubled").textContent.trim() !== "Double 12" || document.querySelector("#summary").textContent.trim() !== "Summary 18 / 14" || location.search !== "?count=6" || localStorage.getItem("kudzu-counter") !== "6") throw new Error("callback-state")
+  secondary.click()
+  await wait()
+  if (secondary.textContent.trim() !== "Secondary 12" || counter.textContent.trim() !== "Count 6") throw new Error("callback-owner")
   const firstItem = document.querySelector('#memo-items [data-item="a"]')
   document.querySelector("#show-items").click()
   await wait()
@@ -4945,6 +5035,15 @@ try {
   if (document.querySelector("[data-next]").getAttribute("href") !== "/?q=next") throw new Error("link")
   document.querySelector("button").click()
   await waitFor(() => document.body.dataset.eventQuery === expected, "event")
+  const initialHistory = history.length
+  document.querySelector("[data-push]").click()
+  await waitFor(() => document.querySelector("[data-query-text]").textContent === "pushed", "push")
+  if (location.search !== "?q=pushed&empty=&dup=first&dup=second&encoded=%2Foak" || history.length !== initialHistory + 1) throw new Error("push-history")
+  document.querySelector("[data-replace]").click()
+  await waitFor(() => document.querySelector("[data-query-text]").textContent === "replaced", "replace")
+  if (location.search !== "?q=replaced&dup=first&dup=second&encoded=%2Foak" || history.length !== initialHistory + 1 || document.querySelector("[data-empty-text]").textContent !== "") throw new Error("replace-history")
+  history.back()
+  await waitFor(() => document.querySelector("[data-query-text]").textContent === "vine leaf", "popstate")
   document.body.dataset.searchParamTest = "pass"
 } catch (error) {
   document.body.dataset.searchParamTest = "fail-" + error.message

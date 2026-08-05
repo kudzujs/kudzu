@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.8.0 - URL-backed custom hooks
+
+Kudzu 0.8.0 migrates practical relative React custom hooks that combine local state, effects, direct actions, writable URL search parameters, and guarded browser storage while preserving static HTML and route-specific capabilities.
+
+### New in 0.8.0
+
+- Named or default zero-argument custom hooks imported from relative TypeScript modules can expose direct shorthand `useState` value/setter pairs and callbacks that capture those states.
+- React Router `useSearchParams()` accepts a top-level `[params, setParams]` tuple. Direct browser callbacks may pass one synchronous inline updater and optionally exactly `{ replace: true }`.
+- Query writes use native `URLSearchParams` and History APIs, immediately recommit affected route signals, and follow browser `popstate` without an SPA router.
+- Custom-hook mount and dependency effects can restore validated values from `localStorage`, persist subsequent state, and keep deterministic build-time fallbacks.
+- Page entries now define the compiled TypeScript graph, so unreachable migration modules no longer block a build while reachable invalid imports retain diagnostics.
+- Direct maps over imported immutable JSON-safe arrays fold to static HTML; relative calculation helpers can drive direct reactive result fields through route binding ESM.
+- Package imports referenced directly inside JSX event handlers erase from build modules and bundle only into route handlers, enabling ExcelJS export without package execution during rendering.
+- FIRE migration validation covers all fourteen routes, production Tailwind/Inter assets, URL and storage restoration, reset, presets, native SVG charts, Quiz and keyed Debt flows, and a real Excel workbook buffer.
+- Static sibling routes continue to ship no JavaScript; React, React Router, hydration, a VDOM, and a browser hook dispatcher remain absent.
+
+### Boundary
+
+Custom hooks must be synchronous zero-argument relative imports with one final direct shorthand object return. Caller destructuring cannot use aliases, defaults, or rest. Writable search parameters require direct inline updater callbacks. Relative calculation results require direct static field reads. Package imports must be referenced directly inside intrinsic JSX event callbacks. Dynamic query reads, direct-value setters, arbitrary options, mutable value refs, generic reactive objects, calculated collection fields, helper-indirect package use, and callback graphs with private captures remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.0
+```
+
 ## 0.7.30 - Reactive number formatting
 
 Kudzu 0.7.30 supports fixed-locale `Intl.NumberFormat` display chains in reactive JSX locals, restoring conventional comma-formatted controlled inputs while preserving narrow render-call validation.

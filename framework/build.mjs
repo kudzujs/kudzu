@@ -40,12 +40,16 @@ export async function build({ quiet = false, minify = true } = {}) {
   await mkdir(outputDirectory, { recursive: true })
 
   const projectFiles = await walk(sourceDirectory)
-  const sourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file) && !file.endsWith(".d.ts")).sort()
+  const allSourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file) && !file.endsWith(".d.ts")).sort()
   const configuredStyleSources = new Set(configuredStyles.sources.map(style => style.source))
   const discoveredCssFiles = projectFiles.filter(file => file.toLowerCase().endsWith(".css") && !configuredStyleSources.has(file)).sort()
-  if (!sourceFiles.length) throw new Error("No TypeScript files found in src/")
+  if (!allSourceFiles.length) throw new Error("No TypeScript files found in src/")
+  const allSourceFileSet = new Set(allSourceFiles)
+  const sourceIndex = new Map(await Promise.all(allSourceFiles.map(async file => [file, await readFile(file, "utf8")])))
+  const pageFiles = allSourceFiles.filter(file => file.startsWith(`${pagesDirectory}${sep}`) && file.endsWith(".tsx"))
+  if (!pageFiles.length) throw new Error("No pages found in src/pages/")
+  const sourceFiles = reachableSourceFiles(pageFiles, allSourceFileSet, sourceIndex)
   const sourceFileSet = new Set(sourceFiles)
-  const sourceIndex = new Map(await Promise.all(sourceFiles.map(async file => [file, await readFile(file, "utf8")])))
   const staticFiles = await safeStaticFiles(projectFiles)
   const cssFiles = orderSourceStyles(discoveredCssFiles, sourceFiles, sourceIndex, staticFiles)
   const importedAssets = new Set()
@@ -58,9 +62,6 @@ export async function build({ quiet = false, minify = true } = {}) {
     const handlerModule = await compile(file, sourceFileSet, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences)
     if (handlerModule) handlerModules.push(handlerModule)
   }
-
-  const pageFiles = sourceFiles.filter(file => file.startsWith(`${pagesDirectory}${sep}`) && file.endsWith(".tsx"))
-  if (!pageFiles.length) throw new Error("No pages found in src/pages/")
 
   let behaviorCount = 0
   let regularBehaviorCount = 0
@@ -153,7 +154,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       const usesDependencyRuntime = !navigable && hasDependencies && !result.plan.effects.some(effect => effect.owner) && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
       pageEntries.push({ route, html: result.html, usesDependencyRuntime })
       plans.push({ route: routePath, ...result.plan })
-      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, searchParams: result.plan.searchParams, usesDependencyRuntime, navigable })
+      if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, searchParams: result.plan.searchParams, searchParamsWritable: result.plan.searchParamsWritable, usesDependencyRuntime, navigable })
       if (result.hasEffects) effectEntries.push({ path: effectPath, effects: runtimeEffects(result.plan.effects, navigable), paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime, navigable })
       if (result.plan.events.some(event => event.native)) nativeEntries.push({
         path: nativePath,
@@ -386,7 +387,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const entry of paramEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, entry.searchParams, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify)
+    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, entry.searchParams, entry.searchParamsWritable, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify)
   }
   for (const entry of effectEntries) {
     const output = join(assetsDirectory, entry.path)
@@ -403,7 +404,7 @@ export async function build({ quiet = false, minify = true } = {}) {
     await mkdir(resolve(output, ".."), { recursive: true })
     await writeJavaScript(output, await compileClientModule(file, sourceFileSet, staticFiles, importedAssets, cssModules, base), minify)
   }
-  if (clientModules.length) {
+  if (clientModules.length || emittedHandlerModules.some(module => module.hasPackageImports)) {
     await bundle({
       entryPoints: emittedHandlerModules.map(module => join(assetsDirectory, module.path)),
       outbase: join(assetsDirectory, "handlers"),
@@ -1406,9 +1407,10 @@ async function invokeCleanup() {
 }${disposal}`
 }
 
-function printParamEntry(schema, params, searchParams, output, assetsDirectory, base, runtimeName, navigable) {
-  const signature = searchParams.length ? "pathname, search" : "pathname"
-  const prefix = navigable ? `export function initializeParams(${signature}) {\n` : `${schema ? "let pathname = location.pathname\n" : ""}${searchParams.length ? "let search = location.search\n" : ""}`
+function printParamEntry(schema, params, searchParams, searchParamsWritable, output, assetsDirectory, base, runtimeName, navigable) {
+  const hasSearch = searchParams.length || searchParamsWritable
+  const signature = hasSearch ? "pathname, search" : "pathname"
+  const prefix = navigable ? `export function initializeParams(${signature}) {\n${searchParamsWritable ? "globalThis.__kSetSearchParams = setSearchParams\n" : ""}` : `${schema ? "let pathname = location.pathname\n" : ""}${hasSearch ? "let search = location.search\n" : ""}`
   const suffix = navigable ? "\n}" : ""
   const pathname = schema ? `const base = ${inlineJson(browserPath(base).slice(1).split("/").filter(Boolean).map(segment => decodeURIComponent(segment)))}
 const schema = ${inlineJson(schema.segments)}
@@ -1443,15 +1445,35 @@ function decodeSegment(raw, param) {
   return value
 }
 ` : ""
-  const query = searchParams.length ? `const query = new URLSearchParams(search)
+  const searchInitializer = searchParamsWritable && searchParams.length ? `function initializeSearch(search) {
+const query = new URLSearchParams(search)
+for (const param of ${inlineJson(searchParams)}) {
+  const value = query.get(param.name)
+  browserState.set(param.id, value)
+  commitDom(param.id, value)
+}
+}
+` : ""
+  const query = searchParams.length ? searchParamsWritable ? "initializeSearch(search)\n" : `const query = new URLSearchParams(search)
 for (const param of ${inlineJson(searchParams)}) {
   const value = query.get(param.name)
   browserState.set(param.id, value)
   commitDom(param.id, value)
 }
 ` : ""
+  const writer = searchParamsWritable ? `
+function setSearchParams(update, replace) {
+  const next = update(new URLSearchParams(location.search))
+  if (!(next instanceof URLSearchParams)) throw new Error("React Router search parameter updater must return URLSearchParams")
+  const url = new URL(location.href)
+  url.search = next.toString()
+  history[replace ? "replaceState" : "pushState"](null, "", url)
+  ${searchParams.length ? "initializeSearch(location.search)" : ""}
+}
+${navigable ? "" : `globalThis.__kSetSearchParams = setSearchParams
+addEventListener("popstate", () => ${searchParams.length ? "initializeSearch(location.search)" : "undefined"})`}` : ""
   return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}
-${prefix}${pathname}${query}${suffix}`
+${searchInitializer}${prefix}${pathname}${query}${suffix}${writer}`
 }
 
 function hasCaptureType(value, type) {
@@ -1758,7 +1780,7 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   if (!nativeHandlers.length && !effectHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
   const callbacks = [...nativeHandlers, ...effectHandlers]
   const moduleSource = [
-    printClientImports(callbacks.flatMap(handler => handler.imports), handlerPath),
+    printClientImports([...callbacks, ...reactiveBindings].flatMap(handler => handler.imports ?? []), handlerPath),
     ...callbacks.map(handler => printNativeHandler(handler)),
     ...reactiveBindings.map(entry => printReactiveBinding(entry)),
     ...listExpressions.map(entry => printListExpression(entry))
@@ -1769,7 +1791,7 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   })
   const moduleErrors = moduleResult.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
-  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports] }
+  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports], hasPackageImports: [...callbacks, ...reactiveBindings].some(entry => entry.imports?.some(import_ => import_.package)) }
 }
 
 function emittedPackageReference(source, file, packages) {
@@ -1782,6 +1804,30 @@ function emittedPackageReference(source, file, packages) {
   }
   visit(sourceFile)
   return found
+}
+
+function reachableSourceFiles(entries, sourceFiles, sourceIndex) {
+  const reachable = new Set()
+  const queue = [...entries]
+  while (queue.length) {
+    const file = queue.pop()
+    if (reachable.has(file)) continue
+    reachable.add(file)
+    const sourceFile = parseSourceFile(file, sourceIndex.get(file))
+    const visit = node => {
+      const specifier = (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && runtimeModuleReference(node) && node.moduleSpecifier
+      if (specifier && ts.isStringLiteral(specifier) && specifier.text.startsWith(".") && !isStaticImport(specifier.text)) {
+        try { queue.push(resolveSourceImport(file, specifier.text, sourceFiles)) } catch {}
+      }
+      const worker = relativeWorkerCandidate(node, sourceFile)
+      if (worker && ts.isStringLiteral(worker.url.arguments[0]) && worker.url.arguments[0].text.endsWith(".worker.ts")) {
+        try { queue.push(resolveSourceImport(file, worker.url.arguments[0].text, sourceFiles)) } catch {}
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(sourceFile)
+  }
+  return [...reachable].sort()
 }
 
 function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
@@ -1814,8 +1860,11 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
 
   let searchHelper = "__kUseSearchParam"
   while (sourceFile.text.includes(searchHelper)) searchHelper += "_"
+  let searchWriterHelper = "__kUseSearchParamsWriter"
+  while (sourceFile.text.includes(searchWriterHelper)) searchWriterHelper += "_"
   const searchDeclarations = new Set()
   const searchReads = new Map()
+  const searchWrites = new Map()
   const searchObjects = []
   const collectSearchHooks = node => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && searchHooks.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
@@ -1823,29 +1872,31 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
       const statement = declaration?.parent?.parent
       const owner = nearestFunction(node)
       const first = ts.isVariableDeclaration(declaration) && ts.isArrayBindingPattern(declaration.name) ? declaration.name.elements[0] : undefined
-      if (node.questionDotToken || node.arguments.length || node.typeArguments?.length || !ts.isVariableDeclaration(declaration) || declaration.initializer !== node || !isLocalConst(declaration) || !owner || statement?.parent !== owner.body || !ts.isBindingElement(first) || !ts.isIdentifier(first.name) || declaration.name.elements.length !== 1) {
-        throw sourceNodeError(node, sourceFile, "React Router useSearchParams must use one top-level const [params] = useSearchParams() without a setter")
+      const second = ts.isVariableDeclaration(declaration) && ts.isArrayBindingPattern(declaration.name) ? declaration.name.elements[1] : undefined
+      if (node.questionDotToken || node.arguments.length || node.typeArguments?.length || !ts.isVariableDeclaration(declaration) || declaration.initializer !== node || !isLocalConst(declaration) || !owner || statement?.parent !== owner.body || !ts.isBindingElement(first) || !ts.isIdentifier(first.name) || declaration.name.elements.length > 2 || second && (!ts.isBindingElement(second) || !ts.isIdentifier(second.name))) {
+        throw sourceNodeError(node, sourceFile, "React Router useSearchParams must initialize one top-level const [params] or [params, setParams] binding")
       }
-      const entry = { name: first.name.text, declaration, statement, owner }
+      const entry = { name: first.name.text, setter: second?.name.text, declaration, statement, owner }
       searchDeclarations.add(declaration)
       searchObjects.push(entry)
     }
     ts.forEachChild(node, collectSearchHooks)
   }
   collectSearchHooks(sourceFile)
-  const localBindingShadowed = (node, entry) => {
+  const localBindingShadowed = (node, entry, name = entry.name) => {
     for (let current = node.parent; current && current !== entry.owner; current = current.parent) {
-      if (isFunctionLike(current) && (current.parameters.some(parameter => bindingNames(parameter.name).includes(entry.name)) || functionVarDeclaresName(current, entry.name))) return true
-      if (ts.isBlock(current) && current.statements.some(statement => statement !== entry.statement && statementDeclaresName(statement, entry.name))) return true
-      if (ts.isCaseBlock(current) && current.clauses.some(clause => clause.statements.some(statement => statement !== entry.statement && statementDeclaresName(statement, entry.name)))) return true
-      if (ts.isCatchClause(current) && current.variableDeclaration && bindingNames(current.variableDeclaration.name).includes(entry.name)) return true
-      if ((ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current)) && loopDeclaresName(current, entry.name)) return true
+      if (isFunctionLike(current) && (current.parameters.some(parameter => bindingNames(parameter.name).includes(name)) || functionVarDeclaresName(current, name))) return true
+      if (ts.isBlock(current) && current.statements.some(statement => statement !== entry.statement && statementDeclaresName(statement, name))) return true
+      if (ts.isCaseBlock(current) && current.clauses.some(clause => clause.statements.some(statement => statement !== entry.statement && statementDeclaresName(statement, name)))) return true
+      if (ts.isCatchClause(current) && current.variableDeclaration && bindingNames(current.variableDeclaration.name).includes(name)) return true
+      if ((ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current)) && loopDeclaresName(current, name)) return true
     }
     return false
   }
   for (const entry of searchObjects) {
     const collectReads = node => {
       if (ts.isIdentifier(node) && node.text === entry.name && isReferenceIdentifier(node) && !localBindingShadowed(node, entry)) {
+        if (entry.setter && ts.isCallExpression(node.parent) && node.parent.arguments.includes(node) && ts.isIdentifier(node.parent.expression) && node.parent.expression.text === entry.setter) return
         const property = node.parent
         const call = property?.parent
         const declaration = call?.parent
@@ -1862,6 +1913,28 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
       ts.forEachChild(node, collectReads)
     }
     collectReads(entry.owner.body)
+    if (!entry.setter) continue
+    const collectWrites = node => {
+      if (ts.isIdentifier(node) && node.text === entry.setter && isReferenceIdentifier(node) && !localBindingShadowed(node, entry, entry.setter)) {
+        const call = node.parent
+        if (!ts.isCallExpression(call) || call.expression !== node || call.questionDotToken || call.typeArguments?.length || nearestFunction(call) === entry.owner) throw sourceNodeError(node, sourceFile, "React Router search parameter setters may only be called directly from a nested browser callback")
+        if (call.arguments.length < 1 || call.arguments.length > 2) throw sourceNodeError(call, sourceFile, "React Router search parameter setters require one inline updater and optional { replace: true }")
+        const updater = unwrapExpression(call.arguments[0])
+        if ((!ts.isArrowFunction(updater) && !ts.isFunctionExpression(updater)) || updater.asteriskToken || updater.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || updater.parameters.length !== 1 || !ts.isIdentifier(updater.parameters[0].name)) throw sourceNodeError(call.arguments[0], sourceFile, "React Router search parameter setters require one synchronous inline updater with one identifier parameter")
+        let replace = false
+        if (call.arguments.length === 2) {
+          const options = unwrapExpression(call.arguments[1])
+          const property = ts.isObjectLiteralExpression(options) && options.properties.length === 1 ? options.properties[0] : undefined
+          const name = property && ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) ? property.name.text : undefined
+          if (name !== "replace" || property.initializer.kind !== ts.SyntaxKind.TrueKeyword) throw sourceNodeError(call.arguments[1], sourceFile, "React Router search parameter setters only support exactly { replace: true } as a second argument")
+          replace = true
+        }
+        searchWrites.set(call, { updater, replace })
+        return
+      }
+      ts.forEachChild(node, collectWrites)
+    }
+    collectWrites(entry.owner.body)
   }
 
   const navigateDeclarations = new Set()
@@ -1941,11 +2014,21 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
   const importedLink = tag => ts.isIdentifier(tag) && links.has(tag.text) && !isShadowedIdentifier(tag, sourceFile)
   const visitor = node => {
     if (ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => searchDeclarations.has(declaration) || navigateDeclarations.has(declaration))) {
-      const declarations = node.declarationList.declarations.filter(declaration => !searchDeclarations.has(declaration) && !navigateDeclarations.has(declaration))
+      const declarations = node.declarationList.declarations.flatMap(declaration => {
+        if (navigateDeclarations.has(declaration)) return []
+        if (!searchDeclarations.has(declaration)) return [ts.visitEachChild(declaration, visitor, context)]
+        const entry = searchObjects.find(candidate => candidate.declaration === declaration)
+        if (!entry?.setter) return []
+        return [factory.updateVariableDeclaration(declaration, declaration.name, declaration.exclamationToken, declaration.type, factory.createCallExpression(factory.createIdentifier(searchWriterHelper), undefined, []))]
+      })
       if (!declarations.length) return undefined
-      return factory.updateVariableStatement(node, node.modifiers, factory.updateVariableDeclarationList(node.declarationList, declarations.map(declaration => ts.visitEachChild(declaration, visitor, context))))
+      return factory.updateVariableStatement(node, node.modifiers, factory.updateVariableDeclarationList(node.declarationList, declarations))
     }
     if (ts.isCallExpression(node) && searchReads.has(node)) return factory.createCallExpression(factory.createIdentifier(searchHelper), undefined, [searchReads.get(node)])
+    if (ts.isCallExpression(node) && searchWrites.has(node)) {
+      const { updater, replace } = searchWrites.get(node)
+      return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("globalThis"), "__kSetSearchParams"), undefined, [ts.visitNode(updater, visitor), replace ? factory.createTrue() : factory.createFalse()])
+    }
     if (ts.isCallExpression(node) && navigateCalls.has(node)) {
       const { method, destination } = navigateCalls.get(node)
       return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createPropertyAccessExpression(factory.createIdentifier("globalThis"), "location"), method), undefined, [factory.createStringLiteral(destination)])
@@ -1962,7 +2045,7 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
     }
     if (ts.isIdentifier(node) && links.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router Link imports may only be used as direct JSX elements")
     if (ts.isIdentifier(node) && params.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useParams imports may only be called directly")
-    if (ts.isIdentifier(node) && searchHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useSearchParams imports may only be used by the supported read-only pattern")
+    if (ts.isIdentifier(node) && searchHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useSearchParams imports may only initialize the supported top-level tuple binding")
     if (ts.isIdentifier(node) && navigateHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useNavigate imports may only initialize the supported top-level navigate binding")
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-router-dom") {
       const clause = node.importClause
@@ -1979,7 +2062,8 @@ function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
   if (!params.size && !searchHooks.size) return normalized
   const imports = [
     ...[...params].map(name => factory.createImportSpecifier(false, name === "useParams" ? undefined : factory.createIdentifier("useParams"), factory.createIdentifier(name))),
-    ...(searchHooks.size ? [factory.createImportSpecifier(false, factory.createIdentifier("useSearchParam"), factory.createIdentifier(searchHelper))] : [])
+    ...(searchReads.size ? [factory.createImportSpecifier(false, factory.createIdentifier("useSearchParam"), factory.createIdentifier(searchHelper))] : []),
+    ...(searchObjects.some(entry => entry.setter) ? [factory.createImportSpecifier(false, factory.createIdentifier("useSearchParamsWriter"), factory.createIdentifier(searchWriterHelper))] : [])
   ]
   const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports(imports)), factory.createStringLiteral("@kudzujs/core"))
   const statements = [...normalized.statements]
@@ -2515,7 +2599,10 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
   return context => sourceFile => {
     const factory = context.factory
     const hasLinkElements = /<link/i.test(sourceFile.text)
-    const importedCollections = importedSerializableCollectionNames(sourceFile, file, sourceFiles, sourceIndex)
+    const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex)
+    const importedCollections = new Set(importedStaticCollections.keys())
+    sourceFile = normalizeImportedStaticCollections(sourceFile, importedStaticCollections, factory, context)
+    ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeReactRouterSyntax(sourceFile, factory, context, base)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeClsxSyntax(sourceFile, factory, context)
@@ -2531,6 +2618,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     ts.setParentRecursive(sourceFile, false)
     rejectOrdinaryWorkerImports(sourceFile, file, sourceFiles)
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
+    const packageBindings = packageImportBindings(sourceFile)
+    for (const [name] of packageBindings) {
+      const references = referenceIdentifiers(sourceFile, name)
+      const invalid = references.find(reference => !insideJsxEventHandler(reference, sourceFile))
+      if (invalid) throw sourceNodeError(invalid, sourceFile, `Package import ${JSON.stringify(name)} may only be referenced directly inside JSX event handlers`)
+    }
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
     const importedSources = new Map()
     const importedSource = target => {
@@ -2554,6 +2647,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       return imported
     }
     const importedCollectionTransforms = new Map()
+    const importedCalculationFunctions = new Map()
     for (const [name, binding] of importBindings) {
       if (binding.kind === "namespace") continue
       try {
@@ -2573,8 +2667,10 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       return store
     }
     const functions = new Map()
+    const customHookFunctionsByOwner = new Map()
     const components = new Map()
     const contexts = new Set()
+    const customHooks = new Map()
     const jsxLocalDeclarations = new Map()
     const jsxLocalsByFunction = new Map()
     const listLocalDeclarations = new WeakSet()
@@ -2598,9 +2694,73 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     let usesComponentRef = false
     let usesComponentEffects = false
 
+    const resolveCustomHook = (binding, call) => {
+      const exportName = binding.kind === "default" ? "default" : binding.imported
+      const key = `${binding.target}:${exportName}`
+      if (customHooks.has(key)) return customHooks.get(key)
+      const hook = resolveComponentExport(binding.target, exportName, importedSource, sourceFiles)
+      const hookSource = hook.getSourceFile()
+      if (hook.parameters.length || hook.asteriskToken || hook.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || !ts.isBlock(hook.body)) throw sourceNodeError(hook, hookSource, "Relative custom hooks must be synchronous zero-argument functions with a block body")
+      const returns = hook.body.statements.filter(ts.isReturnStatement)
+      const returned = returns.length === 1 && returns[0] === hook.body.statements.at(-1) && returns[0].expression ? unwrapExpression(returns[0].expression) : undefined
+      if (!returned || !ts.isObjectLiteralExpression(returned)) throw sourceNodeError(hook.body, hookSource, "Relative custom hooks must end with one direct object return")
+
+      const states = new Map()
+      const callbacks = new Map()
+      for (const statement of hook.body.statements) {
+        if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const)) continue
+        for (const declaration of statement.declarationList.declarations) {
+          if (ts.isArrayBindingPattern(declaration.name) && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState") {
+            const [state, setter] = declaration.name.elements
+            if (declaration.name.elements.length === 2 && state && setter && ts.isBindingElement(state) && ts.isBindingElement(setter) && ts.isIdentifier(state.name) && ts.isIdentifier(setter.name)) states.set(setter.name.text, state.name.text)
+          }
+          if (ts.isIdentifier(declaration.name) && declaration.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) callbacks.set(declaration.name.text, declaration.initializer)
+        }
+      }
+      const fields = new Set()
+      for (const property of returned.properties) {
+        if (!ts.isShorthandPropertyAssignment(property)) throw sourceNodeError(property, hookSource, "Relative custom hooks must return direct shorthand bindings")
+        fields.add(property.name.text)
+      }
+      for (const [name, callback] of callbacks) {
+        const capture = nativeCaptureNames(callback, states).values().next().value
+        if (capture) throw sourceNodeError(callback, hookSource, `Relative custom hook callback ${JSON.stringify(name)} cannot capture private binding ${JSON.stringify(capture)}`)
+      }
+      const analysis = { callbacks, fields, states }
+      customHooks.set(key, analysis)
+      return analysis
+    }
+
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
         const callName = ts.isIdentifier(node.initializer.expression) ? node.initializer.expression.text : ""
+        if (callName && /^use[A-Z]/.test(callName) && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace" && !resolvedZustandStore(importBindings.get(callName))) {
+          if (!isLocalConst(node) || !ts.isObjectBindingPattern(node.name) || node.initializer.arguments.length) throw sourceNodeError(node, sourceFile, "Relative custom hooks must initialize one top-level const object destructuring with no arguments")
+          const hook = resolveCustomHook(importBindings.get(callName), node.initializer)
+          const names = new Set()
+          for (const element of node.name.elements) {
+            if (element.dotDotDotToken || element.propertyName || element.initializer || !ts.isIdentifier(element.name)) throw sourceNodeError(element, sourceFile, "Relative custom hook results must use direct identifier shorthand without aliases, defaults, or rest")
+            const name = element.name.text
+            if (!hook.fields.has(name)) throw sourceNodeError(element, sourceFile, `Relative custom hook does not directly return ${JSON.stringify(name)}`)
+            names.add(name)
+          }
+          const owner = nearestFunction(node)
+          if (!owner) throw sourceNodeError(node, sourceFile, "Relative custom hooks cannot be used outside a Kudzu component")
+          const setters = settersByFunction.get(owner) ?? new Map()
+          for (const [setter, state] of hook.states) {
+            if (names.has(setter) !== names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative custom hook state ${JSON.stringify(state)} and setter ${JSON.stringify(setter)} must be destructured together`)
+            if (names.has(setter)) setters.set(setter, state)
+          }
+          settersByFunction.set(owner, setters)
+          for (const name of names) {
+            if (hook.callbacks.has(name)) {
+              const callbacks = customHookFunctionsByOwner.get(owner) ?? new Map()
+              callbacks.set(name, hook.callbacks.get(name))
+              customHookFunctionsByOwner.set(owner, callbacks)
+            }
+            else if (![...hook.states].some(([setter, state]) => name === setter || name === state)) throw sourceNodeError(node.name, sourceFile, `Relative custom hook result ${JSON.stringify(name)} must be a direct useState value, setter, or callback`)
+          }
+        }
         if (ts.isIdentifier(node.name) && callName && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace") {
           const storeImport = importBindings.get(callName)
           const store = resolvedZustandStore(storeImport)
@@ -2677,6 +2837,10 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       ts.forEachChild(node, collect)
     }
     collect(sourceFile)
+    const functionsForNode = node => {
+      const callbacks = customHookFunctionsByOwner.get(nearestFunction(node))
+      return callbacks ? new Map([...functions, ...callbacks]) : functions
+    }
     for (const [owner, declarations] of jsxLocalDeclarations) {
       const names = new Set()
       let changed = true
@@ -2722,13 +2886,52 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     const fail = (node, message) => {
       throw sourceNodeError(node, sourceFile, message)
     }
+    const validateImportedCalculation = (call, field) => {
+      const name = call.expression.text
+      let calculation = importedCalculationFunctions.get(name)
+      if (!calculation) {
+        const binding = importBindings.get(name)
+        try {
+          calculation = resolveComponentExport(binding.target, binding.kind === "default" ? "default" : binding.imported, importedSource, sourceFiles)
+        } catch {
+          fail(call.expression, "Reactive imported calculations must resolve to a directly exported relative TypeScript function")
+        }
+        importedCalculationFunctions.set(name, calculation)
+      }
+      if (calculation.asteriskToken || calculation.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) fail(call.expression, "Reactive imported calculations must be synchronous functions")
+      if (calculation.parameters.length !== call.arguments.length) fail(call, "Reactive imported calculations require one direct argument for each declared parameter")
+      const returns = ts.isBlock(calculation.body) ? [] : [unwrapExpression(calculation.body)]
+      const collectReturns = node => {
+        if (node !== calculation.body && isFunctionLike(node)) return
+        if (ts.isReturnStatement(node)) returns.push(node.expression ? unwrapExpression(node.expression) : null)
+        ts.forEachChild(node, collectReturns)
+      }
+      if (ts.isBlock(calculation.body)) collectReturns(calculation.body)
+      if (ts.isBlock(calculation.body) && !ts.isReturnStatement(calculation.body.statements.at(-1))) fail(call.expression, "Reactive imported calculations must end with an unconditional return")
+      if (!returns.length || returns.some(returned => !returned || !ts.isObjectLiteralExpression(returned))) fail(call.expression, "Reactive imported calculations must return a plain object")
+      const fieldExists = returns.every(returned => returned.properties.some(property => ts.isSpreadAssignment(property) || !ts.isComputedPropertyName(property.name) && property.name.text === field))
+      if (!fieldExists) fail(call.parent, `Reactive imported calculation does not return field ${JSON.stringify(field)}`)
+    }
     const validateReactiveJsxExpression = (expression, allowedNames) => {
       const value = unwrapExpression(expression)
       const formatAccess = ts.isCallExpression(value) && !value.questionDotToken && ts.isPropertyAccessExpression(value.expression) && !value.expression.questionDotToken && value.expression.name.text === "format" ? value.expression : undefined
       const formatter = formatAccess && unwrapExpression(formatAccess.expression)
       const constructor = formatter && ts.isNewExpression(formatter) && ts.isPropertyAccessExpression(formatter.expression) && formatter.expression.name.text === "NumberFormat" && ts.isIdentifier(formatter.expression.expression) && formatter.expression.expression.text === "Intl" ? formatter : undefined
       if (!constructor) {
-        collectionExpression(value, {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
+        const validate = node => {
+          const current = unwrapExpression(node)
+          if (ts.isPropertyAccessExpression(current) && ts.isCallExpression(unwrapExpression(current.expression))) {
+            const call = unwrapExpression(current.expression)
+            if (ts.isIdentifier(call.expression) && importBindings.has(call.expression.text) && importBindings.get(call.expression.text).kind !== "namespace") {
+              validateImportedCalculation(call, current.name.text)
+              for (const argument of call.arguments) collectionExpression(argument, {}, (target, message) => fail(target, message.replace("Rendered collection", "Reactive imported calculation")), allowedNames)
+              return factory.createNumericLiteral(0)
+            }
+          }
+          return ts.visitEachChild(current, validate, context)
+        }
+        const normalized = ts.visitNode(value, validate)
+        collectionExpression(normalized, {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
         return
       }
       const intl = constructor.expression.expression
@@ -2928,7 +3131,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           }
           const setters = new Map(parentSetters)
           for (const state of aggregate.ordinaryStates) setters.set(state.setter, state.state)
-          if (jsxSetterCallbackProps(node, setters, functions, reducersForNode(node, reducersByFunction)).length) fail(node, "Setter callbacks cannot cross a second component boundary")
+          if (jsxSetterCallbackProps(node, setters, functionsForNode(node), reducersForNode(node, reducersByFunction)).length) fail(node, "Setter callbacks cannot cross a second component boundary")
           const nested = specializeComponentCall(node, component, sourceFile, factory, context, fail, "Nested setter-callback", true, true, new Set(setters.values()))
           if (dynamic && (nested.hookDeclarations.length || nested.effects.length)) fail(node, "Hookful nested setter-callback components require an unconditional or statically truthy render path")
           nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters)
@@ -3008,7 +3211,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
         for (const attribute of attributes.properties) {
           if (!ts.isJsxAttribute(attribute) || !callbackProps.includes(attribute.name.text) || !attribute.initializer || !ts.isJsxExpression(attribute.initializer) || !ts.isIdentifier(attribute.initializer.expression)) continue
-          const callback = functions.get(attribute.initializer.expression.text)
+          const callback = functionsForNode(attribute).get(attribute.initializer.expression.text)
           if (callback) substitutions.set(attribute.initializer.expression.text, callback)
         }
         if (substitutions.size) {
@@ -3057,14 +3260,14 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
     for (const [name, component] of components) {
       for (const call of jsxTagUses(sourceFile, name)) {
-        const callbackProps = jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functions, reducersForNode(call, reducersByFunction))
+        const callbackProps = jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functionsForNode(call), reducersForNode(call, reducersByFunction))
         if (callbackProps.length) specializeSetterCallbacks(call, component.function, callbackProps, false)
       }
     }
     for (const [name, binding] of importBindings) {
       if (binding.kind === "namespace") continue
       const calls = jsxTagUses(sourceFile, name)
-      const callbackCalls = calls.map(call => ({ call, callbackProps: jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functions, reducersForNode(call, reducersByFunction)) })).filter(entry => entry.callbackProps.length)
+      const callbackCalls = calls.map(call => ({ call, callbackProps: jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functionsForNode(call), reducersForNode(call, reducersByFunction)) })).filter(entry => entry.callbackProps.length)
       if (!callbackCalls.length) continue
       const imported = binding.kind === "default" ? "default" : binding.imported
       let component
@@ -3324,13 +3527,17 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral("@kudzujs/core"), node.attributes)
       }
 
+      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && packageBindings.size && importDeclarationNames(node).some(name => packageBindings.has(name))) return undefined
+
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
+        if (!runtimeModuleReference(node)) return node
         if (isStaticImport(node.moduleSpecifier.text)) return staticImportEntry(node, sourceFile, file, staticFiles, importedAssets, cssModules, base, factory)?.replacement
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
         return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
 
       if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
+        if (!runtimeModuleReference(node)) return node
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
         return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
@@ -3480,6 +3687,17 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createIdentifier("undefined"))
       }
 
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && importBindings.has(node.initializer.expression.text)) {
+        const setters = settersForNode(node, settersByFunction)
+        const stateNames = new Set(setters.values())
+        const rewrite = current => {
+          if (ts.isShorthandPropertyAssignment(current) && stateNames.has(current.name.text)) return factory.createPropertyAssignment(current.name, factory.createPropertyAccessExpression(current.name, "value"))
+          if (ts.isIdentifier(current) && stateNames.has(current.text) && isReferenceIdentifier(current)) return factory.createPropertyAccessExpression(current, "value")
+          return ts.visitEachChild(current, rewrite, context)
+        }
+        if (referencedStateNames(node.initializer, setters).size) return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, ts.visitNode(node.initializer, rewrite))
+      }
+
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && jsxLocalsByFunction.get(nearestFunction(node))?.has(node.name.text) && referencesIdentifier(nearestFunction(node).body, node.name.text)) {
         const compiled = compileRenderExpression(node.initializer, node)
         if (compiled !== node.initializer) return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, compiled)
@@ -3536,7 +3754,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression) && !containsJsx(expression)) {
           usesBehavior = true
           usesBinding = true
-          return factory.updateJsxExpression(node, compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl))
+          return factory.updateJsxExpression(node, compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings, clientImports))
         }
       }
 
@@ -3549,14 +3767,14 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression)) {
           usesBehavior = true
           usesBinding = true
-          const compiled = compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl)
+          const compiled = compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings, clientImports)
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compiled))
         }
       }
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.text)) {
         const setters = settersForNode(node, settersByFunction)
-        const event = compileEvent(node.initializer.expression, setters, reducersForNode(node, reducersByFunction), functions, factory, nativeHandlers, handlerUrl, listEventItems.get(node), importBindings, clientImports)
+        const event = compileEvent(node.initializer.expression, setters, reducersForNode(node, reducersByFunction), functionsForNode(node), factory, nativeHandlers, handlerUrl, listEventItems.get(node), new Map([...importBindings, ...packageBindings]), clientImports)
         if (event) {
           usesBehavior = true
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, event))
@@ -4699,13 +4917,13 @@ function isJsxLocalValue(expression, known) {
   return Boolean(parts && (isJsxLocalValue(parts.truthy, known) || isJsxLocalValue(parts.falsy, known)))
 }
 
-function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl) {
+function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings = new Map(), clientImports = new Set()) {
   const parts = conditionalParts(expression)
   const state = parts && directStateIdentifier(parts.condition, setters)
   if (state && isPrimitiveDefaultLiteral(parts.truthy) && isPrimitiveDefaultLiteral(parts.falsy)) {
     return factory.createCallExpression(factory.createIdentifier("__kSelect"), undefined, [state, parts.truthy, parts.falsy])
   }
-  return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl))
+  return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings, clientImports))
 }
 
 function compileConditional(kind, expression, truthy, falsy, setters, factory, context, reactiveBindings, handlerUrl) {
@@ -4721,11 +4939,14 @@ function directStateIdentifier(expression, setters) {
   return ts.isIdentifier(value) && new Set(setters.values()).has(value.text) ? value : undefined
 }
 
-function compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl) {
+function compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings = new Map(), clientImports = new Set()) {
   const usedStates = referencedStateNames(expression, setters)
-  const captures = captureNames(expression, expression, setters)
+  const importedNames = referencedImportedBindings(expression, importBindings)
+  const imports = [...importedNames].map(name => importBindings.get(name))
+  for (const entry of imports) if (!entry.package) clientImports.add(entry.target)
+  const captures = new Set([...captureNames(expression, expression, setters)].filter(name => !importedNames.has(name)))
   const exportName = `binding${reactiveBindings.length}`
-  reactiveBindings.push({ exportName, expression, captures, states: usedStates })
+  reactiveBindings.push({ exportName, expression, captures, states: usedStates, imports })
   const states = [...usedStates].map(name => factory.createArrayLiteralExpression([
     factory.createStringLiteral(name),
     factory.createIdentifier(name)
@@ -4798,7 +5019,7 @@ function compileNativeCallback(expression, setters, reducers, factory, entries, 
   const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
   imports.push(...[...usedReducers].map(name => reducers.get(name).import).filter(Boolean))
   const captures = new Set([...allCaptures].filter(name => !importBindings.has(name)))
-  for (const entry of imports) clientImports.add(entry.target)
+  for (const entry of imports) if (!entry.package) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
   const exportName = `${prefix}${entries.length}`
   entries.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested })
@@ -4861,7 +5082,7 @@ function compileOptimizedEvent(expression, setters, factory) {
 }
 
 const nativeGlobals = new Set([
-  "Array", "ArrayBuffer", "BigInt", "Boolean", "Date", "Error", "Event", "FormData", "Infinity", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "atob", "btoa", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "location", "navigator", "parseFloat", "parseInt", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
+  "Array", "ArrayBuffer", "BigInt", "Blob", "Boolean", "Date", "Error", "Event", "FormData", "Infinity", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "atob", "btoa", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "location", "navigator", "parseFloat", "parseInt", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
 ])
 
 function rewriteEffectWorkers(callback, file, sourceFile, sourceFiles, workerReferences, factory, context) {
@@ -4946,7 +5167,7 @@ function referencedImportedBindings(expression, imports) {
     if (ts.isIdentifier(node) && imports.has(node.text) && isReferenceIdentifier(node)) names.add(node.text)
     ts.forEachChild(node, visit)
   }
-  visit(expression.body)
+  visit(expression.body ?? expression)
   return names
 }
 
@@ -5118,18 +5339,61 @@ function clientImportBindings(sourceFile, file, sourceFiles) {
   return bindings
 }
 
+function packageImportBindings(sourceFile) {
+  const bindings = new Map()
+  const rejectDynamic = node => {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const specifier = node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0]) ? node.arguments[0].text : null
+      if (specifier === null) throw sourceNodeError(node, sourceFile, "Dynamic import specifiers are not supported")
+      if (!specifier.startsWith(".")) throw sourceNodeError(node, sourceFile, `Dynamic package import ${JSON.stringify(specifier)} is not supported`)
+    }
+    ts.forEachChild(node, rejectDynamic)
+  }
+  rejectDynamic(sourceFile)
+  for (const node of sourceFile.statements) {
+    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) continue
+    const target = node.moduleSpecifier.text
+    if (!node.importClause) {
+      if (!target.startsWith(".") && !["react", "react-router-dom", "@kudzujs/core"].includes(target) && !target.startsWith("@kudzujs/core/")) throw sourceNodeError(node, sourceFile, `Side-effect package import ${JSON.stringify(target)} is not supported`)
+      continue
+    }
+    if (node.importClause.isTypeOnly) continue
+    if (target.startsWith(".") || target.startsWith("node:") || target === "react" || target === "react-router-dom" || target === "@kudzujs/core" || target.startsWith("@kudzujs/core/")) continue
+    if (node.importClause.name) bindings.set(node.importClause.name.text, { kind: "default", local: node.importClause.name.text, target, package: true })
+    const named = node.importClause.namedBindings
+    if (named && ts.isNamespaceImport(named)) bindings.set(named.name.text, { kind: "namespace", local: named.name.text, target, package: true })
+    if (named && ts.isNamedImports(named)) for (const entry of named.elements) if (!entry.isTypeOnly) bindings.set(entry.name.text, { kind: "named", imported: (entry.propertyName ?? entry.name).text, local: entry.name.text, target, package: true })
+  }
+  return bindings
+}
+
 function importedSerializableCollectionNames(sourceFile, file, sourceFiles, sourceIndex) {
-  const names = new Set()
+  return new Set(importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex).keys())
+}
+
+function importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex) {
+  const collections = new Map()
   for (const [name, binding] of clientImportBindings(sourceFile, file, sourceFiles)) {
     if (binding.kind !== "named") continue
     const imported = parseSourceFile(binding.target, sourceIndex.get(binding.target))
     for (const statement of imported.statements) {
       if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const) || !statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue
       const declaration = statement.declarationList.declarations.find(entry => ts.isIdentifier(entry.name) && entry.name.text === binding.imported)
-      if (declaration?.initializer && ts.isArrayLiteralExpression(unwrapExpression(declaration.initializer)) && isSerializableStateLiteral(declaration.initializer)) names.add(name)
+      if (declaration?.initializer && ts.isArrayLiteralExpression(unwrapExpression(declaration.initializer)) && isSerializableStateLiteral(declaration.initializer)) collections.set(name, unwrapExpression(declaration.initializer))
     }
   }
-  return names
+  return collections
+}
+
+function normalizeImportedStaticCollections(sourceFile, collections, factory, context) {
+  if (!collections.size) return sourceFile
+  const visitor = node => {
+    if (ts.isPropertyAccessExpression(node) && node.name.text === "map" && ts.isIdentifier(node.expression) && collections.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
+      return factory.updatePropertyAccessExpression(node, synthesizeTree(cloneAst(collections.get(node.expression.text), factory, context)), node.name)
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  return ts.visitNode(sourceFile, visitor)
 }
 
 function resolveComponentExport(file, exportName, getSource, sourceFiles, trail = []) {
@@ -5218,7 +5482,7 @@ function printClientImports(entries, handlerPath) {
   const groups = Map.groupBy(unique.values(), entry => entry.target)
   const imports = []
   for (const [target, group] of groups) {
-    const specifier = relativeModulePath(handlerPath, clientModulePath(target))
+    const specifier = group[0].package ? target : relativeModulePath(handlerPath, clientModulePath(target))
     const defaults = group.filter(entry => entry.kind === "default")
     const named = group.filter(entry => entry.kind === "named")
     if (defaults.length === 1 || named.length) imports.push(`import ${defaults.length === 1 ? `${defaults[0].local}${named.length ? ", " : ""}` : ""}${named.length ? `{ ${named.map(entry => entry.imported === entry.local ? entry.local : `${entry.imported} as ${entry.local}`).join(", ")} }` : ""} from ${JSON.stringify(specifier)}`)

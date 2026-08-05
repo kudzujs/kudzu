@@ -87,57 +87,28 @@ An unsupported item is not automatically backlog work. Arbitrary callbacks, pack
 
 This queue orders the next investigations by general migration value. Start only the highest item for which a real failing fixture exists.
 
-### 1. Hookful Component Specialization
+### Completed In 0.8.0
 
-Investigate ordinary imported or same-file components that own local hooks outside the currently specialized keyed-row shapes:
+- Relative zero-argument custom hooks expose direct shorthand state/setter pairs and state-capturing callbacks to one top-level caller destructuring.
+- Writable React Router search parameters use native inline `URLSearchParams` updaters, push/replace history, signal recommits, and `popstate` synchronization.
+- Guarded `localStorage` restoration and persistence compose through existing mount/dependency effects, preserving deterministic static fallbacks without a storage runtime.
+- Reachable source compilation excludes unused React/Vite modules while preserving source diagnostics for every reachable module.
+- Direct imported immutable maps fold to static HTML, and relative structured calculations reevaluate consumed scalar fields through existing binding ESM.
+- Direct event-only package imports bundle into route handlers without executing during static rendering.
+- Production Tailwind output, Inter assets, direct native SVG charts, and Excel export compose without adding Tailwind, Recharts, or a package runtime to Kudzu.
+- FIRE migration validation covers all fourteen routes, URL/storage updates and reload, reset, presets, chart identity, Quiz recommendation, keyed Debt updates, Excel workbook creation, and zero-JavaScript Home/Books/Apps output.
 
-- Repeated non-keyed child local state and conditional removal/remount ownership are complete.
-- directly serializable lazy `useState` and `useReducer` initialization are complete;
-- direct primitive prop dependencies are complete for ordinary same-file and relative-imported children;
-- Safe callback/ref ownership across one proven component boundary is complete for direct setters invoked once by a direct intrinsic event handler, inline or simple `const` setter callbacks using direct forwarding or the same adapter shape, child-owned serializable state, direct primitive prop `.toString()` string-state initialization, IDs, effects, `null`-initialized object refs, and recursively specialized nested components on unconditional or statically truthy hook paths.
+### 1. Compiler-Known Custom Actions
 
-Acceptance: ownership is compiler-generated, removal cleans up exactly once, and no generic component runtime or rerender loop is introduced.
+Investigate direct custom-hook actions such as reset, debounced update, and clipboard copy after their state, URL, and storage dependencies are supported. Compile each proven action to existing setter or event capabilities rather than serializing arbitrary closures.
 
-### 2. Pure Collection Composition
+Acceptance: callback identity and captures are statically known, timers and cleanup have explicit ownership, and unsupported indirect calls fail at build time.
 
-Investigate common immutable collection source that remains awkward to migrate:
+### 2. Calculated Collections And Chart Detail
 
-- Reusable aliases with statically provable use sites are complete for immutable local collection aliases feeding multiple keyed lists;
-- Computed direct child collections are complete for one top-level `const` selector over a direct child property in a block-bodied keyed `map` callback;
-- Relative-imported pure synchronous transforms are complete for named or default one-parameter functions returning one supported selector pipeline;
-- Immutable `slice(start, end?)` pagination, reactive `filter`/string-method search, and expression-bodied `toSorted((left, right) => ...)` are complete.
+Investigate calculated array fields used as keyed table/chart sources plus accessible selected-point tooltips and detailed projection/debt series. Prefer direct SVG bindings and keyed SVG rows; add no chart runtime unless a reduced fixture proves native output insufficient.
 
-Mutation, arbitrary callbacks, promises, and package collection engines remain outside the queue. Large datasets require bounded visible output rather than giant DOM trees.
-
-### 3. Common Effect Dependencies
-
-Investigate effect forms common in ordinary React source:
-
-- destructured primitive props backed directly by parent state are complete;
-- Simple derived primitive locals are complete for top-level immutable pure expressions over direct state, with derived-value comparison and latest setup/cleanup evaluation;
-- Same-component top-level simple `const` effect setup and directly returned cleanup functions are complete;
-- Multiple direct dependencies are complete through the existing commit batching path; each value is compared with `Object.is`, and same-turn changes rerun the effect once without a component scheduler.
-
-Acceptance: direct dependency comparison, cleanup-before-rerun, stale async isolation, and route/DOM ownership remain explicit.
-
-### 4. Structural SVG Rendering
-
-Reactive conditionals and flat intrinsic keyed lists inside SVG are complete. SVG-only branch and row prototypes are parsed in their actual parent namespace while reusing existing condition/list ownership; routes without structural SVG compile out that path. Keyed-item conditions, nested SVG lists, MathML structures, and namespaced attributes remain unsupported until a fixture proves them necessary. No SVG renderer is introduced.
-
-### 5. Router-Shaped Source Lowering
-
-Investigate conventional React Router source forms that can erase to existing behavior:
-
-- Named or aliased React Router `Link` with one static root-relative `to` is complete; it erases to a base-aware native anchor with no router runtime;
-- Named or aliased React Router `useParams()` is complete for `runtimeParams = true` bracket routes through the existing pathname reader; build-known `getStaticPaths()` routes continue to receive params through props;
-- Read-only named or aliased React Router `useSearchParams()` is complete for one top-level tuple binding and direct static `get("name")` locals; each key lowers to a nullable route signal initialized by a minimal `URLSearchParams` reader;
-- Named or aliased React Router `useNavigate()` is complete for one top-level binding and direct nested-callback calls with a safe static root-relative destination; ordinary calls lower to `location.assign()` and exactly `{ replace: true }` lowers to `location.replace()`.
-
-This work must not add a default SPA router. Same-document transitions require explicit user approval and a measured fixture need.
-
-### 6. Repeated Package Patterns
-
-Broaden Zustand, `clsx`, reducer forwarding, Worker forms, or UI-package source only after multiple independent fixtures expose the same statically lowerable pattern. Prefer erasing a narrow authoring shape to executing the package or adding an adapter framework.
+Acceptance: accessible static SVG is present initially, updates preserve element identity, and unaffected routes ship no chart JavaScript.
 
 ## Cross-Cutting Performance Gates
 

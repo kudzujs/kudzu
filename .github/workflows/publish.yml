@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag to publish, for example v0.7.30
+        description: Tag to publish, for example v0.8.0
         required: true
         type: string
 

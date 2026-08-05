@@ -8,9 +8,9 @@ HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
 Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTML, CSS, and only the route-specific ESM capabilities actually used. Static pages ship zero JavaScript. React, hydration, a VDOM, and a retained browser component tree are not part of the output.
 
-> Experimental `0.7.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.7.30 - Reactive number formatting.** Fixed-locale `Intl.NumberFormat` display chains now remain reactive, restoring comma-formatted controlled inputs without broadening arbitrary render calls. Read the [release notes](./RELEASES.md#0730---reactive-number-formatting) or open the [release page](https://kudzujs.cloud/releases/0.7.30).
+**Latest release: 0.8.0 - URL-backed custom hooks.** Relative React custom hooks, reachable source graphs, imported structured calculations and static collections, event-only package ESM, and native SVG now compose across a fourteen-route FIRE migration without adding React or a hook runtime. Read the [release notes](./RELEASES.md#080---url-backed-custom-hooks) or open the [release page](https://kudzujs.cloud/releases/0.8.0).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -84,7 +84,9 @@ ordinary React-shaped TSX
 - Native document navigation is the default; static routes do not load a client runtime.
 - A named or aliased React Router `Link` with a static root-relative `to` erases to a base-aware native anchor; no router package or runtime is emitted.
 - A direct named or aliased React Router `useParams()` call on a `runtimeParams` bracket route reuses Kudzu's route-specific pathname reader.
-- Read-only React Router `useSearchParams()` with direct static `get("name")` locals lowers to nullable signals initialized by a minimal route-specific query reader.
+- React Router `useSearchParams()` supports direct static `get("name")` locals and inline setter updaters, lowering reads and history writes to one route-specific query capability.
+- Only TypeScript modules reachable from pages are compiled. Imported immutable direct maps can fold to static HTML, while direct fields from relative structured calculations reevaluate through route binding ESM.
+- Package imports used directly inside JSX event callbacks are removed from build modules and retained only in bundled route handler ESM.
 - A named or aliased React Router `useNavigate()` top-level binding lowers direct nested-callback calls with safe static root-relative destinations to native `location.assign()` or `location.replace()` navigation.
 - Unsupported nearby patterns fail during the build with a source location and actionable boundary.
 
