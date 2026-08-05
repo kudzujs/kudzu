@@ -33,7 +33,7 @@ const files = {
       check: "tsc --noEmit && kudzu build"
     },
     dependencies: {
-      "@kudzujs/core": "^0.7.28"
+      "@kudzujs/core": "^0.7.29"
     },
     devDependencies: {
       typescript: "^5.9.2"
@@ -46,6 +46,7 @@ const files = {
       moduleResolution: "Bundler",
       jsx: "react-jsx",
       jsxImportSource: "@kudzujs/core",
+      types: [],
       strict: true
     }
   }, null, 2)}\n`,

@@ -1,5 +1,23 @@
 # Kudzu Releases
 
+## 0.7.29 - Hermetic TypeScript checks
+
+Kudzu 0.7.29 makes project and migration-fixture typechecks independent of unrelated ambient types and package declarations installed in ancestor directories.
+
+### New in 0.7.29
+
+- The root TypeScript configuration declares an empty ambient `types` set instead of scanning every visible ancestor `node_modules/@types` directory.
+- `create-kudzu` emits the same isolated TypeScript configuration for new projects.
+- Migration fixture checks skip third-party declaration bodies while continuing to typecheck fixture TS and TSX against Kudzu's reduced declarations.
+- A clean `npm ci` checkout nested below conflicting `@types/minimatch`, React, and React Router installations now passes `npm run check`.
+- The complete suite continues to pass 122/122 tests.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.7.29
+```
+
 ## 0.7.28 - Nested component specialization
 
 Kudzu 0.7.28 recursively specializes components rendered inside setter-adapter children, allowing conventional optional UI such as an imported hookful Tooltip to remain declarative without adding a browser component runtime.

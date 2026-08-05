@@ -1,5 +1,6 @@
 {
   "extends": "../../tsconfig.json",
+  "compilerOptions": { "skipLibCheck": true },
   "include": ["react.d.ts", "*/src/**/*.ts", "*/src/**/*.tsx"],
   "exclude": ["*/.kudzu", "*/dist"]
 }
