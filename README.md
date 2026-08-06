@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.7 - Reactive keyed row selection.** Flat keyed rows may combine their current item or index with direct primitive parent state in pure text and attribute expressions, enabling selected classes and ARIA state without remounting rows. Read the [release notes](./RELEASES.md#087---reactive-keyed-row-selection) or open the [release page](https://kudzujs.cloud/releases/0.8.7).
+**Latest release: 0.8.8 - Conditional keyed map roots.** Expression-bodied keyed maps may return `condition && <Row />` or `condition ? <Row /> : null`; Kudzu lowers the condition to its existing filter path so omitted rows clean up and re-entry starts fresh. Read the [release notes](./RELEASES.md#088---conditional-keyed-map-roots) or open the [release page](https://kudzujs.cloud/releases/0.8.8).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

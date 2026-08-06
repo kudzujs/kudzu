@@ -20,6 +20,7 @@ export default function RenderedCollectionsPage() {
   ])
   const [page, setPage] = useState(0)
   const [query, setQuery] = useState("")
+  const [selectedId, setSelectedId] = useState("a")
   const visible = items.filter((item, index) => item.visible && index >= 0)
   const importedVisible = selectVisible(items)
   const pageItems = items.slice(page * 2, page * 2 + 2)
@@ -36,6 +37,12 @@ export default function RenderedCollectionsPage() {
     <button data-action="page-next" onClick={() => setPage(1)}>Next page</button>
     <button data-action="search" onClick={() => setQuery("mm")}>Search gamma</button>
     <button data-action="search-clear" onClick={() => setQuery("")}>Clear search</button>
+    <button data-action="select-a" onClick={() => setSelectedId("a")}>Select alpha</button>
+    <button data-action="select-c" onClick={() => setSelectedId("c")}>Select gamma</button>
+
+    <ul data-conditional-and>{items.map(item => selectedId === item.id && <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+
+    <ul data-conditional-ternary>{items.map(item => item.visible ? <li key={item.id} data-id={item.id}>{item.label}</li> : null)}</ul>
 
     <ul data-stable>{visible.map((item, index) => <li key={item.id} data-id={item.id}>
       <span>{index}:{item.label}</span>
@@ -68,6 +75,7 @@ export default function RenderedCollectionsPage() {
       const visibleChildren = group.children.filter(item => item.visible)
       return <div key={group.id} data-group={group.id}>
         {visibleChildren.map((item, index) => <span key={item.id}>{index}:{item.label}</span>)}
+        <div data-conditional-children>{group.children.map(item => item.visible && <i key={item.id} data-id={item.id}>{item.label}</i>)}</div>
       </div>
     })}</section>
   </main>

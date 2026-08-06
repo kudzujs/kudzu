@@ -129,6 +129,13 @@ This queue orders the next investigations by general migration value. Start only
 - A React Notes migration proved selected keyed rows need direct primitive parent state in ordinary class and ARIA expressions. Kudzu now reevaluates only retained row expressions on that state commit, preserving row identity without a component rerender.
 - The supported boundary is a pure flat-row text or attribute expression combining the direct item/index with direct primitive parent state. Object/array state, arbitrary captures, nested-row parent state, and structural conditions remain diagnosed.
 
+### Completed In 0.8.8
+
+- The React Notes editor now retains its ordinary `notes.map(note => activeId === note.id && <Editor key={note.id} />)` source shape. Kudzu normalizes expression-bodied `condition && <Row />` and `condition ? <Row /> : null` keyed maps into existing pure filter selectors.
+- False rows own no DOM or hooks; true-to-false transitions clean up state, effects, and refs, while re-entry creates fresh keyed ownership. Retained siblings preserve identity.
+- Conditions may combine the current item with direct primitive parent state. Nested rows accept item-only conditions; map indexes, alternate JSX fallbacks, arbitrary captures, and impure predicates remain diagnosed.
+- Imported build-known item-only conditions still fold to complete zero-JavaScript HTML, and no runtime capability was added.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

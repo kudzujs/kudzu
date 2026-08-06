@@ -38,14 +38,17 @@ const initialParents: Parent[] = [
 
 export default function KeyedRowHooksPage() {
   const [parents, setParents] = useState(initialParents)
+  const [showSecond, setShowSecond] = useState(true)
 
   return <main>
+    <button data-action="hide-second" onClick={() => setShowSecond(false)}>Hide second parent</button>
+    <button data-action="show-second" onClick={() => setShowSecond(true)}>Show second parent</button>
     <button data-action="parent-reorder" onClick={() => setParents([...parents].reverse())}>Reorder parents</button>
     <button data-action="child-reorder" onClick={() => setParents(parents.map(parent => parent.id === "p1" ? { ...parent, primary: [...parent.primary].reverse() } : parent))}>Reorder children</button>
     <button data-action="positional-reorder" onClick={() => setParents(parents.map(parent => parent.id === "p1" ? { ...parent, positional: [...parent.positional].reverse() } : parent))}>Reorder positional</button>
     <button data-action="rename" onClick={() => setParents(parents.map(parent => parent.id === "p1" ? { ...parent, primary: parent.primary.map(item => item.id === "shared" ? { ...item, label: "One renamed" } : item) } : parent))}>Rename</button>
     <button data-action="remove" onClick={() => setParents(parents.map(parent => parent.id === "p1" ? { ...parent, primary: parent.primary.filter(item => item.id !== "shared") } : parent))}>Remove</button>
     <button data-action="readd" onClick={() => setParents(parents.map(parent => parent.id === "p1" ? { ...parent, primary: [...parent.primary, { id: "shared", owner: "p1", label: "One readded" }] } : parent))}>Re-add</button>
-    <div data-parents>{parents.map(parent => <ParentRow key={parent.id} parent={parent} />)}</div>
+    <div data-parents>{parents.map(parent => (showSecond || parent.id !== "p2") && <ParentRow key={parent.id} parent={parent} />)}</div>
   </main>
 }

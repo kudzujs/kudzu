@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.8.8 - Conditional keyed map roots
+
+Kudzu 0.8.8 compiles ordinary expression-bodied conditional keyed maps through the existing pure collection selector path.
+
+### New in 0.8.8
+
+- One-parameter keyed maps may return `condition && <Row />` or `condition ? <Row /> : null`.
+- Top-level conditions may combine the current item with direct primitive parent state; nested maps support item-only conditions.
+- Omitted rows own no DOM or hooks. True-to-false transitions release row state, effects, and refs; re-entry creates fresh ownership.
+- Retained siblings preserve keyed DOM identity through condition changes, insertion, and reorder.
+- Same-file and relative row components remain compiler-specialized before the existing list runtime receives the normalized filter.
+- Imported build-known item-only conditions still fold to complete zero-JavaScript HTML.
+- The React Notes migration restores its ordinary `notes.map(note => activeId === note.id && <Editor />)` source shape.
+- Map indexes, alternate JSX fallbacks, block-bodied conditional maps, arbitrary captures, and impure predicates remain diagnosed.
+- The complete suite passes 134/134 tests.
+
+### Boundary
+
+Conditional map callbacks must be synchronous expression arrows with exactly one item parameter. Indexes are rejected because implicit filtering changes their meaning. The feature adds no runtime capability, VDOM, hydration, or component rerenderer.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.8
+```
+
 ## 0.8.7 - Reactive keyed row selection
 
 Kudzu 0.8.7 lets a flat keyed row combine its current item or index with direct primitive parent state in pure text and attribute expressions.

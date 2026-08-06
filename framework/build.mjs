@@ -4125,7 +4125,7 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
   const value = unwrapExpression(expression)
   const directFrom = isArrayFromCall(value) && value.arguments.length === 2 && containsJsx(value.arguments[1])
   if (!directFrom && (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map")) return undefined
-  const collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()), importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
+  let collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()), importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
   if (!collection?.state && !collection?.calculation) return undefined
   if (directFrom) collection.selector.push(["from", undefined])
   let callback = directFrom ? value.arguments[1] : value.arguments[0]
@@ -4144,6 +4144,8 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
     ts.setParentRecursive(callback, false)
     callback.parent = value
   }
+  const conditional = conditionalKeyedMapRoot(callback, root, parameters, collection, fail, new Set(setters.values()), factory, value)
+  if (conditional) ({ callback, root, collection } = conditional)
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(callback.body, "Keyed list map callback must return one JSX element")
   const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
   const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === "key")
@@ -4157,11 +4159,13 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
 function nestedKeyedListParts(expression, parentItem, fail) {
   const value = unwrapExpression(expression)
   if (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map") return undefined
-  const collection = renderedCollectionSource(value.expression.expression, new Map(), undefined, fail, new Set())
+  let collection = renderedCollectionSource(value.expression.expression, new Map(), undefined, fail, new Set())
   if (!collection?.ownerField || collection.parentItem !== parentItem) return undefined
-  const callback = value.arguments[0]
+  let callback = value.arguments[0]
   const parameters = collectionParameters(callback, "Nested keyed list map", fail)
-  const root = unwrapExpression(callback.body)
+  let root = unwrapExpression(callback.body)
+  const conditional = conditionalKeyedMapRoot(callback, root, parameters, collection, fail, new Set(), ts.factory, value)
+  if (conditional) ({ callback, root, collection } = conditional)
   if (!ts.isJsxElement(root) && !ts.isJsxSelfClosingElement(root)) fail(callback.body, "Nested keyed list map callback must return one JSX element")
   const attributes = ts.isJsxElement(root) ? root.openingElement.attributes : root.attributes
   const key = attributes.properties.find(attribute => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && attribute.name.text === "key")
@@ -4170,6 +4174,28 @@ function nestedKeyedListParts(expression, parentItem, fail) {
   const positional = Boolean(keyExpression && parameters.index && ts.isIdentifier(unwrapExpression(keyExpression)) && unwrapExpression(keyExpression).text === parameters.index)
   if (!keyField && !positional) fail(key ?? root, `Nested keyed list root must have key={${parameters.item}.<field>} or key={${parameters.index ?? "index"}}`)
   return { ...collection, callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : keyField }
+}
+
+function conditionalKeyedMapRoot(callback, root, parameters, collection, fail, stateNames, factory, parent) {
+  let condition
+  let rendered
+  if (ts.isBinaryExpression(root) && root.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken && (ts.isJsxElement(unwrapExpression(root.right)) || ts.isJsxSelfClosingElement(unwrapExpression(root.right)))) {
+    condition = root.left
+    rendered = unwrapExpression(root.right)
+  } else if (ts.isConditionalExpression(root) && (ts.isJsxElement(unwrapExpression(root.whenTrue)) || ts.isJsxSelfClosingElement(unwrapExpression(root.whenTrue)))) {
+    if (unwrapExpression(root.whenFalse).kind !== ts.SyntaxKind.NullKeyword) fail(root.whenFalse, "Conditional keyed map callbacks require condition ? <Element> : null")
+    condition = root.condition
+    rendered = unwrapExpression(root.whenTrue)
+  } else {
+    return undefined
+  }
+  if (parameters.index) fail(callback.parameters[1], "Conditional keyed map callbacks cannot use a map index because filtering changes index semantics; use an explicit filter(...).map((item, index) => ...) when a filtered index is intended")
+  const selectorStates = new Set(collection.selectorStates)
+  const selector = collectionExpression(condition, parameters, fail, stateNames, selectorStates)
+  const normalized = factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, callback.parameters, callback.type, callback.equalsGreaterThanToken, rendered)
+  ts.setParentRecursive(normalized, false)
+  normalized.parent = parent
+  return { callback: normalized, root: rendered, collection: { ...collection, selector: [...collection.selector, ["filter", selector]], selectorStates } }
 }
 
 function renderedCollectionSource(expression, setters, declarations, fail, aliases, importedCollections = new Set(), stateNames = new Set(), importedCollectionTransforms = new Map(), factory = ts.factory, context, calculatedCollection, staticCollection) {
