@@ -198,6 +198,7 @@ function updateList(list) {
       list.roots = new Map(nextTokens.map(token => [token, list.roots.get(token)]))
       if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots = nextTokens.map(token => list.roots.get(token))
       list.container ??= parent
+      list.items = items
       return
     }
     if (nextTokens.length === currentTokens.length - 1) {
@@ -207,6 +208,7 @@ function updateList(list) {
         removeListRoot(list, removed)
         list.roots = new Map(nextTokens.map(token => [token, list.roots.get(token)]))
         if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots = nextTokens.map(token => list.roots.get(token))
+        list.items = items
         return
       }
     }

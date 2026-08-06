@@ -3675,10 +3675,18 @@ try {
   if (!oak.querySelector("[data-remove]").dataset.kNativeClick.includes("Red oak") || document.querySelector('[data-row="1"] td').textContent !== "Red oak") throw new Error("update-metadata")
   oak.querySelector("input").value = "preserved"
   click("reorder")
-  await wait()
-  const ordered = [...document.querySelectorAll("[data-list] > li")]
+  await Promise.resolve()
+  let ordered = [...document.querySelectorAll("[data-list] > li")]
   if (ordered.map(node => node.dataset.id).join(",") !== "3,2,1" || ordered[2] !== oak || oak.querySelector("input").value !== "preserved") throw new Error("move")
   if ([...document.querySelectorAll("tbody > tr")].map(node => node.dataset.row).join(",") !== "3,2,1") throw new Error("simple-move")
+  click("reorder")
+  await Promise.resolve()
+  ordered = [...document.querySelectorAll("[data-list] > li")]
+  if (ordered.map(node => node.dataset.id).join(",") !== "1,2,3" || ordered[0] !== oak || oak.querySelector("input").value !== "preserved") throw new Error("rapid-move-restore")
+  click("reorder")
+  await Promise.resolve()
+  ordered = [...document.querySelectorAll("[data-list] > li")]
+  if (ordered.map(node => node.dataset.id).join(",") !== "3,2,1" || ordered[2] !== oak) throw new Error("rapid-move-repeat")
   oak.querySelector("[data-remove]").click()
   await wait()
   if (document.querySelector('[data-id="1"]') || document.querySelector('[data-row="1"]') || document.querySelectorAll("[data-list] > li").length !== 2) throw new Error("item-remove")
