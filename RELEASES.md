@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.8.9 - Context-backed CRUD actions
+
+Kudzu 0.8.9 specializes state-backed actions exposed through one conventional Context Provider and relative custom hook.
+
+### New in 0.8.9
+
+- A relative zero-argument custom hook may directly return `useContext(ContextIdentifier)` from one local or named relative Context module.
+- One Provider may expose direct shorthand `useState` pairs and synchronous actions that capture only those exposed pairs.
+- Consumers may select state and actions across ordinary component boundaries; direct action calls inline into existing route handler ESM and concrete state operations.
+- CRUD actions over object arrays compose with keyed rows, reactive selection, conditional editors, and guarded local storage effects in the React Notes migration.
+- Unsupported private captures, hidden state dependencies, indirect action references, dynamic Provider values, multiple Providers, and consumer binding collisions fail with source diagnostics.
+- Static sibling routes remain JavaScript-free. No action function, Context runtime, Provider tree, callback registry, VDOM, or hydration is emitted.
+- The complete suite passes 139/139 tests, including Chrome coverage for create, rename, select, and delete behavior.
+
+### Boundary
+
+The hook must directly return `useContext(ContextIdentifier)`. The Context and exactly one Provider must be declared together in one local or named relative module, and its value must be one direct shorthand object. Actions must be synchronous, called directly in intrinsic handlers, and capture only exposed Provider state pairs.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.9
+```
+
 ## 0.8.8 - Conditional keyed map roots
 
 Kudzu 0.8.8 compiles ordinary expression-bodied conditional keyed maps through the existing pure collection selector path.

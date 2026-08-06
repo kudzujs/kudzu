@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.8 - Conditional keyed map roots.** Expression-bodied keyed maps may return `condition && <Row />` or `condition ? <Row /> : null`; Kudzu lowers the condition to its existing filter path so omitted rows clean up and re-entry starts fresh. Read the [release notes](./RELEASES.md#088---conditional-keyed-map-roots) or open the [release page](https://kudzujs.cloud/releases/0.8.8).
+**Latest release: 0.8.9 - Context-backed CRUD actions.** A relative custom hook may directly return `useContext(Context)` for one analyzable Provider whose state-backed actions compile into existing route handler ESM, without a browser Context tree. Read the [release notes](./RELEASES.md#089---context-backed-crud-actions) or open the [release page](https://kudzujs.cloud/releases/0.8.9).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

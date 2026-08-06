@@ -2843,6 +2843,78 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     let usesComponentRef = false
     let usesComponentEffects = false
 
+    const resolveContextHook = (returned, hookSource) => {
+      if (!hasFrameworkImport(hookSource, "useContext")) throw sourceNodeError(returned.expression, hookSource, "Relative Context hooks must call useContext imported from react or @kudzujs/core")
+      if (returned.arguments.length !== 1 || !ts.isIdentifier(returned.arguments[0])) throw sourceNodeError(returned, hookSource, "Relative Context hooks must directly return useContext(ContextIdentifier)")
+      const contextName = returned.arguments[0].text
+      let providerSource = hookSource
+      let providerContextName = contextName
+      const hookImports = clientImportBindings(hookSource, hookSource.fileName, sourceFiles)
+      if (hookImports.has(contextName)) {
+        const binding = hookImports.get(contextName)
+        if (binding.kind === "namespace" || binding.kind === "default") throw sourceNodeError(returned.arguments[0], hookSource, "Relative Context hooks require a named Context import")
+        providerSource = importedSource(binding.target)
+        providerContextName = binding.imported
+      }
+      const hasContext = hasFrameworkImport(providerSource, "createContext") && providerSource.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === providerContextName && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "createContext"))
+      if (!hasContext) throw sourceNodeError(returned.arguments[0], hookSource, "Relative Context hooks require a local or named relative createContext() declaration")
+
+      const providers = []
+      const findProviders = node => {
+        if (ts.isJsxAttribute(node) && node.name.text === "value") {
+          const element = node.parent?.parent
+          const tag = ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element) ? element.tagName : undefined
+          if (ts.isPropertyAccessExpression(tag) && tag.name.text === "Provider" && ts.isIdentifier(tag.expression) && tag.expression.text === providerContextName) providers.push(node)
+        }
+        ts.forEachChild(node, findProviders)
+      }
+      findProviders(providerSource)
+      if (providers.length !== 1) throw sourceNodeError(returned.arguments[0], hookSource, "Relative Context hooks require exactly one Provider value in the Context module")
+      const provider = providers[0]
+      const value = provider.initializer && ts.isJsxExpression(provider.initializer) && provider.initializer.expression ? unwrapExpression(provider.initializer.expression) : undefined
+      if (!value || !ts.isObjectLiteralExpression(value)) throw sourceNodeError(provider, providerSource, "Context Provider value must be one direct object literal")
+      const owner = nearestFunction(provider)
+      if (!owner) throw sourceNodeError(provider, providerSource, "Context Provider value must be returned by a component")
+
+      const states = new Map()
+      const callbacks = new Map()
+      const hasUseState = hasFrameworkImport(providerSource, "useState")
+      const collectProviderBindings = node => {
+        if (ts.isVariableDeclaration(node) && nearestFunction(node) === owner) {
+          if (hasUseState && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "useState") {
+            const [state, setter] = node.name.elements
+            if (node.name.elements.length === 2 && state && setter && ts.isBindingElement(state) && ts.isBindingElement(setter) && ts.isIdentifier(state.name) && ts.isIdentifier(setter.name)) states.set(setter.name.text, state.name.text)
+          }
+          if (ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) callbacks.set(node.name.text, node.initializer)
+        }
+        ts.forEachChild(node, collectProviderBindings)
+      }
+      collectProviderBindings(owner.body)
+
+      const fields = new Set()
+      const stateFields = new Set([...states].flat())
+      for (const property of value.properties) {
+        if (!ts.isShorthandPropertyAssignment(property)) throw sourceNodeError(property, providerSource, "Context Provider values must use direct shorthand state, setter, or action fields")
+        const name = property.name.text
+        if (!stateFields.has(name) && !callbacks.has(name)) throw sourceNodeError(property, providerSource, `Context Provider field ${JSON.stringify(name)} must be a direct provider-owned state, setter, or action`)
+        fields.add(name)
+      }
+      for (const [setter, state] of states) {
+        if (fields.has(setter) !== fields.has(state)) throw sourceNodeError(value, providerSource, `Context Provider state ${JSON.stringify(state)} and setter ${JSON.stringify(setter)} must be exposed together`)
+      }
+      for (const [name, callback] of callbacks) {
+        if (!fields.has(name)) continue
+        if (callback.asteriskToken || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(callback, providerSource, `Context action ${JSON.stringify(name)} must be synchronous`)
+        const capture = nativeCaptureNames(callback, states).values().next().value
+        if (capture) throw sourceNodeError(callback, providerSource, `Context action ${JSON.stringify(name)} cannot capture private binding ${JSON.stringify(capture)}`)
+        for (const state of referencedStateNames(callback.body, states, callback)) {
+          const setter = [...states].find(([, candidate]) => candidate === state)?.[0]
+          if (!setter || !fields.has(state) || !fields.has(setter)) throw sourceNodeError(callback, providerSource, `Context action ${JSON.stringify(name)} requires exposed state and setter fields for ${JSON.stringify(state)}`)
+        }
+      }
+      return { callbacks: new Map([...callbacks].filter(([name]) => fields.has(name))), context: true, fields, privateStates: new Set(), states }
+    }
+
     const resolveCustomHook = (binding, call) => {
       const exportName = binding.kind === "default" ? "default" : binding.imported
       const key = `${binding.target}:${exportName}`
@@ -2852,7 +2924,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       if (hook.parameters.length || hook.asteriskToken || hook.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || !ts.isBlock(hook.body)) throw sourceNodeError(hook, hookSource, "Relative custom hooks must be synchronous zero-argument functions with a block body")
       const returns = hook.body.statements.filter(ts.isReturnStatement)
       const returned = returns.length === 1 && returns[0] === hook.body.statements.at(-1) && returns[0].expression ? unwrapExpression(returns[0].expression) : undefined
-      if (!returned || !ts.isObjectLiteralExpression(returned)) throw sourceNodeError(hook.body, hookSource, "Relative custom hooks must end with one direct object return")
+      if (returned && ts.isCallExpression(returned) && ts.isIdentifier(returned.expression) && returned.expression.text === "useContext") {
+        const analysis = resolveContextHook(returned, hookSource)
+        customHooks.set(key, analysis)
+        return analysis
+      }
+      if (!returned || !ts.isObjectLiteralExpression(returned)) throw sourceNodeError(hook.body, hookSource, "Relative custom hooks must end with one direct object return or direct useContext(ContextIdentifier)")
 
       const states = new Map()
       const callbacks = new Map()
@@ -2897,7 +2974,30 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           const owner = nearestFunction(node)
           if (!owner) throw sourceNodeError(node, sourceFile, "Relative custom hooks cannot be used outside a Kudzu component")
           const setters = settersByFunction.get(owner) ?? new Map()
+          const requiredContextStates = new Set()
+          if (hook.context) {
+            for (const name of names) {
+              const callback = hook.callbacks.get(name)
+              if (callback) for (const state of referencedStateNames(callback.body, hook.states, callback)) requiredContextStates.add(state)
+            }
+          }
           for (const [setter, state] of hook.states) {
+            if (hook.context) {
+              if (names.has(setter) && !names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative Context setter ${JSON.stringify(setter)} requires state ${JSON.stringify(state)} to be destructured`)
+              if (!names.has(state) && !requiredContextStates.has(state)) continue
+              setters.set(names.has(setter) || requiredContextStates.has(state) ? setter : `__kContextState_${state}`, state)
+              if (requiredContextStates.has(state)) {
+                const fields = customHookPrivateFields.get(node) ?? []
+                for (const field of [state, setter]) {
+                  if (names.has(field) || fields.includes(field)) continue
+                  const conflict = owner.parameters.some(parameter => bindingNames(parameter.name).includes(field)) || owner.body.statements.some(statement => statement !== node.parent.parent && statementDeclaresName(statement, field))
+                  if (conflict) throw sourceNodeError(node.name, sourceFile, `Context action state field ${JSON.stringify(field)} conflicts with a consumer binding`)
+                  fields.push(field)
+                }
+                customHookPrivateFields.set(node, fields)
+              }
+              continue
+            }
             if (hook.privateStates.has(state)) {
               setters.set(setter, state)
               const fields = customHookPrivateFields.get(node) ?? []
@@ -2914,6 +3014,11 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
               const callbacks = customHookFunctionsByOwner.get(owner) ?? new Map()
               callbacks.set(name, hook.callbacks.get(name))
               customHookFunctionsByOwner.set(owner, callbacks)
+              if (hook.context) {
+                const reducers = reducersByFunction.get(owner) ?? new Map()
+                reducers.set(name, { contextAction: hook.callbacks.get(name), states: hook.states })
+                reducersByFunction.set(owner, reducers)
+              }
             }
             else if (![...hook.states].some(([setter, state]) => name === setter || name === state)) throw sourceNodeError(node.name, sourceFile, `Relative custom hook result ${JSON.stringify(name)} must be a direct useState value, setter, or callback`)
           }
@@ -5251,9 +5356,13 @@ function compileNativeCallback(expression, setters, reducers, factory, entries, 
   const usedReducers = referencedReducerDispatches(expression.body, reducers, expression)
   const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
   imports.push(...[...usedReducers].map(name => reducers.get(name).import).filter(Boolean))
-  const captures = new Set([...allCaptures].filter(name => !importBindings.has(name)))
+  const captures = new Set([...allCaptures].filter(name => !importBindings.has(name) && !usedReducers.has(name)))
   for (const entry of imports) if (!entry.package) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
+  for (const name of usedReducers) {
+    const reducer = reducers.get(name)
+    if (reducer.contextAction) for (const state of referencedStateNames(reducer.contextAction.body, reducer.states, reducer.contextAction)) usedStates.add(state)
+  }
   const exportName = `${prefix}${entries.length}`
   entries.push({ exportName, expression, captures, imports, liveStates, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested })
   const value = name => deferValues
@@ -5570,6 +5679,14 @@ function clientImportBindings(sourceFile, file, sourceFiles) {
     }
   }
   return bindings
+}
+
+function hasFrameworkImport(sourceFile, name) {
+  return sourceFile.statements.some(node => {
+    if (!ts.isImportDeclaration(node) || node.importClause?.isTypeOnly || !ts.isStringLiteral(node.moduleSpecifier) || !["react", "@kudzujs/core"].includes(node.moduleSpecifier.text)) return false
+    const bindings = node.importClause?.namedBindings
+    return bindings && ts.isNamedImports(bindings) && bindings.elements.some(entry => !entry.isTypeOnly && entry.name.text === name && (entry.propertyName ?? entry.name).text === name)
+  })
 }
 
 function packageImportBindings(sourceFile) {
@@ -6136,15 +6253,23 @@ function printNativeHandler({ exportName, expression, captures, setters, reducer
     const visitor = node => {
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && reducers.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
         const reducer = reducers.get(node.expression.text)
+        if (reducer.contextAction) {
+          const action = synthesizeTree(cloneAst(reducer.contextAction, factory, context))
+          const call = factory.createCallExpression(action, undefined, node.arguments)
+          ts.setParentRecursive(call, false)
+          return ts.visitNode(call, visitor)
+        }
         if (reducer.store) return zustandActionDispatch(factory, reducer, node.arguments.map(argument => ts.visitNode(argument, visitor)))
         if (node.arguments.length !== 1) throw sourceNodeError(node, expression.getSourceFile(), "Reducer dispatches require exactly one action")
         return reducerDispatch(factory, reducer, ts.visitNode(node.arguments[0], visitor))
       }
       if (ts.isShorthandPropertyAssignment(node) && reducers.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (reducers.get(node.name.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
         if (reducers.get(node.name.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
         return factory.createPropertyAssignment(node.name, reducerReference(factory, reducers.get(node.name.text)))
       }
       if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (reducers.get(node.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
         if (reducers.get(node.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
         return reducerReference(factory, reducers.get(node.text))
       }

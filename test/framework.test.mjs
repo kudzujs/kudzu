@@ -21,7 +21,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.8/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.9/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -35,9 +35,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.8"/)
-  assert.match(release, /Kudzu 0\.8\.8.*Write the condition.*Keep the ownership/s)
-  assert.match(release, /CONDITIONAL KEYED MAP ROOTS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.8/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.9"/)
+  assert.match(release, /Kudzu 0\.8\.9.*Keep the Provider.*Ship concrete state/s)
+  assert.match(release, /CONTEXT-BACKED CRUD ACTIONS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.9/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1772,6 +1772,53 @@ test("compiles a Zustand-shaped store into shared layout state", async t => {
   if (chrome) await runZustandMigrationBrowserTest(fixture, chrome)
 })
 
+test("compiles actions returned through a relative Context hook", async t => {
+  const fixture = new URL("./fixtures/context-actions", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/context-actions/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/context-actions/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/context-actions/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/context-actions/dist/static/index.html", import.meta.url), "utf8")
+  const handlers = await readFile(new URL("./fixtures/context-actions/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  assert.match(html, /data-note="1"/)
+  assert.match(handlers, /"New"/)
+  assert.doesNotMatch(handlers, /createContext|useContext|NotesContext/)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runContextActionsBrowserTest(fixture, chrome)
+})
+
+test("rejects private captures in Context actions", () => {
+  const fixture = new URL("./fixtures/context-actions-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/context\.tsx:\d+:\d+ Context action "increment" cannot capture private binding "incrementBy"/)
+})
+
+test("rejects Context actions whose state pair is not exposed", () => {
+  const fixture = new URL("./fixtures/context-actions-hidden-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/context\.tsx:\d+:\d+ Context action "increment" requires exposed state and setter fields for "count"/)
+})
+
+test("rejects indirect Context action references", () => {
+  const fixture = new URL("./fixtures/context-actions-reference-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Context actions must be called directly inside an event handler/)
+})
+
+test("rejects Context action state collisions in consumers", () => {
+  const fixture = new URL("./fixtures/context-actions-collision-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Context action state field "setCount" conflicts with a consumer binding/)
+})
+
 test("rejects derived Zustand selectors", async t => {
   const fixture = new URL("./fixtures/zustand-invalid", import.meta.url)
   t.after(async () => {
@@ -3493,6 +3540,56 @@ try {
   document.body.dataset.browserTest = "fail-" + error.message
 }
 
+`)
+
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : file.endsWith(".css") ? "text/css" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runContextActionsBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  document.querySelector("[data-create]").click()
+  await wait()
+  let rows = document.querySelectorAll("[data-note]")
+  if (rows.length !== 2 || document.querySelector("[data-active]").textContent !== "2") throw new Error("create")
+  rows[1].querySelector("[data-rename]").click()
+  await wait()
+  rows = document.querySelectorAll("[data-note]")
+  if (rows[1].querySelector("[data-select]").textContent !== "New!") throw new Error("rename")
+  rows[0].querySelector("[data-select]").click()
+  await wait()
+  if (document.querySelector("[data-active]").textContent !== "1") throw new Error("select")
+  rows[0].querySelector("[data-delete]").click()
+  await wait()
+  rows = document.querySelectorAll("[data-note]")
+  if (rows.length !== 1 || rows[0].dataset.note !== "2" || document.querySelector("[data-active]").textContent !== "0") throw new Error("delete")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
 `)
 
   const port = nextBrowserPort()

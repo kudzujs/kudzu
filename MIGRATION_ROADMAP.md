@@ -136,6 +136,11 @@ This queue orders the next investigations by general migration value. Start only
 - Conditions may combine the current item with direct primitive parent state. Nested rows accept item-only conditions; map indexes, alternate JSX fallbacks, arbitrary captures, and impure predicates remain diagnosed.
 - Imported build-known item-only conditions still fold to complete zero-JavaScript HTML, and no runtime capability was added.
 
+### Completed In 0.8.9
+
+- A React Notes migration preserves its Provider, relative `useNotes()` alias, consumer components, and parameterized CRUD actions. A direct custom-hook `useContext(Context)` return resolves one local or named relative Context module whose Provider value exposes direct state/setter pairs and synchronous actions.
+- Context actions inline into existing route handler ESM and compile to concrete state operations. Private captures, dynamic Provider objects, and multiple Provider implementations remain diagnosed; no browser Context tree, callback registry, or shared runtime was added.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:
