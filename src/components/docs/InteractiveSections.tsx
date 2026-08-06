@@ -151,6 +151,7 @@ export function EventsSection() {
   return <section className="docs-section" id="events">
     <div className="docs-heading"><span>08</span><div><p>CORE</p><h2>Event handlers</h2></div></div>
     <p>Setter-only handlers compile to ordered commands. Conditions, browser APIs, event reads, and async code compile to external ESM without <code>eval</code>.</p>
+    <p>Inline or named handlers may use browser globals such as <code>localStorage</code>, <code>FileReader</code>, and <code>alert</code>; Kudzu leaves them in browser ESM instead of serializing them as build-time captures.</p>
     <p>Native handlers use direct DOM listeners with normal <code>currentTarget</code>, bubbling, default-action, and propagation semantics. Handler modules load before listener registration, so <code>preventDefault()</code>, <code>stopPropagation()</code>, and <code>stopImmediatePropagation()</code> work synchronously as expected.</p>
     <p>Native handlers may call default, named, or namespace helpers from relative TypeScript modules. Kudzu bundles the reachable helper graph into handler ESM and shared chunks. Helper runtime imports must remain relative; package imports, dynamic imports, JSX helpers, and direct imported event callbacks are rejected.</p>
     <p>Direct async handlers and directly returned relative custom-hook callbacks may use native <code>navigator.clipboard.writeText()</code>. Keep permission failure handling and user feedback in application state; Kudzu emits no clipboard API or runtime of its own.</p>

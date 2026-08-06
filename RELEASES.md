@@ -1,5 +1,27 @@
 # Kudzu Releases
 
+## 0.8.4 - Browser-native handlers
+
+Kudzu 0.8.4 fixes named event handlers that use standard browser globals during real React application migrations.
+
+### New in 0.8.4
+
+- Named and inline event handlers keep `localStorage`, `FileReader`, and `alert` in route-specific browser ESM instead of serializing them as component captures during static rendering.
+- FrugalHQ backup export, file import, and reset handlers now build without evaluating browser-only globals in Node.
+- Browser regression coverage verifies that the globals remain absent from SSR capture scope and resolve normally after a real click.
+- The fix adds no runtime, shared bytes, hydration, or browser component tree.
+- The complete suite passes 133/133 tests.
+
+### Boundary
+
+Application-owned handler captures must still be JSON-safe. This release only corrects classification of the proven standard browser globals; it does not execute browser APIs during static rendering or add arbitrary callback support.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.4
+```
+
 ## 0.8.3 - Native interaction composition
 
 Kudzu 0.8.3 characterizes ordinary clipboard, debounce, and accessible SVG point interactions through existing route-specific capabilities instead of dedicated browser runtimes.

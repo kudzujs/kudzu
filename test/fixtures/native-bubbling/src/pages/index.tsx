@@ -23,6 +23,12 @@ export default function NativeBubblingPage() {
     ;(event.currentTarget as HTMLElement).parentElement?.remove()
   }
 
+  function browserGlobals() {
+    localStorage.setItem("native-global", "ready")
+    const reader = new FileReader()
+    document.body.dataset.browserGlobals = `${reader.readyState}:${typeof alert}`
+  }
+
   return <>
     <Parent>
       <a id="controls" href="#changed" onClick={controls}>Controls</a>
@@ -30,6 +36,7 @@ export default function NativeBubblingPage() {
     </Parent>
     <input id="focus-target" ref={inputRef} />
     <button id="focus-ref" onClick={focusInput}>Focus</button>
+    <button id="browser-globals" onClick={browserGlobals}>Browser globals</button>
     <p id="object-state">{weather.temperature}° {weather.label}</p>
     <table><tbody><tr><td id="object-cell">{weather.label.toUpperCase()}</td></tr></tbody></table>
     <select><option id="object-option">{weather.label}</option></select>
