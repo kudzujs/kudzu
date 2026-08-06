@@ -181,7 +181,7 @@ footer > span { font-family: var(--mono); }
 .docs-sidebar p:first-child { margin-top: 0; }
 .docs-sidebar a { display: block; padding: 7px 0; color: var(--muted); font-size: 13px; text-decoration: none; }
 .docs-sidebar a:hover { color: var(--lavender); }
-.docs-content { width: auto; margin: 0; padding: 0 0 120px 72px; }
+.docs-content { min-width: 0; width: auto; margin: 0; padding: 0 0 120px 72px; }
 .docs-intro { padding: 110px 0 120px; border-bottom: 1px solid var(--line); }
 .docs-intro h1 { margin: 28px 0; font-size: clamp(62px, 8vw, 104px); }
 .docs-intro > p:last-child { max-width: 720px; color: var(--muted); font-size: 18px; line-height: 1.8; }
