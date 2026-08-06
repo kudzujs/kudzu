@@ -8,6 +8,10 @@ HTML-first TSX framework with synchronous state semantics and no virtual DOM.
 
 Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTML, CSS, and only the route-specific ESM capabilities actually used. Static pages ship zero JavaScript. React, hydration, a VDOM, and a retained browser component tree are not part of the output.
 
+[![Watch the 22-second Kudzu compiler overview](https://raw.githubusercontent.com/kudzujs/kudzu/main/media/kudzu-demo-cover.png)](https://github.com/kudzujs/kudzu/blob/main/media/kudzu-demo.mp4)
+
+*Watch: React-shaped TSX to static HTML and route-specific ESM in 22 seconds.*
+
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
 **Latest release: 0.8.9 - Context-backed CRUD actions.** A relative custom hook may directly return `useContext(Context)` for one analyzable Provider whose state-backed actions compile into existing route handler ESM, without a browser Context tree. Read the [release notes](./RELEASES.md#089---context-backed-crud-actions) or open the [release page](https://kudzujs.cloud/releases/0.8.9).
