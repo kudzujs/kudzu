@@ -1,5 +1,27 @@
 # Kudzu Releases
 
+## 0.8.6 - Responsive list reversals
+
+Kudzu 0.8.6 fixes stale keyed-list bookkeeping after reverse and one-item removal fast paths.
+
+### Fixed in 0.8.6
+
+- Reverse fast paths now store the latest logical item order after moving existing keyed DOM nodes.
+- One-item removal fast paths update the same baseline before subsequent list actions.
+- Repeated reverse clicks apply on the next microtask instead of requiring another delayed interaction.
+- Existing keyed rows retain DOM identity and uncontrolled input values through every reorder.
+- Chrome coverage verifies `3,2,1 → 1,2,3 → 3,2,1` across rapid actions, and the complete suite passes 134/134 tests.
+
+### Boundary
+
+This is a bookkeeping correction in the existing keyed-list runtime. It adds no list capability, VDOM, hydration, or component runtime.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.6
+```
+
 ## 0.8.5 - Owned timer actions
 
 Kudzu 0.8.5 compiles one proven private timeout ref pattern from a returned relative custom-hook action into existing state and effect ownership.
