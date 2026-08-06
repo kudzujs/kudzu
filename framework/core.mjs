@@ -324,11 +324,17 @@ export function listField(read, field) {
   return { [listFieldMarker]: true, field, value: renderContext?.listTemplate ? undefined : read() }
 }
 
-export function listExpression(read, module, handler) {
+export function listExpression(read, module, handler, states = []) {
   renderContext?.handlerModules.add(module)
+  const stateMap = Object.fromEntries(states.map(([name, state]) => {
+    if (!state?.[signalMarker] || !validEffectDependency(state.value)) throw new Error(`Derived keyed list item expression state ${JSON.stringify(name)} must be primitive Kudzu state`)
+    return [name, state.id]
+  }))
+  const owner = renderContext?.listRoot ?? renderContext?.listRowRoot
+  if (owner && states.length) owner.descriptor.expressionStates = [...new Set([...(owner.descriptor.expressionStates ?? []), ...Object.values(stateMap)])]
   const value = renderContext?.listTemplate ? undefined : read()
   if (value && typeof value.then === "function") throw new Error("Derived keyed list item expressions must return synchronous values")
-  return { [listExpressionMarker]: true, module, handler, value }
+  return { [listExpressionMarker]: true, module, handler, states: stateMap, value }
 }
 
 export function listItem() {
@@ -659,7 +665,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-text-end></template>`
   }
   if (node?.[listExpressionMarker]) {
-    const descriptor = { module: node.module, handler: node.handler }
+    const descriptor = { module: node.module, handler: node.handler, ...(Object.keys(node.states).length ? { states: node.states } : {}) }
     const marker = renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch ? ` data-k-list-expression='${escapeJsonAttribute(descriptor)}'` : ""
     return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-expression-end></template>`
   }
@@ -812,7 +818,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
     if (value?.[listExpressionMarker]) {
       attributes += renderAttribute(name, value.value)
-      listExpressionAttributes.push([name, value.module, value.handler])
+      listExpressionAttributes.push([name, value.module, value.handler, ...(Object.keys(value.states).length ? [value.states] : [])])
       if (name === "style") renderContext.hasListStyles = true
       continue
     }

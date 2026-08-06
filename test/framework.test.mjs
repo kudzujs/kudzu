@@ -21,7 +21,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.6/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.7/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -35,9 +35,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.6"/)
-  assert.match(release, /Kudzu 0\.8\.6.*Reverse now.*Reverse again/s)
-  assert.match(release, /RESPONSIVE LIST REVERSALS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.6/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.7"/)
+  assert.match(release, /Kudzu 0\.8\.7.*Select a row.*Keep the row/s)
+  assert.match(release, /REACTIVE KEYED ROW SELECTION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.7/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1027,7 +1027,9 @@ test("reevaluates calculated collection fields through keyed SVG lists", async t
   const plan = JSON.parse(await readFile(new URL("./fixtures/calculated-collections/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
   const route = plan.find(entry => entry.route === "/")
 
-  assert.match(html, /<svg[^>]+data-chart.*<circle[^>]+data-point="a"[^>]+cx="10"[^>]+role="button"[^>]+aria-label="Alpha"[^>]+aria-describedby="point-tooltip".*<circle[^>]+data-point="b"/s)
+  assert.match(html, /<svg[^>]+data-chart.*<circle[^>]+data-point="a"[^>]+class="point "[^>]+cx="10"[^>]+role="button"[^>]+aria-label="Alpha"[^>]+aria-describedby="point-tooltip"[^>]+aria-current="false".*<circle[^>]+data-point="b"/s)
+  assert.match(html, /"expressionStates":\["s\d+"\]/)
+  assert.match(html, /data-k-list-expression-attrs=&#39;[^>]*selectedId/)
   assert.match(html, /id="point-tooltip" role="tooltip" aria-live="polite" hidden(?:="true")?[^>]*>.*No point selected/s)
   assert.match(html, /data-k-list='[^']+"source":\{"module":"\/assets\/handlers\/pages\/index\.js","handler":"binding\d+"/)
   assert.equal(route.lists[0].source.handler, "binding1")
@@ -1948,6 +1950,7 @@ test("rejects unsupported keyed list expressions and duplicate initial keys", ()
     ["list-invalid-condition", /Keyed list item conditions must read the item/],
     ["list-invalid-browser", /identifier "window" is not allowed/],
     ["list-invalid-capture", /identifier "suffix" is not allowed/],
+    ["list-invalid-expression-state", /expression state "selected" must be primitive Kudzu state/],
     ["list-invalid-computed-key", /require a direct string or numeric literal key/],
     ["list-invalid-concatenated-key", /require a direct string or numeric literal key/],
     ["list-invalid-duplicate", /Duplicate keyed list key: same/],
@@ -3591,7 +3594,7 @@ try {
   if (alpha.namespaceURI !== "http://www.w3.org/2000/svg") throw new Error("namespace")
   await waitFor(() => {
     alpha.dispatchEvent(new FocusEvent("focus"))
-    return tooltip.textContent === "Alpha" && !tooltip.hidden
+    return tooltip.textContent === "Alpha" && !tooltip.hidden && alpha.getAttribute("aria-current") === "true" && alpha.getAttribute("class") === "point selected" && document.querySelector('[data-point="b"]').getAttribute("aria-current") === "false"
   }, "focus-tooltip")
   click(1)
   await waitFor(() => ids() === "a,c,b" && alpha.getAttribute("cx") === "15", "insert")
@@ -3599,12 +3602,12 @@ try {
   if (document.querySelector('[data-point="c"]').namespaceURI !== "http://www.w3.org/2000/svg") throw new Error("insert-namespace")
   const gamma = document.querySelector('[data-point="c"]')
   gamma.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }))
-  await waitFor(() => tooltip.textContent === "Gamma", "keyboard-tooltip")
+  await waitFor(() => tooltip.textContent === "Gamma" && gamma.getAttribute("aria-current") === "true" && gamma.getAttribute("class") === "point selected" && alpha.getAttribute("aria-current") === "false" && alpha.getAttribute("class") === "point ", "keyboard-tooltip")
   click(2)
   await waitFor(() => ids() === "c,a", "reorder")
-  if (points().at(-1) !== alpha || alpha.getAttribute("cx") !== "20" || alpha.getAttribute("aria-label") !== "Alpha reordered" || document.querySelector('[data-point="b"]')) throw new Error("reorder-update")
+  if (points().at(-1) !== alpha || alpha.getAttribute("cx") !== "20" || alpha.getAttribute("aria-label") !== "Alpha reordered" || gamma.getAttribute("aria-current") !== "true" || document.querySelector('[data-point="b"]')) throw new Error("reorder-update")
   alpha.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-  await waitFor(() => document.body.dataset.selected === "Alpha reordered" && tooltip.textContent === "Alpha reordered", "latest-handler")
+  await waitFor(() => document.body.dataset.selected === "Alpha reordered" && tooltip.textContent === "Alpha reordered" && alpha.getAttribute("aria-current") === "true" && gamma.getAttribute("aria-current") === "false", "latest-handler")
   click(3)
   await waitFor(() => ids() === "a", "remove")
   if (points()[0] !== alpha || alpha.getAttribute("cy") !== "35" || alpha.getAttribute("aria-label") !== "Alpha final" || document.querySelector("[data-total]").textContent !== "13") throw new Error("final-update")

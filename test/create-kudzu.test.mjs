@@ -23,7 +23,7 @@ test("creates a Kudzu project", async t => {
   const staticPage = await readFile(join(directory, "app/src/pages/about.tsx"), "utf8")
   const component = await readFile(join(directory, "app/src/components/CapabilityCard.tsx"), "utf8")
   const readme = await readFile(join(directory, "app/README.md"), "utf8")
-  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.8.6")
+  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.8.7")
   assert.deepEqual(tsconfig.compilerOptions.types, [])
   assert.equal(packageJson.devDependencies.typescript, "^5.9.2")
   assert.equal(packageJson.scripts.check, "tsc --noEmit && kudzu build")

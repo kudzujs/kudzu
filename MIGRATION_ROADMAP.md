@@ -120,11 +120,14 @@ This queue orders the next investigations by general migration value. Start only
 - One empty-dependency effect directly clears the latest timer on cleanup. The compiler lowers the ref to a hidden state slot shared by existing native-handler and effect contexts, so conditional unmount cancels pending work and remount starts fresh without a timer runtime.
 - The React/Vite migration fixture verifies timer replacement, latest-only firing, conditional cleanup, fresh remount, source diagnostics for dynamic delays, and zero timer-specific runtime bytes.
 
-### 1. Expanded Chart Interaction
+### Completed In 0.8.7
 
-Accessible selected-point tooltips require no new framework capability. Investigate detailed Withdrawal/Debt series only after a reduced migration fixture proves additional interaction is needed. Prefer direct SVG bindings and keyed SVG rows; add no chart runtime unless native output is measurably insufficient.
-
-Acceptance: accessible static SVG is present initially, updates preserve element identity, and unaffected routes ship no chart JavaScript.
+- The FIRE migration's detailed Withdrawal and Debt charts compose from relative calculation fields, reactive SVG paths, calculated keyed SVG points, and ordinary parent state without a chart runtime.
+- Withdrawal renders two series and 31 yearly targets. Debt renders remaining-balance comparisons plus cumulative principal and interest with monthly targets.
+- Pointer, focus, click, Space, and Enter update external accessible tooltips. Input and debt-list changes preserve retained point and path identity while handlers read current labels.
+- Home, Books, and Apps remain JavaScript-free. The expanded charts require no compiler or runtime change.
+- A React Notes migration proved selected keyed rows need direct primitive parent state in ordinary class and ARIA expressions. Kudzu now reevaluates only retained row expressions on that state commit, preserving row identity without a component rerender.
+- The supported boundary is a pure flat-row text or attribute expression combining the direct item/index with direct primitive parent state. Object/array state, arbitrary captures, nested-row parent state, and structural conditions remain diagnosed.
 
 ## Cross-Cutting Performance Gates
 

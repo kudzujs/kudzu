@@ -25,7 +25,10 @@ function commitLists(id) {
   if (!lists) return
   for (const list of lists) {
     if (!list.start.isConnected) unregisterList(list.start)
-    else updateList(list)
+    else {
+      if (list.updateStates.has(id)) updateList(list)
+      if (list.expressionStates.has(id)) updateListExpressions(list)
+    }
   }
 }
 
@@ -76,6 +79,8 @@ function mountLists(root) {
       ...(__KUDZU_LIST_STABLE_FAST_PATHS__ ? { orderedRoots: roots } : {}),
       values: new Map(),
       items: undefined,
+      updateStates: new Set(),
+      expressionStates: new Set(descriptor.expressionStates ?? []),
       container: roots[0]?.parentNode,
       boundary: end,
       ...(__KUDZU_NESTED_LISTS__ && descriptor.ownerField ? { owner: nested.owner } : {})
@@ -93,20 +98,19 @@ function mountLists(root) {
       loadListEvaluator(descriptor.source).then(evaluator => {
         if (listLoads.get(start) !== load || !start.isConnected) return
         list.sourceEvaluator = evaluator
-        const states = [...new Set([...evaluator.stateIds, ...(__KUDZU_COLLECTION_SELECTORS__ ? Object.values(descriptor.selectorStates ?? {}) : [])])]
+        const updateStates = [...new Set([...evaluator.stateIds, ...(__KUDZU_COLLECTION_SELECTORS__ ? Object.values(descriptor.selectorStates ?? {}) : [])])]
+        const states = [...new Set([...updateStates, ...list.expressionStates])]
+        list.updateStates = new Set(updateStates)
         for (const state of states) register(listTargets, state, list)
         listRegistrations.set(start, { states, list })
         updateList(list)
       }).catch(error => console.error(error))
     } else {
-      if (__KUDZU_COLLECTION_SELECTORS__ && descriptor.selectorStates) {
-        const states = [...new Set([descriptor.state, ...Object.values(descriptor.selectorStates)])]
-        for (const state of states) register(listTargets, state, list)
-        listRegistrations.set(start, { states, list })
-      } else {
-        register(listTargets, descriptor.state, list)
-        listRegistrations.set(start, { state: descriptor.state, list })
-      }
+      const updateStates = [descriptor.state, ...(__KUDZU_COLLECTION_SELECTORS__ ? Object.values(descriptor.selectorStates ?? {}) : [])]
+      const states = [...new Set([...updateStates, ...list.expressionStates])]
+      list.updateStates = new Set(updateStates)
+      for (const state of states) register(listTargets, state, list)
+      listRegistrations.set(start, { states, list })
     }
     if (!descriptor.source) updateList(list)
   }
@@ -125,7 +129,7 @@ function unregisterList(start) {
       if (lists?.get(registration.list.descriptor.id) === registration.list) lists.delete(registration.list.descriptor.id)
       if (!lists?.size) ownedLists.delete(registration.owner)
     } else {
-      if ((__KUDZU_COLLECTION_SELECTORS__ || registration.list.descriptor.source) && registration.states) {
+      if (registration.states) {
         for (const state of registration.states) {
           const lists = listTargets.get(state)
           lists?.delete(registration.list)
@@ -647,6 +651,17 @@ function fillListParts(root, parts, item, revision, index = 0, previous) {
       }
     }
   }
+  fillListExpressions(root, parts, item, revision, index)
+  if (__KUDZU_LIST_CONDITIONS__) {
+    for (const [marker, descriptor] of parts.conditions) {
+      evaluate(descriptor, item, index).then(value => {
+        if (revisions.get(root) === revision && marker.isConnected) updateListCondition(marker, descriptor.kind, value, item, index)
+      }).catch(error => console.error(error))
+    }
+  }
+}
+
+function fillListExpressions(root, parts, item, revision, index) {
   if (__KUDZU_LIST_EXPRESSIONS__) {
     for (const [marker, descriptor] of parts.expressions) {
       evaluate(descriptor, item, index).then(value => {
@@ -656,19 +671,20 @@ function fillListParts(root, parts, item, revision, index = 0, previous) {
   }
   if (__KUDZU_LIST_EXPRESSION_ATTRIBUTES__) {
     for (const [node, attributes] of parts.expressionAttributes) {
-      for (const [target, module, handler] of attributes) {
-        evaluate({ module, handler }, item, index).then(value => {
+      for (const [target, module, handler, states] of attributes) {
+        evaluate({ module, handler, states }, item, index).then(value => {
           if (revisions.get(root) === revision && node.isConnected) patchBinding(node, target, value)
         }).catch(error => console.error(error))
       }
     }
   }
-  if (__KUDZU_LIST_CONDITIONS__) {
-    for (const [marker, descriptor] of parts.conditions) {
-      evaluate(descriptor, item, index).then(value => {
-        if (revisions.get(root) === revision && marker.isConnected) updateListCondition(marker, descriptor.kind, value, item, index)
-      }).catch(error => console.error(error))
-    }
+}
+
+function updateListExpressions(list) {
+  for (const root of list.roots.values()) {
+    const revision = (revisions.get(root) ?? 0) + 1
+    revisions.set(root, revision)
+    fillListExpressions(root, listItemParts(root, list.descriptor.nested), listItems.get(root), revision, __KUDZU_LIST_INDEXES__ ? listIndexes.get(root) ?? 0 : 0)
   }
 }
 
@@ -999,7 +1015,7 @@ function evaluate(descriptor, item, index) {
     imports.set(descriptor.module, module)
   }
   return module.then(exports => {
-    const value = exports[descriptor.handler](item, index)
+    const value = exports[descriptor.handler](item, index, { get: name => browserState.get(descriptor.states?.[name]) })
     if (value && typeof value.then === "function") throw new Error("Derived keyed list item expressions must return synchronous values")
     return value
   })

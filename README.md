@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.6 - Responsive list reversals.** Keyed-list reverse and removal fast paths now retain current bookkeeping, so repeated actions update immediately while preserving DOM identity. Read the [release notes](./RELEASES.md#086---responsive-list-reversals) or open the [release page](https://kudzujs.cloud/releases/0.8.6).
+**Latest release: 0.8.7 - Reactive keyed row selection.** Flat keyed rows may combine their current item or index with direct primitive parent state in pure text and attribute expressions, enabling selected classes and ARIA state without remounting rows. Read the [release notes](./RELEASES.md#087---reactive-keyed-row-selection) or open the [release page](https://kudzujs.cloud/releases/0.8.7).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

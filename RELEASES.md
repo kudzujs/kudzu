@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.8.7 - Reactive keyed row selection
+
+Kudzu 0.8.7 lets a flat keyed row combine its current item or index with direct primitive parent state in pure text and attribute expressions.
+
+### New in 0.8.7
+
+- Selected-row classes, `aria-current`, `aria-selected`, and similar pure expressions update directly after parent-state commits.
+- Retained rows reevaluate only their expression text and attributes; list structure, handlers, and DOM identity remain untouched.
+- Initial static HTML evaluates the same expression with build-time state values.
+- Calculated SVG coverage verifies focus, Space, click, insertion, reorder, latest handlers, selected classes, ARIA state, and retained node identity.
+- A React Notes migration restores its ordinary `activeId === note.id` selected-row source without imperative DOM code.
+- Object/array parent state, arbitrary captures, nested-row parent state, structural conditions, mutation, and arbitrary calls remain diagnosed.
+- The complete suite passes 134/134 tests.
+
+### Boundary
+
+This support is limited to pure flat keyed-row text and attribute expressions over the current item/index plus direct primitive parent state. It adds no component rerenderer, VDOM, hydration, or general capture runtime.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.7
+```
+
 ## 0.8.6 - Responsive list reversals
 
 Kudzu 0.8.6 fixes stale keyed-list bookkeeping after reverse and one-item removal fast paths.

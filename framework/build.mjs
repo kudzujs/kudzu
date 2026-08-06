@@ -303,6 +303,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       .replace("function fillListItem(root, item, nested = false, index = 0)", "function fillListItem(root, item, nested = false)")
       .replace("fillListParts(root, parts, item, revision, index, previous)", "fillListParts(root, parts, item, revision, previous)")
       .replace("function fillListParts(root, parts, item, revision, index = 0, previous)", "function fillListParts(root, parts, item, revision, previous)")
+      .replace("fillListExpressions(root, parts, item, revision, index)", "fillListExpressions(root, parts, item, revision)")
       .replaceAll('value?.type === "list-item" ? serializeItem(item) : value?.type === "list-index" ? index : value', 'value?.type === "list-item" ? serializeItem(item) : value')
       .replaceAll("evaluate(descriptor, item, index)", "evaluate(descriptor, item)")
       .replaceAll("evaluate({ module, handler }, item, index)", "evaluate({ module, handler }, item)")
@@ -311,6 +312,7 @@ export async function build({ quiet = false, minify = true } = {}) {
       .replace("fillListParts(marker, listItemParts(fragment), item, revision, index)", "fillListParts(marker, listItemParts(fragment), item, revision)")
       .replace("function evaluate(descriptor, item, index)", "function evaluate(descriptor, item)")
       .replace("exports[descriptor.handler](item, index)", "exports[descriptor.handler](item)")
+      .replace("exports[descriptor.handler](item, index, {", "exports[descriptor.handler](item, undefined, {")
     if (!hasCollectionSelectors) listRuntime = listRuntime.replaceAll(" && !list.descriptor.selector", "")
     if (!hasListIndexes) listRuntime = listRuntime
       .replaceAll(" && !list.descriptor.indexed", "")
@@ -3899,11 +3901,11 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       }
 
       if (ts.isJsxExpression(node) && node.expression && listValues.has(node.expression)) {
-        return factory.updateJsxExpression(node, compileListValue(node.expression, listValues.get(node.expression), factory, listExpressions, handlerUrl))
+        return factory.updateJsxExpression(node, compileListValue(node.expression, listValues.get(node.expression), factory, context, listExpressions, handlerUrl))
       }
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && listValues.has(node.initializer.expression)) {
-        return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compileListValue(node.initializer.expression, listValues.get(node.initializer.expression), factory, listExpressions, handlerUrl)))
+        return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compileListValue(node.initializer.expression, listValues.get(node.initializer.expression), factory, context, listExpressions, handlerUrl)))
       }
 
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
@@ -4509,9 +4511,12 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
         return
       }
       if (referencesIdentifier(expression, item) || parts.index && referencesIdentifier(expression, parts.index)) {
-        validateListExpression(expression, item, node, fail, parts.index)
+        const states = referencedStateNames(expression, setters)
+        for (const rowState of rowStates) states.delete(rowState.state)
+        if (parts.nested && states.size) fail(node, "Nested keyed list item expressions cannot read parent state")
+        validateListExpression(expression, item, node, fail, parts.index, states)
         if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.text.toLowerCase())) fail(node, `Keyed list item ${node.parent.name.text} is not supported`)
-        listValues.set(node.expression, { item, index: parts.index })
+        listValues.set(node.expression, { item, index: parts.index, states })
         return
       }
     }
@@ -4983,7 +4988,7 @@ const assignmentOperators = new Set([
   ts.SyntaxKind.QuestionQuestionEqualsToken
 ])
 
-function validateListExpression(expression, item, source, fail, index) {
+function validateListExpression(expression, item, source, fail, index, states = new Set()) {
   const visit = node => {
     if (ts.isTypeNode(node)) return
     if (ts.isElementAccessExpression(node) && referencesIdentifier(node.expression, item)) {
@@ -5014,7 +5019,7 @@ function validateListExpression(expression, item, source, fail, index) {
         fail(source, "Derived keyed list item expressions cannot call arbitrary functions")
       }
     }
-    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isJsxSyntaxIdentifier(node) && node.text !== item && node.text !== index && !pureListGlobals.has(node.text)) {
+    if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isJsxSyntaxIdentifier(node) && node.text !== item && node.text !== index && !states.has(node.text) && !pureListGlobals.has(node.text)) {
       fail(source, `Derived keyed list item expression identifier "${node.text}" is not allowed`)
     }
     ts.forEachChild(node, visit)
@@ -5032,10 +5037,12 @@ function containsJsx(root) {
   return found
 }
 
-function compileListExpression(read, expression, item, factory, listExpressions, handlerUrl, index) {
+function compileListExpression(read, expression, item, factory, listExpressions, handlerUrl, index, states = new Set()) {
   const exportName = `listExpression${listExpressions.length}`
-  listExpressions.push({ exportName, expression, item, index })
-  return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)])
+  listExpressions.push({ exportName, expression, item, index, states })
+  const arguments_ = [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)]
+  if (states.size) arguments_.push(factory.createArrayLiteralExpression([...states].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
+  return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, arguments_)
 }
 
 function compileListConditional(entry, factory, listExpressions, handlerUrl) {
@@ -5048,11 +5055,17 @@ function compileListConditional(entry, factory, listExpressions, handlerUrl) {
   ])
 }
 
-function compileListValue(expression, entry, factory, listExpressions, handlerUrl) {
-  const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expression)
+function compileListValue(expression, entry, factory, context, listExpressions, handlerUrl) {
+  const rewrite = node => {
+    if (ts.isShorthandPropertyAssignment(node) && entry.states?.has(node.name.text)) return factory.createPropertyAssignment(node.name, factory.createPropertyAccessExpression(node.name, "value"))
+    if (ts.isIdentifier(node) && entry.states?.has(node.text) && isReferenceIdentifier(node)) return factory.createPropertyAccessExpression(node, "value")
+    return ts.visitEachChild(node, rewrite, context)
+  }
+  const initial = entry.states?.size ? ts.visitNode(expression, rewrite) : expression
+  const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), initial)
   return entry.field
     ? factory.createCallExpression(factory.createIdentifier("__kListField"), undefined, [read, factory.createStringLiteral(entry.field)])
-    : compileListExpression(read, expression, entry.item, factory, listExpressions, handlerUrl, entry.index)
+    : compileListExpression(read, expression, entry.item, factory, listExpressions, handlerUrl, entry.index, entry.states)
 }
 
 function directProperty(expression, objectName) {
@@ -6307,17 +6320,35 @@ function printReactiveBinding({ exportName, expression, captures, states }) {
   }
 }
 
-function printListExpression({ exportName, expression, item, index }) {
+function printListExpression({ exportName, expression, item, index, states = new Set() }) {
+  const factory = ts.factory
+  const transformer = context => root => {
+    const visitor = node => {
+      if (ts.isShorthandPropertyAssignment(node) && states.has(node.name.text)) {
+        return factory.createPropertyAssignment(node.name, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(node.name.text)]))
+      }
+      if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
+        return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(node.text)])
+      }
+      return ts.visitEachChild(node, visitor, context)
+    }
+    return ts.visitNode(root, visitor)
+  }
+  const transformed = ts.transform(expression, [transformer])
   const declaration = ts.factory.createFunctionDeclaration(
     [ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)],
     undefined,
     exportName,
     undefined,
-    [ts.factory.createParameterDeclaration(undefined, undefined, item), ts.factory.createParameterDeclaration(undefined, undefined, index ?? "__kIndex")],
+    [ts.factory.createParameterDeclaration(undefined, undefined, item), ts.factory.createParameterDeclaration(undefined, undefined, index ?? "__kIndex"), ts.factory.createParameterDeclaration(undefined, undefined, "__k")],
     undefined,
-    ts.factory.createBlock([ts.factory.createReturnStatement(expression)], true)
+    ts.factory.createBlock([ts.factory.createReturnStatement(transformed.transformed[0])], true)
   )
-  return ts.createPrinter().printNode(ts.EmitHint.Unspecified, declaration, expression.getSourceFile())
+  try {
+    return ts.createPrinter().printNode(ts.EmitHint.Unspecified, declaration, expression.getSourceFile())
+  } finally {
+    transformed.dispose()
+  }
 }
 
 function scopeRead(factory, name) {
