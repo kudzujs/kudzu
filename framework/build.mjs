@@ -2607,6 +2607,132 @@ function reactMemoReferenceNames(root) {
   return names
 }
 
+const customHookTimerStatePrefix = "__kTimerState_"
+const customHookTimerSetterPrefix = "__kSetTimerState_"
+const customHookTimerStatesBySource = new WeakMap()
+
+function normalizeCustomHookTimerRefs(sourceFile, factory, context) {
+  const timerCall = (node, name) => ts.isCallExpression(node) && (
+    ts.isIdentifier(node.expression) && node.expression.text === name ||
+    ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "window" && node.expression.name.text === name
+  )
+  const currentAccess = (node, name) => ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name && node.name.text === "current"
+  const clearStatement = (node, name) => {
+    if (!ts.isIfStatement(node) || node.elseStatement || !currentAccess(unwrapExpression(node.expression), name)) return undefined
+    const statement = ts.isBlock(node.thenStatement) && node.thenStatement.statements.length === 1 ? node.thenStatement.statements[0] : node.thenStatement
+    if (!ts.isExpressionStatement(statement) || !timerCall(statement.expression, "clearTimeout") || statement.expression.arguments.length !== 1 || !currentAccess(unwrapExpression(statement.expression.arguments[0]), name)) return undefined
+    return { condition: unwrapExpression(node.expression), argument: unwrapExpression(statement.expression.arguments[0]) }
+  }
+  const analyze = (hook, hookName) => {
+    if (!/^use[A-Z]/.test(hookName) || hook.parameters.length || !hook.body || !ts.isBlock(hook.body)) return undefined
+    const returnedStatement = hook.body.statements.at(-1)
+    const returned = returnedStatement && ts.isReturnStatement(returnedStatement) && returnedStatement.expression ? unwrapExpression(returnedStatement.expression) : undefined
+    if (!returned || !ts.isObjectLiteralExpression(returned)) return undefined
+    const returnedNames = new Set(returned.properties.filter(ts.isShorthandPropertyAssignment).map(property => property.name.text))
+    const callbacks = new Map()
+    const refs = []
+    for (const statement of hook.body.statements) {
+      if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const)) continue
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) callbacks.set(declaration.name.text, declaration.initializer)
+        if (ts.isIdentifier(declaration.name) && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useRef" && declaration.initializer.arguments.length === 1 && declaration.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword) refs.push({ declaration, name: declaration.name.text })
+      }
+    }
+    const candidates = []
+    for (const ref of refs) {
+      const assignments = []
+      const accesses = []
+      const clearStatements = []
+      const collect = node => {
+        if (currentAccess(node, ref.name)) accesses.push(node)
+        if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && currentAccess(unwrapExpression(node.left), ref.name)) assignments.push(node)
+        const clear = clearStatement(node, ref.name)
+        if (clear) clearStatements.push({ node, ...clear })
+        ts.forEachChild(node, collect)
+      }
+      collect(hook.body)
+      if (assignments.some(assignment => timerCall(unwrapExpression(assignment.right), "setTimeout"))) candidates.push({ ...ref, assignments, accesses, clearStatements })
+    }
+    if (!candidates.length) return undefined
+    if (candidates.length !== 1) throw sourceNodeError(hook, sourceFile, "Relative custom hooks may own only one private timeout ref")
+    const timer = candidates[0]
+    if (timer.assignments.length !== 1) throw sourceNodeError(timer.declaration, sourceFile, "Private timeout refs require one direct timer.current = setTimeout(...) assignment")
+    const assignment = timer.assignments[0]
+    const timeout = unwrapExpression(assignment.right)
+    const timeoutCallback = timeout.arguments[0]
+    const delay = timeout.arguments[1]
+    if (!timerCall(timeout, "setTimeout") || timeout.arguments.length !== 2 || !timeoutCallback || !(ts.isArrowFunction(timeoutCallback) || ts.isFunctionExpression(timeoutCallback)) || timeoutCallback.parameters.length || !delay || !ts.isNumericLiteral(unwrapExpression(delay))) throw sourceNodeError(assignment, sourceFile, "Private timeout refs require setTimeout() with one zero-argument callback and a numeric literal delay")
+    const callback = nearestFunction(assignment)
+    const callbackName = [...callbacks].find(([, value]) => value === callback)?.[0]
+    if (!callbackName || !returnedNames.has(callbackName) || !ts.isBlock(callback.body) || !ts.isExpressionStatement(assignment.parent) || assignment.parent.parent !== callback.body) throw sourceNodeError(assignment, sourceFile, "Private timeout refs must be assigned directly inside one returned custom-hook callback")
+    const callbackClear = timer.clearStatements.find(entry => nearestFunction(entry.node) === callback)
+    if (!callbackClear || callbackClear.node.parent !== callback.body || callback.body.statements.indexOf(callbackClear.node) >= callback.body.statements.indexOf(assignment.parent)) throw sourceNodeError(callback, sourceFile, "Private timeout callbacks must directly clear the previous timer before assigning its replacement")
+    const effectCalls = hook.body.statements.flatMap(statement => {
+      if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression) || !ts.isIdentifier(statement.expression.expression) || statement.expression.expression.text !== "useEffect") return []
+      return [statement.expression]
+    })
+    let cleanupClear
+    for (const effect of effectCalls) {
+      const [setup, dependencies] = effect.arguments
+      if (!(ts.isArrowFunction(setup) || ts.isFunctionExpression(setup)) || !ts.isArrayLiteralExpression(dependencies) || dependencies.elements.length) continue
+      const returns = effectReturns(setup)
+      if (returns.cleanups.length !== 1) continue
+      const cleanup = returns.cleanups[0]
+      const entry = timer.clearStatements.find(candidate => nearestFunction(candidate.node) === cleanup)
+      if (entry && ts.isBlock(cleanup.body) && cleanup.body.statements.length === 1 && cleanup.body.statements[0] === entry.node) cleanupClear = entry
+    }
+    if (!cleanupClear) throw sourceNodeError(timer.declaration, sourceFile, "Private timeout refs require one empty-dependency effect that directly clears the timer on cleanup")
+    const accepted = new Set([assignment.left, callbackClear.condition, callbackClear.argument, cleanupClear.condition, cleanupClear.argument].map(unwrapExpression))
+    const unsupported = timer.accesses.find(access => !accepted.has(access))
+    if (unsupported) throw sourceNodeError(unsupported, sourceFile, "Private timeout refs may only be read by their direct replacement and cleanup guards")
+    const identity = createHash("sha256").update(`${sourceFile.fileName}:${hook.pos}:${timer.name}`).digest("hex").slice(0, 10)
+    const stateName = `${customHookTimerStatePrefix}${identity}`
+    const setterName = `${customHookTimerSetterPrefix}${identity}`
+    if (referencesIdentifier(hook.body, stateName) || referencesIdentifier(hook.body, setterName)) throw sourceNodeError(timer.declaration, sourceFile, "Private timeout ref conflicts with compiler-owned bindings")
+    return { assignment, declaration: timer.declaration, refName: timer.name, returned, stateName, setterName }
+  }
+  const timerStates = new Set()
+  const transform = (hook, hookName) => {
+    const timer = analyze(hook, hookName)
+    if (!timer) return undefined
+    timerStates.add(timer.stateName)
+    const timerVisitor = current => {
+      if (current === timer.declaration) {
+        const binding = factory.createArrayBindingPattern([
+          factory.createBindingElement(undefined, undefined, timer.stateName),
+          factory.createBindingElement(undefined, undefined, timer.setterName)
+        ])
+        const initializer = factory.updateCallExpression(current.initializer, factory.createIdentifier("useState"), current.initializer.typeArguments, current.initializer.arguments)
+        return factory.updateVariableDeclaration(current, binding, current.exclamationToken, undefined, initializer)
+      }
+      if (current === timer.assignment) return factory.createCallExpression(factory.createIdentifier(timer.setterName), undefined, [ts.visitNode(current.right, timerVisitor)])
+      if (currentAccess(current, timer.refName)) return factory.createIdentifier(timer.stateName)
+      if (current === timer.returned) return factory.updateObjectLiteralExpression(current, [
+        ...current.properties,
+        factory.createShorthandPropertyAssignment(timer.stateName),
+        factory.createShorthandPropertyAssignment(timer.setterName)
+      ])
+      return ts.visitEachChild(current, timerVisitor, context)
+    }
+    return ts.visitEachChild(hook, timerVisitor, context)
+  }
+  const visitor = node => {
+    if (ts.isFunctionDeclaration(node)) {
+      const hookName = node.name?.text ?? (node.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword) ? "useDefault" : "")
+      const transformed = transform(node, hookName)
+      if (transformed) return transformed
+    }
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
+      const transformed = transform(node.initializer, node.name.text)
+      if (transformed) return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, transformed)
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  const normalized = ts.visitNode(sourceFile, visitor)
+  customHookTimerStatesBySource.set(normalized, timerStates)
+  return normalized
+}
+
 function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences) {
   return context => sourceFile => {
     const factory = context.factory
@@ -2620,6 +2746,9 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     sourceFile = normalizeClsxSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections)
+    ts.setParentRecursive(sourceFile, false)
+    sourceFile = normalizeCustomHookTimerRefs(sourceFile, factory, context)
+    const customHookTimerStates = customHookTimerStatesBySource.get(sourceFile) ?? new Set()
     ts.setParentRecursive(sourceFile, false)
     validateUseIdSyntax(sourceFile)
     sourceFile = normalizeLazyStateInitializers(sourceFile, factory, context, file, sourceFiles, sourceIndex)
@@ -2638,6 +2767,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
     const importedSources = new Map()
+    const importedTimerStates = new Map()
     const importedSource = target => {
       let imported = importedSources.get(target)
       if (!imported) {
@@ -2646,6 +2776,9 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         imported = normalizeClsxSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
         imported = normalizeReactMigrationSyntax(imported, factory, context, importedSerializableCollectionNames(imported, target, sourceFiles, sourceIndex))
+        ts.setParentRecursive(imported, false)
+        imported = normalizeCustomHookTimerRefs(imported, factory, context)
+        importedTimerStates.set(target, customHookTimerStatesBySource.get(imported) ?? new Set())
         ts.setParentRecursive(imported, false)
         validateUseIdSyntax(imported)
         imported = normalizeLazyStateInitializers(imported, factory, context, target, sourceFiles, sourceIndex)
@@ -2681,6 +2814,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
     const functions = new Map()
     const customHookFunctionsByOwner = new Map()
+    const customHookPrivateFields = new WeakMap()
     const components = new Map()
     const contexts = new Set()
     const customHooks = new Map()
@@ -2739,7 +2873,8 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         const capture = nativeCaptureNames(callback, states).values().next().value
         if (capture) throw sourceNodeError(callback, hookSource, `Relative custom hook callback ${JSON.stringify(name)} cannot capture private binding ${JSON.stringify(capture)}`)
       }
-      const analysis = { callbacks, fields, states }
+      const privateStates = new Set([...states.values()].filter(state => importedTimerStates.get(hookSource.fileName)?.has(state)))
+      const analysis = { callbacks, fields, privateStates, states }
       customHooks.set(key, analysis)
       return analysis
     }
@@ -2761,6 +2896,13 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           if (!owner) throw sourceNodeError(node, sourceFile, "Relative custom hooks cannot be used outside a Kudzu component")
           const setters = settersByFunction.get(owner) ?? new Map()
           for (const [setter, state] of hook.states) {
+            if (hook.privateStates.has(state)) {
+              setters.set(setter, state)
+              const fields = customHookPrivateFields.get(node) ?? []
+              fields.push(state, setter)
+              customHookPrivateFields.set(node, fields)
+              continue
+            }
             if (names.has(setter) !== names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative custom hook state ${JSON.stringify(state)} and setter ${JSON.stringify(setter)} must be destructured together`)
             if (names.has(setter)) setters.set(setter, state)
           }
@@ -3543,6 +3685,13 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     }
 
     const visitor = node => {
+      if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && customHookPrivateFields.has(node)) {
+        const privateFields = customHookPrivateFields.get(node)
+        return factory.updateVariableDeclaration(node, factory.updateObjectBindingPattern(node.name, [
+          ...node.name.elements,
+          ...privateFields.map(name => factory.createBindingElement(undefined, undefined, name))
+        ]), node.exclamationToken, node.type, node.initializer)
+      }
       if (ts.isBlock(node) && setterHookHelpers.has(node)) {
         return ts.visitEachChild(factory.updateBlock(node, [...setterHookHelpers.get(node), ...node.statements]), visitor, context)
       }
@@ -3686,7 +3835,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         } else {
           compiledCallback = rewriteEffectWorkers(compiledCallback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
         }
-        const descriptor = compileNativeCallback(compiledCallback, setters, reducersForNode(node, reducersByFunction), factory, effectHandlers, specializedEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup)
+        const descriptor = compileNativeCallback(compiledCallback, setters, reducersForNode(node, reducersByFunction), factory, effectHandlers, specializedEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup, customHookTimerStates)
         for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
@@ -5058,7 +5207,7 @@ function compileEvent(expression, setters, reducers, functions, factory, nativeH
   ])
 }
 
-function compileNativeCallback(expression, setters, reducers, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false, snapshotNested = false) {
+function compileNativeCallback(expression, setters, reducers, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false, snapshotNested = false, liveStates = new Set()) {
   const allCaptures = nativeCaptureNames(expression, setters)
   const usedReducers = referencedReducerDispatches(expression.body, reducers, expression)
   const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
@@ -5067,7 +5216,7 @@ function compileNativeCallback(expression, setters, reducers, factory, entries, 
   for (const entry of imports) if (!entry.package) clientImports.add(entry.target)
   const usedStates = nativeStateNames(expression, setters)
   const exportName = `${prefix}${entries.length}`
-  entries.push({ exportName, expression, captures, imports, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested })
+  entries.push({ exportName, expression, captures, imports, liveStates, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested })
   const value = name => deferValues
     ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
     : factory.createIdentifier(name)
@@ -5937,10 +6086,10 @@ function relativeModulePath(from, to) {
   return path.startsWith(".") ? path : `./${path}`
 }
 
-function printNativeHandler({ exportName, expression, captures, setters, reducers = new Map(), snapshotNested }) {
+function printNativeHandler({ exportName, expression, captures, setters, reducers = new Map(), snapshotNested, liveStates = new Set() }) {
   const factory = ts.factory
   const stateNames = new Set(setters.values())
-  const snapshotNames = snapshotNested ? nestedStateNames(expression, setters) : new Set()
+  const snapshotNames = snapshotNested ? nestedStateNames(expression, setters, liveStates) : new Set()
   const snapshots = new Map([...snapshotNames].map(name => [name, factory.createUniqueName("__kEffectState")]))
   const captureSnapshotNames = snapshotNested ? nestedCaptureNames(expression, captures) : new Set()
   const captureSnapshots = new Map([...captureSnapshotNames].map(name => [name, factory.createUniqueName("__kEffectCapture")]))
@@ -6037,11 +6186,11 @@ function nestedCaptureNames(expression, captures) {
   return names
 }
 
-function nestedStateNames(expression, setters) {
+function nestedStateNames(expression, setters, liveStates = new Set()) {
   const states = new Set(setters.values())
   const names = new Set()
   const visit = node => {
-    if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && !isShadowedIdentifier(node, expression)) names.add(node.text)
+    if (ts.isIdentifier(node) && states.has(node.text) && !liveStates.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && !isShadowedIdentifier(node, expression)) names.add(node.text)
     ts.forEachChild(node, visit)
   }
   visit(expression.body)

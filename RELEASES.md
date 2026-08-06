@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.8.5 - Owned timer actions
+
+Kudzu 0.8.5 compiles one proven private timeout ref pattern from a returned relative custom-hook action into existing state and effect ownership.
+
+### New in 0.8.5
+
+- One directly returned relative custom-hook callback may own one `useRef<number | null>(null)`, directly clear its previous timeout, and assign a numeric-literal-delay `setTimeout()` whose callback updates hook state.
+- One empty-dependency effect directly clears the latest timer on cleanup. Conditional unmount cancels pending work, and remount creates fresh ownership.
+- The compiler lowers the private ref to a collision-free hidden state slot shared by existing native-handler and effect contexts; no timer scheduler or runtime is added.
+- Named, default-arrow, and relative re-export hook forms retain the same specialization and independent timer identities.
+- Browser coverage verifies replacement, latest-only firing, unmount cancellation, and fresh remount. Dynamic delays fail with source diagnostics.
+- Static siblings remain JavaScript-free, and the complete suite passes 134/134 tests.
+
+### Boundary
+
+The hook may own one private timeout ref with one direct returned callback, one literal delay, and one direct cleanup effect. Multiple refs, aliases, dynamic delays, intervals, keyed ownership, indirect callbacks, and arbitrary timed graphs remain unsupported.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.5
+```
+
 ## 0.8.4 - Browser-native handlers
 
 Kudzu 0.8.4 fixes named event handlers that use standard browser globals during real React application migrations.

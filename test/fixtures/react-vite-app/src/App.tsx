@@ -3,6 +3,8 @@ import clsx from "clsx"
 import "./app.css"
 import logo from "./logo.svg?url"
 import { useCounter } from "./useCounter"
+import { useErrorFlash } from "./useErrorFlash"
+import { usePulse } from "./hooks"
 import { useSecondaryCounter } from "./useSecondaryCounter"
 import { calculateSummary } from "./calculateSummary"
 import type { TypeOnly } from "./TypeOnly"
@@ -35,11 +37,21 @@ function DebouncedEditor() {
   </section>
 }
 
+function ErrorFlash() {
+  const { flashing, setFlashing, flash } = useErrorFlash()
+  const { pending, setPending, pulse } = usePulse()
+  return <>
+    <button id="error-flash" onClick={flash} onBlur={() => setFlashing(false)}>{flashing ? "Error" : "Ready"}</button>
+    <button id="pulse" onClick={pulse} onBlur={() => setPending(false)}>{pending ? "Pending" : "Ready"}</button>
+  </>
+}
+
 export default function App() {
   const typeChecked: TypeOnly = { label: "Compiler-grown UI" }
   const [menuOpen, setMenuOpen] = useMenuState(false)
   const { count, setCount, status, setStatus, offset, setOffset, selection, setSelection, increment, reset, copy } = useCounter()
   const [editorOpen, setEditorOpen] = useMenuState(true)
+  const [flashOpen, setFlashOpen] = useMenuState(true)
   const [items, setItems] = React.useState([{ id: "a", label: "Alpha", visible: true }, { id: "b", label: "Beta", visible: false }])
   const doubled = count * 2
   const summary = calculateSummary(count, 3)
@@ -62,7 +74,9 @@ export default function App() {
       <button id="reset" onClick={reset}>Reset</button>
       <button id="copy" onClick={copy}>Copy count</button>
       <button id="editor-toggle" onClick={() => setEditorOpen(!editorOpen)}>Toggle editor</button>
+      <button id="flash-toggle" onClick={() => setFlashOpen(!flashOpen)}>Toggle flash</button>
       {editorOpen && <DebouncedEditor />}
+      {flashOpen && <ErrorFlash />}
       <output id="status">{status}</output>
       <output id="offset">{offset}</output>
       <output id="selection">{selection}</output>

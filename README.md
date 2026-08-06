@@ -10,7 +10,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.4 - Browser-native handlers.** Named event handlers now keep `localStorage`, `FileReader`, and `alert` in browser ESM instead of attempting to serialize them during static rendering. Read the [release notes](./RELEASES.md#084---browser-native-handlers) or open the [release page](https://kudzujs.cloud/releases/0.8.4).
+**Latest release: 0.8.5 - Owned timer actions.** A directly returned relative custom-hook callback may own one private timeout ref with latest-only replacement and effect cleanup, without adding a timer runtime. Read the [release notes](./RELEASES.md#085---owned-timer-actions) or open the [release page](https://kudzujs.cloud/releases/0.8.5).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

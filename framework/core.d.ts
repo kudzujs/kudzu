@@ -16,7 +16,7 @@ export function useSearchParam(name: string): string | null
 export function useSearchParamsWriter(): [undefined, undefined]
 
 export interface RefObject<T> {
-  readonly current: T | null
+  current: T | null
 }
 
 export function useRef<T>(initialValue: null): RefObject<T>

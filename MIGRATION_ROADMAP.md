@@ -114,13 +114,13 @@ This queue orders the next investigations by general migration value. Start only
 - The React/Vite migration fixture verifies latest-only debounce commits, unmount cancellation, fresh remount, clipboard success/failure, and zero JavaScript on its static sibling.
 - Parent state plus focus, keyboard, and click handlers on calculated keyed SVG points drives an external accessible tooltip through existing native-handler and binding ESM. Recalculation preserves point identity and gives retained handlers the latest labels; the static sibling remains JavaScript-free.
 
-### 1. Timer-Backed Custom Actions
+### Completed In 0.8.5
 
-Direct clipboard callbacks and effect-owned debounce require no new framework capability. Investigate a returned custom-hook action with private timer ownership only when a migration fixture proves that the ordinary effect form is insufficient. Compile the exact proven action to existing event/effect ownership rather than serializing arbitrary closures or adding a scheduler.
+- A directly returned relative custom-hook callback may own one private `null`-initialized timeout ref, directly clear its previous value, and assign one literal-delay `setTimeout()` whose callback updates hook state.
+- One empty-dependency effect directly clears the latest timer on cleanup. The compiler lowers the ref to a hidden state slot shared by existing native-handler and effect contexts, so conditional unmount cancels pending work and remount starts fresh without a timer runtime.
+- The React/Vite migration fixture verifies timer replacement, latest-only firing, conditional cleanup, fresh remount, source diagnostics for dynamic delays, and zero timer-specific runtime bytes.
 
-Acceptance: callback identity and captures are statically known, timers and cleanup have explicit ownership, and unsupported indirect calls fail at build time.
-
-### 2. Expanded Chart Interaction
+### 1. Expanded Chart Interaction
 
 Accessible selected-point tooltips require no new framework capability. Investigate detailed Withdrawal/Debt series only after a reduced migration fixture proves additional interaction is needed. Prefer direct SVG bindings and keyed SVG rows; add no chart runtime unless native output is measurably insufficient.
 

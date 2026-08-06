@@ -7,7 +7,7 @@ declare module "react" {
   export type ReactNode = ReactElement | string | number | bigint | boolean | null | undefined | Iterable<ReactNode>
   export function Fragment(props: { children?: unknown }): unknown
   export type Dispatch<T> = (value: T | ((previous: T) => T)) => void
-  export type RefObject<T> = { readonly current: T | null }
+  export type RefObject<T> = { current: T | null }
   export type ForwardedRef<T> = RefObject<T> | ((instance: T | null) => void) | null
   export function forwardRef<T, P>(render: (props: P, ref: ForwardedRef<T>) => unknown): (props: P & { ref?: ForwardedRef<T> }) => unknown
   export function useId(): string
