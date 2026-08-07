@@ -21,7 +21,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.9/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.10/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -35,9 +35,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.9"/)
-  assert.match(release, /Kudzu 0\.8\.9.*Keep the Provider.*Ship concrete state/s)
-  assert.match(release, /CONTEXT-BACKED CRUD ACTIONS.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.9/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.10"/)
+  assert.match(release, /Kudzu 0\.8\.10.*Replace the portal.*Use the platform/s)
+  assert.match(release, /NATIVE DIALOG MIGRATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.10/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1371,6 +1371,25 @@ test("erases React forwardRef across ordinary component boundaries", async t => 
     const output = await readFile(new URL(`./fixtures/react-forward-ref/.kudzu/${file}`, import.meta.url), "utf8")
     assert.doesNotMatch(output, /["']react["']|forwardRef/)
   }
+})
+
+test("migrates a React-shaped dialog to the native dialog element", async t => {
+  const fixture = new URL("./fixtures/native-dialog-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/native-dialog-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/native-dialog-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/native-dialog-migration/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/native-dialog-migration/.kudzu/DialogContent.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/native-dialog-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.match(html, /<dialog aria-labelledby="dialog-title" aria-describedby="dialog-description"[^>]*data-k-native-cancel=[^>]*data-k-ref="r0">.*Edit profile.*Update your public profile.*Save changes.*Cancel<\/button>/s)
+  assert.match(html, /id="dialog-trigger" data-k-ref="r1" data-k-native-click=/)
+  assert.doesNotMatch(`${html}\n${component}`, /["']react["']|@radix-ui|forwardRef/)
+  assert.deepEqual([...new Set(plan.routes[0].events.map(event => event.event))].sort(), ["cancel", "click"])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runNativeDialogMigrationBrowserTest(fixture, chrome)
 })
 
 test("owns setter callbacks and object refs across one component boundary", async t => {
@@ -2939,6 +2958,58 @@ http.createServer((request, response) => {
   await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runNativeDialogMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+try {
+  await wait()
+  const dialog = document.querySelector("dialog")
+  const trigger = document.querySelector("#dialog-trigger")
+  const confirm = document.querySelector("#dialog-confirm")
+  trigger.click()
+  await wait()
+  if (!dialog.open || !dialog.matches(":modal")) throw new Error("open")
+  if (document.activeElement !== confirm) throw new Error("initial-focus")
+  confirm.click()
+  await wait()
+  if (dialog.open || dialog.returnValue !== "confirmed" || document.body.dataset.dialogAction !== "confirmed") throw new Error("confirm")
+  if (document.activeElement !== trigger) throw new Error("restore-focus")
+  trigger.click()
+  await wait()
+  dialog.requestClose()
+  await wait()
+  if (dialog.open || document.activeElement !== trigger) throw new Error("close-request")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
   } finally {

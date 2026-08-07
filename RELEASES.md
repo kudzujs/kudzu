@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.8.10 - Native dialog migration
+
+Kudzu 0.8.10 proves a source migration path from a shadcn/Radix-shaped dialog to the native `<dialog>` element without adding package compatibility runtime.
+
+### New in 0.8.10
+
+- A reduced migration fixture preserves a relative `forwardRef` component, props, children, object refs, and ordinary JSX event handlers.
+- Package-owned Portal and Context behavior becomes native `showModal()`, `close()`, and cancel handling.
+- Complete accessible dialog markup is pre-rendered while route output includes only the `click` and `cancel` events it uses.
+- Chrome coverage verifies modal top-layer behavior, initial focus, confirm and cancel paths, and explicit trigger-focus restoration.
+- Public documentation now includes the migration recipe and its deliberate library boundary.
+
+### Fixed in 0.8.10
+
+- Mobile documentation code blocks stay within the content grid and scroll horizontally instead of widening the viewport.
+- Browser tests allow slower CI Chrome startup and report process timeouts directly instead of failing later against empty DOM output.
+- The complete suite passes 140/140 tests.
+
+### Boundary
+
+This release does not execute Radix or arbitrary React UI packages. `Portal`, `asChild`/`Slot`, element cloning, and arbitrary compound-component Context must be removed during source migration. Applications remain responsible for dialog labeling and explicit focus restoration.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.10
+```
+
 ## 0.8.9 - Context-backed CRUD actions
 
 Kudzu 0.8.9 specializes state-backed actions exposed through one conventional Context Provider and relative custom hook.

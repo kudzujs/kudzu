@@ -141,6 +141,12 @@ This queue orders the next investigations by general migration value. Start only
 - A React Notes migration preserves its Provider, relative `useNotes()` alias, consumer components, and parameterized CRUD actions. A direct custom-hook `useContext(Context)` return resolves one local or named relative Context module whose Provider value exposes direct state/setter pairs and synchronous actions.
 - Context actions inline into existing route handler ESM and compile to concrete state operations. Private captures, dynamic Provider objects, and multiple Provider implementations remain diagnosed; no browser Context tree, callback registry, or shared runtime was added.
 
+### Completed In 0.8.10
+
+- A reduced shadcn/Radix-shaped dialog migration replaces package-owned Portal and Context behavior with the native `<dialog>` element while preserving a relative `forwardRef` component, props, children, object refs, and ordinary JSX handlers.
+- Browser validation covers modal top-layer behavior, initial focus, confirm and cancel paths, and explicit trigger-focus restoration. Complete dialog HTML is pre-rendered, React and Radix are absent from output, and native event output remains specialized to the route's actual events.
+- This is a source migration recipe rather than Radix package compatibility. `Portal`, `asChild`/`Slot`, element cloning, and arbitrary compound-component Context remain unsupported.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

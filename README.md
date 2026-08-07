@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.9 - Context-backed CRUD actions.** A relative custom hook may directly return `useContext(Context)` for one analyzable Provider whose state-backed actions compile into existing route handler ESM, without a browser Context tree. Read the [release notes](./RELEASES.md#089---context-backed-crud-actions) or open the [release page](https://kudzujs.cloud/releases/0.8.9).
+**Latest release: 0.8.10 - Native dialog migration.** A reduced shadcn/Radix-shaped dialog now proves how AI migration can preserve `forwardRef`, props, children, refs, and handlers while replacing package-owned Portal and Context behavior with native `<dialog>`. Read the [release notes](./RELEASES.md#0810---native-dialog-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.10).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
