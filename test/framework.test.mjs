@@ -21,7 +21,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.13/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.14/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -35,9 +35,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch(html.split("</head>")[1], /<script type="module"/)
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.13"/)
-  assert.match(release, /Kudzu 0\.8\.13.*Keep browser logic familiar.*Ship only its capability/s)
-  assert.match(release, /BROWSER CAPABILITY MIGRATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.13/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.14"/)
+  assert.match(release, /Kudzu 0\.8\.14.*Keep the app behavior.*Ship static routes/s)
+  assert.match(release, /LOCALIZED BLOG MIGRATION.*WHAT LANDED.*npm install @kudzujs\/core@\^0\.8\.14/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1494,7 +1494,7 @@ test("rejects effect-owned animation frames without cleanup cancellation", () =>
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Animation frame refs require direct cancellation in effect cleanup/)
 })
 
-test("migrates a localized MDX blog with an effect-owned canvas animation", async t => {
+test("migrates locale routing, interactive MDX, and an effect-owned canvas", async t => {
   const fixture = new URL("./fixtures/colonni-blog-migration", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/colonni-blog-migration/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -1504,20 +1504,31 @@ test("migrates a localized MDX blog with an effect-owned canvas animation", asyn
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const koHtml = await readFile(new URL("./fixtures/colonni-blog-migration/dist/ko/index.html", import.meta.url), "utf8")
   const enHtml = await readFile(new URL("./fixtures/colonni-blog-migration/dist/en/index.html", import.meta.url), "utf8")
+  const entryHtml = await readFile(new URL("./fixtures/colonni-blog-migration/dist/index.html", import.meta.url), "utf8")
   const staticHtml = await readFile(new URL("./fixtures/colonni-blog-migration/dist/static/index.html", import.meta.url), "utf8")
   const handler = await readFile(new URL("./fixtures/colonni-blog-migration/dist/assets/handlers/pages/[locale]/index.js", import.meta.url), "utf8")
+  const entryHandler = await readFile(new URL("./fixtures/colonni-blog-migration/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const mdxHandler = await readFile(new URL("./fixtures/colonni-blog-migration/dist/assets/handlers/components/MdxComponents.js", import.meta.url), "utf8")
   const plans = JSON.parse(await readFile(new URL("./fixtures/colonni-blog-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
-  assert.match(koHtml, /<html lang="ko">.*<article lang="ko"><h1>Math for development<\/h1>.*Build-known MDX becomes static HTML.*<canvas data-k-ref="r0"/s)
-  assert.match(enHtml, /<html lang="en">.*href="\/ko".*href="\/en".*<article lang="en">/s)
+  assert.match(koHtml, /<html lang="ko">.*href="\/ko">Home.*href="\/ko\/posts\?tag=JavaScript">Posts.*href="\/en\/posts\/math-for-development">Switch language.*<article lang="ko"><h1>Math for development<\/h1>.*Build-known MDX becomes static HTML.*role="tablist".*<canvas data-k-ref="r0"/s)
+  assert.match(enHtml, /<html lang="en">.*href="\/en">Home.*href="\/en\/posts\?tag=JavaScript">Posts.*href="\/ko\/posts\/math-for-development">Switch language.*<article lang="en">/s)
+  assert.match(entryHtml, /Choosing your language/)
+  assert.match(entryHandler, /localStorage\.getItem\("locale"\)/)
+  assert.match(entryHandler, /navigator\.languages/)
+  assert.match(entryHandler, /location\.replace/)
+  assert.match(mdxHandler, /navigator\.clipboard\.writeText/)
   assert.match(handler, /new IntersectionObserver/)
   assert.match(handler, /requestAnimationFrame/)
   assert.match(handler, /cancelAnimationFrame/)
   assert.match(handler, /performance\.now/)
-  assert.doesNotMatch(`${koHtml}\n${enHtml}\n${handler}`, /new Function|\beval\(|["']react["']/)
+  assert.doesNotMatch(`${entryHtml}\n${koHtml}\n${enHtml}\n${entryHandler}\n${mdxHandler}\n${handler}`, /new Function|\beval\(|["']react["']|next-intl/)
   assert.doesNotMatch(staticHtml, /<script|data-k-/)
-  assert.deepEqual(plans.map(plan => [plan.route, plan.events.length, plan.effects.map(effect => effect.cleanup)]), [["/ko", 0, [true]], ["/en", 0, [true]], ["/static", 0, []]])
+  assert.deepEqual(plans.map(plan => [plan.route, plan.states.length, plan.events.length, plan.effects.length]), [["/ko", 2, 3, 1], ["/en", 2, 3, 1], ["/", 0, 0, 1], ["/static", 0, 0, 0]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
-  if (chrome) await runColonniBlogMigrationBrowserTest(fixture, chrome)
+  if (chrome) {
+    await runColonniBlogMigrationBrowserTest(fixture, chrome)
+    await runColonniLocaleDetectionBrowserTest(fixture, chrome)
+  }
 })
 
 test("rejects canvas observers without owned cleanup", () => {
@@ -3443,6 +3454,7 @@ globalThis.__frames = 0
 globalThis.__cancellations = 0
 globalThis.__observes = 0
 globalThis.__disconnects = 0
+Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { document.body.dataset.copied = value } } })
 let nextFrame = 1
 const pendingFrames = new Map()
 globalThis.requestAnimationFrame = callback => { const frame = nextFrame++; globalThis.__frames++; pendingFrames.set(frame, callback); return frame }
@@ -3489,6 +3501,16 @@ try {
   globalThis.__flushFrame()
   if (globalThis.__draws.at(-1)?.[0] !== 50) throw new Error("click-move")
 
+  const copy = [...document.querySelectorAll("button")].find(button => button.textContent === "Copy")
+  copy.click()
+  await waitFor(() => copy.textContent === "Copied", "mdx-copy")
+  if (!document.body.dataset.copied?.includes("Math.sqrt")) throw new Error("clipboard-payload")
+
+  const resultTab = [...document.querySelectorAll('[role="tab"]')].find(button => button.textContent === "Result")
+  resultTab.click()
+  await waitFor(() => document.body.textContent.includes("The result is five."), "mdx-tabs")
+  if (resultTab.getAttribute("aria-selected") !== "true") throw new Error("tab-selection")
+
   const cancellations = globalThis.__cancellations
   window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
   await wait(20)
@@ -3521,6 +3543,43 @@ http.createServer((request, response) => {
     assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runColonniLocaleDetectionBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const entryUrl = new URL("index.html", output)
+  const enUrl = new URL("en/index.html", output)
+  const entryHtml = await readFile(entryUrl, "utf8")
+  const enHtml = await readFile(enUrl, "utf8")
+  await writeFile(entryUrl, entryHtml.replace("<head>", '<head><script>localStorage.removeItem("locale");Object.defineProperty(navigator,"languages",{configurable:true,value:["en-US"]})</script>'))
+  await writeFile(enUrl, enHtml.replace("</body>", '<script type="module" src="/locale-browser-test.js"></script></body>'))
+  await writeFile(new URL("locale-browser-test.js", output), `
+if (location.pathname === "/en" && location.search === "?from=root" && location.hash === "#section" && document.documentElement.lang === "en") document.body.dataset.localeBrowserTest = "pass"
+else document.body.dataset.localeBrowserTest = "fail"
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const pathname = new URL(request.url, "http://localhost").pathname
+  const relative = pathname === "/" ? "index.html" : pathname === "/en" || pathname === "/en/" ? "en/index.html" : pathname.slice(1)
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/?from=root#section`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /<html lang="en"/)
+    assert.match(browser.stdout, /data-locale-browser-test="pass"/)
   } finally {
     server.kill()
   }

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.13 - Browser capability migration.** Memos scroll spies, Excalidraw progressive sharing, and Cal.com responsive media queries compile through owned browser effects without React or general capability runtimes. Read the [release notes](./RELEASES.md#0813---browser-capability-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.13).
+**Latest release: 0.8.14 - Localized blog migration.** Browser locale entry, prefixed native links, static MDX with interactive copy/tabs, and continuous canvas animation compile without React, eval, a package router, or a canvas runtime. Read the [release notes](./RELEASES.md#0814---localized-blog-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.14).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

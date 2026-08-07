@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react"
+import { LocaleLink } from "../../components/LocaleLink"
+import { CopyBlock, Tabs } from "../../components/MdxComponents"
 import { compiledArticleHtml } from "../../content"
 
 type Locale = "ko" | "en"
@@ -9,6 +11,7 @@ export function getStaticPaths() {
 
 export default function BlogPage({ locale }: { locale: Locale }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const alternateLocale: Locale = locale === "ko" ? "en" : "ko"
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -54,10 +57,13 @@ export default function BlogPage({ locale }: { locale: Locale }) {
 
   return <main>
     <nav aria-label="Language">
-      <a href="/ko">KO</a>
-      <a href="/en">EN</a>
+      <LocaleLink locale={locale} href="/">Home</LocaleLink>
+      <LocaleLink locale={locale} href="/posts?tag=JavaScript">Posts</LocaleLink>
+      <LocaleLink locale={alternateLocale} href="/posts/math-for-development">Switch language</LocaleLink>
     </nav>
     <article lang={locale} dangerouslySetInnerHTML={{ __html: compiledArticleHtml }} />
+    <CopyBlock />
+    <Tabs />
     <canvas ref={canvasRef} width="640" height="80" role="img" aria-label="Walking dog animation">Walking dog animation</canvas>
   </main>
 }

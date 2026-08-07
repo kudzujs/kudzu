@@ -297,7 +297,29 @@ useEffect(() => {
     window.removeEventListener("keydown", move)
   }
 }, [])`} />
-    <p>Kudzu emits one route-specific effect module and preserves native <code>IntersectionObserver</code>, <code>performance</code>, canvas, and frame APIs directly. Component-level mutable value refs, callbacks shared across effects or JSX handlers, uncancelled loops, and missing observer/listener cleanup remain unsupported. Build-known MDX should become static HTML, while locale-prefixed routes use <code>getStaticPaths()</code> and native links rather than a request-time i18n runtime.</p>
+    <p>Kudzu emits one route-specific effect module and preserves native <code>IntersectionObserver</code>, <code>performance</code>, canvas, and frame APIs directly. Component-level mutable value refs, callbacks shared across effects or JSX handlers, uncancelled loops, and missing observer/listener cleanup remain unsupported.</p>
+    <h3>Localized MDX migration</h3>
+    <p>A static locale pair can retain automatic browser-language entry and automatically prefixed links without shipping a package router. Each article route is build-known; only the root selector needs browser JavaScript.</p>
+    <CodeBlock code={`export function getStaticPaths() {
+  return ["ko", "en"].map(locale => ({
+    params: { locale }, props: { locale }
+  }))
+}
+
+function LocaleLink({ locale, href, children }) {
+  const localizedHref = href === "/" ? "/" + locale : "/" + locale + href
+  return <a href={localizedHref}>{children}</a>
+}
+
+// src/pages/index.tsx
+useEffect(() => {
+  const stored = localStorage.getItem("locale")
+  const locale = stored === "ko" || stored === "en"
+    ? stored
+    : navigator.languages.some(value => value.startsWith("en")) ? "en" : "ko"
+  location.replace("/" + locale + location.search + location.hash)
+}, [])`} />
+    <p>Build-known MDX emits as static <code>dangerouslySetInnerHTML</code> without <code>eval()</code> or <code>new Function()</code>. Copy blocks use the native clipboard handler and tabs use ordinary state, so interactive MDX components do not require hydration. Request-time <code>Accept-Language</code> negotiation still belongs in CDN or edge redirects when it must happen before HTML.</p>
     <h3>Browser capability migration</h3>
     <p>Progressive React UI may keep one direct static navigator capability condition. Kudzu emits the unsupported branch as complete static fallback and checks the immutable browser capability once after mount.</p>
     <CodeBlock code={`const canShare = "share" in navigator

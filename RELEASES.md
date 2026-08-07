@@ -1,5 +1,35 @@
 # Kudzu Releases
 
+## 0.8.14 - Localized blog migration
+
+Kudzu 0.8.14 proves a localized MDX blog and continuous imperative canvas can migrate without React, request-time i18n, eval, or a canvas runtime.
+
+### New in 0.8.14
+
+- Build-known MDX emits complete static article HTML without `eval()` or `new Function()`.
+- Locale-prefixed `/ko` and `/en` routes build through `getStaticPaths()`, and relative Link replacements automatically prefix native hrefs from the build-known locale.
+- The root route selects a stored locale or reads `navigator.languages`, then preserves query and hash through native `location.replace()`.
+- MDX copy blocks and tabs compile through existing clipboard, state, binding, and conditional capabilities.
+- One `null`-initialized canvas ref may feed an inline effect whose local state survives recursive animation frames, visibility changes, and native input listeners.
+- Bare `IntersectionObserver` and `performance` remain browser globals in route-specific effect ESM.
+- Static sibling routes remain complete zero-JavaScript HTML.
+
+### Fixed in 0.8.14
+
+- Effect-owned `IntersectionObserver` instances must disconnect in cleanup.
+- Local animation-frame handles assigned by effects must be cancelled in cleanup.
+- The complete suite passes 151/151 tests.
+
+### Boundary
+
+This release does not execute `next-intl`, add request-time `Accept-Language` negotiation, general mutable refs, callbacks shared across effects or handlers, a canvas runtime, or arbitrary MDX component execution. Request-time locale redirects remain host/edge configuration; resource-private drawing state and listeners stay inside one owning effect.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.14
+```
+
 ## 0.8.13 - Browser capability migration
 
 Kudzu 0.8.13 proves browser-owned migration paths from Memos, Excalidraw, and Cal.com without adding React, general external-store compatibility, or browser capability runtimes.
