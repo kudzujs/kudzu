@@ -156,7 +156,7 @@ This queue orders the next investigations by general migration value. Start only
 - Dependency replacement now invalidates prior unowned effect invocations before cleanup in both single-dependency and general runners. Delayed fetch setters from superseded invocations cannot overwrite newer keyed result state.
 - Browser validation covers a fast refetch winning over a delayed response, cleanup ordering, HTTP failure, recovery, complete zero-JavaScript build output, and a static zero-JavaScript sibling. Query clients, Providers, caches, retries, deduplication, query-key arrays, optimistic updates, Suspense, and background refetch remain unsupported.
 
-### Characterized After 0.8.11
+### Completed In 0.8.12
 
 - A reduced Lucide React-shaped migration moves only used icons into one relative TSX module with direct intrinsic SVG roots, destructured size/stroke defaults, explicit prop forwarding, and no package factory or runtime.
 - Static output preserves meaningful `role`/`title` labeling, decorative `aria-hidden`, explicit dimensions and fill overrides, `currentColor`, and normalized stroke attributes. The route ships no JavaScript, and an unreachable icon module is not compiled.

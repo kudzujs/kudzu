@@ -1,5 +1,32 @@
 # Kudzu Releases
 
+## 0.8.12 - Static icon migration
+
+Kudzu 0.8.12 proves a source migration path from Lucide React-shaped icon usage to accessible static SVG without a package factory or browser runtime.
+
+### New in 0.8.12
+
+- Used icons move into relative TSX components with direct intrinsic SVG roots and familiar size, stroke, class, fill, ARIA, and title props.
+- Meaningful icons retain explicit roles and titles, while decorative icons remain hidden from assistive technology.
+- React-shaped SVG presentation attributes normalize to native output and complete icon routes ship zero JavaScript.
+- Unreachable icon modules are excluded from compilation instead of becoming deploy artifacts.
+- Public documentation records the migration recipe and its deliberate package boundary.
+
+### Fixed in 0.8.12
+
+- Handler emission now follows references in the final route plan and HTML, removing evaluator modules left behind by build-folded component conditions while preserving list-expression evaluators.
+- The complete suite passes 143/143 tests.
+
+### Boundary
+
+This release does not execute `lucide-react`. Dynamic icon lookup, `createLucideIcon()`, package-owned factories, and a generic icon runtime remain unsupported source migration work.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.12
+```
+
 ## 0.8.11 - Stale-safe data migration
 
 Kudzu 0.8.11 proves source migration paths for TanStack Query-shaped data and React Hook Form-shaped forms while strengthening dependency-effect stale-write isolation.

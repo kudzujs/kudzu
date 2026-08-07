@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.11 - Stale-safe data migration.** Build-known query data moves to async pages, browser-only reads move to route effects, and superseded promise or fetch setters can no longer overwrite newer state. Read the [release notes](./RELEASES.md#0811---stale-safe-data-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.11).
+**Latest release: 0.8.12 - Static icon migration.** Used Lucide-shaped icons move to relative TSX and compile to accessible static SVG while build-folded evaluator JavaScript disappears from deploy output. Read the [release notes](./RELEASES.md#0812---static-icon-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.12).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
