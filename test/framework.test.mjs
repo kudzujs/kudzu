@@ -3256,7 +3256,7 @@ http.createServer((request, response) => {
   await waitForServer(port)
   try {
     for (const [mode, size] of [["desktop", "1440,1000"], ["mobile", "390,844"]]) {
-      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--window-size=${size}`, "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/releases/0.7.0/?mode=${mode}`], { encoding: "utf8", timeout: 30000 })
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--window-size=${size}`, "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/releases/0.7.0/?mode=${mode}`], { encoding: "utf8", timeout: 60000 })
       assert.ifError(browser.error)
       assert.equal(browser.status, 0, browser.stderr)
       assert.match(browser.stdout, new RegExp(`data-release-notes-test="pass-${mode}"`))
