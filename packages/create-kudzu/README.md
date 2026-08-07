@@ -1,5 +1,7 @@
 # create-kudzu
 
+Requires Node.js 22 or newer.
+
 Create a Kudzu project:
 
 ```bash

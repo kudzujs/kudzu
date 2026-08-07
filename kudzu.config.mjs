@@ -27,6 +27,10 @@ export default {
     for (const route of routes) {
       const path = route === "/" ? "/" : route.replace(/\/$/, "")
       const file = join(outDir, path === "/" ? "index.html" : path.slice(1), path === "/" ? "" : "index.html")
+      if (/^\/releases\/\d+\.\d+\.\d+$/.test(path)) {
+        indexed.push(`${origin}${path}/`)
+        continue
+      }
       const seo = seoFor(path)
       if (!seo) continue
       const html = await readFile(file, "utf8")

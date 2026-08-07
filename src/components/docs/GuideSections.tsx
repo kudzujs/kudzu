@@ -3,11 +3,18 @@ import { CodeBlock } from "../CodeBlock"
 export function InstallationSection() {
   return <section className="docs-section" id="install">
     <div className="docs-heading"><span>01</span><div><p>GETTING STARTED</p><h2>Installation</h2></div></div>
-    <p>Create a project and start the development server:</p>
+    <p>Kudzu requires Node.js 22 or newer. Create a project and start the development server:</p>
     <CodeBlock language="shell" code={`npm create kudzu@latest my-app
 cd my-app
 npm run dev`} />
-    <p>To add Kudzu to an existing project, install <code>@kudzujs/core</code> and configure TypeScript with <code>jsxImportSource: "@kudzujs/core"</code>.</p>
+    <p>To add Kudzu to an existing project, install <code>@kudzujs/core</code> and <code>typescript</code>, configure TypeScript with <code>jsxImportSource: "@kudzujs/core"</code>, and add these scripts to <code>package.json</code>:</p>
+    <CodeBlock language="text" code={`{
+  "scripts": {
+    "dev": "kudzu dev",
+    "build": "kudzu build",
+    "check": "tsc --noEmit && kudzu build"
+  }
+}`} />
   </section>
 }
 
@@ -372,7 +379,7 @@ return <>
 export function StateSection() {
   return <section className="docs-section" id="state">
     <div className="docs-heading"><span>04</span><div><p>CORE</p><h2>State semantics</h2></div></div>
-    <p>Declare local state with the same syntax as React. State may contain primitives or serializable plain objects. Setters update logical state immediately and DOM writes batch at the end of the synchronous turn.</p>
+    <p>Declare local state with the same syntax as React. State may contain serializable primitives, plain objects, or arrays. Setters update logical state immediately and DOM writes batch at the end of the synchronous turn.</p>
     <CodeBlock code={`const [count, setCount] = useState(0)
 
 function growTwice() {

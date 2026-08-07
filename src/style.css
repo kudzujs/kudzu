@@ -257,13 +257,14 @@ footer > span { font-family: var(--mono); }
   .pipeline article + article { border-left: 0; border-top: 1px solid var(--line); }
   footer { grid-template-columns: 1fr; gap: 18px; }
   .docs-layout { grid-template-columns: 1fr; width: 100%; padding: 0 14px; }
-  .docs-sidebar { position: static; display: flex; gap: 18px; height: auto; padding: 20px 0; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .docs-sidebar { position: sticky; top: 0; z-index: 2; display: flex; gap: 18px; height: auto; padding: 20px 0; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); background: #01020c; scrollbar-width: thin; }
   .docs-sidebar p { display: none; }
   .docs-sidebar a { flex: 0 0 auto; }
-  .docs-content { width: 100%; padding-left: 0; }
+  .docs-content { min-width: 0; width: 100%; padding-left: 0; }
   .docs-intro { padding: 80px 0; }
-  .attribute-grid { grid-template-columns: 1fr; }
+  .attribute-grid, .docs-columns { grid-template-columns: 1fr; }
   .attribute-grid > div:last-child { grid-column: auto; }
+  .docs-section > p, .docs-limits li, .docs-callout span, .docs-table code { overflow-wrap: anywhere; }
   .conditional-demo { align-items: stretch; flex-direction: column; }
   .list-demo-actions { align-items: stretch; flex-wrap: wrap; }
   .list-demo-actions span { flex-basis: 100%; margin: 0 0 6px; }
@@ -297,4 +298,16 @@ footer > span { font-family: var(--mono); }
   .release-flow { padding: 18px; }
   .release-feature-grid article { min-height: 220px; }
   .release-boundary-section, .release-upgrade { padding-top: 90px; }
+  .docs-intro { padding: 64px 0; }
+  .docs-intro h1 { font-size: clamp(46px, 15vw, 62px); line-height: .92; }
+  .docs-intro > p:last-child { font-size: 16px; }
+  .docs-section { padding: 72px 0; }
+  .docs-heading { grid-template-columns: 30px minmax(0, 1fr); }
+  .docs-heading h2 { font-size: clamp(32px, 10vw, 42px); overflow-wrap: anywhere; }
+  .docs-section pre { margin: 26px 0; padding: 18px; font-size: 11px; }
+  .docs-table { grid-template-columns: minmax(0, 1fr) 24px minmax(0, .65fr); }
+  .docs-table > * { min-width: 0; padding: 11px 8px; }
+  .docs-callout { flex-direction: column; gap: 8px; padding: 16px; }
+  .benchmark-table { max-width: 100%; }
+  .list-demo li { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
 }

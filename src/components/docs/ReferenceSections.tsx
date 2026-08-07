@@ -7,9 +7,27 @@ function BenchmarkTable({ columns, rows }: { columns: string[]; rows: string[][]
   </table></div>
 }
 
+export function ArchitectureSection() {
+  return <section className="docs-section" id="architecture">
+    <div className="docs-heading"><span>10</span><div><p>REFERENCE</p><h2>Compiler architecture</h2></div></div>
+    <p>Kudzu treats supported React-shaped TypeScript and TSX as compiler input. It does not retain component functions or reproduce React rendering in the browser.</p>
+    <CodeBlock language="text" code={`React-shaped TypeScript/TSX
+  -> ordered normalization passes
+  -> state/effect/handler/binding/list analysis
+  -> complete HTML + route-specific capability ESM`} />
+    <div className="docs-columns">
+      <div><strong>Normalize</strong><p>Focused passes lower supported React, Router, browser-signal, resource-lifecycle, and render-control shapes. Parent pointers are repaired after every pass.</p></div>
+      <div><strong>Analyze</strong><p>The main transformer builds route descriptors and rejects unsupported syntax with source locations. It does not rely on a browser component tree.</p></div>
+      <div><strong>Generate</strong><p>Dedicated codegen modules produce native handlers, reactive evaluators, keyed-list expressions, effects, parameters, and navigation capabilities.</p></div>
+      <div><strong>Exclude</strong><p>Final route plans remove unreferenced handlers and Workers. Static routes emit complete HTML and no browser JavaScript.</p></div>
+    </div>
+    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs.</p>
+  </section>
+}
+
 export function BuildSection() {
   return <section className="docs-section" id="build">
-    <div className="docs-heading"><span>10</span><div><p>REFERENCE</p><h2>Build output</h2></div></div>
+    <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Build output</h2></div></div>
     <CodeBlock language="text" code={`npm run build
 
 dist/
@@ -20,7 +38,7 @@ dist/
     ├── kudzu.js
     ├── kudzu-deps.js (when dependency-only effects are used)
     ├── kudzu-navigation.js (legacy navigation.routes)
-    ├── kudzu-navigation-&lt;route-hash&gt;.js (per navigation group)
+    ├── kudzu-navigation-<route-hash>.js (per navigation group)
     ├── kudzu-binding.js (when used)
     ├── kudzu-effect.js (when effects are used)
     ├── kudzu-style.js (when reactive styles are used)
@@ -36,14 +54,14 @@ dist/
 
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
-    <div className="docs-heading"><span>11</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Benchmark provenance</strong><span>The cross-framework tables below are historical matched snapshots from a local benchmark workspace that is not checked into this repository. Their runner, competitor fixtures, and raw arrays are unavailable in the current checkout, so they are not current 0.7.12 measurements and cannot be reproduced by CI. Architecture differences are stated with each table.</span></div>
+    <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
+    <div className="docs-callout"><strong>Benchmark provenance</strong><span>The cross-framework tables below are historical matched snapshots from a local benchmark workspace that is not checked into this repository. Their runner, competitor fixtures, and raw arrays are unavailable in the current checkout, so they are not current 0.8.15 measurements and cannot be reproduced by CI. Architecture differences are stated with each table.</span></div>
     <h3>Tracked Worker fixture</h3>
     <CodeBlock language="shell" code={`npm run benchmark
 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
   node --test --test-name-pattern="bundles relative TypeScript Workers" test/framework.test.mjs`} />
     <p>At commit <code>05e5cc2</code> on Apple M3, macOS 26.5.2, and Node 25.6.1, one warm-up plus seven clean builds measured 404.2, 401.3, 408.2, 404.4, 399.9, 408.8, and 402.0 ms, with a 404.2 ms median. The Worker graph measured 907 B raw / 475 B gzip and the complete dashboard window graph measured 11,960 B raw / 5,365 B aggregate gzip. Chrome 150.0.7871.187 passed throughput, cadence, bounded-history, stale-write, and 30-cycle lifecycle checks.</p>
-    <h3>Current 1,000-row keyed local state</h3>
+    <h3>Historical 0.7.12 keyed local state</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
       ["Kudzu", "Yes", "8,610 B", "238 ms", "0.5 ms", "4.2 ms", "1.3 ms", "1.9 ms"],
       ["Vue CSR", "No", "24,018 B", "199 ms", "0.9 ms", "3.8 ms", "1.3 ms", "0.9 ms"],
@@ -96,7 +114,7 @@ CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
 
 export function LimitsSection() {
   return <section className="docs-section" id="limits">
-    <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
+    <div className="docs-heading"><span>13</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
     <ul className="docs-limits">
       <li>Repeated ordinary same-file and relative-imported child components own independent state IDs and effect records. Direct JSON-safe primitive parent state passed to a destructured child prop remains reactive in child DOM bindings and effect dependencies. A direct setter may cross one boundary when invoked once by a direct intrinsic event handler; inline/simple <code>const</code> setter callbacks may use that adapter shape or direct forwarding, and the child may own directly serializable <code>useState()</code>, direct primitive prop <code>.toString()</code> string-state initialization, <code>useId()</code>, supported effects, and <code>null</code>-initialized object refs. Nested same-file and relative-imported components recursively specialize, including hooks on unconditional or statically truthy paths. A parent-owned object ref may cross the same boundary. Reactive conditional branches drop handlers and refs with removed DOM, delete child state, and clean up effects, then recreate ownership on re-entry. Dynamic nested hook paths, setter forwarding through another boundary, other dynamic state initializers, derived props, arbitrary callbacks, callback refs, multiple callback uses, captures, and dynamic calls remain unsupported.</li>
       <li>Reactive JSX text and attributes may reference recursively chained top-level immutable locals derived through supported pure primitive expressions from direct state. Kudzu substitutes the expressions and subscribes each source state. Fixed-locale <code>new Intl.NumberFormat("literal").format(Math.round(expression))</code> display chains are supported; dynamic locales/options, arbitrary calls, mutation, cycles, shadowed or block-local declarations, and structural JSX locals remain unsupported.</li>

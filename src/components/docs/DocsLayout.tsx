@@ -22,6 +22,7 @@ export function DocsSidebar() {
     <a href="#events">Event handlers</a>
     <a href="#captures">Client captures</a>
     <p>REFERENCE</p>
+    <a href="#architecture">Compiler architecture</a>
     <a href="#build">Build output</a>
     <a href="#benchmarks">Benchmarks</a>
     <a href="#limits">Current limits</a>
@@ -30,8 +31,8 @@ export function DocsSidebar() {
 
 export function DocsIntro() {
   return <section className="docs-intro">
-    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.14</p>
+    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.15</p>
     <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
-    <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
+    <p>Kudzu treats React-shaped TSX as compiler input, specializing it into complete HTML and only the route-specific browser capabilities used. There is no virtual DOM, hydration pass, or client component tree.</p>
   </section>
 }

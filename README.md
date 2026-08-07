@@ -14,18 +14,20 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.14 - Localized blog migration.** Browser locale entry, prefixed native links, static MDX with interactive copy/tabs, and continuous canvas animation compile without React, eval, a package router, or a canvas runtime. Read the [release notes](./RELEASES.md#0814---localized-blog-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.14).
+**Latest release: 0.8.15 - Compiler architecture.** Kudzu's normalization passes, React and Router migration analysis, Worker compiler, effect and handler codegen, and development server now have explicit module boundaries while preserving generated output and runtime behavior. Read the [release notes](./RELEASES.md#0815---compiler-architecture) or open the [release page](https://kudzujs.cloud/releases/0.8.15).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
 - [Components and migration support](https://kudzujs.cloud/docs#components)
 - [Current limits](https://kudzujs.cloud/docs#limits)
 - [Benchmarks](https://kudzujs.cloud/docs#benchmarks)
-- [Raw performance records](./PERFORMANCE.md)
-- [React migration roadmap](./MIGRATION_ROADMAP.md)
+- [Raw performance records](https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md)
+- [React migration roadmap](https://github.com/kudzujs/kudzu/blob/main/MIGRATION_ROADMAP.md)
 - [Release history](./RELEASES.md)
 
 ## Quick Start
+
+Kudzu requires Node.js 22 or newer.
 
 ```bash
 npm create kudzu@latest my-app
@@ -38,7 +40,19 @@ The generated project includes reusable components, an interactive state example
 To add Kudzu to an existing project:
 
 ```bash
-npm install @kudzujs/core
+npm install @kudzujs/core typescript
+```
+
+Add the Kudzu commands to `package.json`:
+
+```json
+{
+  "scripts": {
+    "dev": "kudzu dev",
+    "build": "kudzu build",
+    "check": "tsc --noEmit && kudzu build"
+  }
+}
 ```
 
 ```json
@@ -100,6 +114,20 @@ See the [complete guide](https://kudzujs.cloud/docs), [interactive features](htt
 
 ## Architecture
 
+Kudzu treats React-shaped TSX as compiler input rather than as a browser runtime programming model:
+
+```text
+React-shaped TypeScript/TSX
+  -> ordered AST normalization passes
+  -> state/effect/handler/binding/list analysis
+  -> complete HTML + route-specific capability ESM
+```
+
+- `framework/compiler/normalization-pipeline.mjs` owns pass order and repairs AST parent pointers after every transform.
+- Focused passes own React, React Router, browser-signal, animation-frame, timer, render-control, and Worker validation.
+- The main transformer produces descriptors; effect and handler codegen modules turn them into route-specific ESM.
+- Unsupported nearby syntax fails with source-located diagnostics instead of falling back to React or a generic runtime.
+
 Kudzu intentionally does not provide:
 
 - React runtime compatibility
@@ -109,7 +137,7 @@ Kudzu intentionally does not provide:
 - Request-time SSR or server actions
 - A general client state or effect runtime
 
-Browser code is a compiler-generated capability module, included only when a route uses that capability.
+Browser code is a compiler-generated capability module, included only when a route uses that capability. Kudzu does not eliminate every runtime; it eliminates unused runtime.
 
 ## Packages
 
@@ -123,7 +151,7 @@ npm run check
 npm test
 ```
 
-Read `AGENTS.md` and `MIGRATION_ROADMAP.md` before extending migration syntax or browser capabilities.
+Read [AGENTS.md](https://github.com/kudzujs/kudzu/blob/main/AGENTS.md) and the [migration roadmap](https://github.com/kudzujs/kudzu/blob/main/MIGRATION_ROADMAP.md) before extending migration syntax or browser capabilities.
 
 ## License
 

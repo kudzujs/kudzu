@@ -180,6 +180,13 @@ This queue orders the next investigations by general migration value. Start only
 - The blog's WalkingDog-shaped canvas lifecycle moves resource-private mutable values into one inline effect while retaining a direct canvas object ref. Bare `IntersectionObserver`, `performance`, recursive animation frames, keyboard/click listeners, and exact cleanup compile to one route-specific effect module without a canvas runtime.
 - Chrome validation covers locale detection and redirect, prefixed links, static MDX, clipboard copy, reactive tabs, visible and hidden frame behavior, retained local drawing state, keyboard/click updates, exact disposal, and a zero-JavaScript static sibling. Component-level mutable value refs, callbacks shared across effects or handlers, arbitrary canvas graphs, and arbitrary runtime MDX remain unsupported.
 
+### Completed In 0.8.15
+
+- Build orchestration, ordered normalization, shared AST scope analysis, React and Router migration, browser resource passes, Worker compilation, development serving, and effect/handler code generation now have explicit module boundaries.
+- Page and imported-source normalization share one pipeline with parent-pointer repair after each pass, while custom-hook timer metadata returns explicitly instead of using an AST-identity `WeakMap` side channel.
+- The refactor preserves accepted syntax, source diagnostics, generated capability selection, static-route zero JavaScript, Worker determinism, browser ownership behavior, and all existing migration boundaries.
+- Public documentation now presents Kudzu as a compiler that specializes supported React-shaped TSX into complete HTML and route-specific browser capabilities.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

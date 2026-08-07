@@ -1,7 +1,7 @@
 import { DocsHeader, DocsIntro, DocsSidebar } from "../components/docs/DocsLayout"
 import { AttributesSection, ComponentsSection, InstallationSection, PagesSection, StateSection } from "../components/docs/GuideSections"
 import { CapturesSection, ConditionalsSection, EventsSection, ListsSection } from "../components/docs/InteractiveSections"
-import { BenchmarksSection, BuildSection, LimitsSection } from "../components/docs/ReferenceSections"
+import { ArchitectureSection, BenchmarksSection, BuildSection, LimitsSection } from "../components/docs/ReferenceSections"
 
 export const metadata = {
   title: "Kudzu Docs — HTML-first TSX",
@@ -34,6 +34,7 @@ export default function DocsPage() {
         <ListsSection />
         <EventsSection />
         <CapturesSection />
+        <ArchitectureSection />
         <BuildSection />
         <BenchmarksSection />
         <LimitsSection />

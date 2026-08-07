@@ -1,5 +1,37 @@
 # Kudzu Releases
 
+## 0.8.15 - Compiler architecture
+
+Kudzu 0.8.15 makes the compiler's actual architecture explicit in source and public documentation: React-shaped TSX is normalized, analyzed into capability descriptors, and emitted as complete HTML plus route-specific ESM.
+
+### Changed in 0.8.15
+
+- `build.mjs` now owns build orchestration while focused compiler modules own shared AST scope analysis, ordered normalization, React and React Router migration, browser-signal and resource-lifecycle passes, Worker graphs, and effect/handler code generation.
+- The duplicated page/imported-source normalization sequence is one ordered pipeline that restores TypeScript AST parent pointers after every pass.
+- Private custom-hook timer metadata returns explicitly from its pass instead of relying on a module-global `WeakMap` keyed by transformed AST identity.
+- Worker validation, relative graph checks, content-hashed emission, and placeholder rewriting share one compiler boundary while final rendered-effect gating remains in build orchestration.
+- Effect, native-handler, reactive-binding, and keyed-list evaluator generation consume analyzed descriptors without participating in source analysis.
+- The public homepage, README, and web documentation now describe Kudzu as a compiler that treats supported React-shaped TSX as input rather than as a browser runtime model.
+
+### Fixed in 0.8.15
+
+- Existing-project installation now states the Node.js 22 requirement and required package scripts.
+- The generator package lock and generated core dependency now match the published package versions.
+- The missing 0.8.2 release page is restored and release routes are included in the sitemap without replacing their page metadata.
+- Documentation tables, code blocks, callouts, navigation, and long inline code remain bounded at a 390px viewport.
+- Package-import handler guidance, serializable array-state guidance, benchmark provenance, and media-query external-store wording now agree with source and tests.
+- Dedicated AST helper and normalization tests raise the complete suite to 153 tests.
+
+### Boundary
+
+This release does not broaden the accepted React-shaped syntax or add browser runtime capabilities. The main transformer still owns tightly coupled component, state, collection, and ownership analysis; future extraction should follow proven input/output seams rather than create directory structure without reducing coupling.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.15
+```
+
 ## 0.8.14 - Localized blog migration
 
 Kudzu 0.8.14 proves a localized MDX blog and continuous imperative canvas can migrate without React, request-time i18n, eval, or a canvas runtime.

@@ -3,7 +3,7 @@ import { CodeBlock } from "../components/CodeBlock"
 
 export const metadata = {
   title: "Kudzu — HTML-first TSX framework",
-  description: "React-shaped TSX, synchronous state semantics, and zero virtual DOM. Kudzu ships static HTML and only the behavior each page needs.",
+  description: "A compiler that specializes React-shaped TSX into complete HTML and small, route-specific browser capabilities without a virtual DOM.",
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu",
@@ -44,18 +44,18 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.8.14">
-        <span>v0.8.14</span>
-        <strong>Localized blog migration</strong>
+      <a className="release-banner" href="/releases/0.8.15">
+        <span>v0.8.15</span>
+        <strong>Compiler architecture</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.8.14</span> BLOG MIGRATION</p>
-            <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
-            <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
+            <p className="eyebrow"><span>v0.8.15</span> COMPILER FRAMEWORK</p>
+            <h1>React-shaped input.<br /><em>Static-first output.</em></h1>
+            <p className="intro">Kudzu analyzes TypeScript ASTs and specializes familiar components, hooks, routes, effects, and collections into complete HTML plus only the browser capabilities each route uses.</p>
             <div className="actions">
               <a className="primary-action" href="#quick-start">Get started</a>
               <a className="secondary-action" href="https://github.com/kudzujs/kudzu">Explore GitHub ↗</a>
@@ -76,7 +76,7 @@ export default function Counter() {
     Grown {count} times
   </button>
 }`} /></div>
-            <div className="compiled-note"><span>COMPILED OUTPUT</span><strong>HTML + needed JS</strong></div>
+            <div className="compiled-note"><span>COMPILED OUTPUT</span><strong>HTML + route capabilities</strong></div>
           </div>
         </section>
 
@@ -102,13 +102,13 @@ export default function Counter() {
 
         <section className="model" id="model">
           <div className="section-title">
-            <p className="eyebrow">THE GROWTH MODEL</p>
-            <h2>Write components.<br />Ship outcomes.</h2>
+            <p className="eyebrow">THE COMPILER MODEL</p>
+            <h2>Analyze syntax.<br />Ship capabilities.</h2>
           </div>
           <div className="pipeline">
-            <article><span>01</span><h3>Static TSX</h3><p>Compiles to complete HTML with no browser runtime.</p><code>component → HTML</code></article>
-            <article><span>02</span><h3>State setters</h3><p>Compile to ordered commands and direct text patches.</p><code>setter → behavior</code></article>
-            <article><span>03</span><h3>Normal JavaScript</h3><p>Compiles to external ESM without eval or hydration.</p><code>handler → ESM</code></article>
+            <article><span>01</span><h3>Normalize</h3><p>Ordered AST passes lower supported React, Router, hook, and control-flow shapes.</p><code>source → canonical TSX</code></article>
+            <article><span>02</span><h3>Analyze</h3><p>The transformer records state, effects, handlers, bindings, lists, and ownership.</p><code>semantics → descriptors</code></article>
+            <article><span>03</span><h3>Generate</h3><p>Complete HTML ships with only the route-specific capability ESM it references.</p><code>descriptors → HTML + ESM</code></article>
           </div>
         </section>
 

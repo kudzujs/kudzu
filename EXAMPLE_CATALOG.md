@@ -39,10 +39,9 @@ Desktop and mobile use the same interaction. Visible overflow at the right edge 
 Every card contains only the information needed to distinguish the example:
 
 - type number;
-- blog type;
+- category label;
+- example name;
 - one-sentence description;
-- content or layout traits;
-- implementation status.
 
 Each implemented card is an ordinary `<a>` to its showcase.
 
