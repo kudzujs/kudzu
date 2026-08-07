@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.8.11 - Stale-safe data migration
+
+Kudzu 0.8.11 proves source migration paths for TanStack Query-shaped data and React Hook Form-shaped forms while strengthening dependency-effect stale-write isolation.
+
+### New in 0.8.11
+
+- Build-known query data moves to async pages and emits complete zero-JavaScript HTML.
+- Browser-only query data uses one dependency effect with application-owned loading, error, result, and primitive refetch state.
+- Superseded unowned dependency effects invalidate their invocation before cleanup, so late promise or fetch setters cannot overwrite newer state.
+- A deterministic Chrome race verifies that a fast refetch remains visible after a delayed prior response arrives, followed by HTTP failure and recovery.
+- React Hook Form-shaped signup source migrates to native controls, constraint validation, `FormData`, one async submit handler, accessible server errors, and retained uncontrolled values.
+- Static sibling routes remain JavaScript-free, with no TanStack Query or React Hook Form runtime in deploy output.
+
+### Fixed in 0.8.11
+
+- Mobile documentation now uses a true 100% layout wrapper with explicit inner gutters instead of a reduced outer width.
+- The complete suite passes 142/142 tests.
+
+### Boundary
+
+This release does not execute TanStack Query or React Hook Form. Query clients, Providers, caches, retries, deduplication, optimistic cache updates, query-key arrays, Suspense, controllers, watchers, resolvers, and dynamic field registration remain source migration work.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.11
+```
+
 ## 0.8.10 - Native dialog migration
 
 Kudzu 0.8.10 proves a source migration path from a shadcn/Radix-shaped dialog to the native `<dialog>` element without adding package compatibility runtime.

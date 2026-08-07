@@ -44,16 +44,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.8.10">
-        <span>v0.8.10</span>
-        <strong>Native dialog migration</strong>
+      <a className="release-banner" href="/releases/0.8.11">
+        <span>v0.8.11</span>
+        <strong>Stale-safe data migration</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.8.10</span> UI LIBRARY MIGRATION</p>
+            <p className="eyebrow"><span>v0.8.11</span> DATA MIGRATION</p>
             <h1>Build like React.<br /><em>Ship like HTML.</em></h1>
             <p className="intro">React-shaped syntax. Synchronous state. Zero virtual DOM. Kudzu sends static HTML first, then grows only the behavior your page actually needs.</p>
             <div className="actions">

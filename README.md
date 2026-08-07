@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.10 - Native dialog migration.** A reduced shadcn/Radix-shaped dialog now proves how AI migration can preserve `forwardRef`, props, children, refs, and handlers while replacing package-owned Portal and Context behavior with native `<dialog>`. Read the [release notes](./RELEASES.md#0810---native-dialog-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.10).
+**Latest release: 0.8.11 - Stale-safe data migration.** Build-known query data moves to async pages, browser-only reads move to route effects, and superseded promise or fetch setters can no longer overwrite newer state. Read the [release notes](./RELEASES.md#0811---stale-safe-data-migration) or open the [release page](https://kudzujs.cloud/releases/0.8.11).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
