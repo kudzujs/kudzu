@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.13 - Browser capability migration
+
+Kudzu 0.8.13 proves browser-owned migration paths from Memos, Excalidraw, and Cal.com without adding React, general external-store compatibility, or browser capability runtimes.
+
+### New in 0.8.13
+
+- Memos-shaped scroll spies retain an effect-owned `useRef(0)` animation-frame handle with burst coalescing, exact cleanup, smooth navigation, and active-heading ARIA.
+- Excalidraw-shaped `"share" in navigator` conditions emit false static fallback and mount Web Share DOM and handlers only in supporting browsers.
+- Cal.com-shaped static `useSyncExternalStore` media queries emit desktop-first HTML and lower matching `change` subscriptions into owned effects.
+- Direct Web Share and clipboard actions preserve application-owned success and failure state without package adapters.
+- Static sibling routes remain complete zero-JavaScript HTML for every migration fixture.
+
+### Fixed in 0.8.13
+
+- Build-time Node `navigator` availability can no longer permanently fold browser capability UI to the wrong branch.
+- Optimized state-select text bindings now register the same direct state commit path as optimized attributes.
+- Animation-frame refs reject aliases, shadowed bindings, inverted guards, indirect reset/cancellation, repeated scheduling, and missing cleanup with source locations.
+- The complete suite passes 149/149 tests.
+
+### Boundary
+
+This release does not add general mutable refs, external stores, media hooks, browser-expression rendering, animation scheduling, collaboration transport, QR generation, or React package execution. Dynamic capability names, `navigator.canShare()`, parameterized/imported media hooks, dynamic queries, and arbitrary store snapshots remain source migration work.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.13
+```
+
 ## 0.8.12 - Static icon migration
 
 Kudzu 0.8.12 proves a source migration path from Lucide React-shaped icon usage to accessible static SVG without a package factory or browser runtime.

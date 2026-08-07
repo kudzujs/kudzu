@@ -30,7 +30,7 @@ export function DocsSidebar() {
 
 export function DocsIntro() {
   return <section className="docs-intro">
-    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.12</p>
+    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.13</p>
     <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
     <p>Kudzu keeps React-shaped authoring while compiling state changes into direct DOM patches. There is no virtual DOM, hydration pass, or client component tree.</p>
   </section>

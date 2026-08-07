@@ -162,7 +162,7 @@ This queue orders the next investigations by general migration value. Start only
 - Static output preserves meaningful `role`/`title` labeling, decorative `aria-hidden`, explicit dimensions and fill overrides, `currentColor`, and normalized stroke attributes. The route ships no JavaScript, and an unreachable icon module is not compiled.
 - Final route plans now gate handler emission, so build-folded component conditions cannot leave dead evaluator JavaScript in deploy artifacts. Dynamic icon lookup, `createLucideIcon()`, package-owned factories, and a generic icon runtime remain unsupported.
 
-### Characterized After 0.8.12
+### Completed In 0.8.13
 
 - A reduced fixture from [Memos](https://github.com/usememos/memos) preserves its memo-outline scroll spy: native heading links, active `aria-current`, smooth scrolling, hash replacement, capture-phase scroll/resize listeners, and animation-frame coalescing with cleanup.
 - One effect-owned `useRef(0)` lowers to a serializable mutable effect capture when a local frame callback resets it and cleanup cancels the pending frame. Existing effect ownership handles setup, listener removal, and document disposal without state, a retained component, or an animation runtime.
