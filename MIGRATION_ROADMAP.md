@@ -162,6 +162,18 @@ This queue orders the next investigations by general migration value. Start only
 - Static output preserves meaningful `role`/`title` labeling, decorative `aria-hidden`, explicit dimensions and fill overrides, `currentColor`, and normalized stroke attributes. The route ships no JavaScript, and an unreachable icon module is not compiled.
 - Final route plans now gate handler emission, so build-folded component conditions cannot leave dead evaluator JavaScript in deploy artifacts. Dynamic icon lookup, `createLucideIcon()`, package-owned factories, and a generic icon runtime remain unsupported.
 
+### Characterized After 0.8.12
+
+- A reduced fixture from [Memos](https://github.com/usememos/memos) preserves its memo-outline scroll spy: native heading links, active `aria-current`, smooth scrolling, hash replacement, capture-phase scroll/resize listeners, and animation-frame coalescing with cleanup.
+- One effect-owned `useRef(0)` lowers to a serializable mutable effect capture when a local frame callback resets it and cleanup cancels the pending frame. Existing effect ownership handles setup, listener removal, and document disposal without state, a retained component, or an animation runtime.
+- Chrome validation covers burst coalescing, active-heading updates, outline clicks, hash replacement, pending-frame cancellation, listener cleanup, and a zero-JavaScript static sibling. Ref aliases, cross-effect/event use, nonzero initializers, multiple scheduling assignments, and missing cancellation remain unsupported.
+- A reduced fixture from [Excalidraw](https://github.com/excalidraw/excalidraw) preserves its active-room progressive sharing shape: a readonly collaboration URL, a Web Share button gated by `"share" in navigator`, direct `navigator.share()`, clipboard fallback, and accessible application-owned status.
+- Browser capability conditions lower to a false static state plus one existing mount effect and state-owned conditional branch. Supported browsers mount the Share DOM and handler; unsupported browsers keep both out of the document and accessibility tree. Node's build-time `navigator` can no longer fold browser capability UI incorrectly.
+- Chrome validation covers supported and unsupported capability paths, exact share/copy payloads, status updates, conditional handler ownership, and a zero-JavaScript static sibling. Dynamic properties, escaped capability values, composed tests, `navigator.canShare()`, QR package execution, collaboration transport, and general browser-expression rendering remain unsupported.
+- A reduced fixture from [Cal.com](https://github.com/calcom/cal.diy) inlines the exact static `useSyncExternalStore` core of its shared media-query hook for 768px and 1024px Booker breakpoints. False server snapshots preserve desktop-first static HTML while browser changes update layout and visible-day density.
+- Static media-query stores lower to existing primitive state and owned effects with exact `change` listener cleanup. No external-store runtime or media-query capability module is added; the work also fixes existing state-select text bindings so effect commits update optimized derived text as attributes already did.
+- Chrome validation covers desktop fallback, tablet/mobile transitions, two subscriptions, document cleanup, ignored post-disposal changes, and a zero-JavaScript static sibling. Parameterized/imported hooks, dynamic queries, arbitrary stores, legacy listener APIs, and non-boolean snapshots remain unsupported.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

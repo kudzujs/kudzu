@@ -12,6 +12,7 @@ declare module "react" {
   export function forwardRef<T, P>(render: (props: P, ref: ForwardedRef<T>) => unknown): (props: P & { ref?: ForwardedRef<T> }) => unknown
   export function useId(): string
   export function useRef<T>(initialValue: null): RefObject<T>
+  export function useRef(initialValue: 0): { current: number }
   export function useState<T>(initialValue: () => T): [T, Dispatch<T>]
   export function useState<T>(initialValue: T): [T, Dispatch<T>]
   export function useReducer<State, Action, InitialArg>(reducer: (state: State, action: Action) => State, initialArg: InitialArg, initializer: (initialArg: InitialArg) => State): [State, (action: Action) => void]
@@ -19,6 +20,7 @@ declare module "react" {
   export function useEffect(effect: () => void | (() => void), dependencies: readonly unknown[]): void
   export function useCallback<T extends (...args: never[]) => unknown>(callback: T, dependencies: readonly unknown[]): T
   export function useMemo<T>(factory: () => T, dependencies: readonly unknown[]): T
+  export function useSyncExternalStore<T>(subscribe: (callback: () => void) => () => void, getSnapshot: () => T, getServerSnapshot: () => T): T
   export function memo<T>(component: T): T
 
   const React: {

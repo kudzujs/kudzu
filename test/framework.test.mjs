@@ -1463,6 +1463,102 @@ test("migrates used Lucide icons to source-owned static SVG", async t => {
   assert.doesNotMatch(`${html}\n${icons}\n${page}`, /lucide-react|data-icon["']?: ["']unused|Unused icon|["']react["']/)
 })
 
+test("migrates Memos outline tracking with an effect-owned animation frame", async t => {
+  const fixture = new URL("./fixtures/memos-outline-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/memos-outline-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/memos-outline-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/memos-outline-migration/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/memos-outline-migration/dist/static/index.html", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/memos-outline-migration/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/memos-outline-migration/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/memos-outline-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(html, /<nav aria-label="Memo outline">.*href="#overview".*href="#decisions".*href="#follow-up"/s)
+  assert.match(handler, /requestAnimationFrame/)
+  assert.match(handler, /cancelAnimationFrame/)
+  assert.match(component, /const rafRef = \{ current: 0 \}/)
+  assert.doesNotMatch(`${html}\n${handler}\n${component}`, /["']react["']/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.deepEqual(plan.map(route => [route.route, route.events.map(event => event.event), route.effects.map(effect => effect.cleanup)]), [["/", ["click", "click", "click"], [true]], ["/static", [], []]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runMemosOutlineMigrationBrowserTest(fixture, chrome)
+})
+
+test("rejects effect-owned animation frames without cleanup cancellation", () => {
+  const fixture = new URL("./fixtures/effect-animation-frame-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Animation frame refs require direct cancellation in effect cleanup/)
+})
+
+test("migrates Excalidraw room sharing with a browser capability condition", async t => {
+  const fixture = new URL("./fixtures/excalidraw-share-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/excalidraw-share-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/excalidraw-share-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/excalidraw-share-migration/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/excalidraw-share-migration/dist/static/index.html", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/excalidraw-share-migration/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/excalidraw-share-migration/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/excalidraw-share-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(html, /id="room-link" value="https:\/\/draw\.example\.test\/#room=oak,cedar" readOnly/)
+  assert.match(html, /data-k-if='\{"id":"c0","kind":"and","initial":false,"state":"s1","mount":true\}'/)
+  assert.match(handler, /navigator\.share/)
+  assert.match(handler, /navigator\.clipboard\.writeText/)
+  assert.match(handler, /"share"in navigator/)
+  assert.match(component, /useState\(false, "isShareSupported"\)/)
+  assert.doesNotMatch(`${html}\n${handler}\n${component}`, /["']react["']/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.deepEqual(plan.map(route => [route.route, route.states.map(state => state.initialValue), route.effects.length, route.conditions.length]), [["/", ["idle", false], 1, 2], ["/static", [], 0, 0]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runExcalidrawShareMigrationBrowserTest(fixture, chrome)
+})
+
+test("rejects escaped navigator capability values", () => {
+  const fixture = new URL("./fixtures/navigator-capability-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Navigator capability values may only control one direct JSX && branch/)
+})
+
+test("migrates Cal.com responsive booking with static media query stores", async t => {
+  const fixture = new URL("./fixtures/calcom-media-query-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/calcom-media-query-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/calcom-media-query-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/calcom-media-query-migration/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/calcom-media-query-migration/dist/static/index.html", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/calcom-media-query-migration/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/calcom-media-query-migration/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/calcom-media-query-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(html, /data-layout="column".*id="layout"[^>]*>.*column.*id="visible-days"[^>]*>.*7.* visible days/s)
+  assert.match(handler, /matchMedia\("\(max-width: 768px\)"\)/)
+  assert.match(handler, /matchMedia\("\(max-width: 1024px\)"\)/)
+  assert.match(handler, /addEventListener\("change"/)
+  assert.match(handler, /removeEventListener\("change"/)
+  assert.doesNotMatch(`${html}\n${handler}\n${component}`, /useSyncExternalStore|["']react["']/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.deepEqual(plan.map(route => [route.route, route.states.map(state => state.initialValue), route.effects.map(effect => effect.cleanup)]), [["/", [false, false], [true, true]], ["/static", [], []]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runCalcomMediaQueryMigrationBrowserTest(fixture, chrome)
+})
+
+test("rejects media query stores without matching cleanup", () => {
+  const fixture = new URL("./fixtures/media-query-external-store-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Media query subscriptions must add and remove one matching change listener/)
+})
+
 test("owns setter callbacks and object refs across one component boundary", async t => {
   const fixture = new URL("./fixtures/callback-ref-ownership", import.meta.url)
   t.after(async () => {
@@ -3217,6 +3313,232 @@ http.createServer((request, response) => {
   await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/browser/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runMemosOutlineMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  const instrumentation = `<script>
+globalThis.__frames = 0
+globalThis.__cancellations = 0
+let nextFrame = 1
+const pendingFrames = new Map()
+globalThis.requestAnimationFrame = callback => { const frame = nextFrame++; globalThis.__frames++; pendingFrames.set(frame, callback); return frame }
+globalThis.cancelAnimationFrame = frame => { globalThis.__cancellations++; pendingFrames.delete(frame) }
+globalThis.__flushFrames = () => { const callbacks = [...pendingFrames.values()]; pendingFrames.clear(); for (const callback of callbacks) callback(performance.now()) }
+</script>`
+  await writeFile(htmlUrl, html.replace("<head>", `<head>${instrumentation}`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+try {
+  await wait(50)
+  const tops = { overview: -20, decisions: 50, "follow-up": 150 }
+  for (const [id, top] of Object.entries(tops)) Object.defineProperty(document.getElementById(id), "getBoundingClientRect", { value: () => ({ top }) })
+  window.dispatchEvent(new Event("scroll"))
+  globalThis.__flushFrames()
+  await waitFor(() => document.querySelector('[aria-current="location"]')?.getAttribute("href") === "#decisions", "initial-frame")
+
+  const frames = globalThis.__frames
+  window.dispatchEvent(new Event("scroll"))
+  window.dispatchEvent(new Event("scroll"))
+  window.dispatchEvent(new Event("scroll"))
+  if (globalThis.__frames !== frames + 1) throw new Error("frame-coalescing")
+  globalThis.__flushFrames()
+  await wait(10)
+
+  document.querySelector('a[href="#follow-up"]').click()
+  await waitFor(() => document.querySelector('[aria-current="location"]')?.getAttribute("href") === "#follow-up", "outline-click")
+  if (location.hash !== "#follow-up") throw new Error("outline-hash")
+
+  const cancellations = globalThis.__cancellations
+  window.dispatchEvent(new Event("resize"))
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await wait(50)
+  if (globalThis.__cancellations !== cancellations + 1) throw new Error("frame-cleanup")
+  const disposedFrames = globalThis.__frames
+  window.dispatchEvent(new Event("resize"))
+  await wait(50)
+  if (globalThis.__frames !== disposedFrames) throw new Error("listener-cleanup")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runExcalidrawShareMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  const instrumentation = `<script>
+const mode = new URLSearchParams(location.search).get("mode")
+try { delete Navigator.prototype.share } catch {}
+try { delete navigator.share } catch {}
+if (mode === "supported") {
+  Object.defineProperty(navigator, "share", { configurable: true, value: async payload => { document.body.dataset.shared = payload.url } })
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { document.body.dataset.copied = value } } })
+}
+</script>`
+  await writeFile(htmlUrl, html.replace("<head>", `<head>${instrumentation}`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const mode = new URLSearchParams(location.search).get("mode")
+try {
+  if (mode === "unsupported") {
+    await wait(100)
+    if (document.querySelector("#share-room")) throw new Error("unsupported-share-button")
+    document.body.dataset.browserTest = "pass-unsupported"
+  } else {
+    await waitFor(() => document.querySelector("#share-room"), "supported-share-button")
+    document.querySelector("#share-room").click()
+    await waitFor(() => document.querySelector('[role="status"]')?.textContent === "shared", "share-status")
+    if (document.body.dataset.shared !== "https://draw.example.test/#room=oak,cedar") throw new Error("share-payload")
+    document.querySelector("#copy-room").click()
+    await waitFor(() => document.querySelector('[role="status"]')?.textContent === "copied", "copy-status")
+    if (document.body.dataset.copied !== "https://draw.example.test/#room=oak,cedar") throw new Error("copy-payload")
+    document.body.dataset.browserTest = "pass-supported"
+  }
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  const file = path.join(root, url.pathname === "/" ? "index.html" : url.pathname.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    for (const mode of ["unsupported", "supported"]) {
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/?mode=${mode}`], { encoding: "utf8", timeout: 30000 })
+      assert.ifError(browser.error)
+      assert.equal(browser.status, 0, browser.stderr)
+      assert.match(browser.stdout, new RegExp(`data-browser-test="pass-${mode}"`))
+    }
+  } finally {
+    server.kill()
+  }
+}
+
+async function runCalcomMediaQueryMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  const instrumentation = `<script>
+const queries = new Map()
+globalThis.__mediaAdds = 0
+globalThis.__mediaRemoves = 0
+window.matchMedia = query => {
+  if (!queries.has(query)) {
+    const listeners = new Set()
+    queries.set(query, {
+      matches: false,
+      addEventListener(type, listener) { if (type === "change") { globalThis.__mediaAdds++; listeners.add(listener) } },
+      removeEventListener(type, listener) { if (type === "change" && listeners.delete(listener)) globalThis.__mediaRemoves++ },
+      dispatch(value) { this.matches = value; for (const listener of [...listeners]) listener({ matches: value, media: query }) }
+    })
+  }
+  return queries.get(query)
+}
+globalThis.__setMedia = (query, value) => window.matchMedia(query).dispatch(value)
+</script>`
+  await writeFile(htmlUrl, html.replace("<head>", `<head>${instrumentation}`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+await import("/assets/kudzu-binding.js")
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__mediaAdds === 2, "subscriptions")
+  if (document.querySelector("main").dataset.layout !== "column" || document.querySelector("#visible-days").textContent.trim() !== "7 visible days") throw new Error("fallback")
+
+  globalThis.__setMedia("(max-width: 1024px)", true)
+  await waitFor(() => document.querySelector("#visible-days").textContent.trim() === "4 visible days", "tablet")
+  if (document.querySelector("main").dataset.layout !== "column") throw new Error("tablet-layout")
+
+  globalThis.__setMedia("(max-width: 768px)", true)
+  await waitFor(() => document.querySelector("main").dataset.layout === "mobile", "mobile")
+  globalThis.__setMedia("(max-width: 768px)", false)
+  await waitFor(() => document.querySelector("main").dataset.layout === "column", "desktop")
+
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => globalThis.__mediaRemoves === 2, "cleanup")
+  globalThis.__setMedia("(max-width: 768px)", true)
+  globalThis.__setMedia("(max-width: 1024px)", false)
+  await wait(50)
+  if (document.querySelector("main").dataset.layout !== "column" || document.querySelector("#visible-days").textContent.trim() !== "4 visible days") throw new Error("disposed-update")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
     assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)

@@ -242,6 +242,61 @@ return <>
   <CheckIcon aria-hidden={true} />
 </>`} />
     <p>Meaningful icons need an explicit accessible name, while decorative icons should remain hidden from assistive technology. Kudzu emits the used SVG markup directly into complete HTML, removes build-folded evaluator artifacts, and never compiles unreachable icon modules. <code>lucide-react</code> execution, <code>createLucideIcon()</code>, dynamic icon-name lookup, package factories, and a generic icon runtime remain unsupported.</p>
+    <h3>Scroll-spy migration</h3>
+    <p>A Memos-shaped outline can keep its ordinary effect-owned animation-frame ref. Kudzu specializes the narrow <code>useRef(0)</code> lifecycle into the existing effect scope rather than shipping an animation runtime.</p>
+    <CodeBlock code={`const [activeSlug, setActiveSlug] = useState<string | null>(null)
+const rafRef = useRef(0)
+
+useEffect(() => {
+  const update = () => {
+    rafRef.current = 0
+    const active = headings.findLast(heading =>
+      document.getElementById(heading.slug)!.getBoundingClientRect().top <= 100
+    )
+    setActiveSlug(active?.slug ?? null)
+  }
+  const requestUpdate = () => {
+    if (!rafRef.current) rafRef.current = requestAnimationFrame(update)
+  }
+
+  update()
+  window.addEventListener("scroll", requestUpdate, true)
+  return () => {
+    window.removeEventListener("scroll", requestUpdate, true)
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+  }
+}, [])`} />
+    <p>The frame callback must directly reset the ref, one scheduler must assign the request, and cleanup must cancel any pending frame. Ref aliases, nonzero initializers, use across effects or handlers, repeated scheduling assignments, and missing cancellation remain unsupported. Static sibling routes still ship zero JavaScript.</p>
+    <h3>Browser capability migration</h3>
+    <p>Progressive React UI may keep one direct static navigator capability condition. Kudzu emits the unsupported branch as complete static fallback and checks the immutable browser capability once after mount.</p>
+    <CodeBlock code={`const canShare = "share" in navigator
+
+return <section>
+  <input value={roomLink} readOnly />
+  {canShare && <button onClick={async () => {
+    await navigator.share({ title: "Join my room", url: roomLink })
+  }}>Share</button>}
+  <button onClick={async () => {
+    await navigator.clipboard.writeText(roomLink)
+  }}>Copy</button>
+</section>`} />
+    <p>Supported browsers mount the branch and its handlers through existing conditional ownership. Unsupported browsers receive no Share button or listener in the document or accessibility tree. The capability local must control exactly one direct JSX <code>&amp;&amp;</code> branch; aliases, escaped values, dynamic names, composed conditions, ternaries, <code>navigator.canShare()</code>, and arbitrary browser render expressions remain unsupported.</p>
+    <h3>Responsive external-store migration</h3>
+    <p>A reduced Cal.com media-query store can retain the SSR-safe <code>useSyncExternalStore</code> contract. Kudzu turns the false server snapshot into static desktop-first HTML and owns the browser listener through its existing effect lifecycle.</p>
+    <CodeBlock code={`const isMobile = useSyncExternalStore(
+  callback => {
+    const media = window.matchMedia("(max-width: 768px)")
+    media.addEventListener("change", callback)
+    return () => media.removeEventListener("change", callback)
+  },
+  () => window.matchMedia("(max-width: 768px)").matches,
+  () => false
+)
+
+return <main data-layout={isMobile ? "mobile" : "column"}>
+  {isMobile ? "Mobile booking" : "Desktop booking"}
+</main>`} />
+    <p>The query must be one identical static literal in subscribe and snapshot, cleanup must remove the same <code>change</code> listener, and the server snapshot must be false. Parameterized or imported media hooks, dynamic queries, legacy <code>addListener</code>, arbitrary external stores, and non-boolean snapshots remain unsupported. Static sibling routes receive no JavaScript.</p>
     <p>Ordinary same-file and relative-imported child components may own local state without specialization into a browser component. A direct JSON-safe primitive parent state passed to a destructured child prop remains reactive in child text, attributes, and effect dependencies. A direct setter may cross one component boundary when the child invokes it once inside an intrinsic event handler, supporting value adapters such as <code>event =&gt; onValueChange(event.currentTarget.value)</code> without serializing the callback. Inline/simple <code>const</code> setter callbacks may use that shape or direct forwarding, and the child may own directly serializable <code>useState()</code>, initialize string state with a direct primitive prop's <code>.toString()</code>, and use <code>useId()</code>, supported effects, and <code>null</code>-initialized object refs. Same-file and relative-imported nested components also specialize away; nested hooks are supported on unconditional or statically truthy paths. A parent-owned object ref may also cross the same direct intrinsic boundary. Repeated calls receive independent state and effect ownership even when they share generated modules. When a child is inside reactive conditional DOM, removal deletes owned state, drops its handler with the DOM, resolves refs to <code>null</code>, and cleans up effects; re-entry creates fresh state and DOM ownership. The initial visible branch reuses its pre-rendered IDs instead of executing the component twice.</p>
     <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. A same-file keyed row may use a direct <code>export function</code> or exported function-valued <code>const</code> and be reused across static and keyed JSX sites. Specialized wrappers and keyed rows accept JSX children plus inline or direct calling-component <code>const</code> object prop spreads, preserving source-order overrides. Missing destructured props may use directly serializable primitive, plain-object, or array literal defaults. One final identifier rest binding may be forwarded exactly once to the direct intrinsic root, where its attributes and events reuse existing analysis. Export-list/default aliases, non-JSX references, dynamic or computed spreads/defaults, indirect rest use, and prototype-sensitive rest properties remain source-diagnosed. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
     <CodeBlock code={`function ItemList({ items }: { items: Item[] }) {

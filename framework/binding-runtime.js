@@ -104,6 +104,13 @@ function mountBindings(root) {
       mountedBindings.add(node)
       const registrations = []
       bindingRegistrations.set(node, registrations)
+      if (descriptor.state) {
+        const binding = { node, target: "text", read: Object.hasOwn(descriptor, "truthy") ? () => browserState.get(descriptor.state) ? descriptor.truthy : descriptor.falsy : () => browserState.get(descriptor.state) }
+        register(bindingTargets, descriptor.state, binding)
+        registrations.push([descriptor.state, binding])
+        patchBinding(node, "text", binding.read())
+        continue
+      }
       loadEvaluator(descriptor).then(evaluator => {
         if (!node.isConnected) return
         const binding = { node, target: "text", read: evaluator.read }

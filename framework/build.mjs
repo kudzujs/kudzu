@@ -2745,6 +2745,287 @@ function normalizeCustomHookTimerRefs(sourceFile, factory, context) {
   return normalized
 }
 
+function normalizeMediaQueryExternalStores(sourceFile, factory, context) {
+  const imports = sourceFile.statements.filter(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react" && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings))
+  const externalStoreImport = imports.flatMap(statement => statement.importClause.namedBindings.elements.map(entry => ({ entry, statement }))).find(({ entry }) => !entry.isTypeOnly && !entry.propertyName && entry.name.text === "useSyncExternalStore")
+  if (!externalStoreImport) return sourceFile
+  const returnedExpression = callback => {
+    if (!(ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) || callback.parameters.length) return undefined
+    if (!ts.isBlock(callback.body)) return unwrapExpression(callback.body)
+    if (callback.body.statements.length !== 1 || !ts.isReturnStatement(callback.body.statements[0]) || !callback.body.statements[0].expression) return undefined
+    return unwrapExpression(callback.body.statements[0].expression)
+  }
+  const matchMediaQuery = expression => {
+    expression = unwrapExpression(expression)
+    if (!ts.isCallExpression(expression) || expression.arguments.length !== 1 || !ts.isStringLiteral(unwrapExpression(expression.arguments[0])) || !ts.isPropertyAccessExpression(expression.expression) || !ts.isIdentifier(expression.expression.expression) || expression.expression.expression.text !== "window" || expression.expression.name.text !== "matchMedia" || !isUnshadowedGlobal(expression.expression.expression, sourceFile)) return undefined
+    return unwrapExpression(expression.arguments[0]).text
+  }
+  const mediaListener = (statement, method, media, callback) => ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && statement.expression.arguments.length === 2 && ts.isPropertyAccessExpression(statement.expression.expression) && ts.isIdentifier(statement.expression.expression.expression) && statement.expression.expression.expression.text === media && statement.expression.expression.name.text === method && ts.isStringLiteral(unwrapExpression(statement.expression.arguments[0])) && unwrapExpression(statement.expression.arguments[0]).text === "change" && ts.isIdentifier(unwrapExpression(statement.expression.arguments[1])) && unwrapExpression(statement.expression.arguments[1]).text === callback
+  const candidates = new Map()
+  let index = 0
+  const inspect = node => {
+    if (!ts.isVariableStatement(node) || !(node.declarationList.flags & ts.NodeFlags.Const) || node.declarationList.declarations.length !== 1) {
+      ts.forEachChild(node, inspect)
+      return
+    }
+    const declaration = node.declarationList.declarations[0]
+    const call = declaration.initializer && unwrapExpression(declaration.initializer)
+    if (!ts.isIdentifier(declaration.name) || !call || !ts.isCallExpression(call) || !ts.isIdentifier(call.expression) || call.expression.text !== "useSyncExternalStore" || isShadowedIdentifier(call.expression, sourceFile)) {
+      ts.forEachChild(node, inspect)
+      return
+    }
+    if (call.arguments.length !== 3) throw sourceNodeError(call, sourceFile, "Media query useSyncExternalStore() requires subscribe, browser snapshot, and false server snapshot callbacks")
+    const [subscribe, snapshot, serverSnapshot] = call.arguments.map(unwrapExpression)
+    if (!(ts.isArrowFunction(subscribe) || ts.isFunctionExpression(subscribe)) || subscribe.parameters.length !== 1 || !ts.isIdentifier(subscribe.parameters[0].name) || !ts.isBlock(subscribe.body)) throw sourceNodeError(subscribe, sourceFile, "Media query subscriptions require one inline callback parameter and block body")
+    if (subscribe.body.statements.length !== 3) throw sourceNodeError(subscribe, sourceFile, "Media query subscriptions must add and remove one matching change listener")
+    const callback = subscribe.parameters[0].name.text
+    const [mediaStatement, addStatement, returnStatement] = subscribe.body.statements
+    const mediaDeclaration = ts.isVariableStatement(mediaStatement) && (mediaStatement.declarationList.flags & ts.NodeFlags.Const) && mediaStatement.declarationList.declarations.length === 1 ? mediaStatement.declarationList.declarations[0] : undefined
+    const media = mediaDeclaration && ts.isIdentifier(mediaDeclaration.name) ? mediaDeclaration.name.text : undefined
+    const query = mediaDeclaration?.initializer && matchMediaQuery(mediaDeclaration.initializer)
+    const cleanup = ts.isReturnStatement(returnStatement) && returnStatement.expression ? unwrapExpression(returnStatement.expression) : undefined
+    const cleanupStatement = cleanup && (ts.isArrowFunction(cleanup) || ts.isFunctionExpression(cleanup)) && !cleanup.parameters.length
+      ? ts.isBlock(cleanup.body) ? cleanup.body.statements.length === 1 ? cleanup.body.statements[0] : undefined : factory.createExpressionStatement(cleanup.body)
+      : undefined
+    if (!media || !query || !mediaListener(addStatement, "addEventListener", media, callback) || !cleanupStatement || !mediaListener(cleanupStatement, "removeEventListener", media, callback)) throw sourceNodeError(subscribe, sourceFile, "Media query subscriptions must add and remove one matching change listener")
+    const snapshotValue = returnedExpression(snapshot)
+    const snapshotQuery = snapshotValue && ts.isPropertyAccessExpression(snapshotValue) && snapshotValue.name.text === "matches" ? matchMediaQuery(snapshotValue.expression) : undefined
+    const serverValue = returnedExpression(serverSnapshot)
+    if (snapshotQuery !== query || !serverValue || serverValue.kind !== ts.SyntaxKind.FalseKeyword) throw sourceNodeError(call, sourceFile, "Media query external stores require matching static snapshots and a false server fallback")
+    const owner = nearestFunction(node)
+    const topLevelOwner = owner && (owner.parent === sourceFile || ts.isVariableDeclaration(owner.parent) && owner.parent.parent?.parent?.parent === sourceFile)
+    if (!topLevelOwner || !owner.body || !ts.isBlock(owner.body) || node.parent !== owner.body) throw sourceNodeError(declaration, sourceFile, "Media query external stores must initialize one top-level component const")
+    for (const name of ["useEffect", "useState"]) if (owner.parameters.some(parameter => bindingNames(parameter.name).includes(name)) || functionVarDeclaresName(owner, name) || owner.body.statements.some(statement => statementDeclaresName(statement, name))) throw sourceNodeError(declaration, sourceFile, `Media query external stores conflict with component-local ${name}`)
+    let setter = `__kSetMediaQuery${index++}`
+    while (sourceFile.text.includes(setter)) setter = `__kSetMediaQuery${index++}`
+    candidates.set(node, { declaration, query, setter })
+  }
+  inspect(sourceFile)
+  const references = referenceIdentifiers(sourceFile, "useSyncExternalStore")
+  if (references.length !== candidates.size) throw sourceNodeError(references.find(reference => ![...candidates.values()].some(candidate => insideNode(reference, candidate.declaration.initializer))) ?? externalStoreImport.entry, sourceFile, "useSyncExternalStore is supported only for direct static media query declarations")
+  const directHooks = new Set(imports.flatMap(statement => statement.importClause.namedBindings.elements.filter(entry => !entry.propertyName).map(entry => entry.name.text)))
+  const missingHooks = ["useEffect", "useState"].filter(name => !directHooks.has(name))
+  for (const name of missingHooks) {
+    const collision = sourceFile.statements.some(statement => statementDeclaresName(statement, name) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name))
+    if (collision) throw sourceNodeError([...candidates.values()][0].declaration, sourceFile, `Media query external stores conflict with local ${name}`)
+  }
+
+  const visitor = node => {
+    const candidate = ts.isVariableStatement(node) ? candidates.get(node) : undefined
+    if (candidate) {
+      const state = factory.createVariableStatement(node.modifiers, factory.createVariableDeclarationList([
+        factory.createVariableDeclaration(factory.createArrayBindingPattern([
+          factory.createBindingElement(undefined, undefined, candidate.declaration.name),
+          factory.createBindingElement(undefined, undefined, candidate.setter)
+        ]), undefined, undefined, factory.createCallExpression(factory.createIdentifier("useState"), undefined, [factory.createFalse()]))
+      ], ts.NodeFlags.Const))
+      const media = factory.createIdentifier("media")
+      const update = factory.createIdentifier("update")
+      const mediaCall = factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("window"), "matchMedia"), undefined, [factory.createStringLiteral(candidate.query)])
+      const updateCallback = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createCallExpression(factory.createIdentifier(candidate.setter), undefined, [factory.createPropertyAccessExpression(media, "matches")]))
+      const listener = method => factory.createCallExpression(factory.createPropertyAccessExpression(media, method), undefined, [factory.createStringLiteral("change"), update])
+      const cleanup = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), listener("removeEventListener"))
+      const setup = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createBlock([
+        factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(media, undefined, undefined, mediaCall)], ts.NodeFlags.Const)),
+        factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(update, undefined, undefined, updateCallback)], ts.NodeFlags.Const)),
+        factory.createExpressionStatement(factory.createCallExpression(update, undefined, [])),
+        factory.createExpressionStatement(listener("addEventListener")),
+        factory.createReturnStatement(cleanup)
+      ], true))
+      const effectCall = factory.createCallExpression(factory.createIdentifier("useEffect"), undefined, [setup, factory.createArrayLiteralExpression()])
+      ts.setOriginalNode(effectCall, candidate.declaration.initializer)
+      ts.setTextRange(effectCall, candidate.declaration.initializer)
+      return [state, factory.createExpressionStatement(effectCall)]
+    }
+    if (node === externalStoreImport.statement) {
+      const clause = node.importClause
+      const bindings = clause.namedBindings
+      const elements = bindings.elements.filter(entry => entry !== externalStoreImport.entry)
+      for (const name of missingHooks) elements.push(factory.createImportSpecifier(false, undefined, factory.createIdentifier(name)))
+      return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, false, clause.name, factory.updateNamedImports(bindings, elements)), node.moduleSpecifier, node.attributes)
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  return ts.visitNode(sourceFile, visitor)
+}
+
+function insideNode(node, root) {
+  for (let current = node; current; current = current.parent) if (current === root) return true
+  return false
+}
+
+function normalizeNavigatorCapabilityConditions(sourceFile, factory, context) {
+  const candidates = new Map()
+  let index = 0
+  const inspect = node => {
+    if (!ts.isVariableStatement(node) || !(node.declarationList.flags & ts.NodeFlags.Const) || node.declarationList.declarations.length !== 1) {
+      ts.forEachChild(node, inspect)
+      return
+    }
+    const declaration = node.declarationList.declarations[0]
+    const value = declaration.initializer && unwrapExpression(declaration.initializer)
+    if (!ts.isIdentifier(declaration.name) || !value || !ts.isBinaryExpression(value) || value.operatorToken.kind !== ts.SyntaxKind.InKeyword || !ts.isStringLiteral(unwrapExpression(value.left)) || !ts.isIdentifier(unwrapExpression(value.right)) || unwrapExpression(value.right).text !== "navigator" || !isUnshadowedGlobal(unwrapExpression(value.right), sourceFile)) {
+      ts.forEachChild(node, inspect)
+      return
+    }
+    const owner = nearestFunction(node)
+    const topLevelOwner = owner && (owner.parent === sourceFile || ts.isVariableDeclaration(owner.parent) && owner.parent.parent?.parent?.parent === sourceFile)
+    if (!topLevelOwner || !owner.body || !ts.isBlock(owner.body) || node.parent !== owner.body) throw sourceNodeError(declaration, sourceFile, "Navigator capability conditions must be top-level component const declarations")
+    const references = referenceIdentifiers(owner.body, declaration.name.text)
+    const condition = references.length === 1 ? references[0] : undefined
+    const structural = condition && ts.isBinaryExpression(condition.parent) && condition.parent.left === condition && condition.parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken && containsJsx(condition.parent.right) && ts.isJsxExpression(condition.parent.parent) && condition.parent.parent.expression === condition.parent
+    if (!structural) throw sourceNodeError(declaration, sourceFile, "Navigator capability values may only control one direct JSX && branch")
+    for (const name of ["useEffect", "useState"]) if (owner.parameters.some(parameter => bindingNames(parameter.name).includes(name)) || functionVarDeclaresName(owner, name) || owner.body.statements.some(statement => statementDeclaresName(statement, name))) throw sourceNodeError(declaration, sourceFile, `Navigator capability conditions conflict with component-local ${name}`)
+    let setter = `__kSetNavigatorCapability${index++}`
+    while (sourceFile.text.includes(setter)) setter = `__kSetNavigatorCapability${index++}`
+    candidates.set(node, { declaration, property: unwrapExpression(value.left).text, setter })
+  }
+  inspect(sourceFile)
+  if (!candidates.size) return sourceFile
+
+  const visitor = node => {
+    const candidate = ts.isVariableStatement(node) ? candidates.get(node) : undefined
+    if (candidate) {
+      const state = factory.createVariableStatement(node.modifiers, factory.createVariableDeclarationList([
+        factory.createVariableDeclaration(factory.createArrayBindingPattern([
+          factory.createBindingElement(undefined, undefined, candidate.declaration.name),
+          factory.createBindingElement(undefined, undefined, candidate.setter)
+        ]), undefined, undefined, factory.createCallExpression(factory.createIdentifier("useState"), undefined, [factory.createFalse()]))
+      ], ts.NodeFlags.Const))
+      const capability = factory.createBinaryExpression(factory.createStringLiteral(candidate.property), factory.createToken(ts.SyntaxKind.InKeyword), factory.createIdentifier("navigator"))
+      const setup = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createBlock([
+        factory.createExpressionStatement(factory.createCallExpression(factory.createIdentifier(candidate.setter), undefined, [capability]))
+      ], true))
+      const effectCall = factory.createCallExpression(factory.createIdentifier("useEffect"), undefined, [setup, factory.createArrayLiteralExpression()])
+      ts.setOriginalNode(effectCall, candidate.declaration.initializer)
+      ts.setTextRange(effectCall, candidate.declaration.initializer)
+      const effect = factory.createExpressionStatement(effectCall)
+      return [state, effect]
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  let normalized = ts.visitNode(sourceFile, visitor)
+  const hookImports = normalized.statements.filter(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings))
+  const hookImport = hookImports[0]
+  const bindings = hookImport?.importClause.namedBindings
+  const imported = new Set(hookImports.flatMap(statement => statement.importClause.namedBindings.elements.map(entry => entry.name.text)))
+  const missing = ["useEffect", "useState"].filter(name => !imported.has(name))
+  if (!missing.length) return normalized
+  for (const name of missing) if (normalized.statements.some(statement => !hookImports.includes(statement) && (statementDeclaresName(statement, name) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name)))) throw sourceNodeError([...candidates.values()][0].declaration, sourceFile, `Navigator capability conditions conflict with local ${name}`)
+  if (hookImport && bindings && ts.isNamedImports(bindings)) {
+    const statements = normalized.statements.map(statement => statement === hookImport ? factory.updateImportDeclaration(statement, statement.modifiers, factory.updateImportClause(statement.importClause, false, statement.importClause.name, factory.updateNamedImports(bindings, [
+      ...bindings.elements,
+      ...missing.map(name => factory.createImportSpecifier(false, undefined, factory.createIdentifier(name)))
+    ])), statement.moduleSpecifier, statement.attributes) : statement)
+    return factory.updateSourceFile(normalized, statements)
+  }
+  const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports(missing.map(name => factory.createImportSpecifier(false, undefined, factory.createIdentifier(name))))), factory.createStringLiteral("@kudzujs/core"))
+  const statements = [...normalized.statements]
+  statements.splice(statements.findLastIndex(statement => ts.isImportDeclaration(statement)) + 1, 0, declaration)
+  return factory.updateSourceFile(normalized, statements)
+}
+
+function normalizeEffectAnimationFrameRefs(sourceFile, factory, context) {
+  const frameCall = (node, name) => ts.isCallExpression(node) && (
+    ts.isIdentifier(node.expression) && node.expression.text === name ||
+    ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "window" && node.expression.name.text === name
+  )
+  const unshadowedFrameCall = (node, owner) => {
+    const name = ts.isIdentifier(node.expression) ? node.expression : ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) ? node.expression.expression : undefined
+    return name && !isShadowedIdentifier(name, owner) && !sourceFile.statements.some(statement => statementDeclaresName(statement, name.text) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name.text))
+  }
+  const currentAccess = (node, name) => ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name && node.name.text === "current"
+  const inside = (node, root) => {
+    for (let current = node; current; current = current.parent) if (current === root) return true
+    return false
+  }
+  const directOrGuarded = (statement, body, name, negated) => {
+    if (statement.parent === body) return true
+    let branch = statement
+    if (ts.isBlock(statement.parent) && statement.parent.statements.length === 1) branch = statement.parent
+    const conditional = branch.parent
+    if (!ts.isIfStatement(conditional) || conditional.thenStatement !== branch || conditional.parent !== body || conditional.elseStatement) return false
+    let condition = unwrapExpression(conditional.expression)
+    const isNegated = ts.isPrefixUnaryExpression(condition) && condition.operator === ts.SyntaxKind.ExclamationToken
+    if (isNegated) condition = unwrapExpression(condition.operand)
+    return isNegated === negated && currentAccess(condition, name)
+  }
+  const hasUseRefImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useRef"))
+  const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
+  const replacements = new Set()
+  const inspect = node => {
+    if (!hasUseRefImport || !ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer || !ts.isCallExpression(node.initializer) || !ts.isIdentifier(node.initializer.expression) || node.initializer.expression.text !== "useRef" || isShadowedIdentifier(node.initializer.expression, sourceFile) || node.initializer.arguments.length !== 1 || !ts.isNumericLiteral(node.initializer.arguments[0]) || Number(node.initializer.arguments[0].text) !== 0) {
+      ts.forEachChild(node, inspect)
+      return
+    }
+    const owner = nearestFunction(node)
+    if (!owner?.body || !ts.isBlock(owner.body)) return
+    const accesses = []
+    const collect = current => {
+      if (currentAccess(current, node.name.text) && !isShadowedIdentifier(current.expression, owner.body)) accesses.push(current)
+      ts.forEachChild(current, collect)
+    }
+    collect(owner.body)
+    const frameAssignments = accesses.filter(access => ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && frameCall(unwrapExpression(access.parent.right), "requestAnimationFrame") && unshadowedFrameCall(unwrapExpression(access.parent.right), owner))
+    if (!frameAssignments.length) return
+    const invalidReference = referenceIdentifiers(owner.body, node.name.text).find(reference => !ts.isPropertyAccessExpression(reference.parent) || reference.parent.expression !== reference || reference.parent.name.text !== "current")
+    if (invalidReference) throw sourceNodeError(invalidReference, sourceFile, "Animation frame refs may only use direct .current reads and assignments")
+    const statement = node.parent?.parent
+    const topLevelOwner = owner.parent === sourceFile || ts.isVariableDeclaration(owner.parent) && owner.parent.parent?.parent?.parent === sourceFile
+    if (!topLevelOwner || !ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const) || statement.declarationList.declarations.length !== 1 || statement.parent !== owner.body) throw sourceNodeError(node, sourceFile, "Animation frame refs must be one top-level component const")
+    if (frameAssignments.length !== 1) throw sourceNodeError(node, sourceFile, "Animation frame refs require one direct ref.current = requestAnimationFrame(callback) assignment")
+    const frame = unwrapExpression(frameAssignments[0].parent.right)
+    const frameCallback = frame.arguments.length === 1 && ts.isIdentifier(unwrapExpression(frame.arguments[0])) ? unwrapExpression(frame.arguments[0]) : undefined
+    const effectCalls = owner.body.statements.flatMap(statement => hasUseEffectImport && ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && ts.isIdentifier(statement.expression.expression) && statement.expression.expression.text === "useEffect" && !isShadowedIdentifier(statement.expression.expression, sourceFile) ? [statement.expression] : [])
+    const effects = effectCalls.filter(effect => effect.arguments[0] && inside(frameAssignments[0], effect.arguments[0]))
+    if (effects.length !== 1) throw sourceNodeError(node, sourceFile, "Animation frame refs must belong to one inline component effect")
+    const effect = effects[0]
+    const callback = effect.arguments[0]
+    if (!(ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) || !ts.isBlock(callback.body)) throw sourceNodeError(callback, sourceFile, "Animation frame refs require one inline block-bodied effect")
+    if (accesses.some(access => !inside(access, callback))) throw sourceNodeError(node, sourceFile, "Animation frame refs may only be used inside their owning effect")
+    const callbacks = new Map()
+    for (const statement of callback.body.statements) {
+      if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name) && declaration.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) callbacks.set(declaration.name.text, declaration.initializer)
+      }
+      if (ts.isFunctionDeclaration(statement) && statement.name && statement.body) callbacks.set(statement.name.text, statement)
+    }
+    const frameOwner = nearestFunction(frameAssignments[0])
+    const shadowedCallback = frameCallback && isShadowedIdentifier(frameCallback, callback.body)
+    const update = frameCallback && !shadowedCallback && callbacks.get(frameCallback.text)
+    if (!update) throw sourceNodeError(frame, sourceFile, "Animation frame refs require a direct local callback")
+    const frameStatement = frameAssignments[0].parent.parent
+    if (!frameOwner || ![...callbacks.values()].includes(frameOwner) || !ts.isBlock(frameOwner.body) || !ts.isExpressionStatement(frameStatement) || !directOrGuarded(frameStatement, frameOwner.body, node.name.text, true)) throw sourceNodeError(frameAssignments[0], sourceFile, "Animation frame requests must be assigned directly inside one local scheduler")
+    const resetAssignments = accesses.filter(access => ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isNumericLiteral(unwrapExpression(access.parent.right)) && Number(unwrapExpression(access.parent.right).text) === 0)
+    const resetStatement = resetAssignments[0]?.parent.parent
+    if (resetAssignments.length !== 1 || nearestFunction(resetAssignments[0]) !== update || !ts.isBlock(update.body) || !ts.isExpressionStatement(resetStatement) || resetStatement.parent !== update.body) throw sourceNodeError(update, sourceFile, "Animation frame callbacks must directly reset their ref to 0")
+    const writes = accesses.filter(access => ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && access.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment)
+    if (writes.length !== 2) throw sourceNodeError(node, sourceFile, "Animation frame refs may only be assigned by their request and reset operations")
+    const returns = effectReturns(callback)
+    const cancellations = []
+    const collectCancellations = current => {
+      const argument = current.arguments?.[0] && unwrapExpression(current.arguments[0])
+      if (frameCall(current, "cancelAnimationFrame") && unshadowedFrameCall(current, owner) && current.arguments.length === 1 && currentAccess(argument, node.name.text) && !isShadowedIdentifier(argument.expression, owner.body)) cancellations.push(current)
+      ts.forEachChild(current, collectCancellations)
+    }
+    collectCancellations(callback.body)
+    const cancellation = cancellations[0]
+    const cleanup = cancellation && returns.cleanups.find(candidate => nearestFunction(cancellation) === candidate)
+    const cancellationStatement = cancellation?.parent
+    if (cancellations.length !== 1 || !cleanup || !ts.isBlock(cleanup.body) || !ts.isExpressionStatement(cancellationStatement) || !directOrGuarded(cancellationStatement, cleanup.body, node.name.text, false)) throw sourceNodeError(node, sourceFile, "Animation frame refs require direct cancellation in effect cleanup")
+    replacements.add(node)
+  }
+  inspect(sourceFile)
+  if (!replacements.size) return sourceFile
+  const visitor = node => {
+    if (replacements.has(node)) return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createObjectLiteralExpression([
+      factory.createPropertyAssignment("current", factory.createNumericLiteral(0))
+    ]))
+    return ts.visitEachChild(node, visitor, context)
+  }
+  return ts.visitNode(sourceFile, visitor)
+}
+
 function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences) {
   return context => sourceFile => {
     const factory = context.factory
@@ -2757,7 +3038,13 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeClsxSyntax(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
+    sourceFile = normalizeMediaQueryExternalStores(sourceFile, factory, context)
+    ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections)
+    ts.setParentRecursive(sourceFile, false)
+    sourceFile = normalizeNavigatorCapabilityConditions(sourceFile, factory, context)
+    ts.setParentRecursive(sourceFile, false)
+    sourceFile = normalizeEffectAnimationFrameRefs(sourceFile, factory, context)
     ts.setParentRecursive(sourceFile, false)
     sourceFile = normalizeCustomHookTimerRefs(sourceFile, factory, context)
     const customHookTimerStates = customHookTimerStatesBySource.get(sourceFile) ?? new Set()
@@ -2787,7 +3074,13 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         ts.setParentRecursive(imported, false)
         imported = normalizeClsxSyntax(imported, factory, context)
         ts.setParentRecursive(imported, false)
+        imported = normalizeMediaQueryExternalStores(imported, factory, context)
+        ts.setParentRecursive(imported, false)
         imported = normalizeReactMigrationSyntax(imported, factory, context, importedSerializableCollectionNames(imported, target, sourceFiles, sourceIndex))
+        ts.setParentRecursive(imported, false)
+        imported = normalizeNavigatorCapabilityConditions(imported, factory, context)
+        ts.setParentRecursive(imported, false)
+        imported = normalizeEffectAnimationFrameRefs(imported, factory, context)
         ts.setParentRecursive(imported, false)
         imported = normalizeCustomHookTimerRefs(imported, factory, context)
         importedTimerStates.set(target, customHookTimerStatesBySource.get(imported) ?? new Set())
@@ -5434,7 +5727,7 @@ function compileOptimizedEvent(expression, setters, factory) {
 }
 
 const nativeGlobals = new Set([
-  "Array", "ArrayBuffer", "BigInt", "Blob", "Boolean", "Date", "Error", "Event", "FileReader", "FormData", "Infinity", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "alert", "atob", "btoa", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "localStorage", "location", "navigator", "parseFloat", "parseInt", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
+  "Array", "ArrayBuffer", "BigInt", "Blob", "Boolean", "Date", "Error", "Event", "FileReader", "FormData", "Infinity", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "alert", "atob", "btoa", "cancelAnimationFrame", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "localStorage", "location", "navigator", "parseFloat", "parseInt", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
 ])
 
 function rewriteEffectWorkers(callback, file, sourceFile, sourceFiles, workerReferences, factory, context) {

@@ -20,6 +20,8 @@ export interface RefObject<T> {
 }
 
 export function useRef<T>(initialValue: null): RefObject<T>
+export function useRef(initialValue: 0): { current: number }
+export function useSyncExternalStore<T>(subscribe: (callback: () => void) => () => void, getSnapshot: () => T, getServerSnapshot: () => T): T
 
 export interface Context<T> {
   Provider: (props: { value: T; children?: unknown }) => unknown
