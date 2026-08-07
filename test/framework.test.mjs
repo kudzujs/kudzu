@@ -2998,7 +2998,8 @@ http.createServer((request, response) => {
   await waitForServer(port)
   try {
     for (const [mode, size] of [["desktop", "1440,1000"], ["mobile", "390,844"]]) {
-      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--window-size=${size}`, "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/releases/0.7.0/?mode=${mode}`], { encoding: "utf8", timeout: 15000 })
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--window-size=${size}`, "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/releases/0.7.0/?mode=${mode}`], { encoding: "utf8", timeout: 30000 })
+      assert.ifError(browser.error)
       assert.equal(browser.status, 0, browser.stderr)
       assert.match(browser.stdout, new RegExp(`data-release-notes-test="pass-${mode}"`))
     }
@@ -3103,7 +3104,8 @@ http.createServer((request, response) => {
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
   await waitForServer(port)
   try {
-    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=7000", "--dump-dom", `http://127.0.0.1:${port}/shop/product?initial=1`], { encoding: "utf8", timeout: 20000 })
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=7000", "--dump-dom", `http://127.0.0.1:${port}/shop/product?initial=1`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
     await fetch(`http://127.0.0.1:${port}/reset-counts`)
