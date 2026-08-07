@@ -1416,6 +1416,32 @@ test("migrates a react-hook-form-shaped signup to native form semantics", async 
   if (chrome) await runReactHookFormMigrationBrowserTest(fixture, chrome)
 })
 
+test("migrates TanStack Query-shaped data by availability time", async t => {
+  const fixture = new URL("./fixtures/tanstack-query-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/tanstack-query-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/tanstack-query-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const buildHtml = await readFile(new URL("./fixtures/tanstack-query-migration/dist/index.html", import.meta.url), "utf8")
+  const browserHtml = await readFile(new URL("./fixtures/tanstack-query-migration/dist/browser/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/tanstack-query-migration/dist/static/index.html", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/tanstack-query-migration/dist/assets/handlers/pages/browser.js", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/tanstack-query-migration/.kudzu/pages/browser.mjs", import.meta.url), "utf8")
+  const plans = JSON.parse(await readFile(new URL("./fixtures/tanstack-query-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(buildHtml, /Build-known products.*Build oak.*Build pine/s)
+  assert.doesNotMatch(`${buildHtml}\n${staticHtml}`, /<script|data-k-state/)
+  assert.match(browserHtml, /Browser-only products.*role="status">Loading products/s)
+  assert.doesNotMatch(browserHtml, /Old oak|Fresh pine|Recovered cedar/)
+  assert.match(handler, /fetch\(`\/api\/products\?request=/)
+  assert.match(handler, /queryCleanup/)
+  assert.doesNotMatch(`${buildHtml}\n${browserHtml}\n${staticHtml}\n${handler}\n${component}`, /@tanstack\/react-query|QueryClient|QueryClientProvider|["']react["']/)
+  assert.deepEqual(plans.map(plan => [plan.route, plan.events.map(event => event.event), plan.effects.length]), [["/browser", ["click"], 1], ["/", [], 0], ["/static", [], 0]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runTanStackQueryMigrationBrowserTest(fixture, chrome)
+})
+
 test("owns setter callbacks and object refs across one component boundary", async t => {
   const fixture = new URL("./fixtures/callback-ref-ownership", import.meta.url)
   t.after(async () => {
@@ -3099,6 +3125,77 @@ http.createServer((request, response) => {
   await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runTanStackQueryMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("browser/index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const productNames = () => [...document.querySelectorAll("#products li")].map(node => node.textContent).join(",")
+try {
+  if (!document.querySelector('[role="status"]')) throw new Error("initial-loading")
+
+  document.querySelector("#refetch").click()
+  await waitFor(() => productNames() === "Fresh pine", "fresh-response")
+  await wait(200)
+  if (productNames() !== "Fresh pine" || document.body.dataset.queryCleanup !== "|0") throw new Error("stale-response")
+
+  document.querySelector("#refetch").click()
+  await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 500", "error-response")
+  if (document.body.dataset.queryCleanup !== "|0|1") throw new Error("error-cleanup")
+
+  document.querySelector("#refetch").click()
+  await waitFor(() => productNames() === "Recovered cedar", "recovered-response")
+  if (document.querySelector('[role="alert"]') || document.body.dataset.queryCleanup !== "|0|1|2") throw new Error("recovery-cleanup")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  if (url.pathname === "/api/products") {
+    const query = Number(url.searchParams.get("request"))
+    return setTimeout(() => {
+      if (query === 2) {
+        response.statusCode = 500
+        return response.end("failed")
+      }
+      const products = query === 0 ? [{ id: 1, name: "Old oak" }] : query === 1 ? [{ id: 2, name: "Fresh pine" }] : [{ id: 3, name: "Recovered cedar" }]
+      response.setHeader("content-type", "application/json")
+      response.end(JSON.stringify(products))
+    }, query === 0 ? 180 : 20)
+  }
+  const relative = url.pathname === "/browser/" ? "browser/index.html" : url.pathname.slice(1)
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/browser/`], { encoding: "utf8", timeout: 30000 })
     assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)

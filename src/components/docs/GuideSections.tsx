@@ -194,6 +194,31 @@ return <form onSubmit={submit}>
   {status === "error" && <p id="signup-error" role="alert">Email already registered.</p>}
 </form>`} />
     <p>Read <code>event.currentTarget</code> and construct <code>FormData</code> before the first <code>await</code>. Native <code>required</code>, input types, lengths, and patterns handle synchronous field validity without input listeners. Kudzu emits complete form HTML, one route-specific submit handler, and only the bindings and conditional feedback used. <code>useForm</code>, <code>register</code> spreads, <code>handleSubmit</code>, <code>Controller</code>, watchers, resolver packages, dirty/touched proxies, and dynamic field registration remain source migration work rather than supported React Hook Form runtime APIs.</p>
+    <h3>Data-fetching library migration</h3>
+    <p>TanStack Query does not run in Kudzu. Classify each read by when its inputs exist. Build-known data belongs in an async page or component and becomes complete zero-JavaScript HTML. Data available only in the browser belongs in an inline effect with application-owned loading, error, and result state.</p>
+    <CodeBlock code={`// Build-known data
+export default async function ProductsPage() {
+  const products = await loadProducts()
+  return <ul>{products.map(product => <li key={product.id}>{product.name}</li>)}</ul>
+}
+
+// Browser-only data
+const [request, setRequest] = useState(0)
+const [status, setStatus] = useState("loading")
+const [products, setProducts] = useState([])
+
+useEffect(() => {
+  setStatus("loading")
+  void fetch("/api/products?request=" + request)
+    .then(response => response.json())
+    .then(next => {
+      setProducts(next)
+      setStatus("success")
+    })
+}, [request])
+
+return <button onClick={() => setRequest(request + 1)}>Refetch</button>`} />
+    <p>Dependency replacement invalidates the previous effect invocation before cleanup, so late promise or fetch setters cannot overwrite newer state. A primitive request counter provides explicit refetch without a query runtime. Applications still own HTTP error handling and cleanup for imperative resources. Query clients, Providers, caches, retries, deduplication, optimistic cache updates, query-key arrays, Suspense, and background refetch remain source migration work.</p>
     <p>Ordinary same-file and relative-imported child components may own local state without specialization into a browser component. A direct JSON-safe primitive parent state passed to a destructured child prop remains reactive in child text, attributes, and effect dependencies. A direct setter may cross one component boundary when the child invokes it once inside an intrinsic event handler, supporting value adapters such as <code>event =&gt; onValueChange(event.currentTarget.value)</code> without serializing the callback. Inline/simple <code>const</code> setter callbacks may use that shape or direct forwarding, and the child may own directly serializable <code>useState()</code>, initialize string state with a direct primitive prop's <code>.toString()</code>, and use <code>useId()</code>, supported effects, and <code>null</code>-initialized object refs. Same-file and relative-imported nested components also specialize away; nested hooks are supported on unconditional or statically truthy paths. A parent-owned object ref may also cross the same direct intrinsic boundary. Repeated calls receive independent state and effect ownership even when they share generated modules. When a child is inside reactive conditional DOM, removal deletes owned state, drops its handler with the DOM, resolves refs to <code>null</code>, and cleans up effects; re-entry creates fresh state and DOM ownership. The initial visible branch reuses its pre-rendered IDs instead of executing the component twice.</p>
     <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. A same-file keyed row may use a direct <code>export function</code> or exported function-valued <code>const</code> and be reused across static and keyed JSX sites. Specialized wrappers and keyed rows accept JSX children plus inline or direct calling-component <code>const</code> object prop spreads, preserving source-order overrides. Missing destructured props may use directly serializable primitive, plain-object, or array literal defaults. One final identifier rest binding may be forwarded exactly once to the direct intrinsic root, where its attributes and events reuse existing analysis. Export-list/default aliases, non-JSX references, dynamic or computed spreads/defaults, indirect rest use, and prototype-sensitive rest properties remain source-diagnosed. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
     <CodeBlock code={`function ItemList({ items }: { items: Item[] }) {

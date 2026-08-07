@@ -152,6 +152,9 @@ This queue orders the next investigations by general migration value. Start only
 - A reduced React Hook Form-shaped signup migration replaces `useForm`, registration spreads, and submit wrappers with native controls, constraint validation, `FormData`, one direct async submit handler, and application-owned result state.
 - Browser validation covers required and email constraints, submitting state, server-error ARIA, success cleanup, and retained uncontrolled values. Complete form HTML is pre-rendered, the route emits only one `submit` listener, the static sibling remains JavaScript-free, and React Hook Form is absent from output.
 - This is a source migration recipe rather than React Hook Form package compatibility. Controllers, watchers, resolvers, dirty/touched proxies, dynamic field registration, and schema package execution during render remain unsupported.
+- A reduced TanStack Query-shaped migration classifies build-known reads into async page rendering and browser-only reads into one dependency effect with application-owned loading, error, result, and primitive refetch state.
+- Dependency replacement now invalidates prior unowned effect invocations before cleanup in both single-dependency and general runners. Delayed fetch setters from superseded invocations cannot overwrite newer keyed result state.
+- Browser validation covers a fast refetch winning over a delayed response, cleanup ordering, HTTP failure, recovery, complete zero-JavaScript build output, and a static zero-JavaScript sibling. Query clients, Providers, caches, retries, deduplication, query-key arrays, optimistic updates, Suspense, and background refetch remain unsupported.
 
 ## Cross-Cutting Performance Gates
 

@@ -581,7 +581,7 @@ addEventListener("pagehide", event => {
   if (hasDependencies) return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
-const records = effects.map((effect, index) => ({ effect, index, values: undefined, cleanup: undefined }))
+const records = effects.map((effect, index) => ({ effect, index, values: undefined, cleanup: undefined, token: undefined }))
 const dependencies = new Map()
 const pending = new Set()
 let scheduled = false
@@ -649,7 +649,9 @@ ${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
 function invoke(record) {
   try {
     const effect = record.effect
-    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope))
+    const token = { active: true }
+    record.token = token
+    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope, () => active && token.active && record.token === token))
     if (effect.cleanup && typeof result === "function") record.cleanup = result
     else if (result && typeof result.then === "function") result.catch(error => console.error(error))
   } catch (error) {
@@ -657,6 +659,8 @@ function invoke(record) {
   }
 }
 async function invokeCleanup(record) {
+  if (record.token) record.token.active = false
+  record.token = undefined
   const cleanup = record.cleanup
   record.cleanup = undefined
   if (!cleanup) return
@@ -1352,6 +1356,7 @@ const effect = ${inlineJson(effect)}
 const dependency = effect.dependencies[0]
 let value
 let cleanup
+let token
 let active = true
 let pending = false
 let scheduled = false
@@ -1402,7 +1407,9 @@ function readDependency() {
 }
 function invoke() {
   try {
-    const result = __kEffectModule0[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope))
+    const current = { active: true }
+    token = current
+    const result = __kEffectModule0[effect.handler](createEffectContext(browserState, effect.states, commitDom, effect.scope, () => active && current.active && token === current))
     if (effect.cleanup && typeof result === "function") cleanup = result
     else if (result && typeof result.then === "function") result.catch(error => console.error(error))
   } catch (error) {
@@ -1410,6 +1417,8 @@ function invoke() {
   }
 }
 async function invokeCleanup() {
+  if (token) token.active = false
+  token = undefined
   const current = cleanup
   cleanup = undefined
   if (!current) return
