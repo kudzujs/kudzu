@@ -1442,6 +1442,27 @@ test("migrates TanStack Query-shaped data by availability time", async t => {
   if (chrome) await runTanStackQueryMigrationBrowserTest(fixture, chrome)
 })
 
+test("migrates used Lucide icons to source-owned static SVG", async t => {
+  const fixture = new URL("./fixtures/lucide-source-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lucide-source-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lucide-source-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/lucide-source-migration/dist/index.html", import.meta.url), "utf8")
+  const icons = await readFile(new URL("./fixtures/lucide-source-migration/.kudzu/icons.mjs", import.meta.url), "utf8")
+  const page = await readFile(new URL("./fixtures/lucide-source-migration/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const assets = await readdir(new URL("./fixtures/lucide-source-migration/dist/assets", import.meta.url), { recursive: true })
+  assert.match(html, /<svg viewBox="0 0 24 24" width="28" height="20" fill="none" stroke="currentColor" stroke-width="1\.5" stroke-linecap="round" stroke-linejoin="round" data-icon="search" class="catalog-icon" role="img"><title>Search catalog<\/title>/)
+  assert.match(html, /<svg viewBox="0 0 24 24" width="16" height="18" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon="check" class="status-icon" aria-hidden="true"><path/)
+  assert.doesNotMatch(html, /data-icon="check"[^>]*><title>/)
+  assert.doesNotMatch(html, /<script/)
+  assert.deepEqual(assets.filter(file => /\.(?:js|mjs)$/.test(file)), [])
+  assert.equal(existsSync(new URL("./fixtures/lucide-source-migration/.kudzu/UnusedIcon.mjs", import.meta.url)), false)
+  assert.doesNotMatch(`${html}\n${icons}\n${page}`, /lucide-react|data-icon["']?: ["']unused|Unused icon|["']react["']/)
+})
+
 test("owns setter callbacks and object refs across one component boundary", async t => {
   const fixture = new URL("./fixtures/callback-ref-ownership", import.meta.url)
   t.after(async () => {

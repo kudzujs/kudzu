@@ -145,7 +145,8 @@ export async function build({ quiet = false, minify = true } = {}) {
         runtimeParams: runtimeSchema?.params,
         ...(navigable ? { navigationAsset: navigationGroup.assetPath, applicationId: navigationGroup.applicationId, layoutId: navigationGroup.layoutId, routeId: applicationRoute } : {})
       }, props, module.layout)
-      for (const url of result.handlerModules) renderedHandlerUrls.add(url)
+      const renderedOutput = `${JSON.stringify(result.plan)}\n${result.html}`
+      for (const url of result.handlerModules) if (renderedOutput.includes(JSON.stringify(url))) renderedHandlerUrls.add(url)
       if (navigationGroup) {
         navigationGroup.hasEffects ||= result.hasEffects
         navigationGroup.hasParams ||= result.hasParams

@@ -219,6 +219,29 @@ useEffect(() => {
 
 return <button onClick={() => setRequest(request + 1)}>Refetch</button>`} />
     <p>Dependency replacement invalidates the previous effect invocation before cleanup, so late promise or fetch setters cannot overwrite newer state. A primitive request counter provides explicit refetch without a query runtime. Applications still own HTTP error handling and cleanup for imperative resources. Query clients, Providers, caches, retries, deduplication, optimistic cache updates, query-key arrays, Suspense, and background refetch remain source migration work.</p>
+    <h3>Icon library migration</h3>
+    <p>React icon packages such as Lucide do not run during Kudzu rendering. Move only the icons an application uses into small relative TSX components with direct SVG roots. Familiar props remain ordinary component inputs and React-shaped SVG attributes normalize to native output.</p>
+    <CodeBlock code={`function SearchIcon({ title, ...iconProps }: IconProps) {
+  return <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...iconProps}
+  >
+    {title && <title>{title}</title>}
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </svg>
+}
+
+return <>
+  <SearchIcon role="img" title="Search catalog" />
+  <CheckIcon aria-hidden={true} />
+</>`} />
+    <p>Meaningful icons need an explicit accessible name, while decorative icons should remain hidden from assistive technology. Kudzu emits the used SVG markup directly into complete HTML, removes build-folded evaluator artifacts, and never compiles unreachable icon modules. <code>lucide-react</code> execution, <code>createLucideIcon()</code>, dynamic icon-name lookup, package factories, and a generic icon runtime remain unsupported.</p>
     <p>Ordinary same-file and relative-imported child components may own local state without specialization into a browser component. A direct JSON-safe primitive parent state passed to a destructured child prop remains reactive in child text, attributes, and effect dependencies. A direct setter may cross one component boundary when the child invokes it once inside an intrinsic event handler, supporting value adapters such as <code>event =&gt; onValueChange(event.currentTarget.value)</code> without serializing the callback. Inline/simple <code>const</code> setter callbacks may use that shape or direct forwarding, and the child may own directly serializable <code>useState()</code>, initialize string state with a direct primitive prop's <code>.toString()</code>, and use <code>useId()</code>, supported effects, and <code>null</code>-initialized object refs. Same-file and relative-imported nested components also specialize away; nested hooks are supported on unconditional or statically truthy paths. A parent-owned object ref may also cross the same direct intrinsic boundary. Repeated calls receive independent state and effect ownership even when they share generated modules. When a child is inside reactive conditional DOM, removal deletes owned state, drops its handler with the DOM, resolves refs to <code>null</code>, and cleans up effects; re-entry creates fresh state and DOM ownership. The initial visible branch reuses its pre-rendered IDs instead of executing the component twice.</p>
     <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. A same-file keyed row may use a direct <code>export function</code> or exported function-valued <code>const</code> and be reused across static and keyed JSX sites. Specialized wrappers and keyed rows accept JSX children plus inline or direct calling-component <code>const</code> object prop spreads, preserving source-order overrides. Missing destructured props may use directly serializable primitive, plain-object, or array literal defaults. One final identifier rest binding may be forwarded exactly once to the direct intrinsic root, where its attributes and events reuse existing analysis. Export-list/default aliases, non-JSX references, dynamic or computed spreads/defaults, indirect rest use, and prototype-sensitive rest properties remain source-diagnosed. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
     <CodeBlock code={`function ItemList({ items }: { items: Item[] }) {
