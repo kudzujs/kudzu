@@ -174,6 +174,12 @@ This queue orders the next investigations by general migration value. Start only
 - Static media-query stores lower to existing primitive state and owned effects with exact `change` listener cleanup. No external-store runtime or media-query capability module is added; the work also fixes existing state-select text bindings so effect commits update optimized derived text as attributes already did.
 - Chrome validation covers desktop fallback, tablet/mobile transitions, two subscriptions, document cleanup, ignored post-disposal changes, and a zero-JavaScript static sibling. Parameterized/imported hooks, dynamic queries, arbitrary stores, legacy listener APIs, and non-boolean snapshots remain unsupported.
 
+### Validated For The Next Release
+
+- A reduced fixture from [colonni's blog](https://colonni.xyz/ko/posts/math-for-development) emits build-known MDX as static HTML without `eval()` or `new Function()`, and generates `/ko` and `/en` through `getStaticPaths()` with native locale links. Request-time locale negotiation and `next-intl` package compatibility remain outside Kudzu's static deployment model.
+- The blog's WalkingDog-shaped canvas lifecycle moves resource-private mutable values into one inline effect while retaining a direct canvas object ref. Bare `IntersectionObserver`, `performance`, recursive animation frames, keyboard/click listeners, and exact cleanup compile to one route-specific effect module without a canvas runtime.
+- Chrome validation covers visible and hidden frame behavior, retained local drawing state, keyboard/click updates, frame cancellation, observer disconnection, listener removal, localized complete HTML, and a zero-JavaScript static sibling. Component-level mutable value refs, callbacks shared across effects or handlers, and arbitrary canvas component graphs remain unsupported.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

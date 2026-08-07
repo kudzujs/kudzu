@@ -1494,6 +1494,39 @@ test("rejects effect-owned animation frames without cleanup cancellation", () =>
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Animation frame refs require direct cancellation in effect cleanup/)
 })
 
+test("migrates a localized MDX blog with an effect-owned canvas animation", async t => {
+  const fixture = new URL("./fixtures/colonni-blog-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/colonni-blog-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/colonni-blog-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const koHtml = await readFile(new URL("./fixtures/colonni-blog-migration/dist/ko/index.html", import.meta.url), "utf8")
+  const enHtml = await readFile(new URL("./fixtures/colonni-blog-migration/dist/en/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/colonni-blog-migration/dist/static/index.html", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/colonni-blog-migration/dist/assets/handlers/pages/[locale]/index.js", import.meta.url), "utf8")
+  const plans = JSON.parse(await readFile(new URL("./fixtures/colonni-blog-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(koHtml, /<html lang="ko">.*<article lang="ko"><h1>Math for development<\/h1>.*Build-known MDX becomes static HTML.*<canvas data-k-ref="r0"/s)
+  assert.match(enHtml, /<html lang="en">.*href="\/ko".*href="\/en".*<article lang="en">/s)
+  assert.match(handler, /new IntersectionObserver/)
+  assert.match(handler, /requestAnimationFrame/)
+  assert.match(handler, /cancelAnimationFrame/)
+  assert.match(handler, /performance\.now/)
+  assert.doesNotMatch(`${koHtml}\n${enHtml}\n${handler}`, /new Function|\beval\(|["']react["']/)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.deepEqual(plans.map(plan => [plan.route, plan.events.length, plan.effects.map(effect => effect.cleanup)]), [["/ko", 0, [true]], ["/en", 0, [true]], ["/static", 0, []]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runColonniBlogMigrationBrowserTest(fixture, chrome)
+})
+
+test("rejects canvas observers without owned cleanup", () => {
+  const fixture = new URL("./fixtures/canvas-effect-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ IntersectionObserver effects must disconnect "observer" in cleanup/)
+})
+
 test("migrates Excalidraw room sharing with a browser capability condition", async t => {
   const fixture = new URL("./fixtures/excalidraw-share-migration", import.meta.url)
   t.after(async () => {
@@ -3392,6 +3425,99 @@ http.createServer((request, response) => {
   await waitForServer(port)
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runColonniBlogMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("ko/index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  const instrumentation = `<script>
+globalThis.__draws = []
+globalThis.__frames = 0
+globalThis.__cancellations = 0
+globalThis.__observes = 0
+globalThis.__disconnects = 0
+let nextFrame = 1
+const pendingFrames = new Map()
+globalThis.requestAnimationFrame = callback => { const frame = nextFrame++; globalThis.__frames++; pendingFrames.set(frame, callback); return frame }
+globalThis.cancelAnimationFrame = frame => { globalThis.__cancellations++; pendingFrames.delete(frame) }
+globalThis.__flushFrame = () => { const callbacks = [...pendingFrames.values()]; pendingFrames.clear(); for (const callback of callbacks) callback(performance.now()) }
+globalThis.IntersectionObserver = class {
+  constructor(callback) { globalThis.__observerCallback = callback }
+  observe() { globalThis.__observes++; globalThis.__observerCallback([{ isIntersecting: true }]) }
+  disconnect() { globalThis.__disconnects++ }
+}
+HTMLCanvasElement.prototype.getContext = () => ({
+  clearRect() {},
+  fillRect(x, y, width, height) { globalThis.__draws.push([x, y, width, height]) },
+  fillText() {}
+})
+HTMLCanvasElement.prototype.getBoundingClientRect = () => ({ left: 5, width: 640 })
+</script>`
+  await writeFile(htmlUrl, html.replace("<head>", `<head>${instrumentation}`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__frames === 1 && globalThis.__observes === 1, "effect-mount")
+  globalThis.__flushFrame()
+  if (globalThis.__draws.at(-1)?.[0] !== 20) throw new Error("initial-draw")
+
+  const visibleDraws = globalThis.__draws.length
+  globalThis.__observerCallback([{ isIntersecting: false }])
+  globalThis.__flushFrame()
+  if (globalThis.__draws.length !== visibleDraws) throw new Error("hidden-draw")
+
+  globalThis.__observerCallback([{ isIntersecting: true }])
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }))
+  globalThis.__flushFrame()
+  if (globalThis.__draws.at(-1)?.[0] !== 28) throw new Error("keyboard-move")
+
+  document.querySelector("canvas").dispatchEvent(new MouseEvent("click", { clientX: 55 }))
+  globalThis.__flushFrame()
+  if (globalThis.__draws.at(-1)?.[0] !== 50) throw new Error("click-move")
+
+  const cancellations = globalThis.__cancellations
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await wait(20)
+  if (globalThis.__cancellations !== cancellations + 1 || globalThis.__disconnects !== 1) throw new Error("cleanup")
+  const draws = globalThis.__draws.length
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }))
+  document.querySelector("canvas").dispatchEvent(new MouseEvent("click", { clientX: 80 }))
+  globalThis.__flushFrame()
+  if (globalThis.__draws.length !== draws) throw new Error("disposed-listeners")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url === "/ko/" ? "ko/index.html" : request.url.slice(1)
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/ko/`], { encoding: "utf8", timeout: 30000 })
     assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)

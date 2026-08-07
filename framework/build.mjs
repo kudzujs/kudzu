@@ -4231,6 +4231,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         const invalidCleanup = returns.cleanups.find(cleanup => cleanup.parameters.length || cleanup.asteriskToken)
         if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
         if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
+        validateEffectOwnedBrowserResources(callback, returns, effectFail)
         const callbackSource = specializedEffect?.sourceFile ?? sourceFile
         const callbackFile = callbackSource.fileName
         const workerStart = workerReferences.length
@@ -5727,7 +5728,7 @@ function compileOptimizedEvent(expression, setters, factory) {
 }
 
 const nativeGlobals = new Set([
-  "Array", "ArrayBuffer", "BigInt", "Blob", "Boolean", "Date", "Error", "Event", "FileReader", "FormData", "Infinity", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "alert", "atob", "btoa", "cancelAnimationFrame", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "localStorage", "location", "navigator", "parseFloat", "parseInt", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
+  "Array", "ArrayBuffer", "BigInt", "Blob", "Boolean", "Date", "Error", "Event", "FileReader", "FormData", "Infinity", "IntersectionObserver", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "alert", "atob", "btoa", "cancelAnimationFrame", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "localStorage", "location", "navigator", "parseFloat", "parseInt", "performance", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
 ])
 
 function rewriteEffectWorkers(callback, file, sourceFile, sourceFiles, workerReferences, factory, context) {
@@ -6128,6 +6129,30 @@ function effectReturns(callback) {
   }
   visit(callback.body)
   return { cleanup, cleanups, invalid }
+}
+
+function validateEffectOwnedBrowserResources(callback, returns, fail) {
+  const observers = []
+  const frameAssignments = []
+  const cancellations = new Set()
+  const disconnected = new Set()
+  const insideCleanup = node => returns.cleanups.some(cleanup => {
+    for (let current = node; current; current = current.parent) if (current === cleanup) return true
+    return false
+  })
+  const visit = node => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isNewExpression(unwrapExpression(node.initializer)) && ts.isIdentifier(unwrapExpression(node.initializer).expression) && unwrapExpression(node.initializer).expression.text === "IntersectionObserver") observers.push(node)
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrapExpression(node.left)) && ts.isCallExpression(unwrapExpression(node.right)) && ts.isIdentifier(unwrapExpression(node.right).expression) && unwrapExpression(node.right).expression.text === "requestAnimationFrame") frameAssignments.push(node)
+    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "cancelAnimationFrame" && node.arguments.length === 1 && ts.isIdentifier(unwrapExpression(node.arguments[0]))) cancellations.add(unwrapExpression(node.arguments[0]).text)
+    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.name.text === "disconnect" && node.arguments.length === 0) disconnected.add(node.expression.expression.text)
+    ts.forEachChild(node, visit)
+  }
+  visit(callback.body)
+  for (const observer of observers) if (!disconnected.has(observer.name.text)) fail(observer, `IntersectionObserver effects must disconnect ${JSON.stringify(observer.name.text)} in cleanup`)
+  for (const assignment of frameAssignments) {
+    const name = unwrapExpression(assignment.left).text
+    if (!cancellations.has(name)) fail(assignment, `Animation loop effects must cancel ${JSON.stringify(name)} in cleanup`)
+  }
 }
 
 function printClientImports(entries, handlerPath) {

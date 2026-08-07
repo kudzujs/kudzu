@@ -267,6 +267,37 @@ useEffect(() => {
   }
 }, [])`} />
     <p>The frame callback must directly reset the ref, one scheduler must assign the request, and cleanup must cancel any pending frame. Ref aliases, nonzero initializers, use across effects or handlers, repeated scheduling assignments, and missing cancellation remain unsupported. Static sibling routes still ship zero JavaScript.</p>
+    <h3>Canvas animation migration</h3>
+    <p>A continuous canvas animation can remain ordinary React-shaped source when one effect owns the browser resource. Local effect variables replace component-level mutable refs, while the canvas itself keeps a direct object ref.</p>
+    <CodeBlock code={`const canvasRef = useRef<HTMLCanvasElement>(null)
+
+useEffect(() => {
+  const canvas = canvasRef.current
+  const context = canvas?.getContext("2d")
+  if (!canvas || !context) return
+  let frame = 0
+  let visible = true
+  let x = 20
+
+  const tick = () => {
+    if (visible) context.fillRect(x, 30, 20, 20)
+    frame = requestAnimationFrame(tick)
+  }
+  const observer = new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting
+  })
+  const move = () => { x += 8 }
+
+  observer.observe(canvas)
+  window.addEventListener("keydown", move)
+  frame = requestAnimationFrame(tick)
+  return () => {
+    cancelAnimationFrame(frame)
+    observer.disconnect()
+    window.removeEventListener("keydown", move)
+  }
+}, [])`} />
+    <p>Kudzu emits one route-specific effect module and preserves native <code>IntersectionObserver</code>, <code>performance</code>, canvas, and frame APIs directly. Component-level mutable value refs, callbacks shared across effects or JSX handlers, uncancelled loops, and missing observer/listener cleanup remain unsupported. Build-known MDX should become static HTML, while locale-prefixed routes use <code>getStaticPaths()</code> and native links rather than a request-time i18n runtime.</p>
     <h3>Browser capability migration</h3>
     <p>Progressive React UI may keep one direct static navigator capability condition. Kudzu emits the unsupported branch as complete static fallback and checks the immutable browser capability once after mount.</p>
     <CodeBlock code={`const canShare = "share" in navigator
