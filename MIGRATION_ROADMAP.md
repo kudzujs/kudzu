@@ -147,6 +147,12 @@ This queue orders the next investigations by general migration value. Start only
 - Browser validation covers modal top-layer behavior, initial focus, confirm and cancel paths, and explicit trigger-focus restoration. Complete dialog HTML is pre-rendered, React and Radix are absent from output, and native event output remains specialized to the route's actual events.
 - This is a source migration recipe rather than Radix package compatibility. `Portal`, `asChild`/`Slot`, element cloning, and arbitrary compound-component Context remain unsupported.
 
+### Characterized After 0.8.10
+
+- A reduced React Hook Form-shaped signup migration replaces `useForm`, registration spreads, and submit wrappers with native controls, constraint validation, `FormData`, one direct async submit handler, and application-owned result state.
+- Browser validation covers required and email constraints, submitting state, server-error ARIA, success cleanup, and retained uncontrolled values. Complete form HTML is pre-rendered, the route emits only one `submit` listener, the static sibling remains JavaScript-free, and React Hook Form is absent from output.
+- This is a source migration recipe rather than React Hook Form package compatibility. Controllers, watchers, resolvers, dirty/touched proxies, dynamic field registration, and schema package execution during render remain unsupported.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

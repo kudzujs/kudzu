@@ -1392,6 +1392,30 @@ test("migrates a React-shaped dialog to the native dialog element", async t => {
   if (chrome) await runNativeDialogMigrationBrowserTest(fixture, chrome)
 })
 
+test("migrates a react-hook-form-shaped signup to native form semantics", async t => {
+  const fixture = new URL("./fixtures/react-hook-form-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-hook-form-migration/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-hook-form-migration/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-hook-form-migration/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/react-hook-form-migration/dist/static/index.html", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/react-hook-form-migration/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-hook-form-migration/.kudzu/SignupField.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/react-hook-form-migration/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.match(html, /<form id="signup-form" data-k-native-submit=/)
+  assert.match(html, /<input id="email" name="email" type="email" required aria-invalid="false"/)
+  assert.match(html, /<input id="password" name="password" type="password" required minLength="8"/)
+  assert.match(handler, /new FormData\([^)]*currentTarget\)/)
+  assert.doesNotMatch(`${html}\n${staticHtml}\n${handler}\n${component}`, /react-hook-form|["']react["']/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.deepEqual(plan.routes.map(route => [route.route, route.events.map(event => event.event)]), [["/", ["submit"]], ["/static", []]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runReactHookFormMigrationBrowserTest(fixture, chrome)
+})
+
 test("owns setter callbacks and object refs across one component boundary", async t => {
   const fixture = new URL("./fixtures/callback-ref-ownership", import.meta.url)
   t.after(async () => {
@@ -3017,6 +3041,72 @@ http.createServer((request, response) => {
   }
 }
 
+async function runReactHookFormMigrationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+try {
+  await wait(50)
+  const form = document.querySelector("#signup-form")
+  const email = document.querySelector("#email")
+  const password = document.querySelector("#password")
+  const submit = document.querySelector("#signup-submit")
+
+  form.requestSubmit()
+  await wait(50)
+  if (!email.validity.valueMissing || document.querySelector("#signup-error, #signup-success")) throw new Error("required-validation")
+
+  email.value = "not-an-email"
+  password.value = "long-enough"
+  form.requestSubmit()
+  await wait(50)
+  if (!email.validity.typeMismatch || document.querySelector("#signup-error, #signup-success")) throw new Error("email-validation")
+
+  email.value = "taken@example.com"
+  form.requestSubmit()
+  await Promise.resolve()
+  await Promise.resolve()
+  if (!submit.disabled || submit.textContent.trim() !== "Creating account") throw new Error("submitting")
+  await wait(50)
+  if (submit.disabled || !document.querySelector('#signup-error[role="alert"]')) throw new Error("server-error")
+  if (email.getAttribute("aria-invalid") !== "true" || email.getAttribute("aria-describedby") !== "signup-error") throw new Error("error-accessibility")
+
+  email.value = "new@example.com"
+  form.requestSubmit()
+  await wait(50)
+  if (!document.querySelector('#signup-success[role="status"]') || document.querySelector("#signup-error")) throw new Error("success")
+  if (email.getAttribute("aria-invalid") !== "false" || email.hasAttribute("aria-describedby")) throw new Error("success-accessibility")
+  if (email.value !== "new@example.com" || password.value !== "long-enough" || password.minLength !== 8) throw new Error("uncontrolled-values")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runReleaseNotesBrowserTest(chrome) {
   const output = new URL("../dist/", import.meta.url)
   const homeUrl = new URL("index.html", output)
@@ -3091,6 +3181,9 @@ async function runDocsListBrowserTest(chrome) {
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 try {
   await wait()
+  const layout = document.querySelector(".docs-layout")
+  const content = document.querySelector(".docs-content")
+  if (Math.round(layout.getBoundingClientRect().width) !== document.documentElement.clientWidth || content.getBoundingClientRect().right > document.documentElement.clientWidth || document.documentElement.scrollWidth > document.documentElement.clientWidth) throw new Error("mobile-width")
   const items = () => [...document.querySelectorAll(".list-demo li")]
   const action = label => [...document.querySelectorAll(".list-demo-actions button")].find(button => button.textContent === label)
   action("Add").click()

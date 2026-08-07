@@ -167,6 +167,33 @@ function ProfileDialog() {
   </>
 }`} />
     <p>Kudzu emits the complete dialog HTML and only the route's native event handlers. The application must preserve labeling and focus restoration as shown. Radix package execution, <code>Portal</code>, <code>asChild</code>/<code>Slot</code>, element cloning, and arbitrary compound-component Context remain unsupported; this is a source migration recipe, not package compatibility.</p>
+    <h3>Native form migration</h3>
+    <p>React Hook Form does not run in Kudzu. For ordinary forms, migrate its registration and submit wrapper to native controls, constraint validation, and one direct submit handler. Keep uncontrolled field values in the DOM and reserve application state for submitting, server errors, and success feedback.</p>
+    <CodeBlock code={`const [status, setStatus] = useState("idle")
+
+async function submit(event: SubmitEvent & { currentTarget: HTMLFormElement }) {
+  event.preventDefault()
+  const email = String(new FormData(event.currentTarget).get("email") ?? "")
+
+  setStatus("submitting")
+  const response = await createAccount(email)
+  setStatus(response.ok ? "success" : "error")
+}
+
+return <form onSubmit={submit}>
+  <label htmlFor="email">Email</label>
+  <input
+    id="email"
+    name="email"
+    type="email"
+    required
+    aria-invalid={status === "error" ? "true" : "false"}
+    aria-describedby={status === "error" ? "signup-error" : undefined}
+  />
+  <button disabled={status === "submitting"}>Create account</button>
+  {status === "error" && <p id="signup-error" role="alert">Email already registered.</p>}
+</form>`} />
+    <p>Read <code>event.currentTarget</code> and construct <code>FormData</code> before the first <code>await</code>. Native <code>required</code>, input types, lengths, and patterns handle synchronous field validity without input listeners. Kudzu emits complete form HTML, one route-specific submit handler, and only the bindings and conditional feedback used. <code>useForm</code>, <code>register</code> spreads, <code>handleSubmit</code>, <code>Controller</code>, watchers, resolver packages, dirty/touched proxies, and dynamic field registration remain source migration work rather than supported React Hook Form runtime APIs.</p>
     <p>Ordinary same-file and relative-imported child components may own local state without specialization into a browser component. A direct JSON-safe primitive parent state passed to a destructured child prop remains reactive in child text, attributes, and effect dependencies. A direct setter may cross one component boundary when the child invokes it once inside an intrinsic event handler, supporting value adapters such as <code>event =&gt; onValueChange(event.currentTarget.value)</code> without serializing the callback. Inline/simple <code>const</code> setter callbacks may use that shape or direct forwarding, and the child may own directly serializable <code>useState()</code>, initialize string state with a direct primitive prop's <code>.toString()</code>, and use <code>useId()</code>, supported effects, and <code>null</code>-initialized object refs. Same-file and relative-imported nested components also specialize away; nested hooks are supported on unconditional or statically truthy paths. A parent-owned object ref may also cross the same direct intrinsic boundary. Repeated calls receive independent state and effect ownership even when they share generated modules. When a child is inside reactive conditional DOM, removal deletes owned state, drops its handler with the DOM, resolves refs to <code>null</code>, and cleans up effects; re-entry creates fresh state and DOM ownership. The initial visible branch reuses its pre-rendered IDs instead of executing the component twice.</p>
     <p>State-backed keyed lists may stay in a same-file or relative-imported component when the page passes its local state identifier directly as a prop. A same-file keyed row may use a direct <code>export function</code> or exported function-valued <code>const</code> and be reused across static and keyed JSX sites. Specialized wrappers and keyed rows accept JSX children plus inline or direct calling-component <code>const</code> object prop spreads, preserving source-order overrides. Missing destructured props may use directly serializable primitive, plain-object, or array literal defaults. One final identifier rest binding may be forwarded exactly once to the direct intrinsic root, where its attributes and events reuse existing analysis. Export-list/default aliases, non-JSX references, dynamic or computed spreads/defaults, indirect rest use, and prototype-sensitive rest properties remain source-diagnosed. Default, named/aliased, and direct named re-export imports are resolved. Kudzu specializes that component to intrinsic list DOM at build time instead of retaining it in the browser.</p>
     <CodeBlock code={`function ItemList({ items }: { items: Item[] }) {
