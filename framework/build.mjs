@@ -11,8 +11,8 @@ import { analyzeCollectionPipeline, collectionExpression, collectionParameters, 
 import { normalizeCustomHookTimerRefs } from "./compiler/custom-hook-timer-pass.mjs"
 import { captureNames, createDescriptorSession, createSemanticArtifact, nativeCaptureNames, referencedReducerDispatches, referencedStateNames } from "./compiler/descriptor-session.mjs"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
-import { createEventCommandCompiler } from "./compiler/event-command-pass.mjs"
 import { createHandlerCodegen } from "./compiler/handler-codegen.mjs"
+import { createCommandSpecializer } from "./compiler/optimize/command-specialization.mjs"
 import { applyNormalizationPasses } from "./compiler/normalization-pipeline.mjs"
 import { createReactMigrationPass, reactMemoExpression } from "./compiler/react-migration-pass.mjs"
 import { normalizeRenderControlFlow } from "./compiler/render-control-pass.mjs"
@@ -31,7 +31,7 @@ const pagesDirectory = join(sourceDirectory, "pages")
 const workDirectory = join(root, ".kudzu")
 const outputDirectory = join(root, "dist")
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
-const compileEventCommand = createEventCommandCompiler({ isPrimitiveLiteral: isPrimitiveDefaultLiteral, synthesizeSerializableStateLiteral })
+const compileEventCommand = createCommandSpecializer({ isPrimitiveLiteral: isPrimitiveDefaultLiteral })
 const { analyzeZustandStores, normalizeZustandMigrationSyntax } = createZustandPass({ isSerializableStateLiteral, nativeCaptureNames, sourceDirectory })
 
 export async function build({ quiet = false, minify = true } = {}) {
@@ -677,7 +677,7 @@ function escapeAttribute(value) {
 
 async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences) {
   const source = sourceIndex.get(file)
-  const semantic = createSemanticArtifact()
+  const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
   const result = ts.transpileModule(source, {
     fileName: file,
@@ -702,7 +702,7 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   await mkdir(resolve(output, ".."), { recursive: true })
   await writeFile(output, result.outputText)
 
-    const { nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
+  const { nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
   if (!nativeHandlers.length && !effectHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
   const callbacks = [...nativeHandlers, ...effectHandlers]
   const moduleSource = printHandlerModule({ callbacks, reactiveBindings, listExpressions, handlerPath })
@@ -894,6 +894,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       context,
       compileEventCommand,
       isPrimitiveLiteral: isPrimitiveDefaultLiteral,
+      sourceName: source => relative(root, source.fileName).replaceAll(sep, "/"),
       rejectWorkerConstructions: expression => workerCompiler.rejectConstructions(expression, expression.getSourceFile(), "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback")
     })
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)

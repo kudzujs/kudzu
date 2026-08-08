@@ -1,5 +1,37 @@
 # Kudzu Releases
 
+## 0.8.17 - Command ModuleIR
+
+Kudzu 0.8.17 lands the first real Goal A vertical slice: supported command handlers are recognized as plain JSON-safe data, registered in a sparse per-source ModuleIR, and lowered back through focused source codegen without changing deploy output.
+
+### Changed in 0.8.17
+
+- Direct setter arithmetic, functional setter arithmetic, primitive setter values, and state logging now produce plain Command IR instead of generated TypeScript array nodes during analysis.
+- ModuleIR assigns deterministic numeric signal and handler slots while retaining readable state names, lexical state-owner keys, and original source ranges when they exist.
+- Command codegen consumes only ModuleIR signal and handler data to reconstruct the existing `__kBehavior()` call; it performs no source analysis.
+- Signed literals preserve unary-plus and negative-zero source semantics through JSON-safe syntax metadata. Non-finite numeric forms stay on the existing generic handler path.
+- Same-named states in independent component owners receive distinct IR slots, while nested handlers sharing one setter environment reuse the same signal identity.
+- Synthetic specialized handlers omit invented source positions; imported/original handlers retain normalized repository-relative source provenance.
+
+### Goal A boundary
+
+- The first active ModuleIR slice contains lexical signals and command handlers only. `core.mjs` remains authoritative for initial values, final route/layout state IDs, complete HTML, and the serializable route plan.
+- State/props/ref/component specialization is the planned `0.8.18` seam. Bindings, derived values, keyed blocks, and effects remain on their existing paths until their own explicit results replace AST side tables.
+- No VDOM, hydration, component rerender, runtime component tree, public API, or accepted syntax was added.
+
+### Validation
+
+- The complete suite passes 166/166 tests, including JSON round-trip, numeric edge, lexical owner, command codegen, specialized-component, and existing generic-handler contracts.
+- Before release-content updates, the unchanged source site `dist`, Counter build module, route plan, and command runtime were byte-identical to `v0.8.16`; the final release adds only its expected version, homepage, documentation, and release-page content.
+- The tracked Worker and window graphs remain byte-identical. A same-volume 21-run comparison found no build regression; raw arrays and environment are recorded in `PERFORMANCE.md`.
+- `create-kudzu` remains 0.1.101 because its unchanged template already accepts `@kudzujs/core@^0.8.15`.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.17
+```
+
 ## 0.8.16 - Compiler analysis boundaries
 
 Kudzu 0.8.16 continues the behavior-preserving compiler decomposition: source-local descriptors, the pure collection language, command fast paths, reduced Zustand migration, and route capability projection now have explicit ownership outside build orchestration.

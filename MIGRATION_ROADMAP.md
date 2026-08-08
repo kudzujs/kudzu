@@ -195,6 +195,13 @@ This queue orders the next investigations by general migration value. Start only
 - Component specialization, effect analysis, and keyed-list ownership remain in the main transformer until their AST-identity side tables can be replaced by explicit analysis results rather than moved behind large context objects.
 - The continuation packet under `docs/next-architecture` fixes the Goal A patch sequence, output/performance gates, and explicit decision boundaries for deferred optimization, state/resource research, routing, and React compatibility.
 
+### Completed In 0.8.17
+
+- Supported command handlers cross the first JSON-safe ModuleIR slice: analysis emits plain command data, ModuleIR owns numeric signal/handler slots and lexical/source metadata, and focused codegen restores the existing `__kBehavior()` build ABI.
+- Primitive SET, numeric ADD/subtract, functional setters, state logging, unary-plus, and negative-zero semantics remain specialized; non-finite values safely retain generic handler lowering.
+- Same-named state in separate owners no longer aliases in IR, shared setter environments reuse signal identity, and synthetic specialized callbacks receive no fabricated source position.
+- For unchanged source input, Counter HTML, route plans, command runtime, and generated artifacts remain byte-identical to 0.8.16; no browser capability or source syntax changed.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

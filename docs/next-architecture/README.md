@@ -6,7 +6,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 
 | Goal | Decision | Start condition |
 |---|---|---|
-| A: compiler foundation | Approved for execution | Continue with `0.8.17` after the `0.8.16` analysis-boundary release |
+| A: compiler foundation | `0.8.17` command slice complete | Continue with `0.8.18` state/props/component analysis after the release boundary. |
 | B: optimization benchmarks | Deferred | Goal A complete and its output baseline recorded |
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |

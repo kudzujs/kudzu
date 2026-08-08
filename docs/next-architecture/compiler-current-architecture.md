@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the `0.8.16` compiler-analysis boundary. File and function names are the stable references; line numbers are intentionally omitted because Goal A moves code.
+This maps the completed `0.8.17` command ModuleIR boundary. File and function names are the stable references; line numbers are intentionally omitted because Goal A moves code.
 
 ## Responsibility Map
 
@@ -15,6 +15,7 @@ This maps the `0.8.16` compiler-analysis boundary. File and function names are t
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
 | Main semantic analysis | `framework/build.mjs`, `createKudzuTransformer()` | Still owns component specialization, hooks/state, effects, keyed-list ownership, imports, reactive JSX, and many AST-identity side tables. This is the largest remaining coupling. |
 | Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Registers deterministic native handler, effect handler, binding, list evaluator, and client-import descriptors into one source-local artifact. |
+| Command IR and codegen | [`framework/compiler/optimize/command-specialization.mjs`](../../framework/compiler/optimize/command-specialization.mjs), [`framework/compiler/ir/module-ir.mjs`](../../framework/compiler/ir/module-ir.mjs), [`framework/compiler/codegen/command-codegen.mjs`](../../framework/compiler/codegen/command-codegen.mjs) | Supported command handlers specialize to JSON-safe ModuleIR, then emit the existing `__kBehavior` AST without changing route plans. |
 | Build module generation | `framework/build.mjs`, `compile()` | Runs TypeScript with the Kudzu transformer, writes build-executable modules to `.kudzu`, rejects surviving React/Router runtime references, and generates handler source when descriptors exist. |
 | Handler/evaluator codegen | [`framework/compiler/handler-codegen.mjs`](../../framework/compiler/handler-codegen.mjs) | Converts descriptor AST into browser ESM exports and rewrites state, setter, reducer, capture, and imported-helper reads. It does not discover features. |
 | Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Validates the exact effect-owned Worker form, validates its relative graph, emits content-hashed ESM, and resolves placeholders only for rendered effects. |

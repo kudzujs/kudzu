@@ -35,12 +35,12 @@ Reduced Zustand migration stores lower to one ordinary layout-lifetime state slo
 - `compiler/animation-frame-pass.mjs`: effect-owned animation-frame ref validation and plain mutable effect-scope lowering.
 - `compiler/browser-signal-passes.mjs`: static media-query external-store and navigator capability-condition normalization.
 - `compiler/collection-analysis.mjs`: pure collection expression IR, selector pipeline, alias, and imported-transform analysis.
-- `compiler/descriptor-session.mjs`: per-source semantic artifact creation and deterministic handler, effect, binding, and list evaluator descriptor registration.
+- `compiler/descriptor-session.mjs`: per-source semantic artifact creation and deterministic command, handler, effect, binding, and list evaluator descriptor registration.
 - `compiler/normalization-pipeline.mjs`: ordered source normalization with parent-pointer repair after every compiler pass.
 - `compiler/react-migration-pass.mjs`: React import, memo, callback, `forwardRef`, and `useId` migration validation and lowering.
 - `compiler/custom-hook-timer-pass.mjs`: private custom-hook timeout-ref validation and compiler-owned timer-state lowering.
 - `compiler/effect-codegen.mjs`: route-specific ordinary, owned, and navigable effect entry generation.
-- `compiler/event-command-pass.mjs`: direct setter and state-log fast-path recognition into compact command descriptors.
+- `compiler/optimize/command-specialization.mjs`, `compiler/ir/module-ir.mjs`, and `compiler/codegen/command-codegen.mjs`: JSON-safe command analysis, sparse per-source ModuleIR, and source-analysis-free existing behavior-call generation.
 - `compiler/handler-codegen.mjs`: route-specific native handler, reactive binding, keyed-list evaluator, and client-import module source generation.
 - `compiler/render-control-pass.mjs`: render-function early-return and exhaustive adjacent-assignment normalization.
 - `compiler/router-pass.mjs`: React Router import validation and native Link, pathname parameter, search parameter, and imperative navigation lowering.

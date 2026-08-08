@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved for execution. Goal A is an architecture-only continuation: preserve accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs while making analysis and generation boundaries explicit.
+The `0.8.17` command vertical slice is complete. Goal A continues with the planned `0.8.18` state/props/component analysis result while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
 
 ## Target Boundaries
 
@@ -68,7 +68,7 @@ Analysis produces plain data:
 
 ```js
 {
-  signals: [{ slot: 0, debugName: "count", initial: 0, scope: "local" }],
+  signals: [{ slot: 0, key: "state:0:count", debugName: "count" }],
   handlers: [{
     slot: 0,
     kind: "commands",
@@ -76,6 +76,8 @@ Analysis produces plain data:
   }]
 }
 ```
+
+The `0.8.17` slice intentionally records only lexical signal identity and command handlers. Initial values, state scope, bindings, derived values, effects, and keyed blocks join ModuleIR in their later planned patches; `core.mjs` remains authoritative for those values today.
 
 Source codegen lowers that data through the existing build ABI:
 

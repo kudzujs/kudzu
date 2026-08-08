@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.16 - Compiler analysis boundaries.** Per-source descriptors, pure collection analysis, command specialization, Zustand migration, and route capability planning now have focused compiler ownership while preserving generated output and runtime behavior. Read the [release notes](./RELEASES.md#0816---compiler-analysis-boundaries), open the [release page](https://kudzujs.cloud/releases/0.8.16), or follow the [next architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.17 - Command ModuleIR.** Supported command handlers now cross a real JSON-safe ModuleIR boundary before existing source codegen, preserving byte-identical HTML, route plans, and browser assets. Read the [release notes](./RELEASES.md#0817---command-moduleir), open the [release page](https://kudzujs.cloud/releases/0.8.17), or follow the [next architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

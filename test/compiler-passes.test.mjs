@@ -3,9 +3,11 @@ import test from "node:test"
 import ts from "typescript"
 import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
+import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
-import { createEventCommandCompiler } from "../framework/compiler/event-command-pass.mjs"
+import { createModuleIR, registerCommandHandler } from "../framework/compiler/ir/module-ir.mjs"
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
+import { createCommandSpecializer } from "../framework/compiler/optimize/command-specialization.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
@@ -66,16 +68,100 @@ export const useCount = create(set => ({ count: 0, increment: () => set({ count:
   }
 })
 
-test("lowers direct setter arithmetic to a command descriptor", () => {
-  const source = ts.createSourceFile("command.ts", "setCount(count + 1)", ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-  const expression = source.statements[0].expression
-  const compile = createEventCommandCompiler({
-    isPrimitiveLiteral: node => ts.isNumericLiteral(node),
-    synthesizeSerializableStateLiteral: node => node
+test("specializes exact command forms to plain data", () => {
+  const specialize = createCommandSpecializer({
+    isPrimitiveLiteral: node => ts.isStringLiteral(node) || ts.isNumericLiteral(node) || ts.isPrefixUnaryExpression(node) || [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(node.kind)
   })
-  const command = compile(expression, new Map([["setCount", "count"]]), ts.factory)
+  const setters = new Map([["setCount", "count"]])
+  const command = source => specialize(ts.createSourceFile("command.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS).statements[0].expression, setters)
 
-  assert.equal(ts.createPrinter().printNode(ts.EmitHint.Expression, command, source), `["add", count, 1]`)
+  assert.deepEqual(command("setCount(count + 1)"), { operation: "add", state: "count", value: 1 })
+  assert.deepEqual(command("setCount(count - 2)"), { operation: "add", state: "count", value: -2 })
+  assert.deepEqual(command("setCount(value => value + 3)"), { operation: "add", state: "count", value: 3 })
+  assert.deepEqual(command("setCount(-4)"), { operation: "set", state: "count", value: -4 })
+  assert.deepEqual(command("setCount(+5)"), { operation: "set", state: "count", value: 5, syntax: "positive" })
+  assert.deepEqual(command("setCount(-0)"), { operation: "set", state: "count", value: 0, syntax: "negative" })
+  assert.deepEqual(command("setCount(count - 0)"), { operation: "add", state: "count", value: 0, syntax: "negative" })
+  assert.deepEqual(command("setCount(value => value - 0)"), { operation: "add", state: "count", value: 0, syntax: "negative" })
+  assert.deepEqual(command("setCount(\"ready\")"), { operation: "set", state: "count", value: "ready" })
+  assert.deepEqual(command("console.log(\"count\", count)"), { operation: "log", state: "count", value: "count" })
+  assert.equal(command("setCount(count * 2)"), undefined)
+  assert.equal(command("setCount(1e309)"), undefined)
+  assertJsonData(command("setCount(count + 1)"))
+})
+
+test("registers JSON-safe command ModuleIR with deterministic slots", () => {
+  const moduleIR = createModuleIR("src/pages/counter.tsx")
+  registerCommandHandler(moduleIR, [{ operation: "add", state: "total", value: 1 }], { file: "src/pages/counter.tsx", start: 20, end: 45 }, "component:0")
+  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", value: -2 }], { file: "src/pages/counter.tsx", start: 50, end: 74 }, "component:0")
+  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", value: 3 }], undefined, "component:1")
+
+  assert.deepEqual(moduleIR, {
+    version: 1,
+    file: "src/pages/counter.tsx",
+    signals: [
+      { slot: 0, key: "component:0:total", debugName: "total" },
+      { slot: 1, key: "component:0:count", debugName: "count" },
+      { slot: 2, key: "component:1:count", debugName: "count" }
+    ],
+    handlers: [
+      { slot: 0, kind: "commands", commands: [{ operation: "add", signal: 0, value: 1 }], source: { file: "src/pages/counter.tsx", start: 20, end: 45 } },
+      { slot: 1, kind: "commands", commands: [{ operation: "set", signal: 1, value: -2 }], source: { file: "src/pages/counter.tsx", start: 50, end: 74 } },
+      { slot: 2, kind: "commands", commands: [{ operation: "set", signal: 2, value: 3 }] }
+    ]
+  })
+  assertJsonData(moduleIR)
+  assert.deepEqual(JSON.parse(JSON.stringify(moduleIR)), moduleIR)
+})
+
+test("generates the existing command behavior AST from HandlerIR", () => {
+  const source = ts.createSourceFile("counter.tsx", "setCount(count + 1)", ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const specialize = createCommandSpecializer({ isPrimitiveLiteral: () => false })
+  const moduleIR = createModuleIR("src/pages/counter.tsx")
+  const command = specialize(source.statements[0].expression, new Map([["setCount", "count"]]))
+  const handler = registerCommandHandler(moduleIR, [command], { file: "src/pages/counter.tsx", start: 0, end: 19 }, "component:0")
+  const output = ts.createPrinter().printNode(ts.EmitHint.Expression, generateCommandBehavior(moduleIR, handler), source)
+
+  assert.equal(output, `__kBehavior([["add", count, 1]])`)
+
+  const signed = registerCommandHandler(moduleIR, [
+    { operation: "set", state: "count", value: 5, syntax: "positive" },
+    { operation: "add", state: "count", value: 0, syntax: "negative" }
+  ], undefined, "component:0")
+  assert.equal(ts.createPrinter().printNode(ts.EmitHint.Expression, generateCommandBehavior(moduleIR, signed), source), `__kBehavior([["set", count, +5], ["add", count, -0]])`)
+})
+
+test("keys command signals by state-owner identity", () => {
+  const source = ts.createSourceFile("owners.ts", `
+const first = () => setCount(count + 1)
+const second = () => setCount(count + 1)
+const independent = () => setCount(count + 1)
+`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const semantic = createSemanticArtifact("owners.ts")
+  const handlers = source.statements.map(statement => statement.declarationList.declarations[0].initializer)
+  const result = ts.transform(source, [context => file => {
+    const session = createDescriptorSession({
+      semantic,
+      handlerUrl: "/handlers.js",
+      factory: context.factory,
+      context,
+      compileEventCommand: createCommandSpecializer({ isPrimitiveLiteral: () => false }),
+      isPrimitiveLiteral: () => false,
+      rejectWorkerConstructions: () => {}
+    })
+    const shared = new Map([["setCount", "count"]])
+    session.compileEvent(handlers[0], { setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    session.compileEvent(handlers[1], { setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    session.compileEvent(handlers[2], { setters: new Map(shared), reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    return file
+  }])
+  result.dispose()
+
+  assert.deepEqual(semantic.moduleIR.signals, [
+    { slot: 0, key: "state:0:count", debugName: "count" },
+    { slot: 1, key: "state:1:count", debugName: "count" }
+  ])
+  assert.deepEqual(semantic.moduleIR.handlers.map(handler => handler.commands[0].signal), [0, 0, 1])
 })
 
 test("registers deterministic per-source handler, binding, and list descriptors", () => {
@@ -84,7 +170,7 @@ const binding = format(count + extra)
 const handler = () => setCount(count + delta)
 const row = item.label
 `, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-  const semantic = createSemanticArtifact()
+  const semantic = createSemanticArtifact("descriptors.ts")
   const [binding, handler, row] = source.statements.map(statement => statement.declarationList.declarations[0].initializer)
   const result = ts.transform(source, [context => file => {
     const session = createDescriptorSession({
@@ -110,6 +196,7 @@ const row = item.label
   result.dispose()
 
   assert.deepEqual(semantic.reactiveBindings.map(entry => entry.exportName), ["binding0", "binding1"])
+  assert.deepEqual(semantic.moduleIR, { version: 1, file: "descriptors.ts", signals: [], handlers: [] })
   assert.deepEqual([...semantic.reactiveBindings[0].states], ["count"])
   assert.deepEqual([...semantic.reactiveBindings[0].captures], ["extra"])
   assert.deepEqual([...semantic.clientImports], ["/src/format.ts"])
@@ -226,6 +313,19 @@ test("plans native, effect, capture, and dependency runtime capabilities", () =>
 
 function routePlan(overrides = {}) {
   return { route: "/test", events: [], effects: [], bindings: [], conditions: [], lists: [], ...overrides }
+}
+
+function assertJsonData(value) {
+  if (typeof value === "number") {
+    assert.equal(Number.isFinite(value) && !Object.is(value, -0), true)
+    return
+  }
+  if (value === null || ["string", "boolean"].includes(typeof value)) return
+  assert.equal(["function", "symbol", "undefined"].includes(typeof value), false)
+  assert.equal(value instanceof Map || value instanceof Set, false)
+  assert.equal(typeof value.kind === "number" && typeof value.pos === "number" && typeof value.end === "number", false)
+  assert.ok(Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
+  for (const entry of Array.isArray(value) ? value : Object.values(value)) assertJsonData(entry)
 }
 
 function routeCapabilities(entries) {

@@ -1,5 +1,23 @@
 # Performance Records
 
+## 0.8.17 Command ModuleIR
+
+Measured UTC 2026-08-08 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.16` tag `98a4ad9` and the `0.8.17` release candidate used detached worktrees on the same temporary volume with identical installed dependencies.
+
+Both targets received two warm-ups followed by 21 clean `worker-effects` production builds in round-robin alternating order. Cleanup remained outside timing. The distributions overlap; the 1.76% candidate median difference remains below the 5% architecture gate and does not establish a material regression.
+
+| Target | Build median | Worker raw / gzip | Window raw / gzip |
+|---|---:|---:|---:|
+| 0.8.16 baseline | 782.0 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+| 0.8.17 candidate | 795.8 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+
+```text
+0.8.16: [775.9,787.9,846.8,702.3,782.0,712.5,665.1,702.9,835.0,743.2,780.6,931.7,894.1,1004.0,849.8,1031.1,829.7,768.8,718.5,842.9,763.0]
+0.8.17: [696.0,721.9,778.8,850.4,846.1,835.2,710.4,711.6,836.1,766.9,822.6,945.0,838.2,991.5,858.6,803.4,706.3,760.8,773.8,764.3,795.8]
+```
+
+Before release-content updates, the unchanged source site, Counter build module, route plan, and command runtime were byte-identical. The final Worker and window graphs remain byte-identical. This measurement covers compiler clean-build startup and artifact size, not browser interaction latency or cross-framework performance.
+
 ## 0.8.16 Compiler Analysis Boundaries
 
 Measured UTC 2026-08-08 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.15` commit `8405d29` and the `0.8.16` release candidate used detached worktrees on the same temporary volume with identical installed dependencies.

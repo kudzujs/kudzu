@@ -1,12 +1,16 @@
 import ts from "typescript"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
+import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
+import { createModuleIR, registerCommandHandler } from "./ir/module-ir.mjs"
 
-export function createSemanticArtifact() {
-  return { nativeHandlers: [], effectHandlers: [], reactiveBindings: [], listExpressions: [], clientImports: new Set() }
+export function createSemanticArtifact(file) {
+  return { moduleIR: createModuleIR(file), nativeHandlers: [], effectHandlers: [], reactiveBindings: [], listExpressions: [], clientImports: new Set() }
 }
 
-export function createDescriptorSession({ semantic, handlerUrl, factory, context, compileEventCommand, isPrimitiveLiteral, rejectWorkerConstructions }) {
-  const { nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
+export function createDescriptorSession({ semantic, handlerUrl, factory, context, compileEventCommand, isPrimitiveLiteral, rejectWorkerConstructions, sourceName = source => source.fileName }) {
+  const { moduleIR, nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
+  const stateScopes = new WeakMap()
+  let nextStateScope = 0
 
   function compileListExpression(read, expression, item, index, states = new Set()) {
     const exportName = `listExpression${listExpressions.length}`
@@ -130,9 +134,14 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   function compileOptimizedEvent(expression, setters) {
     const statements = ts.isBlock(expression.body) ? expression.body.statements : [factory.createExpressionStatement(expression.body)]
-    const commands = statements.map(statement => ts.isExpressionStatement(statement) ? compileEventCommand(statement.expression, setters, factory) : undefined)
+    const commands = statements.map(statement => ts.isExpressionStatement(statement) ? compileEventCommand(statement.expression, setters) : undefined)
     if (!commands.length || commands.some(command => !command)) return undefined
-    return factory.createCallExpression(factory.createIdentifier("__kBehavior"), undefined, [factory.createArrayLiteralExpression(commands)])
+    const original = ts.getOriginalNode(expression)
+    const source = original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
+    if (!stateScopes.has(setters)) stateScopes.set(setters, `state:${nextStateScope++}`)
+    const scope = stateScopes.get(setters)
+    const handler = registerCommandHandler(moduleIR, commands, source, scope)
+    return generateCommandBehavior(moduleIR, handler, factory)
   }
 
   function registerClientImports(imports) {
