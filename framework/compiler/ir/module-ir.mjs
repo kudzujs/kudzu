@@ -1,5 +1,5 @@
 export function createModuleIR(file) {
-  return { version: 1, file, signals: [], handlers: [] }
+  return { version: 1, file, signals: [], handlers: [], bindings: [], derived: [], imports: [], clientModules: [] }
 }
 
 export function registerCommandHandler(moduleIR, commands, source, scope = "module") {
@@ -20,4 +20,22 @@ export function registerCommandHandler(moduleIR, commands, source, scope = "modu
   }
   moduleIR.handlers.push(handler)
   return handler
+}
+
+export function registerModuleHandler(moduleIR, descriptor) {
+  const handler = { slot: moduleIR.handlers.length, kind: "module-export", ...descriptor }
+  moduleIR.handlers.push(handler)
+  return handler
+}
+
+export function registerBinding(moduleIR, descriptor) {
+  const binding = { slot: moduleIR.bindings.length, kind: "module-export", ...descriptor }
+  moduleIR.bindings.push(binding)
+  return binding
+}
+
+export function registerDerived(moduleIR, descriptor) {
+  const derived = { slot: moduleIR.derived.length, ...descriptor }
+  moduleIR.derived.push(derived)
+  return derived
 }

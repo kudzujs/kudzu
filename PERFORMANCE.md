@@ -1,5 +1,51 @@
 # Performance Records
 
+## 0.8.19 Handler, Binding, And Derived IR
+
+Measured UTC 2026-08-08 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.18` tag `3598be0` and the `0.8.19` compiler-only candidate used detached worktrees on the same temporary volume with identical installed dependencies.
+
+The candidate compiler patch over `3598be0` had SHA-256 `7b2afc4c9a0d1963c8d3ccacfb1e95152136d77cc7afc250d17b1986ca329fb3`, produced by:
+
+```bash
+git diff --binary 3598be0 -- framework/build.mjs framework/compiler/descriptor-session.mjs framework/compiler/handler-codegen.mjs framework/compiler/handler-lowering.mjs framework/compiler/ir/module-ir.mjs | shasum -a 256
+```
+
+Both targets received one warm-up followed by 21 clean `worker-effects` production builds in round-robin alternating order. Cleanup remained outside timing. The distributions overlap; the candidate median was 0.32% lower and does not establish a material change.
+
+| Target | Build median | Worker raw / gzip | Window raw / gzip |
+|---|---:|---:|---:|
+| 0.8.18 baseline | 253.4 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+| 0.8.19 candidate | 252.6 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+
+```text
+0.8.18: [252.3,254.5,251.0,254.8,254.3,253.8,253.4,251.6,255.4,252.4,249.6,254.2,251.0,253.7,256.0,250.4,251.0,255.4,253.3,253.6,250.5]
+0.8.19: [252.3,251.7,252.9,251.9,251.5,253.0,252.3,251.3,253.0,252.1,254.3,258.4,249.8,251.6,256.2,253.7,253.5,252.6,252.9,252.5,255.9]
+```
+
+Before release-content updates, the complete site `dist` was byte-identical. Representative fixture builds retained identical file lists and SHA-256 content; `.kudzu` comparisons replaced only each detached worktree's absolute root in existing source-location strings. The complete fixture lists were:
+
+```text
+bindings: dist/assets/handlers/pages/index.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/index.html, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs
+native: dist/assets/handlers/pages/index.js, dist/assets/handlers/pages/other/index.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/assets/native/other/index.js, dist/index.html, dist/other/index.html, .kudzu/helpers.mjs, .kudzu/kudzu-plan.json, .kudzu/math.mjs, .kudzu/pages/index.mjs, .kudzu/pages/other/index.mjs
+reducer: dist/assets/handlers/pages/index.js, dist/assets/handlers/pages/lazy.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-list.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, dist/lazy/index.html, .kudzu/ImportedControls.mjs, .kudzu/ImportedInput.mjs, .kudzu/ImportedItem.mjs, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs, .kudzu/pages/lazy.mjs, .kudzu/todoReducer.mjs, .kudzu/todoSupport.mjs
+context-actions: dist/assets/handlers/pages/index.js, dist/assets/kudzu-list.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, dist/static/index.html, .kudzu/kudzu-plan.json, .kudzu/notes.mjs, .kudzu/pages/index.mjs, .kudzu/pages/static.mjs, .kudzu/useNotes.mjs
+zustand-migration: dist/assets/handlers/Shell.js, dist/assets/handlers/pages/cart.js, dist/assets/handlers/pages/index.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-native.js, dist/assets/kudzu-navigation.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/cart/index.js, dist/assets/native/index.js, dist/cart/index.html, dist/index.html, .kudzu/Shell.mjs, .kudzu/kudzu-plan.json, .kudzu/pages/cart.mjs, .kudzu/pages/index.mjs, .kudzu/store.mjs
+event-package: dist/assets/handlers/pages/index.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs
+list-expressions: dist/assets/handlers/pages/index.js, dist/assets/kudzu-list.js, dist/assets/kudzu.js, dist/index.html, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs
+effect-dependencies: dist/assets/effects/index.js, dist/assets/handlers/pages/index.js, dist/assets/kudzu-collection-selector.js, dist/assets/kudzu-deps.js, dist/assets/kudzu-effect.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu.js, dist/command/index.html, dist/index.html, .kudzu/kudzu-plan.json, .kudzu/pages/command.mjs, .kudzu/pages/index.mjs
+landing-page-migration: dist/assets/assets/badge.png, dist/assets/assets/hero.svg, dist/assets/assets/landing.woff2, dist/assets/assets/module-mark.svg, dist/assets/assets/preview.webp, dist/assets/handlers/pages/index.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/assets/styles/Hero.module.css, dist/assets/styles/landing.css, dist/index.html, dist/static/index.html, .kudzu/LandingSections.mjs, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs, .kudzu/pages/static.mjs
+```
+
+This measurement covers compiler clean-build startup and artifact size, not browser interaction latency or cross-framework performance.
+
+The recorded cleanup, warm-up, and alternating 21-run loop is reproducible with:
+
+```bash
+BASELINE_ROOT="/private/var/folders/bt/3r_ntp5x65j81brs6_p93rl00000gn/T/opencode/kudzu-0819-baseline" CANDIDATE_ROOT="/var/folders/bt/3r_ntp5x65j81brs6_p93rl00000gn/T/opencode/kudzu-0.8.19-candidate" node --input-type=module -e 'import { spawnSync } from "node:child_process"; import { rmSync } from "node:fs"; import { performance } from "node:perf_hooks"; import { resolve } from "node:path"; const roots={baseline:process.env.BASELINE_ROOT,candidate:process.env.CANDIDATE_ROOT}; const runs={baseline:[],candidate:[]}; const build=name=>{const root=roots[name],fixture=resolve(root,"test/fixtures/worker-effects"); rmSync(resolve(fixture,"dist"),{recursive:true,force:true}); rmSync(resolve(fixture,".kudzu"),{recursive:true,force:true}); const start=performance.now(); const result=spawnSync(process.execPath,[resolve(root,"bin/kudzu.mjs"),"build"],{cwd:fixture,encoding:"utf8"}); if(result.status!==0) throw new Error(result.stderr||result.stdout); return Number((performance.now()-start).toFixed(1));}; build("baseline"); build("candidate"); for(let index=0;index<21;index++) for(const name of index%2?["candidate","baseline"]:["baseline","candidate"]) runs[name].push(build(name)); console.log(JSON.stringify(runs));'
+```
+
+The complete `worker-effects` benchmark list was: `dist/assets/effects/dashboard/index.js`, `dist/assets/handlers/pages/dashboard.js`, `dist/assets/kudzu-effect.js`, `dist/assets/kudzu-navigation.js`, `dist/assets/kudzu.js`, `dist/assets/workers/telemetry.worker-BVG2SA55.js`, `dist/dashboard/index.html`, `dist/plain/index.html`, `dist/static/index.html`, `.kudzu/Shell.mjs`, `.kudzu/chart.mjs`, `.kudzu/kudzu-plan.json`, `.kudzu/pages/dashboard.mjs`, `.kudzu/pages/plain.mjs`, `.kudzu/pages/static.mjs`, `.kudzu/telemetry/downsample.mjs`, and `.kudzu/telemetry/ring.mjs`.
+
 ## 0.8.18 Explicit Component Ownership
 
 Measured UTC 2026-08-08 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.17` tag `d48f0cf` and the `0.8.18` compiler-only candidate used detached worktrees on the same temporary volume with identical installed dependencies.

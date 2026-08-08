@@ -13,6 +13,7 @@ import { normalizeCustomHookTimerRefs } from "./compiler/custom-hook-timer-pass.
 import { captureNames, createDescriptorSession, createSemanticArtifact, nativeCaptureNames, referencedReducerDispatches, referencedStateNames } from "./compiler/descriptor-session.mjs"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { createHandlerCodegen } from "./compiler/handler-codegen.mjs"
+import { createHandlerLowering } from "./compiler/handler-lowering.mjs"
 import { createCommandSpecializer } from "./compiler/optimize/command-specialization.mjs"
 import { applyNormalizationPasses } from "./compiler/normalization-pipeline.mjs"
 import { createReactMigrationPass, reactMemoExpression } from "./compiler/react-migration-pass.mjs"
@@ -704,18 +705,18 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   await mkdir(resolve(output, ".."), { recursive: true })
   await writeFile(output, result.outputText)
 
-  const { componentAnalysis, nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
-  const sourceResult = { file: relative(root, file).replaceAll(sep, "/"), componentAnalysis }
-  if (!nativeHandlers.length && !effectHandlers.length && !reactiveBindings.length && !listExpressions.length) return sourceResult
-  const callbacks = [...nativeHandlers, ...effectHandlers]
-  const moduleSource = printHandlerModule({ callbacks, reactiveBindings, listExpressions, handlerPath })
+  const { componentAnalysis, moduleIR } = semantic
+  const sourceResult = { file: relative(root, file).replaceAll(sep, "/"), componentAnalysis, moduleIR }
+  const moduleHandlers = moduleIR.handlers.filter(handler => handler.kind === "module-export")
+  if (!moduleHandlers.length && !moduleIR.bindings.length) return sourceResult
+  const moduleSource = printHandlerModule({ moduleIR, handlerPath })
   const moduleResult = ts.transpileModule(moduleSource, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
     reportDiagnostics: true
   })
   const moduleErrors = moduleResult.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
-  sourceResult.handlerModule = { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports], hasPackageImports: [...callbacks, ...reactiveBindings].some(entry => entry.imports?.some(import_ => import_.package)) }
+  sourceResult.handlerModule = { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: moduleHandlers.some(handler => handler.role === "native"), hasEffects: moduleHandlers.some(handler => handler.role === "effect"), clientImports: moduleIR.clientModules, hasPackageImports: moduleIR.imports.some(entry => entry.package) }
   return sourceResult
 }
 
@@ -882,7 +883,7 @@ function normalizeCompilerSource(sourceFile, { base, context, file, importedColl
 }
 
 function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences }) {
-  const { nativeHandlers, effectHandlers } = semantic
+  const { moduleIR } = semantic
   return context => sourceFile => {
     const hasLinkElements = /<link/i.test(sourceFile.text)
     const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex)
@@ -899,6 +900,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       factory,
       context,
       compileEventCommand,
+      handlerLowering,
       isPrimitiveLiteral: isPrimitiveDefaultLiteral,
       sourceName,
       rejectWorkerConstructions: expression => workerCompiler.rejectConstructions(expression, expression.getSourceFile(), "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback")
@@ -2118,7 +2120,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         }
         const invalidDependency = ordinaryDependencies.find(dependency => !ts.isIdentifier(dependency))
         if (invalidDependency) effectFail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
-        const dependencyExpressions = []
+        const dependencyDerived = []
         const dependencyStates = new Map()
         const dependencySubstitutions = new Map()
         const subscriptionDependencies = []
@@ -2134,7 +2136,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             const usedStates = new Set()
             const expression = collectionExpression(initializer, { fail: effectFail, stateNames, selectorStates: usedStates })
             if (!usedStates.size) effectFail(dependency, `useEffect() derived dependency "${dependency.text}" must read direct primitive state`)
-            dependencyExpressions.push(expression)
+            dependencyDerived.push({ expression, states: usedStates, source: initializer })
             for (const name of usedStates) {
               subscriptionDependencies.push(factory.createIdentifier(name))
               dependencyStates.set(name, factory.createIdentifier(name))
@@ -2143,12 +2145,12 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             hasDerivedDependency = true
           } else {
             subscriptionDependencies.push(dependency)
-            dependencyExpressions.push(["state", dependency.text])
+            dependencyDerived.push({ expression: ["state", dependency.text], states: [dependency.text], source: dependency })
             dependencyStates.set(dependency.text, dependency)
           }
         }
         if (!hasDerivedDependency) {
-          dependencyExpressions.length = 0
+          dependencyDerived.length = 0
           dependencyStates.clear()
         }
         if (!effectOwner) fail(node, "useEffect() cannot be used outside a Kudzu component")
@@ -2200,6 +2202,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
+        const derivedDependencies = hasDerivedDependency ? dependencyDerived.map(entry => descriptors.registerDerived("expression", entry.expression, entry.states, entry.source)) : []
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
           callback,
           factory.createArrayLiteralExpression(hasDerivedDependency ? subscriptionDependencies : ordinaryDependencies),
@@ -2210,7 +2213,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           factory.createStringLiteral(specializedEffect ? sourceLocation(specializedEffect.source, specializedEffect.sourceFile) : sourceLocation(node, sourceFile)),
           returns.cleanup ? factory.createTrue() : factory.createFalse(),
           factory.createArrayLiteralExpression(itemDependencies.map(field => factory.createStringLiteral(field))),
-          hasDerivedDependency ? jsonExpression(dependencyExpressions, factory) : factory.createArrayLiteralExpression(),
+          hasDerivedDependency ? jsonExpression(derivedDependencies.map(entry => entry.expression), factory) : factory.createArrayLiteralExpression(),
           factory.createArrayLiteralExpression([...dependencyStates].map(([name, state]) => factory.createArrayLiteralExpression([factory.createStringLiteral(name), state])))
         ])
       }
@@ -2278,12 +2281,13 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             usesBinding = true
             listSource = descriptors.compileReactiveBinding(listParts.calculation, { setters: settersForNode(node, settersByFunction), importBindings })
           }
+          const selector = listParts.selector?.length ? descriptors.registerDerived("selector", listParts.selector, listParts.selectorStates, node).selector : listParts.selector ?? []
           const arguments_ = [
             listSource,
             listParts.keyField === null ? factory.createNull() : factory.createStringLiteral(listParts.keyField),
             visitWithStateOwners(listParts.callback, listParts.analysisStateOwners ?? new Map()),
             factory.createStringLiteral(listParts.ownerField ?? ""),
-            jsonExpression(listParts.selector ?? [], factory),
+            jsonExpression(selector, factory),
             listParts.indexed ? factory.createTrue() : factory.createFalse()
           ]
           if (listParts.selectorStates?.size || listParts.static) arguments_.push(factory.createArrayLiteralExpression([...(listParts.selectorStates ?? [])].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
@@ -2344,10 +2348,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
 
     const transformed = ts.visitNode(sourceFile, visitor)
+    descriptors.finalize()
     if (!usesBehavior) return transformed
 
     const behaviorImports = [factory.createImportSpecifier(false, factory.createIdentifier("behavior"), factory.createIdentifier("__kBehavior"))]
-    if (nativeHandlers.length) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("nativeBehavior"), factory.createIdentifier("__kNativeBehavior")))
+    if (moduleIR.handlers.some(handler => handler.kind === "module-export" && handler.role === "native")) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("nativeBehavior"), factory.createIdentifier("__kNativeBehavior")))
     if (usesBinding) {
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("binding"), factory.createIdentifier("__kBinding")))
       behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("select"), factory.createIdentifier("__kSelect")))
@@ -3885,9 +3890,8 @@ const workerCompiler = createWorkerCompiler({
 })
 
 const printEffectEntry = createEffectCodegen({ assetPath, inlineJson, relativeModulePath })
+const handlerLowering = createHandlerLowering({ cloneAst, synthesizeTree })
 const printHandlerModule = createHandlerCodegen({
-  cloneAst,
-  synthesizeTree,
   resolveClientImport: (entry, handlerPath) => entry.package ? entry.target : relativeModulePath(handlerPath, clientModulePath(entry.target))
 })
 const { normalizeReactMigrationSyntax, validateUseIdSyntax } = createReactMigrationPass({ cloneAst, jsxTagName })

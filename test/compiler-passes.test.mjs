@@ -6,12 +6,15 @@ import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
 import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
+import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
 import { createModuleIR, registerCommandHandler } from "../framework/compiler/ir/module-ir.mjs"
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
 import { createCommandSpecializer } from "../framework/compiler/optimize/command-specialization.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
+
+const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
 
 test("normalizes render control flow without changing lowercase helpers", () => {
   const source = ts.createSourceFile("pass.tsx", `
@@ -109,7 +112,11 @@ test("registers JSON-safe command ModuleIR with deterministic slots", () => {
       { slot: 0, kind: "commands", commands: [{ operation: "add", signal: 0, value: 1 }], source: { file: "src/pages/counter.tsx", start: 20, end: 45 } },
       { slot: 1, kind: "commands", commands: [{ operation: "set", signal: 1, value: -2 }], source: { file: "src/pages/counter.tsx", start: 50, end: 74 } },
       { slot: 2, kind: "commands", commands: [{ operation: "set", signal: 2, value: 3 }] }
-    ]
+    ],
+    bindings: [],
+    derived: [],
+    imports: [],
+    clientModules: []
   })
   assertJsonData(moduleIR)
   assert.deepEqual(JSON.parse(JSON.stringify(moduleIR)), moduleIR)
@@ -203,6 +210,7 @@ const row = item.label
       factory: context.factory,
       context,
       compileEventCommand: () => undefined,
+      handlerLowering,
       isPrimitiveLiteral: node => ts.isStringLiteral(node) || ts.isNumericLiteral(node),
       rejectWorkerConstructions: () => {}
     })
@@ -215,21 +223,28 @@ const row = item.label
     session.compileEvent(handler, { setters, reducers: new Map(), functions: new Map(), importBindings: new Map() })
     session.compileEffectCallback(handler, { setters, reducers: new Map(), importBindings: new Map() })
     session.compileListValue(row, { item: "item" })
+    session.registerDerived("expression", ["binary", "+", ["state", "count"], ["value", 1]], ["count"], binding)
+    session.registerDerived("selector", [["slice", ["value", 0], undefined]], ["count"], row)
+    session.finalize()
     return file
   }])
   result.dispose()
 
-  assert.deepEqual(semantic.reactiveBindings.map(entry => entry.exportName), ["binding0", "binding1"])
-  assert.deepEqual(semantic.moduleIR, { version: 1, file: "descriptors.ts", signals: [], handlers: [] })
-  assert.deepEqual([...semantic.reactiveBindings[0].states], ["count"])
-  assert.deepEqual([...semantic.reactiveBindings[0].captures], ["extra"])
-  assert.deepEqual([...semantic.clientImports], ["/src/format.ts"])
-  assert.deepEqual(semantic.nativeHandlers.map(entry => entry.exportName), ["handler0"])
-  assert.deepEqual(semantic.effectHandlers.map(entry => entry.exportName), ["effect0"])
-  assert.deepEqual([...semantic.nativeHandlers[0].setters], [["setCount", "count"]])
-  assert.deepEqual([...semantic.nativeHandlers[0].captures], ["delta"])
-  assert.deepEqual(semantic.listExpressions.map(entry => entry.exportName), ["listExpression0"])
-  assert.equal(semantic.listExpressions[0].item, "item")
+  assert.deepEqual(semantic.moduleIR.handlers.map(({ exportName, role }) => [exportName, role]), [["handler0", "native"], ["effect0", "effect"]])
+  assert.deepEqual(semantic.moduleIR.bindings.map(({ exportName, role }) => [exportName, role]), [["binding0", "binding"], ["binding1", "binding"], ["listExpression0", "list-expression"]])
+  assert.deepEqual(semantic.moduleIR.bindings[0].states, ["count"])
+  assert.deepEqual(semantic.moduleIR.bindings[0].captures, [{ name: "extra", source: "scope" }])
+  assert.deepEqual(semantic.moduleIR.clientModules, ["/src/format.ts"])
+  assert.deepEqual(semantic.moduleIR.handlers[0].signals, [{ name: "count", setters: ["setCount"], value: "direct", snapshot: false }])
+  assert.deepEqual(semantic.moduleIR.handlers[0].captures, [{ name: "delta", source: "scope", value: "direct", snapshot: false }])
+  assert.deepEqual(semantic.moduleIR.imports, [{ target: "/src/format.ts", kind: "named", local: "format", imported: "format", package: false }])
+  assert.deepEqual(semantic.moduleIR.derived.map(({ slot, kind, states, expression, selector }) => ({ slot, kind, states, expression, selector })), [
+    { slot: 0, kind: "expression", states: ["count"], expression: ["binary", "+", ["state", "count"], ["value", 1]], selector: undefined },
+    { slot: 1, kind: "selector", states: ["count"], expression: undefined, selector: [["slice", ["value", 0], null]] }
+  ])
+  assert.equal("nativeHandlers" in semantic || "reactiveBindings" in semantic || "clientImports" in semantic, false)
+  assertJsonData(semantic.moduleIR)
+  assert.deepEqual(JSON.parse(JSON.stringify(semantic.moduleIR)), semantic.moduleIR)
 })
 
 test("encodes collection expressions with item, index, and state reads", () => {

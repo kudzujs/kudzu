@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the completed `0.8.18` component ownership boundary. File and function names are the stable references; line numbers are intentionally omitted because Goal A moves code.
+This maps the completed `0.8.19` handler, binding, and derived IR boundary. File and function names are the stable references; line numbers are intentionally omitted because Goal A moves code.
 
 ## Responsibility Map
 
@@ -13,12 +13,13 @@ This maps the completed `0.8.18` component ownership boundary. File and function
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
 | Shared AST/scope helpers | [`framework/compiler/ast-helpers.mjs`](../../framework/compiler/ast-helpers.mjs) | Binding, scope, reference, effect-return, and source-location analysis. |
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
-| Main semantic analysis | `framework/build.mjs`, `createKudzuTransformer()` | Produces transformed source and the explicit component ownership result while still owning effects, keyed-list ownership, imports, reactive JSX, and their remaining AST-identity side tables. |
+| Main semantic analysis | `framework/build.mjs`, `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, and derived results while still owning effect and keyed-list ownership side tables. |
 | Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, and source provenance; AST identity remains private to its source-local session. |
-| Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Registers deterministic component analysis, native handler, effect handler, binding, list evaluator, and client-import results into one source-local artifact. |
+| Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Keeps AST descriptors private during analysis, then finalizes deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, imports, and client roots into ModuleIR. |
 | Command IR and codegen | [`framework/compiler/optimize/command-specialization.mjs`](../../framework/compiler/optimize/command-specialization.mjs), [`framework/compiler/ir/module-ir.mjs`](../../framework/compiler/ir/module-ir.mjs), [`framework/compiler/codegen/command-codegen.mjs`](../../framework/compiler/codegen/command-codegen.mjs) | Supported command handlers specialize to JSON-safe ModuleIR, then emit the existing `__kBehavior` AST without changing route plans. |
 | Build module generation | `framework/build.mjs`, `compile()` | Runs TypeScript with the Kudzu transformer, writes build-executable modules to `.kudzu`, rejects surviving React/Router runtime references, and generates handler source when descriptors exist. |
-| Handler/evaluator codegen | [`framework/compiler/handler-codegen.mjs`](../../framework/compiler/handler-codegen.mjs) | Converts descriptor AST into browser ESM exports and rewrites state, setter, reducer, capture, and imported-helper reads. It does not discover features. |
+| Handler/evaluator lowering | [`framework/compiler/handler-lowering.mjs`](../../framework/compiler/handler-lowering.mjs) | Completes source-local callback/binding/list AST rewriting and diagnostics before the JSON-safe IR boundary. |
+| Handler module codegen | [`framework/compiler/handler-codegen.mjs`](../../framework/compiler/handler-codegen.mjs) | Renders finalized ordered imports and concatenates generated module-export source without TypeScript AST or semantic discovery. |
 | Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Validates the exact effect-owned Worker form, validates its relative graph, emits content-hashed ESM, and resolves placeholders only for rendered effects. |
 | Build-time JSX execution | [`framework/core.mjs`](../../framework/core.mjs), `renderPage()` | Executes compiled pages/layouts, allocates deterministic route/layout ownership IDs, emits complete HTML, and returns the serializable route plan and capability booleans. |
 | Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Purely folds rendered route plans and route facts into aggregate runtime/artifact requirements. |
@@ -57,7 +58,7 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 ## Current Coupling To Remove
 
 - `createKudzuTransformer()` combines discovery, validation, specialization, descriptor registration, and transformed-source emission.
-- Effect/list relationships and transient component rewrite indexes remain in `WeakMap`/`WeakSet` tables keyed by AST identity; component ownership itself now has an explicit JSON-safe source result.
+- Effect/keyed ownership relationships and transient component rewrite indexes remain in `WeakMap`/`WeakSet` tables keyed by AST identity; handler, binding, derived, and component ownership now have explicit JSON-safe source results.
 - `build()` destructures a broad capability manifest into many booleans and performs artifact-specific source surgery.
 - Runtime specialization relies on exact source-string and regular-expression replacements in `framework/build.mjs`.
 - Route facts, rendered plans, artifact requirements, and emitted-file decisions are represented at adjacent but not fully explicit boundaries.

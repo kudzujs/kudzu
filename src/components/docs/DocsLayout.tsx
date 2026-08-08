@@ -31,7 +31,7 @@ export function DocsSidebar() {
 
 export function DocsIntro() {
   return <section className="docs-intro">
-    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.18</p>
+    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.19</p>
     <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
     <p>Kudzu treats React-shaped TSX as compiler input, specializing it into complete HTML and only the route-specific browser capabilities used. There is no virtual DOM, hydration pass, or client component tree.</p>
   </section>

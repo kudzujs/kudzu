@@ -36,13 +36,14 @@ Reduced Zustand migration stores lower to one ordinary layout-lifetime state slo
 - `compiler/animation-frame-pass.mjs`: effect-owned animation-frame ref validation and plain mutable effect-scope lowering.
 - `compiler/browser-signal-passes.mjs`: static media-query external-store and navigator capability-condition normalization.
 - `compiler/collection-analysis.mjs`: pure collection expression IR, selector pipeline, alias, and imported-transform analysis.
-- `compiler/descriptor-session.mjs`: per-source semantic artifact creation and deterministic command, handler, effect, binding, and list evaluator descriptor registration.
+- `compiler/descriptor-session.mjs`: private source-local descriptor registration and deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, import, and client-root finalization.
 - `compiler/normalization-pipeline.mjs`: ordered source normalization with parent-pointer repair after every compiler pass.
 - `compiler/react-migration-pass.mjs`: React import, memo, callback, `forwardRef`, and `useId` migration validation and lowering.
 - `compiler/custom-hook-timer-pass.mjs`: private custom-hook timeout-ref validation and compiler-owned timer-state lowering.
 - `compiler/effect-codegen.mjs`: route-specific ordinary, owned, and navigable effect entry generation.
 - `compiler/optimize/command-specialization.mjs`, `compiler/ir/module-ir.mjs`, and `compiler/codegen/command-codegen.mjs`: JSON-safe command analysis, sparse per-source ModuleIR, and source-analysis-free existing behavior-call generation.
-- `compiler/handler-codegen.mjs`: route-specific native handler, reactive binding, keyed-list evaluator, and client-import module source generation.
+- `compiler/handler-lowering.mjs`: source-local native/effect callback, reducer, Context, Zustand, reactive-binding, and list-evaluator AST lowering before IR finalization.
+- `compiler/handler-codegen.mjs`: AST-free ordered import rendering and finalized handler/binding export-source assembly.
 - `compiler/render-control-pass.mjs`: render-function early-return and exhaustive adjacent-assignment normalization.
 - `compiler/router-pass.mjs`: React Router import validation and native Link, pathname parameter, search parameter, and imperative navigation lowering.
 - `compiler/route-capability-planner.mjs`: pure route-plan projection into runtime and artifact capability requirements.

@@ -2,17 +2,23 @@ import ts from "typescript"
 import { createComponentAnalysis } from "./analysis/component-analysis.mjs"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
-import { createModuleIR, registerCommandHandler } from "./ir/module-ir.mjs"
+import { createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerModuleHandler } from "./ir/module-ir.mjs"
 
 export function createSemanticArtifact(file) {
-  return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file), nativeHandlers: [], effectHandlers: [], reactiveBindings: [], listExpressions: [], clientImports: new Set() }
+  return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file) }
 }
 
-export function createDescriptorSession({ semantic, handlerUrl, factory, context, compileEventCommand, isPrimitiveLiteral, rejectWorkerConstructions, sourceName = source => source.fileName }) {
-  const { moduleIR, nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
+export function createDescriptorSession({ semantic, handlerUrl, factory, context, compileEventCommand, handlerLowering, isPrimitiveLiteral, rejectWorkerConstructions, sourceName = source => source.fileName }) {
+  const { moduleIR } = semantic
+  const nativeHandlers = []
+  const effectHandlers = []
+  const reactiveBindings = []
+  const listExpressions = []
+  const clientModules = new Set()
+
   function compileListExpression(read, expression, item, index, states = new Set()) {
     const exportName = `listExpression${listExpressions.length}`
-    listExpressions.push({ exportName, expression, item, index, states })
+    listExpressions.push({ exportName, expression, item, index, states, role: "list-expression" })
     const arguments_ = [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)]
     if (states.size) arguments_.push(factory.createArrayLiteralExpression([...states].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
     return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, arguments_)
@@ -20,7 +26,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   function compileListConditional(entry) {
     const exportName = `listExpression${listExpressions.length}`
-    listExpressions.push({ exportName, expression: entry.condition, item: entry.item, index: entry.index })
+    listExpressions.push({ exportName, expression: entry.condition, item: entry.item, index: entry.index, role: "list-conditional" })
     const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), entry.condition)
     const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
     return factory.createCallExpression(factory.createIdentifier("__kListConditional"), undefined, [
@@ -65,7 +71,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     registerClientImports(imports)
     const captures = new Set([...captureNames(expression, expression, setters)].filter(name => !importedNames.has(name)))
     const exportName = `binding${reactiveBindings.length}`
-    reactiveBindings.push({ exportName, expression, captures, states: usedStates, imports })
+    reactiveBindings.push({ exportName, expression, captures, states: usedStates, imports, role: "binding" })
     const states = [...usedStates].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))
     const scope = [...captures].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))
     const stateNames = new Set(usedStates)
@@ -91,17 +97,17 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters, stateOwners, owner)
     if (optimized) return optimized
     rejectWorkerConstructions(expression)
-    const descriptor = compileNativeCallback(expression, { setters, reducers, entries: nativeHandlers, importBindings, prefix: "handler", listItem })
+    const descriptor = compileNativeCallback(expression, { setters, reducers, entries: nativeHandlers, importBindings, prefix: "handler", role: "native", listItem })
     return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
       factory.createStringLiteral(handlerUrl), factory.createStringLiteral(descriptor.exportName), descriptor.states, descriptor.scope
     ])
   }
 
   function compileEffectCallback(expression, options) {
-    return compileNativeCallback(expression, { ...options, entries: effectHandlers, prefix: "effect" })
+    return compileNativeCallback(expression, { ...options, entries: effectHandlers, prefix: "effect", role: "effect" })
   }
 
-  function compileNativeCallback(expression, { setters, reducers, entries, importBindings, prefix, listItem, deferValues = false, snapshotNested = false, liveStates = new Set() }) {
+  function compileNativeCallback(expression, { setters, reducers, entries, importBindings, prefix, role, listItem, deferValues = false, snapshotNested = false, liveStates = new Set() }) {
     const allCaptures = nativeCaptureNames(expression, setters)
     const usedReducers = referencedReducerDispatches(expression.body, reducers, expression)
     const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
@@ -114,7 +120,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
       if (reducer.contextAction) for (const state of referencedStateNames(reducer.contextAction.body, reducer.states, reducer.contextAction)) usedStates.add(state)
     }
     const exportName = `${prefix}${entries.length}`
-    entries.push({ exportName, expression, captures, imports, liveStates, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested })
+    entries.push({ exportName, expression, captures, deferValues, imports, listItem, liveStates, role, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested, usedStates })
     const value = name => deferValues
       ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
       : factory.createIdentifier(name)
@@ -141,10 +147,75 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
   }
 
   function registerClientImports(imports) {
-    for (const entry of imports) if (!entry.package) clientImports.add(entry.target)
+    for (const entry of imports) if (!entry.package) clientModules.add(entry.target)
   }
 
-  return { compileConditional, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding }
+  function registerDerivedResult(kind, value, states = [], node) {
+    const normalized = JSON.parse(JSON.stringify(value))
+    return registerDerived(moduleIR, { kind, [kind]: normalized, states: [...states], ...(source(node) ? { source: source(node) } : {}) })
+  }
+
+  function finalize() {
+    const callbacks = [...nativeHandlers, ...effectHandlers]
+    for (const entry of callbacks) {
+      const lowered = handlerLowering.lowerNativeHandler(entry)
+      const setters = Map.groupBy(entry.setters, ([, state]) => state)
+      registerModuleHandler(moduleIR, {
+        role: entry.role,
+        exportName: entry.exportName,
+        async: Boolean(entry.expression.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)),
+        generator: Boolean(entry.expression.asteriskToken),
+        signals: [...entry.usedStates].map(name => ({
+          name,
+          setters: (setters.get(name) ?? []).map(([setter]) => setter),
+          value: entry.deferValues ? "deferred" : "direct",
+          snapshot: lowered.stateSnapshots.includes(name)
+        })),
+        captures: [...entry.captures].map(name => ({
+          name,
+          source: name === (typeof entry.listItem === "string" ? entry.listItem : entry.listItem?.item) ? "list-item" : name === entry.listItem?.index ? "list-index" : "scope",
+          value: entry.deferValues ? "deferred" : "direct",
+          snapshot: lowered.captureSnapshots.includes(name)
+        })),
+        imports: entry.imports.map(importRecord),
+        code: lowered.code,
+        ...(source(entry.expression) ? { source: source(entry.expression) } : {})
+      })
+    }
+    for (const entry of reactiveBindings) registerBinding(moduleIR, {
+      role: entry.role,
+      exportName: entry.exportName,
+      parameters: ["__k"],
+      states: [...entry.states],
+      captures: [...entry.captures].map(name => ({ name, source: "scope" })),
+      imports: entry.imports.map(importRecord),
+      code: handlerLowering.lowerReactiveBinding(entry),
+      ...(source(entry.expression) ? { source: source(entry.expression) } : {})
+    })
+    for (const entry of listExpressions) registerBinding(moduleIR, {
+      role: entry.role,
+      exportName: entry.exportName,
+      parameters: [entry.item, entry.index ?? "__kIndex", "__k"],
+      states: [...(entry.states ?? [])],
+      captures: [],
+      imports: [],
+      code: handlerLowering.lowerListExpression(entry),
+      ...(source(entry.expression) ? { source: source(entry.expression) } : {})
+    })
+    const imports = [...callbacks, ...reactiveBindings].flatMap(entry => entry.imports ?? []).map(importRecord)
+    moduleIR.imports = [...new Map(imports.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry])).values()]
+    moduleIR.clientModules = [...clientModules]
+  }
+
+  function source(node) {
+    if (!node) return undefined
+    const original = ts.getOriginalNode(node)
+    return original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
+  }
+
+  const importRecord = entry => ({ target: entry.target, kind: entry.kind, local: entry.local, ...(entry.imported ? { imported: entry.imported } : {}), package: Boolean(entry.package) })
+
+  return { compileConditional, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding, finalize, registerDerived: registerDerivedResult }
 }
 
 function directStateIdentifier(expression, setters) {

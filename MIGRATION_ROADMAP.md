@@ -209,6 +209,13 @@ This queue orders the next investigations by general migration value. Start only
 - Specialized prop records retain default application and direct signal links; imported hook declarations keep source provenance while synthetic ownership invents no source range.
 - `core.mjs` remains authoritative for final route/layout state, ref, ID, conditional, and keyed allocation. Repeated, conditional, imported, setter-adapter, Context, and reducer fixtures preserve their existing ownership and deploy output.
 
+### Completed In 0.8.19
+
+- Native and effect callback exports now finalize into JSON-safe HandlerIR with ordered signals, setters, captures, snapshot policy, imports, roles, source provenance, and generated module source.
+- Reactive bindings, list expressions, and list condition evaluators finalize into BindingIR with explicit states, captures, parameters, imports, and deterministic export slots.
+- Existing tagged collection expressions and selectors are canonical DerivedIR for rendered lists and derived effect dependencies; transformed source embeds the registered records rather than parallel analyzer values.
+- AST, `Map`, and `Set` callback descriptors remain private only until source-local lowering completes. Handler codegen now performs no TypeScript traversal or state/capture/reducer/import discovery, while command-only routes retain zero handler ESM.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

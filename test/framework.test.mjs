@@ -15,17 +15,27 @@ import { createNativeContext } from "../framework/native-runtime.js"
 // Keep fixture listeners outside the ephemeral range used by headless Chrome.
 let browserPort = 10000 + process.pid % 10000
 const nextBrowserPort = () => browserPort++
+const inspectSourceResult = (fixture, file) => {
+  const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+const { build } = await import(${JSON.stringify(new URL("../framework/build.mjs", import.meta.url).href)})
+const result = await build({ quiet: true })
+process.stdout.write(JSON.stringify(result.sourceResults.find(source => source.file === ${JSON.stringify(file)})))
+`], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  return JSON.parse(result.stdout)
+}
 
 test("builds TSX into HTML and behavior commands without React", async () => {
   const buildResult = await build({ quiet: true })
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.18/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.19/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
-  const homeAnalysis = buildResult.sourceResults.find(result => result.file === "src/pages/index.tsx").componentAnalysis
+  const homeSource = buildResult.sourceResults.find(result => result.file === "src/pages/index.tsx")
+  const homeAnalysis = homeSource.componentAnalysis
 
   assert.match(html, /React-shaped input.*Static-first output/s)
   assert.match(html, /property="og:image"/)
@@ -37,9 +47,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.18"/)
-  assert.match(release, /Kudzu 0\.8\.18.*Own state explicitly.*Allocate it exactly as before/s)
-  assert.match(release, /COMPONENT OWNERSHIP.*WHAT CHANGED.*npm install @kudzujs\/core@\^0\.8\.18/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.19"/)
+  assert.match(release, /Kudzu 0\.8\.19.*Analyze once.*Generate from data/s)
+  assert.match(release, /HANDLER · BINDING · DERIVED.*WHAT CHANGED.*npm install @kudzujs\/core@\^0\.8\.19/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -51,6 +61,13 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.doesNotMatch([html, docs, runtime].join("\n"), /sessionStorage|__kudzu_state|snapshotState|restoreState|__kudzu_dev/)
   assert.deepEqual(homeAnalysis.owners.find(owner => owner.name === "HomePage").states.map(state => state.name), ["count"])
   assert.deepEqual(JSON.parse(JSON.stringify(homeAnalysis)), homeAnalysis)
+  assert.equal(homeSource.handlerModule, undefined)
+  assert.deepEqual(homeSource.moduleIR.handlers.map(handler => handler.kind), ["commands", "commands"])
+  assert.deepEqual(homeSource.moduleIR.bindings, [])
+  assert.deepEqual(JSON.parse(JSON.stringify(homeSource.moduleIR)), homeSource.moduleIR)
+  for (const source of buildResult.sourceResults) assert.deepEqual(JSON.parse(JSON.stringify(source.moduleIR)), source.moduleIR)
+  assert.ok(buildResult.sourceResults.some(source => source.moduleIR.handlers.some(handler => handler.kind === "module-export")))
+  assert.ok(buildResult.sourceResults.some(source => source.moduleIR.bindings.length))
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.doesNotMatch(html, /data-k-state=/)
@@ -1058,6 +1075,8 @@ test("compiles synchronous rendered collection selectors and React positional ke
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const derived = inspectSourceResult(fixture, "src/pages/index.tsx").moduleIR.derived
+  assert.ok(derived.some(entry => entry.kind === "selector" && entry.selector.some(step => step[0] === "filter")))
   const html = await readFile(new URL("./fixtures/rendered-collections/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/rendered-collections/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const runtime = await readFile(new URL("./fixtures/rendered-collections/dist/assets/kudzu-list.js", import.meta.url), "utf8")
@@ -2610,6 +2629,8 @@ test("reruns multiple primitive dependency effects after cleanup", async t => {
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const derived = inspectSourceResult(fixture, "src/pages/index.tsx").moduleIR.derived
+  assert.deepEqual(derived.map(entry => [entry.kind, entry.states, entry.expression]), [["expression", ["count"], ["conditional", ["binary", "===", ["binary", "%", ["state", "count"], ["value", 2]], ["value", 0]], ["value", "even"], ["value", "odd"]]]])
   const entryUrl = new URL("./fixtures/effect-dependencies/dist/assets/effects/index.js", import.meta.url)
   const runtimeUrl = new URL("./fixtures/effect-dependencies/dist/assets/kudzu-deps.js", import.meta.url)
   const entry = await readFile(entryUrl, "utf8")

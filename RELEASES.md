@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.8.19 - Handler, binding, and derived IR
+
+Kudzu 0.8.19 completes the next Goal A source-analysis boundary: native callbacks, reactive bindings, list evaluators, imports, and pure derived expressions now finalize into JSON-safe ModuleIR before mechanical artifact codegen.
+
+### Changed in 0.8.19
+
+- Native and effect callback exports retain explicit roles, signals, setters, captures, snapshot policy, imports, source ranges, and finalized export source in HandlerIR.
+- Reactive bindings, list expressions, and list condition evaluators retain explicit states, captures, parameters, imports, and deterministic module-export slots in BindingIR.
+- Rendered list selectors and derived effect dependencies use the existing tagged collection-expression language as canonical DerivedIR; transformed build source reads back the registered records.
+- Reducer, Context, Zustand, package-import, nested snapshot, and scope semantics finish lowering while source AST and diagnostics are still available.
+- `handler-codegen.mjs` imports no TypeScript or AST helpers. It renders the finalized ordered imports and concatenates generated HandlerIR/BindingIR export source.
+- The previous semantic artifact arrays containing callback/expression AST, `Map`, and `Set` values were deleted. They remain only inside the source-local session until finalization and do not cross the IR boundary.
+
+### Goal A boundary
+
+- Effect lifetime, cleanup, dependencies, Worker edges, and ownership remain on the existing path until EffectIR in `0.8.21`; only their generated callback exports join HandlerIR now.
+- Keyed DOM ownership remains on the existing path until KeyedBlockIR in `0.8.20`; list evaluators and pure selectors are explicit without moving key-path ownership early.
+- `core.mjs` remains authoritative for complete HTML, final route/layout state IDs, and the serializable route plan.
+- No accepted syntax, public API, runtime capability, VDOM, hydration, component rerender, or retained browser component tree was added.
+
+### Validation
+
+- The complete suite passes 167/167 tests, including ModuleIR JSON round-trip, command-only exclusion, native async handlers, bindings, package imports, reducer, Context, Zustand, list-derived, and effect-derived contracts.
+- Before release-content updates, the complete site `dist` and nine representative fixture output trees matched `v0.8.18`; detached-worktree roots were normalized only in existing `.kudzu` diagnostic strings.
+- Worker and window graphs remain byte-identical. A same-volume 21-run interleaved comparison measured a 0.32% lower candidate median; raw arrays, file lists, and environment are recorded in `PERFORMANCE.md`.
+- `create-kudzu` remains 0.1.101 because its unchanged template already accepts `@kudzujs/core@^0.8.15`.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.19
+```
+
 ## 0.8.18 - Explicit component ownership
 
 Kudzu 0.8.18 completes the next Goal A source-analysis seam: state, setters, props, refs, IDs, and supported component specializations now have one ordered JSON-safe ownership result without changing final route allocation or deploy behavior.
