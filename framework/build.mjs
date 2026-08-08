@@ -4,6 +4,7 @@ import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node
 import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
 import ts from "typescript"
+import { createComponentAnalysisSession } from "./compiler/analysis/component-analysis.mjs"
 import { normalizeEffectAnimationFrameRefs } from "./compiler/animation-frame-pass.mjs"
 import { bindingNames, containsJsx, effectReturns, functionVarDeclaresName, importDeclarationNames, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceLocation, sourceNodeError, statementDeclaresName, unwrapExpression } from "./compiler/ast-helpers.mjs"
 import { normalizeMediaQueryExternalStores, normalizeNavigatorCapabilityConditions } from "./compiler/browser-signal-passes.mjs"
@@ -72,13 +73,13 @@ export async function build({ quiet = false, minify = true } = {}) {
   const importedAssets = new Set()
   const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base)
 
-  const handlerModules = []
+  const sourceResults = []
   const workerReferences = []
   for (const file of sourceFiles) {
     if (file.endsWith(".worker.ts")) continue
-    const handlerModule = await compile(file, sourceFileSet, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences)
-    if (handlerModule) handlerModules.push(handlerModule)
+    sourceResults.push(await compile(file, sourceFileSet, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences))
   }
+  const handlerModules = sourceResults.flatMap(result => result.handlerModule ? [result.handlerModule] : [])
 
   const plans = []
   const routeCapabilities = new Map()
@@ -466,6 +467,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   }
 
   if (!quiet) console.log(`Built ${plans.length} page(s), ${behaviorCount} interactive page(s) into dist/`)
+  return { sourceResults }
 }
 
 function preloadModules(html) {
@@ -702,8 +704,9 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   await mkdir(resolve(output, ".."), { recursive: true })
   await writeFile(output, result.outputText)
 
-  const { nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
-  if (!nativeHandlers.length && !effectHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
+  const { componentAnalysis, nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
+  const sourceResult = { file: relative(root, file).replaceAll(sep, "/"), componentAnalysis }
+  if (!nativeHandlers.length && !effectHandlers.length && !reactiveBindings.length && !listExpressions.length) return sourceResult
   const callbacks = [...nativeHandlers, ...effectHandlers]
   const moduleSource = printHandlerModule({ callbacks, reactiveBindings, listExpressions, handlerPath })
   const moduleResult = ts.transpileModule(moduleSource, {
@@ -712,7 +715,8 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   })
   const moduleErrors = moduleResult.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
-  return { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports], hasPackageImports: [...callbacks, ...reactiveBindings].some(entry => entry.imports?.some(import_ => import_.package)) }
+  sourceResult.handlerModule = { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: nativeHandlers.length > 0, hasEffects: effectHandlers.length > 0, clientImports: [...clientImports], hasPackageImports: [...callbacks, ...reactiveBindings].some(entry => entry.imports?.some(import_ => import_.package)) }
+  return sourceResult
 }
 
 function emittedPackageReference(source, file, packages) {
@@ -887,6 +891,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     sourceFile = normalized.sourceFile
     const { customHookTimerStates } = normalized
     const factory = context.factory
+    const sourceName = source => relative(root, source.fileName).replaceAll(sep, "/")
+    const componentAnalysis = createComponentAnalysisSession(semantic.componentAnalysis)
     const descriptors = createDescriptorSession({
       semantic,
       handlerUrl,
@@ -894,7 +900,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       context,
       compileEventCommand,
       isPrimitiveLiteral: isPrimitiveDefaultLiteral,
-      sourceName: source => relative(root, source.fileName).replaceAll(sep, "/"),
+      sourceName,
       rejectWorkerConstructions: expression => workerCompiler.rejectConstructions(expression, expression.getSourceFile(), "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback")
     })
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
@@ -923,6 +929,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       } catch {}
     }
     const settersByFunction = new Map()
+    const stateOwnersByFunction = new Map()
     const localStateSettersByFunction = new Map()
     const reducersByFunction = new Map()
     const zustandStores = new Map()
@@ -951,6 +958,42 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const nestedLists = new WeakMap()
     const listEffectEntries = new WeakMap()
     const componentEffectEntries = new WeakMap()
+    const analysisSource = node => {
+      const original = ts.getOriginalNode(node)
+      return original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
+    }
+    const analyzedProps = owner => {
+      if (owner.parameters.length !== 1 || !ts.isObjectBindingPattern(owner.parameters[0].name)) return []
+      return owner.parameters[0].name.elements.map(element => ({
+        name: (element.propertyName ?? element.name).getText(),
+        local: element.name.getText(),
+        ...(element.dotDotDotToken ? { rest: true } : {}),
+        ...(element.initializer ? { hasDefault: true } : {})
+      }))
+    }
+    const ownerName = owner => owner.name?.text ?? (ts.isVariableDeclaration(owner.parent) && ts.isIdentifier(owner.parent.name) ? owner.parent.name.text : "anonymous")
+    const ensureOwner = (owner, kind = "component") => componentAnalysis.registerOwner(owner, { kind, name: ownerName(owner), props: analyzedProps(owner), source: analysisSource(owner) })
+    const registerState = (owner, state, setter, kind, node, externalOwner) => {
+      const ownerRecord = ensureOwner(owner)
+      const stateOwner = externalOwner ?? `owner:${ownerRecord.slot}`
+      const stateOwners = stateOwnersByFunction.get(owner) ?? new Map()
+      stateOwners.set(state, stateOwner)
+      stateOwnersByFunction.set(owner, stateOwners)
+      return componentAnalysis.registerState(owner, { name: state, setter, kind, ...(externalOwner ? { owner: externalOwner } : {}), source: analysisSource(node) })
+    }
+    const stateOwnersForNode = node => {
+      for (let current = node.parent; current; current = current.parent) {
+        if (isFunctionLike(current) && stateOwnersByFunction.has(current)) return stateOwnersByFunction.get(current)
+      }
+      return new Map()
+    }
+    const fallbackOwner = node => {
+      for (let current = node.parent; current; current = current.parent) {
+        const owner = isFunctionLike(current) ? componentAnalysis.owner(current) : undefined
+        if (owner) return `owner:${owner.slot}`
+      }
+      return "module"
+    }
     let usesBehavior = false
     let usesBinding = false
     let usesConditional = false
@@ -996,6 +1039,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (!value || !ts.isObjectLiteralExpression(value)) throw sourceNodeError(provider, providerSource, "Context Provider value must be one direct object literal")
       const owner = nearestFunction(provider)
       if (!owner) throw sourceNodeError(provider, providerSource, "Context Provider value must be returned by a component")
+      const stateOwner = `external:${sourceName(providerSource)}:${owner.getStart(providerSource)}`
 
       const states = new Map()
       const callbacks = new Map()
@@ -1033,7 +1077,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           if (!setter || !fields.has(state) || !fields.has(setter)) throw sourceNodeError(callback, providerSource, `Context action ${JSON.stringify(name)} requires exposed state and setter fields for ${JSON.stringify(state)}`)
         }
       }
-      return { callbacks: new Map([...callbacks].filter(([name]) => fields.has(name))), context: true, fields, privateStates: new Set(), states }
+      return { callbacks: new Map([...callbacks].filter(([name]) => fields.has(name))), context: true, fields, privateStates: new Set(), stateOwner, states }
     }
 
     const resolveCustomHook = (binding, call) => {
@@ -1106,7 +1150,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             if (hook.context) {
               if (names.has(setter) && !names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative Context setter ${JSON.stringify(setter)} requires state ${JSON.stringify(state)} to be destructured`)
               if (!names.has(state) && !requiredContextStates.has(state)) continue
-              setters.set(names.has(setter) || requiredContextStates.has(state) ? setter : `__kContextState_${state}`, state)
+              const localSetter = names.has(setter) || requiredContextStates.has(state) ? setter : `__kContextState_${state}`
+              setters.set(localSetter, state)
+              registerState(owner, state, localSetter, "context", node, hook.stateOwner)
               if (requiredContextStates.has(state)) {
                 const fields = customHookPrivateFields.get(node) ?? []
                 for (const field of [state, setter]) {
@@ -1121,13 +1167,17 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             }
             if (hook.privateStates.has(state)) {
               setters.set(setter, state)
+              registerState(owner, state, setter, "custom-hook", node)
               const fields = customHookPrivateFields.get(node) ?? []
               fields.push(state, setter)
               customHookPrivateFields.set(node, fields)
               continue
             }
             if (names.has(setter) !== names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative custom hook state ${JSON.stringify(state)} and setter ${JSON.stringify(setter)} must be destructured together`)
-            if (names.has(setter)) setters.set(setter, state)
+            if (names.has(setter)) {
+              setters.set(setter, state)
+              registerState(owner, state, setter, "custom-hook", node)
+            }
           }
           settersByFunction.set(owner, setters)
           for (const name of names) {
@@ -1154,9 +1204,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             const owner = nearestFunction(node)
             if (!owner) throw sourceNodeError(node, sourceFile, "Zustand stores cannot be used outside a Kudzu component")
             const setters = settersByFunction.get(owner) ?? new Map()
-            if (selected === store.field) setters.set(`__kStoreState_${node.name.text}`, node.name.text)
+            if (selected === store.field) {
+              const setter = `__kStoreState_${node.name.text}`
+              setters.set(setter, node.name.text)
+              registerState(owner, node.name.text, setter, "store", node)
+            }
             else if (store.actions.has(selected)) {
               setters.set(node.name.text, node.name.text)
+              registerState(owner, node.name.text, node.name.text, "store-action", node)
               const reducers = reducersByFunction.get(owner) ?? new Map()
               reducers.set(node.name.text, { state: node.name.text, store, action: selected })
               reducersByFunction.set(owner, reducers)
@@ -1183,6 +1238,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           if (!owner) throw sourceNodeError(node, sourceFile, "useReducer() cannot be used outside a Kudzu component")
           const setters = settersByFunction.get(owner) ?? new Map()
           setters.set(dispatchElement.name.text, stateElement.name.text)
+          registerState(owner, stateElement.name.text, dispatchElement.name.text, "reducer", node)
           settersByFunction.set(owner, setters)
           const reducers = reducersByFunction.get(owner) ?? new Map()
           reducers.set(dispatchElement.name.text, { state: stateElement.name.text, reducer: reducer.text, import: reducerImport })
@@ -1195,6 +1251,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             if (owner) {
               const setters = settersByFunction.get(owner) ?? new Map()
               setters.set(setterElement.name.text, stateElement.name.text)
+              registerState(owner, stateElement.name.text, setterElement.name.text, "state", node)
               settersByFunction.set(owner, setters)
               const localSetters = localStateSettersByFunction.get(owner) ?? new Set()
               localSetters.add(setterElement.name.text)
@@ -1205,11 +1262,28 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       if (ts.isFunctionDeclaration(node) && node.name) {
         functions.set(node.name.text, node)
-        if (node.parent === sourceFile) components.set(node.name.text, { function: node, declaration: node })
+        if (node.parent === sourceFile) {
+          components.set(node.name.text, { function: node, declaration: node })
+          ensureOwner(node)
+        }
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
         functions.set(node.name.text, node.initializer)
-        if (node.parent?.parent?.parent === sourceFile) components.set(node.name.text, { function: node.initializer, declaration: node })
+        if (node.parent?.parent?.parent === sourceFile) {
+          components.set(node.name.text, { function: node.initializer, declaration: node })
+          ensureOwner(node.initializer)
+        }
+      }
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression)) {
+        const owner = nearestFunction(node)
+        if (owner && node.initializer.expression.text === "useRef" && node.initializer.arguments.length === 1 && node.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword) {
+          ensureOwner(owner)
+          componentAnalysis.registerRef(owner, { name: node.name.text, source: analysisSource(node) })
+        }
+        if (owner && node.initializer.expression.text === "useId" && node.initializer.arguments.length === 0) {
+          ensureOwner(owner)
+          componentAnalysis.registerId(owner, { name: node.name.text, source: analysisSource(node) })
+        }
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "createContext") contexts.add(node.name.text)
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isLocalConst(node)) {
@@ -1378,6 +1452,38 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const stateBackedComponentFunctions = new WeakSet()
     const stateBackedComponentRoots = []
     let specializedImportIndex = 0
+    const specialize = (call, component, label = "Keyed list", allowComponentRoot = false, ordinaryHooks = false, ordinaryStateNames = new Set(), ownership) => {
+      const result = specializeComponentCall(call, component, sourceFile, factory, context, fail, label, allowComponentRoot, ordinaryHooks, ordinaryStateNames)
+      const owner = nearestFunction(call)
+      const setters = ownership?.setters ?? settersForNode(call, settersByFunction)
+      const stateOwners = ownership?.stateOwners ?? stateOwnersForNode(call)
+      const callbacks = functionsForNode(call)
+      const propSignals = expression => {
+        const signals = new Set()
+        if (ts.isIdentifier(expression) && setters.has(expression.text)) signals.add(setters.get(expression.text))
+        const callback = ts.isIdentifier(expression) ? callbacks.get(expression.text) : undefined
+        for (const state of referencedStateNames((callback ?? expression).body ?? callback ?? expression, setters, callback ?? expression)) signals.add(state)
+        return [...signals].map(name => ({ name, owner: stateOwners.get(name) ?? (owner ? `owner:${ensureOwner(owner).slot}` : "module") }))
+      }
+      result.analysis = componentAnalysis.registerSpecialization({
+        kind: label,
+        ...(owner ? { owner: ensureOwner(owner).slot } : {}),
+        ...(analysisSource(call) ? { source: analysisSource(call) } : {}),
+        props: result.props.map(prop => {
+          const expression = result.propExpressions.get(prop.name)
+          const signals = expression ? propSignals(expression) : []
+          return { ...prop, ...(signals.length ? { signals } : {}) }
+        }),
+        states: [
+          ...result.rowStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "row", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })),
+          ...result.ordinaryStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "component", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
+        ],
+        refs: [...result.rowRefs.map(({ name, source }) => ({ name, kind: "row", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })), ...result.ordinaryRefs.map(({ name, source }) => ({ name, kind: "component", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))],
+        ids: result.ordinaryIds.map(({ name, source }) => ({ name, ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
+      })
+      for (const state of [...result.rowStates, ...result.ordinaryStates]) state.analysisOwner = `specialization:${result.analysis.slot}`
+      return result
+    }
     const registerRowHooks = (call, specialization) => {
       if (!specialization.rowStates.length && !specialization.rowRefs.length) return
       let owner
@@ -1389,8 +1495,13 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       if (!owner) owner = nearestFunction(call)
       const setters = new Map(settersByFunction.get(owner))
-      for (const state of specialization.rowStates) setters.set(state.setter, state.state)
+      const stateOwners = new Map(stateOwnersByFunction.get(owner))
+      for (const state of specialization.rowStates) {
+        setters.set(state.setter, state.state)
+        stateOwners.set(state.state, state.analysisOwner)
+      }
       settersByFunction.set(owner, setters)
+      stateOwnersByFunction.set(owner, stateOwners)
       rowHookCalls.push(call)
       usesRowState ||= specialization.rowStates.length > 0
       usesRowRef ||= specialization.rowRefs.length > 0
@@ -1444,7 +1555,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           fail(nestedCalls[0], "Reducer callback props require a component imported from a relative TypeScript module")
         }
         for (const nestedCall of nestedCalls) {
-          const nested = specializeComponentCall(nestedCall, nestedComponent, sourceFile, factory, context, fail, "Reducer-callback")
+          const nested = specialize(nestedCall, nestedComponent, "Reducer-callback")
           if (nested.effects.length) fail(nestedCall, "Reducer-callback components cannot declare effects")
           nested.root = mergeSpecializedImports(nested.root, nestedComponent.getSourceFile(), nestedCall, nested.effects)
           synthesizeTree(nested.root)
@@ -1483,7 +1594,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       folded.parent = root.parent
       return folded
     }
-    const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters) => {
+    const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters, parentStateOwners) => {
       root = foldSetterStaticConditions(root)
       const replacements = new WeakMap()
       let count = 0
@@ -1517,10 +1628,12 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           }
           const setters = new Map(parentSetters)
           for (const state of aggregate.ordinaryStates) setters.set(state.setter, state.state)
+          const stateOwners = new Map(parentStateOwners)
+          for (const state of aggregate.ordinaryStates) stateOwners.set(state.state, state.analysisOwner)
           if (jsxSetterCallbackProps(node, setters, functionsForNode(node), reducersForNode(node, reducersByFunction)).length) fail(node, "Setter callbacks cannot cross a second component boundary")
-          const nested = specializeComponentCall(node, component, sourceFile, factory, context, fail, "Nested setter-callback", true, true, new Set(setters.values()))
+          const nested = specialize(node, component, "Nested setter-callback", true, true, new Set(setters.values()), { setters, stateOwners })
           if (dynamic && (nested.hookDeclarations.length || nested.effects.length)) fail(node, "Hookful nested setter-callback components require an unconditional or statically truthy render path")
-          nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters)
+          nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters, stateOwners)
           if (imported) synthesizeTree(nested.root = mergeSpecializedImports(nested.root, component.getSourceFile(), node, nested.effects))
           aggregate.calculations.push(...nested.calculations)
           aggregate.effects.push(...nested.effects)
@@ -1549,7 +1662,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `State-backed list component ${name} may only be referenced as JSX`)
       if (stateBackedCalls.length !== calls.length) fail(component.declaration, `State-backed list component ${name} must receive its mapped prop from local state at every call`)
       for (const call of stateBackedCalls) {
-        const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail)
+        const specialization = specialize(call, component.function)
         if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
         componentSpecializations.set(call, specialization)
         stateBackedComponentRoots.push(specialization.root)
@@ -1571,7 +1684,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component, settersByFunction.get(nearestFunction(call)) ?? new Map()))
       for (const call of stateBackedCalls) {
-        const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail)
+        const specialization = specialize(call, component)
         if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
         componentSpecializations.set(call, specialization)
         stateBackedComponentRoots.push(specialization.root)
@@ -1591,7 +1704,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         collectReferences(component.body)
         if (references.length !== 1) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be used exactly once in the component`)
       }
-      const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Setter-callback", false, true, new Set(settersForNode(call, settersByFunction).values()))
+      const specialization = specialize(call, component, "Setter-callback", false, true, new Set(settersForNode(call, settersByFunction).values()))
       if (specialization.hookDeclarations.length || specialization.effects.length) {
         const substitutions = new Map()
         const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
@@ -1605,7 +1718,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           for (const effect of specialization.effects) effect.call = substituteClone(effect.call, substitutions, factory, context)
         }
       }
-      specialization.root = expandSetterComponents(specialization.root, component.getSourceFile(), [component], specialization, settersForNode(call, settersByFunction))
+      specialization.root = expandSetterComponents(specialization.root, component.getSourceFile(), [component], specialization, settersForNode(call, settersByFunction), stateOwnersForNode(call))
       if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), call, specialization.effects))
       if (specialization.hookDeclarations.length || specialization.effects.length) {
         const owner = nearestFunction(call)
@@ -1634,6 +1747,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const setters = new Map(settersForNode(call, settersByFunction))
         for (const state of specialization.ordinaryStates) setters.set(state.setter, state.state)
         settersByFunction.set(helper, setters)
+        const stateOwners = new Map(stateOwnersForNode(call))
+        for (const state of specialization.ordinaryStates) stateOwners.set(state.state, state.analysisOwner)
+        stateOwnersByFunction.set(helper, stateOwners)
         usesComponentState ||= specialization.ordinaryStates.length > 0
         usesComponentId ||= specialization.usesComponentId
         usesComponentRef ||= specialization.ordinaryRefs.length > 0
@@ -1673,7 +1789,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (dispatchCalls.length !== calls.length) fail(component.declaration, `Reducer-dispatch component ${name} must receive a direct local reducer dispatch at every call`)
       for (const call of dispatchCalls) {
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
-        const specialization = specializeComponentCall(call, component.function, sourceFile, factory, context, fail, "Reducer-dispatch")
+        const specialization = specialize(call, component.function, "Reducer-dispatch")
         registerRowHooks(call, specialization)
         specialization.root = expandReducerCallbacks(specialization.root, component.function.getSourceFile(), call)
         componentSpecializations.set(call, specialization)
@@ -1696,7 +1812,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const componentSource = component.getSourceFile()
       for (const call of dispatchCalls) {
         if (componentSpecializations.has(call)) fail(call, "Reducer dispatch props cannot be combined with another component specialization")
-        const specialization = specializeComponentCall(call, component, sourceFile, factory, context, fail, "Reducer-dispatch")
+        const specialization = specialize(call, component, "Reducer-dispatch")
         registerRowHooks(call, specialization)
         specialization.root = expandReducerCallbacks(specialization.root, componentSource, call)
         specialization.root = mergeSpecializedImports(specialization.root, componentSource, call, specialization.effects)
@@ -1779,7 +1895,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       for (const call of calls) {
         const specialization = reducerComponentCalls.has(call)
           ? componentSpecializations.get(call)
-          : specializeComponentCall(call, component.function, sourceFile, factory, context, fail, "Keyed list", true)
+          : specialize(call, component.function, "Keyed list", true)
         registerRowHooks(call, specialization)
         if (specialization.effects.length && !keyedComponentCalls.has(call)) fail(call, "Effectful keyed row components may only be used directly as keyed map rows")
         specialization.component = component.function
@@ -1815,7 +1931,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             const chain = [...trail, component].map(entry => entry.name?.text || "anonymous").join(" -> ")
             fail(node, `Keyed list component cycle: ${chain}`)
           }
-          const specialization = specializeComponentCall(node, component, sourceFile, factory, context, fail, "Keyed list", true)
+          const specialization = specialize(node, component, "Keyed list", true)
           registerRowHooks(node, specialization)
           specialization.root = expandKeyedComponents(specialization.root, component.getSourceFile(), [...trail, component], specialization)
           if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), node, specialization.effects))
@@ -1860,7 +1976,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
     for (const { node, parts: originalParts } of rawRenderedLists) {
       if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
-      const specialization = componentSpecializations.get(originalParts.root) ?? { root: originalParts.root, calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [] }
+      const specialization = componentSpecializations.get(originalParts.root) ?? { root: originalParts.root, calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [], ordinaryStates: [] }
       const componentSource = specialization.componentSource ?? sourceFile
       specialization.root = expandKeyedComponents(specialization.root, componentSource, specialization.component ? [specialization.component] : [], specialization)
       if (specialization.imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, originalParts.root, specialization.effects))
@@ -1880,7 +1996,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         callback.parent = originalParts.callback.parent
       }
       callback = prepareListCallback(callback, root, specialization, originalParts.item)
-      const parts = { ...originalParts, root, callback }
+      const parts = { ...originalParts, root, callback, analysisStateOwners: new Map([...stateOwnersForNode(originalParts.root), ...[...specialization.rowStates, ...specialization.ordinaryStates].map(state => [state.state, state.analysisOwner])]) }
       for (const calculation of specialization.calculations) {
         ts.setParentRecursive(calculation, false)
         calculation.parent = callback
@@ -1908,6 +2024,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       )
     }
 
+    let activeStateOwners
+    const visitWithStateOwners = (node, stateOwners) => {
+      const previous = activeStateOwners
+      activeStateOwners = new Map([...(previous ?? []), ...stateOwners])
+      const result = ts.visitNode(node, visitor)
+      activeStateOwners = previous
+      return result
+    }
     const visitor = node => {
       if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && customHookPrivateFields.has(node)) {
         const privateFields = customHookPrivateFields.get(node)
@@ -1920,7 +2044,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         return ts.visitEachChild(factory.updateBlock(node, [...setterHookHelpers.get(node), ...node.statements]), visitor, context)
       }
       if (specializedDeclarations.has(node)) return node
-      if (componentSpecializations.has(node)) return ts.visitNode(componentSpecializations.get(node).root, visitor)
+      if (componentSpecializations.has(node)) {
+        const specialization = componentSpecializations.get(node)
+        const stateOwners = new Map([...stateOwnersForNode(node), ...[...specialization.rowStates, ...specialization.ordinaryStates].map(state => [state.state, state.analysisOwner])])
+        return visitWithStateOwners(specialization.root, stateOwners)
+      }
 
       if (hasLinkElements && (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) && isStylesheetLink(node)) {
         fail(node, "Stylesheets must be placed under src/ or declared in kudzu.config styles so Kudzu can emit them in <head>")
@@ -2153,7 +2281,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const arguments_ = [
             listSource,
             listParts.keyField === null ? factory.createNull() : factory.createStringLiteral(listParts.keyField),
-            ts.visitNode(listParts.callback, visitor),
+            visitWithStateOwners(listParts.callback, listParts.analysisStateOwners ?? new Map()),
             factory.createStringLiteral(listParts.ownerField ?? ""),
             jsonExpression(listParts.selector ?? [], factory),
             listParts.indexed ? factory.createTrue() : factory.createFalse()
@@ -2195,6 +2323,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.text)) {
         const setters = settersForNode(node, settersByFunction)
         const event = descriptors.compileEvent(node.initializer.expression, {
+          owner: fallbackOwner(node),
+          stateOwners: activeStateOwners ?? stateOwnersForNode(node),
           setters,
           reducers: reducersForNode(node, reducersByFunction),
           functions: functionsForNode(node),
@@ -2476,7 +2606,8 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
           callback.parent = nested.callback.parent
         }
         callback = prepareListCallback(callback, root, specialization ?? { hookDeclarations: [], effects: [] }, nested.item)
-        const nestedParts = { ...nested, root, callback, state: parts.state, nested: true }
+        const specializedStates = [...(specialization?.rowStates ?? []), ...(specialization?.ordinaryStates ?? [])]
+        const nestedParts = { ...nested, root, callback, state: parts.state, nested: true, analysisStateOwners: new Map([...(parts.analysisStateOwners ?? []), ...specializedStates.map(state => [state.state, state.analysisOwner])]) }
         for (const calculation of specialization?.calculations ?? []) {
           ts.setParentRecursive(calculation, false)
           calculation.parent = callback
@@ -2704,6 +2835,13 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   }
   const restEntries = [...props].filter(([prop]) => !acceptedProps.has(prop))
   if (!rest) for (const [prop] of restEntries) fail(call, `Unknown ${label.toLowerCase()} component prop "${prop}"`)
+  const propAnalysis = elements.map(element => ({
+    name: (element.propertyName ?? element.name).getText(),
+    local: element.name.getText(),
+    provided: element.dotDotDotToken ? restEntries.length > 0 : props.has((element.propertyName ?? element.name).text),
+    ...(element.dotDotDotToken ? { rest: true } : {}),
+    ...(element.initializer ? { hasDefault: true, defaultApplied: !props.has((element.propertyName ?? element.name).text) } : {})
+  }))
 
   let returned
   const calculations = []
@@ -2713,7 +2851,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   const rowRefs = []
   const ordinaryStates = []
   const ordinaryRefs = []
-  let usesComponentId = false
+  const ordinaryIds = []
   if (!ts.isBlock(component.body)) {
     returned = component.body
   } else {
@@ -2748,8 +2886,8 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         synthesizeTree(initialValue)
         const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseState" : "__kRowUseState"), undefined, [initialValue])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(binding, undefined, undefined, initializer)], ts.NodeFlags.Const)))
-        if (ordinaryHooks) ordinaryStates.push({ state, setter })
-        else rowStates.push({ state, setter })
+        if (ordinaryHooks) ordinaryStates.push({ state, setter, source: declaration })
+        else rowStates.push({ state, setter, source: declaration })
         continue
       }
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useRef") {
@@ -2761,7 +2899,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         substitutions.set(declaration.name.text, factory.createIdentifier(name))
         const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseRef" : "__kRowUseRef"), declaration.initializer.typeArguments?.map(type => cloneAst(type, factory, context)), [factory.createNull()])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(factory.createIdentifier(name), undefined, undefined, initializer)], ts.NodeFlags.Const)))
-        refs.push({ name })
+        refs.push({ name, source: declaration })
         continue
       }
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useId") {
@@ -2771,7 +2909,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         substitutions.set(declaration.name.text, factory.createIdentifier(name))
         const initializer = factory.createCallExpression(factory.createIdentifier("__kComponentUseId"), undefined, [])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(factory.createIdentifier(name), undefined, undefined, initializer)], ts.NodeFlags.Const)))
-        usesComponentId = true
+        ordinaryIds.push({ name, source: declaration })
         continue
       }
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
@@ -2812,7 +2950,10 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     rowRefs,
     ordinaryStates,
     ordinaryRefs,
-    usesComponentId
+    ordinaryIds,
+    propExpressions: props,
+    props: propAnalysis,
+    usesComponentId: ordinaryIds.length > 0
   }
 }
 

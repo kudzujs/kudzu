@@ -202,6 +202,13 @@ This queue orders the next investigations by general migration value. Start only
 - Same-named state in separate owners no longer aliases in IR, shared setter environments reuse signal identity, and synthetic specialized callbacks receive no fabricated source position.
 - For unchanged source input, Counter HTML, route plans, command runtime, and generated artifacts remain byte-identical to 0.8.16; no browser capability or source syntax changed.
 
+### Completed In 0.8.18
+
+- Every compiled non-Worker source retains an ordered JSON-safe component analysis result covering lexical state/setter pairs, destructured props, object refs, deterministic IDs, and supported component specializations.
+- Command signals now resolve ownership per referenced state rather than per setter-map identity, preserving distinct parent, specialized-child, keyed-row, reducer, custom-hook, and Context Provider relationships.
+- Specialized prop records retain default application and direct signal links; imported hook declarations keep source provenance while synthetic ownership invents no source range.
+- `core.mjs` remains authoritative for final route/layout state, ref, ID, conditional, and keyed allocation. Repeated, conditional, imported, setter-adapter, Context, and reducer fixtures preserve their existing ownership and deploy output.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

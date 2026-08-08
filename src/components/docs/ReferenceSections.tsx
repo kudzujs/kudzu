@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Benchmark provenance</strong><span>The cross-framework tables below are historical matched snapshots from a local benchmark workspace that is not checked into this repository. Their runner, competitor fixtures, and raw arrays are unavailable in the current checkout, so they are not current 0.8.17 measurements and cannot be reproduced by CI. Architecture differences are stated with each table.</span></div>
+    <div className="docs-callout"><strong>Benchmark provenance</strong><span>The cross-framework tables below are historical matched snapshots from a local benchmark workspace that is not checked into this repository. Their runner, competitor fixtures, and raw arrays are unavailable in the current checkout, so they are not current 0.8.18 measurements and cannot be reproduced by CI. Architecture differences are stated with each table.</span></div>
     <h3>Tracked Worker fixture</h3>
     <CodeBlock language="shell" code={`npm run benchmark
 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\

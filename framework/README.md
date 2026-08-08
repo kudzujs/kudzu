@@ -32,6 +32,7 @@ Reduced Zustand migration stores lower to one ordinary layout-lifetime state slo
 
 - `build.mjs`: TSX compilation, static, `getStaticPaths`, and runtime-fallback routes, base paths, CSS collection, post-build hooks, behavior extraction, and static HTML output.
 - `compiler/ast-helpers.mjs`: shared TypeScript AST traversal, scope, binding, effect-return, and source-location helpers used by compiler passes.
+- `compiler/analysis/component-analysis.mjs`: ordered JSON-safe state, setter, prop, ref, ID, and component-specialization ownership results.
 - `compiler/animation-frame-pass.mjs`: effect-owned animation-frame ref validation and plain mutable effect-scope lowering.
 - `compiler/browser-signal-passes.mjs`: static media-query external-store and navigator capability-condition normalization.
 - `compiler/collection-analysis.mjs`: pure collection expression IR, selector pipeline, alias, and imported-transform analysis.

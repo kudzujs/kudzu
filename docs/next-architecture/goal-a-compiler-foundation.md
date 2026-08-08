@@ -2,7 +2,7 @@
 
 ## Status
 
-The `0.8.17` command vertical slice is complete. Goal A continues with the planned `0.8.18` state/props/component analysis result while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
+The `0.8.18` state/props/component ownership result is complete. Goal A continues with the planned `0.8.19` HandlerIR, BindingIR, and DerivedIR seam while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
 
 ## Target Boundaries
 
@@ -77,7 +77,7 @@ Analysis produces plain data:
 }
 ```
 
-The `0.8.17` slice intentionally records only lexical signal identity and command handlers. Initial values, state scope, bindings, derived values, effects, and keyed blocks join ModuleIR in their later planned patches; `core.mjs` remains authoritative for those values today.
+The `0.8.18` source result adds ordered JSON-safe component ownership beside ModuleIR: lexical state/setter pairs, props, refs, IDs, and supported specialization records carry numeric slots, direct signal links, and source provenance. Initial values, final state IDs, bindings, derived values, effects, and keyed blocks join their explicit results in later planned patches; `core.mjs` remains authoritative for route allocation today.
 
 Source codegen lowers that data through the existing build ABI:
 

@@ -1,17 +1,15 @@
 import ts from "typescript"
+import { createComponentAnalysis } from "./analysis/component-analysis.mjs"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
 import { createModuleIR, registerCommandHandler } from "./ir/module-ir.mjs"
 
 export function createSemanticArtifact(file) {
-  return { moduleIR: createModuleIR(file), nativeHandlers: [], effectHandlers: [], reactiveBindings: [], listExpressions: [], clientImports: new Set() }
+  return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file), nativeHandlers: [], effectHandlers: [], reactiveBindings: [], listExpressions: [], clientImports: new Set() }
 }
 
 export function createDescriptorSession({ semantic, handlerUrl, factory, context, compileEventCommand, isPrimitiveLiteral, rejectWorkerConstructions, sourceName = source => source.fileName }) {
   const { moduleIR, nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
-  const stateScopes = new WeakMap()
-  let nextStateScope = 0
-
   function compileListExpression(read, expression, item, index, states = new Set()) {
     const exportName = `listExpression${listExpressions.length}`
     listExpressions.push({ exportName, expression, item, index, states })
@@ -87,10 +85,10 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     ]
   }
 
-  function compileEvent(expression, { setters, reducers, functions, listItem, importBindings }) {
+  function compileEvent(expression, { owner = "module", stateOwners = new Map(), setters, reducers, functions, listItem, importBindings }) {
     if (ts.isIdentifier(expression)) expression = functions.get(expression.text)
     if (!expression || (!ts.isArrowFunction(expression) && !ts.isFunctionExpression(expression) && !ts.isFunctionDeclaration(expression))) return undefined
-    const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters)
+    const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters, stateOwners, owner)
     if (optimized) return optimized
     rejectWorkerConstructions(expression)
     const descriptor = compileNativeCallback(expression, { setters, reducers, entries: nativeHandlers, importBindings, prefix: "handler", listItem })
@@ -132,15 +130,13 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     }
   }
 
-  function compileOptimizedEvent(expression, setters) {
+  function compileOptimizedEvent(expression, setters, stateOwners, owner) {
     const statements = ts.isBlock(expression.body) ? expression.body.statements : [factory.createExpressionStatement(expression.body)]
     const commands = statements.map(statement => ts.isExpressionStatement(statement) ? compileEventCommand(statement.expression, setters) : undefined)
     if (!commands.length || commands.some(command => !command)) return undefined
     const original = ts.getOriginalNode(expression)
     const source = original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
-    if (!stateScopes.has(setters)) stateScopes.set(setters, `state:${nextStateScope++}`)
-    const scope = stateScopes.get(setters)
-    const handler = registerCommandHandler(moduleIR, commands, source, scope)
+    const handler = registerCommandHandler(moduleIR, commands.map(command => ({ ...command, owner: stateOwners.get(command.state) ?? owner })), source, owner)
     return generateCommandBehavior(moduleIR, handler, factory)
   }
 

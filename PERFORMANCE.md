@@ -1,5 +1,38 @@
 # Performance Records
 
+## 0.8.18 Explicit Component Ownership
+
+Measured UTC 2026-08-08 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.17` tag `d48f0cf` and the `0.8.18` compiler-only candidate used detached worktrees on the same temporary volume with identical installed dependencies.
+
+Both targets received one warm-up followed by 21 clean `worker-effects` production builds in round-robin alternating order. Cleanup remained outside timing. The distributions overlap; the 2.43% candidate median difference remains below the 5% architecture gate and does not establish a material regression.
+
+| Target | Build median | Worker raw / gzip | Window raw / gzip |
+|---|---:|---:|---:|
+| 0.8.17 baseline | 770.9 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+| 0.8.18 candidate | 789.6 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+
+```text
+0.8.17: [770.9,705.6,817.1,768.5,760.2,839.8,758.3,756.1,960.7,834.6,707.9,706.5,582.9,463.5,625.5,1004.2,846.9,821.3,837.5,876.9,810.8]
+0.8.18: [753.9,726.4,879.3,851.5,942.8,949.3,758.4,761.3,794.3,782.2,620.6,622.9,610.8,726.8,732.3,833.0,789.6,816.3,845.2,811.3,825.0]
+```
+
+Before release-content updates, the complete `dist` and `.kudzu` trees were byte-identical. The Worker and window graphs remain byte-identical. This measurement covers compiler clean-build startup and artifact size, not browser interaction latency or cross-framework performance.
+
+Representative fixture builds also retained identical file lists and SHA-256 content against `v0.8.17`. Deploy `dist` bytes matched exactly; `.kudzu` hashes matched after replacing only each detached worktree's absolute root in existing source-location strings. The complete compared lists were:
+
+```text
+bindings: dist/assets/handlers/pages/index.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/index.html, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs
+conditionals: dist/assets/handlers/pages/index.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs
+nested-component-lists: dist/assets/effects/index.js, dist/assets/handlers/pages/index.js, dist/assets/kudzu-effect.js, dist/assets/kudzu-list.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, .kudzu/ImportedItem.mjs, .kudzu/ImportedShell.mjs, .kudzu/kudzu-plan.json, .kudzu/label.mjs, .kudzu/pages/index.mjs
+effects: dist/api/items.json, dist/assets/effects/index.js, dist/assets/effects/oak/index.js, dist/assets/effects/only/index.js, dist/assets/handlers/pages/[slug].js, dist/assets/handlers/pages/index.js, dist/assets/handlers/pages/only.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-effect.js, dist/assets/kudzu-list.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/index.html, dist/oak/index.html, dist/only/index.html, dist/static/index.html, .kudzu/kudzu-plan.json, .kudzu/pages/[slug].mjs, .kudzu/pages/index.mjs, .kudzu/pages/only.mjs, .kudzu/pages/static.mjs
+worker-effects: dist/assets/effects/dashboard/index.js, dist/assets/handlers/pages/dashboard.js, dist/assets/kudzu-effect.js, dist/assets/kudzu-navigation.js, dist/assets/kudzu.js, dist/assets/workers/telemetry.worker-BVG2SA55.js, dist/dashboard/index.html, dist/plain/index.html, dist/static/index.html, .kudzu/Shell.mjs, .kudzu/chart.mjs, .kudzu/kudzu-plan.json, .kudzu/pages/dashboard.mjs, .kudzu/pages/plain.mjs, .kudzu/pages/static.mjs, .kudzu/telemetry/downsample.mjs, .kudzu/telemetry/ring.mjs
+runtime-params: dist/assets/effects/orgs/[org]/items/[id]/index.js, dist/assets/handlers/pages/orgs/[org]/items/[id].js, dist/assets/kudzu-binding.js, dist/assets/kudzu-effect.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/orgs/[org]/items/[id]/index.js, dist/assets/params/orgs/[org]/items/[id]/index.js, dist/orgs/[org]/items/[id]/index.html, dist/orgs/acme/items/new/index.html, dist/rewrites.json, .kudzu/kudzu-plan.json, .kudzu/pages/orgs/[org]/items/[id].mjs, .kudzu/pages/orgs/acme/items/new.mjs
+navigation: dist/[section]/[id]/index.html, dist/assets/effects/[section]/[id]/index.js, dist/assets/effects/broken/index.js, dist/assets/effects/cart/index.js, dist/assets/effects/chart/index.js, dist/assets/effects/items/[id]/index.js, dist/assets/effects/items/new/index.js, dist/assets/effects/product/index.js, dist/assets/handlers/Shell.js, dist/assets/handlers/chunks/chunk-VIS4MAAV.js, dist/assets/handlers/pages/cart.js, dist/assets/handlers/pages/chart.js, dist/assets/handlers/pages/items/[id].js, dist/assets/handlers/pages/product.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-effect.js, dist/assets/kudzu-list.js, dist/assets/kudzu-native.js, dist/assets/kudzu-navigation.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/items/[id]/index.js, dist/assets/native/product/index.js, dist/assets/params/[section]/[id]/index.js, dist/assets/params/items/[id]/index.js, dist/broken/index.html, dist/browser-test.js, dist/cart/index.html, dist/chart/index.html, dist/items/[id]/index.html, dist/items/new/index.html, dist/outside/index.html, dist/product/index.html, .kudzu/Shell.mjs, .kudzu/chart.mjs, .kudzu/kudzu-plan.json, .kudzu/pages/[section]/[id].mjs, .kudzu/pages/broken.mjs, .kudzu/pages/cart.mjs, .kudzu/pages/chart.mjs, .kudzu/pages/items/[id].mjs, .kudzu/pages/items/new.mjs, .kudzu/pages/outside.mjs, .kudzu/pages/product.mjs
+callback-ref-ownership: dist/assets/effects/index.js, dist/assets/handlers/pages/index.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-effect.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, .kudzu/ImportedAgeInput.mjs, .kudzu/ImportedButton.mjs, .kudzu/ImportedSearch.mjs, .kudzu/ImportedTooltip.mjs, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs
+context-actions: dist/assets/handlers/pages/index.js, dist/assets/kudzu-list.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, dist/static/index.html, .kudzu/kudzu-plan.json, .kudzu/notes.mjs, .kudzu/pages/index.mjs, .kudzu/pages/static.mjs, .kudzu/useNotes.mjs
+reducer: dist/assets/handlers/pages/index.js, dist/assets/handlers/pages/lazy.js, dist/assets/kudzu-binding.js, dist/assets/kudzu-list.js, dist/assets/kudzu-native.js, dist/assets/kudzu-serialization.js, dist/assets/kudzu-style.js, dist/assets/kudzu.js, dist/assets/native/index.js, dist/index.html, dist/lazy/index.html, .kudzu/ImportedControls.mjs, .kudzu/ImportedInput.mjs, .kudzu/ImportedItem.mjs, .kudzu/kudzu-plan.json, .kudzu/pages/index.mjs, .kudzu/pages/lazy.mjs, .kudzu/todoReducer.mjs, .kudzu/todoSupport.mjs
+```
+
 ## 0.8.17 Command ModuleIR
 
 Measured UTC 2026-08-08 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.16` tag `98a4ad9` and the `0.8.17` release candidate used detached worktrees on the same temporary volume with identical installed dependencies.

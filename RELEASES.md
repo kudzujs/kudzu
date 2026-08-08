@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.8.18 - Explicit component ownership
+
+Kudzu 0.8.18 completes the next Goal A source-analysis seam: state, setters, props, refs, IDs, and supported component specializations now have one ordered JSON-safe ownership result without changing final route allocation or deploy behavior.
+
+### Changed in 0.8.18
+
+- Every compiled non-Worker source retains component analysis alongside its transformed build module and optional handler module; Worker graphs keep their existing dedicated result.
+- Lexical owners record ordered state and setter slots, destructured prop shape, object refs, deterministic IDs, and honest source ranges.
+- Specialized calls record supplied/defaulted props, generated state/ref/ID ownership, and direct links to parent, reducer, custom-hook, or Context signals.
+- Command IR resolves owner identity per state command instead of assigning one setter-map scope to an entire handler. Mixed parent/child and nested keyed commands remain distinct.
+- Context consumer signals point to a stable Provider source owner; repeated imported and structural specializations retain independent compile-time ownership.
+- AST `WeakMap` indexes remain private to immediate source rewriting. They do not cross the JSON-safe source result or become a runtime component model.
+
+### Goal A boundary
+
+- `core.mjs` still executes transformed components at build time and allocates final route/layout state, ref, ID, conditional, and keyed ownership in the same order.
+- Initial values, browser state IDs, complete HTML, and the serializable route plan remain authoritative runtime inputs; the component result does not duplicate them.
+- HandlerIR, BindingIR, and DerivedIR are the planned `0.8.19` seam. KeyedBlockIR and EffectIR remain on their existing paths until `0.8.20` and `0.8.21`.
+- No accepted syntax, public API, VDOM, hydration, component rerender, or retained browser component tree was added.
+
+### Validation
+
+- The complete suite passes 167/167 tests, including JSON round-trip, per-signal owner, repeated/conditional/imported state, setter adapter, ref, ID, Context, reducer, and nested keyed ownership contracts.
+- Before release-content updates, the complete `dist` and `.kudzu` trees were byte-identical to `v0.8.17`.
+- Worker and window graphs remain byte-identical. A same-volume 21-run interleaved comparison measured a 2.43% candidate median difference, below the 5% architecture gate; raw arrays and environment are recorded in `PERFORMANCE.md`.
+- `create-kudzu` remains 0.1.101 because its unchanged template already accepts `@kudzujs/core@^0.8.15`.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.18
+```
+
 ## 0.8.17 - Command ModuleIR
 
 Kudzu 0.8.17 lands the first real Goal A vertical slice: supported command handlers are recognized as plain JSON-safe data, registered in a sparse per-source ModuleIR, and lowered back through focused source codegen without changing deploy output.

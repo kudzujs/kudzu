@@ -17,14 +17,15 @@ let browserPort = 10000 + process.pid % 10000
 const nextBrowserPort = () => browserPort++
 
 test("builds TSX into HTML and behavior commands without React", async () => {
-  await build({ quiet: true })
+  const buildResult = await build({ quiet: true })
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.17/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.18/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
+  const homeAnalysis = buildResult.sourceResults.find(result => result.file === "src/pages/index.tsx").componentAnalysis
 
   assert.match(html, /React-shaped input.*Static-first output/s)
   assert.match(html, /property="og:image"/)
@@ -36,9 +37,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.17"/)
-  assert.match(release, /Kudzu 0\.8\.17.*Plain command data.*The same deploy program/s)
-  assert.match(release, /COMMAND MODULE IR.*WHAT CHANGED.*npm install @kudzujs\/core@\^0\.8\.17/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.18"/)
+  assert.match(release, /Kudzu 0\.8\.18.*Own state explicitly.*Allocate it exactly as before/s)
+  assert.match(release, /COMPONENT OWNERSHIP.*WHAT CHANGED.*npm install @kudzujs\/core@\^0\.8\.18/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -48,6 +49,8 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.equal(runtime.trim().split("\n").length, 1)
   assert.doesNotMatch(runtime, /patchBinding|data-k-bind|deserialize/)
   assert.doesNotMatch([html, docs, runtime].join("\n"), /sessionStorage|__kudzu_state|snapshotState|restoreState|__kudzu_dev/)
+  assert.deepEqual(homeAnalysis.owners.find(owner => owner.name === "HomePage").states.map(state => state.name), ["count"])
+  assert.deepEqual(JSON.parse(JSON.stringify(homeAnalysis)), homeAnalysis)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.doesNotMatch(html, /data-k-state=/)

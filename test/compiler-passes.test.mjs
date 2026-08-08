@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import ts from "typescript"
+import { createComponentAnalysis, createComponentAnalysisSession } from "../framework/compiler/analysis/component-analysis.mjs"
 import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
 import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
@@ -94,7 +95,7 @@ test("registers JSON-safe command ModuleIR with deterministic slots", () => {
   const moduleIR = createModuleIR("src/pages/counter.tsx")
   registerCommandHandler(moduleIR, [{ operation: "add", state: "total", value: 1 }], { file: "src/pages/counter.tsx", start: 20, end: 45 }, "component:0")
   registerCommandHandler(moduleIR, [{ operation: "set", state: "count", value: -2 }], { file: "src/pages/counter.tsx", start: 50, end: 74 }, "component:0")
-  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", value: 3 }], undefined, "component:1")
+  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", owner: "component:1", value: 3 }], undefined, "component:0")
 
   assert.deepEqual(moduleIR, {
     version: 1,
@@ -131,7 +132,7 @@ test("generates the existing command behavior AST from HandlerIR", () => {
   assert.equal(ts.createPrinter().printNode(ts.EmitHint.Expression, generateCommandBehavior(moduleIR, signed), source), `__kBehavior([["set", count, +5], ["add", count, -0]])`)
 })
 
-test("keys command signals by state-owner identity", () => {
+test("keys command signals by explicit state owner", () => {
   const source = ts.createSourceFile("owners.ts", `
 const first = () => setCount(count + 1)
 const second = () => setCount(count + 1)
@@ -150,18 +151,41 @@ const independent = () => setCount(count + 1)
       rejectWorkerConstructions: () => {}
     })
     const shared = new Map([["setCount", "count"]])
-    session.compileEvent(handlers[0], { setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
-    session.compileEvent(handlers[1], { setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
-    session.compileEvent(handlers[2], { setters: new Map(shared), reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    session.compileEvent(handlers[0], { owner: "owner:0", setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    session.compileEvent(handlers[1], { owner: "owner:0", setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    session.compileEvent(handlers[2], { owner: "owner:1", setters: new Map(shared), reducers: new Map(), functions: new Map(), importBindings: new Map() })
     return file
   }])
   result.dispose()
 
   assert.deepEqual(semantic.moduleIR.signals, [
-    { slot: 0, key: "state:0:count", debugName: "count" },
-    { slot: 1, key: "state:1:count", debugName: "count" }
+    { slot: 0, key: "owner:0:count", debugName: "count" },
+    { slot: 1, key: "owner:1:count", debugName: "count" }
   ])
   assert.deepEqual(semantic.moduleIR.handlers.map(handler => handler.commands[0].signal), [0, 0, 1])
+})
+
+test("records JSON-safe component ownership and specialization results", () => {
+  const analysis = createComponentAnalysis("src/pages/index.tsx")
+  const session = createComponentAnalysisSession(analysis)
+  const page = {}
+  const child = {}
+  session.registerOwner(page, { kind: "component", name: "Page", props: [], source: { file: "src/pages/index.tsx", start: 10, end: 100 } })
+  session.registerState(page, { name: "count", setter: "setCount", kind: "state", source: { file: "src/pages/index.tsx", start: 25, end: 55 } })
+  session.registerState(page, { name: "count", setter: "dispatch", kind: "reducer" })
+  session.registerRef(page, { name: "buttonRef" })
+  session.registerId(page, { name: "labelId" })
+  session.registerOwner(child, { kind: "specialized", name: "KSetterComponent50", props: [] })
+  session.registerState(child, { name: "value", setter: "setValue", kind: "component" })
+  session.registerSpecialization({ kind: "Setter-callback", owner: 0, props: [{ name: "onChange", local: "onChange", provided: true }], states: [{ name: "value", setter: "setValue", kind: "component" }], refs: [{ name: "inputRef", kind: "component" }], ids: [{ name: "inputId" }] })
+
+  assert.deepEqual(analysis.owners.map(owner => [owner.slot, owner.name, owner.states.map(state => state.name), owner.setters.map(setter => [setter.name, setter.signal]), owner.refs.map(ref => ref.name), owner.ids.map(id => id.name)]), [
+    [0, "Page", ["count"], [["setCount", 0], ["dispatch", 0]], ["buttonRef"], ["labelId"]],
+    [1, "KSetterComponent50", ["value"], [["setValue", 0]], [], []]
+  ])
+  assert.equal(analysis.specializations[0].owner, 0)
+  assertJsonData(analysis)
+  assert.deepEqual(JSON.parse(JSON.stringify(analysis)), analysis)
 })
 
 test("registers deterministic per-source handler, binding, and list descriptors", () => {
