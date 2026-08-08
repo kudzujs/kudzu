@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.15 - Compiler architecture.** Kudzu's normalization passes, React and Router migration analysis, Worker compiler, effect and handler codegen, and development server now have explicit module boundaries while preserving generated output and runtime behavior. Read the [release notes](./RELEASES.md#0815---compiler-architecture) or open the [release page](https://kudzujs.cloud/releases/0.8.15).
+**Latest release: 0.8.16 - Compiler analysis boundaries.** Per-source descriptors, pure collection analysis, command specialization, Zustand migration, and route capability planning now have focused compiler ownership while preserving generated output and runtime behavior. Read the [release notes](./RELEASES.md#0816---compiler-analysis-boundaries), open the [release page](https://kudzujs.cloud/releases/0.8.16), or follow the [next architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

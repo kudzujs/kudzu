@@ -7,14 +7,19 @@ import ts from "typescript"
 import { normalizeEffectAnimationFrameRefs } from "./compiler/animation-frame-pass.mjs"
 import { bindingNames, containsJsx, effectReturns, functionVarDeclaresName, importDeclarationNames, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceLocation, sourceNodeError, statementDeclaresName, unwrapExpression } from "./compiler/ast-helpers.mjs"
 import { normalizeMediaQueryExternalStores, normalizeNavigatorCapabilityConditions } from "./compiler/browser-signal-passes.mjs"
+import { analyzeCollectionPipeline, collectionExpression, collectionParameters, isArrayFromCall, mutatingCollectionMethods as mutatingListMethods, pureCollectionMathMethods as pureMathMethods, pureCollectionMethods as pureListMethods } from "./compiler/collection-analysis.mjs"
 import { normalizeCustomHookTimerRefs } from "./compiler/custom-hook-timer-pass.mjs"
+import { captureNames, createDescriptorSession, createSemanticArtifact, nativeCaptureNames, referencedReducerDispatches, referencedStateNames } from "./compiler/descriptor-session.mjs"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
+import { createEventCommandCompiler } from "./compiler/event-command-pass.mjs"
 import { createHandlerCodegen } from "./compiler/handler-codegen.mjs"
 import { applyNormalizationPasses } from "./compiler/normalization-pipeline.mjs"
 import { createReactMigrationPass, reactMemoExpression } from "./compiler/react-migration-pass.mjs"
 import { normalizeRenderControlFlow } from "./compiler/render-control-pass.mjs"
 import { createRouterPass } from "./compiler/router-pass.mjs"
+import { planRouteCapabilities, usesRouteDependencyRuntime } from "./compiler/route-capability-planner.mjs"
 import { createWorkerCompiler } from "./compiler/worker-compiler.mjs"
+import { createZustandPass } from "./compiler/zustand-pass.mjs"
 import { renderPage } from "./core.mjs"
 import { parseDevHost, parseDevPort, startDevServer } from "./dev-server.mjs"
 
@@ -26,6 +31,8 @@ const pagesDirectory = join(sourceDirectory, "pages")
 const workDirectory = join(root, ".kudzu")
 const outputDirectory = join(root, "dist")
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
+const compileEventCommand = createEventCommandCompiler({ isPrimitiveLiteral: isPrimitiveDefaultLiteral, synthesizeSerializableStateLiteral })
+const { analyzeZustandStores, normalizeZustandMigrationSyntax } = createZustandPass({ isSerializableStateLiteral, nativeCaptureNames, sourceDirectory })
 
 export async function build({ quiet = false, minify = true } = {}) {
   const config = await loadConfig()
@@ -73,14 +80,8 @@ export async function build({ quiet = false, minify = true } = {}) {
     if (handlerModule) handlerModules.push(handlerModule)
   }
 
-  let behaviorCount = 0
-  let regularBehaviorCount = 0
-  let bindingCount = 0
-  let listCount = 0
-  let listStyleCount = 0
-  let regularStateSeedCount = 0
-  let dependencyStateSeedCount = 0
   const plans = []
+  const routeCapabilities = new Map()
   const pageEntries = []
   const effectEntries = []
   const nativeEntries = []
@@ -161,27 +162,24 @@ export async function build({ quiet = false, minify = true } = {}) {
         navigationGroup.hasEffects ||= result.hasEffects
         navigationGroup.hasParams ||= result.hasParams
       }
-      const hasDependencies = result.plan.effects.some(effect => effect.dependencies?.length)
-      const usesDependencyRuntime = !navigable && hasDependencies && !result.plan.effects.some(effect => effect.owner) && !result.hasBindings && !result.hasLists && !result.plan.events.some(event => event.native)
+      const usesDependencyRuntime = usesRouteDependencyRuntime({ plan: result.plan, navigable, hasBindings: result.hasBindings, hasLists: result.hasLists })
       pageEntries.push({ route, html: result.html, usesDependencyRuntime })
       plans.push({ route: routePath, ...result.plan })
+      routeCapabilities.set(routePath, {
+        navigable,
+        usesDependencyRuntime,
+        hasBehaviors: result.hasBehaviors,
+        hasBindings: result.hasBindings,
+        hasLists: result.hasLists,
+        hasListStyles: result.hasListStyles,
+        hasStateSeed: result.hasStateSeed
+      })
       if (result.hasParams) paramEntries.push({ path: paramPath, schema: runtimeSchema, params: result.plan.params, searchParams: result.plan.searchParams, searchParamsWritable: result.plan.searchParamsWritable, usesDependencyRuntime, navigable })
       if (result.hasEffects) effectEntries.push({ path: effectPath, effects: runtimeEffects(result.plan.effects, navigable), paramPath: result.hasParams ? paramPath : undefined, usesDependencyRuntime, navigable })
       if (result.plan.events.some(event => event.native)) nativeEntries.push({
         path: nativePath,
         modules: [...new Set(result.plan.events.filter(event => event.native).map(event => event.native.module))]
       })
-      if (result.hasBehaviors) {
-        behaviorCount++
-        if (!usesDependencyRuntime) regularBehaviorCount++
-      }
-      if (result.hasBindings) bindingCount++
-      if (result.hasLists) listCount++
-      if (result.hasListStyles) listStyleCount++
-      if (result.hasStateSeed) {
-        if (usesDependencyRuntime) dependencyStateSeedCount++
-        else regularStateSeedCount++
-      }
     }
   }
 
@@ -208,43 +206,41 @@ export async function build({ quiet = false, minify = true } = {}) {
     }
     if (module.code.includes("/__kudzu_worker_")) throw new Error(`Worker URL placeholder survived in ${module.path}`)
   }
-  const commandEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.commands).map(event => event.event)))].sort()
-  const nativeEvents = [...new Set(plans.flatMap(plan => plan.events.filter(event => event.native).map(event => event.event)))].sort()
-  const hasTextBindings = plans.some(plan => plan.bindings.some(binding => binding.target === "text"))
-  const hasSvgConditions = plans.some(plan => plan.conditions.some(condition => condition.svg))
-  const hasListConditions = plans.some(plan => plan.lists.some(list => list.conditions))
-  const hasSvgLists = plans.some(plan => plan.lists.some(list => list.svg))
-  const hasDeepListConditions = plans.some(plan => plan.lists.some(list => list.conditionHandlers))
-  const hasListTextRanges = plans.some(plan => plan.lists.some(list => list.textRanges))
-  const hasListAttributes = plans.some(plan => plan.lists.some(list => list.attributes))
-  const hasListEvents = plans.some(plan => plan.lists.some(list => list.events))
-  const hasListExpressions = plans.some(plan => plan.lists.some(list => list.expressions))
-  const hasListExpressionAttributes = plans.some(plan => plan.lists.some(list => list.expressionAttributes))
-  const hasListSeeds = plans.some(plan => plan.lists.some(list => list.seed || list.valueSeed))
-  const hasListEffects = plans.some(plan => plan.lists.some(list => list.effects))
-  const hasListRowHooks = plans.some(plan => plan.lists.some(list => list.rowStates?.length || list.rowRefs?.length))
-  const hasListRowRefs = plans.some(plan => plan.lists.some(list => list.rowRefs?.length))
-  const hasComplexListRowState = plans.some(plan => plan.lists.some(list => list.rowStates?.some(state => state.initialValue !== null && typeof state.initialValue === "object")))
-  const hasNestedLists = plans.some(plan => plan.lists.some(list => list.ownerField))
-  const hasCollectionSelectors = plans.some(plan => plan.lists.some(list => list.selector))
-  const hasCalculatedCollections = plans.some(plan => plan.lists.some(list => list.source))
-  const hasDerivedEffectDependencies = plans.some(plan => plan.effects.some(effect => effect.dependencyExpressions?.length))
-  const hasStaticCollections = plans.some(plan => plan.lists.some(list => list.static))
-  const hasListIndexes = plans.some(plan => plan.lists.some(list => list.indexed))
-  const hasListStableFastPaths = plans.some(plan => plan.lists.some(list => !list.children && !list.ownerField && list.key !== null && !list.indexed && !list.reducer && !list.selector))
-  const hasGeneralListRowHooks = hasListRowRefs || hasComplexListRowState || plans.some(plan => plan.lists.some(list => list.ownerField && (list.rowStates?.length || list.rowRefs?.length)))
-  const hasItemDependencies = plans.some(plan => plan.effects.some(effect => effect.itemDependencies?.length))
-  const hasListAsyncParts = hasListExpressions || hasListExpressionAttributes || hasListConditions
-  const hasListMounts = hasListConditions || hasNestedLists || plans.some(plan => plan.lists.some(list => list.mount))
-  const hasNestedStateCaptures = hasNestedCaptureState(plans)
-  const hasSetterCaptures = hasCaptureType(plans, "setter")
-  const hasEffectCaptures = plans.some(plan => plan.effects.some(effect => Object.keys(effect.scope).length))
-  const hasNativeHandlers = nativeEntries.length > 0
-  const hasEffects = effectEntries.length > 0
-  const hasNavigableEffects = effectEntries.some(entry => entry.navigable)
-  const hasNavigableOwners = effectEntries.some(entry => entry.navigable && entry.effects.some(effect => effect.owner))
-  const hasSharedRuntime = bindingCount || listCount || hasNativeHandlers || navigationRoutes.length
-  const hasDependencyRuntime = pageEntries.some(entry => entry.usesDependencyRuntime)
+  const capabilityManifest = planRouteCapabilities(plans, { routes: routeCapabilities, navigationRouteCount: navigationRoutes.length })
+  const {
+    routes: { behaviors: behaviorCount, regularBehaviors: regularBehaviorCount, regularStateSeeds: regularStateSeedCount, dependencyStateSeeds: dependencyStateSeedCount },
+    events: { command: commandEvents, native: nativeEvents, hasNativeHandlers },
+    bindings: { count: bindingCount, text: hasTextBindings, svgConditions: hasSvgConditions },
+    lists: {
+      count: listCount,
+      styleCount: listStyleCount,
+      conditions: hasListConditions,
+      svg: hasSvgLists,
+      deepConditions: hasDeepListConditions,
+      textRanges: hasListTextRanges,
+      attributes: hasListAttributes,
+      events: hasListEvents,
+      expressions: hasListExpressions,
+      expressionAttributes: hasListExpressionAttributes,
+      seeds: hasListSeeds,
+      effects: hasListEffects,
+      rowHooks: hasListRowHooks,
+      rowRefs: hasListRowRefs,
+      complexRowState: hasComplexListRowState,
+      nested: hasNestedLists,
+      selectors: hasCollectionSelectors,
+      calculated: hasCalculatedCollections,
+      static: hasStaticCollections,
+      indexes: hasListIndexes,
+      stableFastPaths: hasListStableFastPaths,
+      generalRowHooks: hasGeneralListRowHooks,
+      asyncParts: hasListAsyncParts,
+      mounts: hasListMounts
+    },
+    effects: { any: hasEffects, derivedDependencies: hasDerivedEffectDependencies, itemDependencies: hasItemDependencies, captures: hasEffectCaptures, navigable: hasNavigableEffects, navigableOwners: hasNavigableOwners },
+    captures: { nestedState: hasNestedStateCaptures, setter: hasSetterCaptures },
+    runtime: { shared: hasSharedRuntime, dependency: hasDependencyRuntime }
+  } = capabilityManifest
   const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
   for (const entry of pageEntries) {
     const routeDirectory = join(outputDirectory, entry.route)
@@ -631,20 +627,6 @@ addEventListener("popstate", () => ${searchParams.length ? "initializeSearch(loc
 ${searchInitializer}${prefix}${pathname}${query}${suffix}${writer}`
 }
 
-function hasCaptureType(value, type) {
-  if (!value || typeof value !== "object") return false
-  if (value.type === type) return true
-  return (Array.isArray(value) ? value : Object.values(value)).some(entry => hasCaptureType(entry, type))
-}
-
-function hasNestedCaptureState(value, insideCapture = false) {
-  if (!value || typeof value !== "object") return false
-  if (value.type === "state") return insideCapture
-  if (value.type === "array") return value.value.some(entry => hasNestedCaptureState(entry, true))
-  if (value.type === "object") return value.value.some(([, entry]) => hasNestedCaptureState(entry, true))
-  return (Array.isArray(value) ? value : Object.values(value)).some(entry => hasNestedCaptureState(entry, false))
-}
-
 export function specializeRuntime(source, events, hasStateSeed) {
   const specialized = specializeEvents(source, events)
   if (hasStateSeed) return specialized
@@ -695,11 +677,7 @@ function escapeAttribute(value) {
 
 async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences) {
   const source = sourceIndex.get(file)
-  const nativeHandlers = []
-  const effectHandlers = []
-  const reactiveBindings = []
-  const listExpressions = []
-  const clientImports = new Set()
+  const semantic = createSemanticArtifact()
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
   const result = ts.transpileModule(source, {
     fileName: file,
@@ -709,7 +687,7 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences)] },
+    transformers: { before: [createKudzuTransformer({ semantic, handlerUrl: assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences })] },
     reportDiagnostics: true
   })
 
@@ -724,6 +702,7 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
   await mkdir(resolve(output, ".."), { recursive: true })
   await writeFile(output, result.outputText)
 
+    const { nativeHandlers, effectHandlers, reactiveBindings, listExpressions, clientImports } = semantic
   if (!nativeHandlers.length && !effectHandlers.length && !reactiveBindings.length && !listExpressions.length) return undefined
   const callbacks = [...nativeHandlers, ...effectHandlers]
   const moduleSource = printHandlerModule({ callbacks, reactiveBindings, listExpressions, handlerPath })
@@ -819,94 +798,6 @@ function normalizeClsxSyntax(sourceFile, factory, context) {
   return ts.visitNode(sourceFile, visitor)
 }
 
-function analyzeZustandStores(sourceFile) {
-  const createNames = new Set()
-  for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "zustand") continue
-    const bindings = statement.importClause?.namedBindings
-    if (statement.importClause?.name || !bindings || !ts.isNamedImports(bindings)) throw sourceNodeError(statement, sourceFile, "Zustand migration input requires a named create import")
-    for (const entry of bindings.elements) {
-      if (entry.isTypeOnly) continue
-      if ((entry.propertyName ?? entry.name).text !== "create") throw sourceNodeError(entry, sourceFile, "Only Zustand create is supported")
-      createNames.add(entry.name.text)
-    }
-  }
-  const stores = new Map()
-  if (!createNames.size) return stores
-  for (const statement of sourceFile.statements) {
-    if (!ts.isVariableStatement(statement) || !statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue
-    for (const declaration of statement.declarationList.declarations) {
-      if (!ts.isIdentifier(declaration.name) || !declaration.initializer || !ts.isCallExpression(declaration.initializer) || !ts.isIdentifier(declaration.initializer.expression) || !createNames.has(declaration.initializer.expression.text)) continue
-      const callback = declaration.initializer.arguments[0]
-      if (declaration.initializer.arguments.length !== 1 || !callback || (!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) || callback.parameters.length !== 1 || !ts.isIdentifier(callback.parameters[0].name) || callback.asteriskToken || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(declaration.initializer, sourceFile, "Zustand create() requires one synchronous initializer with one set parameter")
-      const body = unwrapExpression(callback.body)
-      if (!ts.isObjectLiteralExpression(body)) throw sourceNodeError(callback.body, sourceFile, "Zustand create() initializer must return one object literal")
-      const data = []
-      const actions = new Map()
-      for (const property of body.properties) {
-        if (!ts.isPropertyAssignment(property) || !property.name || !(ts.isIdentifier(property.name) || ts.isStringLiteral(property.name))) throw sourceNodeError(property, sourceFile, "Zustand store entries must be ordinary properties")
-        const name = property.name.text
-        const value = unwrapExpression(property.initializer)
-        if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) actions.set(name, value)
-        else data.push({ name, value })
-      }
-      if (data.length !== 1 || !isSerializableStateLiteral(data[0].value)) throw sourceNodeError(body, sourceFile, "Zustand migration stores require exactly one directly serializable data property")
-      if (!actions.size) throw sourceNodeError(body, sourceFile, "Zustand migration stores require at least one action")
-      for (const [name, action] of actions) {
-        if (action.asteriskToken || action.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) throw sourceNodeError(action, sourceFile, `Zustand action ${JSON.stringify(name)} must be synchronous`)
-        const capture = [...nativeCaptureNames(action, new Map())].find(entry => entry !== callback.parameters[0].name.text)
-        if (capture) throw sourceNodeError(action, sourceFile, `Zustand action ${JSON.stringify(name)} cannot capture ${JSON.stringify(capture)}`)
-        const validateAction = node => {
-          if (ts.isAwaitExpression(node) || ts.isYieldExpression(node) || ts.isNewExpression(node)) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} must be synchronous`)
-          if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["then", "catch", "finally"].includes(node.expression.name.text)) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} cannot schedule asynchronous updates`)
-          if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === callback.parameters[0].name.text && !isShadowedIdentifier(node.expression, action)) {
-            if (nearestFunction(node) !== action) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} must call set directly`)
-            if (node.arguments.length !== 1) throw sourceNodeError(node, sourceFile, `Zustand action ${JSON.stringify(name)} set() requires exactly one partial update`)
-          }
-          ts.forEachChild(node, validateAction)
-        }
-        validateAction(action.body)
-      }
-      stores.set(declaration.name.text, { name: declaration.name.text, setName: callback.parameters[0].name.text, field: data[0].name, initialValue: data[0].value, actions, declaration })
-    }
-  }
-  const visit = node => {
-    const recognized = ts.isIdentifier(node) && ts.isCallExpression(node.parent) && node.parent.expression === node && [...stores.values()].some(store => store.declaration.initializer === node.parent)
-    if (ts.isIdentifier(node) && createNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile) && !recognized) throw sourceNodeError(node, sourceFile, "Zustand create must directly initialize an exported const store")
-    ts.forEachChild(node, visit)
-  }
-  visit(sourceFile)
-  return stores
-}
-
-function normalizeZustandMigrationSyntax(sourceFile, factory, context) {
-  const stores = analyzeZustandStores(sourceFile)
-  if (!stores.size) {
-    const declaration = sourceFile.statements.find(statement => ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "zustand" && !statement.importClause?.isTypeOnly)
-    if (declaration) throw sourceNodeError(declaration, sourceFile, "Zustand create must directly initialize an exported const store")
-    return sourceFile
-  }
-  const identity = name => `${relative(sourceDirectory, sourceFile.fileName).replaceAll(sep, "/")}#${name}`
-  const visitor = node => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && stores.has(node.name.text)) {
-      const store = stores.get(node.name.text)
-      return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createCallExpression(factory.createIdentifier("__kCreateStore"), undefined, [
-        factory.createStringLiteral(identity(store.name)),
-        factory.createStringLiteral(store.field),
-        store.initialValue,
-        factory.createArrayLiteralExpression([...store.actions.keys()].map(name => factory.createStringLiteral(name)))
-      ]))
-    }
-    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "zustand") return undefined
-    return ts.visitEachChild(node, visitor, context)
-  }
-  const normalized = ts.visitNode(sourceFile, visitor)
-  const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports([factory.createImportSpecifier(false, undefined, factory.createIdentifier("__kCreateStore"))])), factory.createStringLiteral("@kudzujs/core"))
-  const statements = [...normalized.statements]
-  statements.splice(statements.findLastIndex(statement => ts.isImportDeclaration(statement)) + 1, 0, declaration)
-  return factory.updateSourceFile(normalized, statements)
-}
-
 function normalizeLazyStateInitializers(sourceFile, factory, context, file, sourceFiles, sourceIndex) {
   const bindings = new Set()
   for (const statement of sourceFile.statements) {
@@ -986,7 +877,8 @@ function normalizeCompilerSource(sourceFile, { base, context, file, importedColl
   return { sourceFile, customHookTimerStates }
 }
 
-function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings, listExpressions, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, clientImports, workerReferences) {
+function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences }) {
+  const { nativeHandlers, effectHandlers } = semantic
   return context => sourceFile => {
     const hasLinkElements = /<link/i.test(sourceFile.text)
     const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex)
@@ -995,6 +887,15 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
     sourceFile = normalized.sourceFile
     const { customHookTimerStates } = normalized
     const factory = context.factory
+    const descriptors = createDescriptorSession({
+      semantic,
+      handlerUrl,
+      factory,
+      context,
+      compileEventCommand,
+      isPrimitiveLiteral: isPrimitiveDefaultLiteral,
+      rejectWorkerConstructions: expression => workerCompiler.rejectConstructions(expression, expression.getSourceFile(), "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback")
+    })
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
     const packageBindings = packageImportBindings(sourceFile)
     for (const [name] of packageBindings) {
@@ -1408,14 +1309,14 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
             const call = unwrapExpression(current.expression)
             if (ts.isIdentifier(call.expression) && importBindings.has(call.expression.text) && importBindings.get(call.expression.text).kind !== "namespace") {
               validateImportedCalculation(call, current.name.text)
-              for (const argument of call.arguments) collectionExpression(argument, {}, (target, message) => fail(target, message.replace("Rendered collection", "Reactive imported calculation")), allowedNames)
+              for (const argument of call.arguments) collectionExpression(argument, { fail: (target, message) => fail(target, message.replace("Rendered collection", "Reactive imported calculation")), stateNames: allowedNames })
               return factory.createNumericLiteral(0)
             }
           }
           return ts.visitEachChild(current, validate, context)
         }
         const normalized = ts.visitNode(value, validate)
-        collectionExpression(normalized, {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
+        collectionExpression(normalized, { fail: (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), stateNames: allowedNames })
         return
       }
       const intl = constructor.expression.expression
@@ -1425,7 +1326,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       const roundAccess = rounded && ts.isCallExpression(rounded) && !rounded.questionDotToken && rounded.arguments.length === 1 && ts.isPropertyAccessExpression(rounded.expression) && !rounded.expression.questionDotToken && rounded.expression.name.text === "round" && ts.isIdentifier(rounded.expression.expression) && rounded.expression.expression.text === "Math" ? rounded.expression : undefined
       if (!roundAccess) fail(value, "Reactive JSX Intl.NumberFormat format() requires exactly Math.round(expression)")
       if (!isUnshadowedGlobal(roundAccess.expression, sourceFile)) fail(roundAccess.expression, "Reactive JSX Intl.NumberFormat requires the unshadowed global Math object")
-      collectionExpression(rounded.arguments[0], {}, (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), allowedNames)
+      collectionExpression(rounded.arguments[0], { fail: (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), stateNames: allowedNames })
     }
     const resolveReactiveJsxExpression = (expression, owner, setters) => {
       const declarations = jsxLocalDeclarations.get(owner)
@@ -1997,16 +1898,12 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
       if (!usedStates.size && !captures.size) return ts.visitEachChild(expression, visitor, context)
       usesBehavior = true
       usesConditional = true
-      return compileConditional(
+      return descriptors.compileConditional(
         parts.kind,
         parts.condition,
         compileRenderExpression(parts.truthy, anchor),
         compileRenderExpression(parts.falsy, anchor),
-        setters,
-        factory,
-        context,
-        reactiveBindings,
-        handlerUrl
+        setters
       )
     }
 
@@ -2106,7 +2003,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           const derivedStates = initializer && !directAlias ? referencedStateNames(initializer, setters) : new Set()
           if (derivedStates.size) {
             const usedStates = new Set()
-            const expression = collectionExpression(initializer, {}, effectFail, stateNames, usedStates)
+            const expression = collectionExpression(initializer, { fail: effectFail, stateNames, selectorStates: usedStates })
             if (!usedStates.size) effectFail(dependency, `useEffect() derived dependency "${dependency.text}" must read direct primitive state`)
             dependencyExpressions.push(expression)
             for (const name of usedStates) {
@@ -2162,7 +2059,15 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         } else {
           compiledCallback = workerCompiler.rewriteEffect(compiledCallback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
         }
-        const descriptor = compileNativeCallback(compiledCallback, setters, reducersForNode(node, reducersByFunction), factory, effectHandlers, specializedEffect?.imports ?? importBindings, clientImports, "effect", dependencyItem, true, returns.cleanup, customHookTimerStates)
+        const descriptor = descriptors.compileEffectCallback(compiledCallback, {
+          setters,
+          reducers: reducersForNode(node, reducersByFunction),
+          importBindings: specializedEffect?.imports ?? importBindings,
+          listItem: dependencyItem,
+          deferValues: true,
+          snapshotNested: returns.cleanup,
+          liveStates: customHookTimerStates
+        })
         for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
@@ -2218,19 +2123,19 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
 
       if (ts.isJsxExpression(node) && node.expression && listConditions.has(node.expression)) {
         const entry = listConditions.get(node.expression)
-        return factory.updateJsxExpression(node, compileListConditional({
+        return factory.updateJsxExpression(node, descriptors.compileListConditional({
           ...entry,
           truthy: ts.visitNode(entry.truthy, visitor),
           falsy: ts.visitNode(entry.falsy, visitor)
-        }, factory, listExpressions, handlerUrl))
+        }))
       }
 
       if (ts.isJsxExpression(node) && node.expression && listValues.has(node.expression)) {
-        return factory.updateJsxExpression(node, compileListValue(node.expression, listValues.get(node.expression), factory, context, listExpressions, handlerUrl))
+        return factory.updateJsxExpression(node, descriptors.compileListValue(node.expression, listValues.get(node.expression)))
       }
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && listValues.has(node.initializer.expression)) {
-        return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compileListValue(node.initializer.expression, listValues.get(node.initializer.expression), factory, context, listExpressions, handlerUrl)))
+        return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, descriptors.compileListValue(node.initializer.expression, listValues.get(node.initializer.expression))))
       }
 
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
@@ -2242,7 +2147,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
           let listSource = listParts.state
           if (listParts.calculation) {
             usesBinding = true
-            listSource = compileReactiveBinding(listParts.calculation, settersForNode(node, settersByFunction), factory, context, reactiveBindings, handlerUrl, importBindings, clientImports)
+            listSource = descriptors.compileReactiveBinding(listParts.calculation, { setters: settersForNode(node, settersByFunction), importBindings })
           }
           const arguments_ = [
             listSource,
@@ -2268,7 +2173,7 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression) && !containsJsx(expression)) {
           usesBehavior = true
           usesBinding = true
-          return factory.updateJsxExpression(node, compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings, clientImports))
+          return factory.updateJsxExpression(node, descriptors.compileReactiveBinding(expression, { setters, importBindings }))
         }
       }
 
@@ -2281,14 +2186,20 @@ function createKudzuTransformer(nativeHandlers, effectHandlers, reactiveBindings
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression)) {
           usesBehavior = true
           usesBinding = true
-          const compiled = compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings, clientImports)
+          const compiled = descriptors.compileReactiveBinding(expression, { setters, importBindings })
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compiled))
         }
       }
 
       if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && /^on[A-Z]/.test(node.name.text)) {
         const setters = settersForNode(node, settersByFunction)
-        const event = compileEvent(node.initializer.expression, setters, reducersForNode(node, reducersByFunction), functionsForNode(node), factory, nativeHandlers, handlerUrl, listEventItems.get(node), new Map([...importBindings, ...packageBindings]), clientImports)
+        const event = descriptors.compileEvent(node.initializer.expression, {
+          setters,
+          reducers: reducersForNode(node, reducersByFunction),
+          functions: functionsForNode(node),
+          listItem: listEventItems.get(node),
+          importBindings: new Map([...importBindings, ...packageBindings])
+        })
         if (event) {
           usesBehavior = true
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, event))
@@ -2356,7 +2267,9 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
   const value = unwrapExpression(expression)
   const directFrom = isArrayFromCall(value) && value.arguments.length === 2 && containsJsx(value.arguments[1])
   if (!directFrom && (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map")) return undefined
-  let collection = renderedCollectionSource(directFrom ? value.arguments[0] : value.expression.expression, setters, declarations, fail, aliases, importedCollections, new Set(setters.values()), importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
+  let collection = analyzeCollectionPipeline(directFrom ? value.arguments[0] : value.expression.expression, {
+    setters, declarations, fail, aliases, importedCollections, stateNames: new Set(setters.values()), importedCollectionTransforms, calculatedCollection, staticCollection
+  })
   if (!collection?.state && !collection?.calculation) return undefined
   if (directFrom) collection.selector.push(["from", undefined])
   let callback = directFrom ? value.arguments[1] : value.arguments[0]
@@ -2366,7 +2279,7 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
     if (!context || root.statements.length !== 2 || !ts.isVariableStatement(root.statements[0]) || (root.statements[0].declarationList.flags & ts.NodeFlags.Const) === 0 || root.statements[0].declarationList.declarations.length !== 1 || !ts.isReturnStatement(root.statements[1]) || !root.statements[1].expression) fail(root, "Block-bodied keyed list map callbacks require one computed child collection const and a final JSX return")
     const declaration = root.statements[0].declarationList.declarations[0]
     if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, "Computed child collections must initialize one const identifier")
-    const computed = renderedCollectionSource(declaration.initializer, new Map(), undefined, fail, new Set(), new Set(), new Set(), importedCollectionTransforms, factory, context)
+    const computed = analyzeCollectionPipeline(declaration.initializer, { fail, importedCollectionTransforms })
     if (!computed?.ownerField || computed.parentItem !== parameters.item) fail(declaration.initializer, `Computed child collections must start from ${parameters.item}.<field>`)
     const returned = root.statements[1].expression
     if (identifierReferenceCount(returned, declaration.name.text) !== 1) fail(declaration.name, `Computed child collection alias "${declaration.name.text}" must be used exactly once`)
@@ -2390,7 +2303,7 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
 function nestedKeyedListParts(expression, parentItem, fail) {
   const value = unwrapExpression(expression)
   if (!ts.isCallExpression(value) || value.arguments.length !== 1 || !ts.isPropertyAccessExpression(value.expression) || value.expression.name.text !== "map") return undefined
-  let collection = renderedCollectionSource(value.expression.expression, new Map(), undefined, fail, new Set())
+  let collection = analyzeCollectionPipeline(value.expression.expression, { fail })
   if (!collection?.ownerField || collection.parentItem !== parentItem) return undefined
   let callback = value.arguments[0]
   const parameters = collectionParameters(callback, "Nested keyed list map", fail)
@@ -2422,173 +2335,11 @@ function conditionalKeyedMapRoot(callback, root, parameters, collection, fail, s
   }
   if (parameters.index) fail(callback.parameters[1], "Conditional keyed map callbacks cannot use a map index because filtering changes index semantics; use an explicit filter(...).map((item, index) => ...) when a filtered index is intended")
   const selectorStates = new Set(collection.selectorStates)
-  const selector = collectionExpression(condition, parameters, fail, stateNames, selectorStates)
+  const selector = collectionExpression(condition, { parameters, fail, stateNames, selectorStates })
   const normalized = factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, callback.parameters, callback.type, callback.equalsGreaterThanToken, rendered)
   ts.setParentRecursive(normalized, false)
   normalized.parent = parent
   return { callback: normalized, root: rendered, collection: { ...collection, selector: [...collection.selector, ["filter", selector]], selectorStates } }
-}
-
-function renderedCollectionSource(expression, setters, declarations, fail, aliases, importedCollections = new Set(), stateNames = new Set(), importedCollectionTransforms = new Map(), factory = ts.factory, context, calculatedCollection, staticCollection) {
-  const value = unwrapExpression(expression)
-  if (ts.isIdentifier(value)) {
-    if ([...setters.values()].includes(value.text)) {
-      const localStatic = staticCollection?.(value.text)
-      return { state: value, static: localStatic, localStatic, selector: [], selectorStates: new Set() }
-    }
-    if (importedCollections.has(value.text)) return { state: value, static: true, selector: [], selectorStates: new Set() }
-    const entries = declarations?.get(value.text)
-    if (!entries) return undefined
-    if (entries.length !== 1 || aliases.has(value.text) || entries[0].node.parent?.parent?.parent !== nearestFunction(entries[0].node)?.body) fail(value, `Rendered collection alias "${value.text}" must be one top-level immutable local`)
-    aliases.add(value.text)
-    const source = renderedCollectionSource(entries[0].initializer, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
-    aliases.delete(value.text)
-    return source && { ...source, aliasDeclarations: [...(source.aliasDeclarations ?? []), entries[0].node], aliasUses: [...(source.aliasUses ?? []), value] }
-  }
-  if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) {
-    const calculation = calculatedCollection?.(value)
-    if (calculation) return { calculation, selector: [], selectorStates: new Set() }
-    return { state: undefined, ownerField: value.name.text, selector: [], parentItem: value.expression.text }
-  }
-  if (ts.isCallExpression(value) && ts.isIdentifier(value.expression) && importedCollectionTransforms.has(value.expression.text)) {
-    const transform = importedCollectionTransforms.get(value.expression.text)
-    const parameter = transform.parameters[0]
-    if (value.arguments.length !== 1 || transform.parameters.length !== 1 || transform.asteriskToken || transform.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || !parameter || !ts.isIdentifier(parameter.name) || parameter.dotDotDotToken || parameter.initializer || parameter.questionToken) fail(value, `Imported collection transform "${value.expression.text}" must be synchronous with exactly one identifier parameter and one argument`)
-    const returned = ts.isBlock(transform.body)
-      ? transform.body.statements.length === 1 && ts.isReturnStatement(transform.body.statements[0]) ? transform.body.statements[0].expression : undefined
-      : transform.body
-    if (!returned) fail(value, `Imported collection transform "${value.expression.text}" must contain only one returned collection expression`)
-    const transformSource = renderedCollectionSource(returned, new Map([[parameter.name.text, parameter.name.text]]), undefined, fail, new Set(), new Set(), new Set([parameter.name.text]))
-    if (!transformSource?.state || transformSource.state.text !== parameter.name.text || transformSource.selectorStates.size) fail(value, `Imported collection transform "${value.expression.text}" must return a supported pure pipeline rooted only in its parameter`)
-    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
-    if (!source) fail(value.arguments[0], `Imported collection transform "${value.expression.text}" requires a supported collection argument`)
-    return { ...source, selector: [...source.selector, ...transformSource.selector] }
-  }
-  if (ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression)) {
-    const method = value.expression.name.text
-    if (method === "filter") {
-      if (value.arguments.length !== 1) fail(value, "Rendered collection filter() requires one inline predicate")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
-      if (!source) return undefined
-      const parameters = collectionParameters(value.arguments[0], "Rendered collection filter()", fail)
-      const selectorStates = new Set(source.selectorStates)
-      return { ...source, selector: [...source.selector, ["filter", collectionExpression(unwrapExpression(value.arguments[0].body), parameters, fail, stateNames, selectorStates)]], selectorStates }
-    }
-    if (method === "flatMap") {
-      if (value.arguments.length !== 1) fail(value, "Rendered collection flatMap() requires one inline projector")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
-      if (!source) return undefined
-      const parameters = collectionParameters(value.arguments[0], "Rendered collection flatMap()", fail)
-      const field = directProperty(value.arguments[0].body, parameters.item)
-      if (!field) fail(value.arguments[0].body, `Rendered collection flatMap() projector must be ${parameters.item}.<field>`)
-      if (["__proto__", "constructor", "prototype"].includes(field)) fail(value.arguments[0].body, `Rendered collection property "${field}" is not supported`)
-      return { ...source, selector: [...source.selector, ["flatMap", field]] }
-    }
-    if (method === "slice") {
-      if (value.arguments.length < 1 || value.arguments.length > 2) fail(value, "Rendered collection slice() requires a start and optional end")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
-      if (!source) return undefined
-      const selectorStates = new Set(source.selectorStates)
-      const start = collectionExpression(value.arguments[0], {}, fail, stateNames, selectorStates)
-      const end = value.arguments[1] && collectionExpression(value.arguments[1], {}, fail, stateNames, selectorStates)
-      return { ...source, selector: [...source.selector, ["slice", start, end]], selectorStates }
-    }
-    if (method === "toSorted") {
-      if (value.arguments.length !== 1) fail(value, "Rendered collection toSorted() requires one inline comparator")
-      const source = renderedCollectionSource(value.expression.expression, setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
-      if (!source) return undefined
-      const comparator = value.arguments[0]
-      const parameters = collectionParameters(comparator, "Rendered collection toSorted()", fail)
-      if (comparator.parameters.length !== 2 || ts.isBlock(comparator.body)) fail(comparator, "Rendered collection toSorted() comparator must be a synchronous expression arrow with (left, right) identifier parameters")
-      const selectorStates = new Set(source.selectorStates)
-      const expression = collectionExpression(comparator.body, parameters, fail, stateNames, selectorStates)
-      return { ...source, selector: [...source.selector, ["sort", expression]], selectorStates }
-    }
-    if (method === "sort") fail(value, "Rendered collections cannot use mutating sort(); use toSorted()")
-  }
-  if (isArrayFromCall(value)) {
-    if (value.arguments.length < 1 || value.arguments.length > 2) fail(value, "Rendered Array.from() requires an anchor and optional inline mapper")
-    const source = renderedCollectionSource(value.arguments[0], setters, declarations, fail, aliases, importedCollections, stateNames, importedCollectionTransforms, factory, context, calculatedCollection, staticCollection)
-    if (!source) return undefined
-    let mapper
-    if (value.arguments[1]) {
-      const parameters = collectionParameters(value.arguments[1], "Rendered Array.from() mapper", fail)
-      const selectorStates = new Set(source.selectorStates)
-      mapper = collectionExpression(unwrapExpression(value.arguments[1].body), parameters, fail, stateNames, selectorStates)
-      source.selectorStates = selectorStates
-    }
-    return { ...source, selector: [...source.selector, ["from", mapper]] }
-  }
-}
-
-function isArrayFromCall(value) {
-  return ts.isCallExpression(value) && ts.isPropertyAccessExpression(value.expression) && ts.isIdentifier(value.expression.expression) && value.expression.expression.text === "Array" && value.expression.name.text === "from"
-}
-
-function collectionParameters(callback, label, fail) {
-  if (!ts.isArrowFunction(callback) || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || callback.parameters.length < 1 || callback.parameters.length > 2 || callback.parameters.some(parameter => !ts.isIdentifier(parameter.name) || parameter.dotDotDotToken || parameter.initializer || parameter.questionToken)) fail(callback, `${label} callback must be a synchronous arrow function with (item) or (item, index) identifier parameters`)
-  return { item: callback.parameters[0].name.text, index: callback.parameters[1]?.name.text }
-}
-
-function collectionExpression(expression, parameters, fail, stateNames = new Set(), selectorStates = new Set()) {
-  const encode = node => {
-    node = unwrapExpression(node)
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isNumericLiteral(node)) return ["value", ts.isNumericLiteral(node) ? Number(node.text) : node.text]
-    if (node.kind === ts.SyntaxKind.TrueKeyword) return ["value", true]
-    if (node.kind === ts.SyntaxKind.FalseKeyword) return ["value", false]
-    if (node.kind === ts.SyntaxKind.NullKeyword) return ["value", null]
-    if (ts.isIdentifier(node)) {
-      if (node.text === parameters.item) return ["item"]
-      if (node.text === parameters.index) return ["index"]
-      if (node.text === "undefined") return ["undefined"]
-      if (stateNames.has(node.text)) {
-        selectorStates.add(node.text)
-        return ["state", node.text]
-      }
-      fail(node, `Rendered collection expression identifier "${node.text}" is not allowed`)
-    }
-    if (ts.isPropertyAccessExpression(node)) {
-      if (["__proto__", "constructor", "prototype"].includes(node.name.text)) fail(node, `Rendered collection property "${node.name.text}" is not supported`)
-      return ["get", encode(node.expression), node.name.text, Boolean(node.questionDotToken)]
-    }
-    if (ts.isElementAccessExpression(node)) {
-      const key = node.argumentExpression
-      if (!ts.isStringLiteral(key) && !ts.isNumericLiteral(key)) fail(node, "Rendered collection computed properties require a direct string or numeric literal key")
-      if (ts.isStringLiteral(key) && ["__proto__", "constructor", "prototype"].includes(key.text)) fail(node, `Rendered collection property "${key.text}" is not supported`)
-      return ["get", encode(node.expression), ts.isNumericLiteral(key) ? Number(key.text) : key.text, Boolean(node.questionDotToken)]
-    }
-    if (ts.isPrefixUnaryExpression(node)) {
-      const operator = node.operator === ts.SyntaxKind.ExclamationToken ? "!" : node.operator === ts.SyntaxKind.PlusToken ? "+" : node.operator === ts.SyntaxKind.MinusToken ? "-" : undefined
-      if (!operator) fail(node, "Rendered collection expression uses an unsupported unary operator")
-      return ["unary", operator, encode(node.operand)]
-    }
-    if (ts.isTypeOfExpression(node)) return ["unary", "typeof", encode(node.expression)]
-    if (ts.isBinaryExpression(node)) {
-      const operator = node.operatorToken.getText()
-      if (!new Set(["&&", "||", "??", "===", "!==", "==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "/", "%"]).has(operator)) fail(node, `Rendered collection expression operator "${operator}" is not supported`)
-      return ["binary", operator, encode(node.left), encode(node.right)]
-    }
-    if (ts.isConditionalExpression(node)) return ["conditional", encode(node.condition), encode(node.whenTrue), encode(node.whenFalse)]
-    if (ts.isArrayLiteralExpression(node) && !node.elements.some(ts.isSpreadElement)) return ["array", ...node.elements.map(encode)]
-    if (ts.isObjectLiteralExpression(node)) return ["object", ...node.properties.map(property => {
-      if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name) && !ts.isNumericLiteral(property.name)) fail(property, "Rendered collection mapper objects require direct properties")
-      return [property.name.text, encode(property.initializer)]
-    })]
-    if (ts.isTemplateExpression(node)) return ["template", [node.head.text, ...node.templateSpans.map(span => span.literal.text)], node.templateSpans.map(span => encode(span.expression))]
-    if (ts.isCallExpression(node)) {
-      if (ts.isIdentifier(node.expression) && ["Boolean", "Number", "String"].includes(node.expression.text)) return ["global", node.expression.text, ...node.arguments.map(encode)]
-      if (ts.isPropertyAccessExpression(node.expression)) {
-        const method = node.expression.name.text
-        if (ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "Math" && pureMathMethods.has(method)) return ["math", method, ...node.arguments.map(encode)]
-        if (pureListMethods.has(method)) return ["call", encode(node.expression.expression), method, ...node.arguments.map(encode)]
-        if (mutatingListMethods.has(method)) fail(node, `Rendered collection expressions cannot call mutating method "${method}"`)
-      }
-      fail(node, "Rendered collection expressions cannot call arbitrary functions")
-    }
-    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isAwaitExpression(node) || ts.isNewExpression(node) || ts.isYieldExpression(node) || ts.isDeleteExpression(node) || ts.isPostfixUnaryExpression(node)) fail(node, "Rendered collection expressions must be pure and synchronous")
-    fail(node, "Rendered collection expression is not supported")
-  }
-  return encode(expression)
 }
 
 function jsonExpression(value, factory) {
@@ -3218,9 +2969,6 @@ function jsxTagUses(root, name) {
   return uses
 }
 
-const pureListMethods = new Set(["at", "charAt", "charCodeAt", "concat", "endsWith", "includes", "indexOf", "join", "lastIndexOf", "localeCompare", "padEnd", "padStart", "repeat", "replace", "replaceAll", "slice", "startsWith", "substring", "toLowerCase", "toUpperCase", "trim", "trimEnd", "trimStart"])
-const mutatingListMethods = new Set(["copyWithin", "fill", "pop", "push", "reverse", "shift", "sort", "splice", "unshift"])
-const pureMathMethods = new Set(["abs", "ceil", "floor", "max", "min", "pow", "round", "sign", "sqrt", "trunc"])
 const pureListGlobals = new Set(["Boolean", "Infinity", "Math", "NaN", "Number", "String", "undefined"])
 const assignmentOperators = new Set([
   ts.SyntaxKind.EqualsToken, ts.SyntaxKind.PlusEqualsToken, ts.SyntaxKind.MinusEqualsToken,
@@ -3270,37 +3018,6 @@ function validateListExpression(expression, item, source, fail, index, states = 
   visit(expression)
 }
 
-function compileListExpression(read, expression, item, factory, listExpressions, handlerUrl, index, states = new Set()) {
-  const exportName = `listExpression${listExpressions.length}`
-  listExpressions.push({ exportName, expression, item, index, states })
-  const arguments_ = [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)]
-  if (states.size) arguments_.push(factory.createArrayLiteralExpression([...states].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
-  return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, arguments_)
-}
-
-function compileListConditional(entry, factory, listExpressions, handlerUrl) {
-  const exportName = `listExpression${listExpressions.length}`
-  listExpressions.push({ exportName, expression: entry.condition, item: entry.item, index: entry.index })
-  const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), entry.condition)
-  const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
-  return factory.createCallExpression(factory.createIdentifier("__kListConditional"), undefined, [
-    factory.createStringLiteral(entry.kind), read, thunk(entry.truthy), thunk(entry.falsy), factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)
-  ])
-}
-
-function compileListValue(expression, entry, factory, context, listExpressions, handlerUrl) {
-  const rewrite = node => {
-    if (ts.isShorthandPropertyAssignment(node) && entry.states?.has(node.name.text)) return factory.createPropertyAssignment(node.name, factory.createPropertyAccessExpression(node.name, "value"))
-    if (ts.isIdentifier(node) && entry.states?.has(node.text) && isReferenceIdentifier(node)) return factory.createPropertyAccessExpression(node, "value")
-    return ts.visitEachChild(node, rewrite, context)
-  }
-  const initial = entry.states?.size ? ts.visitNode(expression, rewrite) : expression
-  const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), initial)
-  return entry.field
-    ? factory.createCallExpression(factory.createIdentifier("__kListField"), undefined, [read, factory.createStringLiteral(entry.field)])
-    : compileListExpression(read, expression, entry.item, factory, listExpressions, handlerUrl, entry.index, entry.states)
-}
-
 function directProperty(expression, objectName) {
   const value = unwrapExpression(expression)
   if (!ts.isPropertyAccessExpression(value) || !ts.isIdentifier(value.expression)) return undefined
@@ -3337,69 +3054,6 @@ function isJsxLocalValue(expression, known) {
   return Boolean(parts && (isJsxLocalValue(parts.truthy, known) || isJsxLocalValue(parts.falsy, known)))
 }
 
-function compileReactiveBinding(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings = new Map(), clientImports = new Set()) {
-  const parts = conditionalParts(expression)
-  const state = parts && directStateIdentifier(parts.condition, setters)
-  if (state && isPrimitiveDefaultLiteral(parts.truthy) && isPrimitiveDefaultLiteral(parts.falsy)) {
-    return factory.createCallExpression(factory.createIdentifier("__kSelect"), undefined, [state, parts.truthy, parts.falsy])
-  }
-  return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings, clientImports))
-}
-
-function compileConditional(kind, expression, truthy, falsy, setters, factory, context, reactiveBindings, handlerUrl) {
-  const state = directStateIdentifier(expression, setters)
-  const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
-  if (state) return factory.createCallExpression(factory.createIdentifier("__kStateConditional"), undefined, [factory.createStringLiteral(kind), state, thunk(truthy), thunk(falsy)])
-  const [initial, ...descriptor] = compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl)
-  return factory.createCallExpression(factory.createIdentifier("__kConditional"), undefined, [factory.createStringLiteral(kind), initial, thunk(truthy), thunk(falsy), ...descriptor])
-}
-
-function directStateIdentifier(expression, setters) {
-  const value = unwrapExpression(expression)
-  return ts.isIdentifier(value) && new Set(setters.values()).has(value.text) ? value : undefined
-}
-
-function compileReactiveExpression(expression, setters, factory, context, reactiveBindings, handlerUrl, importBindings = new Map(), clientImports = new Set()) {
-  const usedStates = referencedStateNames(expression, setters)
-  const importedNames = referencedImportedBindings(expression, importBindings)
-  const imports = [...importedNames].map(name => importBindings.get(name))
-  for (const entry of imports) if (!entry.package) clientImports.add(entry.target)
-  const captures = new Set([...captureNames(expression, expression, setters)].filter(name => !importedNames.has(name)))
-  const exportName = `binding${reactiveBindings.length}`
-  reactiveBindings.push({ exportName, expression, captures, states: usedStates, imports })
-  const states = [...usedStates].map(name => factory.createArrayLiteralExpression([
-    factory.createStringLiteral(name),
-    factory.createIdentifier(name)
-  ]))
-  const scope = [...captures].map(name => factory.createArrayLiteralExpression([
-    factory.createStringLiteral(name),
-    factory.createIdentifier(name)
-  ]))
-  const stateNames = new Set(usedStates)
-  const rewriteInitial = node => {
-    if (ts.isShorthandPropertyAssignment(node) && stateNames.has(node.name.text)) {
-      return factory.createPropertyAssignment(node.name, factory.createPropertyAccessExpression(node.name, "value"))
-    }
-    if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
-      return factory.createPropertyAccessExpression(node, "value")
-    }
-    if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text)) {
-      return factory.createPropertyAssignment(node.name, factory.createCallExpression(factory.createIdentifier("__kBindingValue"), undefined, [node.name]))
-    }
-    if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node)) {
-      return factory.createCallExpression(factory.createIdentifier("__kBindingValue"), undefined, [node])
-    }
-    return ts.visitEachChild(node, rewriteInitial, context)
-  }
-  return [
-    ts.visitNode(expression, rewriteInitial),
-    factory.createStringLiteral(handlerUrl),
-    factory.createStringLiteral(exportName),
-    factory.createArrayLiteralExpression(states),
-    factory.createArrayLiteralExpression(scope)
-  ]
-}
-
 function conditionalParts(expression) {
   const unwrap = node => ts.isParenthesizedExpression(node) ? unwrap(node.expression) : node
   const value = unwrap(expression)
@@ -3414,138 +3068,6 @@ function conditionalParts(expression) {
 
 function factoryNull() {
   return ts.factory.createNull()
-}
-
-function compileEvent(expression, setters, reducers, functions, factory, nativeHandlers, handlerUrl, listItem, importBindings, clientImports) {
-  if (ts.isIdentifier(expression)) expression = functions.get(expression.text)
-  if (!expression || (!ts.isArrowFunction(expression) && !ts.isFunctionExpression(expression) && !ts.isFunctionDeclaration(expression))) return undefined
-
-  const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters, factory)
-  if (optimized) return optimized
-
-  workerCompiler.rejectConstructions(expression, expression.getSourceFile(), "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback")
-  const descriptor = compileNativeCallback(expression, setters, reducers, factory, nativeHandlers, importBindings, clientImports, "handler", listItem)
-  return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
-    factory.createStringLiteral(handlerUrl),
-    factory.createStringLiteral(descriptor.exportName),
-    descriptor.states,
-    descriptor.scope
-  ])
-}
-
-function compileNativeCallback(expression, setters, reducers, factory, entries, importBindings, clientImports, prefix, listItem, deferValues = false, snapshotNested = false, liveStates = new Set()) {
-  const allCaptures = nativeCaptureNames(expression, setters)
-  const usedReducers = referencedReducerDispatches(expression.body, reducers, expression)
-  const imports = [...referencedImportedBindings(expression, importBindings)].map(name => importBindings.get(name))
-  imports.push(...[...usedReducers].map(name => reducers.get(name).import).filter(Boolean))
-  const captures = new Set([...allCaptures].filter(name => !importBindings.has(name) && !usedReducers.has(name)))
-  for (const entry of imports) if (!entry.package) clientImports.add(entry.target)
-  const usedStates = nativeStateNames(expression, setters)
-  for (const name of usedReducers) {
-    const reducer = reducers.get(name)
-    if (reducer.contextAction) for (const state of referencedStateNames(reducer.contextAction.body, reducer.states, reducer.contextAction)) usedStates.add(state)
-  }
-  const exportName = `${prefix}${entries.length}`
-  entries.push({ exportName, expression, captures, imports, liveStates, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested })
-  const value = name => deferValues
-    ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
-    : factory.createIdentifier(name)
-  return {
-    exportName,
-    states: factory.createArrayLiteralExpression([...usedStates].map(name => factory.createArrayLiteralExpression([
-      factory.createStringLiteral(name),
-      value(name)
-    ]))),
-    scope: factory.createArrayLiteralExpression([...captures].map(name => factory.createArrayLiteralExpression([
-      factory.createStringLiteral(name),
-      name === (typeof listItem === "string" ? listItem : listItem?.item)
-        ? factory.createCallExpression(factory.createIdentifier("__kListItem"), undefined, [])
-        : name === listItem?.index
-          ? factory.createCallExpression(factory.createIdentifier("__kListIndex"), undefined, [])
-          : value(name)
-    ])))
-  }
-}
-
-function referencedReducerDispatches(root, reducers, scopeRoot = root) {
-  const used = new Set()
-  const visit = node => {
-    if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, scopeRoot)) used.add(node.text)
-    ts.forEachChild(node, visit)
-  }
-  visit(root)
-  return used
-}
-
-function nativeStateNames(expression, setters) {
-  return referencedStateNames(expression.body, setters, expression)
-}
-
-function referencedStateNames(root, setters, scopeRoot = root) {
-  const stateNames = new Set(setters.values())
-  const used = new Set()
-  const visit = node => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, scopeRoot)) used.add(setters.get(node.expression.text))
-    if (ts.isIdentifier(node) && setters.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, scopeRoot)) used.add(setters.get(node.text))
-    if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, scopeRoot)) used.add(node.text)
-    ts.forEachChild(node, visit)
-  }
-  visit(root)
-  return used
-}
-
-function compileOptimizedEvent(expression, setters, factory) {
-  const statements = ts.isBlock(expression.body) ? expression.body.statements : [factory.createExpressionStatement(expression.body)]
-  const commands = statements.map(statement => {
-    if (!ts.isExpressionStatement(statement)) return undefined
-    return compileEventCommand(statement.expression, setters, factory)
-  })
-  if (!commands.length || commands.some(command => !command)) return undefined
-
-  return factory.createCallExpression(factory.createIdentifier("__kBehavior"), undefined, [factory.createArrayLiteralExpression(commands)])
-}
-
-const nativeGlobals = new Set([
-  "Array", "ArrayBuffer", "BigInt", "Blob", "Boolean", "Date", "Error", "Event", "FileReader", "FormData", "Infinity", "IntersectionObserver", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "alert", "atob", "btoa", "cancelAnimationFrame", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "localStorage", "location", "navigator", "parseFloat", "parseInt", "performance", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
-])
-
-function nativeCaptureNames(expression, setters) {
-  return captureNames(expression, expression.body, setters)
-}
-
-function referencedImportedBindings(expression, imports) {
-  const names = new Set()
-  const visit = node => {
-    if (ts.isIdentifier(node) && imports.has(node.text) && isReferenceIdentifier(node)) names.add(node.text)
-    ts.forEachChild(node, visit)
-  }
-  visit(expression.body ?? expression)
-  return names
-}
-
-function captureNames(declarationRoot, referenceRoot, setters) {
-  const local = new Set()
-  if (!isFunctionLike(declarationRoot)) {
-    const collectDeclarations = node => {
-      if (ts.isVariableDeclaration(node)) for (const name of bindingNames(node.name)) local.add(name)
-      if (ts.isParameter(node)) for (const name of bindingNames(node.name)) local.add(name)
-      if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) && node.name) local.add(node.name.text)
-      ts.forEachChild(node, collectDeclarations)
-    }
-    collectDeclarations(declarationRoot)
-  }
-  const stateNames = new Set(setters.values())
-  const captures = new Set()
-  const visit = node => {
-    if (ts.isTypeNode(node)) return
-    if (ts.isIdentifier(node)) {
-      const declared = isFunctionLike(declarationRoot) ? isShadowedIdentifier(node, declarationRoot) : local.has(node.text)
-      if (isReferenceIdentifier(node) && !declared && !setters.has(node.text) && !stateNames.has(node.text) && !nativeGlobals.has(node.text)) captures.add(node.text)
-    }
-    ts.forEachChild(node, visit)
-  }
-  visit(referenceRoot)
-  return captures
 }
 
 function settersForNode(node, settersByFunction) {
@@ -4059,42 +3581,6 @@ function relativeModulePath(from, to) {
   return path.startsWith(".") ? path : `./${path}`
 }
 
-function compileEventCommand(expression, setters, factory) {
-  if (ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression) && ts.isIdentifier(expression.expression.expression) && expression.expression.expression.text === "console" && expression.expression.name.text === "log" && expression.arguments.length === 2 && ts.isStringLiteral(expression.arguments[0]) && ts.isIdentifier(expression.arguments[1]) && [...setters.values()].includes(expression.arguments[1].text)) {
-    return command(factory, "log", expression.arguments[1], factory.createStringLiteral(expression.arguments[0].text))
-  }
-
-  if (!ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || expression.arguments.length !== 1) return undefined
-  const stateName = setters.get(expression.expression.text)
-  if (!stateName) return undefined
-
-  const state = factory.createIdentifier(stateName)
-  const value = expression.arguments[0]
-  if (ts.isBinaryExpression(value) && ts.isIdentifier(value.left) && value.left.text === stateName && ts.isNumericLiteral(value.right)) {
-    if (value.operatorToken.kind !== ts.SyntaxKind.PlusToken && value.operatorToken.kind !== ts.SyntaxKind.MinusToken) return undefined
-    return command(factory, "add", state, numericExpression(factory, Number(value.right.text), value.operatorToken.kind === ts.SyntaxKind.MinusToken))
-  }
-  if (ts.isArrowFunction(value) && value.parameters.length === 1 && ts.isIdentifier(value.parameters[0].name) && ts.isBinaryExpression(value.body) && ts.isIdentifier(value.body.left) && value.body.left.text === value.parameters[0].name.text && ts.isNumericLiteral(value.body.right)) {
-    if (value.body.operatorToken.kind !== ts.SyntaxKind.PlusToken && value.body.operatorToken.kind !== ts.SyntaxKind.MinusToken) return undefined
-    return command(factory, "add", state, numericExpression(factory, Number(value.body.right.text), value.body.operatorToken.kind === ts.SyntaxKind.MinusToken))
-  }
-  if (isPrimitiveLiteral(value)) return command(factory, "set", state, synthesizeSerializableStateLiteral(value, factory))
-  return undefined
-}
-
-function command(factory, operation, state, value) {
-  return factory.createArrayLiteralExpression([factory.createStringLiteral(operation), state, value])
-}
-
-function isPrimitiveLiteral(node) {
-  return isPrimitiveDefaultLiteral(node)
-}
-
-function numericExpression(factory, value, negative) {
-  const literal = factory.createNumericLiteral(value)
-  return negative ? factory.createPrefixUnaryExpression(ts.SyntaxKind.MinusToken, literal) : literal
-}
-
 function compiledPath(file) {
   return join(workDirectory, relative(sourceDirectory, file)).replace(/\.(?:ts|tsx)$/, ".mjs")
 }
@@ -4262,7 +3748,7 @@ const printHandlerModule = createHandlerCodegen({
   synthesizeTree,
   resolveClientImport: (entry, handlerPath) => entry.package ? entry.target : relativeModulePath(handlerPath, clientModulePath(entry.target))
 })
-const { normalizeReactMigrationSyntax, validateUseIdSyntax } = createReactMigrationPass({ cloneAst, isArrayFromCall, jsxTagName, renderedCollectionSource })
+const { normalizeReactMigrationSyntax, validateUseIdSyntax } = createReactMigrationPass({ cloneAst, jsxTagName })
 const normalizeReactRouterSyntax = createRouterPass({ withBase })
 
 async function staticPathEntries(module, file) {

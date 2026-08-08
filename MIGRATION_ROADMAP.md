@@ -187,6 +187,14 @@ This queue orders the next investigations by general migration value. Start only
 - The refactor preserves accepted syntax, source diagnostics, generated capability selection, static-route zero JavaScript, Worker determinism, browser ownership behavior, and all existing migration boundaries.
 - Public documentation now presents Kudzu as a compiler that specializes supported React-shaped TSX into complete HTML and route-specific browser capabilities.
 
+### Completed In 0.8.16
+
+- Per-source handler, effect, binding, list-evaluator, and client-import registration belongs to one descriptor session rather than build orchestration.
+- Pure collection expression and selector analysis is shared directly by React migration, reactive JSX, effects, and keyed-list discovery without a callback owned by `build.mjs`.
+- Serializable route plans project through one pure capability manifest before runtime specialization and artifact emission.
+- Component specialization, effect analysis, and keyed-list ownership remain in the main transformer until their AST-identity side tables can be replaced by explicit analysis results rather than moved behind large context objects.
+- The continuation packet under `docs/next-architecture` fixes the Goal A patch sequence, output/performance gates, and explicit decision boundaries for deferred optimization, state/resource research, routing, and React compatibility.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

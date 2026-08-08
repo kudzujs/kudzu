@@ -34,14 +34,19 @@ Reduced Zustand migration stores lower to one ordinary layout-lifetime state slo
 - `compiler/ast-helpers.mjs`: shared TypeScript AST traversal, scope, binding, effect-return, and source-location helpers used by compiler passes.
 - `compiler/animation-frame-pass.mjs`: effect-owned animation-frame ref validation and plain mutable effect-scope lowering.
 - `compiler/browser-signal-passes.mjs`: static media-query external-store and navigator capability-condition normalization.
+- `compiler/collection-analysis.mjs`: pure collection expression IR, selector pipeline, alias, and imported-transform analysis.
+- `compiler/descriptor-session.mjs`: per-source semantic artifact creation and deterministic handler, effect, binding, and list evaluator descriptor registration.
 - `compiler/normalization-pipeline.mjs`: ordered source normalization with parent-pointer repair after every compiler pass.
 - `compiler/react-migration-pass.mjs`: React import, memo, callback, `forwardRef`, and `useId` migration validation and lowering.
 - `compiler/custom-hook-timer-pass.mjs`: private custom-hook timeout-ref validation and compiler-owned timer-state lowering.
 - `compiler/effect-codegen.mjs`: route-specific ordinary, owned, and navigable effect entry generation.
+- `compiler/event-command-pass.mjs`: direct setter and state-log fast-path recognition into compact command descriptors.
 - `compiler/handler-codegen.mjs`: route-specific native handler, reactive binding, keyed-list evaluator, and client-import module source generation.
 - `compiler/render-control-pass.mjs`: render-function early-return and exhaustive adjacent-assignment normalization.
 - `compiler/router-pass.mjs`: React Router import validation and native Link, pathname parameter, search parameter, and imperative navigation lowering.
+- `compiler/route-capability-planner.mjs`: pure route-plan projection into runtime and artifact capability requirements.
 - `compiler/worker-compiler.mjs`: relative TypeScript Worker candidate validation, effect rewriting, graph validation, and content-hashed ESM emission.
+- `compiler/zustand-pass.mjs`: reduced Zustand store analysis, diagnostics, and migration normalization.
 - `dev-server.mjs`: development HTTP server, source watching, rebuild serialization, SSE reloads, runtime-route fallback serving, and response-only state restoration injection.
 - `core.mjs`: server-side JSX rendering, state slots, context providers, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.
@@ -57,7 +62,7 @@ Reduced Zustand migration stores lower to one ordinary layout-lifetime state slo
 - `dev-state.js`: dev-only, short-lived logical-state snapshot validation and restoration.
 - `*.d.ts`: public TypeScript and JSX declarations.
 
-Compiler ownership follows four explicit stages. `build.mjs` owns project discovery, route planning, capability selection, and artifact emission. `compiler/normalization-pipeline.mjs` owns pass order and repairs parent pointers after every source transform; migration passes keep per-file state local and return additional metadata explicitly. The main transformer analyzes normalized source into handler, effect, binding, and list descriptors. The codegen modules turn those descriptors into route-specific ESM without participating in source analysis.
+Compiler ownership follows four explicit stages. `build.mjs` owns project discovery, route planning, and artifact emission. `compiler/normalization-pipeline.mjs` owns pass order and repairs parent pointers after every source transform; migration passes keep per-file state local and return additional metadata explicitly. The main transformer analyzes normalized source while `compiler/descriptor-session.mjs` owns one per-source semantic artifact containing handler, effect, binding, list, and client-import descriptors. `compiler/collection-analysis.mjs` owns the shared pure collection language used by React migration, reactive expressions, effects, and keyed lists. After build-time rendering, `compiler/route-capability-planner.mjs` projects serializable route plans into one capability manifest consumed by runtime specialization and artifact emission. Codegen modules turn descriptors into route-specific ESM without participating in source analysis. The versioned continuation plan lives in `docs/next-architecture`; it adds no runtime or accepted syntax by itself.
 
 New syntax support belongs in an existing pass or a focused new pass only when a reduced migration fixture proves it. Passes must preserve source-located diagnostics, avoid module-global analysis state, and expose metadata through return values rather than AST-identity side channels. Build orchestration stays in `build.mjs`; feature-specific graph validation or code generation moves under `compiler/` when it has a stable input/output boundary.
 

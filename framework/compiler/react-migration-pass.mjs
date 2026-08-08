@@ -1,7 +1,8 @@
 import ts from "typescript"
 import { bindingNames, importDeclarationNames, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, loopDeclaresName, nearestFunction, nearestFunctionLike, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
+import { analyzeCollectionPipeline, isArrayFromCall } from "./collection-analysis.mjs"
 
-export function createReactMigrationPass({ cloneAst, isArrayFromCall, jsxTagName, renderedCollectionSource }) {
+export function createReactMigrationPass({ cloneAst, jsxTagName }) {
   function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections = new Set()) {
     const supported = new Set(["createContext", "useContext", "useEffect", "useId", "useReducer", "useRef", "useState"])
     const erased = new Set(["forwardRef", "memo", "useCallback", "useMemo"])
@@ -291,7 +292,7 @@ export function createReactMigrationPass({ cloneAst, isArrayFromCall, jsxTagName
   function reactMemoCollection(expression, states, importedCollections, sourceFile) {
     const setters = new Map([...states].map(state => [state, state]))
     const fail = (node, message) => { throw sourceNodeError(node, sourceFile, message) }
-    return renderedCollectionSource(expression, setters, undefined, fail, new Set(), importedCollections, states)
+    return analyzeCollectionPipeline(expression, { setters, fail, importedCollections, stateNames: states })
   }
 
   function reactMemoComponentExpression(identifier, sourceFile, factory, context) {

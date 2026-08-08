@@ -1,5 +1,37 @@
 # Kudzu Releases
 
+## 0.8.16 - Compiler analysis boundaries
+
+Kudzu 0.8.16 continues the behavior-preserving compiler decomposition: source-local descriptors, the pure collection language, command fast paths, reduced Zustand migration, and route capability projection now have explicit ownership outside build orchestration.
+
+### Changed in 0.8.16
+
+- One descriptor session owns deterministic native-handler, effect, reactive-binding, list-evaluator, and client-import registration for each source module.
+- Collection roots, aliases, imported transforms, selector pipelines, and pure expression IR are shared directly by React migration, reactive JSX, effects, and keyed-list discovery.
+- Direct setter arithmetic and literals remain compact command descriptors instead of becoming generic browser handler functions.
+- Reduced Zustand store analysis and normalization now share one focused compiler pass while retaining the existing accepted and rejected migration boundary.
+- Rendered route plans project through one pure capability manifest before runtime specialization and artifact emission.
+- Route capability metadata is keyed by route identity, and effect descriptor registry ownership remains private to the source descriptor session.
+
+### Architecture continuation
+
+- `docs/next-architecture` records the current compiler responsibility map, Goal A through D decisions, the `0.8.17` through `0.8.22` Goal A sequence, version policy, and performance gates.
+- Goal A proceeds with a sparse JSON-safe ModuleIR and one Counter command vertical slice next; it does not add a VDOM, hydration, component rerender, store/resource runtime, router, or React island.
+- Component specialization, keyed-list ownership, and effect analysis remain in the main transformer until their AST-identity side tables can be replaced by explicit results rather than hidden behind large context objects.
+
+### Validation
+
+- `build.mjs` is 3,837 lines, down from 4,351 in 0.8.15, while retaining build orchestration and the intentionally coupled semantic transformer.
+- The complete suite passes 163/163 tests, including focused descriptor, collection IR, command, Zustand, and capability-manifest contracts.
+- A 21-run round-robin comparison on the same Apple M3 temp volume retained exact Worker and window graph bytes. The `0.8.16` 816.5 ms median was 3.75% above the `0.8.15` 787.0 ms baseline with overlapping distributions, below the 5% architecture gate; raw arrays and environment are recorded in `PERFORMANCE.md`.
+- `create-kudzu` remains 0.1.101 because its template already accepts `@kudzujs/core@^0.8.15` and did not change.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.16
+```
+
 ## 0.8.15 - Compiler architecture
 
 Kudzu 0.8.15 makes the compiler's actual architecture explicit in source and public documentation: React-shaped TSX is normalized, analyzed into capability descriptors, and emitted as complete HTML plus route-specific ESM.

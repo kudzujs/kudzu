@@ -1,5 +1,23 @@
 # Performance Records
 
+## 0.8.16 Compiler Analysis Boundaries
+
+Measured UTC 2026-08-08 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.15` commit `8405d29` and the `0.8.16` release candidate used detached worktrees on the same temporary volume with identical installed dependencies.
+
+The tracked `worker-effects` fixture received two warm-ups per target followed by 21 clean production builds in round-robin alternating order. Cleanup remained outside timing. The measured distributions overlap; the 3.75% median difference remains below the 5% architecture gate and does not establish a material regression.
+
+| Target | Build median | Worker raw / gzip | Window raw / gzip |
+|---|---:|---:|---:|
+| 0.8.15 baseline | 787.0 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+| 0.8.16 candidate | 816.5 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+
+```text
+0.8.15: [762.5,793.7,937.8,820.7,775.9,766.4,807.2,742.7,772.0,757.6,823.0,752.7,814.2,827.2,917.4,787.0,755.1,798.5,742.1,806.8,785.8]
+0.8.16: [893.1,653.9,915.2,816.5,800.1,747.1,801.5,749.8,951.8,830.3,723.5,780.4,904.4,821.6,957.0,757.9,918.0,809.5,739.3,844.6,950.9]
+```
+
+The artifact comparison is exact for both graphs. It measures compiler clean-build startup plus the existing Worker fixture, not browser update latency or cross-framework performance.
+
 ## 0.7.12 Keyed Local State
 
 Measured UTC 2026-08-02 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, npm 11.18.0, and Chrome 150.0.7871.187.
