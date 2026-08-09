@@ -1,5 +1,5 @@
 export function createModuleIR(file) {
-  return { version: 1, file, signals: [], handlers: [], bindings: [], derived: [], keyedBlocks: [], imports: [], clientModules: [] }
+  return { version: 1, file, signals: [], handlers: [], bindings: [], derived: [], effects: [], keyedBlocks: [], imports: [], clientModules: [] }
 }
 
 export function registerCommandHandler(moduleIR, commands, source, scope = "module") {
@@ -38,6 +38,12 @@ export function registerDerived(moduleIR, descriptor) {
   const derived = { slot: moduleIR.derived.length, ...descriptor }
   moduleIR.derived.push(derived)
   return derived
+}
+
+export function registerEffect(moduleIR, descriptor) {
+  const effect = { slot: moduleIR.effects.length, ...descriptor }
+  moduleIR.effects.push(effect)
+  return effect
 }
 
 export function registerKeyedBlock(moduleIR, descriptor) {

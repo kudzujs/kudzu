@@ -2400,6 +2400,11 @@ test("bundles relative TypeScript Workers for inline effects", async t => {
   try {
     const first = buildFixture()
     assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`)
+    const sourceResult = inspectSourceResult(fixture, "src/pages/dashboard.tsx")
+    assert.equal(sourceResult.moduleIR.effects.length, 1)
+    assert.equal(sourceResult.moduleIR.handlers[sourceResult.moduleIR.effects[0].setup.handler].role, "effect")
+    assert.deepEqual(sourceResult.moduleIR.effects[0].workers.map(worker => [worker.root, worker.source.file]), [["telemetry.worker.ts", "src/pages/dashboard.tsx"]])
+    assert.equal("workerReferences" in sourceResult, false)
     const firstFiles = await workerFiles()
     assert.equal(firstFiles.length, 1)
     assert.match(firstFiles[0], /^telemetry\.worker-[A-Z0-9]+\.js$/)
@@ -2434,6 +2439,16 @@ test("bundles relative TypeScript Workers for inline effects", async t => {
     assert.equal(noWorker.status, 0, `${noWorker.stdout}\n${noWorker.stderr}`)
     assert.equal(existsSync(new URL("dist/assets/workers", fixture)), false)
     assert.deepEqual(await Promise.all(capabilityPaths.map(path => readFile(new URL(`dist/assets/${path}`, fixture)))), capabilities)
+
+    const unusedWorkerPage = `${noWorkerPage}\nfunction UnusedWorker() {\n${pageSource.slice(effectStart, effectEnd)}\n  return null\n}\n`
+    await writeFile(pageUrl, unusedWorkerPage)
+    const unusedWorker = buildFixture()
+    assert.equal(unusedWorker.status, 0, `${unusedWorker.stdout}\n${unusedWorker.stderr}`)
+    assert.equal(inspectSourceResult(fixture, "src/pages/dashboard.tsx").moduleIR.effects.length, 2)
+    assert.equal(existsSync(new URL("dist/assets/workers", fixture)), false)
+    const unusedWorkerHandler = await readFile(new URL("dist/assets/handlers/pages/dashboard.js", fixture), "utf8")
+    assert.match(unusedWorkerHandler, /about:blank/)
+    assert.doesNotMatch(unusedWorkerHandler, /__kudzu_worker_/)
     await writeFile(pageUrl, pageSource)
 
     await writeFile(configUrl, configSource.replace('base: "/dash"', 'base: "/dash\\\"quoted!()[]"'))
@@ -2574,6 +2589,13 @@ test("owns effects rendered by imported keyed row components", async t => {
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const sourceResult = inspectSourceResult(fixture, "src/pages/index.tsx")
+  assert.deepEqual(sourceResult.moduleIR.effects.map(effect => [effect.ownership.kind, effect.ownership.keyedBlock, effect.itemDependencies, effect.dependencies]), [
+    ["keyed", 0, ["id"], []],
+    ["keyed", 0, ["name"], [{ kind: "signal", name: "version" }]]
+  ])
+  assert.ok(sourceResult.moduleIR.effects.every(effect => effect.source.file === "src/EffectRow.tsx" && effect.ownership.component.name === "EffectRow" && effect.ownership.component.source.file === "src/EffectRow.tsx"))
+  assert.ok(sourceResult.moduleIR.effects.every(effect => sourceResult.moduleIR.handlers[effect.setup.handler].keyedBlock === effect.ownership.keyedBlock))
   const html = await readFile(new URL("./fixtures/keyed-effects/dist/index.html", import.meta.url), "utf8")
   const entry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
   const itemOnlyEntry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/item-only/index.js", import.meta.url), "utf8")
@@ -2656,8 +2678,16 @@ test("reruns multiple primitive dependency effects after cleanup", async t => {
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
-  const derived = inspectSourceResult(fixture, "src/pages/index.tsx").moduleIR.derived
+  const sourceResult = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const { derived, effects } = sourceResult.moduleIR
   assert.deepEqual(derived.map(entry => [entry.kind, entry.states, entry.expression]), [["expression", ["count"], ["conditional", ["binary", "===", ["binary", "%", ["state", "count"], ["value", 2]], ["value", 0]], ["value", "even"], ["value", "odd"]]]])
+  assert.deepEqual(effects.map(effect => [effect.cleanup, effect.dependencies, effect.subscriptions]), [
+    [true, [{ kind: "signal", name: "count" }, { kind: "signal", name: "page" }], ["count", "page"]],
+    [true, [{ kind: "signal", name: "countAlias" }], ["countAlias"]],
+    [true, [{ kind: "derived", derived: 0, sources: ["count"] }], ["count"]],
+    [true, [{ kind: "signal", name: "count" }], ["count"]]
+  ])
+  assert.deepEqual(JSON.parse(JSON.stringify(effects)), effects)
   const entryUrl = new URL("./fixtures/effect-dependencies/dist/assets/effects/index.js", import.meta.url)
   const runtimeUrl = new URL("./fixtures/effect-dependencies/dist/assets/kudzu-deps.js", import.meta.url)
   const entry = await readFile(entryUrl, "utf8")

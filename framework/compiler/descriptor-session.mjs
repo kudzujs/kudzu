@@ -2,7 +2,7 @@ import ts from "typescript"
 import { createComponentAnalysis } from "./analysis/component-analysis.mjs"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
-import { createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerKeyedBlock, registerModuleHandler } from "./ir/module-ir.mjs"
+import { createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerEffect, registerKeyedBlock, registerModuleHandler } from "./ir/module-ir.mjs"
 
 export function createSemanticArtifact(file) {
   return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file) }
@@ -160,6 +160,10 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     return registerKeyedBlock(moduleIR, descriptor)
   }
 
+  function registerEffectResult(handler, descriptor) {
+    return registerEffect(moduleIR, { ...descriptor, setup: { exportName: handler.exportName } })
+  }
+
   function finalize() {
     const callbacks = [...nativeHandlers, ...effectHandlers]
     for (const entry of callbacks) {
@@ -210,6 +214,11 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
       code: handlerLowering.lowerListExpression(entry),
       ...(source(entry.expression) ? { source: source(entry.expression) } : {})
     })
+    for (const effect of moduleIR.effects) {
+      const handler = moduleIR.handlers.find(candidate => candidate.kind === "module-export" && candidate.role === "effect" && candidate.exportName === effect.setup.exportName)
+      if (!handler) throw new Error(`Effect handler ${JSON.stringify(effect.setup.exportName)} was not finalized`)
+      effect.setup = { handler: handler.slot }
+    }
     const imports = [...callbacks, ...reactiveBindings].flatMap(entry => entry.imports ?? []).map(importRecord)
     moduleIR.imports = [...new Map(imports.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry])).values()]
     moduleIR.clientModules = [...clientModules]
@@ -223,7 +232,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   const importRecord = entry => ({ target: entry.target, kind: entry.kind, local: entry.local, ...(entry.imported ? { imported: entry.imported } : {}), package: Boolean(entry.package) })
 
-  return { compileConditional, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding, finalize, registerDerived: registerDerivedResult, registerKeyedBlock: registerKeyedBlockResult }
+  return { compileConditional, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding, finalize, registerDerived: registerDerivedResult, registerEffect: registerEffectResult, registerKeyedBlock: registerKeyedBlockResult }
 }
 
 function directStateIdentifier(expression, setters) {

@@ -1,5 +1,40 @@
 # Kudzu Releases
 
+## 0.8.21 - Explicit effect ownership
+
+Kudzu 0.8.21 completes the next Goal A source-analysis seam: every supported effect now registers deterministic JSON-safe setup, cleanup, dependency, ownership, source, and Worker-edge data before existing build-time rendering allocates concrete lifecycle IDs.
+
+### Changed in 0.8.21
+
+- EffectIR links setup to finalized HandlerIR and records cleanup, ordered signal and DerivedIR dependencies, subscriptions, dependency state snapshots, and keyed-item fields.
+- Component and keyed ownership retain lexical component provenance and KeyedBlockIR slots, including specialized imported rows.
+- Relative TypeScript Worker rewriting returns functional callback and edge results; rendered Worker emission derives only from EffectIR rather than a build-wide mutable reference array.
+- Transformed effect calls consume the registered EffectIR dependency and ownership record before final setup HandlerIR slot resolution.
+- Effect dependency classification and cleanup-owned browser resource validation moved to `compiler/effect-analysis.mjs`; transformer-wide component and keyed effect AST side tables were removed.
+- Mixed direct and derived dependencies create DerivedIR only for derived expressions while preserving authored dependency order.
+
+### Goal A boundary
+
+- `core.mjs` and the existing route plan remain authoritative for concrete route/layout/conditional/keyed effect IDs, mounting, stale-write invalidation, and cleanup order; ModuleIR does not duplicate RouteIR.
+- EffectIR owns source-analysis facts and Worker graph edges. Route-specific effect codegen continues to consume rendered descriptors without rediscovering TSX semantics.
+- No accepted syntax, public API, browser capability, VDOM, hydration, component rerender, or retained browser component tree was added.
+- Goal A continues with the `0.8.22` RouteIR, CapabilityIR, numeric-slot, and final architecture/output audit.
+
+### Validation
+
+- The complete suite passes 170/170 tests, including EffectIR JSON round-trip, mixed dependencies, imported keyed provenance, Worker rendered exclusion and `about:blank` replacement, conditional/navigation ownership, stale-write isolation, and cleanup.
+- `npm run check`, focused Node 22 compiler tests, and a Node 22 complete-site build pass.
+- Before release-content updates, the complete 135-page site plus `effect-dependencies`, `keyed-effects`, and `worker-effects` output trees were byte-identical to `v0.8.20`.
+- Worker and window graph files remain byte-identical. Seven interleaved clean builds measured a 253.0 ms candidate median against 255.6 ms for `v0.8.20`; raw arrays and provenance are recorded in `PERFORMANCE.md`.
+- A release-blocking architecture audit found no implementation or runtime-correctness blockers.
+- `create-kudzu` remains 0.1.101 because its unchanged template already accepts `@kudzujs/core@^0.8.15`.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.21
+```
+
 ## 0.8.20 - Explicit keyed ownership
 
 Kudzu 0.8.20 completes the next Goal A source-analysis boundary: keyed collection sites now finalize into deterministic JSON-safe ownership records before the existing build-time renderer allocates DOM identity and lifecycle state.

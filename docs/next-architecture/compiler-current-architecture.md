@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the completed `0.8.20` keyed ownership boundary. File and function names are the stable references; line numbers are intentionally omitted because Goal A moves code.
+This maps the EffectIR boundary prepared for `0.8.21`. File and function names are the stable references; line numbers are intentionally omitted because Goal A moves code.
 
 ## Responsibility Map
 
@@ -13,14 +13,15 @@ This maps the completed `0.8.20` keyed ownership boundary. File and function nam
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
 | Shared AST/scope helpers | [`framework/compiler/ast-helpers.mjs`](../../framework/compiler/ast-helpers.mjs) | Binding, scope, reference, effect-return, and source-location analysis. |
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
-| Main semantic analysis | `framework/build.mjs`, `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, and keyed ownership results while still owning effect-lifetime side tables. |
+| Main semantic analysis | `framework/build.mjs`, `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, keyed, and effect ownership results. |
 | Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, and source provenance; AST identity remains private to its source-local session. |
-| Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Keeps AST descriptors private during analysis, then finalizes deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, KeyedBlockIR, imports, and client roots into ModuleIR. |
+| Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Keeps AST descriptors private during analysis, then finalizes deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, KeyedBlockIR, EffectIR, imports, and client roots into ModuleIR. |
 | Command IR and codegen | [`framework/compiler/optimize/command-specialization.mjs`](../../framework/compiler/optimize/command-specialization.mjs), [`framework/compiler/ir/module-ir.mjs`](../../framework/compiler/ir/module-ir.mjs), [`framework/compiler/codegen/command-codegen.mjs`](../../framework/compiler/codegen/command-codegen.mjs) | Supported command handlers specialize to JSON-safe ModuleIR, then emit the existing `__kBehavior` AST without changing route plans. |
 | Build module generation | `framework/build.mjs`, `compile()` | Runs TypeScript with the Kudzu transformer, writes build-executable modules to `.kudzu`, rejects surviving React/Router runtime references, and generates handler source when descriptors exist. |
 | Handler/evaluator lowering | [`framework/compiler/handler-lowering.mjs`](../../framework/compiler/handler-lowering.mjs) | Completes source-local callback/binding/list AST rewriting and diagnostics before the JSON-safe IR boundary. |
 | Handler module codegen | [`framework/compiler/handler-codegen.mjs`](../../framework/compiler/handler-codegen.mjs) | Renders finalized ordered imports and concatenates generated module-export source without TypeScript AST or semantic discovery. |
-| Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Validates the exact effect-owned Worker form, validates its relative graph, emits content-hashed ESM, and resolves placeholders only for rendered effects. |
+| Effect analysis | [`framework/compiler/effect-analysis.mjs`](../../framework/compiler/effect-analysis.mjs) | Classifies ordered signal, derived, and keyed-item dependencies and validates cleanup-owned browser resources before EffectIR registration. |
+| Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Returns functional Worker rewrite results and JSON-safe EffectIR edges, validates relative graphs, emits content-hashed ESM, and resolves placeholders only for rendered effects. |
 | Build-time JSX execution | [`framework/core.mjs`](../../framework/core.mjs), `renderPage()` | Executes compiled pages/layouts, allocates deterministic route/layout ownership IDs, emits complete HTML, and returns the serializable route plan and capability booleans. |
 | Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Purely folds rendered route plans and route facts into aggregate runtime/artifact requirements. |
 | Effect entry generation | [`framework/compiler/effect-codegen.mjs`](../../framework/compiler/effect-codegen.mjs) | Generates ordinary, dependency, owned, and navigable effect entries from rendered descriptors. |
@@ -58,7 +59,7 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 ## Current Coupling To Remove
 
 - `createKudzuTransformer()` combines discovery, validation, specialization, descriptor registration, and transformed-source emission.
-- Effect ownership relationships and transient component rewrite indexes remain source-local AST indexes; handler, binding, derived, keyed, and component ownership now have explicit JSON-safe source results.
+- Transient component rewrite indexes remain source-local AST indexes; handler, binding, derived, keyed, effect, and component ownership now have explicit JSON-safe source results.
 - `build()` destructures a broad capability manifest into many booleans and performs artifact-specific source surgery.
 - Runtime specialization relies on exact source-string and regular-expression replacements in `framework/build.mjs`.
 - Route facts, rendered plans, artifact requirements, and emitted-file decisions are represented at adjacent but not fully explicit boundaries.

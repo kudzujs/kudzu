@@ -2,7 +2,7 @@
 
 ## Status
 
-The `0.8.20` KeyedBlockIR ownership result is complete. Goal A continues with the planned `0.8.21` EffectIR seam while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
+The `0.8.21` EffectIR source-analysis seam is complete. Goal A continues with the planned `0.8.22` RouteIR, CapabilityIR, and architecture/output audit while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
 
 ## Target Boundaries
 
@@ -49,7 +49,7 @@ Existing representations are promoted rather than copied:
 | `HandlerIR` | Plain command data or a stable generated-module export reference. |
 | `BindingIR` | Promote existing binding descriptors. |
 | `DerivedIR` | Reuse the existing tagged Collection Expression IR. |
-| `EffectIR` | Replace effect AST side tables with one explicit result when that seam is ready. |
+| `EffectIR` | Records setup HandlerIR, cleanup, ordered signal/DerivedIR dependencies and subscriptions, component/keyed ownership, source provenance, and Worker edges. |
 | `KeyedBlockIR` | Promote the existing list descriptor after ownership analysis is explicit. |
 | `CapabilityIR` | Reuse the current pure route capability manifest. |
 
@@ -77,7 +77,7 @@ Analysis produces plain data:
 }
 ```
 
-The `0.8.20` source result adds deterministic KeyedBlockIR parent/child ownership, collection and selector references, complete specialization membership, row state/ref provenance, and keyed HandlerIR/BindingIR links beside the existing command, component, handler, binding, and derived results. Source-local keyed AST validation is consumed during lowering and does not cross this boundary. Initial values, final state IDs, and effect lifetime ownership join their explicit results in later planned patches; `core.mjs` remains authoritative for route allocation today.
+The `0.8.21` source result adds deterministic EffectIR setup HandlerIR links, cleanup, ordered dependencies and subscriptions, DerivedIR references, component/keyed ownership, source provenance, and Worker edges beside the existing command, component, handler, binding, derived, and KeyedBlockIR results. Source-local effect AST analysis is consumed during lowering and does not cross this boundary. Final route/layout/conditional/keyed effect IDs and lifetime allocation remain authoritative in `core.mjs`; the existing route plan is not duplicated in ModuleIR.
 
 Source codegen lowers that data through the existing build ABI:
 
@@ -89,7 +89,7 @@ __kBehavior([["add", count, 1]])
 
 ### Source Result
 
-One source-local result owns transformed source plus the sparse ModuleIR, generated handler/effect/binding/list evaluator source, client imports, Worker references, and explicit pass metadata. AST-bearing data is consumed inside analysis/codegen and does not become IR or cross-build state.
+One source-local result owns transformed source plus the sparse ModuleIR, generated handler/effect/binding/list evaluator source, client imports, and explicit pass metadata. Worker ownership is recorded as EffectIR edges; AST-bearing data is consumed inside analysis/lowering and does not become IR or cross-build state.
 
 ### Route Result
 
@@ -117,7 +117,7 @@ No generator may analyze TSX, invent runtime component abstractions, or broaden 
 
 - One patch, one boundary, with no migration feature mixed in.
 - Extract only code whose callers and outputs are understood.
-- Replace AST side tables only when an explicit keyed result can preserve ownership and source diagnostics.
+- Replace AST side tables only when an explicit feature result can preserve ownership and source diagnostics.
 - Keep `build()` as orchestration; do not replace it with a service container or plugin framework.
 - Preserve current runtime files until their corresponding generator has artifact parity.
 - Treat deterministic byte changes as review items even when tests pass.

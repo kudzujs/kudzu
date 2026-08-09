@@ -11,6 +11,7 @@ import { normalizeMediaQueryExternalStores, normalizeNavigatorCapabilityConditio
 import { analyzeCollectionPipeline, collectionExpression, collectionParameters, isArrayFromCall, mutatingCollectionMethods as mutatingListMethods, pureCollectionMathMethods as pureMathMethods, pureCollectionMethods as pureListMethods } from "./compiler/collection-analysis.mjs"
 import { normalizeCustomHookTimerRefs } from "./compiler/custom-hook-timer-pass.mjs"
 import { captureNames, createDescriptorSession, createSemanticArtifact, nativeCaptureNames, referencedReducerDispatches, referencedStateNames } from "./compiler/descriptor-session.mjs"
+import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "./compiler/effect-analysis.mjs"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { createHandlerCodegen } from "./compiler/handler-codegen.mjs"
 import { createHandlerLowering } from "./compiler/handler-lowering.mjs"
@@ -75,12 +76,16 @@ export async function build({ quiet = false, minify = true } = {}) {
   const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base)
 
   const sourceResults = []
-  const workerReferences = []
   for (const file of sourceFiles) {
     if (file.endsWith(".worker.ts")) continue
-    sourceResults.push(await compile(file, sourceFileSet, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences))
+    sourceResults.push(await compile(file, sourceFileSet, sourceIndex, staticFiles, importedAssets, cssModules, base))
   }
   const handlerModules = sourceResults.flatMap(result => result.handlerModule ? [result.handlerModule] : [])
+  const workerReferences = sourceResults.flatMap(result => result.moduleIR.effects.flatMap(effect => {
+    const handler = result.moduleIR.handlers[effect.setup.handler]
+    if (!handler || handler.kind !== "module-export" || handler.role !== "effect") throw new Error(`EffectIR ${effect.slot} has no effect HandlerIR`)
+    return effect.workers.map(worker => ({ ...worker, module: assetPath(base, `assets/${result.handlerModule.path}`), handler: handler.exportName }))
+  }))
 
   const plans = []
   const routeCapabilities = new Map()
@@ -678,7 +683,7 @@ function escapeAttribute(value) {
   return escapeHtml(value).replaceAll('"', "&quot;").replaceAll("'", "&#39;")
 }
 
-async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences) {
+async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base) {
   const source = sourceIndex.get(file)
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
@@ -690,7 +695,7 @@ async function compile(file, sourceFiles, sourceIndex, staticFiles, importedAsse
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer({ semantic, handlerUrl: assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences })] },
+    transformers: { before: [createKudzuTransformer({ semantic, handlerUrl: assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base })] },
     reportDiagnostics: true
   })
 
@@ -882,7 +887,7 @@ function normalizeCompilerSource(sourceFile, { base, context, file, importedColl
   return { sourceFile, customHookTimerStates }
 }
 
-function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base, workerReferences }) {
+function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base }) {
   const { moduleIR } = semantic
   return context => sourceFile => {
     const hasLinkElements = /<link/i.test(sourceFile.text)
@@ -954,7 +959,6 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const jsxLocalsByFunction = new Map()
     const listLocalDeclarations = []
     const listLocalUses = []
-    const componentEffectEntries = new WeakMap()
     const analysisSource = node => {
       const original = ts.getOriginalNode(node)
       return original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
@@ -1724,8 +1728,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const effectStatements = specialization.effects.map(entry => {
           const effectCall = factory.updateCallExpression(entry.call, factory.createIdentifier("__kComponentUseEffect"), entry.call.typeArguments, entry.call.arguments)
           synthesizeTree(effectCall)
-          const effectSource = entry.source.getSourceFile()
-          componentEffectEntries.set(effectCall, { source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
+          ts.setOriginalNode(effectCall, entry.source)
           return factory.createExpressionStatement(effectCall)
         })
         const helper = factory.createFunctionDeclaration(
@@ -1956,15 +1959,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       return expanded
     }
     const preparedRenderedLists = []
-    const prepareListCallback = (callback, root, specialization, item, effectEntries) => {
+    const prepareListCallback = (callback, root, specialization) => {
       const statements = [...specialization.hookDeclarations]
       if (specialization.effects.length) {
         usesListEffects = true
         statements.push(...specialization.effects.map(entry => {
           const call = factory.updateCallExpression(entry.call, factory.createIdentifier("__kListUseEffect"), entry.call.typeArguments, entry.call.arguments)
           synthesizeTree(call)
-          const effectSource = entry.source.getSourceFile()
-          effectEntries.push({ node: call, item, source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
+          ts.setOriginalNode(call, entry.source)
           return factory.createExpressionStatement(call)
         }))
       }
@@ -1995,13 +1997,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         ts.setParentRecursive(callback, false)
         callback.parent = originalParts.callback.parent
       }
-      const effectEntries = []
-      callback = prepareListCallback(callback, root, specialization, originalParts.item, effectEntries)
+      callback = prepareListCallback(callback, root, specialization)
       const parts = {
         ...originalParts,
         root,
         callback,
-        effectEntries,
         specializations: [specialization.analysis?.slot, ...(specialization.specializations ?? [])].filter(slot => slot !== undefined),
         rowStates: [...specialization.rowStates, ...specialization.ordinaryStates],
         rowRefs: specialization.rowRefs,
@@ -2138,10 +2138,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
 
-      const listEffect = ts.isCallExpression(node) ? keyedEntry(activeKeyedBlock?.analysis.effects ?? [], node) : undefined
-      const componentEffect = ts.isCallExpression(node) ? componentEffectEntries.get(node) : undefined
-      const specializedEffect = listEffect ?? componentEffect
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && (hasUseEffectImport && node.expression.text === "useEffect" || specializedEffect)) {
+      const effectAlias = ts.isCallExpression(node) && ts.isIdentifier(node.expression) ? node.expression.text : undefined
+      const listEffect = effectAlias === "__kListUseEffect"
+      const specializedEffect = listEffect || effectAlias === "__kComponentUseEffect" ? (() => {
+        const source = ts.getOriginalNode(node)
+        const sourceFile = source.getSourceFile()
+        return { source, sourceFile, imports: clientImportBindings(sourceFile, sourceFile.fileName, sourceFiles) }
+      })() : undefined
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && (hasUseEffectImport && effectAlias === "useEffect" || specializedEffect)) {
         const effectFail = (target, message) => {
           if (specializedEffect) throw sourceNodeError(specializedEffect.source, specializedEffect.sourceFile, message)
           fail(target, message)
@@ -2162,58 +2166,18 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (callback.asteriskToken) effectFail(callback, "useEffect() callback cannot be a generator")
         if (callback.parameters.length) effectFail(callback, "useEffect() callback cannot declare parameters")
         if (!ts.isArrayLiteralExpression(dependencies)) effectFail(dependencies, "useEffect() dependencies must be a literal array")
-        const itemDependencies = []
-        const ordinaryDependencies = []
         const setters = settersForNode(node, settersByFunction)
-        let dependencyItem = listEffect?.item
-        for (const dependency of dependencies.elements) {
-          const value = unwrapExpression(dependency)
-          if (!dependencyItem && ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression) && isDestructuredParameter(value.expression, nearestFunction(node))) dependencyItem = value.expression.text
-          const field = dependencyItem && directProperty(dependency, dependencyItem)
-          if (field) {
-            if (["__proto__", "constructor", "prototype"].includes(field)) effectFail(dependency, `useEffect() keyed item property "${field}" is not supported`)
-            itemDependencies.push(field)
-          } else if (dependencyItem && referencesIdentifier(dependency, dependencyItem)) {
-            effectFail(dependency, "useEffect() keyed item dependencies must be direct item.<field> properties")
-          } else {
-            ordinaryDependencies.push(dependency)
-          }
-        }
-        const invalidDependency = ordinaryDependencies.find(dependency => !ts.isIdentifier(dependency))
-        if (invalidDependency) effectFail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
-        const dependencyDerived = []
-        const dependencyStates = new Map()
-        const dependencySubstitutions = new Map()
-        const subscriptionDependencies = []
-        let hasDerivedDependency = false
-        const stateNames = new Set(setters.values())
-        const localDeclarations = jsxLocalDeclarations.get(nearestFunction(node))
-        for (const dependency of ordinaryDependencies) {
-          const entries = localDeclarations?.get(dependency.text)
-          const initializer = entries?.length === 1 ? entries[0].initializer : undefined
-          const directAlias = initializer && ts.isIdentifier(unwrapExpression(initializer)) && stateNames.has(unwrapExpression(initializer).text)
-          const derivedStates = initializer && !directAlias ? referencedStateNames(initializer, setters) : new Set()
-          if (derivedStates.size) {
-            const usedStates = new Set()
-            const expression = collectionExpression(initializer, { fail: effectFail, stateNames, selectorStates: usedStates })
-            if (!usedStates.size) effectFail(dependency, `useEffect() derived dependency "${dependency.text}" must read direct primitive state`)
-            dependencyDerived.push({ expression, states: usedStates, source: initializer })
-            for (const name of usedStates) {
-              subscriptionDependencies.push(factory.createIdentifier(name))
-              dependencyStates.set(name, factory.createIdentifier(name))
-            }
-            dependencySubstitutions.set(dependency.text, initializer)
-            hasDerivedDependency = true
-          } else {
-            subscriptionDependencies.push(dependency)
-            dependencyDerived.push({ expression: ["state", dependency.text], states: [dependency.text], source: dependency })
-            dependencyStates.set(dependency.text, dependency)
-          }
-        }
-        if (!hasDerivedDependency) {
-          dependencyDerived.length = 0
-          dependencyStates.clear()
-        }
+        const dependencyAnalysis = analyzeEffectDependencies({
+          dependencies,
+          node,
+          listEffect,
+          keyedItem: activeKeyedBlock?.parts.item,
+          setters,
+          localDeclarations: jsxLocalDeclarations.get(nearestFunction(node)),
+          factory,
+          fail: effectFail
+        })
+        const { dependencyItem, itemDependencies, ordinaryDependencies, entries: dependencyEntries, dependencyStates, substitutions: dependencySubstitutions, subscriptions: subscriptionDependencies, hasDerived: hasDerivedDependency } = dependencyAnalysis
         if (!effectOwner) fail(node, "useEffect() cannot be used outside a Kudzu component")
         if (!ts.isBlock(callback.body)) effectFail(callback, "useEffect() callback must use a block body")
         const cleanupSubstitutions = new Map()
@@ -2239,17 +2203,19 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         validateEffectOwnedBrowserResources(callback, returns, effectFail)
         const callbackSource = specializedEffect?.sourceFile ?? sourceFile
         const callbackFile = callbackSource.fileName
-        const workerStart = workerReferences.length
         let compiledCallback = dependencySubstitutions.size ? substituteClone(callback, dependencySubstitutions, factory, context) : callback
         if (compiledCallback !== callback) {
           ts.setParentRecursive(compiledCallback, false)
           compiledCallback.parent = callback.parent
         }
+        let workers = []
         if (listEffect && callbackFile !== file) {
-          const originalCallback = listEffect.source.arguments[0]
+          const originalCallback = specializedEffect.source.arguments[0]
           workerCompiler.rejectConstructions(originalCallback, callbackSource, "Relative TypeScript Worker construction in imported keyed-row effects is not supported; construct the Worker in a directly compiled page or local component effect")
         } else {
-          compiledCallback = workerCompiler.rewriteEffect(compiledCallback, callbackFile, callbackSource, sourceFiles, workerReferences, factory, context)
+          const rewritten = workerCompiler.rewriteEffect(compiledCallback, callbackFile, callbackSource, sourceFiles, factory, context)
+          compiledCallback = rewritten.callback
+          workers = rewritten.workers
         }
         const descriptor = descriptors.compileEffectCallback(compiledCallback, {
           setters,
@@ -2261,22 +2227,38 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           snapshotNested: returns.cleanup,
           liveStates: customHookTimerStates
         })
-        for (const reference of workerReferences.slice(workerStart)) Object.assign(reference, { module: handlerUrl, handler: descriptor.exportName })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
-        const derivedDependencies = hasDerivedDependency ? dependencyDerived.map(entry => descriptors.registerDerived("expression", entry.expression, entry.states, entry.source)) : []
+        const derivedDependencies = hasDerivedDependency ? dependencyEntries.map(entry => entry.kind === "derived" ? descriptors.registerDerived("expression", entry.expression, entry.states, entry.source) : undefined) : []
+        const effectSource = specializedEffect?.source ?? node
+        const lexicalOwner = nearestFunction(effectSource)
+        const effect = descriptors.registerEffect(descriptor, {
+          cleanup: returns.cleanup,
+          dependencies: hasDerivedDependency ? dependencyEntries.map((entry, index) => entry.kind === "derived" ? { kind: "derived", derived: derivedDependencies[index].slot, sources: [...entry.states] } : { kind: "signal", name: entry.name }) : ordinaryDependencies.map(dependency => ({ kind: "signal", name: dependency.text })),
+          subscriptions: (hasDerivedDependency ? subscriptionDependencies : ordinaryDependencies).map(dependency => dependency.text),
+          dependencyStates: [...dependencyStates.keys()],
+          itemDependencies,
+          ownership: {
+            kind: activeKeyedBlock ? "keyed" : "component",
+            ...(activeKeyedBlock ? { keyedBlock: activeKeyedBlock.block.slot } : {}),
+            ...(lexicalOwner ? { component: { name: ownerName(lexicalOwner), ...(analysisSource(lexicalOwner) ? { source: analysisSource(lexicalOwner) } : {}) } } : {})
+          },
+          workers,
+          ...(analysisSource(effectSource) ? { source: analysisSource(effectSource) } : {})
+        })
+        const dependencyExpressions = effect.dependencies.map(dependency => dependency.kind === "derived" ? moduleIR.derived[dependency.derived].expression : ["state", dependency.name])
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
           callback,
-          factory.createArrayLiteralExpression(hasDerivedDependency ? subscriptionDependencies : ordinaryDependencies),
+          factory.createArrayLiteralExpression(effect.subscriptions.map(name => factory.createIdentifier(name))),
           factory.createStringLiteral(handlerUrl),
-          factory.createStringLiteral(descriptor.exportName),
+          factory.createStringLiteral(effect.setup.exportName),
           descriptor.states,
           descriptor.scope,
           factory.createStringLiteral(specializedEffect ? sourceLocation(specializedEffect.source, specializedEffect.sourceFile) : sourceLocation(node, sourceFile)),
-          returns.cleanup ? factory.createTrue() : factory.createFalse(),
-          factory.createArrayLiteralExpression(itemDependencies.map(field => factory.createStringLiteral(field))),
-          hasDerivedDependency ? jsonExpression(derivedDependencies.map(entry => entry.expression), factory) : factory.createArrayLiteralExpression(),
-          factory.createArrayLiteralExpression([...dependencyStates].map(([name, state]) => factory.createArrayLiteralExpression([factory.createStringLiteral(name), state])))
+          effect.cleanup ? factory.createTrue() : factory.createFalse(),
+          factory.createArrayLiteralExpression(effect.itemDependencies.map(field => factory.createStringLiteral(field))),
+          hasDerivedDependency ? jsonExpression(dependencyExpressions, factory) : factory.createArrayLiteralExpression(),
+          factory.createArrayLiteralExpression(effect.dependencyStates.map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)])))
         ])
       }
 
@@ -2618,7 +2600,7 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
   }
-  const analysis = { values: [], conditions: [], nested: [], effects: parts.effectEntries ?? [] }
+  const analysis = { values: [], conditions: [], nested: [] }
   const root = parts.root
   const item = parts.item
   const nestedDiagnostic = "Nested keyed list collections must be a direct property of the parent item"
@@ -2657,8 +2639,7 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
           ts.setParentRecursive(callback, false)
           callback.parent = nested.callback.parent
         }
-        const effectEntries = []
-        callback = prepareListCallback(callback, root, specialization ?? { hookDeclarations: [], effects: [] }, nested.item, effectEntries)
+        callback = prepareListCallback(callback, root, specialization ?? { hookDeclarations: [], effects: [] })
         const specializedStates = [...(specialization?.rowStates ?? []), ...(specialization?.ordinaryStates ?? [])]
         const nestedParts = {
           ...nested,
@@ -2666,7 +2647,6 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
           callback,
           state: parts.state,
           nested: true,
-          effectEntries,
           specializations: [specialization?.analysis?.slot, ...(specialization?.specializations ?? [])].filter(slot => slot !== undefined),
           rowStates: specializedStates,
           rowRefs: specialization?.rowRefs ?? [],
@@ -3427,30 +3407,6 @@ function localComponentDeclaration(sourceFile, name) {
     }
   }
   return undefined
-}
-
-function validateEffectOwnedBrowserResources(callback, returns, fail) {
-  const observers = []
-  const frameAssignments = []
-  const cancellations = new Set()
-  const disconnected = new Set()
-  const insideCleanup = node => returns.cleanups.some(cleanup => {
-    for (let current = node; current; current = current.parent) if (current === cleanup) return true
-    return false
-  })
-  const visit = node => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isNewExpression(unwrapExpression(node.initializer)) && ts.isIdentifier(unwrapExpression(node.initializer).expression) && unwrapExpression(node.initializer).expression.text === "IntersectionObserver") observers.push(node)
-    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrapExpression(node.left)) && ts.isCallExpression(unwrapExpression(node.right)) && ts.isIdentifier(unwrapExpression(node.right).expression) && unwrapExpression(node.right).expression.text === "requestAnimationFrame") frameAssignments.push(node)
-    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "cancelAnimationFrame" && node.arguments.length === 1 && ts.isIdentifier(unwrapExpression(node.arguments[0]))) cancellations.add(unwrapExpression(node.arguments[0]).text)
-    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.name.text === "disconnect" && node.arguments.length === 0) disconnected.add(node.expression.expression.text)
-    ts.forEachChild(node, visit)
-  }
-  visit(callback.body)
-  for (const observer of observers) if (!disconnected.has(observer.name.text)) fail(observer, `IntersectionObserver effects must disconnect ${JSON.stringify(observer.name.text)} in cleanup`)
-  for (const assignment of frameAssignments) {
-    const name = unwrapExpression(assignment.left).text
-    if (!cancellations.has(name)) fail(assignment, `Animation loop effects must cancel ${JSON.stringify(name)} in cleanup`)
-  }
 }
 
 async function collectClientModules(entries, sourceFiles) {

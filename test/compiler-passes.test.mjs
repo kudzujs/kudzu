@@ -6,8 +6,9 @@ import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
 import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
+import { analyzeEffectDependencies } from "../framework/compiler/effect-analysis.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
-import { createModuleIR, registerCommandHandler, registerKeyedBlock } from "../framework/compiler/ir/module-ir.mjs"
+import { createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock } from "../framework/compiler/ir/module-ir.mjs"
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
 import { createCommandSpecializer } from "../framework/compiler/optimize/command-specialization.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
@@ -115,6 +116,7 @@ test("registers JSON-safe command ModuleIR with deterministic slots", () => {
     ],
     bindings: [],
     derived: [],
+    effects: [],
     keyedBlocks: [],
     imports: [],
     clientModules: []
@@ -135,6 +137,54 @@ test("registers JSON-safe keyed ownership with deterministic parent slots", () =
   ])
   assertJsonData(moduleIR)
   assert.deepEqual(JSON.parse(JSON.stringify(moduleIR)), moduleIR)
+})
+
+test("registers JSON-safe effect ownership with handler and Worker edges", () => {
+  const moduleIR = createModuleIR("src/pages/effect.tsx")
+  registerEffect(moduleIR, {
+    setup: { handler: 2 },
+    cleanup: true,
+    dependencies: [{ kind: "signal", name: "count" }, { kind: "derived", derived: 0, sources: ["count"] }],
+    subscriptions: ["count", "count"],
+    dependencyStates: ["count"],
+    itemDependencies: ["label"],
+    ownership: { kind: "keyed", keyedBlock: 1, component: { name: "Row", source: { file: "src/Row.tsx", start: 10, end: 80 } } },
+    workers: [{ root: "workers/task.worker.ts", placeholder: "/__kudzu_worker_0123456789abcdef__.js", source: { file: "src/pages/effect.tsx", start: 90, end: 140 } }],
+    source: { file: "src/pages/effect.tsx", start: 40, end: 160 }
+  })
+
+  assert.equal(moduleIR.effects[0].slot, 0)
+  assert.equal(moduleIR.effects[0].setup.handler, 2)
+  assert.equal(moduleIR.effects[0].ownership.keyedBlock, 1)
+  assert.equal(moduleIR.effects[0].workers[0].root, "workers/task.worker.ts")
+  assertJsonData(moduleIR)
+  assert.deepEqual(JSON.parse(JSON.stringify(moduleIR)), moduleIR)
+})
+
+test("classifies mixed signal and derived effect dependencies without deriving signals", () => {
+  const source = ts.createSourceFile("effect.tsx", `
+function Page() {
+  const parity = count % 2 ? "odd" : "even"
+  useEffect(() => {}, [page, parity])
+}
+`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const component = source.statements[0]
+  const declaration = component.body.statements[0].declarationList.declarations[0]
+  const call = component.body.statements[1].expression
+  const result = analyzeEffectDependencies({
+    dependencies: call.arguments[1],
+    node: call,
+    listEffect: false,
+    setters: new Map([["setCount", "count"], ["setPage", "page"]]),
+    localDeclarations: new Map([["parity", [{ initializer: declaration.initializer }]]]),
+    factory: ts.factory,
+    fail(node, message) { throw new Error(message) }
+  })
+
+  assert.equal(result.hasDerived, true)
+  assert.deepEqual(result.entries.map(entry => [entry.kind, entry.name]), [["signal", "page"], ["derived", "parity"]])
+  assert.equal(Object.hasOwn(result.entries[0], "expression"), false)
+  assert.deepEqual(result.subscriptions.map(entry => entry.text), ["page", "count"])
 })
 
 test("generates the existing command behavior AST from HandlerIR", () => {

@@ -1,5 +1,29 @@
 # Performance Records
 
+## 0.8.21 Explicit Effect Ownership
+
+Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.20` at `7fb6e37` and the current `0.8.21` compiler candidate used the same local volume and identical installed dependencies.
+
+The candidate implementation patch over `v0.8.20` had SHA-256 `ac0b1921bbbfb72f45d9b53338bec96bf9ab3d1680446148dfd8548b871bcbe4`, produced by:
+
+```bash
+git diff --binary v0.8.20 -- framework/build.mjs framework/compiler/descriptor-session.mjs framework/compiler/effect-analysis.mjs framework/compiler/ir/module-ir.mjs framework/compiler/worker-compiler.mjs framework/core.d.ts | shasum -a 256
+```
+
+Both targets received one warm-up followed by seven clean `worker-effects` production builds in alternating round-robin order. Cleanup remained outside timing. The distributions overlap; the 1.02% lower candidate median does not establish a material change.
+
+| Target | Build median | Worker raw / gzip | Window raw / gzip |
+|---|---:|---:|---:|
+| 0.8.20 baseline | 255.6 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+| 0.8.21 candidate | 253.0 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+
+```text
+0.8.20: [253.2,263.4,276.5,255.6,251.3,252.1,266.1]
+0.8.21: [253.7,249.7,260.4,253.0,251.1,250.1,265.7]
+```
+
+The complete site `dist` and the `effect-dependencies`, `keyed-effects`, and `worker-effects` fixture output trees had identical file lists and bytes before release-content updates. The Worker graph and every window graph file were byte-identical, including the content-hashed Worker name. This measurement covers compiler clean-build startup and generated artifact size; lifecycle behavior remains covered by the complete effect, Worker, conditional, keyed, and navigation integration tests.
+
 ## 0.8.20 Explicit Keyed Ownership
 
 Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline `0.8.19` commit `c516173` and the current `0.8.20` compiler candidate used the same local volume and identical installed dependencies.

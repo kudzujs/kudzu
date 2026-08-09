@@ -44,7 +44,8 @@ export function createWorkerCompiler({
     return { worker, url, specifier: specifierNode.text, options }
   }
 
-  const rewriteEffect = (callback, file, sourceFile, sourceFiles, workerReferences, factory, context) => {
+  const rewriteEffect = (callback, file, sourceFile, sourceFiles, factory, context) => {
+    const workers = []
     const visit = node => {
       const value = candidate(node, sourceFile)
       if (value) {
@@ -56,12 +57,17 @@ export function createWorkerCompiler({
         if (!sourceFiles.has(target)) throw sourceNodeError(url.arguments[0], sourceFile, `Relative TypeScript Worker ${JSON.stringify(specifier)} must resolve to an existing .worker.ts file under src/`)
         const identity = `${sourceRelative.replaceAll(sep, "/")}:${ts.getOriginalNode(node).getStart(sourceFile)}`
         const placeholder = `/__kudzu_worker_${createHash("sha256").update(identity).digest("hex").slice(0, 16)}__.js`
-        workerReferences.push({ root: target, placeholder })
+        const original = ts.getOriginalNode(node)
+        workers.push({
+          root: sourceRelative.replaceAll(sep, "/"),
+          placeholder,
+          source: { file: relative(root, sourceFile.fileName).replaceAll(sep, "/"), start: original.getStart(sourceFile), end: original.end }
+        })
         return factory.updateNewExpression(worker, worker.expression, worker.typeArguments, [factory.createStringLiteral(placeholder), options])
       }
       return ts.visitEachChild(node, visit, context)
     }
-    return ts.visitEachChild(callback, visit, context)
+    return { callback: ts.visitEachChild(callback, visit, context), workers }
   }
 
   const rejectConstructions = (expression, sourceFile, message) => {
@@ -124,7 +130,7 @@ export function createWorkerCompiler({
   }
 
   const emit = async (references, sourceFiles, assetsDirectory, base, minify) => {
-    const roots = [...new Set(references.map(reference => reference.root))].sort()
+    const roots = [...new Set(references.map(reference => resolve(sourceDirectory, reference.root)))].sort()
     if (!roots.length) return new Map()
     await validateGraphs(roots, sourceFiles)
     const workerDirectory = resolve(assetsDirectory, "workers")
@@ -150,12 +156,12 @@ export function createWorkerCompiler({
     for (const [output, metadata] of Object.entries(result.metafile.outputs)) {
       if (!metadata.entryPoint) continue
       const entry = resolve(root, metadata.entryPoint)
-      const rootReferences = references.filter(reference => reference.root === entry)
+      const rootReferences = references.filter(reference => resolve(sourceDirectory, reference.root) === entry)
       const outputFile = resolve(root, output)
       const url = assetPath(base, relative(outputDirectory, outputFile).replaceAll(sep, "/"))
       for (const reference of rootReferences) emitted.set(reference.placeholder, url)
     }
-    for (const reference of references) if (!emitted.has(reference.placeholder)) throw new Error(`Worker entry was not emitted: ${relative(root, reference.root)}`)
+    for (const reference of references) if (!emitted.has(reference.placeholder)) throw new Error(`Worker entry was not emitted: ${reference.root}`)
     return emitted
   }
 

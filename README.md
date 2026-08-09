@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.20 - Explicit keyed ownership.** Keyed collections now retain deterministic JSON-safe parent/child, selector, component-specialization, row state/ref, handler, and binding ownership while final DOM allocation remains unchanged. Read the [release notes](./RELEASES.md#0820---explicit-keyed-ownership), open the [release page](https://kudzujs.cloud/releases/0.8.20), or follow the [next architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.21 - Explicit effect ownership.** Effects now retain deterministic JSON-safe setup, cleanup, dependency, component/keyed ownership, source, and Worker-edge records while final route lifecycle allocation remains unchanged. Read the [release notes](./RELEASES.md#0821---explicit-effect-ownership), open the [release page](https://kudzujs.cloud/releases/0.8.21), or follow the [next architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
