@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.21` are completed scopes represented by package/release records; later rows remain planned until their package version and release record exist.
+This is an execution sequence, not release history. `0.8.16` through `0.8.22` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -16,7 +16,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Sequence Rules
 
-- Do not start Goal B optimization before `0.8.22` Goal A acceptance and baseline recording.
+- Goal A is complete. Goal B optimization remains deferred until explicitly started from the recorded `0.8.22` baseline.
 - Keep Goal C research out of these patches and publish no store/resource API.
 - Keep Goal D behavior unchanged: complete HTML, native default, opt-in groups, no islands.
 - A planned patch may ship under a different actual version only if this table and release-facing documentation are updated before release.

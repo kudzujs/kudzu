@@ -2,7 +2,7 @@
 
 ## Status
 
-The `0.8.21` EffectIR source-analysis seam is complete. Goal A continues with the planned `0.8.22` RouteIR, CapabilityIR, and architecture/output audit while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
+Goal A is complete in `0.8.22`. ModuleIR source seams, RouteIR v1, CapabilityIR v1, focused runtime generators, and the architecture/output baseline preserve accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
 
 ## Target Boundaries
 
@@ -77,7 +77,7 @@ Analysis produces plain data:
 }
 ```
 
-The `0.8.21` source result adds deterministic EffectIR setup HandlerIR links, cleanup, ordered dependencies and subscriptions, DerivedIR references, component/keyed ownership, source provenance, and Worker edges beside the existing command, component, handler, binding, derived, and KeyedBlockIR results. Source-local effect AST analysis is consumed during lowering and does not cross this boundary. Final route/layout/conditional/keyed effect IDs and lifetime allocation remain authoritative in `core.mjs`; the existing route plan is not duplicated in ModuleIR.
+The completed source result contains deterministic command, component, HandlerIR, BindingIR, DerivedIR, KeyedBlockIR, and EffectIR records. Source-local AST analysis is consumed during lowering and does not cross this boundary. Final route/layout/conditional/keyed IDs and lifetime allocation remain authoritative in `core.mjs`; no component tree or duplicate route plan exists.
 
 Source codegen lowers that data through the existing build ABI:
 
@@ -93,11 +93,11 @@ One source-local result owns transformed source plus the sparse ModuleIR, genera
 
 ### Route Result
 
-`renderPage()` remains the build-time authority for complete HTML and ownership IDs. Its serializable plan remains the behavioral source for states, events, effects, bindings, conditions, lists, parameters, and search parameters. Route-level facts such as navigability and dependency-runtime selection accompany rather than mutate that plan.
+`renderPage()` remains the build-time authority for complete HTML and ownership IDs. Its existing plan is RouteIR v1, the behavioral source for states, events, effects, bindings, conditions, lists, parameters, and search parameters. Each state has a route-local numeric `slot`, its unchanged browser/DOM `id`, and readable `name` metadata used by development restoration. RouteIR slots are not ModuleIR signal slots or persistent browser identities. Route-level facts such as navigability and dependency-runtime selection accompany rather than mutate the plan.
 
 ### Artifact Plan
 
-A pure projection determines which shared runtimes, route entries, handler modules, Worker roots, and optional branches are required. Artifact generators consume that projection; they do not rediscover syntax or inspect application AST.
+CapabilityIR v1 determines shared runtime families and optional branches. Rendered RouteIR descriptors and ModuleIR references independently retain route entries, handler modules, and Worker reachability. Runtime, list, parameter, effect, and handler generators consume those explicit results; they do not rediscover TSX semantics or inspect application AST.
 
 ## Generator Strategy
 
@@ -122,17 +122,14 @@ No generator may analyze TSX, invent runtime component abstractions, or broaden 
 - Preserve current runtime files until their corresponding generator has artifact parity.
 - Treat deterministic byte changes as review items even when tests pass.
 
-## Acceptance
+## Acceptance Record
 
-- Build orchestration reads as stage coordination rather than feature analysis or source generation.
-- Source normalization, semantic analysis, route planning, artifact planning, generation, and writing have explicit ownership.
-- Codegen consumes descriptors/manifests and does not discover compiler semantics.
-- No module-global mutable analysis state or new broad context object is added.
-- Static routes still emit complete HTML and zero JavaScript.
-- Interactive and navigation routes preserve capability selection, ownership, stale-write, and cleanup behavior.
-- Unreachable handlers, effects, package helpers, and Workers remain absent.
-- Diagnostics retain source file and location.
-- [`performance-gates.md`](./performance-gates.md) passes for every patch.
+- `build.mjs` decreased from 3,999 to 3,732 lines and coordinates focused generators rather than containing list, parameter, core, effect, binding, native, or navigation source generation.
+- Source normalization, semantic analysis, RouteIR rendering, CapabilityIR projection, generation, and writing have explicit ownership without a broad context object.
+- RouteIR and CapabilityIR reject unsupported versions; required runtime source anchors fail closed.
+- Static routes retain complete HTML and zero JavaScript; deploy output across the complete site and representative binding, list, effect, Worker, parameter, and navigation fixtures is byte-identical to `v0.8.21`.
+- Interactive and navigation routes preserve capability selection, ownership, stale-write, and cleanup behavior; unreachable handlers, effects, package helpers, and Workers remain absent.
+- Diagnostics retain source file and location, and [`performance-gates.md`](./performance-gates.md) records no build or artifact-size regression.
 
 ## Non-Goals
 

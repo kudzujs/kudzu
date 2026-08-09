@@ -6,8 +6,8 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 
 | Goal | Decision | Start condition |
 |---|---|---|
-| A: compiler foundation | `0.8.21` EffectIR source-analysis seam complete | Continue with `0.8.22` RouteIR, CapabilityIR, and the architecture/output audit after the release boundary. |
-| B: optimization benchmarks | Deferred | Goal A complete and its output baseline recorded |
+| A: compiler foundation | Complete in `0.8.22` | RouteIR v1, CapabilityIR v1, source IR seams, generator boundaries, and output baseline recorded. |
+| B: optimization benchmarks | Deferred | Start only by explicit decision from the recorded `0.8.22` baseline. |
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 

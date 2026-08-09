@@ -1,13 +1,13 @@
 # Current Compiler Architecture
 
-This maps the EffectIR boundary prepared for `0.8.21`. File and function names are the stable references; line numbers are intentionally omitted because Goal A moves code.
+This maps the completed `0.8.22` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
 | Responsibility | Current owner | Current contract |
 |---|---|---|
 | CLI entry | [`bin/kudzu.mjs`](../../bin/kudzu.mjs) | Dispatches build and development commands. |
-| Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()` | Loads config; discovers reachable source, CSS, and assets; compiles sources; renders routes; plans capabilities; emits `dist/`; invokes `afterBuild`. |
+| Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()` | Coordinates config, discovery, source compilation, RouteIR rendering, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. |
 | Reachability/import resolution | `framework/build.mjs`, `reachableSourceFiles()`, `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, and excludes unreachable migration source. |
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; `framework/build.mjs`, `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every pass. Imported source uses the same pipeline. |
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
@@ -22,10 +22,11 @@ This maps the EffectIR boundary prepared for `0.8.21`. File and function names a
 | Handler module codegen | [`framework/compiler/handler-codegen.mjs`](../../framework/compiler/handler-codegen.mjs) | Renders finalized ordered imports and concatenates generated module-export source without TypeScript AST or semantic discovery. |
 | Effect analysis | [`framework/compiler/effect-analysis.mjs`](../../framework/compiler/effect-analysis.mjs) | Classifies ordered signal, derived, and keyed-item dependencies and validates cleanup-owned browser resources before EffectIR registration. |
 | Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Returns functional Worker rewrite results and JSON-safe EffectIR edges, validates relative graphs, emits content-hashed ESM, and resolves placeholders only for rendered effects. |
-| Build-time JSX execution | [`framework/core.mjs`](../../framework/core.mjs), `renderPage()` | Executes compiled pages/layouts, allocates deterministic route/layout ownership IDs, emits complete HTML, and returns the serializable route plan and capability booleans. |
-| Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Purely folds rendered route plans and route facts into aggregate runtime/artifact requirements. |
+| Build-time JSX execution | [`framework/core.mjs`](../../framework/core.mjs), `renderPage()` | Executes compiled pages/layouts, allocates deterministic route/layout ownership IDs, emits complete HTML, and returns RouteIR v1 plus capability facts. |
+| Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Validates RouteIR v1 and purely folds rendered plans and route facts into CapabilityIR v1. |
 | Effect entry generation | [`framework/compiler/effect-codegen.mjs`](../../framework/compiler/effect-codegen.mjs) | Generates ordinary, dependency, owned, and navigable effect entries from rendered descriptors. |
-| Runtime specialization/emission | `framework/build.mjs` | Selects runtime files and currently removes branches through feature booleans, string replacement, compile-time defines, and esbuild. |
+| Runtime generation | [`framework/compiler/runtime-codegen.mjs`](../../framework/compiler/runtime-codegen.mjs), [`framework/compiler/list-runtime-codegen.mjs`](../../framework/compiler/list-runtime-codegen.mjs), [`framework/compiler/param-codegen.mjs`](../../framework/compiler/param-codegen.mjs) | Consumes versioned contracts, specializes authored capability sources with fail-closed anchors, and returns source/define results without filesystem ownership. |
+| Artifact emission | `framework/build.mjs` | Selects required files from CapabilityIR and writes or bundles generated sources with esbuild. |
 | Browser capabilities | [`framework/*.js`](../../framework/) | Small optional modules for commands, bindings, lists, effects, native handlers, serialization, parameters, and navigation; no component runtime. |
 | Opt-in navigation | [`framework/navigation-runtime.js`](../../framework/navigation-runtime.js) plus `framework/build.mjs` navigation configuration/emission | Fetches and validates complete same-origin documents, replaces only the marked route range, manages route/layout disposal, history, focus, finite prefetch retention, and native fallback. |
 | Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Rebuild/watch/SSE and response-only short-lived state restoration; never changes production `dist/`. |
@@ -44,11 +45,11 @@ src/pages entries + config
        -> generated handler/effect/binding/list-evaluator modules
   -> import page modules and execute renderPage()
        -> complete HTML
-       -> serializable route plan
+       -> RouteIR v1
        -> referenced handler URLs and route facts
   -> remove unrendered handlers/effects/Workers
-  -> planRouteCapabilities(route plans, route facts)
-       -> aggregate capability manifest
+   -> planRouteCapabilities(RouteIR records, route facts)
+       -> CapabilityIR v1
   -> specialize and emit only selected runtime/capability ESM
   -> write route index.html, CSS/assets, Worker graphs, rewrites, and .kudzu/kudzu-plan.json
   -> optional afterBuild()
@@ -56,15 +57,15 @@ src/pages entries + config
 
 The browser consumes static HTML first. State seeds and descriptors in that HTML connect only to emitted command, binding, list, native-handler, effect, parameter, or navigation modules. Browser execution patches owned DOM directly; it does not invoke component functions or reconstruct a component tree.
 
-## Current Coupling To Remove
+## Residual Coupling
 
 - `createKudzuTransformer()` combines discovery, validation, specialization, descriptor registration, and transformed-source emission.
 - Transient component rewrite indexes remain source-local AST indexes; handler, binding, derived, keyed, effect, and component ownership now have explicit JSON-safe source results.
-- `build()` destructures a broad capability manifest into many booleans and performs artifact-specific source surgery.
-- Runtime specialization relies on exact source-string and regular-expression replacements in `framework/build.mjs`.
-- Route facts, rendered plans, artifact requirements, and emitted-file decisions are represented at adjacent but not fully explicit boundaries.
+- `build()` still owns explicit artifact selection and filesystem writes after generator results are produced.
+- Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
+- The main transformer remains the largest source-analysis unit even though its durable outputs are explicit JSON-safe records.
 
-Goal A addresses these couplings without changing source support, output semantics, or browser architecture.
+These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.
 
 ## Continuation Checklist
 

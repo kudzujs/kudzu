@@ -527,7 +527,8 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
       hasStateSeed: initialState.length > 0,
       handlerModules: [...renderContext.handlerModules],
       plan: {
-        states: Object.entries(renderContext.states).map(([id, state]) => ({ id, ...state })),
+        version: 1,
+        states: Object.entries(renderContext.states).map(([id, state], slot) => ({ slot, id, ...state })),
         params: renderContext.paramEntries,
         searchParams: renderContext.searchParamEntries,
         searchParamsWritable: renderContext.searchParamsWritable,

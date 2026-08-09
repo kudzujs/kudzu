@@ -223,6 +223,19 @@ This queue orders the next investigations by general migration value. Start only
 - Previous transformer-wide keyed value, condition, event, nested-list, effect, and rendered-list AST side tables were removed. AST remains private only inside immediate source-local validation and lowering.
 - `core.mjs` remains authoritative for final list IDs, key paths, route descriptors, complete HTML, DOM identity, and exact state/effect/ref release; accepted syntax and browser output are unchanged.
 
+### Completed In 0.8.21
+
+- Every supported effect finalizes into JSON-safe EffectIR with setup HandlerIR, cleanup, ordered signal/DerivedIR dependencies, component/keyed ownership, source provenance, and Worker edges.
+- Effect dependency/resource analysis and Worker rewriting return explicit results; transformer-wide effect AST side tables and build-wide mutable Worker references were removed.
+- Existing route/layout/conditional/keyed lifetime allocation, stale-write invalidation, cleanup order, accepted syntax, and browser output remain unchanged.
+
+### Completed In 0.8.22
+
+- The existing rendered route plan is RouteIR v1, with route-local numeric state slots beside unchanged browser IDs and readable state names; it is not duplicated in ModuleIR.
+- The existing pure capability projection is CapabilityIR v1 and every runtime/list codegen consumer rejects unsupported versions.
+- List, parameter, core, effect, binding, native, and navigation source generation moved out of `build.mjs` behind focused fail-closed generators; `build.mjs` decreased by 267 lines and coordinates stage outputs.
+- Complete-site and representative deploy artifacts remain byte-identical to `v0.8.21`; only additive RouteIR version/slot metadata changes build plans.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

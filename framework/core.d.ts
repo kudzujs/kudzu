@@ -131,6 +131,46 @@ export type ListDescriptor = {
   valueSeed?: Record<string, string | number | boolean | null>
 }
 
+export interface RouteIR {
+  version: 1
+  states: Array<{ slot: number; id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route"; internal?: true }>
+  params: Array<{ name: string; id: string }>
+  searchParams: Array<{ name: string; id: string }>
+  searchParamsWritable: boolean
+  events: Array<{
+    event: string
+    commands?: Array<[string, string, unknown]>
+    native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
+  }>
+  effects: Array<{
+    module: string
+    handler: string
+    states: Record<string, string>
+    scope: Record<string, unknown>
+    lifetime?: "layout" | "route"
+    dependencies?: string[]
+    dependencyExpressions?: unknown[]
+    dependencyStates?: Record<string, string>
+    itemDependencies?: string[]
+    listState?: string
+    cleanup?: true
+    owner?: string
+    list?: true
+  }>
+  bindings: Array<{
+    target: string
+    state?: string
+    module?: string
+    handler?: string
+    states?: Record<string, string>
+    scope?: Record<string, unknown>
+    scopeStates?: Record<string, string>
+    scopeBindings?: Record<string, unknown>
+  }>
+  conditions: Array<Record<string, unknown>>
+  lists: ListDescriptor[]
+}
+
 export function renderPage<Props = Record<string, never>>(
   component: (props: Props) => unknown | Promise<unknown>,
   metadata?: PageMetadata,
@@ -146,42 +186,5 @@ export function renderPage<Props = Record<string, never>>(
   hasListStyles: boolean
   hasStateSeed: boolean
   handlerModules: string[]
-  plan: {
-    states: Array<{ id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route"; internal?: true }>
-    params: Array<{ name: string; id: string }>
-    searchParams: Array<{ name: string; id: string }>
-    searchParamsWritable: boolean
-    events: Array<{
-      event: string
-      commands?: Array<[string, string, unknown]>
-      native?: { module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown> }
-    }>
-    effects: Array<{
-      module: string
-      handler: string
-      states: Record<string, string>
-      scope: Record<string, unknown>
-      lifetime?: "layout" | "route"
-      dependencies?: string[]
-      dependencyExpressions?: unknown[]
-      dependencyStates?: Record<string, string>
-      itemDependencies?: string[]
-      listState?: string
-      cleanup?: true
-      owner?: string
-      list?: true
-    }>
-    bindings: Array<{
-      target: string
-      state?: string
-      module?: string
-      handler?: string
-      states?: Record<string, string>
-      scope?: Record<string, unknown>
-      scopeStates?: Record<string, string>
-      scopeBindings?: Record<string, unknown>
-    }>
-    conditions: Array<Record<string, unknown>>
-    lists: ListDescriptor[]
-  }
+  plan: RouteIR
 }>

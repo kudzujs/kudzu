@@ -15,18 +15,22 @@ import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { createHandlerCodegen } from "./compiler/handler-codegen.mjs"
 import { createHandlerLowering } from "./compiler/handler-lowering.mjs"
+import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { createCommandSpecializer } from "./compiler/optimize/command-specialization.mjs"
 import { applyNormalizationPasses } from "./compiler/normalization-pipeline.mjs"
+import { createParamCodegen } from "./compiler/param-codegen.mjs"
 import { createReactMigrationPass, reactMemoExpression } from "./compiler/react-migration-pass.mjs"
 import { normalizeRenderControlFlow } from "./compiler/render-control-pass.mjs"
 import { createRouterPass } from "./compiler/router-pass.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "./compiler/route-capability-planner.mjs"
+import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime, specializeRuntime } from "./compiler/runtime-codegen.mjs"
 import { createWorkerCompiler } from "./compiler/worker-compiler.mjs"
 import { createZustandPass } from "./compiler/zustand-pass.mjs"
 import { renderPage } from "./core.mjs"
 import { parseDevHost, parseDevPort, startDevServer } from "./dev-server.mjs"
 
 export { parseDevHost, parseDevPort }
+export { specializeRuntime }
 
 const root = process.cwd()
 const sourceDirectory = join(root, "src")
@@ -213,41 +217,16 @@ export async function build({ quiet = false, minify = true } = {}) {
     }
     if (module.code.includes("/__kudzu_worker_")) throw new Error(`Worker URL placeholder survived in ${module.path}`)
   }
-  const capabilityManifest = planRouteCapabilities(plans, { routes: routeCapabilities, navigationRouteCount: navigationRoutes.length })
+  const capabilityIR = planRouteCapabilities(plans, { routes: routeCapabilities, navigationRouteCount: navigationRoutes.length })
   const {
-    routes: { behaviors: behaviorCount, regularBehaviors: regularBehaviorCount, regularStateSeeds: regularStateSeedCount, dependencyStateSeeds: dependencyStateSeedCount },
-    events: { command: commandEvents, native: nativeEvents, hasNativeHandlers },
-    bindings: { count: bindingCount, text: hasTextBindings, svgConditions: hasSvgConditions },
-    lists: {
-      count: listCount,
-      styleCount: listStyleCount,
-      conditions: hasListConditions,
-      svg: hasSvgLists,
-      deepConditions: hasDeepListConditions,
-      textRanges: hasListTextRanges,
-      attributes: hasListAttributes,
-      events: hasListEvents,
-      expressions: hasListExpressions,
-      expressionAttributes: hasListExpressionAttributes,
-      seeds: hasListSeeds,
-      effects: hasListEffects,
-      rowHooks: hasListRowHooks,
-      rowRefs: hasListRowRefs,
-      complexRowState: hasComplexListRowState,
-      nested: hasNestedLists,
-      selectors: hasCollectionSelectors,
-      calculated: hasCalculatedCollections,
-      static: hasStaticCollections,
-      indexes: hasListIndexes,
-      stableFastPaths: hasListStableFastPaths,
-      generalRowHooks: hasGeneralListRowHooks,
-      asyncParts: hasListAsyncParts,
-      mounts: hasListMounts
-    },
-    effects: { any: hasEffects, derivedDependencies: hasDerivedEffectDependencies, itemDependencies: hasItemDependencies, captures: hasEffectCaptures, navigable: hasNavigableEffects, navigableOwners: hasNavigableOwners },
+    routes: { behaviors: behaviorCount, regularBehaviors: regularBehaviorCount, dependencyStateSeeds: dependencyStateSeedCount },
+    events: { command: commandEvents, hasNativeHandlers },
+    bindings: { count: bindingCount },
+    lists,
+    effects: { any: hasEffects, derivedDependencies: hasDerivedEffectDependencies, captures: hasEffectCaptures },
     captures: { nestedState: hasNestedStateCaptures, setter: hasSetterCaptures },
     runtime: { shared: hasSharedRuntime, dependency: hasDependencyRuntime }
-  } = capabilityManifest
+  } = capabilityIR
   const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
   for (const entry of pageEntries) {
     const routeDirectory = join(outputDirectory, entry.route)
@@ -257,12 +236,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   }
   if (navigationRoutes.length || behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
     const runtimeFile = hasSharedRuntime ? "./shared-runtime.js" : "./runtime.js"
-    let runtime = specializeRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), commandEvents, regularStateSeedCount > 0)
-    if (!hasItemDependencies) runtime = runtime.replace(/\/\* list-item-hooks \*\/[\s\S]*?\/\* list-item-hooks-end \*\/\n/, "")
-    if (hasNavigableEffects) runtime = runtime.replace("export function registerCommitter(commit) {\n  committers.push(commit)\n}", "export function registerCommitter(commit) {\n  committers.push(commit)\n  return () => {\n    const index = committers.indexOf(commit)\n    if (index !== -1) committers.splice(index, 1)\n  }\n}")
-    if (hasNavigableOwners) runtime = runtime
-      .replace("export function registerMountHook(mount) {\n  mountHooks.push(mount)\n}", "export function registerMountHook(mount) {\n  mountHooks.push(mount)\n  return () => {\n    const index = mountHooks.indexOf(mount)\n    if (index !== -1) mountHooks.splice(index, 1)\n  }\n}")
-      .replace("export function registerUnmountHook(unmount) {\n  unmountHooks.push(unmount)\n}", "export function registerUnmountHook(unmount) {\n  unmountHooks.push(unmount)\n  return () => {\n    const index = unmountHooks.indexOf(unmount)\n    if (index !== -1) unmountHooks.splice(index, 1)\n  }\n}")
+    const runtime = generateCoreRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), capabilityIR)
     await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
   }
   if (hasDependencyRuntime) {
@@ -274,129 +248,30 @@ export async function build({ quiet = false, minify = true } = {}) {
     "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
   })
   if (hasEffects) {
-    let effectRuntime = await readFile(new URL("./effect-runtime.js", import.meta.url), "utf8")
-    effectRuntime = hasEffectCaptures ? effectRuntime.replace('"./serialization.js"', '"./kudzu-serialization.js"') : effectRuntime.replace(/^import[^\n]+\n/, "")
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-effect.js"), effectRuntime, minify, {
-      "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures),
-      "globalThis.__KUDZU_EFFECT_CAPTURES__": String(hasEffectCaptures)
-    })
+    const generated = generateEffectRuntime(await readFile(new URL("./effect-runtime.js", import.meta.url), "utf8"), capabilityIR)
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-effect.js"), generated.source, minify, generated.define)
   }
-  if (bindingCount || listStyleCount) await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
+  if (bindingCount || lists.styleCount) await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
   if (bindingCount) {
-    let bindingRuntime = (await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"))
-      .replace('"./shared-runtime.js"', '"./kudzu.js"')
-      .replace('"./serialization.js"', '"./kudzu-serialization.js"')
-      .replace('"./style.js"', '"./kudzu-style.js"')
-    if (navigationRoutes.length) bindingRuntime = specializeNavigationTextDescriptors(bindingRuntime)
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), bindingRuntime, minify, {
-      "globalThis.__KUDZU_TEXT_BINDINGS__": String(hasTextBindings),
-      "globalThis.__KUDZU_SVG_CONDITIONS__": String(hasSvgConditions),
-      "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures)
-    })
+    const generated = generateBindingRuntime(await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"), capabilityIR, navigationRoutes.length > 0)
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), generated.source, minify, generated.define)
   }
   if (hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
-  if (listCount) {
-    if (hasCollectionSelectors && !hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
-    let listRuntime = (await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"))
-      .replace('"./shared-runtime.js"', '"./kudzu.js"')
-    listRuntime = hasCalculatedCollections
-      ? listRuntime.replace('"./binding-runtime.js"', '"./kudzu-binding.js"')
-      : listRuntime.replace(/^const loadListEvaluator[^\n]+\n/m, "")
-    listRuntime = hasCollectionSelectors
-      ? listRuntime.replace('"./collection-selector.js"', '"./kudzu-collection-selector.js"')
-      : listRuntime.replace(/^import \{ selectCollection \}[^\n]+\n/m, "")
-    if (!hasListIndexes) listRuntime = listRuntime
-      .replace("for (const [index, item] of items.entries()) {", "for (const item of items) {")
-      .replace("const key = list.descriptor.key === null ? index : item?.[list.descriptor.key]", "const key = item?.[list.descriptor.key]")
-      .replace("entries.push({ item, index, key, token, value:", "entries.push({ item, key, token, value:")
-      .replace("for (const { item, index, key, token, value } of entries) {", "for (const { item, key, token, value } of entries) {")
-      .replaceAll("fillListItem(node, item, list.descriptor.nested, index)", "fillListItem(node, item, list.descriptor.nested)")
-      .replace("fillListItem(node, item, list.descriptor.nested, index, mapListItemParts", "fillListItem(node, item, list.descriptor.nested, 0, mapListItemParts")
-      .replace("function addListRoot(list, { item, index = list.roots.size, key, token, value })", "function addListRoot(list, { item, key, token, value })")
-      .replace("fillListParts(root, listItemParts(root), listItems.get(owner), 0, __KUDZU_LIST_INDEXES__ ? listIndexes.get(owner) ?? 0 : 0)", "fillListParts(root, listItemParts(root), listItems.get(owner), 0)")
-      .replace("function fillListItem(root, item, nested = false, index = 0)", "function fillListItem(root, item, nested = false)")
-      .replace("fillListParts(root, parts, item, revision, index, previous)", "fillListParts(root, parts, item, revision, previous)")
-      .replace("function fillListParts(root, parts, item, revision, index = 0, previous)", "function fillListParts(root, parts, item, revision, previous)")
-      .replace("fillListExpressions(root, parts, item, revision, index)", "fillListExpressions(root, parts, item, revision)")
-      .replaceAll('value?.type === "list-item" ? serializeItem(item) : value?.type === "list-index" ? index : value', 'value?.type === "list-item" ? serializeItem(item) : value')
-      .replaceAll("evaluate(descriptor, item, index)", "evaluate(descriptor, item)")
-      .replaceAll("evaluate({ module, handler }, item, index)", "evaluate({ module, handler }, item)")
-      .replace("updateListCondition(marker, descriptor.kind, value, item, index)", "updateListCondition(marker, descriptor.kind, value, item)")
-      .replace("function updateListCondition(marker, kind, value, item, index)", "function updateListCondition(marker, kind, value, item)")
-      .replace("fillListParts(marker, listItemParts(fragment), item, revision, index)", "fillListParts(marker, listItemParts(fragment), item, revision)")
-      .replace("function evaluate(descriptor, item, index)", "function evaluate(descriptor, item)")
-      .replace("exports[descriptor.handler](item, index)", "exports[descriptor.handler](item)")
-      .replace("exports[descriptor.handler](item, index, {", "exports[descriptor.handler](item, undefined, {")
-    if (!hasCollectionSelectors) listRuntime = listRuntime.replaceAll(" && !list.descriptor.selector", "")
-    if (!hasListIndexes) listRuntime = listRuntime
-      .replaceAll(" && !list.descriptor.indexed", "")
-      .replaceAll(" && list.descriptor.key !== null", "")
-      .replaceAll("list.descriptor.key !== null && !list.descriptor.indexed && ", "")
-      .replace("list.descriptor.key !== null && !list.descriptor.indexed && !list.descriptor.selector && list.values.size", "list.values.size")
-      .replace("(referenceOnly ? listItems.get(node) !== item : list.values.get(token) !== value) || list.descriptor.indexed || list.descriptor.key === null", "referenceOnly ? listItems.get(node) !== item : list.values.get(token) !== value")
-    if (hasListRowHooks && !hasGeneralListRowHooks) listRuntime = listRuntime
-      .replace(/\/\* general-row-hooks \*\/[\s\S]*?\/\* general-row-hooks-end \*\/\n/, "")
-      .replaceAll("initializeGeneralRowHooks", "initializeRowStates")
-      .replace("if (__KUDZU_LIST_ROW_HOOKS__) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index], roots[index], nested?.owner)", "if (__KUDZU_LIST_ROW_HOOKS__ && descriptor.rowStates) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index])")
-      .replaceAll("if (__KUDZU_LIST_ROW_HOOKS__) initializeRowStates(list.descriptor, key, node, list.owner)", "if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)")
-      .replace("for (const node of registration.list.roots.values()) deleteRowStates(registration.list.descriptor, ownershipPaths.get(node))", "for (const token of registration.list.roots.keys()) deleteFlatRowStates(registration.list.descriptor, token)")
-      .replaceAll("deleteRowStates(list.descriptor, ownershipPaths.get(node))", "deleteFlatRowStates(list.descriptor, token)")
-      .replace("  if (__KUDZU_LIST_ROW_HOOKS__) replaceRowIds(root, rowReplacements.get(root))\n", "")
-      .replace("  if (!replacements) return\n", "")
-    if (!hasItemDependencies) listRuntime = listRuntime.replace(", notifyListItem", "")
-    if (!hasListStableFastPaths) listRuntime = listRuntime.replace(/\/\* stable-list-fast-path \*\/[\s\S]*?\/\* stable-list-fast-path-end \*\/\n/, "")
-    const stylePatch = `  if (target === "style") {
-    const style = serializeStyle(value)
-    if (style) node.setAttribute("style", style)
-    else node.removeAttribute("style")
-    return
-  }`
-    listRuntime = listRuntime.replace("  /* list-style */", listStyleCount ? stylePatch : "")
-    if (listStyleCount) listRuntime = `import { serializeStyle } from "./kudzu-style.js"\n${listRuntime}`
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-list.js"), listRuntime, minify, {
-      __KUDZU_LIST_CONDITIONS__: String(hasListConditions),
-      __KUDZU_DEEP_LIST_CONDITIONS__: String(hasDeepListConditions),
-      __KUDZU_LIST_TEXT_RANGES__: String(hasListTextRanges),
-      __KUDZU_LIST_ATTRIBUTES__: String(hasListAttributes),
-      __KUDZU_LIST_EVENTS__: String(hasListEvents),
-      __KUDZU_LIST_EXPRESSIONS__: String(hasListExpressions),
-      __KUDZU_LIST_EXPRESSION_ATTRIBUTES__: String(hasListExpressionAttributes),
-      __KUDZU_LIST_SEEDS__: String(hasListSeeds),
-      __KUDZU_LIST_EFFECTS__: String(hasListEffects),
-      __KUDZU_LIST_ASYNC_PARTS__: String(hasListAsyncParts),
-      __KUDZU_LIST_MOUNTS__: String(hasListMounts),
-      __KUDZU_LIST_ITEM_HOOKS__: String(hasItemDependencies),
-      __KUDZU_LIST_ROW_HOOKS__: String(hasListRowHooks),
-      __KUDZU_LIST_ROW_REFS__: String(hasListRowRefs),
-      __KUDZU_COMPLEX_LIST_ROW_STATE__: String(hasComplexListRowState),
-      __KUDZU_NESTED_LISTS__: String(hasNestedLists),
-      __KUDZU_COLLECTION_SELECTORS__: String(hasCollectionSelectors),
-      __KUDZU_STATIC_COLLECTIONS__: String(hasStaticCollections),
-      __KUDZU_LIST_INDEXES__: String(hasListIndexes),
-      __KUDZU_LIST_STABLE_FAST_PATHS__: String(hasListStableFastPaths),
-      __KUDZU_SVG_LISTS__: String(hasSvgLists)
-    })
-    if (hasCollectionSelectors && !hasDerivedEffectDependencies) await rm(join(assetsDirectory, "kudzu-collection-selector.js"))
+  if (lists.count) {
+    if (lists.selectors && !hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
+    const generated = generateListRuntime(await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"), capabilityIR)
+    await writeBundledJavaScript(join(assetsDirectory, "kudzu-list.js"), generated.source, minify, generated.define)
+    if (lists.selectors && !hasDerivedEffectDependencies) await rm(join(assetsDirectory, "kudzu-collection-selector.js"))
   }
   if (hasNativeHandlers) {
-    const nativeRuntime = (await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"))
-      .replace('"./shared-runtime.js"', '"./kudzu.js"')
-      .replace('"./serialization.js"', '"./kudzu-serialization.js"')
-    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), specializeEvents(nativeRuntime, nativeEvents), minify, {
-      "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
-    })
+    const generated = generateNativeRuntime(await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"), capabilityIR)
+    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), generated.source, minify, generated.define)
     for (const entry of nativeEntries) await printNativeEntry(entry, assetsDirectory, base, minify)
   }
   if (navigationGroups.length) {
     const navigationSource = await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8")
     for (const group of navigationGroups) {
-      let navigationRuntime = navigationSource
-        .replace("__KUDZU_NAVIGATION_ROUTES__", inlineJson(group.records))
-        .replace("__KUDZU_APPLICATION_ID__", JSON.stringify(group.applicationId))
-        .replace("__KUDZU_LAYOUT_ID__", JSON.stringify(group.layoutId))
-        .replace('"./shared-runtime.js"', '"./kudzu.js"')
-      navigationRuntime = specializeNavigationPatterns(navigationRuntime, group.records.some(record => record.segments))
-      await writeJavaScript(join(assetsDirectory, group.assetName), specializeNavigationEffects(navigationRuntime, group.hasEffects || group.hasParams), minify)
+      await writeJavaScript(join(assetsDirectory, group.assetName), generateNavigationRuntime(navigationSource, group), minify)
     }
   }
   for (const handlerModule of emittedHandlerModules) {
@@ -483,64 +358,6 @@ function preloadModules(html) {
   return html.replace(scripts[0][0], `${links}${scripts[0][0]}`)
 }
 
-function specializeEvents(source, events) {
-  return source.replace(/const eventNames = \[[^\n]+\]/, `const eventNames = ${JSON.stringify(events)}`)
-}
-
-function specializeNavigationEffects(source, enabled) {
-  if (enabled) return source
-  return source
-    .replace("const noDispose = async () => {}\nlet routeDispose = noDispose\nlet layoutDispose = noDispose\nconst ready = mountInitial()\n", "")
-    .replace(`addEventListener("pagehide", event => {
-  if (event.persisted) return
-  ++revision
-  request?.abort()
-  void (async () => {
-    await routeDispose()
-    await layoutDispose()
-  })()
-})
-`, "")
-    .replace(`
-async function mountInitial() {
-  try {
-    const record = matchRoute(location.pathname)
-    if (!record) throw new Error("Initial navigation route does not match")
-    const capabilities = await loadCapabilities(validate(document, record))
-    capabilities.params?.(location.pathname, location.search)
-    layoutDispose = await capabilities.effects?.mountLayoutEffects?.() ?? noDispose
-    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
-  } catch (error) {
-    console.error(error)
-  }
-}
-`, "")
-    .replace("  await ready\n", "")
-    .replace("    const { incoming, parsed, capabilities } = documentResult\n", "    const { incoming, parsed } = documentResult\n")
-    .replace("    await routeDispose()\n    if (current !== revision) return\n", "")
-    .replace("    commit(incoming, parsed.nodes, capabilities.params, url.pathname, url.search)\n", "    commit(incoming, parsed.nodes)\n")
-    .replace("    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose\n", "")
-    .replace("  return { incoming, parsed, capabilities: await loadCapabilities(parsed), record }\n", "  await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n  return { incoming, parsed, record }\n")
-    .replace(`
-async function loadCapabilities(parsed) {
-  const modules = await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))
-  const params = modules.filter(module => typeof module.initializeParams === "function")
-  const effects = modules.filter(module => typeof module.mountRouteEffects === "function")
-  if (params.length > 1 || effects.length > 1) throw new Error("Navigation document has duplicate route capabilities")
-  return { params: params[0]?.initializeParams, effects: effects[0] }
-}
-`, "")
-}
-
-function specializeNavigationPatterns(source, enabled) {
-  if (enabled) return source
-  return source.replace(/function matchRoute\(pathname\) \{[\s\S]+?\n\}\n\nfunction fallback/, `function matchRoute(pathname) {
-  return routes.find(record => record.path === pathname)
-}
-
-function fallback`)
-}
-
 async function printNativeEntry(entry, assetsDirectory, base, minify) {
   const output = join(assetsDirectory, entry.path)
   await mkdir(dirname(output), { recursive: true })
@@ -564,83 +381,6 @@ function runtimeEffects(effects, lifetimes = false) {
     states: effect.states,
     scope: effect.scope
   }))
-}
-
-function printParamEntry(schema, params, searchParams, searchParamsWritable, output, assetsDirectory, base, runtimeName, navigable) {
-  const hasSearch = searchParams.length || searchParamsWritable
-  const signature = hasSearch ? "pathname, search" : "pathname"
-  const prefix = navigable ? `export function initializeParams(${signature}) {\n${searchParamsWritable ? "globalThis.__kSetSearchParams = setSearchParams\n" : ""}` : `${schema ? "let pathname = location.pathname\n" : ""}${hasSearch ? "let search = location.search\n" : ""}`
-  const suffix = navigable ? "\n}" : ""
-  const pathname = schema ? `const base = ${inlineJson(browserPath(base).slice(1).split("/").filter(Boolean).map(segment => decodeURIComponent(segment)))}
-const schema = ${inlineJson(schema.segments)}
-const params = ${inlineJson(params)}
-let path = pathname
-if (base.length) {
-  const pathSegments = path.slice(1).split("/")
-  if (pathSegments.length < base.length || base.some((segment, index) => decodeSegment(pathSegments[index], false) !== segment)) throw new Error("Runtime route is outside the configured base")
-  path = "/" + pathSegments.slice(base.length).join("/")
-}
-if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1)
-const segments = path.slice(1).split("/")
-if (segments.length !== schema.length) throw new Error("Runtime route does not match its fallback pattern")
-const values = Object.create(null)
-for (let index = 0; index < schema.length; index++) {
-  const segment = schema[index]
-  const value = decodeSegment(segments[index], Boolean(segment.param))
-  if (segment.literal !== undefined && value !== segment.literal) throw new Error("Runtime route literal does not match")
-  if (segment.param) values[segment.param] = value
-}
-for (const param of params) {
-  const value = values[param.name]
-  browserState.set(param.id, value)
-  commitDom(param.id, value)
-}
-function decodeSegment(raw, param) {
-  if (param && /%(?:2f|5c)/i.test(raw)) throw new Error("Runtime route parameter contains an encoded separator")
-  let value
-  try { value = decodeURIComponent(raw) } catch { throw new Error("Runtime route parameter has malformed encoding") }
-  const decodedDots = value.replace(/%2e/gi, ".")
-  if (param && (!value || value === "." || value === ".." || decodedDots === "." || decodedDots === ".." || /[\\/?#]/.test(value) || [...value].some(character => character.charCodeAt(0) < 32 || character.charCodeAt(0) >= 127 && character.charCodeAt(0) <= 159) || /%(?:2f|5c)/i.test(value))) throw new Error("Runtime route parameter is invalid")
-  return value
-}
-` : ""
-  const searchInitializer = searchParamsWritable && searchParams.length ? `function initializeSearch(search) {
-const query = new URLSearchParams(search)
-for (const param of ${inlineJson(searchParams)}) {
-  const value = query.get(param.name)
-  browserState.set(param.id, value)
-  commitDom(param.id, value)
-}
-}
-` : ""
-  const query = searchParams.length ? searchParamsWritable ? "initializeSearch(search)\n" : `const query = new URLSearchParams(search)
-for (const param of ${inlineJson(searchParams)}) {
-  const value = query.get(param.name)
-  browserState.set(param.id, value)
-  commitDom(param.id, value)
-}
-` : ""
-  const writer = searchParamsWritable ? `
-function setSearchParams(update, replace) {
-  const next = update(new URLSearchParams(location.search))
-  if (!(next instanceof URLSearchParams)) throw new Error("React Router search parameter updater must return URLSearchParams")
-  const url = new URL(location.href)
-  url.search = next.toString()
-  history[replace ? "replaceState" : "pushState"](null, "", url)
-  ${searchParams.length ? "initializeSearch(location.search)" : ""}
-}
-${navigable ? "" : `globalThis.__kSetSearchParams = setSearchParams
-addEventListener("popstate", () => ${searchParams.length ? "initializeSearch(location.search)" : "undefined"})`}` : ""
-  return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}
-${searchInitializer}${prefix}${pathname}${query}${suffix}${writer}`
-}
-
-export function specializeRuntime(source, events, hasStateSeed) {
-  const specialized = specializeEvents(source, events)
-  if (hasStateSeed) return specialized
-  return specialized
-    .replace("  const initialState = document.body.dataset.kState\n", "")
-    .replace(/^  if \(initialState\).*\n/m, "")
 }
 
 async function writeJavaScript(file, source, minify, define) {
@@ -3866,14 +3606,6 @@ function navigationDomainsOverlap(left, right) {
   return left.segments.length === right.segments.length && left.segments.every((segment, index) => segment === null || right.segments[index] === null || segment === right.segments[index])
 }
 
-function specializeNavigationTextDescriptors(source) {
-  const dynamic = source
-    .replace("const textDescriptors = globalThis.__KUDZU_TEXT_BINDINGS__ && typeof document !== \"undefined\" ? JSON.parse(document.body.dataset.kTextBindings ?? \"[]\") : []", "const textDescriptors = () => globalThis.__KUDZU_TEXT_BINDINGS__ ? JSON.parse(document.body.dataset.kTextBindings ?? \"[]\") : []")
-    .replace("const descriptor = textDescriptors[Number(node.data.slice(\"k-text:\".length))]", "const descriptor = textDescriptors()[Number(node.data.slice(\"k-text:\".length))]")
-  if (dynamic === source) throw new Error("Navigation text descriptor specialization did not match binding-runtime.js")
-  return dynamic
-}
-
 function normalizeBase(value) {
   if (value == null || value === "" || value === "/") return ""
   if (typeof value !== "string" || !value.startsWith("/") || /[?#\0]/.test(value) || /%(?:2f|5c)/i.test(value)) throw new Error("kudzu.config base must be a root-relative path")
@@ -3906,6 +3638,7 @@ const workerCompiler = createWorkerCompiler({
 })
 
 const printEffectEntry = createEffectCodegen({ assetPath, inlineJson, relativeModulePath })
+const printParamEntry = createParamCodegen({ browserPath, inlineJson, relativeModulePath })
 const handlerLowering = createHandlerLowering({ cloneAst, synthesizeTree })
 const printHandlerModule = createHandlerCodegen({
   resolveClientImport: (entry, handlerPath) => entry.package ? entry.target : relativeModulePath(handlerPath, clientModulePath(entry.target))

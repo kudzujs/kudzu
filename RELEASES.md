@@ -1,5 +1,41 @@
 # Kudzu Releases
 
+## 0.8.22 - Versioned compiler foundation
+
+Kudzu 0.8.22 completes Goal A: source-local ModuleIR seams accompany the existing rendered route plan as RouteIR v1, while CapabilityIR v1 selects shared runtime families and branches for focused artifact generators.
+
+### Changed in 0.8.22
+
+- The existing `renderPage().plan` is RouteIR v1 rather than a duplicated route representation.
+- Route states add a deterministic route-local numeric `slot`; existing string `id` values remain authoritative browser/DOM identities and `name` remains readable development metadata.
+- The existing pure capability manifest is CapabilityIR v1. Route and capability consumers reject unsupported versions.
+- List, parameter, core, effect, binding, native, and navigation runtime generation moved from `build.mjs` into focused generator modules with narrow inputs and no filesystem ownership.
+- Required authored-runtime source anchors fail closed instead of silently retaining stale branches.
+- `build.mjs` decreased from 3,999 to 3,732 lines and now coordinates generator results and artifact emission rather than containing those feature semantics.
+
+### Goal A boundary
+
+- ModuleIR slots identify source-local compiler records; RouteIR state slots identify positions in one rendered plan; browser IDs continue to own DOM/runtime behavior. The namespaces are deliberately independent.
+- `core.mjs` remains authoritative for complete HTML, route/layout IDs, conditions, keyed paths, effect lifetimes, and exact cleanup.
+- CapabilityIR selects shared runtime families and branches; RouteIR and ModuleIR references retain route entries, handlers, and Workers. Static pages remain complete documents with zero JavaScript.
+- Goal B optimization remains deferred; `0.8.22` is its recorded baseline if explicitly started later.
+- No accepted syntax, public API behavior, runtime capability, VDOM, hydration, component rerender, or retained browser component tree was added.
+
+### Validation
+
+- The complete suite passes 170/170 tests, including RouteIR JSON round-trip and slots, CapabilityIR JSON round-trip/version rejection, fail-closed generator contracts, list/parameter/navigation generation, lifecycle cleanup, and development restoration by readable state name.
+- `npm run check`, focused Node 22 compiler tests, and a Node 22 complete-site build pass.
+- The complete site plus six representative binding, list, effect, Worker, runtime-parameter, and navigation deploy trees are byte-identical to `v0.8.21`; normalized RouteIR meaning is identical in all seven comparisons.
+- Worker and window graph files remain byte-identical. Seven interleaved clean builds measured equal 250.1 ms medians; raw arrays and provenance are recorded in `PERFORMANCE.md`.
+- Release-blocking architecture audits drove full IR schema validation, accurate reachability ownership, and fail-closed source contracts before publication.
+- `create-kudzu` remains 0.1.101 because its unchanged template already accepts `@kudzujs/core@^0.8.15`.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.22
+```
+
 ## 0.8.21 - Explicit effect ownership
 
 Kudzu 0.8.21 completes the next Goal A source-analysis seam: every supported effect now registers deterministic JSON-safe setup, cleanup, dependency, ownership, source, and Worker-edge data before existing build-time rendering allocates concrete lifecycle IDs.

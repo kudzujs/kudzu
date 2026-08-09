@@ -1,5 +1,29 @@
 # Performance Records
 
+## 0.8.22 Versioned Compiler Foundation
+
+Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.21` at `ff38092` and the current `0.8.22` compiler candidate used the same local volume and identical installed dependencies.
+
+The candidate implementation patch over `v0.8.21` had SHA-256 `e1d89c97dd8dfb60d41ae9c14ac64dfbb50466e024f80076f430ae9e725fb28f`, produced by:
+
+```bash
+git diff --binary v0.8.21 -- framework/build.mjs framework/compiler/list-runtime-codegen.mjs framework/compiler/param-codegen.mjs framework/compiler/route-capability-planner.mjs framework/compiler/runtime-codegen.mjs framework/core.mjs framework/core.d.ts | shasum -a 256
+```
+
+Both targets received one warm-up followed by seven clean `worker-effects` production builds in alternating round-robin order. Cleanup remained outside timing. Both medians were exactly 250.1 ms; the distributions overlap and establish no material change.
+
+| Target | Build median | Worker raw / gzip | Window raw / gzip |
+|---|---:|---:|---:|
+| 0.8.21 baseline | 250.1 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+| 0.8.22 candidate | 250.1 ms | 907 B / 475 B | 12,148 B / 5,427 B |
+
+```text
+0.8.21: [249.7,252.0,250.1,251.2,250.0,254.8,249.1]
+0.8.22: [250.1,247.3,255.1,249.3,253.1,250.3,248.7]
+```
+
+Before release-content updates, the complete 135-page site and the `bindings`, `keyed-row-hooks`, `effect-dependencies`, `worker-effects`, `runtime-params`, and `navigation` deploy trees had identical file lists and bytes. Their build plans were equivalent after removing the intentional additive RouteIR `version` and state `slot` fields. Every measured Worker/window artifact name, raw byte count, and gzip byte count was identical. `build.mjs` decreased from 3,999 to 3,732 lines; this source-organization metric is not a runtime performance claim.
+
 ## 0.8.21 Explicit Effect Ownership
 
 Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.20` at `7fb6e37` and the current `0.8.21` compiler candidate used the same local volume and identical installed dependencies.
