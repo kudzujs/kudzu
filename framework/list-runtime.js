@@ -282,7 +282,8 @@ function updateList(list) {
       if (run.firstChild) parent.insertBefore(run, list.boundary)
       ordered = true
     } else parent.insertBefore(additions, list.boundary)
-    if (addedNodes) for (const node of addedNodes) mountDom(node)
+    if (addedNodes?.length > 32 && addedNodes.length * 2 > next.length && addedNodes.length * 2 > parent.children.length && !list.descriptor.children && !list.descriptor.ownerField) mountDom(parent)
+    else if (addedNodes) for (const node of addedNodes) mountDom(node)
     list.container ??= parent
   }
   let anchor = list.boundary

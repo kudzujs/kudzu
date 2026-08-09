@@ -243,6 +243,13 @@ This queue orders the next investigations by general migration value. Start only
 - Source graph resolution and shared path conversion have focused owners, while Worker compilation directly owns Worker graph emission.
 - Complete-site and representative deploy artifacts remain byte-identical to `v0.8.22`; diagnostics, RouteIR, CapabilityIR, browser ownership, and accepted syntax are unchanged.
 
+### Completed In 0.8.24
+
+- Goal B adds a maintained 2,000-row keyed browser benchmark with fresh-profile timing and ownership checks.
+- Safe large flat-list restoration batches mount-hook discovery, reducing the measured median by 19.77% while retained-heavy append, filter, reverse, identity, state reset, and handler behavior remain unchanged.
+- No-op normalization passes skip redundant recursive parent repair, reducing the measured 1,000-product build median by 6.26% with equivalent output.
+- Identical generated route-entry transformation remains the next evidence-backed Goal B investigation; it is not implemented without an isolated benchmark.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

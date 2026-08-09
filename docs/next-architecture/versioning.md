@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.23` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.24` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -14,10 +14,11 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.21` | Replace effect AST side tables with EffectIR covering setup, cleanup, dependencies, ownership, source, and Worker edges. | Route/layout/conditional/list lifetime, stale-write isolation, and exact resource cleanup remain unchanged. |
 | `0.8.22` | Version the existing RouteIR and CapabilityIR, formalize numeric slots plus readable debug metadata, and extract focused runtime generators. | RouteIR and CapabilityIR reject unsupported versions; runtime generator contracts, output gates, and the recorded benchmark pass. |
 | `0.8.23` | Forward-fix Goal A by moving source normalization, semantic analysis, ModuleIR finalization, handler generation, and build-module generation behind one no-write source compiler result. | `build.mjs` contains no TSX feature analysis; source results are JSON-safe and project-relative; diagnostics, deploy bytes, tests, and build performance remain equivalent. |
+| `0.8.24` | Start Goal B with measured large keyed restoration and no-op normalization optimizations. | Fresh-profile keyed restoration improves materially; alternating 1,000-product builds improve materially; correctness, output, and byte deltas are recorded. |
 
 ## Sequence Rules
 
-- Goal A is complete. Goal B optimization remains deferred until explicitly started from the recorded `0.8.23` baseline.
+- Goal A is complete. Goal B proceeds from the `0.8.23` baseline one repeatable measured loss at a time.
 - Keep Goal C research out of these patches and publish no store/resource API.
 - Keep Goal D behavior unchanged: complete HTML, native default, opt-in groups, no islands.
 - A planned patch may ship under a different actual version only if this table and release-facing documentation are updated before release.

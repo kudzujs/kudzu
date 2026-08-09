@@ -16,12 +16,12 @@ export function ArchitectureSection() {
   -> state/effect/handler/binding/list analysis
   -> complete HTML + route-specific capability ESM`} />
     <div className="docs-columns">
-      <div><strong>Normalize</strong><p>Focused passes lower supported React, Router, browser-signal, resource-lifecycle, and render-control shapes. Parent pointers are repaired after every pass.</p></div>
-      <div><strong>Analyze</strong><p>The main transformer builds route descriptors and rejects unsupported syntax with source locations. It does not rely on a browser component tree.</p></div>
+      <div><strong>Normalize</strong><p>Focused passes lower supported React, Router, browser-signal, resource-lifecycle, and render-control shapes. Parent pointers are repaired after structural changes.</p></div>
+      <div><strong>Analyze</strong><p>The no-write source compiler finalizes JSON-safe ModuleIR, RouteIR, and CapabilityIR results and rejects unsupported syntax with source locations.</p></div>
       <div><strong>Generate</strong><p>Dedicated codegen modules produce native handlers, reactive evaluators, keyed-list expressions, effects, parameters, and navigation capabilities.</p></div>
       <div><strong>Exclude</strong><p>Final route plans remove unreferenced handlers and Workers. Static routes emit complete HTML and no browser JavaScript.</p></div>
     </div>
-    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs.</p>
+    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs. The <a href="https://github.com/kudzujs/kudzu/tree/v0.8.24/docs/next-architecture">architecture packet</a> records the current boundaries and the active optimization Goal B, distinct from the completed historical Worker capability milestone.</p>
   </section>
 }
 
@@ -55,12 +55,27 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Benchmark provenance</strong><span>The cross-framework tables below are historical matched snapshots from a local benchmark workspace that is not checked into this repository. Their runner, competitor fixtures, and raw arrays are unavailable in the current checkout, so they are not current 0.8.20 measurements and cannot be reproduced by CI. Architecture differences are stated with each table.</span></div>
+    <div className="docs-callout"><strong>Current 0.8.24 results</strong><span>Goal B retains only repeated improvements that preserve complete HTML, zero-JavaScript static routes, DOM identity, cleanup, and deterministic output. Raw arrays, environments, artifact lists, and limitations are retained in PERFORMANCE.md.</span></div>
+    <h3>Large keyed restoration</h3>
+    <BenchmarkTable columns={["Target", "Append 33", "Filter", "Restore 1,999", "Reverse", "JS raw / gzip"]} rows={[
+      ["0.8.23 baseline", "2.6 ms", "4.6 ms", "26.3 ms", "6.2 ms", "28,308 B / 10,937 B"],
+      ["0.8.24", "2.7 ms", "4.6 ms", "21.1 ms", "6.1 ms", "28,435 B / 10,972 B"]
+    ]} />
+    <p>Twenty-one fresh Chrome 151 profiles measured a 2,000-row local-state list. Restoration improved 19.77%; its 20.4–21.9 ms range did not overlap the 25.7–27.3 ms baseline range. Append, filter, and reverse establish no material change. Every run checked retained identity/state, released identity, fresh restored state, restored handlers, and reversal identity.</p>
+    <CodeBlock language="shell" code={`RUNS=21 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  npm run benchmark:keyed`} />
+    <h3>1,000-product compiler build</h3>
+    <BenchmarkTable columns={["Target", "Pages", "Build median", "Output files", "Normalization bytes"]} rows={[
+      ["0.8.23 baseline", "1,011", "6,684.7 ms", "3,056", "0 B"],
+      ["0.8.24", "1,011", "6,266.5 ms", "3,056", "0 B"]
+    ]} />
+    <p>Twenty-one alternating clean builds of the public <a href="https://github.com/SimYunSup/kudzu-based-bench">kudzu-based-bench</a> fixture measured a 6.26% improvement after no-op normalization passes stopped repeating full-AST parent repair. The catalog is generated once outside timing; both revisions run the same complete Kudzu build. Published cross-framework headline numbers are not used for this paired Kudzu claim.</p>
     <h3>Tracked Worker fixture</h3>
     <CodeBlock language="shell" code={`npm run benchmark
 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
   node --test --test-name-pattern="bundles relative TypeScript Workers" test/framework.test.mjs`} />
-    <p>At commit <code>05e5cc2</code> on Apple M3, macOS 26.5.2, and Node 25.6.1, one warm-up plus seven clean builds measured 404.2, 401.3, 408.2, 404.4, 399.9, 408.8, and 402.0 ms, with a 404.2 ms median. The Worker graph measured 907 B raw / 475 B gzip and the complete dashboard window graph measured 11,960 B raw / 5,365 B aggregate gzip. Chrome 150.0.7871.187 passed throughput, cadence, bounded-history, stale-write, and 30-cycle lifecycle checks.</p>
+    <p>On Node 22.23.2, the 0.8.24 candidate retained a 907 B raw / 477 B gzip Worker graph and a 12,148 B raw / 5,411 B aggregate gzip window graph. The maintained benchmark and focused Chrome test verify build output, throughput, cadence, bounded history, stale writes, and 30-cycle start/termination and listener ownership.</p>
+    <div className="docs-callout"><strong>Historical comparison</strong><span>This dated 0.7.12 snapshot retains raw arrays in PERFORMANCE.md. It is not a current 0.8.24 framework ranking.</span></div>
     <h3>Historical 0.7.12 keyed local state</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
       ["Kudzu", "Yes", "8,610 B", "238 ms", "0.5 ms", "4.2 ms", "1.3 ms", "1.9 ms"],
@@ -69,46 +84,7 @@ CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
       ["React CSR", "No", "59,564 B", "186 ms", "2.1 ms", "7.5 ms", "2.4 ms", "1.9 ms"]
     ]} />
     <p>This corrected 0.7.12 rerun used 31 rotating unthrottled fresh Chrome 150 profiles per target and in-page <code>MutationObserver</code> completion timing. All 124 profiles passed row/input identity and removal/re-add reset checks. Kudzu led edit, tied Vue on remove, beat React and Svelte on reverse, and trailed Vue by 0.4 ms on reverse. A separate seven-profile 4x run measured Kudzu at 2.3/17.3/5.9/8.6 ms for edit/reverse/remove/re-add. The discarded external-CDP polling method added roughly 42–49 ms to reverse and unstable phase delay to short operations. Kudzu and the CSR targets have different initial-delivery architectures, so JavaScript, total output, and build values are not equivalent loading comparisons. The <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">raw performance record</a> contains environment, versions, methodology, caveats, and corrected distributions.</p>
-    <h3>Historical matched snapshots</h3>
-    <p>The historical Goal A fixture covers a matched six-route commerce journey with complete initial HTML, shared layout state, product options, optimistic cart success and rejection, accessible rollback, and product-to-cart navigation. Browser medians used seven rotating fresh Chrome profiles per target with 4x CPU slowdown, 100 ms latency, and 200 KiB/s throughput.</p>
-    <h3>Desktop commerce</h3>
-    <BenchmarkTable columns={["Target", "JS gzip", "Cold transfer", "Cold LCP", "Warm LCP", "Startup", "Heap", "Interaction", "Product → cart"]} rows={[
-      ["Kudzu", "7,334 B", "35,260 B", "332 ms", "156 ms", "122.6 ms", "650,708 B", "4.8 ms", "5.6 ms"],
-      ["React + Vite", "61,464 B", "202,842 B", "332 ms", "264 ms", "179.9 ms", "1,062,520 B", "10.2 ms", "9.9 ms"],
-      ["Next.js", "190,090 B", "547,615 B", "324 ms", "176 ms", "434.4 ms", "2,168,412 B", "14.0 ms", "30.0 ms"],
-      ["Nuxt", "67,620 B", "195,953 B", "324 ms", "224 ms", "247.9 ms", "1,721,348 B", "4.5 ms", "29.6 ms"],
-      ["SvelteKit", "32,474 B", "90,939 B", "376 ms", "184 ms", "143.8 ms", "999,496 B", "6.3 ms", "21.8 ms"]
-    ]} />
-    <p>The recorded fixture emitted 35,355 deploy bytes. Its 7,334 B gzip product graph included the 2,425 B navigation capability. Validated near-viewport document prefetch reduced the recorded 128.7 ms product-to-cart transition to 5.6 ms without removing complete documents or native fallback.</p>
-    <h3>Desktop and mobile behavior</h3>
-    <BenchmarkTable columns={["Profile", "Cold LCP", "Warm LCP", "Interaction", "Product → cart", "Reject feedback", "Rollback/error", "CLS"]} rows={[
-      ["Desktop", "332 ms", "156 ms", "4.8 ms", "5.6 ms", "4.0 ms", "112.1 ms", "0"],
-      ["Mobile", "420 ms", "220 ms", "5.6 ms", "8.7 ms", "4.1 ms", "158 ms", "0"]
-    ]} />
-    <p>The mobile row is retained from the previous matched run using a 390x844 viewport, 6x CPU slowdown, 150 ms latency, and 150 KiB/s throughput. Both profiles recorded zero cold and warm layout shift.</p>
-    <h3>Build startup</h3>
-    <p>The recorded seven-run matched commerce build measured Kudzu at 486.8 ms and React at 545.4 ms, making Kudzu 10.7% faster in that historical run. It recorded 88.1% less product JavaScript, 52.9% faster interaction, and 43.4% faster product-to-cart navigation than React. The excluded workspace also found byte-for-byte output with the module cache disabled.</p>
-    <h3>1,000-row keyed effect</h3>
-    <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Selected update", "Unrelated update", "Reverse"]} rows={[
-      ["Astro native", "Yes", "381 B", "998 ms", "0.4 ms", "0.2 ms", "5.7 ms"],
-      ["Kudzu", "Yes", "8,264 B", "426 ms", "3.6 ms", "2.4 ms", "8.8 ms"],
-      ["Vue CSR", "No", "25,091 B", "935 ms", "5.8 ms", "2.4 ms", "10.5 ms"],
-      ["Svelte CSR", "No", "12,848 B", "1,040 ms", "5.7 ms", "4.1 ms", "58.1 ms"],
-      ["React CSR", "No", "60,921 B", "1,198 ms", "9.8 ms", "5.9 ms", "16.8 ms"]
-    ]} />
-    <p>Each row owns one effect depending on its name. Browser timing starts only after every target has 1,000 rows and effects ready. Kudzu's targeted changed-root update measures 3.6 ms, versus Vue at 5.8 ms, Svelte at 5.7 ms, and React at 9.8 ms. List reconciliation remains O(n); Kudzu and Vue both measure 2.4 ms on the unrelated detail update. Kudzu and Astro emit the initial rows while the other targets are CSR; JavaScript, output, and build values therefore are not architecture-equivalent comparisons.</p>
-    <h3>1,000-row nested child components</h3>
-    <BenchmarkTable columns={["Target", "Initial rows", "Initial JS gzip", "Build", "Child update + condition", "Child reverse", "Parent reverse", "Parent remove"]} rows={[
-      ["Astro native", "Yes", "287 B", "1,030 ms", "0.5 ms", "0.4 ms", "3.9 ms", "0.2 ms"],
-      ["Kudzu", "Yes", "7.0 KB", "477 ms", "1.3 ms", "0.4 ms", "5.0 ms", "0.7 ms"],
-      ["Svelte CSR", "No", "13.1 KB", "1,050 ms", "2.7 ms", "1.2 ms", "6.7 ms", "1.3 ms"],
-      ["Vue CSR", "No", "24.6 KB", "940 ms", "4.9 ms", "2.5 ms", "6.1 ms", "2.2 ms"],
-      ["React CSR", "No", "59.5 KB", "1,211 ms", "11.8 ms", "5.0 ms", "8.2 ms", "4.4 ms"]
-    ]} />
-    <p>The fixture renders 100 keyed parents with 10 keyed child components each. The selected update changes child text and flips its condition while preserving the child root; reverse and removal operations also require child and parent identity. Kudzu beats Svelte, Vue, and React on all four operations. Astro remains the hand-written native lower bound.</p>
-    <div className="docs-callout"><strong>Shared nested output</strong><span>One child row prototype supplies inert branches and patch descriptors to every parent. The final fixture emits 339,601 B HTML and 359,271 B total raw output; the compressed-file sum is 24,173 B.</span></div>
-    <p>Ordinary flat-list output remains byte-for-byte equal to the pre-feature build because nested ownership and prototypes are capability-gated. Kudzu and Astro emit initial rows; the CSR targets do not, so output sizes are not architecture-equivalent.</p>
-    <p>These results describe one matched fixture on one machine, not framework ecosystem size or every rendering mode. Prefetch improves eligible application transitions; direct loads still transfer and render complete standalone documents.</p>
+    <p>Older excluded-workspace snapshots remain in the <a href="https://github.com/kudzujs/kudzu/blob/v0.8.24/PERFORMANCE.md">raw performance archive</a> for provenance, but are omitted here because their runners and raw arrays are unavailable.</p>
   </section>
 }
 

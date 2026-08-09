@@ -23,6 +23,19 @@ import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
 
 const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
 
+test("repairs parents before the next normalization pass", () => {
+  const source = ts.createSourceFile("pass.ts", "", ts.ScriptTarget.Latest, true)
+  const result = ts.transform(source, [context => file => applyNormalizationPasses(file, [
+    current => context.factory.updateSourceFile(current, [context.factory.createExpressionStatement(context.factory.createIdentifier("value"))]),
+    current => {
+      assert.equal(current.statements[0].parent, current)
+      assert.equal(current.statements[0].expression.parent, current.statements[0])
+      return current
+    }
+  ])])
+  result.dispose()
+})
+
 test("returns an explicit JSON-safe source result without writing files", () => {
   const file = resolve("src/pages/source-boundary.tsx")
   const helper = resolve("src/source-boundary-helper.ts")

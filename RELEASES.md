@@ -1,5 +1,39 @@
 # Kudzu Releases
 
+## 0.8.24 - Measured Goal B optimizations
+
+Kudzu 0.8.24 starts the architecture optimization Goal B with two benchmark-proven optimizations for large keyed restoration and large multi-route builds while preserving complete HTML, direct DOM ownership, and existing compiler output. This is distinct from the completed historical Worker capability milestone in `GOAL_B.md`.
+
+### Changed in 0.8.24
+
+- A maintained `npm run benchmark:keyed` fixture measures 2,000 keyed rows with row-local state, reactive slicing/search, bulk restoration, retained-heavy append, reversal, DOM identity, reset state, and restored handlers across fresh Chrome profiles.
+- Top-level flat lists batch mount-hook discovery through their connected parent only when more than 32 additions dominate both the next list and parent children. Nested lists, shared containers, and small or retained-heavy additions keep per-root mounting.
+- `applyNormalizationPasses()` repairs TypeScript parent pointers only after a pass returns a structurally changed `SourceFile`; validators and no-op passes no longer walk the complete AST again.
+- A focused test proves changed normalization output has repaired parent links before the next pass runs.
+- Goal B records identical generated route entries as the next measured esbuild-transform investigation; no cache or generalized build system was added without isolated evidence.
+
+### Performance
+
+- Twenty-one fresh Chrome profiles measured 2,000-row restoration at 21.1 ms versus 26.3 ms for `0.8.23`, a 19.77% improvement. A retained-heavy 33-row append showed no material change at 2.7 ms versus 2.6 ms.
+- The keyed route adds 127 B raw / 35 B aggregate gzip JavaScript. Filter, reverse, and clean-build distributions establish no material regression.
+- Twenty-one alternating clean builds of [`SimYunSup/kudzu-based-bench`](https://github.com/SimYunSup/kudzu-based-bench)'s 1,000-product, 1,011-page Kudzu fixture measured 6,266.5 ms versus 6,684.7 ms for `0.8.23`, a 6.26% improvement.
+- Both commerce builds emitted the same 3,056 files. Only `assets/kudzu-list.js` changed for the independently measured runtime optimization; normalization changed no output bytes.
+- Exact keyed worktree setup and the checked-in `benchmark:commerce` paired runner are documented in `PERFORMANCE.md` with raw arrays and limitations.
+
+### Validation
+
+- `npm run check` and all 172 tests pass, including the new normalization boundary check.
+- Node 22 focused compiler checks and the maintained Worker benchmark pass.
+- Chrome-backed keyed list, selector, row-hook, Worker ownership, and the new large keyed benchmark checks pass.
+- Before release-content updates, the complete site plus representative list, keyed-row-hook, and navigation builds retained identical file lists; only `assets/kudzu-list.js` changed, and normalized `.kudzu` trees remained identical to `v0.8.23`.
+- No accepted syntax, public API behavior, VDOM, hydration, scheduler, cache, retained browser component tree, or `create-kudzu` template change was added.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.24
+```
+
 ## 0.8.23 - Source compiler boundary
 
 Kudzu 0.8.23 completes the Goal A compiler foundation by moving source normalization, TSX semantic analysis, ModuleIR finalization, handler generation, and build-module generation behind one explicit no-write source compiler result.

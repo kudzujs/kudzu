@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.23 - Source compiler boundary.** Source normalization, TSX analysis, ModuleIR finalization, handler generation, and build-module generation now belong to a no-write source compiler. `build.mjs` coordinates discovery, source results, RouteIR, CapabilityIR, and artifact emission without analyzing TSX. Read the [release notes](./RELEASES.md#0823---source-compiler-boundary), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.23), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.24 - Measured Goal B optimizations.** Large keyed restoration batches mount connected flat-list additions once, and no-op normalization passes skip redundant full-AST parent repair. Maintained and external benchmarks measure 19.77% faster 2,000-row restoration and 6.26% faster 1,000-product builds. Read the [release notes](./RELEASES.md#0824---measured-goal-b-optimizations), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.24), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -123,7 +123,7 @@ React-shaped TypeScript/TSX
   -> complete HTML + route-specific capability ESM
 ```
 
-- `framework/compiler/normalization-pipeline.mjs` owns pass order and repairs AST parent pointers after every transform.
+- `framework/compiler/normalization-pipeline.mjs` owns pass order and repairs AST parent pointers after structurally changed transforms.
 - Focused passes own React, React Router, browser-signal, animation-frame, timer, render-control, and Worker validation.
 - The main transformer produces descriptors; effect and handler codegen modules turn them into route-specific ESM.
 - Unsupported nearby syntax fails with source-located diagnostics instead of falling back to React or a generic runtime.

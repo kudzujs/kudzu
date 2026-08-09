@@ -1,6 +1,6 @@
 {
   "name": "@kudzujs/core",
-  "version": "0.8.23",
+  "version": "0.8.24",
   "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM",
   "type": "module",
   "license": "MIT",
@@ -55,6 +55,8 @@
     "check": "tsc --noEmit && tsc -p test/fixtures/tsconfig.json --noEmit && node ./bin/kudzu.mjs build",
     "test": "node --test test/*.test.mjs",
     "benchmark": "node test/performance.mjs",
+    "benchmark:keyed": "node test/keyed-performance.mjs",
+    "benchmark:commerce": "node test/commerce-build-performance.mjs",
     "prepublishOnly": "npm run check && npm test",
     "deploy": "wrangler deploy",
     "preview": "wrangler dev"

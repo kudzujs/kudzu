@@ -7,7 +7,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 | Goal | Decision | Start condition |
 |---|---|---|
 | A: compiler foundation | Complete in `0.8.23` | The no-write source compiler, RouteIR v1, CapabilityIR v1, generator boundaries, and output baseline are recorded. |
-| B: optimization benchmarks | Deferred | Start only by explicit decision from the recorded `0.8.23` baseline. |
+| B: optimization benchmarks | Active | The first measured bulk keyed restoration optimization is retained; continue one reproduced loss at a time. |
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 
@@ -27,7 +27,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 2. [`goal-a-compiler-foundation.md`](./goal-a-compiler-foundation.md): approved extraction and generator work.
 3. [`versioning.md`](./versioning.md): planned patch sequence and completion rules.
 4. [`performance-gates.md`](./performance-gates.md): output, build, and browser gates.
-5. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): deferred measured optimization.
+5. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): active measurements, retained optimizations, and continuation rules.
 6. [`goal-c-state-resource-research.md`](./goal-c-state-resource-research.md): research boundary only.
 7. [`goal-d-routing-compatibility-decisions.md`](./goal-d-routing-compatibility-decisions.md): routing and islands decisions.
 

@@ -1,5 +1,21 @@
 # Performance Records
 
+Reproducibility classes: `npm run benchmark` and `npm run benchmark:keyed` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+
+## 0.8.24 Measured Goal B Optimizations
+
+Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, npm 11.18.0, and Chrome 151.0.7922.76. Baseline tag `v0.8.23` at `39a065b` and the `0.8.24` candidate used the same local volume and dependencies.
+
+The implementation and maintained benchmark patch over `v0.8.23` had SHA-256 `c6c39b0c64f7a5d3271cb9f0286a4c6787aaf7e293744457629e6ea249e9ef76`, produced by:
+
+```bash
+git diff --binary v0.8.23 -- framework/compiler/normalization-pipeline.mjs framework/list-runtime.js test/compiler-passes.test.mjs test/keyed-performance.mjs test/fixtures/keyed-performance/src/pages/index.tsx test/commerce-build-performance.mjs package.json | shasum -a 256
+```
+
+Twenty-one fresh profiles measured 2,000-row restoration at 21.1 ms versus 26.3 ms, a 19.77% improvement. Twenty-one alternating clean builds of the external 1,000-product fixture measured 6,266.5 ms versus 6,684.7 ms, a 6.26% improvement. The keyed route adds 127 B raw / 35 B aggregate gzip JavaScript; the normalization optimization adds no output bytes. Complete methodology, arrays, artifacts, correctness checks, and limitations are in [Goal B Measurement Details](#goal-b-measurement-details).
+
+Before release-content updates, the complete site plus `lists`, `keyed-row-hooks`, and `navigation` retained identical deploy file lists. Only `assets/kudzu-list.js` changed; every other deploy file was byte-identical. Their normalized `.kudzu` trees were identical to `v0.8.23`.
+
 ## 0.8.23 Source Compiler Boundary
 
 Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 22.23.2, and npm 11.18.0. Baseline tag `v0.8.22` at `60b9bff` and the current `0.8.23` compiler candidate used the same local volume and identical installed dependencies.
@@ -23,6 +39,99 @@ Both targets received one warm-up followed by seven clean `worker-effects` produ
 ```
 
 Before release-content updates, the complete 135-page site and the `bindings`, `keyed-row-hooks`, `effect-dependencies`, `worker-effects`, `runtime-params`, `navigation`, `config-authoring`, and `event-package` deploy trees had identical file lists and bytes. Their `.kudzu` trees also matched after replacing only each checkout root in existing source-location strings. The invalid-reducer fixture retained the same source file, line, column, and diagnostic text. `build.mjs` decreased from 3,732 to 744 lines; this source-organization metric is not a runtime performance claim.
+
+## Goal B Measurement Details
+
+Goal B started from clean commit `39a065b4284c74e7bf8ee5e39647ef771f2ba6f6`. On the same Apple M3 environment with Node 22.23.2, the maintained `worker-effects` benchmark measured a 289.9 ms clean-build median, 907 B raw / 477 B gzip Worker graph, and 12,148 B raw / 5,411 B gzip window graph:
+
+```text
+build: [284.3,287.1,293.6,289.9,291.3,286.4,290.7]
+```
+
+After the two candidate optimizations, the same maintained benchmark measured a 286.2 ms median and identical graph sizes. This is a regression check rather than evidence for either optimization:
+
+```text
+build: [286.2,282.1,287.1,286.4,285.4,284.4,287.2]
+```
+
+Chrome 151.0.7922.76 passed the tracked throughput, cadence, bounded-history, stale-write, and 30-cycle ownership checks. The first Node 22 browser attempt returned no Worker data; immediate Node 25 and Node 22 retries passed, so this is recorded as a startup flake rather than a performance result.
+
+The preserved external cross-framework workspace then rebuilt its 1,000-row Kudzu fixture against clean `0.8.23` to locate a possible keyed-list loss. This exploratory harness is not maintained in the repository and its historical framework results were not reused. Seven fresh unthrottled Chrome profiles all passed row visibility, retained identity, removal, and fresh re-add checks:
+
+| Operation | Median | Raw runs |
+|---|---:|---|
+| Edit row 500 | 0.5 ms | 1.1, 0.6, 0.5, 0.5, 0.6, 0.5, 0.5 |
+| Reverse 1,000 rows | 4.0 ms | 4.8, 3.8, 3.8, 4.2, 4.0, 4.1, 3.8 |
+| Remove row 500 | 1.2 ms | 1.5, 1.1, 1.1, 1.3, 1.2, 1.2, 1.2 |
+| Re-add row 500 | 1.3 ms | 2.3, 1.0, 1.3, 1.5, 1.1, 1.2, 1.4 |
+
+That fixture's seven clean builds were `[390.891,389.698,393.034,390.798,389.477,390.258,388.714]` ms for a 390.258 ms median. It emitted 28,243 B raw / 9,245 B aggregate gzip initial JavaScript across eight files and 943,075 B total output across nine files. The absolute build result has no current matched control and does not establish a regression. No browser operation in this exploratory fixture established a material loss.
+
+#### Maintained Keyed Restoration Benchmark
+
+The repository-owned `npm run benchmark:keyed` fixture renders 2,000 keyed rows with row-local state, a reactive slice, and a reactive string filter. Each revision received one clean build warm-up, 21 measured clean builds, and 21 unthrottled fresh Chrome 151.0.7922.76 profiles. In-page `MutationObserver` completion includes the synchronous state commit and terminal DOM mutation. Every run retained row 1000 and its selected state, appended 33 rows beside 1,967 retained rows, filtered to one row, released row 1, restored row 1 with fresh identity/state and a working handler, and retained row 1000 through reversal.
+
+The baseline uses the identical `0.8.24` benchmark harness and fixture copied into a clean `v0.8.23` worktree; only compiler/runtime source differs:
+
+```bash
+git worktree add --detach /tmp/kudzu-0.8.23 v0.8.23
+mkdir -p /tmp/kudzu-0.8.23/test/fixtures/keyed-performance/src/pages
+cp test/keyed-performance.mjs /tmp/kudzu-0.8.23/test/keyed-performance.mjs
+cp test/fixtures/keyed-performance/src/pages/index.tsx /tmp/kudzu-0.8.23/test/fixtures/keyed-performance/src/pages/index.tsx
+ln -s "$PWD/node_modules" /tmp/kudzu-0.8.23/node_modules
+RUNS=21 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node /tmp/kudzu-0.8.23/test/keyed-performance.mjs
+RUNS=21 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm run benchmark:keyed
+```
+
+The measured loss was restoration from one retained row to 2,000 rows. The baseline called `mountDom()` separately for 1,999 connected additions. For top-level flat lists, the candidate calls it once on the connected list parent when more than 32 additions are a majority of both the next rows and their parent children. Nested/parent lists, shared containers dominated by unrelated siblings, and small or retained-heavy updates keep per-root mounting. This reduces repeated mount-hook selector traversal without adding a scheduler, cache, tree, or public API.
+
+| Target | Build median | Append 33 | Filter median | Restore median | Reverse median | JavaScript raw / gzip |
+|---|---:|---:|---:|---:|---:|---:|
+| `0.8.23` baseline | 263.0 ms | 2.6 ms | 4.6 ms | 26.3 ms | 6.2 ms | 28,308 B / 10,937 B |
+| Goal B candidate | 265.6 ms | 2.7 ms | 4.6 ms | 21.1 ms | 6.1 ms | 28,435 B / 10,972 B |
+
+Restore improved 19.77%, and its 20.4-21.9 ms candidate range did not overlap the 25.7-27.3 ms baseline range. Append, filter, and reverse distributions overlap; no change is claimed. Build distributions overlap; no build improvement is claimed. The deterministic cost is 127 B raw / 35 B aggregate gzip in `kudzu-list.js`.
+
+```text
+baseline build: [261.7,265.9,263.0,263.9,259.4,265.5,261.5,263.4,260.4,261.8,264.7,263.4,260.7,262.7,263.6,264.4,261.5,264.0,261.7,263.5,262.3]
+candidate build: [265.4,271.2,265.2,263.6,266.1,266.7,264.4,317.3,298.2,269.4,269.2,264.1,266.9,268.9,273.6,265.5,262.4,259.4,262.1,265.6,262.0]
+baseline append: [2.8,2.5,2.5,3.0,2.5,2.6,2.8,2.7,2.7,2.8,2.8,2.5,2.6,2.9,2.7,2.6,2.5,2.4,2.7,2.4,2.4]
+candidate append: [2.8,3.0,2.7,2.5,2.7,2.6,2.8,2.8,2.7,2.6,2.8,2.8,3.0,2.8,2.4,2.4,2.4,2.9,2.9,2.7,2.6]
+baseline filter: [4.5,4.5,5.0,4.6,4.5,4.5,4.9,4.8,4.5,4.6,4.7,4.3,4.7,4.8,4.7,4.7,4.6,4.5,4.9,4.4,4.2]
+candidate filter: [4.7,4.8,4.6,4.6,4.7,4.4,4.7,4.5,4.6,4.4,4.7,4.9,4.9,4.6,4.4,4.6,4.6,4.8,4.8,4.3,4.4]
+baseline restore: [26.5,27.3,26.5,26.5,25.8,26.7,26.3,26.4,26.2,26.4,26.6,26.2,27.0,26.6,25.9,25.7,25.9,26.3,26.0,25.9,26.3]
+candidate restore: [21.3,21.7,21.8,21.6,20.4,20.8,20.6,21.5,20.4,20.8,21.8,21.4,21.9,21.0,21.5,20.9,20.8,21.0,21.1,21.1,21.2]
+baseline reverse: [6.2,6.3,6.0,6.4,6.6,7.1,6.4,6.0,6.8,6.3,5.8,5.8,6.4,5.8,6.2,7.1,5.7,6.1,5.8,6.0,5.5]
+candidate reverse: [5.8,6.0,6.2,5.8,5.8,6.1,6.2,6.2,6.3,6.0,6.1,6.2,6.2,6.0,6.3,6.2,5.9,6.3,6.0,5.9,6.3]
+```
+
+#### External 1,000-Product Build
+
+The public [`SimYunSup/kudzu-based-bench`](https://github.com/SimYunSup/kudzu-based-bench) commerce fixture at `f2d5be1` generated 1,000 deterministic products and 1,011 complete Kudzu pages. On the same Apple M3 / Node 25.6.1 machine, clean `0.8.23` and the Goal B candidate received one warm-up and 21 alternating clean builds. Output and `.kudzu` cleanup remained outside timing.
+
+The paired runner generates the catalog once, alternates the two compiler roots, cleans `dist` and `.kudzu` outside timing, compares relative output manifests and hashes, permits only the recorded `assets/kudzu-list.js` delta, and restores the external app's package symlink afterward:
+
+```bash
+git clone https://github.com/SimYunSup/kudzu-based-bench.git /tmp/kudzu-based-bench
+git -C /tmp/kudzu-based-bench checkout --detach f2d5be1a516c539e30f7125f6870d42b1dd02ecd
+pnpm --dir /tmp/kudzu-based-bench install --force
+pnpm --dir /tmp/kudzu-based-bench run build:commerce
+git worktree add --detach /tmp/kudzu-0.8.23 v0.8.23
+ln -s "$PWD/node_modules" /tmp/kudzu-0.8.23/node_modules
+APP_ROOT=/tmp/kudzu-based-bench/apps/shop-kudzu \
+BASELINE_ROOT=/tmp/kudzu-0.8.23 \
+CANDIDATE_ROOT="$PWD" RUNS=21 CATALOG_SIZE=1000 \
+npm run benchmark:commerce
+```
+
+`applyNormalizationPasses()` previously called TypeScript's recursive parent-pointer repair after every pass, including validators and no-op passes returning the identical `SourceFile`. Every current pass was audited to use immutable factory updates for structural changes. Repairing only a changed root reduced the build median from 6,684.7 ms to 6,266.5 ms, a 6.26% improvement. Both builds emitted 3,056 files; only `assets/kudzu-list.js` differed because of the independently measured keyed restoration optimization. The normalization change itself adds no browser bytes.
+
+```text
+baseline: [6488.0,7095.6,6861.0,6647.7,6563.4,6613.3,6536.1,6529.2,6462.6,6655.9,6684.7,6623.2,6504.9,7618.5,8174.5,9309.1,7611.4,7942.3,8148.2,7191.0,7380.7]
+candidate: [5898.6,5903.9,6108.5,6088.1,5966.4,5913.8,6266.5,6115.1,6014.6,6022.0,6223.1,6357.5,6429.5,6950.8,7887.1,8275.9,7208.9,7306.3,7861.9,6798.8,6859.3]
+```
+
+This external fixture is a candidate-finding and paired Kudzu regression benchmark, not a framework leaderboard result. It uses Kudzu-authored source; the catalog is generated once before timing and both revisions run the same complete Kudzu build. Its published cross-framework runs are sequential with only three build samples, and none of those framework numbers are used for this optimization claim. The paired command requires an existing symlink at `apps/shop-kudzu/node_modules/@kudzujs/core`. The external commit's pnpm 10.20 lock cannot install with `--frozen-lockfile`; `--force` accepts the unchanged lock and is a reproducibility limitation, although baseline and candidate use the same resulting dependency graph.
 
 ## 0.8.22 Versioned Compiler Foundation
 
@@ -420,4 +529,4 @@ React toggle:  [5.7, 6.1, 5.8, 5.8, 5.6, 5.8, 5.7]
 Kudzu toggle:  [5.2, 5.4, 5.3, 5.6, 5.3, 5.2, 5.3]
 ```
 
-The reproducible fixture, benchmark harness, environment record, and JSON results are under `/home/kft/Documents/etc/demo/large-benchmark`.
+The original fixture and harness were stored in an excluded local workspace and are unavailable from this checkout. The arrays above remain historical provenance, not an independently reproducible current claim.

@@ -26,12 +26,16 @@ export function DocsSidebar() {
     <a href="#build">Build output</a>
     <a href="#benchmarks">Benchmarks</a>
     <a href="#limits">Current limits</a>
+    <a href="/releases/0.8.24">Release 0.8.24</a>
+    <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">Raw performance</a>
+    <a href="https://github.com/kudzujs/kudzu/tree/main/docs/next-architecture">Architecture packet</a>
+    <a href="https://github.com/kudzujs/kudzu/blob/main/MIGRATION_ROADMAP.md">Migration roadmap</a>
   </aside>
 }
 
 export function DocsIntro() {
   return <section className="docs-intro">
-    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.20</p>
+    <p className="eyebrow">KUDZU DOCUMENTATION · v0.8.24</p>
     <h1>Write TSX.<br /><em>Ship HTML.</em></h1>
     <p>Kudzu treats React-shaped TSX as compiler input, specializing it into complete HTML and only the route-specific browser capabilities used. There is no virtual DOM, hydration pass, or client component tree.</p>
   </section>
