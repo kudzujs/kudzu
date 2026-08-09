@@ -236,6 +236,13 @@ This queue orders the next investigations by general migration value. Start only
 - List, parameter, core, effect, binding, native, and navigation source generation moved out of `build.mjs` behind focused fail-closed generators; `build.mjs` decreased by 267 lines and coordinates stage outputs.
 - Complete-site and representative deploy artifacts remain byte-identical to `v0.8.21`; only additive RouteIR version/slot metadata changes build plans.
 
+### Completed In 0.8.23
+
+- Source normalization, TSX semantic analysis, ModuleIR finalization, handler generation, and build-module generation now belong to one no-write source compiler boundary.
+- `compileSource()` returns JSON-safe, project-relative source results; `build.mjs` consumes them without TypeScript traversal or feature analysis.
+- Source graph resolution and shared path conversion have focused owners, while Worker compilation directly owns Worker graph emission.
+- Complete-site and representative deploy artifacts remain byte-identical to `v0.8.22`; diagnostics, RouteIR, CapabilityIR, browser ownership, and accepted syntax are unchanged.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

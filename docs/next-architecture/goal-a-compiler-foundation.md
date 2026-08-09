@@ -2,7 +2,7 @@
 
 ## Status
 
-Goal A is complete in `0.8.22`. ModuleIR source seams, RouteIR v1, CapabilityIR v1, focused runtime generators, and the architecture/output baseline preserve accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
+Goal A is complete in `0.8.23`. The no-write source compiler, ModuleIR source seams, RouteIR v1, CapabilityIR v1, focused runtime generators, and the architecture/output baseline preserve accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
 
 ## Target Boundaries
 
@@ -89,7 +89,7 @@ __kBehavior([["add", count, 1]])
 
 ### Source Result
 
-One source-local result owns transformed source plus the sparse ModuleIR, generated handler/effect/binding/list evaluator source, client imports, and explicit pass metadata. Worker ownership is recorded as EffectIR edges; AST-bearing data is consumed inside analysis/lowering and does not become IR or cross-build state.
+`compileSource()` returns one JSON-safe source-local result containing the project-relative build module, component analysis, sparse ModuleIR, optional generated handler/effect/binding/list evaluator module, and imported assets. It writes no files. Worker ownership is recorded as EffectIR edges; AST-bearing data is consumed inside analysis/lowering and does not become IR or cross-build state.
 
 ### Route Result
 
@@ -124,10 +124,10 @@ No generator may analyze TSX, invent runtime component abstractions, or broaden 
 
 ## Acceptance Record
 
-- `build.mjs` decreased from 3,999 to 3,732 lines and coordinates focused generators rather than containing list, parameter, core, effect, binding, native, or navigation source generation.
-- Source normalization, semantic analysis, RouteIR rendering, CapabilityIR projection, generation, and writing have explicit ownership without a broad context object.
+- `build.mjs` decreased from 3,999 to 744 lines and coordinates discovery, JSON-safe source results, RouteIR rendering, CapabilityIR projection, generation, and writing without TSX feature analysis.
+- Source normalization, semantic analysis, ModuleIR and build-module generation, RouteIR rendering, CapabilityIR projection, generation, and writing have explicit ownership without a broad context object.
 - RouteIR and CapabilityIR reject unsupported versions; required runtime source anchors fail closed.
-- Static routes retain complete HTML and zero JavaScript; deploy output across the complete site and representative binding, list, effect, Worker, parameter, and navigation fixtures is byte-identical to `v0.8.21`.
+- Static routes retain complete HTML and zero JavaScript; deploy output across the complete site and representative binding, list, effect, Worker, parameter, navigation, config, and package-handler fixtures is byte-identical to `v0.8.22`.
 - Interactive and navigation routes preserve capability selection, ownership, stale-write, and cleanup behavior; unreachable handlers, effects, package helpers, and Workers remain absent.
 - Diagnostics retain source file and location, and [`performance-gates.md`](./performance-gates.md) records no build or artifact-size regression.
 

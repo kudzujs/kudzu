@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the completed `0.8.22` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -8,20 +8,21 @@ This maps the completed `0.8.22` Goal A compiler foundation. File and function n
 |---|---|---|
 | CLI entry | [`bin/kudzu.mjs`](../../bin/kudzu.mjs) | Dispatches build and development commands. |
 | Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()` | Coordinates config, discovery, source compilation, RouteIR rendering, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. |
-| Reachability/import resolution | `framework/build.mjs`, `reachableSourceFiles()`, `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, and excludes unreachable migration source. |
-| Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; `framework/build.mjs`, `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every pass. Imported source uses the same pipeline. |
+| Reachability/import resolution | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `reachableSourceFiles()`; [`framework/compiler/source-graph.mjs`](../../framework/compiler/source-graph.mjs), `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, and excludes unreachable migration source. |
+| Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every pass. Imported source uses the same pipeline. |
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
 | Shared AST/scope helpers | [`framework/compiler/ast-helpers.mjs`](../../framework/compiler/ast-helpers.mjs) | Binding, scope, reference, effect-return, and source-location analysis. |
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
-| Main semantic analysis | `framework/build.mjs`, `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, keyed, and effect ownership results. |
+| Main semantic analysis | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, keyed, and effect ownership results. |
 | Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, and source provenance; AST identity remains private to its source-local session. |
 | Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Keeps AST descriptors private during analysis, then finalizes deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, KeyedBlockIR, EffectIR, imports, and client roots into ModuleIR. |
 | Command IR and codegen | [`framework/compiler/optimize/command-specialization.mjs`](../../framework/compiler/optimize/command-specialization.mjs), [`framework/compiler/ir/module-ir.mjs`](../../framework/compiler/ir/module-ir.mjs), [`framework/compiler/codegen/command-codegen.mjs`](../../framework/compiler/codegen/command-codegen.mjs) | Supported command handlers specialize to JSON-safe ModuleIR, then emit the existing `__kBehavior` AST without changing route plans. |
-| Build module generation | `framework/build.mjs`, `compile()` | Runs TypeScript with the Kudzu transformer, writes build-executable modules to `.kudzu`, rejects surviving React/Router runtime references, and generates handler source when descriptors exist. |
+| Source compilation | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `compileSource()` | Runs TypeScript with the Kudzu transformer, rejects surviving React/Router references, and returns a JSON-safe project-relative build module, component analysis, ModuleIR, optional handler module, and imported assets without filesystem writes. |
 | Handler/evaluator lowering | [`framework/compiler/handler-lowering.mjs`](../../framework/compiler/handler-lowering.mjs) | Completes source-local callback/binding/list AST rewriting and diagnostics before the JSON-safe IR boundary. |
 | Handler module codegen | [`framework/compiler/handler-codegen.mjs`](../../framework/compiler/handler-codegen.mjs) | Renders finalized ordered imports and concatenates generated module-export source without TypeScript AST or semantic discovery. |
 | Effect analysis | [`framework/compiler/effect-analysis.mjs`](../../framework/compiler/effect-analysis.mjs) | Classifies ordered signal, derived, and keyed-item dependencies and validates cleanup-owned browser resources before EffectIR registration. |
 | Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Returns functional Worker rewrite results and JSON-safe EffectIR edges, validates relative graphs, emits content-hashed ESM, and resolves placeholders only for rendered effects. |
+| Shared path conversion | [`framework/compiler/path-helpers.mjs`](../../framework/compiler/path-helpers.mjs) | Converts project-relative module, browser, asset, and base paths for build and development serving. |
 | Build-time JSX execution | [`framework/core.mjs`](../../framework/core.mjs), `renderPage()` | Executes compiled pages/layouts, allocates deterministic route/layout ownership IDs, emits complete HTML, and returns RouteIR v1 plus capability facts. |
 | Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Validates RouteIR v1 and purely folds rendered plans and route facts into CapabilityIR v1. |
 | Effect entry generation | [`framework/compiler/effect-codegen.mjs`](../../framework/compiler/effect-codegen.mjs) | Generates ordinary, dependency, owned, and navigable effect entries from rendered descriptors. |
@@ -36,13 +37,11 @@ This maps the completed `0.8.22` Goal A compiler foundation. File and function n
 ```text
 src/pages entries + config
   -> project discovery and reachable relative graph
-  -> shared ordered source normalization
-  -> main transformer semantic analysis
-       -> transformed build-time TS/TSX
-       -> per-source semantic artifact
-  -> TypeScript transpilation
-       -> .kudzu executable modules
-       -> generated handler/effect/binding/list-evaluator modules
+  -> compileSource()
+       -> ordered normalization and main transformer semantic analysis
+       -> TypeScript transpilation
+       -> JSON-safe build module, ModuleIR, handler module, and imported assets
+  -> build orchestration writes .kudzu executable and handler modules
   -> import page modules and execute renderPage()
        -> complete HTML
        -> RouteIR v1
@@ -59,11 +58,11 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 
 ## Residual Coupling
 
-- `createKudzuTransformer()` combines discovery, validation, specialization, descriptor registration, and transformed-source emission.
+- `createKudzuTransformer()` remains one large source-local analysis unit combining validation, specialization, descriptor registration, and transformed-source emission.
 - Transient component rewrite indexes remain source-local AST indexes; handler, binding, derived, keyed, effect, and component ownership now have explicit JSON-safe source results.
 - `build()` still owns explicit artifact selection and filesystem writes after generator results are produced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
-- The main transformer remains the largest source-analysis unit even though its durable outputs are explicit JSON-safe records.
+- Source reachability and source compilation share one module because both consume the same normalization and import graph contracts.
 
 These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.
 

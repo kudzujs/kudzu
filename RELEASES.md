@@ -1,8 +1,43 @@
 # Kudzu Releases
 
+## 0.8.23 - Source compiler boundary
+
+Kudzu 0.8.23 completes the Goal A compiler foundation by moving source normalization, TSX semantic analysis, ModuleIR finalization, handler generation, and build-module generation behind one explicit no-write source compiler result.
+
+### Changed in 0.8.23
+
+- `compileSource()` returns a JSON-safe source result containing the project-relative build module, component analysis, ModuleIR, optional handler module, and imported assets without writing to `.kudzu` or `dist`.
+- `createKudzuTransformer()` and all TypeScript AST feature analysis moved from `framework/build.mjs` to `framework/compiler/source-compiler.mjs`.
+- Shared source resolution moved to `source-graph.mjs`; shared URL and filesystem path conversion moved to `path-helpers.mjs` and is reused by the development server.
+- Worker graph emission is owned and exported directly by `worker-compiler.mjs`; the source result retains only JSON-safe Worker edges and rewritten source.
+- `build.mjs` decreased from 3,732 to 744 lines and now coordinates discovery, source results, RouteIR, CapabilityIR, and artifact emission.
+
+### Goal A boundary
+
+- Source analysis consumes all AST-bearing state before returning its result. No `ts.Node`, `Map`, `Set`, function, closure, or Symbol crosses into build orchestration.
+- `compileSource()` returns project-relative generated paths and client import roots. Existing absolute paths remain only in source-located diagnostics and are normalized when comparing detached worktrees.
+- RouteIR v1 and CapabilityIR v1 remain unchanged, and `core.mjs` remains authoritative for complete HTML and browser ownership IDs.
+- Goal B optimization remains deferred; `0.8.23` is the corrected Goal A completion baseline.
+- No accepted syntax, public API behavior, runtime capability, VDOM, hydration, component rerender, or retained browser component tree was added.
+
+### Validation
+
+- The complete suite passes 171/171 tests, including a direct no-write, project-relative, JSON-round-trippable `compileSource()` boundary check.
+- Node 22 type checks, the 135-page complete-site build, and all 171 tests pass.
+- The complete site and eight representative binding, keyed-row, effect, Worker, parameter, navigation, config, and package-handler deploy trees are byte-identical to `v0.8.22`; their `.kudzu` trees match after normalizing only checkout-root source locations.
+- An invalid reducer fixture retains the same source file, line, column, and diagnostic text.
+- Worker and window graph files remain byte-identical. Seven interleaved clean Node 22 builds measured a 287.0 ms candidate median against 287.7 ms for `v0.8.22`; raw arrays and provenance are recorded in `PERFORMANCE.md`.
+- `create-kudzu` remains 0.1.101 because its unchanged template already accepts `@kudzujs/core@^0.8.15`.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.23
+```
+
 ## 0.8.22 - Versioned compiler foundation
 
-Kudzu 0.8.22 completes Goal A: source-local ModuleIR seams accompany the existing rendered route plan as RouteIR v1, while CapabilityIR v1 selects shared runtime families and branches for focused artifact generators.
+Kudzu 0.8.22 versions the rendered route plan as RouteIR v1 and the pure capability projection as CapabilityIR v1 while source-local ModuleIR seams and focused artifact generators preserve existing output.
 
 ### Changed in 0.8.22
 
@@ -18,7 +53,7 @@ Kudzu 0.8.22 completes Goal A: source-local ModuleIR seams accompany the existin
 - ModuleIR slots identify source-local compiler records; RouteIR state slots identify positions in one rendered plan; browser IDs continue to own DOM/runtime behavior. The namespaces are deliberately independent.
 - `core.mjs` remains authoritative for complete HTML, route/layout IDs, conditions, keyed paths, effect lifetimes, and exact cleanup.
 - CapabilityIR selects shared runtime families and branches; RouteIR and ModuleIR references retain route entries, handlers, and Workers. Static pages remain complete documents with zero JavaScript.
-- Goal B optimization remains deferred; `0.8.22` is its recorded baseline if explicitly started later.
+- Goal B optimization remains deferred; the final source compiler boundary and corrected Goal A completion baseline follow in `0.8.23`.
 - No accepted syntax, public API behavior, runtime capability, VDOM, hydration, component rerender, or retained browser component tree was added.
 
 ### Validation

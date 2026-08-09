@@ -1,5 +1,29 @@
 # Performance Records
 
+## 0.8.23 Source Compiler Boundary
+
+Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 22.23.2, and npm 11.18.0. Baseline tag `v0.8.22` at `60b9bff` and the current `0.8.23` compiler candidate used the same local volume and identical installed dependencies.
+
+The candidate implementation patch over `v0.8.22` had SHA-256 `cfa25426f630f3d5d75a788f9ef8c63c48531c74ffc58727437890c47c511945`, produced by:
+
+```bash
+git diff --binary v0.8.22 -- framework/build.mjs framework/compiler/source-compiler.mjs framework/compiler/source-graph.mjs framework/compiler/path-helpers.mjs framework/compiler/worker-compiler.mjs framework/dev-server.mjs test/compiler-passes.test.mjs test/framework.test.mjs | shasum -a 256
+```
+
+Both targets received one warm-up followed by seven clean `worker-effects` production builds in alternating round-robin order. Cleanup remained outside timing. The ranges overlap; the 0.24% lower candidate median does not establish a material change.
+
+| Target | Build median | Worker raw / gzip | Window raw / gzip |
+|---|---:|---:|---:|
+| 0.8.22 baseline | 287.7 ms | 907 B / 477 B | 12,148 B / 5,411 B |
+| 0.8.23 candidate | 287.0 ms | 907 B / 477 B | 12,148 B / 5,411 B |
+
+```text
+0.8.22: [287.3,288.1,287.7,289.3,285.7,286.8,289.1]
+0.8.23: [289.2,283.7,287.4,287.0,293.8,287.0,285.4]
+```
+
+Before release-content updates, the complete 135-page site and the `bindings`, `keyed-row-hooks`, `effect-dependencies`, `worker-effects`, `runtime-params`, `navigation`, `config-authoring`, and `event-package` deploy trees had identical file lists and bytes. Their `.kudzu` trees also matched after replacing only each checkout root in existing source-location strings. The invalid-reducer fixture retained the same source file, line, column, and diagnostic text. `build.mjs` decreased from 3,732 to 744 lines; this source-organization metric is not a runtime performance claim.
+
 ## 0.8.22 Versioned Compiler Foundation
 
 Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.21` at `ff38092` and the current `0.8.22` compiler candidate used the same local volume and identical installed dependencies.

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict"
+import { existsSync } from "node:fs"
+import { resolve } from "node:path"
 import test from "node:test"
 import ts from "typescript"
 import { createComponentAnalysis, createComponentAnalysisSession } from "../framework/compiler/analysis/component-analysis.mjs"
@@ -16,9 +18,36 @@ import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime } from "../framework/compiler/runtime-codegen.mjs"
+import { compileSource } from "../framework/compiler/source-compiler.mjs"
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
 
 const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
+
+test("returns an explicit JSON-safe source result without writing files", () => {
+  const file = resolve("src/pages/source-boundary.tsx")
+  const helper = resolve("src/source-boundary-helper.ts")
+  const output = resolve(".kudzu/pages/source-boundary.mjs")
+  const source = `
+import { useState } from "@kudzujs/core"
+import { format } from "../source-boundary-helper"
+export default function Page() {
+  const [count, setCount] = useState(0)
+  return <button onClick={async () => { await Promise.resolve(); document.title = format(count); setCount(count + 1) }}>{count}</button>
+}
+`
+  assert.equal(existsSync(output), false)
+  const result = compileSource(file, new Set([file, helper]), new Map([[file, source], [helper, "export const format = value => String(value)"]]), new Set(), new Map(), "")
+
+  assert.equal(result.file, "src/pages/source-boundary.tsx")
+  assert.equal(result.buildModule.path, ".kudzu/pages/source-boundary.mjs")
+  assert.match(result.buildModule.code, /useState\(0, "count"\)/)
+  assert.equal(result.handlerModule.path, "handlers/pages/source-boundary.js")
+  assert.deepEqual(result.moduleIR.clientModules, ["src/source-boundary-helper.ts"])
+  assert.deepEqual(result.handlerModule.clientImports, ["src/source-boundary-helper.ts"])
+  assert.deepEqual(result.importedAssets, [])
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), result)
+  assert.equal(existsSync(output), false)
+})
 
 test("normalizes render control flow without changing lowercase helpers", () => {
   const source = ts.createSourceFile("pass.tsx", `

@@ -4,11 +4,12 @@ import { dirname, relative, resolve, sep } from "node:path"
 import { build as bundle } from "esbuild"
 import ts from "typescript"
 import { containsJsx, isUnshadowedGlobal, nearestFunction, sourceNodeError } from "./ast-helpers.mjs"
+import { assetPath } from "./path-helpers.mjs"
+import { parseSourceFile, resolveSourceImport, runtimeModuleReference } from "./source-graph.mjs"
 
 export function createWorkerCompiler({
   root,
   sourceDirectory,
-  outputDirectory,
   assetPath,
   parseSourceFile,
   resolveSourceImport,
@@ -158,7 +159,7 @@ export function createWorkerCompiler({
       const entry = resolve(root, metadata.entryPoint)
       const rootReferences = references.filter(reference => resolve(sourceDirectory, reference.root) === entry)
       const outputFile = resolve(root, output)
-      const url = assetPath(base, relative(outputDirectory, outputFile).replaceAll(sep, "/"))
+      const url = assetPath(base, relative(resolve(assetsDirectory, ".."), outputFile).replaceAll(sep, "/"))
       for (const reference of rootReferences) emitted.set(reference.placeholder, url)
     }
     for (const reference of references) if (!emitted.has(reference.placeholder)) throw new Error(`Worker entry was not emitted: ${reference.root}`)
@@ -166,4 +167,10 @@ export function createWorkerCompiler({
   }
 
   return { candidate, emit, rejectConstructions, rejectOrdinaryImports, rewriteEffect }
+}
+
+export function emitWorkers(references, sourceFiles, assetsDirectory, base, minify) {
+  const root = process.cwd()
+  const sourceDirectory = resolve(root, "src")
+  return createWorkerCompiler({ root, sourceDirectory, assetPath, parseSourceFile, resolveSourceImport, runtimeModuleReference }).emit(references, sourceFiles, assetsDirectory, base, minify)
 }

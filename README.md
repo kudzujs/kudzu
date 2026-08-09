@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.22 - Versioned compiler foundation.** Existing rendered route plans and capability manifests are now RouteIR v1 and CapabilityIR v1, with route-local state slots, stable runtime IDs, and readable names. Runtime generators consume those contracts while `build.mjs` coordinates their emission. Read the [release notes](./RELEASES.md#0822---versioned-compiler-foundation), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.22), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.23 - Source compiler boundary.** Source normalization, TSX analysis, ModuleIR finalization, handler generation, and build-module generation now belong to a no-write source compiler. `build.mjs` coordinates discovery, source results, RouteIR, CapabilityIR, and artifact emission without analyzing TSX. Read the [release notes](./RELEASES.md#0823---source-compiler-boundary), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.23), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
