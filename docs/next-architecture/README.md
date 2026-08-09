@@ -6,7 +6,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 
 | Goal | Decision | Start condition |
 |---|---|---|
-| A: compiler foundation | `0.8.19` handler/binding/derived IR complete | Continue with `0.8.20` KeyedBlockIR ownership after the release boundary. |
+| A: compiler foundation | `0.8.20` KeyedBlockIR ownership complete | Continue with `0.8.21` EffectIR ownership after the release boundary. |
 | B: optimization benchmarks | Deferred | Goal A complete and its output baseline recorded |
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |

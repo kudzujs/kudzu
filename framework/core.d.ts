@@ -80,6 +80,57 @@ export type MetadataContext<Props = Record<string, unknown>> = {
   props: Props
 }
 
+export type ListSourceDescriptor =
+  | { state: string; truthy?: unknown; falsy?: unknown }
+  | {
+      module: string
+      handler: string
+      states: Record<string, string>
+      scope: Record<string, unknown>
+      scopeStates: Record<string, string>
+      scopeBindings: Record<string, unknown>
+    }
+
+export type ChildListDescriptor = {
+  id: string
+  field: string
+  key: string | null
+  selector?: unknown[]
+}
+
+export type ListDescriptor = {
+  id: string
+  state: string
+  key: string | null
+  keys: Array<string | number>
+  svg?: true
+  static?: true
+  source?: ListSourceDescriptor
+  ownerField?: string
+  selector?: unknown[]
+  selectorStates?: Record<string, string>
+  indexed?: true
+  reducer?: true
+  children?: ChildListDescriptor[]
+  mount?: true
+  nested?: true
+  effects?: true
+  conditions?: true
+  conditionHandlers?: true
+  textRanges?: true
+  attributes?: true
+  events?: true
+  expressions?: true
+  expressionAttributes?: true
+  expressionStates?: string[]
+  rowStates?: Array<{ id: string; initialValue: unknown }>
+  rowConditions?: string[]
+  rowRefs?: string[]
+  fastRelease?: true
+  seed?: Record<string, string | number | boolean | null>
+  valueSeed?: Record<string, string | number | boolean | null>
+}
+
 export function renderPage<Props = Record<string, never>>(
   component: (props: Props) => unknown | Promise<unknown>,
   metadata?: PageMetadata,
@@ -117,6 +168,6 @@ export function renderPage<Props = Record<string, never>>(
       scopeBindings?: Record<string, unknown>
     }>
     conditions: Array<Record<string, unknown>>
-    lists: Array<Record<string, unknown>>
+    lists: ListDescriptor[]
   }
 }>

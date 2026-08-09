@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.19` are completed scopes represented by package/release records; later rows remain planned until their package version and release record exist.
+This is an execution sequence, not release history. `0.8.16` through `0.8.20` are completed scopes represented by package/release records; later rows remain planned until their package version and release record exist.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 

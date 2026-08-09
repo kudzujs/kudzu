@@ -7,7 +7,7 @@ import { analyzeCollectionPipeline, collectionExpression } from "../framework/co
 import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
-import { createModuleIR, registerCommandHandler } from "../framework/compiler/ir/module-ir.mjs"
+import { createModuleIR, registerCommandHandler, registerKeyedBlock } from "../framework/compiler/ir/module-ir.mjs"
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
 import { createCommandSpecializer } from "../framework/compiler/optimize/command-specialization.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
@@ -115,9 +115,24 @@ test("registers JSON-safe command ModuleIR with deterministic slots", () => {
     ],
     bindings: [],
     derived: [],
+    keyedBlocks: [],
     imports: [],
     clientModules: []
   })
+  assertJsonData(moduleIR)
+  assert.deepEqual(JSON.parse(JSON.stringify(moduleIR)), moduleIR)
+})
+
+test("registers JSON-safe keyed ownership with deterministic parent slots", () => {
+  const moduleIR = createModuleIR("src/pages/list.tsx")
+  const parent = registerKeyedBlock(moduleIR, { children: [], collection: { kind: "signal", name: "items" }, key: "id", item: "item", indexed: false, static: false, selectorStates: [], rowStates: [], rowRefs: [] })
+  const child = registerKeyedBlock(moduleIR, { parent: parent.slot, children: [], collection: { kind: "signal", name: "items" }, key: null, ownerField: "children", item: "child", index: "index", indexed: true, static: false, selectorStates: [], rowStates: [{ name: "open", setter: "setOpen", owner: "specialization:0" }], rowRefs: [{ name: "button" }] })
+  parent.children.push(child.slot)
+
+  assert.deepEqual(moduleIR.keyedBlocks, [
+    { slot: 0, children: [1], collection: { kind: "signal", name: "items" }, key: "id", item: "item", indexed: false, static: false, selectorStates: [], rowStates: [], rowRefs: [] },
+    { slot: 1, parent: 0, children: [], collection: { kind: "signal", name: "items" }, key: null, ownerField: "children", item: "child", index: "index", indexed: true, static: false, selectorStates: [], rowStates: [{ name: "open", setter: "setOpen", owner: "specialization:0" }], rowRefs: [{ name: "button" }] }
+  ])
   assertJsonData(moduleIR)
   assert.deepEqual(JSON.parse(JSON.stringify(moduleIR)), moduleIR)
 })

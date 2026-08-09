@@ -1,5 +1,37 @@
 # Kudzu Releases
 
+## 0.8.20 - Explicit keyed ownership
+
+Kudzu 0.8.20 completes the next Goal A source-analysis boundary: keyed collection sites now finalize into deterministic JSON-safe ownership records before the existing build-time renderer allocates DOM identity and lifecycle state.
+
+### Changed in 0.8.20
+
+- KeyedBlockIR records parent/child slots, collection signal or calculated binding, key/index policy, owner field, selector reference and states, source provenance, and static status.
+- Recursive same-file and imported row expansion records every component-specialization slot, including stateless intermediate components.
+- Row states and refs retain their specialization owner and declaration source.
+- Command, native, effect, list-expression, list-conditional, and calculated-collection HandlerIR/BindingIR records link to their owning keyed block.
+- Transformer-wide keyed value, condition, event, nested-list, effect, rendered-list, and alias AST side tables were removed; temporary AST stays inside immediate source-local validation and lowering.
+- The existing route list descriptor now has an explicit TypeScript shape without changing its serialized data.
+
+### Goal A boundary
+
+- `core.mjs` remains authoritative for final list IDs, row key paths, route descriptors, complete HTML, SVG context, state/ref/effect allocation, and exact release.
+- Effect setup, cleanup, dependency, Worker, and lifetime ownership remains on the existing path until EffectIR in `0.8.21`.
+- No accepted syntax, public API, browser capability, VDOM, hydration, component rerender, or retained browser component tree was added.
+
+### Validation
+
+- The complete suite passes 168/168 tests, including deterministic KeyedBlockIR JSON round-trip and calculated, nested, recursive-component, selector, state, ref, handler, binding, effect, and SVG ownership.
+- Before release-content updates, the complete site `dist` and seven representative keyed fixture output trees matched `v0.8.19`; detached-worktree roots were normalized only in existing `.kudzu` source strings.
+- The keyed list runtime remains byte-identical at 21,831 B raw / 6,930 B gzip. A same-volume 21-run interleaved comparison measured a 0.52% lower candidate median; raw arrays and provenance are recorded in `PERFORMANCE.md`.
+- `create-kudzu` remains 0.1.101 because its unchanged template already accepts `@kudzujs/core@^0.8.15`.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.20
+```
+
 ## 0.8.19 - Handler, binding, and derived IR
 
 Kudzu 0.8.19 completes the next Goal A source-analysis boundary: native callbacks, reactive bindings, list evaluators, imports, and pure derived expressions now finalize into JSON-safe ModuleIR before mechanical artifact codegen.

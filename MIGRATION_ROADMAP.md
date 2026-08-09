@@ -216,6 +216,13 @@ This queue orders the next investigations by general migration value. Start only
 - Existing tagged collection expressions and selectors are canonical DerivedIR for rendered lists and derived effect dependencies; transformed source embeds the registered records rather than parallel analyzer values.
 - AST, `Map`, and `Set` callback descriptors remain private only until source-local lowering completes. Handler codegen now performs no TypeScript traversal or state/capture/reducer/import discovery, while command-only routes retain zero handler ESM.
 
+### Completed In 0.8.20
+
+- Every rendered keyed collection now finalizes into JSON-safe KeyedBlockIR with deterministic slots, explicit parent/child links, collection and selector ownership, key/index policy, source provenance, and complete component-specialization membership.
+- Keyed row states and refs retain their declaration source and specialization owner. Command, native, effect, list-expression, list-conditional, and calculated-collection records link back to their owning keyed block.
+- Previous transformer-wide keyed value, condition, event, nested-list, effect, and rendered-list AST side tables were removed. AST remains private only inside immediate source-local validation and lowering.
+- `core.mjs` remains authoritative for final list IDs, key paths, route descriptors, complete HTML, DOM identity, and exact state/effect/ref release; accepted syntax and browser output are unchanged.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

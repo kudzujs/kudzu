@@ -952,13 +952,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const customHooks = new Map()
     const jsxLocalDeclarations = new Map()
     const jsxLocalsByFunction = new Map()
-    const listLocalDeclarations = new WeakSet()
-    const listLocalUses = new WeakMap()
-    const listValues = new WeakMap()
-    const listEventItems = new WeakMap()
-    const listConditions = new WeakMap()
-    const nestedLists = new WeakMap()
-    const listEffectEntries = new WeakMap()
+    const listLocalDeclarations = []
+    const listLocalUses = []
     const componentEffectEntries = new WeakMap()
     const analysisSource = node => {
       const original = ts.getOriginalNode(node)
@@ -1340,8 +1335,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const position = sourceFile.getLineAndCharacterOfPosition(declaration.node.getStart(sourceFile))
           if (uses.length > 1) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" must be rendered exactly once`)
           if (references !== uses.length) throw new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} Keyed list local "${name}" may only be used as a JSX child`)
-          listLocalDeclarations.add(declaration.node)
-          if (uses.length) listLocalUses.set(uses[0], parts)
+          listLocalDeclarations.push(declaration.node)
+          if (uses.length) listLocalUses.push({ node: uses[0], parts })
         }
       }
     }
@@ -1484,6 +1479,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         ids: result.ordinaryIds.map(({ name, source }) => ({ name, ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
       })
       for (const state of [...result.rowStates, ...result.ordinaryStates]) state.analysisOwner = `specialization:${result.analysis.slot}`
+      for (const ref of [...result.rowRefs, ...result.ordinaryRefs]) ref.analysisOwner = `specialization:${result.analysis.slot}`
       return result
     }
     const registerRowHooks = (call, specialization) => {
@@ -1847,20 +1843,20 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           if (expanded === value || !referencedStateNames(expanded, setters).size) fail(value, "Calculated collection fields must directly depend on local state")
           return expanded
         }
-        const parts = listLocalUses.get(node) ?? keyedListParts(node.expression, setters, jsxLocalDeclarations.get(owner), fail, new Set(), importedCollections, factory, context, importedCollectionTransforms, calculatedCollection, staticCollection)
+        const parts = listLocalUses.find(entry => entry.node === node)?.parts ?? keyedListParts(node.expression, setters, jsxLocalDeclarations.get(owner), fail, new Set(), importedCollections, factory, context, importedCollectionTransforms, calculatedCollection, staticCollection)
         if (parts) {
-          for (const declaration of parts.aliasDeclarations ?? []) listLocalDeclarations.add(declaration)
+          for (const declaration of parts.aliasDeclarations ?? []) if (!listLocalDeclarations.includes(declaration)) listLocalDeclarations.push(declaration)
           rawRenderedLists.push({ node, parts })
         }
       }
       ts.forEachChild(node, collectRenderedLists)
     }
     collectRenderedLists(sourceFile)
-    const collectionAliasUses = new WeakSet(rawRenderedLists.flatMap(({ parts }) => parts.aliasUses ?? []))
+    const collectionAliasUses = rawRenderedLists.flatMap(({ parts }) => parts.aliasUses ?? [])
     const collectionAliasDeclarations = new Set(rawRenderedLists.flatMap(({ parts }) => parts.aliasDeclarations ?? []))
     for (const declaration of collectionAliasDeclarations) {
       const owner = nearestFunction(declaration)
-      const unsupported = identifierReferences(owner.body, declaration.name.text).find(reference => !collectionAliasUses.has(reference))
+      const unsupported = identifierReferences(owner.body, declaration.name.text).find(reference => !collectionAliasUses.includes(reference))
       if (unsupported) fail(unsupported, `Rendered collection alias "${declaration.name.text}" may only be used as a rendered collection source`)
     }
     const rejectUnsupportedRenderControl = node => {
@@ -1912,7 +1908,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       let count = 0
       const visit = (node, currentAggregate = aggregate) => {
         if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) {
-          const nestedAggregate = { calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [] }
+          const nestedAggregate = { calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [], specializations: [] }
           for (const argument of node.arguments) visit(argument, nestedAggregate)
           if (nestedAggregate.hookDeclarations.length || nestedAggregate.effects.length) nestedRowSpecializations.set(`${node.pos}:${node.end}`, nestedAggregate)
           return
@@ -1939,6 +1935,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), node, specialization.effects))
           expandedRowSpecializations.set(specialization.root, specialization)
           if (currentAggregate) {
+            currentAggregate.specializations ??= []
+            currentAggregate.specializations.push(specialization.analysis.slot, ...(specialization.specializations ?? []))
             currentAggregate.effects.push(...specialization.effects)
             currentAggregate.hookDeclarations.push(...specialization.hookDeclarations)
             currentAggregate.rowStates.push(...specialization.rowStates)
@@ -1957,8 +1955,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       expanded.parent = root.parent
       return expanded
     }
-    const renderedLists = new WeakMap()
-    const prepareListCallback = (callback, root, specialization, item) => {
+    const preparedRenderedLists = []
+    const prepareListCallback = (callback, root, specialization, item, effectEntries) => {
       const statements = [...specialization.hookDeclarations]
       if (specialization.effects.length) {
         usesListEffects = true
@@ -1966,7 +1964,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const call = factory.updateCallExpression(entry.call, factory.createIdentifier("__kListUseEffect"), entry.call.typeArguments, entry.call.arguments)
           synthesizeTree(call)
           const effectSource = entry.source.getSourceFile()
-          listEffectEntries.set(call, { item, source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
+          effectEntries.push({ node: call, item, source: entry.source, sourceFile: effectSource, imports: clientImportBindings(effectSource, effectSource.fileName, sourceFiles) })
           return factory.createExpressionStatement(call)
         }))
       }
@@ -1997,15 +1995,25 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         ts.setParentRecursive(callback, false)
         callback.parent = originalParts.callback.parent
       }
-      callback = prepareListCallback(callback, root, specialization, originalParts.item)
-      const parts = { ...originalParts, root, callback, analysisStateOwners: new Map([...stateOwnersForNode(originalParts.root), ...[...specialization.rowStates, ...specialization.ordinaryStates].map(state => [state.state, state.analysisOwner])]) }
+      const effectEntries = []
+      callback = prepareListCallback(callback, root, specialization, originalParts.item, effectEntries)
+      const parts = {
+        ...originalParts,
+        root,
+        callback,
+        effectEntries,
+        specializations: [specialization.analysis?.slot, ...(specialization.specializations ?? [])].filter(slot => slot !== undefined),
+        rowStates: [...specialization.rowStates, ...specialization.ordinaryStates],
+        rowRefs: specialization.rowRefs,
+        analysisStateOwners: new Map([...stateOwnersForNode(originalParts.root), ...[...specialization.rowStates, ...specialization.ordinaryStates].map(state => [state.state, state.analysisOwner])])
+      }
       for (const calculation of specialization.calculations) {
         ts.setParentRecursive(calculation, false)
         calculation.parent = callback
         validateListExpression(calculation, parts.item, originalParts.root, fail)
       }
-      validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, settersForNode(originalParts.root, settersByFunction), specialization.rowStates, nestedLists, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
-      renderedLists.set(node, parts)
+      const analysis = validateKeyedList(parts, sourceFile, settersForNode(originalParts.root, settersByFunction), specialization.rowStates, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
+      preparedRenderedLists.push({ node, parts, analysis })
     }
 
     const compileRenderExpression = (expression, anchor) => {
@@ -2027,12 +2035,65 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
 
     let activeStateOwners
+    let activeKeyedBlock
     const visitWithStateOwners = (node, stateOwners) => {
       const previous = activeStateOwners
       activeStateOwners = new Map([...(previous ?? []), ...stateOwners])
       const result = ts.visitNode(node, visitor)
       activeStateOwners = previous
       return result
+    }
+    const keyedEntry = (entries, node) => entries.find(entry => entry.node === node)
+    const compileKeyedBlock = (node, { parts: listParts, analysis }) => {
+      usesBehavior = true
+      usesList = true
+      const blockSlot = moduleIR.keyedBlocks.length
+      let listSource = listParts.state
+      let collection = { kind: "signal", name: listParts.state?.text }
+      if (listParts.calculation) {
+        usesBinding = true
+        listSource = descriptors.compileReactiveBinding(listParts.calculation, { setters: settersForNode(node, settersByFunction), importBindings, keyedBlock: blockSlot })
+        const exportName = ts.isCallExpression(listSource) && ts.isStringLiteral(listSource.arguments[2]) ? listSource.arguments[2].text : undefined
+        collection = { kind: "binding", ...(exportName ? { exportName } : {}) }
+      }
+      const derived = listParts.selector?.length ? descriptors.registerDerived("selector", listParts.selector, listParts.selectorStates, node) : undefined
+      const parent = activeKeyedBlock?.block
+      const rowStates = (listParts.rowStates ?? []).map(state => ({ name: state.state, setter: state.setter, owner: state.analysisOwner, ...(analysisSource(state.source) ? { source: analysisSource(state.source) } : {}) }))
+      const rowRefs = (listParts.rowRefs ?? []).map(ref => ({ name: ref.name, owner: ref.analysisOwner, ...(analysisSource(ref.source) ? { source: analysisSource(ref.source) } : {}) }))
+      const specializations = [...new Set([...(listParts.specializations ?? []), ...rowStates.map(state => state.owner), ...rowRefs.map(ref => ref.owner)].filter(value => value !== undefined).map(value => typeof value === "string" ? Number(value.slice(value.lastIndexOf(":") + 1)) : value))]
+      const block = descriptors.registerKeyedBlock({
+        ...(analysisSource(node) ? { source: analysisSource(node) } : {}),
+        ...(parent ? { parent: parent.slot } : {}),
+        children: [],
+        collection,
+        key: listParts.keyField,
+        ...(listParts.ownerField ? { ownerField: listParts.ownerField } : {}),
+        item: listParts.item,
+        ...(listParts.index ? { index: listParts.index } : {}),
+        indexed: listParts.indexed,
+        static: Boolean(listParts.static),
+        ...(derived ? { selector: derived.slot } : {}),
+        selectorStates: [...(listParts.selectorStates ?? [])],
+        specializations,
+        rowStates,
+        rowRefs
+      })
+      if (parent) parent.children.push(block.slot)
+      const previous = activeKeyedBlock
+      activeKeyedBlock = { analysis, block, parts: listParts }
+      const callback = visitWithStateOwners(listParts.callback, listParts.analysisStateOwners ?? new Map())
+      activeKeyedBlock = previous
+      const arguments_ = [
+        listSource,
+        block.key === null ? factory.createNull() : factory.createStringLiteral(block.key),
+        callback,
+        factory.createStringLiteral(block.ownerField ?? ""),
+        jsonExpression(derived?.selector ?? listParts.selector ?? [], factory),
+        block.indexed ? factory.createTrue() : factory.createFalse()
+      ]
+      if (block.selectorStates.length || block.static) arguments_.push(factory.createArrayLiteralExpression(block.selectorStates.map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
+      if (block.static) arguments_.push(factory.createTrue())
+      return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, arguments_))
     }
     const visitor = node => {
       if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && customHookPrivateFields.has(node)) {
@@ -2077,7 +2138,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
       }
 
-      const listEffect = ts.isCallExpression(node) ? listEffectEntries.get(node) : undefined
+      const listEffect = ts.isCallExpression(node) ? keyedEntry(activeKeyedBlock?.analysis.effects ?? [], node) : undefined
       const componentEffect = ts.isCallExpression(node) ? componentEffectEntries.get(node) : undefined
       const specializedEffect = listEffect ?? componentEffect
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && (hasUseEffectImport && node.expression.text === "useEffect" || specializedEffect)) {
@@ -2195,6 +2256,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           reducers: reducersForNode(node, reducersByFunction),
           importBindings: specializedEffect?.imports ?? importBindings,
           listItem: dependencyItem,
+          keyedBlock: activeKeyedBlock?.block.slot,
           deferValues: true,
           snapshotNested: returns.cleanup,
           liveStates: customHookTimerStates
@@ -2228,7 +2290,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, initializer)
       }
 
-      if (ts.isVariableDeclaration(node) && listLocalDeclarations.has(node)) {
+      if (ts.isVariableDeclaration(node) && listLocalDeclarations.includes(node)) {
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createIdentifier("undefined"))
       }
 
@@ -2253,47 +2315,31 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (compiled !== node.expression) return factory.updateReturnStatement(node, compiled)
       }
 
-      if (ts.isJsxExpression(node) && node.expression && listConditions.has(node.expression)) {
-        const entry = listConditions.get(node.expression)
+      const listCondition = ts.isJsxExpression(node) && node.expression ? keyedEntry(activeKeyedBlock?.analysis.conditions ?? [], node.expression) : undefined
+      if (listCondition) {
+        const entry = listCondition.value
         return factory.updateJsxExpression(node, descriptors.compileListConditional({
           ...entry,
+          keyedBlock: activeKeyedBlock.block.slot,
           truthy: ts.visitNode(entry.truthy, visitor),
           falsy: ts.visitNode(entry.falsy, visitor)
         }))
       }
 
-      if (ts.isJsxExpression(node) && node.expression && listValues.has(node.expression)) {
-        return factory.updateJsxExpression(node, descriptors.compileListValue(node.expression, listValues.get(node.expression)))
+      const listValue = ts.isJsxExpression(node) && node.expression ? keyedEntry(activeKeyedBlock?.analysis.values ?? [], node.expression) : undefined
+      if (listValue) {
+        return factory.updateJsxExpression(node, descriptors.compileListValue(node.expression, { ...listValue.value, keyedBlock: activeKeyedBlock.block.slot }))
       }
 
-      if (ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression && listValues.has(node.initializer.expression)) {
-        return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, descriptors.compileListValue(node.initializer.expression, listValues.get(node.initializer.expression))))
+      const attributeListValue = ts.isJsxAttribute(node) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression ? keyedEntry(activeKeyedBlock?.analysis.values ?? [], node.initializer.expression) : undefined
+      if (attributeListValue) {
+        return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, descriptors.compileListValue(node.initializer.expression, { ...attributeListValue.value, keyedBlock: activeKeyedBlock.block.slot })))
       }
 
       if (ts.isJsxExpression(node) && node.initializer === undefined && node.expression && (ts.isJsxElement(node.parent) || ts.isJsxFragment(node.parent))) {
-        const nestedParts = nestedLists.get(unwrapExpression(node.expression))
-        const listParts = renderedLists.get(node) ?? nestedParts
-        if (listParts) {
-          usesBehavior = true
-          usesList = true
-          let listSource = listParts.state
-          if (listParts.calculation) {
-            usesBinding = true
-            listSource = descriptors.compileReactiveBinding(listParts.calculation, { setters: settersForNode(node, settersByFunction), importBindings })
-          }
-          const selector = listParts.selector?.length ? descriptors.registerDerived("selector", listParts.selector, listParts.selectorStates, node).selector : listParts.selector ?? []
-          const arguments_ = [
-            listSource,
-            listParts.keyField === null ? factory.createNull() : factory.createStringLiteral(listParts.keyField),
-            visitWithStateOwners(listParts.callback, listParts.analysisStateOwners ?? new Map()),
-            factory.createStringLiteral(listParts.ownerField ?? ""),
-            jsonExpression(selector, factory),
-            listParts.indexed ? factory.createTrue() : factory.createFalse()
-          ]
-          if (listParts.selectorStates?.size || listParts.static) arguments_.push(factory.createArrayLiteralExpression([...(listParts.selectorStates ?? [])].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
-          if (listParts.static) arguments_.push(factory.createTrue())
-          return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, arguments_))
-        }
+        const renderedList = keyedEntry(preparedRenderedLists, node)
+        const nestedList = keyedEntry(activeKeyedBlock?.analysis.nested ?? [], unwrapExpression(node.expression))
+        if (renderedList || nestedList) return compileKeyedBlock(node, renderedList ?? nestedList)
         const conditional = conditionalParts(node.expression)
         if (conditional) {
           const compiled = compileRenderExpression(node.expression, node)
@@ -2332,7 +2378,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           setters,
           reducers: reducersForNode(node, reducersByFunction),
           functions: functionsForNode(node),
-          listItem: listEventItems.get(node),
+          listItem: activeKeyedBlock ? { item: activeKeyedBlock.parts.item, index: activeKeyedBlock.parts.index } : undefined,
+          keyedBlock: activeKeyedBlock?.block.slot,
           importBindings: new Map([...importBindings, ...packageBindings])
         })
         if (event) {
@@ -2567,10 +2614,11 @@ function insideJsxEventHandler(node, root) {
   return false
 }
 
-function validateKeyedList(parts, sourceFile, listValues, listEventItems, listConditions, setters, rowStates, nestedLists, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback) {
+function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback) {
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
   }
+  const analysis = { values: [], conditions: [], nested: [], effects: parts.effectEntries ?? [] }
   const root = parts.root
   const item = parts.item
   const nestedDiagnostic = "Nested keyed list collections must be a direct property of the parent item"
@@ -2585,7 +2633,6 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
     if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, nestedDiagnostic)
     if (ts.isJsxSpreadAttribute(node) && referencesIdentifier(node.expression, item)) fail(node, "Keyed list item spreads are not supported")
     if (ts.isJsxAttribute(node) && /^on[A-Z]/.test(node.name.text)) {
-      listEventItems.set(node, { item, index: parts.index })
       return
     }
     if (ts.isJsxExpression(node) && node.expression) {
@@ -2610,16 +2657,28 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
           ts.setParentRecursive(callback, false)
           callback.parent = nested.callback.parent
         }
-        callback = prepareListCallback(callback, root, specialization ?? { hookDeclarations: [], effects: [] }, nested.item)
+        const effectEntries = []
+        callback = prepareListCallback(callback, root, specialization ?? { hookDeclarations: [], effects: [] }, nested.item, effectEntries)
         const specializedStates = [...(specialization?.rowStates ?? []), ...(specialization?.ordinaryStates ?? [])]
-        const nestedParts = { ...nested, root, callback, state: parts.state, nested: true, analysisStateOwners: new Map([...(parts.analysisStateOwners ?? []), ...specializedStates.map(state => [state.state, state.analysisOwner])]) }
+        const nestedParts = {
+          ...nested,
+          root,
+          callback,
+          state: parts.state,
+          nested: true,
+          effectEntries,
+          specializations: [specialization?.analysis?.slot, ...(specialization?.specializations ?? [])].filter(slot => slot !== undefined),
+          rowStates: specializedStates,
+          rowRefs: specialization?.rowRefs ?? [],
+          analysisStateOwners: new Map([...(parts.analysisStateOwners ?? []), ...specializedStates.map(state => [state.state, state.analysisOwner])])
+        }
         for (const calculation of specialization?.calculations ?? []) {
           ts.setParentRecursive(calculation, false)
           calculation.parent = callback
           validateListExpression(calculation, nested.item, nested.root, fail)
         }
-        nestedLists.set(expression, nestedParts)
-        validateKeyedList(nestedParts, sourceFile, listValues, listEventItems, listConditions, setters, specialization?.rowStates ?? [], nestedLists, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
+        const nestedAnalysis = validateKeyedList(nestedParts, sourceFile, setters, specialization?.rowStates ?? [], componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
+        analysis.nested.push({ node: expression, parts: nestedParts, analysis: nestedAnalysis })
         return
       }
       const condition = conditionalParts(expression)
@@ -2631,7 +2690,7 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
         }
         if (!referencesIdentifier(condition.condition, item) && !(parts.index && referencesIdentifier(condition.condition, parts.index))) fail(node, "Keyed list item conditions must read the item or index")
         validateListExpression(condition.condition, item, node, fail, parts.index)
-        listConditions.set(node.expression, { ...condition, item, index: parts.index })
+        analysis.conditions.push({ node: node.expression, value: { ...condition, item, index: parts.index } })
         visit(condition.truthy)
         visit(condition.falsy)
         return
@@ -2642,7 +2701,7 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
       if (field && ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.text.toLowerCase())) fail(node, `Keyed list item ${node.parent.name.text} is not supported`)
       if (isRootKey) return
       if (field) {
-        listValues.set(node.expression, { field })
+        analysis.values.push({ node: node.expression, value: { field } })
         return
       }
       if (referencesIdentifier(expression, item) || parts.index && referencesIdentifier(expression, parts.index)) {
@@ -2651,13 +2710,14 @@ function validateKeyedList(parts, sourceFile, listValues, listEventItems, listCo
         if (parts.nested && states.size) fail(node, "Nested keyed list item expressions cannot read parent state")
         validateListExpression(expression, item, node, fail, parts.index, states)
         if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.text.toLowerCase())) fail(node, `Keyed list item ${node.parent.name.text} is not supported`)
-        listValues.set(node.expression, { item, index: parts.index, states })
+        analysis.values.push({ node: node.expression, value: { item, index: parts.index, states } })
         return
       }
     }
     ts.forEachChild(node, visit)
   }
   visit(root)
+  return analysis
 }
 
 function directConstObjectLiteral(expression, call) {

@@ -2,7 +2,7 @@
 
 ## Status
 
-The `0.8.19` HandlerIR, BindingIR, and DerivedIR seam is complete. Goal A continues with the planned `0.8.20` KeyedBlockIR ownership result while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
+The `0.8.20` KeyedBlockIR ownership result is complete. Goal A continues with the planned `0.8.21` EffectIR seam while preserving accepted React-shaped syntax, diagnostics, complete HTML, emitted capability behavior, and current public APIs.
 
 ## Target Boundaries
 
@@ -77,7 +77,7 @@ Analysis produces plain data:
 }
 ```
 
-The `0.8.19` source result adds module-export HandlerIR, BindingIR, ordered imports/client roots, and canonical tagged DerivedIR beside command and component ownership. Source-local AST lowering completes before this boundary; artifact codegen consumes finalized records without semantic traversal. Initial values, final state IDs, effect ownership, and keyed blocks join their explicit results in later planned patches; `core.mjs` remains authoritative for route allocation today.
+The `0.8.20` source result adds deterministic KeyedBlockIR parent/child ownership, collection and selector references, complete specialization membership, row state/ref provenance, and keyed HandlerIR/BindingIR links beside the existing command, component, handler, binding, and derived results. Source-local keyed AST validation is consumed during lowering and does not cross this boundary. Initial values, final state IDs, and effect lifetime ownership join their explicit results in later planned patches; `core.mjs` remains authoritative for route allocation today.
 
 Source codegen lowers that data through the existing build ABI:
 

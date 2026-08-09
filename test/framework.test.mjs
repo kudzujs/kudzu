@@ -30,7 +30,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.19/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.20/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -47,9 +47,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.19"/)
-  assert.match(release, /Kudzu 0\.8\.19.*Analyze once.*Generate from data/s)
-  assert.match(release, /HANDLER · BINDING · DERIVED.*WHAT CHANGED.*npm install @kudzujs\/core@\^0\.8\.19/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.20"/)
+  assert.match(release, /Kudzu 0\.8\.20.*Own every row.*Keep every node/s)
+  assert.match(release, /KEY · OWNER · LIFETIME.*WHAT CHANGED.*npm install @kudzujs\/core@\^0\.8\.20/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1040,6 +1040,10 @@ test("reevaluates calculated collection fields through keyed SVG lists", async t
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const sourceResult = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const calculatedBlock = sourceResult.moduleIR.keyedBlocks.find(block => block.collection.kind === "binding")
+  assert.ok(calculatedBlock)
+  assert.ok(sourceResult.moduleIR.bindings.some(binding => binding.exportName === calculatedBlock.collection.exportName && binding.keyedBlock === calculatedBlock.slot))
 
   const html = await readFile(new URL("./fixtures/calculated-collections/dist/index.html", import.meta.url), "utf8")
   const ordinaryHtml = await readFile(new URL("./fixtures/calculated-collections/dist/ordinary/index.html", import.meta.url), "utf8")
@@ -1135,6 +1139,16 @@ test("compiles arbitrarily deep keyed lists owned by immediate parent rows", asy
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const keyedBlocks = inspectSourceResult(fixture, "src/pages/index.tsx").moduleIR.keyedBlocks
+  assert.deepEqual(keyedBlocks.map(block => [block.slot, block.parent, block.children, block.ownerField]), [
+    [0, undefined, [1], undefined],
+    [1, 0, [2, 4, 5], "items"],
+    [2, 1, [3], "groups"],
+    [3, 2, [], "options"],
+    [4, 1, [], "badges"],
+    [5, 1, [], "badges"]
+  ])
+  assert.deepEqual(JSON.parse(JSON.stringify(keyedBlocks)), keyedBlocks)
   const html = await readFile(new URL("./fixtures/nested-lists/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/nested-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/nested-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
@@ -1184,6 +1198,15 @@ test("specializes local and imported nested keyed row components", async t => {
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const sourceResult = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const repeatedKeyedBlocks = inspectSourceResult(fixture, "src/pages/index.tsx").moduleIR.keyedBlocks
+  assert.deepEqual(repeatedKeyedBlocks, sourceResult.moduleIR.keyedBlocks)
+  const recursiveBlock = sourceResult.moduleIR.keyedBlocks.find(block => block.rowStates.length)
+  assert.deepEqual(recursiveBlock.specializations, [3, 4, 5])
+  assert.equal(recursiveBlock.rowStates[0].owner, "specialization:5")
+  assert.equal(recursiveBlock.rowRefs[0].owner, "specialization:5")
+  assert.ok(sourceResult.moduleIR.handlers.some(handler => handler.role === "effect" && handler.keyedBlock === recursiveBlock.slot))
+  assert.ok(sourceResult.moduleIR.bindings.some(binding => binding.role === "list-expression" && binding.keyedBlock === recursiveBlock.slot))
   const html = await readFile(new URL("./fixtures/nested-component-lists/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/nested-component-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/nested-component-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
@@ -1217,6 +1240,10 @@ test("owns ordinary keyed-row hooks by structural site and ancestor key path", a
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const keyedBlocks = inspectSourceResult(fixture, "src/pages/index.tsx").moduleIR.keyedBlocks
+  assert.equal(keyedBlocks.length, 3)
+  assert.deepEqual(keyedBlocks.map(block => [block.specializations, block.rowStates.length, block.rowRefs.length]), [[[0], 2, 0], [[1], 3, 1], [[2], 3, 1]])
+  assert.deepEqual(keyedBlocks[0].selectorStates, ["showSecond"])
   const html = await readFile(new URL("./fixtures/keyed-row-hooks/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/keyed-row-hooks/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const runtime = await readFile(new URL("./fixtures/keyed-row-hooks/dist/assets/kudzu-list.js", import.meta.url), "utf8")
