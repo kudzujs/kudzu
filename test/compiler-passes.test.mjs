@@ -9,7 +9,7 @@ import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
 import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
-import { analyzeEffectDependencies } from "../framework/compiler/effect-analysis.mjs"
+import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "../framework/compiler/effect-analysis.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
 import { assertModuleIRReferences, createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock } from "../framework/compiler/ir/module-ir.mjs"
 import { generateListRuntime } from "../framework/compiler/list-runtime-codegen.mjs"
@@ -404,6 +404,89 @@ const binding = count ? document + [1].map(document => document + 1).join("") + 
   assert.deepEqual(semantic.moduleIR.clientModules, [])
   assert.match(semantic.moduleIR.bindings[0].code, /__k\.scope\("document"\).+document => document \+ 1/s)
   assert.doesNotMatch(semantic.moduleIR.bindings[0].code, /document => __k\.scope\("document"\)/)
+})
+
+test("uses lexical bindings for native, effect, and list descriptor discovery", () => {
+  const source = ts.createSourceFile("descriptor-shadow.ts", `
+import { format } from "./format"
+const document = "outer"
+const count = 0
+const setCount = value => value
+const callback = () => {
+  format(count)
+  document.toString()
+  ;[1].forEach(format => format)
+  ;[1].forEach(document => document)
+  ;[1].forEach(count => count)
+  ;[1].forEach(setCount => setCount(1))
+  setCount(count + 1)
+}
+const row = count + [1].map(count => count)[0] + item.value
+`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const semantic = createSemanticArtifact("descriptor-shadow.ts")
+  const callback = source.statements[4].declarationList.declarations[0].initializer
+  const row = source.statements[5].declarationList.declarations[0].initializer
+  const result = ts.transform(source, [context => file => {
+    const session = createDescriptorSession({
+      semantic,
+      handlerUrl: "/assets/handlers/descriptor-shadow.js",
+      factory: context.factory,
+      context,
+      bindingIndex: createBindingIndex(file),
+      compileEventCommand: () => undefined,
+      handlerLowering,
+      isPrimitiveLiteral: () => false,
+      rejectWorkerConstructions: () => {}
+    })
+    const setters = new Map([["setCount", "count"]])
+    const importBindings = new Map([["format", { kind: "named", imported: "format", local: "format", target: "/src/format.ts" }]])
+    session.compileEvent(callback, { setters, reducers: new Map(), functions: new Map(), importBindings })
+    session.compileEffectCallback(callback, { setters, reducers: new Map(), importBindings })
+    session.compileListValue(row, { item: "item", states: new Set(["count"]) })
+    session.finalize()
+    return file
+  }])
+  result.dispose()
+
+  for (const handler of semantic.moduleIR.handlers) {
+    assert.deepEqual(handler.signals, [{ name: "count", setters: ["setCount"], value: "direct", snapshot: false }])
+    assert.deepEqual(handler.captures, [{ name: "document", source: "scope", value: "direct", snapshot: false }])
+    assert.deepEqual(handler.imports, [{ target: "/src/format.ts", kind: "named", local: "format", imported: "format", package: false }])
+    assert.match(handler.code, /format\(__k\.get\("count"\)\)/)
+    assert.match(handler.code, /__k\.scope\("document"\)\.toString\(\)/)
+    assert.match(handler.code, /format => format/)
+    assert.match(handler.code, /document => document/)
+    assert.match(handler.code, /count => count/)
+    assert.match(handler.code, /setCount => setCount\(1\)/)
+  }
+  assert.match(semantic.moduleIR.bindings[0].code, /__k\.get\("count"\) \+ \[1\]\.map\(count => count\)/)
+  assertJsonData(semantic.moduleIR)
+  assert.deepEqual(JSON.parse(JSON.stringify(semantic.moduleIR)), semantic.moduleIR)
+})
+
+test("matches effect resource cleanup by lexical binding", () => {
+  const source = ts.createSourceFile("resource-shadow.ts", `
+const callback = () => {
+  const observer = new IntersectionObserver(() => {})
+  return () => {
+    const observer = { disconnect() {} }
+    observer.disconnect()
+  }
+}
+`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const callback = source.statements[0].declarationList.declarations[0].initializer
+  const cleanup = callback.body.statements[1].expression
+
+  assert.throws(() => validateEffectOwnedBrowserResources(callback, { cleanups: [cleanup] }, (_, message) => { throw new Error(message) }, createBindingIndex(source)), /IntersectionObserver effects must disconnect "observer" in cleanup/)
+
+  const shadowedSource = ts.createSourceFile("global-shadow.ts", `
+const callback = () => {
+  const IntersectionObserver = class {}
+  const observer = new IntersectionObserver(() => {})
+}
+`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const shadowedCallback = shadowedSource.statements[0].declarationList.declarations[0].initializer
+  assert.doesNotThrow(() => validateEffectOwnedBrowserResources(shadowedCallback, { cleanups: [] }, (_, message) => { throw new Error(message) }, createBindingIndex(shadowedSource)))
 })
 
 test("encodes collection expressions with item, index, and state reads", () => {

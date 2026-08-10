@@ -795,9 +795,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const expanded = substituteClone(expression, substitutions, factory, context)
       ts.setParentRecursive(expanded, false)
       expanded.parent = expression.parent
-      const usedStates = referencedStateNames(expanded, setters)
+      const usedStates = referencedStateNames(expanded, setters, expanded, bindingIndex)
       if (!usedStates.size) return expression
-      const captures = captureNames(expanded, expanded, setters)
+      const captures = captureNames(expanded, expanded, setters, bindingIndex)
       const allowedNames = new Set([...setters.values(), ...captures])
       validateReactiveJsxExpression(expanded, allowedNames)
       return expanded
@@ -822,7 +822,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const signals = new Set()
         if (ts.isIdentifier(expression) && setters.has(expression.text)) signals.add(setters.get(expression.text))
         const callback = ts.isIdentifier(expression) ? callbacks.get(expression.text) : undefined
-        for (const state of referencedStateNames((callback ?? expression).body ?? callback ?? expression, setters, callback ?? expression)) signals.add(state)
+        for (const state of referencedStateNames((callback ?? expression).body ?? callback ?? expression, setters, callback ?? expression, bindingIndex)) signals.add(state)
         return [...signals].map(name => ({ name, owner: stateOwners.get(name) ?? (owner ? `owner:${ensureOwner(owner).slot}` : "module") }))
       }
       result.analysis = componentAnalysis.registerSpecialization({
@@ -1371,7 +1371,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         calculation.parent = callback
         validateListExpression(calculation, parts.item, originalParts.root, fail)
       }
-      const analysis = validateKeyedList(parts, sourceFile, settersForNode(originalParts.root, settersByFunction), specialization.rowStates, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
+      const analysis = validateKeyedList(parts, sourceFile, settersForNode(originalParts.root, settersByFunction), specialization.rowStates, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback, bindingIndex)
       preparedRenderedLists.push({ node, parts, analysis })
     }
 
@@ -1379,8 +1379,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const parts = conditionalParts(expression)
       if (!parts) return ts.visitNode(expression, visitor)
       const setters = settersForNode(anchor, settersByFunction)
-      const usedStates = referencedStateNames(parts.condition, setters)
-      const captures = captureNames(parts.condition, parts.condition, setters)
+      const usedStates = referencedStateNames(parts.condition, setters, parts.condition, bindingIndex)
+      const captures = captureNames(parts.condition, parts.condition, setters, bindingIndex)
       if (!usedStates.size && !captures.size) return ts.visitEachChild(expression, visitor, context)
       usesBehavior = true
       usesConditional = true
@@ -1534,7 +1534,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           setters,
           localDeclarations: jsxLocalDeclarations.get(nearestFunction(node)),
           factory,
-          fail: effectFail
+          fail: effectFail,
+          bindingIndex
         })
         const { dependencyItem, itemDependencies, ordinaryDependencies, entries: dependencyEntries, dependencyStates, substitutions: dependencySubstitutions, subscriptions: subscriptionDependencies, hasDerived: hasDerivedDependency } = dependencyAnalysis
         if (!effectOwner) fail(node, "useEffect() cannot be used outside a Kudzu component")
@@ -1559,7 +1560,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const invalidCleanup = returns.cleanups.find(cleanup => cleanup.parameters.length || cleanup.asteriskToken)
         if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
         if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
-        validateEffectOwnedBrowserResources(callback, returns, effectFail)
+        validateEffectOwnedBrowserResources(callback, returns, effectFail, bindingIndex)
         const callbackSource = specializedEffect?.sourceFile ?? sourceFile
         const callbackFile = callbackSource.fileName
         let compiledCallback = dependencySubstitutions.size ? substituteClone(callback, dependencySubstitutions, factory, context) : callback
@@ -1688,8 +1689,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         }
         const setters = settersForNode(node, settersByFunction)
         const expression = resolveReactiveJsxExpression(node.expression, nearestFunction(node), setters)
-        const usedStates = referencedStateNames(expression, setters)
-        const captures = captureNames(expression, expression, setters)
+        const usedStates = referencedStateNames(expression, setters, expression, bindingIndex)
+        const captures = captureNames(expression, expression, setters, bindingIndex)
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression) && !containsJsx(expression)) {
           usesBehavior = true
           usesBinding = true
@@ -1701,8 +1702,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const sourceExpression = node.initializer.expression
         const setters = settersForNode(node, settersByFunction)
         const expression = resolveReactiveJsxExpression(sourceExpression, nearestFunction(node), setters)
-        const usedStates = referencedStateNames(expression, setters)
-        const captures = captureNames(expression, expression, setters)
+        const usedStates = referencedStateNames(expression, setters, expression, bindingIndex)
+        const captures = captureNames(expression, expression, setters, bindingIndex)
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression)) {
           usesBehavior = true
           usesBinding = true
@@ -1955,7 +1956,7 @@ function insideJsxEventHandler(node, root) {
   return false
 }
 
-function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback) {
+function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback, bindingIndex) {
   const fail = (node, message) => {
     throw sourceNodeError(node, sourceFile, message)
   }
@@ -2016,7 +2017,7 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
           calculation.parent = callback
           validateListExpression(calculation, nested.item, nested.root, fail)
         }
-        const nestedAnalysis = validateKeyedList(nestedParts, sourceFile, setters, specialization?.rowStates ?? [], componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback)
+        const nestedAnalysis = validateKeyedList(nestedParts, sourceFile, setters, specialization?.rowStates ?? [], componentSpecializations, expandedRowSpecializations, nestedRowSpecializations, factory, prepareListCallback, bindingIndex)
         analysis.nested.push({ node: expression, parts: nestedParts, analysis: nestedAnalysis })
         return
       }
@@ -2044,7 +2045,7 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
         return
       }
       if (referencesIdentifier(expression, item) || parts.index && referencesIdentifier(expression, parts.index)) {
-        const states = referencedStateNames(expression, setters)
+        const states = referencedStateNames(expression, setters, expression, bindingIndex)
         for (const rowState of rowStates) states.delete(rowState.state)
         if (parts.nested && states.size) fail(node, "Nested keyed list item expressions cannot read parent state")
         validateListExpression(expression, item, node, fail, parts.index, states)

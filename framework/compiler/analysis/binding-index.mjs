@@ -206,7 +206,7 @@ export function createBindingIndex(sourceFile) {
     if (binding.declarationKind.startsWith("import")) kind = "import"
     else if (binding.declarationKind === "global") kind = "global"
     else if (binding.declarationKind === "unresolved") kind = "unresolved"
-    else if (inside(binding.declaration, ts.getOriginalNode(boundary))) kind = binding.declarationKind === "parameter" ? "parameter" : "local"
+    else if (inside(binding.declaration, boundary)) kind = binding.declarationKind === "parameter" ? "parameter" : "local"
     else kind = "capture"
     return {
       kind,
@@ -234,16 +234,21 @@ export function createBindingIndex(sourceFile) {
     return complete ? found : undefined
   }
 
-  return { bindings: () => bindings.map(({ declaration, ...binding }) => ({ ...binding, ...(declaration ? { declarationRange: range(declaration) } : {}) })), references, resolveReference }
+  return { bindings: () => bindings.map(({ declaration, ...binding }) => ({ ...binding, ...(declaration ? { declarationRange: range(declaration) } : {}) })), hasNode: node => scopeByNode.has(node), references, resolveReference }
 }
 
 function inside(node, boundary) {
-  for (let current = node; current; current = current.parent) if (current === boundary) return true
+  const originalBoundary = ts.getOriginalNode(boundary)
+  for (let current = node; current; current = current.parent) {
+    const original = ts.getOriginalNode(current)
+    if (current === boundary || current === originalBoundary || original === boundary || original === originalBoundary) return true
+  }
   return false
 }
 
 function range(node) {
-  return node.pos >= 0 && node.end >= 0 ? { start: node.getStart(), end: node.end } : undefined
+  if (node.pos < 0 || node.end < 0) return undefined
+  return { start: node.getSourceFile() ? node.getStart() : node.pos, end: node.end }
 }
 
 function isFunctionLike(node) {

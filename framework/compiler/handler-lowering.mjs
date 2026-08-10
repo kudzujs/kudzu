@@ -4,16 +4,16 @@ import { isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowe
 export function createHandlerLowering({ cloneAst, synthesizeTree }) {
   return { lowerListExpression: printListExpression, lowerNativeHandler: printNativeHandler, lowerReactiveBinding: printReactiveBinding }
 
-  function printNativeHandler({ exportName, expression, captures, setters, reducers = new Map(), snapshotNested, liveStates = new Set() }) {
+  function printNativeHandler({ exportName, expression, captures, setters, reducers = new Map(), snapshotNested, liveStates = new Set(), bindingIndex }) {
     const factory = ts.factory
     const stateNames = new Set(setters.values())
-    const snapshotNames = snapshotNested ? nestedStateNames(expression, setters, liveStates) : new Set()
+    const snapshotNames = snapshotNested ? nestedStateNames(expression, setters, liveStates, bindingIndex) : new Set()
     const snapshots = new Map([...snapshotNames].map(name => [name, factory.createUniqueName("__kEffectState")]))
-    const captureSnapshotNames = snapshotNested ? nestedCaptureNames(expression, captures) : new Set()
+    const captureSnapshotNames = snapshotNested ? nestedCaptureNames(expression, captures, bindingIndex) : new Set()
     const captureSnapshots = new Map([...captureSnapshotNames].map(name => [name, factory.createUniqueName("__kEffectCapture")]))
     const transformer = context => root => {
       const visitor = node => {
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && reducers.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && reducers.has(node.expression.text) && matchesExternalReference(node.expression, expression, bindingIndex)) {
           const reducer = reducers.get(node.expression.text)
           if (reducer.contextAction) {
             const action = synthesizeTree(cloneAst(reducer.contextAction, factory, context))
@@ -25,34 +25,34 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
           if (node.arguments.length !== 1) throw sourceNodeError(node, expression.getSourceFile(), "Reducer dispatches require exactly one action")
           return reducerDispatch(factory, reducer, ts.visitNode(node.arguments[0], visitor))
         }
-        if (ts.isShorthandPropertyAssignment(node) && reducers.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (ts.isShorthandPropertyAssignment(node) && reducers.has(node.name.text) && matchesExternalReference(node.name, expression, bindingIndex)) {
           if (reducers.get(node.name.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
           if (reducers.get(node.name.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
           return factory.createPropertyAssignment(node.name, reducerReference(factory, reducers.get(node.name.text)))
         }
-        if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && matchesExternalReference(node, expression, bindingIndex)) {
           if (reducers.get(node.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
           if (reducers.get(node.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
           return reducerReference(factory, reducers.get(node.text))
         }
-        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && !isShadowedIdentifier(node.expression, expression)) {
+        if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && matchesExternalReference(node.expression, expression, bindingIndex)) {
           return factory.createCallExpression(
             factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"),
             undefined,
             [factory.createStringLiteral(setters.get(node.expression.text)), ...node.arguments.map(argument => ts.visitNode(argument, visitor))]
           )
         }
-        if (ts.isShorthandPropertyAssignment(node) && setters.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (ts.isShorthandPropertyAssignment(node) && setters.has(node.name.text) && matchesExternalReference(node.name, expression, bindingIndex)) {
           return factory.createPropertyAssignment(node.name, setterReference(factory, setters.get(node.name.text)))
         }
-        if (ts.isIdentifier(node) && setters.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (ts.isIdentifier(node) && setters.has(node.text) && isReferenceIdentifier(node) && matchesExternalReference(node, expression, bindingIndex)) {
           return setterReference(factory, setters.get(node.text))
         }
-        if (ts.isShorthandPropertyAssignment(node) && stateNames.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (ts.isShorthandPropertyAssignment(node) && stateNames.has(node.name.text) && matchesExternalReference(node.name, expression, bindingIndex)) {
           if (snapshots.has(node.name.text) && insideNestedFunction(node, expression)) return factory.createPropertyAssignment(node.name, snapshots.get(node.name.text))
           return factory.createPropertyAssignment(node.name, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(node.name.text)]))
         }
-        if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (ts.isIdentifier(node) && stateNames.has(node.text) && isReferenceIdentifier(node) && matchesExternalReference(node, expression, bindingIndex)) {
           if (snapshots.has(node.text) && insideNestedFunction(node, expression)) return snapshots.get(node.text)
           return factory.createCallExpression(
             factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"),
@@ -60,11 +60,11 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
             [factory.createStringLiteral(node.text)]
           )
         }
-        if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text) && !isShadowedIdentifier(node.name, expression)) {
+        if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text) && matchesExternalReference(node.name, expression, bindingIndex)) {
           if (captureSnapshots.has(node.name.text) && insideNestedFunction(node, expression)) return factory.createPropertyAssignment(node.name, captureSnapshots.get(node.name.text))
           return factory.createPropertyAssignment(node.name, scopeRead(factory, node.name.text))
         }
-        if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, expression)) {
+        if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && matchesExternalReference(node, expression, bindingIndex)) {
           if (captureSnapshots.has(node.text) && insideNestedFunction(node, expression)) return captureSnapshots.get(node.text)
           return scopeRead(factory, node.text)
         }
@@ -106,21 +106,21 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
     }
   }
 
-  function nestedCaptureNames(expression, captures) {
+  function nestedCaptureNames(expression, captures, bindingIndex) {
     const names = new Set()
     const visit = node => {
-      if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && !isShadowedIdentifier(node, expression)) names.add(node.text)
+      if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && matchesExternalReference(node, expression, bindingIndex)) names.add(node.text)
       ts.forEachChild(node, visit)
     }
     visit(expression.body)
     return names
   }
 
-  function nestedStateNames(expression, setters, liveStates = new Set()) {
+  function nestedStateNames(expression, setters, liveStates = new Set(), bindingIndex) {
     const states = new Set(setters.values())
     const names = new Set()
     const visit = node => {
-      if (ts.isIdentifier(node) && states.has(node.text) && !liveStates.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && !isShadowedIdentifier(node, expression)) names.add(node.text)
+      if (ts.isIdentifier(node) && states.has(node.text) && !liveStates.has(node.text) && isReferenceIdentifier(node) && insideNestedFunction(node, expression) && matchesExternalReference(node, expression, bindingIndex)) names.add(node.text)
       ts.forEachChild(node, visit)
     }
     visit(expression.body)
@@ -132,6 +132,11 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
       if (isFunctionLike(current)) return true
     }
     return false
+  }
+
+  function matchesExternalReference(node, boundary, bindingIndex) {
+    if (!bindingIndex?.hasNode(node)) return !isShadowedIdentifier(node, boundary)
+    return ["capture", "unresolved"].includes(bindingIndex.resolveReference(node, boundary)?.kind)
   }
 
   function setterReference(factory, stateName) {
@@ -195,7 +200,7 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
       const visitor = node => {
         const reference = ts.isShorthandPropertyAssignment(node) ? node.name : ts.isIdentifier(node) ? node : undefined
         const resolution = reference ? bindingIndex?.resolveReference(reference, expression) : undefined
-        const indexedState = resolution?.kind === "capture" && states.has(resolution.debugName)
+        const indexedState = ["capture", "unresolved"].includes(resolution?.kind) && states.has(resolution.debugName)
         const indexedCapture = ["capture", "unresolved"].includes(resolution?.kind) && captures.has(resolution.debugName)
         if (ts.isShorthandPropertyAssignment(node) && states.has(node.name.text) && (!bindingIndex || indexedState)) {
           return factory.createPropertyAssignment(
@@ -241,14 +246,14 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
     }
   }
 
-  function printListExpression({ exportName, expression, item, index, states = new Set() }) {
+  function printListExpression({ exportName, expression, item, index, states = new Set(), bindingIndex }) {
     const factory = ts.factory
     const transformer = context => root => {
       const visitor = node => {
-        if (ts.isShorthandPropertyAssignment(node) && states.has(node.name.text)) {
+        if (ts.isShorthandPropertyAssignment(node) && states.has(node.name.text) && matchesExternalReference(node.name, expression, bindingIndex)) {
           return factory.createPropertyAssignment(node.name, factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(node.name.text)]))
         }
-        if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
+        if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && (bindingIndex ? matchesExternalReference(node, expression, bindingIndex) : !isShadowedByParameter(node, expression))) {
           return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"), undefined, [factory.createStringLiteral(node.text)])
         }
         return ts.visitEachChild(node, visitor, context)

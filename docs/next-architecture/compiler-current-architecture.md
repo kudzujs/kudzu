@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.28` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.29` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -12,7 +12,7 @@ This maps the current `0.8.28` architecture built on the completed `0.8.23` Goal
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every structural change. Imported source uses the same pipeline. |
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
 | Shared AST/scope helpers | [`framework/compiler/ast-helpers.mjs`](../../framework/compiler/ast-helpers.mjs) | Binding, scope, reference, effect-return, and source-location analysis. |
-| Source-local binding index | [`framework/compiler/analysis/binding-index.mjs`](../../framework/compiler/analysis/binding-index.mjs) | After normalization, assigns deterministic lexical slots and classifies local, parameter, import, capture, global, and unresolved references. Reactive binding discovery/lowering consumes complete indexed expressions; synthesized expressions retain the existing fallback. |
+| Source-local binding index | [`framework/compiler/analysis/binding-index.mjs`](../../framework/compiler/analysis/binding-index.mjs) | After normalization, assigns deterministic lexical slots and classifies local, parameter, import, capture, global, and unresolved references. Native handler, effect, binding, list evaluator, optimized-command, and effect-resource consumers use complete index-owned AST; synthesized expressions retain the existing fallback. |
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
 | Main semantic analysis | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, keyed, and effect ownership results. |
 | Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, and source provenance; AST identity remains private to its source-local session. |

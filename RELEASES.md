@@ -1,5 +1,35 @@
 # Kudzu Releases
 
+## 0.8.29 - Symbol-aware descriptor discovery
+
+Kudzu 0.8.29 completes P0.2 by moving native handler, effect, binding, and list descriptor decisions from identifier spelling onto the source-local binding index introduced in 0.8.28.
+
+### Changed in 0.8.29
+
+- Native handlers and effects discover state, setters, reducers, imports, captures, and nested snapshots by lexical reference identity when the complete callback belongs to the source index.
+- Handler lowering consumes the same indexed identity used during discovery, so callback parameters and locals that shadow state, setters, reducers, imports, or captures remain untouched.
+- Reactive conditionals, bindings, keyed-list evaluators, and list state rewrites distinguish outer state from same-named nested callback parameters.
+- The command fast path accepts state and setter references only when they resolve outside the callback, and recognizes `console.log()` only when `console` is the actual browser global.
+- Effect resource validation distinguishes real `IntersectionObserver`, `requestAnimationFrame()`, and `cancelAnimationFrame()` globals from shadowed application bindings and matches cleanup to the exact observer or frame declaration.
+
+### Compiler Boundary
+
+- The binding index now recognizes normalized and original TypeScript node boundaries and exposes whether it directly owns an AST node.
+- Imported, specialized, or compiler-synthesized trees continue through the established conservative shadow walker rather than borrowing an unrelated source index.
+- P0.2 changes no public API, accepted source syntax, ModuleIR shape, browser runtime, or generated capability contract. P0.3 graph failure diagnostics is next.
+
+### Validation
+
+- `npm run check`, `npm test`, `npm run test:package`, and all 187 tests pass.
+- Focused tests cover shadowed imports, browser globals, state, setters, list parameters, JSON-safe HandlerIR/BindingIR round trips, and same-named effect resource cleanup.
+- Existing Context actions, keyed component callbacks, React Router search parameters, native events, effects, Workers, navigation, and static-route zero-JavaScript behavior remain covered.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.29
+```
+
 ## 0.8.28 - Source-local binding index
 
 Kudzu 0.8.28 completes the first large-application compiler foundation by resolving source-local lexical bindings before descriptor discovery and lowering.

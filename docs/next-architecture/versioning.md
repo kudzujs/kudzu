@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.28` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.29` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -19,6 +19,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.26` | Harden Goal B benchmark reproducibility and ordinary regression coverage without changing runtime behavior. | Commerce comparison defaults to exact output; route transform counts and keyed bulk/fallback guards are protected by the standard suite; baseline coverage and limits are explicit. |
 | `0.8.27` | Characterize the first Goal C browser-resource boundary and publish the ordered large-application and AI-native compiler execution plan. | The E2B-derived fixture fails with a source-located diagnostic, no resource runtime or API is added, and the next PR dependencies and completion evidence are explicit. |
 | `0.8.28` | Add the source-local binding index and adopt it for reactive binding capture/import discovery and lowering. | Lexical shadowing is identity-based for complete indexed bindings, synthesized keyed expressions retain their fallback, the 1,000-reference guard passes, and no browser bytes or public API are added. |
+| `0.8.29` | Move native handler, effect, remaining binding, list evaluator, optimized-command, and effect-resource discovery/lowering onto source-local lexical identity. | Shadowed imports/globals/state/resources remain distinct, HandlerIR/BindingIR round trips pass, synthesized trees retain the fallback, and no runtime or public API is added. |
 
 ## Sequence Rules
 

@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.28` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.29` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -275,6 +275,12 @@ This queue orders the next investigations by general migration value. Start only
 - A source-local binding index assigns deterministic lexical identities to locals, parameters, imports, captures, known globals, and unresolved references after normalization.
 - Reactive binding capture/import discovery and lowering distinguish outer application values from same-named browser globals and nested callback parameters without changing source syntax or adding browser bytes.
 - Synthesized keyed expressions retain the existing fail-safe lowering path; native handler, effect, and remaining descriptor consumers stay ordered behind the next symbol-aware compiler patch.
+
+### Completed In 0.8.29
+
+- Native handler, effect, remaining binding, keyed evaluator, optimized-command, and effect-resource discovery/lowering use source-local lexical identity when the binding index owns the complete AST.
+- Same-named callback parameters, locals, imports, browser globals, state values, setters, reducers, observer handles, and animation-frame handles no longer alias through identifier spelling alone.
+- Imported, specialized, and compiler-synthesized trees retain the existing conservative fallback; no public API, source syntax, ModuleIR contract, browser runtime, or capability bytes were added.
 
 ## Cross-Cutting Performance Gates
 

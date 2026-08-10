@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.28 - Source-local binding index.** The first large-application compiler foundation classifies locals, parameters, imports, captures, globals, and unresolved references by lexical identity, then uses that index for reactive binding capture/import discovery and lowering. Read the [release notes](./RELEASES.md#0828---source-local-binding-index), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.28), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.29 - Symbol-aware descriptor discovery.** Native handlers, effects, reactive bindings, keyed evaluators, optimized commands, and effect-resource validation now use source-local lexical identity when the binding index owns the complete AST, while synthesized trees retain the established fail-safe path. Read the [release notes](./RELEASES.md#0829---symbol-aware-descriptor-discovery), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.29), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

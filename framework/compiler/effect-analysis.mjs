@@ -3,7 +3,7 @@ import { nearestFunction, referencesIdentifier, unwrapExpression } from "./ast-h
 import { collectionExpression } from "./collection-analysis.mjs"
 import { referencedStateNames } from "./descriptor-session.mjs"
 
-export function analyzeEffectDependencies({ dependencies, node, listEffect, keyedItem, setters, localDeclarations, factory, fail }) {
+export function analyzeEffectDependencies({ dependencies, node, listEffect, keyedItem, setters, localDeclarations, factory, fail, bindingIndex }) {
   const itemDependencies = []
   const ordinaryDependencies = []
   let dependencyItem = listEffect ? keyedItem : undefined
@@ -32,8 +32,9 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
   for (const dependency of ordinaryDependencies) {
     const declarations = localDeclarations?.get(dependency.text)
     const initializer = declarations?.length === 1 ? declarations[0].initializer : undefined
-    const directAlias = initializer && ts.isIdentifier(unwrapExpression(initializer)) && stateNames.has(unwrapExpression(initializer).text)
-    const derivedStates = initializer && !directAlias ? referencedStateNames(initializer, setters) : new Set()
+    const indexedInitializer = initializer && bindingIndex?.hasNode(initializer) ? bindingIndex : undefined
+    const directAlias = initializer && ts.isIdentifier(unwrapExpression(initializer)) && stateNames.has(unwrapExpression(initializer).text) && (!indexedInitializer || ["capture", "unresolved"].includes(indexedInitializer.resolveReference(unwrapExpression(initializer), initializer)?.kind))
+    const derivedStates = initializer && !directAlias ? referencedStateNames(initializer, setters, initializer, bindingIndex) : new Set()
     if (derivedStates.size) {
       const usedStates = new Set()
       const expression = collectionExpression(initializer, { fail, stateNames, selectorStates: usedStates })
@@ -55,7 +56,8 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
   return { dependencyItem, itemDependencies, ordinaryDependencies, entries, dependencyStates, substitutions, subscriptions, hasDerived }
 }
 
-export function validateEffectOwnedBrowserResources(callback, returns, fail) {
+export function validateEffectOwnedBrowserResources(callback, returns, fail, bindingIndex) {
+  bindingIndex = bindingIndex?.hasNode(callback) ? bindingIndex : undefined
   const observers = []
   const frameAssignments = []
   const cancellations = new Set()
@@ -64,18 +66,20 @@ export function validateEffectOwnedBrowserResources(callback, returns, fail) {
     for (let current = node; current; current = current.parent) if (current === cleanup) return true
     return false
   })
+  const isGlobal = (identifier, name) => identifier.text === name && (!bindingIndex || bindingIndex.resolveReference(identifier, callback)?.kind === "global")
+  const resource = identifier => bindingIndex?.resolveReference(identifier, callback)?.declaration ?? identifier.text
   const visit = node => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isNewExpression(unwrapExpression(node.initializer)) && ts.isIdentifier(unwrapExpression(node.initializer).expression) && unwrapExpression(node.initializer).expression.text === "IntersectionObserver") observers.push(node)
-    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrapExpression(node.left)) && ts.isCallExpression(unwrapExpression(node.right)) && ts.isIdentifier(unwrapExpression(node.right).expression) && unwrapExpression(node.right).expression.text === "requestAnimationFrame") frameAssignments.push(node)
-    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "cancelAnimationFrame" && node.arguments.length === 1 && ts.isIdentifier(unwrapExpression(node.arguments[0]))) cancellations.add(unwrapExpression(node.arguments[0]).text)
-    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.name.text === "disconnect" && node.arguments.length === 0) disconnected.add(node.expression.expression.text)
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isNewExpression(unwrapExpression(node.initializer)) && ts.isIdentifier(unwrapExpression(node.initializer).expression) && isGlobal(unwrapExpression(node.initializer).expression, "IntersectionObserver")) observers.push(node)
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(unwrapExpression(node.left)) && ts.isCallExpression(unwrapExpression(node.right)) && ts.isIdentifier(unwrapExpression(node.right).expression) && isGlobal(unwrapExpression(node.right).expression, "requestAnimationFrame")) frameAssignments.push(node)
+    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && isGlobal(node.expression, "cancelAnimationFrame") && node.arguments.length === 1 && ts.isIdentifier(unwrapExpression(node.arguments[0]))) cancellations.add(resource(unwrapExpression(node.arguments[0])))
+    if (insideCleanup(node) && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.name.text === "disconnect" && node.arguments.length === 0) disconnected.add(resource(node.expression.expression))
     ts.forEachChild(node, visit)
   }
   visit(callback.body)
-  for (const observer of observers) if (!disconnected.has(observer.name.text)) fail(observer, `IntersectionObserver effects must disconnect ${JSON.stringify(observer.name.text)} in cleanup`)
+  for (const observer of observers) if (!disconnected.has(bindingIndex ? observer.name : observer.name.text)) fail(observer, `IntersectionObserver effects must disconnect ${JSON.stringify(observer.name.text)} in cleanup`)
   for (const assignment of frameAssignments) {
-    const name = unwrapExpression(assignment.left).text
-    if (!cancellations.has(name)) fail(assignment, `Animation loop effects must cancel ${JSON.stringify(name)} in cleanup`)
+    const left = unwrapExpression(assignment.left)
+    if (!cancellations.has(resource(left))) fail(assignment, `Animation loop effects must cancel ${JSON.stringify(left.text)} in cleanup`)
   }
 }
 
