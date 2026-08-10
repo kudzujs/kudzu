@@ -2,6 +2,8 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
+The executable post-`0.8.27` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
 ## North Star
@@ -261,6 +263,12 @@ This queue orders the next investigations by general migration value. Start only
 - The maintained commerce runner requires byte-identical output by default while explicit expected deltas preserve historical benchmark reproduction.
 - The standard suite counts exact route-entry transforms across repeated, distinct, and new-build sources and protects the safe keyed bulk-mount guard plus its per-root fallback.
 - Goal B records which build, output, keyed, Worker, integration, and heap evidence exists; no new optimization is authorized without another reproduced material loss.
+
+### Characterized In 0.8.27
+
+- A reduced E2B Dashboard terminal fixture establishes callback-shared mutable browser resources, asynchronous generation invalidation, and BFCache retain/resume/discard behavior as a concrete Goal C boundary.
+- Unsupported page-level mutable value refs fail during source analysis with a source location and the existing effect-owned animation-frame exception; no resource API or runtime is added.
+- The large-application and AI-native execution plan orders symbol resolution, semantic operations, project/module analysis, IR authority, application foundations, ecosystem compatibility, AI tooling, and scale validation before broad feature work.
 
 ## Cross-Cutting Performance Gates
 

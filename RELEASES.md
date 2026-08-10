@@ -1,5 +1,35 @@
 # Kudzu Releases
 
+## 0.8.27 - Large-application compiler roadmap
+
+Kudzu 0.8.27 records the evidence-backed path from the current static-first compiler to large production applications without adding a React runtime, generic client framework, or speculative resource API.
+
+### Changed in 0.8.27
+
+- A reduced fixture from E2B Dashboard preserves a callback-shared terminal handle, asynchronous generation token, BFCache retention, resume, and discard cleanup as the first concrete Goal C resource-ownership boundary.
+- Unsupported page-level mutable value refs now fail during source analysis with the source location and the existing effect-owned animation-frame exception instead of reaching the build-time DOM-ref runtime error.
+- Goal C records independent WebSocket/SSE, shared request, and optimistic transaction candidates while explicitly withholding store, resource, query, cache, Provider, subscription, and scheduler APIs.
+- The new large-application and AI-native execution plan audits the current compiler, IR, runtime, navigation, package, build, fixture, and benchmark boundaries and orders the next twelve independently verifiable PRs.
+- The next implementation is fixed as a source-local binding index followed by symbol-aware descriptor discovery; ecosystem features cannot skip those semantic dependencies.
+
+### Architecture Boundary
+
+- Existing ComponentAnalysis, ModuleIR, RouteIR, CapabilityIR, complete HTML, direct DOM ownership, native navigation, and capability runtimes remain the incremental foundation.
+- The plan generalizes symbol identity, semantic state operations, component/module dataflow, resource/range ownership, artifact references, code splitting, diagnostics, migration analysis, and application-scale evidence without introducing a browser component tree.
+- React ecosystem support is classified as Native, Compiled, Migrated, Adapter, Partial, or Unsupported so package-specific knowledge can move behind a compatibility boundary instead of accumulating in the core compiler.
+
+### Validation
+
+- `npm run check`, `npm run test:package`, and all 176 tests pass.
+- The E2B fixture remains an expected failure at its proven source boundary; no browser resource runtime or public API is emitted.
+- Static-route zero JavaScript, existing animation-frame support, keyed-row diagnostics, setter-child diagnostics, and all current browser ownership behavior remain covered.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.27
+```
+
 ## 0.8.26 - Goal B benchmark hardening
 
 Kudzu 0.8.26 makes the retained Goal B optimizations reproducible and directly regression-tested without changing generated runtime behavior or authoring support.

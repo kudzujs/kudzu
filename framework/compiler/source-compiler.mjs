@@ -629,9 +629,13 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression)) {
         const owner = nearestFunction(node)
-        if (owner && node.initializer.expression.text === "useRef" && node.initializer.arguments.length === 1 && node.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword) {
-          ensureOwner(owner)
-          componentAnalysis.registerRef(owner, { name: node.name.text, source: analysisSource(node) })
+        if (owner && node.initializer.expression.text === "useRef") {
+          const nullInitializer = node.initializer.arguments.length === 1 && node.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword
+          if (!nullInitializer && owner.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)) throw sourceNodeError(node.initializer, sourceFile, "Mutable value useRef() is unsupported except for an effect-owned useRef(0) animation-frame handle; otherwise keep resource-private mutable values inside the owning effect")
+          if (nullInitializer) {
+            ensureOwner(owner)
+            componentAnalysis.registerRef(owner, { name: node.name.text, source: analysisSource(node) })
+          }
         }
         if (owner && node.initializer.expression.text === "useId" && node.initializer.arguments.length === 0) {
           ensureOwner(owner)

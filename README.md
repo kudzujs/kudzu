@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.26 - Goal B benchmark hardening.** Commerce comparisons now require byte-identical output by default, and the standard suite protects exact route-entry transform reuse plus safe keyed bulk-mount selection. Read the [release notes](./RELEASES.md#0826---goal-b-benchmark-hardening), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.26), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.27 - Large-application compiler roadmap.** A reduced E2B terminal fixture now establishes the first Goal C resource boundary with a source-located diagnostic, while the architecture packet fixes the ordered semantic-compiler, application-scale, compatibility, AI-tooling, and production-validation program. Read the [release notes](./RELEASES.md#0827---large-application-compiler-roadmap), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.27), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
