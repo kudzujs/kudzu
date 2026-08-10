@@ -2,6 +2,33 @@ export function createModuleIR(file) {
   return { version: 1, file, signals: [], handlers: [], bindings: [], derived: [], effects: [], keyedBlocks: [], imports: [], clientModules: [] }
 }
 
+export function assertModuleIRReferences(moduleIR) {
+  const slot = (records, value, label) => {
+    if (!Number.isInteger(value) || value < 0 || value >= records.length) throw new Error(`ModuleIR ${label} references missing slot ${JSON.stringify(value)}`)
+  }
+  for (const [name, records] of [["signal", moduleIR.signals], ["handler", moduleIR.handlers], ["binding", moduleIR.bindings], ["derived", moduleIR.derived], ["effect", moduleIR.effects], ["keyed block", moduleIR.keyedBlocks]]) {
+    records.forEach((record, index) => {
+      if (record.slot !== index) throw new Error(`ModuleIR ${name} slot ${JSON.stringify(record.slot)} must equal its index ${index}`)
+    })
+  }
+  for (const handler of moduleIR.handlers) {
+    for (const command of handler.commands ?? []) slot(moduleIR.signals, command.signal, `handler ${handler.slot} command signal`)
+    if (handler.keyedBlock !== undefined) slot(moduleIR.keyedBlocks, handler.keyedBlock, `handler ${handler.slot} keyed block`)
+  }
+  for (const binding of moduleIR.bindings) if (binding.keyedBlock !== undefined) slot(moduleIR.keyedBlocks, binding.keyedBlock, `binding ${binding.slot} keyed block`)
+  for (const effect of moduleIR.effects) {
+    slot(moduleIR.handlers, effect.setup?.handler, `effect ${effect.slot} setup handler`)
+    for (const dependency of effect.dependencies ?? []) if (dependency.kind === "derived") slot(moduleIR.derived, dependency.derived, `effect ${effect.slot} derived dependency`)
+    if (effect.ownership?.keyedBlock !== undefined) slot(moduleIR.keyedBlocks, effect.ownership.keyedBlock, `effect ${effect.slot} keyed block`)
+  }
+  for (const block of moduleIR.keyedBlocks) {
+    if (block.parent !== undefined) slot(moduleIR.keyedBlocks, block.parent, `keyed block ${block.slot} parent`)
+    for (const child of block.children ?? []) slot(moduleIR.keyedBlocks, child, `keyed block ${block.slot} child`)
+    if (block.selector !== undefined) slot(moduleIR.derived, block.selector, `keyed block ${block.slot} selector`)
+  }
+  return moduleIR
+}
+
 export function registerCommandHandler(moduleIR, commands, source, scope = "module") {
   const slots = new Map(moduleIR.signals.map(signal => [signal.key, signal.slot]))
   for (const { state, owner = scope } of commands) {

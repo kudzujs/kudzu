@@ -6,7 +6,7 @@ import { build as bundle, transform } from "esbuild"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
-import { clientModulePath, collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } from "./compiler/source-compiler.mjs"
+import { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } from "./compiler/source-compiler.mjs"
 import { createParamCodegen } from "./compiler/param-codegen.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "./compiler/route-capability-planner.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime, specializeRuntime } from "./compiler/runtime-codegen.mjs"
@@ -95,6 +95,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   const effectEntries = []
   const nativeEntries = []
   const paramEntries = []
+  const routeEntryTransforms = new Map()
   const rewrites = []
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
@@ -264,7 +265,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   if (hasNativeHandlers) {
     const generated = generateNativeRuntime(await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"), capabilityIR)
     await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), generated.source, minify, generated.define)
-    for (const entry of nativeEntries) await printNativeEntry(entry, assetsDirectory, base, minify)
+    for (const entry of nativeEntries) await printNativeEntry(entry, assetsDirectory, base, minify, routeEntryTransforms)
   }
   if (navigationGroups.length) {
     const navigationSource = await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8")
@@ -280,12 +281,12 @@ export async function build({ quiet = false, minify = true } = {}) {
   for (const entry of paramEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printParamEntry(entry.schema, entry.params, entry.searchParams, entry.searchParamsWritable, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify)
+    await writeRouteEntry(output, printParamEntry(entry.schema, entry.params, entry.searchParams, entry.searchParamsWritable, output, assetsDirectory, base, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify, routeEntryTransforms)
   }
   for (const entry of effectEntries) {
     const output = join(assetsDirectory, entry.path)
     await mkdir(dirname(output), { recursive: true })
-    await writeJavaScript(output, printEffectEntry(entry.effects, output, emittedHandlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify)
+    await writeRouteEntry(output, printEffectEntry(entry.effects, output, emittedHandlerModules, assetsDirectory, base, entry.paramPath, runtimeName(entry.usesDependencyRuntime), entry.navigable), minify, routeEntryTransforms)
   }
   const clientModules = await collectClientModules(emittedHandlerModules.flatMap(module => module.clientImports).map(file => resolve(root, file)), sourceFileSet)
   for (const file of clientModules) {
@@ -358,13 +359,13 @@ function preloadModules(html) {
   return html.replace(scripts[0][0], `${links}${scripts[0][0]}`)
 }
 
-async function printNativeEntry(entry, assetsDirectory, base, minify) {
+async function printNativeEntry(entry, assetsDirectory, base, minify, transforms) {
   const output = join(assetsDirectory, entry.path)
   await mkdir(dirname(output), { recursive: true })
   const imports = entry.modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
   const registrations = entry.modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
   const runtime = assetPath(base, "assets/kudzu-native.js")
-  await writeJavaScript(output, `import { registerNativeModules } from ${JSON.stringify(runtime)}\n${imports}\nregisterNativeModules([${registrations}])`, minify)
+  await writeRouteEntry(output, `import { registerNativeModules } from ${JSON.stringify(runtime)}\n${imports}\nregisterNativeModules([${registrations}])`, minify, transforms)
 }
 
 function runtimeEffects(effects, lifetimes = false) {
@@ -385,6 +386,15 @@ function runtimeEffects(effects, lifetimes = false) {
 
 async function writeJavaScript(file, source, minify, define) {
   const code = minify || define ? (await transform(source, { define, format: "esm", legalComments: "none", minify, target: "es2022" })).code : source
+  await writeFile(file, code)
+}
+
+async function writeRouteEntry(file, source, minify, transforms) {
+  let code = transforms.get(source)
+  if (code === undefined) {
+    code = minify ? (await transform(source, { format: "esm", legalComments: "none", minify, target: "es2022" })).code : source
+    transforms.set(source, code)
+  }
   await writeFile(file, code)
 }
 

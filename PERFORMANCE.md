@@ -2,6 +2,19 @@
 
 Reproducibility classes: `npm run benchmark` and `npm run benchmark:keyed` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.8.25 Route Entry Transform Reuse
+
+Measured UTC 2026-08-10 on an Intel Core i5-9500 with 6 cores, Linux 6.17.0-19-generic, Node 24.14.0, and npm 11.9.0. The public 1,000-product storefront fixture at `f2d5be1` generated 1,011 pages against the `0.8.24` tree plus the same compiler-boundary safety changes in both targets.
+
+One warm-up followed by seven alternating clean builds compared repeated esbuild transformation with a build-local exact-source result map used only by generated native, parameter, and effect route entries. The median decreased from 13,851.0 ms to 12,581.4 ms, a 9.17% improvement. Every emitted path and SHA-256 hash matched. The catalog was generated once before timing; `dist` and `.kudzu` cleanup and manifest hashing remained outside timing.
+
+```text
+repeated transform: [13437.4,13851.0,13844.9,13440.8,13906.1,14310.0,14901.0]
+exact-source reuse: [12480.2,12826.9,12777.9,12615.9,11869.7,12121.3,12581.4]
+```
+
+The map lasts for one build and keys the complete generated source after route-relative URLs are resolved. It is not a persistent or generalized JavaScript transform cache. The result measures the large repeated-route fixture on this Linux machine and is not directly comparable to the Apple M3 `0.8.24` build medians below.
+
 ## 0.8.24 Measured Goal B Optimizations
 
 Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, npm 11.18.0, and Chrome 151.0.7922.76. Baseline tag `v0.8.23` at `39a065b` and the `0.8.24` candidate used the same local volume and dependencies.
@@ -135,13 +148,15 @@ This external fixture is a candidate-finding and paired Kudzu regression benchma
 
 ## 0.8.22 Versioned Compiler Foundation
 
-Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.21` at `ff38092` and the current `0.8.22` compiler candidate used the same local volume and identical installed dependencies.
+Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.21` at `ff38092` and the then-current `0.8.22` compiler candidate used the same local volume and identical installed dependencies.
 
-The candidate implementation patch over `v0.8.21` had SHA-256 `e1d89c97dd8dfb60d41ae9c14ac64dfbb50466e024f80076f430ae9e725fb28f`, produced by:
+The final `v0.8.21` to `v0.8.22` tagged implementation patch has reproducible SHA-256 `5fbdc3658b8c0d4d568c7ccdbf89c2c1c20c3a275ff9d0fd20e439b479d60530`, produced by:
 
 ```bash
-git diff --binary v0.8.21 -- framework/build.mjs framework/compiler/list-runtime-codegen.mjs framework/compiler/param-codegen.mjs framework/compiler/route-capability-planner.mjs framework/compiler/runtime-codegen.mjs framework/core.mjs framework/core.d.ts | shasum -a 256
+git diff --binary v0.8.21 v0.8.22 -- framework/build.mjs framework/compiler/list-runtime-codegen.mjs framework/compiler/param-codegen.mjs framework/compiler/route-capability-planner.mjs framework/compiler/runtime-codegen.mjs framework/core.mjs framework/core.d.ts | shasum -a 256
 ```
+
+The previously recorded candidate hash does not match this tagged patch, and no intermediate commit exists between the two release tags. The measured candidate is therefore not independently identifiable as the final `v0.8.22` tree from repository history.
 
 Both targets received one warm-up followed by seven clean `worker-effects` production builds in alternating round-robin order. Cleanup remained outside timing. Both medians were exactly 250.1 ms; the distributions overlap and establish no material change.
 
@@ -159,13 +174,15 @@ Before release-content updates, the complete 135-page site and the `bindings`, `
 
 ## 0.8.21 Explicit Effect Ownership
 
-Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.20` at `7fb6e37` and the current `0.8.21` compiler candidate used the same local volume and identical installed dependencies.
+Measured UTC 2026-08-09 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, and npm 11.18.0. Baseline tag `v0.8.20` at `7fb6e37` and the then-current `0.8.21` compiler candidate used the same local volume and identical installed dependencies.
 
-The candidate implementation patch over `v0.8.20` had SHA-256 `ac0b1921bbbfb72f45d9b53338bec96bf9ab3d1680446148dfd8548b871bcbe4`, produced by:
+The final `v0.8.20` to `v0.8.21` tagged implementation patch has reproducible SHA-256 `c78159ccce1f88a5ed06445d5e0b113953576529a5845e7772ab386b8adf166a`, produced by:
 
 ```bash
-git diff --binary v0.8.20 -- framework/build.mjs framework/compiler/descriptor-session.mjs framework/compiler/effect-analysis.mjs framework/compiler/ir/module-ir.mjs framework/compiler/worker-compiler.mjs framework/core.d.ts | shasum -a 256
+git diff --binary v0.8.20 v0.8.21 -- framework/build.mjs framework/compiler/descriptor-session.mjs framework/compiler/effect-analysis.mjs framework/compiler/ir/module-ir.mjs framework/compiler/worker-compiler.mjs framework/core.d.ts | shasum -a 256
 ```
+
+The previously recorded candidate hash does not match this tagged patch, and no intermediate commit exists between the two release tags. The measured candidate is therefore not independently identifiable as the final `v0.8.21` tree from repository history.
 
 Both targets received one warm-up followed by seven clean `worker-effects` production builds in alternating round-robin order. Cleanup remained outside timing. The distributions overlap; the 1.02% lower candidate median does not establish a material change.
 

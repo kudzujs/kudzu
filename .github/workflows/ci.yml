@@ -10,8 +10,28 @@ permissions:
   contents: read
 
 jobs:
+  node-22:
+    runs-on: ubuntu-latest
+    env:
+      KUDZU_SKIP_BROWSER: "1"
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run test:package
+
   test:
     runs-on: ubuntu-latest
+    env:
+      KUDZU_REQUIRE_CHROME: "1"
 
     steps:
       - uses: actions/checkout@v6

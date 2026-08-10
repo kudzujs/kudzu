@@ -250,6 +250,12 @@ This queue orders the next investigations by general migration value. Start only
 - No-op normalization passes skip redundant recursive parent repair, reducing the measured 1,000-product build median by 6.26% with equivalent output.
 - Identical generated route-entry transformation remains the next evidence-backed Goal B investigation; it is not implemented without an isolated benchmark.
 
+### Completed In 0.8.25
+
+- Seven alternating builds of the 1,000-product, 1,011-page fixture authorized build-local exact-source reuse for identical generated native, parameter, and effect route-entry transforms, improving the median by 9.17% with identical deploy paths and bytes.
+- Normalization pass results and finalized ModuleIR cross-slot references now fail closed at their compiler boundaries.
+- Node 22 compatibility, required Chrome coverage, packed-package installation, version alignment, and post-publish registry checks are explicit release gates.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

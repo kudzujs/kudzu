@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { existsSync } from "node:fs"
+import { existsSync as fileExistsSync } from "node:fs"
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import { gzipSync } from "node:zlib"
@@ -11,6 +11,11 @@ import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
 import { createNativeContext } from "../framework/native-runtime.js"
+
+const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
+const existsSync = path => process.env.KUDZU_SKIP_BROWSER && chromePaths.includes(path) ? false : fileExistsSync(path)
+
+if (process.env.KUDZU_REQUIRE_CHROME && !chromePaths.some(fileExistsSync)) throw new Error("Chrome is required for framework browser tests; set CHROME_BIN to an executable Chrome or Chromium binary")
 
 // Keep fixture listeners outside the ephemeral range used by headless Chrome.
 let browserPort = 10000 + process.pid % 10000
@@ -30,7 +35,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.24/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.25/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -47,9 +52,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.24"/)
-  assert.match(release, /Kudzu 0\.8\.24.*Find the repeated work.*Remove only that/s)
-  assert.match(release, /MEASURE · NARROW · VERIFY.*GOAL B.*npm install @kudzujs\/core@\^0\.8\.24/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.25"/)
+  assert.match(release, /Kudzu 0\.8\.25.*Transform once.*Prove every boundary/s)
+  assert.match(release, /REUSE · VALIDATE · RELEASE.*GOAL B.*npm install @kudzujs\/core@\^0\.8\.25/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)

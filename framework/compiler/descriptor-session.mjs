@@ -2,7 +2,7 @@ import ts from "typescript"
 import { createComponentAnalysis } from "./analysis/component-analysis.mjs"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
-import { createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerEffect, registerKeyedBlock, registerModuleHandler } from "./ir/module-ir.mjs"
+import { assertModuleIRReferences, createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerEffect, registerKeyedBlock, registerModuleHandler } from "./ir/module-ir.mjs"
 
 export function createSemanticArtifact(file) {
   return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file) }
@@ -222,6 +222,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     const imports = [...callbacks, ...reactiveBindings].flatMap(entry => entry.imports ?? []).map(importRecord)
     moduleIR.imports = [...new Map(imports.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry])).values()]
     moduleIR.clientModules = [...clientModules]
+    assertModuleIRReferences(moduleIR)
   }
 
   function source(node) {

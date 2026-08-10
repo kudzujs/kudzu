@@ -31,6 +31,8 @@ The maintained benchmark measured a 26.3 ms restoration median. For top-level fl
 
 [`SimYunSup/kudzu-based-bench`](https://github.com/SimYunSup/kudzu-based-bench) then supplied a 1,000-product, 1,011-page build fixture. Twenty-one alternating clean builds measured 6,684.7 ms for clean `0.8.23` and 6,266.5 ms after skipping parent-pointer repair for normalization passes that return the unchanged AST, a 6.26% improvement. The output retained 3,056 files and only the separately optimized `kudzu-list.js` changed. Full raw arrays and limitations are recorded in [`PERFORMANCE.md`](../../PERFORMANCE.md).
 
+The `0.8.25` investigation isolated repeated esbuild work by comparing ordinary transformation with build-local reuse keyed by the complete generated route-entry source. Seven alternating 1,011-page builds measured 13,851.0 ms and 12,581.4 ms medians, a 9.17% improvement, with identical emitted paths and hashes. The retained implementation applies only to native, parameter, and effect route entries and keeps no data beyond one build.
+
 ## Candidate Order
 
 1. Profile the largest measured loss in a maintained fixture.
@@ -40,7 +42,7 @@ The maintained benchmark measured a 26.3 ms restoration median. For top-level fl
 
 Known historical pressure points include large keyed-list removal/reconciliation and broad runtime specialization, but neither is authorized without a reproduced current loss.
 
-The next evidence-backed investigation is repeated esbuild transformation of byte-identical generated route entries. The 1,000-product fixture emitted identical effect entries and identical native entries across product routes, but their transformation cost has not yet been isolated from rendering and filesystem work. Reuse transformed source only if an interleaved benchmark establishes a material gain while every route file, URL, define, and byte remains unchanged. Do not add a generalized cache.
+Repeated esbuild transformation of byte-identical generated route entries cleared the materiality and output gates. Further optimization is not authorized until another current fixture isolates a measured loss; do not broaden the route-entry map into a generalized cache.
 
 ## Benchmark Contract
 

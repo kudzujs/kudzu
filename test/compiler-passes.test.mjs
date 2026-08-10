@@ -10,7 +10,7 @@ import { generateCommandBehavior } from "../framework/compiler/codegen/command-c
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
 import { analyzeEffectDependencies } from "../framework/compiler/effect-analysis.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
-import { createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock } from "../framework/compiler/ir/module-ir.mjs"
+import { assertModuleIRReferences, createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock } from "../framework/compiler/ir/module-ir.mjs"
 import { generateListRuntime } from "../framework/compiler/list-runtime-codegen.mjs"
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
 import { createCommandSpecializer } from "../framework/compiler/optimize/command-specialization.mjs"
@@ -34,6 +34,11 @@ test("repairs parents before the next normalization pass", () => {
     }
   ])])
   result.dispose()
+})
+
+test("rejects normalization passes that do not return a SourceFile", () => {
+  const source = ts.createSourceFile("pass.ts", "", ts.ScriptTarget.Latest, true)
+  assert.throws(() => applyNormalizationPasses(source, [() => source.statements]), /Normalization pass 1 must return a TypeScript SourceFile/)
 })
 
 test("returns an explicit JSON-safe source result without writing files", () => {
@@ -204,6 +209,12 @@ test("registers JSON-safe effect ownership with handler and Worker edges", () =>
   assert.equal(moduleIR.effects[0].workers[0].root, "workers/task.worker.ts")
   assertJsonData(moduleIR)
   assert.deepEqual(JSON.parse(JSON.stringify(moduleIR)), moduleIR)
+})
+
+test("rejects dangling ModuleIR slot references", () => {
+  const moduleIR = createModuleIR("src/pages/broken.tsx")
+  moduleIR.handlers.push({ slot: 0, kind: "commands", commands: [{ operation: "set", signal: 0, value: 1 }] })
+  assert.throws(() => assertModuleIRReferences(moduleIR), /handler 0 command signal references missing slot 0/)
 })
 
 test("classifies mixed signal and derived effect dependencies without deriving signals", () => {

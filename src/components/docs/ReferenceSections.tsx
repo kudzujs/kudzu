@@ -17,11 +17,11 @@ export function ArchitectureSection() {
   -> complete HTML + route-specific capability ESM`} />
     <div className="docs-columns">
       <div><strong>Normalize</strong><p>Focused passes lower supported React, Router, browser-signal, resource-lifecycle, and render-control shapes. Parent pointers are repaired after structural changes.</p></div>
-      <div><strong>Analyze</strong><p>The no-write source compiler finalizes JSON-safe ModuleIR, RouteIR, and CapabilityIR results and rejects unsupported syntax with source locations.</p></div>
+      <div><strong>Analyze</strong><p>The no-write source compiler finalizes JSON-safe ModuleIR and rejects unsupported syntax with source locations. Build-time rendering emits RouteIR, then pure capability planning projects CapabilityIR.</p></div>
       <div><strong>Generate</strong><p>Dedicated codegen modules produce native handlers, reactive evaluators, keyed-list expressions, effects, parameters, and navigation capabilities.</p></div>
       <div><strong>Exclude</strong><p>Final route plans remove unreferenced handlers and Workers. Static routes emit complete HTML and no browser JavaScript.</p></div>
     </div>
-    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs. The <a href="https://github.com/kudzujs/kudzu/tree/v0.8.24/docs/next-architecture">architecture packet</a> records the current boundaries and the active optimization Goal B, distinct from the completed historical Worker capability milestone.</p>
+    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs. The <a href="https://github.com/kudzujs/kudzu/tree/v0.8.25/docs/next-architecture">architecture packet</a> records the current boundaries and the active optimization Goal B, distinct from the completed historical Worker capability milestone.</p>
   </section>
 }
 
@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.24 results</strong><span>Goal B retains only repeated improvements that preserve complete HTML, zero-JavaScript static routes, DOM identity, cleanup, and deterministic output. Raw arrays, environments, artifact lists, and limitations are retained in PERFORMANCE.md.</span></div>
+    <div className="docs-callout"><strong>Current 0.8.25 results</strong><span>Goal B retains only repeated improvements that preserve complete HTML, zero-JavaScript static routes, DOM identity, cleanup, and deterministic output. Raw arrays, environments, artifact lists, and limitations are retained in PERFORMANCE.md.</span></div>
     <h3>Large keyed restoration</h3>
     <BenchmarkTable columns={["Target", "Append 33", "Filter", "Restore 1,999", "Reverse", "JS raw / gzip"]} rows={[
       ["0.8.23 baseline", "2.6 ms", "4.6 ms", "26.3 ms", "6.2 ms", "28,308 B / 10,937 B"],
@@ -70,12 +70,18 @@ export function BenchmarksSection() {
       ["0.8.24", "1,011", "6,266.5 ms", "3,056", "0 B"]
     ]} />
     <p>Twenty-one alternating clean builds of the public <a href="https://github.com/SimYunSup/kudzu-based-bench">kudzu-based-bench</a> fixture measured a 6.26% improvement after no-op normalization passes stopped repeating full-AST parent repair. The catalog is generated once outside timing; both revisions run the same complete Kudzu build. Published cross-framework headline numbers are not used for this paired Kudzu claim.</p>
+    <h3>Repeated route-entry transforms</h3>
+    <BenchmarkTable columns={["Target", "Pages", "Build median", "Deploy output"]} rows={[
+      ["Repeated transform", "1,011", "13,851.0 ms", "Baseline"],
+      ["0.8.25 exact-source reuse", "1,011", "12,581.4 ms", "Byte-identical"]
+    ]} />
+    <p>Seven alternating clean builds on the recorded Linux environment measured a 9.17% improvement by reusing esbuild output only when the complete generated native, parameter, or effect route-entry source matches. The map lasts for one build; route-relative URLs are resolved before lookup.</p>
     <h3>Tracked Worker fixture</h3>
     <CodeBlock language="shell" code={`npm run benchmark
 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
   node --test --test-name-pattern="bundles relative TypeScript Workers" test/framework.test.mjs`} />
     <p>On Node 22.23.2, the 0.8.24 candidate retained a 907 B raw / 477 B gzip Worker graph and a 12,148 B raw / 5,411 B aggregate gzip window graph. The maintained benchmark and focused Chrome test verify build output, throughput, cadence, bounded history, stale writes, and 30-cycle start/termination and listener ownership.</p>
-    <div className="docs-callout"><strong>Historical comparison</strong><span>This dated 0.7.12 snapshot retains raw arrays in PERFORMANCE.md. It is not a current 0.8.24 framework ranking.</span></div>
+    <div className="docs-callout"><strong>Historical comparison</strong><span>This dated 0.7.12 snapshot retains raw arrays in PERFORMANCE.md. It is not a current 0.8.25 framework ranking.</span></div>
     <h3>Historical 0.7.12 keyed local state</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
       ["Kudzu", "Yes", "8,610 B", "238 ms", "0.5 ms", "4.2 ms", "1.3 ms", "1.9 ms"],
@@ -84,7 +90,7 @@ CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
       ["React CSR", "No", "59,564 B", "186 ms", "2.1 ms", "7.5 ms", "2.4 ms", "1.9 ms"]
     ]} />
     <p>This corrected 0.7.12 rerun used 31 rotating unthrottled fresh Chrome 150 profiles per target and in-page <code>MutationObserver</code> completion timing. All 124 profiles passed row/input identity and removal/re-add reset checks. Kudzu led edit, tied Vue on remove, beat React and Svelte on reverse, and trailed Vue by 0.4 ms on reverse. A separate seven-profile 4x run measured Kudzu at 2.3/17.3/5.9/8.6 ms for edit/reverse/remove/re-add. The discarded external-CDP polling method added roughly 42–49 ms to reverse and unstable phase delay to short operations. Kudzu and the CSR targets have different initial-delivery architectures, so JavaScript, total output, and build values are not equivalent loading comparisons. The <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">raw performance record</a> contains environment, versions, methodology, caveats, and corrected distributions.</p>
-    <p>Older excluded-workspace snapshots remain in the <a href="https://github.com/kudzujs/kudzu/blob/v0.8.24/PERFORMANCE.md">raw performance archive</a> for provenance, but are omitted here because their runners and raw arrays are unavailable.</p>
+    <p>Older excluded-workspace snapshots remain in the <a href="https://github.com/kudzujs/kudzu/blob/v0.8.25/PERFORMANCE.md">raw performance archive</a> for provenance, but are omitted here because their runners and raw arrays are unavailable.</p>
   </section>
 }
 

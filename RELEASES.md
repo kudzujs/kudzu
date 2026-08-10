@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.25 - Exact route-entry reuse
+
+Kudzu 0.8.25 removes measured repeated esbuild work from large multi-route builds, strengthens compiler boundary validation, and makes package publication gates explicit without changing generated deploy bytes or browser behavior.
+
+### Changed in 0.8.25
+
+- Generated native, parameter, and effect route entries reuse one build-local esbuild result when their complete source is byte-identical after route-relative URLs are resolved.
+- Normalization passes now declare an immutable-root contract and reject any result that is not a TypeScript `SourceFile`.
+- Finalized ModuleIR rejects invalid local slots and dangling signal, handler, derived, keyed-parent, keyed-child, keyed-selector, and ownership references.
+- CI covers the minimum Node 22 runtime and the Node 24 Chrome suite, while release jobs exercise the packed package and verify package, lockfile, tag, and registry versions.
+- Missing `0.8.21`, `0.8.22`, and `0.8.23` release pages and their canonical sitemap entries are restored.
+
+### Performance
+
+- Seven alternating clean builds of the public 1,000-product, 1,011-page fixture measured 12,581.4 ms with exact-source reuse versus 13,851.0 ms with repeated transformation, a 9.17% improvement.
+- Every deploy path and SHA-256 hash matched. The map is scoped to one build and only the three generated route-entry families; no persistent or generalized transform cache was added.
+- Raw arrays, environment, fixture revision, methodology, and limitations are recorded in `PERFORMANCE.md`.
+
+### Validation
+
+- `npm run check`, `npm run test:package`, and all 174 tests pass.
+- The packed-package smoke test installs the produced tarball into a temporary consumer, imports both public entry points, runs the packed CLI, and verifies generated HTML.
+- The external 1,011-page benchmark produced byte-identical deploy manifests across both targets.
+- No accepted syntax, public runtime API, VDOM, hydration, scheduler, retained browser component tree, or `create-kudzu` template change was added.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.25
+```
+
 ## 0.8.24 - Measured Goal B optimizations
 
 Kudzu 0.8.24 starts the architecture optimization Goal B with two benchmark-proven optimizations for large keyed restoration and large multi-route builds while preserving complete HTML, direct DOM ownership, and existing compiler output. This is distinct from the completed historical Worker capability milestone in `GOAL_B.md`.
