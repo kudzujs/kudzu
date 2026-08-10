@@ -1,5 +1,35 @@
 # Kudzu Releases
 
+## 0.8.30 - Graph failure diagnostics
+
+Kudzu 0.8.30 completes P0.3 by making ordinary source-graph failures stop at the original importer before compilation, generated module loading, or `.kudzu` paths can obscure the source error.
+
+### Changed in 0.8.30
+
+- Reachability validates every relative runtime import and re-export in an ordinary reachable module instead of silently dropping unresolved edges.
+- Missing bound imports, side-effect imports, reachable helper imports, named/default forwarding, and `export *` report the importer file, line, column, and written specifier.
+- Every ordinary dynamic `import()` form is rejected during graph discovery, including relative, package, template-literal, and computed specifiers.
+- Ordinary and Worker traversal retain separate ownership, so Worker-only modules continue through Worker-specific graph diagnostics and cleanup rules.
+- Type-only edges and unreachable migration source remain excluded and cannot block a build.
+
+### Compiler Boundary
+
+- `ordinaryRuntimeDependencies()` is the single pre-codegen validator for ordinary runtime graph edges; downstream import rewriting remains a fail-closed assertion.
+- This release validates whether a relative runtime edge resolves to exactly one TypeScript file. Whether an existing target exports a requested name remains deferred to the planned module-symbol graph.
+- P0.3 adds no accepted source syntax, ProjectSession, export cache, public API, browser runtime, or generated capability bytes. P0.4 async native-handler invalidation is next.
+
+### Validation
+
+- `npm run check`, `npm test`, `npm run test:package`, and all 189 tests pass.
+- Focused in-memory and build fixtures cover missing page imports, reachable helper imports, re-exports, relative/package/computed dynamic imports, type-only exclusion, unreachable exclusion, and absence of generated `.kudzu` paths.
+- Existing Worker graph diagnostics, React/Router/Zustand migrations, keyed ownership, effects, navigation, and static-route zero-JavaScript behavior remain covered.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.30
+```
+
 ## 0.8.29 - Symbol-aware descriptor discovery
 
 Kudzu 0.8.29 completes P0.2 by moving native handler, effect, binding, and list descriptor decisions from identifier spelling onto the source-local binding index introduced in 0.8.28.

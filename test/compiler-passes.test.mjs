@@ -19,7 +19,7 @@ import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime } from "../framework/compiler/runtime-codegen.mjs"
-import { compileSource } from "../framework/compiler/source-compiler.mjs"
+import { compileSource, reachableSourceFiles } from "../framework/compiler/source-compiler.mjs"
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
 
 const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
@@ -66,6 +66,35 @@ export default function Page() {
   assert.deepEqual(result.importedAssets, [])
   assert.deepEqual(JSON.parse(JSON.stringify(result)), result)
   assert.equal(existsSync(output), false)
+})
+
+test("reports ordinary graph failures at the importer source", () => {
+  const page = resolve("src/pages/graph.tsx")
+  const helper = resolve("src/graph-helper.ts")
+  const sourceFiles = new Set([page, helper])
+  const failure = (pageSource, helperSource = "export const value = 1") => {
+    try {
+      reachableSourceFiles([page], sourceFiles, new Map([[page, pageSource], [helper, helperSource]]))
+      assert.fail("Expected graph validation to fail")
+    } catch (error) {
+      assert.doesNotMatch(error.message, /\.kudzu/)
+      return error.message
+    }
+  }
+
+  assert.match(failure('import "./missing"\nexport default function Page() {}'), /src\/pages\/graph\.tsx:1:\d+ Relative runtime import "\.\/missing" must resolve to one TypeScript file in src\//)
+  assert.match(failure('import { value } from "..\/graph-helper"\nexport default function Page() {}', 'import "./missing"\nexport const value = 1'), /src\/graph-helper\.ts:1:\d+ Relative runtime import "\.\/missing" must resolve to one TypeScript file in src\//)
+  for (const declaration of ['export { value } from "./missing"', 'export * from "./missing"', 'export { default } from "./missing"']) {
+    assert.match(failure('import { value } from "..\/graph-helper"\nexport default function Page() {}', declaration), /src\/graph-helper\.ts:1:\d+ Relative runtime re-export "\.\/missing" must resolve to one TypeScript file in src\//)
+  }
+  for (const expression of ['import("./graph-helper")', 'import("typescript")', 'import(`./graph-helper`)', "import(path)"]) {
+    assert.match(failure(`export default function Page() { return ${expression} }`), /src\/pages\/graph\.tsx:1:\d+ Dynamic import .* is not supported in ordinary source modules/)
+  }
+
+  assert.deepEqual(reachableSourceFiles([page], sourceFiles, new Map([
+    [page, 'import type { Missing } from "./missing"\nexport default function Page() {}'],
+    [helper, 'import "./missing"']
+  ])), [page])
 })
 
 test("normalizes render control flow without changing lowercase helpers", () => {

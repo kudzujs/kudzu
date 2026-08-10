@@ -1,5 +1,6 @@
 import { dirname, extname, join, relative, resolve } from "node:path"
 import ts from "typescript"
+import { sourceNodeError } from "./ast-helpers.mjs"
 
 const root = process.cwd()
 
@@ -22,6 +23,32 @@ export function runtimeModuleReference(node) {
   if (clause.isTypeOnly) return false
   if (clause.name || clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) return true
   return clause.namedBindings?.elements.some(entry => !entry.isTypeOnly) ?? false
+}
+
+export function ordinaryRuntimeDependencies(file, sourceFile, sourceFiles, isStaticImport) {
+  const dependencies = []
+  const rejectDynamicImports = node => {
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const argument = node.arguments[0]
+      const specifier = node.arguments.length === 1 && ts.isStringLiteralLike(argument) ? JSON.stringify(argument.text) : argument?.getText(sourceFile) ?? "<missing>"
+      throw sourceNodeError(node, sourceFile, `Dynamic import ${specifier} is not supported in ordinary source modules`)
+    }
+    ts.forEachChild(node, rejectDynamicImports)
+  }
+  rejectDynamicImports(sourceFile)
+  for (const node of sourceFile.statements) {
+    if ((!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) || !runtimeModuleReference(node) || !node.moduleSpecifier || !ts.isStringLiteral(node.moduleSpecifier)) continue
+    const specifier = node.moduleSpecifier
+    if (!specifier.text.startsWith(".") || isStaticImport(specifier.text)) continue
+    try {
+      dependencies.push(resolveSourceImport(file, specifier.text, sourceFiles))
+    } catch (error) {
+      const detail = error.message.slice(error.message.indexOf("Relative import"))
+      const edge = ts.isExportDeclaration(node) ? "re-export" : "import"
+      throw sourceNodeError(specifier, sourceFile, detail.replace("Relative import", `Relative runtime ${edge}`))
+    }
+  }
+  return dependencies
 }
 
 export function parseSourceFile(file, source) {

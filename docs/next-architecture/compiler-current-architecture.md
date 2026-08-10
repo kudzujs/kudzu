@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.29` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.30` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -8,7 +8,7 @@ This maps the current `0.8.29` architecture built on the completed `0.8.23` Goal
 |---|---|---|
 | CLI entry | [`bin/kudzu.mjs`](../../bin/kudzu.mjs) | Dispatches build and development commands. |
 | Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()` | Coordinates config, discovery, source compilation, RouteIR rendering, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. |
-| Reachability/import resolution | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `reachableSourceFiles()`; [`framework/compiler/source-graph.mjs`](../../framework/compiler/source-graph.mjs), `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, and excludes unreachable migration source. |
+| Reachability/import resolution | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `reachableSourceFiles()`; [`framework/compiler/source-graph.mjs`](../../framework/compiler/source-graph.mjs), `ordinaryRuntimeDependencies()`, `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, excludes unreachable migration source, and fails unresolved ordinary edges or dynamic imports at the importer source location before code generation. |
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every structural change. Imported source uses the same pipeline. |
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
 | Shared AST/scope helpers | [`framework/compiler/ast-helpers.mjs`](../../framework/compiler/ast-helpers.mjs) | Binding, scope, reference, effect-return, and source-location analysis. |

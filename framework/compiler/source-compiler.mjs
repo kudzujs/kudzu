@@ -18,7 +18,7 @@ import { assetPath, relativeModulePath, withBase } from "./path-helpers.mjs"
 import { createReactMigrationPass, reactMemoExpression } from "./react-migration-pass.mjs"
 import { normalizeRenderControlFlow } from "./render-control-pass.mjs"
 import { createRouterPass } from "./router-pass.mjs"
-import { parseSourceFile, resolveSourceImport, runtimeModuleReference } from "./source-graph.mjs"
+import { ordinaryRuntimeDependencies, parseSourceFile, resolveSourceImport, runtimeModuleReference } from "./source-graph.mjs"
 import { createWorkerCompiler } from "./worker-compiler.mjs"
 import { createZustandPass } from "./zustand-pass.mjs"
 
@@ -92,20 +92,27 @@ function emittedPackageReference(source, file, packages) {
 
 export function reachableSourceFiles(entries, sourceFiles, sourceIndex) {
   const reachable = new Set()
-  const queue = [...entries]
+  const ordinary = new Set()
+  const workers = new Set()
+  const queue = entries.map(file => ({ file, owner: "ordinary" }))
   while (queue.length) {
-    const file = queue.pop()
-    if (reachable.has(file)) continue
+    const { file, owner } = queue.pop()
+    const visited = owner === "ordinary" ? ordinary : workers
+    if (visited.has(file)) continue
+    visited.add(file)
     reachable.add(file)
     const sourceFile = parseSourceFile(file, sourceIndex.get(file))
+    if (owner === "ordinary") for (const target of ordinaryRuntimeDependencies(file, sourceFile, sourceFiles, isStaticImport)) queue.push({ file: target, owner: target.endsWith(".worker.ts") ? "worker" : owner })
     const visit = node => {
-      const specifier = (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && runtimeModuleReference(node) && node.moduleSpecifier
-      if (specifier && ts.isStringLiteral(specifier) && specifier.text.startsWith(".") && !isStaticImport(specifier.text)) {
-        try { queue.push(resolveSourceImport(file, specifier.text, sourceFiles)) } catch {}
+      if (owner === "worker") {
+        const specifier = (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && runtimeModuleReference(node) && node.moduleSpecifier
+        if (specifier && ts.isStringLiteral(specifier) && specifier.text.startsWith(".") && !isStaticImport(specifier.text)) {
+          try { queue.push({ file: resolveSourceImport(file, specifier.text, sourceFiles), owner }) } catch {}
+        }
       }
       const worker = workerCompiler.candidate(node, sourceFile)
       if (worker && ts.isStringLiteral(worker.url.arguments[0]) && worker.url.arguments[0].text.endsWith(".worker.ts")) {
-        try { queue.push(resolveSourceImport(file, worker.url.arguments[0].text, sourceFiles)) } catch {}
+        try { queue.push({ file: resolveSourceImport(file, worker.url.arguments[0].text, sourceFiles), owner: "worker" }) } catch {}
       }
       ts.forEachChild(node, visit)
     }
@@ -2667,15 +2674,6 @@ function hasFrameworkImport(sourceFile, name) {
 
 function packageImportBindings(sourceFile) {
   const bindings = new Map()
-  const rejectDynamic = node => {
-    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-      const specifier = node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0]) ? node.arguments[0].text : null
-      if (specifier === null) throw sourceNodeError(node, sourceFile, "Dynamic import specifiers are not supported")
-      if (!specifier.startsWith(".")) throw sourceNodeError(node, sourceFile, `Dynamic package import ${JSON.stringify(specifier)} is not supported`)
-    }
-    ts.forEachChild(node, rejectDynamic)
-  }
-  rejectDynamic(sourceFile)
   for (const node of sourceFile.statements) {
     if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) continue
     const target = node.moduleSpecifier.text

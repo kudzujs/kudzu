@@ -2,7 +2,7 @@
 
 ## Status
 
-Active execution plan after `0.8.29`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Active execution plan after `0.8.30`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
 [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. This plan is authoritative for the order and completion evidence of compiler generalization, large-application foundations, compatibility boundaries, AI tooling, and scale validation. If implementation evidence changes a boundary, update this document before broadening a patch.
 
@@ -131,7 +131,8 @@ This is an incremental evolution of the current repository:
 
 - [x] P0.1 Source-local binding index is complete in `0.8.28`. Reactive binding capture/import discovery and lowering use the index only when the complete expression is indexed; synthesized keyed expressions retain the existing fail-safe path. Focused scope tests, a 1,000-reference guard, browser integration, all 185 tests, and packed-package smoke pass.
 - [x] P0.2 Symbol-aware descriptor discovery is complete in `0.8.29`. Native handler, effect, remaining binding, list evaluator, optimized-command, and effect-resource discovery/lowering use the source-local binding index when it owns the complete AST; synthesized trees retain the existing fail-safe path. Focused lexical-shadow, JSON-safe IR, resource-ownership checks, all 187 tests, and packed-package smoke pass.
-- [ ] P0.3 Graph diagnostics is next. It must fail unresolved relative imports/re-exports and ordinary dynamic imports at the importer source location without broadening into ProjectSession or cross-module symbol work.
+- [x] P0.3 Graph diagnostics is complete in `0.8.30`. Reachable ordinary modules validate relative runtime imports/re-exports and reject every dynamic `import()` at the importer source location before compilation or generated module loading. Ordinary and Worker traversal retain separate ownership, type-only and unreachable edges remain excluded, focused page/helper/re-export/dynamic fixtures pass with all 189 tests and packed-package smoke, and no export-symbol graph, ProjectSession, runtime, or public API is added.
+- [ ] P0.4 Async native handler ownership is next. Pending handlers must not write after route or DOM ownership is released.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -455,4 +456,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 The first implementation PR is **PR 1: Source-Local Binding Index**. It is compile-time only, adds no browser bytes or public API, fixes an existing correctness class, and creates the stable semantic foundation required by component graphs, state operations, cross-module analysis, compatibility adapters, structured diagnostics, and AI explanation tooling.
 
-The next PR is **PR 3: Graph Failure Diagnostics**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+The next PR is **PR 4: Async Native Handler Invalidation**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.

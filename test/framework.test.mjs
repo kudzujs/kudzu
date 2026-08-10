@@ -57,7 +57,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.29/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.30/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -74,9 +74,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.29"/)
-  assert.match(release, /Kudzu 0\.8\.29.*Resolve the symbol.*Lower the descriptor/s)
-  assert.match(release, /DISCOVER · VERIFY · LOWER.*DESCRIPTOR IDENTITY.*npm install @kudzujs\/core@\^0\.8\.29/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.30"/)
+  assert.match(release, /Kudzu 0\.8\.30.*Fail at the source.*Before output exists/s)
+  assert.match(release, /TRACE · LOCATE · STOP.*GRAPH DIAGNOSTICS.*npm install @kudzujs\/core@\^0\.8\.30/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -115,6 +115,23 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   if (chrome) {
     await runReleaseNotesBrowserTest(chrome)
     await runDocsListBrowserTest(chrome)
+  }
+})
+
+test("reports ordinary source graph failures before generated module loading", () => {
+  const cases = [
+    ["graph-invalid-page-import", /src\/pages\/index\.tsx:2:\d+ Relative runtime import "\.\/missing"/],
+    ["graph-invalid-helper-import", /src\/helper\.ts:2:\d+ Relative runtime import "\.\/missing"/],
+    ["graph-invalid-reexport", /src\/barrel\.ts:2:\d+ Relative runtime re-export "\.\/missing"/],
+    ["graph-invalid-dynamic-import", /src\/pages\/index\.tsx:2:\d+ Dynamic import "\.\.\/helper" is not supported in ordinary source modules/]
+  ]
+  for (const [name, expected] of cases) {
+    const fixture = new URL(`./fixtures/${name}`, import.meta.url)
+    const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+    const output = `${result.stdout}\n${result.stderr}`
+    assert.notEqual(result.status, 0)
+    assert.match(output, expected)
+    assert.doesNotMatch(output, /\.kudzu/)
   }
 })
 
@@ -2915,7 +2932,7 @@ test("rejects dynamic package imports", () => {
   const fixture = new URL("./fixtures/event-package-dynamic-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /Dynamic package import "typescript" is not supported/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Dynamic import "typescript" is not supported in ordinary source modules/)
 })
 
 test("compiles normal async JavaScript handlers to external ESM", async t => {
