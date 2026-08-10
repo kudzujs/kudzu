@@ -68,5 +68,13 @@ jobs:
 
       - name: Verify published versions
         run: |
-          test "$(node -p "require('./package.json').version")" = "$(npm view "@kudzujs/core@$(node -p "require('./package.json').version")" version)"
-          test "$(node -p "require('./packages/create-kudzu/package.json').version")" = "$(npm view "create-kudzu@$(node -p "require('./packages/create-kudzu/package.json').version")" version)"
+          verify() {
+            for attempt in {1..12}; do
+              test "$1" = "$(npm view "$2@$1" version 2>/dev/null)" && return
+              sleep 5
+            done
+            echo "$2@$1 was not visible in the npm registry after 60 seconds"
+            return 1
+          }
+          verify "$(node -p "require('./package.json').version")" "@kudzujs/core"
+          verify "$(node -p "require('./packages/create-kudzu/package.json').version")" "create-kudzu"
