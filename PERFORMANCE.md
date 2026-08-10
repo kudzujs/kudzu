@@ -1,6 +1,41 @@
 # Performance Records
 
-Reproducibility classes: `npm run benchmark` and `npm run benchmark:keyed` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, and `npm run benchmark:native` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+
+## 0.8.31 Async Native Handler Ownership
+
+Measured UTC 2026-08-10 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, npm 11.18.0, and Chrome 151.0.7922.76. The baseline was clean tag `v0.8.30` at `9bb5ce8`; baseline and candidate used the same installed dependencies.
+
+The implementation and maintained-check patch over `v0.8.30` had SHA-256 `c67956b67b558052885dd48a9dbe35f238b8ce042876537952355aa05b8cdc10`, produced by:
+
+```bash
+git diff --binary v0.8.30 -- framework/native-runtime.js framework/serialization.js test/fixtures/navigation/src/Shell.tsx test/fixtures/navigation/src/pages/product.tsx test/fixtures/navigation/public/browser-test.js test/framework.test.mjs test/native-performance.mjs package.json | shasum -a 256
+```
+
+The maintained browser runner built the same `test/fixtures/native-bubbling` source with each framework root. After one warm-up, 21 alternating headless Chrome processes dispatched 5,000 synchronous clicks through the real DOM listener, handler-module lookup, generated handler, state context, and queued-flush scheduling path. Both medians were 6.4 ms; the 6.1-6.8 ms baseline and 6.2-6.7 ms candidate ranges overlap, so no dispatch regression is established.
+
+```bash
+git worktree add --detach /tmp/kudzu-v0.8.30 v0.8.30
+ln -s "$PWD/node_modules" /tmp/kudzu-v0.8.30/node_modules
+BASELINE_ROOT=/tmp/kudzu-v0.8.30 RUNS=21 ITERATIONS=5000 \
+CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+npm run benchmark:native
+```
+
+```text
+0.8.30: [6.6,6.3,6.4,6.3,6.3,6.8,6.3,6.6,6.3,6.4,6.5,6.4,6.5,6.5,6.4,6.1,6.3,6.2,6.5,6.4,6.4]
+0.8.31: [6.4,6.7,6.2,6.4,6.6,6.6,6.5,6.4,6.5,6.4,6.4,6.4,6.6,6.5,6.4,6.3,6.4,6.4,6.6,6.2,6.4]
+```
+
+The maintained `native-bubbling` fixture retained the same eight JavaScript paths. The browser runner hashes every file and permits only the ownership-bearing native and capture-deserialization runtimes to change:
+
+| Artifact | 0.8.30 raw / gzip | 0.8.31 raw / gzip | Delta raw / gzip |
+|---|---:|---:|---:|
+| `assets/kudzu-native.js` | 1,528 B / 842 B | 1,715 B / 925 B | +187 B / +83 B |
+| `assets/kudzu-serialization.js` | 675 B / 381 B | 697 B / 392 B | +22 B / +11 B |
+| Complete native fixture JavaScript | 13,629 B / 6,177 B | 13,838 B / 6,271 B | +209 B / +94 B |
+
+The timing is a focused synchronous event-dispatch measurement, not a general interaction or asynchronous task benchmark. The runtime does not cancel application promises or arbitrary browser API work; it invalidates Kudzu state writes, queued commits, and captured ref resolution after the listener's DOM ownership is released.
 
 ## 0.8.26 Goal B Benchmark Hardening
 

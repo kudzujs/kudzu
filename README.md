@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.30 - Graph failure diagnostics.** Reachable ordinary modules now validate relative runtime imports and re-exports and reject dynamic `import()` at the original importer location before generated module loading. Worker ownership, type-only edges, and unreachable source remain distinct. Read the [release notes](./RELEASES.md#0830---graph-failure-diagnostics), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.30), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.31 - Async native-handler ownership.** Pending async handlers lose state-write, queued-commit, and captured-ref authority when enhanced navigation or keyed/conditional removal releases their DOM owner. The focused synchronous native event-dispatch benchmark shows no material regression. Read the [release notes](./RELEASES.md#0831---async-native-handler-ownership), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.31), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

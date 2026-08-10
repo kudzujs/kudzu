@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.30` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.31` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -28,6 +28,7 @@ Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts th
 - Interactive routes ship only the capabilities they use.
 - Prefer build-time execution whenever all inputs are available during the build.
 - State setters update logical state immediately and batch direct DOM writes at synchronous-turn boundaries.
+- Async handler state writes, queued commits, and captured ref resolution end when its mounted DOM owner is released; application promises and ordinary reads may finish without reviving that ownership.
 - Preserve familiar function components, props, children, JSX, hooks, conditions, collections, and event handlers where Kudzu can compile them safely.
 - Prefer compiler specialization over asking migrated applications to replace ordinary declarative React UI with imperative DOM code.
 - Unknown browser-only data receives a static shell plus only the ESM needed to obtain and patch it.
@@ -287,6 +288,13 @@ This queue orders the next investigations by general migration value. Start only
 - Reachable ordinary source validates relative runtime imports and re-exports before compilation and reports unresolved edges at the original importer file, line, column, and specifier.
 - Ordinary dynamic `import()` fails during graph discovery rather than surviving into generated `.kudzu` modules; relative, package, template, and computed forms share one source-located boundary.
 - Ordinary and Worker graph ownership remain separate, while type-only and unreachable source stay excluded. Export-name validation, ProjectSession, runtime behavior, and public APIs remain unchanged.
+
+### Completed In 0.8.31
+
+- Pending async native handlers lose state-write, queued-commit, and captured-ref authority when enhanced navigation, keyed removal, conditional removal, or document disposal releases their mounted DOM owner.
+- Direct and captured setters cannot recreate released state, queued commits clear without touching replacement DOM, and captured object refs resolve to `null` after release.
+- Chrome coverage removes and recreates the same route and keyed row before old work resolves, proving replacement ownership stays fresh without cancelling application promises or adding a scheduler.
+- The focused 5,000-event Chrome dispatch median remains 6.4 ms; the native fixture retains its emitted paths with a measured 209 B raw / 94 B aggregate gzip correctness cost.
 
 ## Cross-Cutting Performance Gates
 

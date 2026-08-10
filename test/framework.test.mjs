@@ -57,7 +57,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.30/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.31/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -74,9 +74,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.30"/)
-  assert.match(release, /Kudzu 0\.8\.30.*Fail at the source.*Before output exists/s)
-  assert.match(release, /TRACE · LOCATE · STOP.*GRAPH DIAGNOSTICS.*npm install @kudzujs\/core@\^0\.8\.30/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.31"/)
+  assert.match(release, /Kudzu 0\.8\.31.*Let async work finish.*Drop stale ownership/s)
+  assert.match(release, /START · RELEASE · IGNORE.*NATIVE OWNERSHIP.*npm install @kudzujs\/core@\^0\.8\.31/s)
+  assert.match(release, /<title>Kudzu 0\.8\.31 - Async native-handler ownership<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.31"/)
+  assert.match(release, /94 B aggregate gzip.*P0\.5/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -111,7 +114,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.ok(plan.routes.every(route => route.version === 1 && route.states.every((state, slot) => state.slot === slot)))
   assert.deepEqual(home.events[0].commands, [["add", "s0", 1]])
   assert.deepEqual(home.events[1].commands, [["add", "s0", 1], ["add", "s0", 1]])
-  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  const chrome = chromePaths.find(existsSync)
   if (chrome) {
     await runReleaseNotesBrowserTest(chrome)
     await runDocsListBrowserTest(chrome)
@@ -270,7 +273,7 @@ test("enhances configured emitted routes sharing one layout", async t => {
   assert.doesNotMatch(navigation, /[?&](?:v|t)=|Date\.now|Math\.random/)
   assert.ok(gzipSync(navigation).length > 0)
 
-  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  const chrome = chromePaths.find(existsSync)
   assert.match(chart, /data-chart="true" data-sample="0"/)
   if (chrome) await runNavigationBrowserTest(fixture, chrome)
 })
@@ -2992,6 +2995,31 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
   await Promise.resolve()
   assert.equal(state.get("s0"), 7)
   assert.deepEqual(commits, [["s0", 6], ["s0", 7]])
+
+  let active = true
+  const releasedState = new Map([["s0", 0]])
+  const releasedCommits = []
+  const releasedContext = createNativeContext(releasedState, { count: "s0" }, (id, value) => releasedCommits.push([id, value]), native.scope, () => active)
+  const pending = handlers.handler0(releasedContext, { currentTarget: { dataset: { enabled: "yes" } } })
+  active = false
+  releasedState.delete("s0")
+  await pending
+  await Promise.resolve()
+  assert.equal(releasedState.has("s0"), false)
+  assert.deepEqual(releasedCommits, [])
+
+  globalThis.__KUDZU_CAPTURE_SETTER__ = true
+  try {
+    let captureActive = true
+    const capturedState = new Map([["s0", 0]])
+    const capturedContext = createNativeContext(capturedState, {}, () => assert.fail("inactive captured setter committed"), { update: { type: "setter", id: "s0" } }, () => captureActive)
+    captureActive = false
+    capturedContext.scope("update")(1)
+    await Promise.resolve()
+    assert.equal(capturedState.get("s0"), 0)
+  } finally {
+    delete globalThis.__KUDZU_CAPTURE_SETTER__
+  }
 })
 
 test("compiles imported reducers to functional state updates", async t => {

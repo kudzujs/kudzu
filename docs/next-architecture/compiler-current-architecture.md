@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.30` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.31` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -29,7 +29,7 @@ This maps the current `0.8.30` architecture built on the completed `0.8.23` Goal
 | Effect entry generation | [`framework/compiler/effect-codegen.mjs`](../../framework/compiler/effect-codegen.mjs) | Generates ordinary, dependency, owned, and navigable effect entries from rendered descriptors. |
 | Runtime generation | [`framework/compiler/runtime-codegen.mjs`](../../framework/compiler/runtime-codegen.mjs), [`framework/compiler/list-runtime-codegen.mjs`](../../framework/compiler/list-runtime-codegen.mjs), [`framework/compiler/param-codegen.mjs`](../../framework/compiler/param-codegen.mjs) | Consumes versioned contracts, specializes authored capability sources with fail-closed anchors, and returns source/define results without filesystem ownership. |
 | Artifact emission | `framework/build.mjs` | Selects required files from CapabilityIR and writes or bundles generated sources with esbuild. Byte-identical native, parameter, and effect route entries reuse one exact-source transform result within the current build only. |
-| Browser capabilities | [`framework/*.js`](../../framework/) | Small optional modules for commands, bindings, lists, effects, native handlers, serialization, parameters, and navigation; no component runtime. |
+| Browser capabilities | [`framework/*.js`](../../framework/) | Small optional modules for commands, bindings, lists, effects, native handlers, serialization, parameters, and navigation; native contexts invalidate writes and refs at DOM ownership release, with no component runtime. |
 | Opt-in navigation | [`framework/navigation-runtime.js`](../../framework/navigation-runtime.js) plus `framework/build.mjs` navigation configuration/emission | Fetches and validates complete same-origin documents, replaces only the marked route range, manages route/layout disposal, history, focus, finite prefetch retention, and native fallback. |
 | Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Rebuild/watch/SSE and response-only short-lived state restoration; never changes production `dist/`. |
 
@@ -67,7 +67,7 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 - `build()` still owns explicit artifact selection and filesystem writes after generator results are produced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
 - Source reachability and source compilation share one module because both consume the same normalization and import graph contracts.
-- Native handler, effect, state/setter, list, Router, React, and Zustand discovery still contains name-based analysis. The binding index is intentionally adopted one consumer family at a time; P0.2 moves the next descriptor consumers without changing cross-module semantics.
+- Imported, specialized, and compiler-synthesized trees still use conservative name/scope fallback where the source-local binding index does not own the complete AST; cross-module semantics remain deferred to stable ModuleSymbol and SiteId work.
 
 These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.
 

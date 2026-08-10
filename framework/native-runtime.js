@@ -8,18 +8,20 @@ export function registerNativeModules(entries) {
   for (const [url, module] of entries) modules.set(url, module)
 }
 
-export function createNativeContext(state, stateIds, commit, serializedScope = {}) {
+export function createNativeContext(state, stateIds, commit, serializedScope = {}, active = () => true) {
   const changed = new Set()
   let scheduled = false
 
   const flush = () => {
     scheduled = false
+    if (!active()) return changed.clear()
     const ids = [...changed]
     changed.clear()
     for (const id of ids) commit(id, state.get(id))
   }
 
   const setId = globalThis.__KUDZU_CAPTURE_SETTER__ ? (id, value) => {
+    if (!active()) return
     const current = state.get(id)
     state.set(id, typeof value === "function" ? value(current) : value)
     changed.add(id)
@@ -29,7 +31,7 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
     }
   } : undefined
 
-  const scope = Object.fromEntries(Object.entries(serializedScope).map(([name, value]) => [name, deserialize(value, id => state.get(id), globalThis.__KUDZU_CAPTURE_SETTER__ ? setId : undefined)]))
+  const scope = Object.fromEntries(Object.entries(serializedScope).map(([name, value]) => [name, deserialize(value, id => state.get(id), globalThis.__KUDZU_CAPTURE_SETTER__ ? setId : undefined, active)]))
 
   return {
     get(name) {
@@ -43,6 +45,7 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
         setId(stateIds[name], value)
         return
       }
+      if (!active()) return
       const id = stateIds[name]
       const current = state.get(id)
       state.set(id, typeof value === "function" ? value(current) : value)
@@ -61,6 +64,9 @@ if (typeof document !== "undefined") {
   registerMountHook(mount)
   registerUnmountHook(unmountNative)
   mount(document)
+  addEventListener("pagehide", event => {
+    if (!event.persisted) unmountNative(document)
+  })
 }
 
 function mountNative(root, eventNames, modules) {
@@ -71,14 +77,16 @@ function mountNative(root, eventNames, modules) {
       let encoded = node.dataset[`kNative${capitalize(eventName)}`]
       let native = JSON.parse(encoded)
       let handler
-      let context = createNativeContext(browserState, native.states, commitDom, native.scope)
+      const registration = { active: true }
+      const active = () => registration.active
+      let context = createNativeContext(browserState, native.states, commitDom, native.scope, active)
       const listener = event => {
         try {
           const current = node.dataset[`kNative${capitalize(eventName)}`]
           if (current !== encoded) {
             native = JSON.parse(current)
             encoded = current
-            context = createNativeContext(browserState, native.states, commitDom, native.scope)
+            context = createNativeContext(browserState, native.states, commitDom, native.scope, active)
             handler = undefined
           }
           handler ??= modules.get(native.module)[native.handler]
@@ -88,8 +96,9 @@ function mountNative(root, eventNames, modules) {
           console.error(error)
         }
       }
+      registration.listener = listener
       node.addEventListener(eventName, listener)
-      listeners.set(eventName, listener)
+      listeners.set(eventName, registration)
       registrations.set(node, listeners)
     }
   }
@@ -97,7 +106,10 @@ function mountNative(root, eventNames, modules) {
 
 function unmountNative(root) {
   for (const node of matching(root, "*")) {
-    for (const [eventName, listener] of registrations.get(node) ?? []) node.removeEventListener(eventName, listener)
+    for (const [eventName, registration] of registrations.get(node) ?? []) {
+      registration.active = false
+      node.removeEventListener(eventName, registration.listener)
+    }
     registrations.delete(node)
   }
 }

@@ -21,7 +21,7 @@ export function ArchitectureSection() {
       <div><strong>Generate</strong><p>Dedicated codegen modules produce native handlers, reactive evaluators, keyed-list expressions, effects, parameters, and navigation capabilities.</p></div>
       <div><strong>Exclude</strong><p>Final route plans remove unreferenced handlers and Workers. Static routes emit complete HTML and no browser JavaScript.</p></div>
     </div>
-    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs. The <a href="https://github.com/kudzujs/kudzu/tree/v0.8.30/docs/next-architecture">architecture packet</a> records source-local symbols, graph diagnostics, and the ordered large-application compiler program.</p>
+    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs. The <a href="https://github.com/kudzujs/kudzu/tree/v0.8.31/docs/next-architecture">architecture packet</a> records source-local symbols, graph diagnostics, native-handler ownership, and the ordered large-application compiler program.</p>
   </section>
 }
 
@@ -55,7 +55,13 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.30 results</strong><span>Goal B retains only repeated improvements that preserve complete HTML, zero-JavaScript static routes, DOM identity, cleanup, and deterministic output. Raw arrays, environments, artifact lists, and limitations are retained in PERFORMANCE.md.</span></div>
+    <div className="docs-callout"><strong>Current 0.8.31 results</strong><span>Performance records include optimization wins and correctness-guard costs. Raw arrays, environments, artifact lists, and limitations are retained in PERFORMANCE.md.</span></div>
+    <h3>Async native-handler ownership guard</h3>
+    <BenchmarkTable columns={["Target", "5,000 sync events", "Native fixture JS raw / gzip", "Late ownership"]} rows={[
+      ["0.8.30 baseline", "6.4 ms", "13,629 B / 6,177 B", "Writes after unmount"],
+      ["0.8.31", "6.4 ms", "13,838 B / 6,271 B", "Invalidated"]
+    ]} />
+    <p>Twenty-one alternating headless Chrome 151 processes measured real synchronous DOM listener dispatch after one warm-up. Both medians are 6.4 ms and the recorded ranges overlap. The deterministic cost is 209 B raw / 94 B aggregate gzip across <code>kudzu-native.js</code> and <code>kudzu-serialization.js</code>; all other native fixture artifacts are byte-identical.</p>
     <h3>Large keyed restoration</h3>
     <BenchmarkTable columns={["Target", "Append 33", "Filter", "Restore 1,999", "Reverse", "JS raw / gzip"]} rows={[
       ["0.8.23 baseline", "2.6 ms", "4.6 ms", "26.3 ms", "6.2 ms", "28,308 B / 10,937 B"],
@@ -81,7 +87,7 @@ export function BenchmarksSection() {
 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
   node --test --test-name-pattern="bundles relative TypeScript Workers" test/framework.test.mjs`} />
     <p>On Node 22.23.2, the 0.8.24 candidate retained a 907 B raw / 477 B gzip Worker graph and a 12,148 B raw / 5,411 B aggregate gzip window graph. The maintained benchmark and focused Chrome test verify build output, throughput, cadence, bounded history, stale writes, and 30-cycle start/termination and listener ownership.</p>
-    <div className="docs-callout"><strong>Historical comparison</strong><span>This dated 0.7.12 snapshot retains raw arrays in PERFORMANCE.md. It is not a current 0.8.30 framework ranking.</span></div>
+    <div className="docs-callout"><strong>Historical comparison</strong><span>This dated 0.7.12 snapshot retains raw arrays in PERFORMANCE.md. It is not a current 0.8.31 framework ranking.</span></div>
     <h3>Historical 0.7.12 keyed local state</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
       ["Kudzu", "Yes", "8,610 B", "238 ms", "0.5 ms", "4.2 ms", "1.3 ms", "1.9 ms"],
@@ -90,7 +96,7 @@ CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
       ["React CSR", "No", "59,564 B", "186 ms", "2.1 ms", "7.5 ms", "2.4 ms", "1.9 ms"]
     ]} />
     <p>This corrected 0.7.12 rerun used 31 rotating unthrottled fresh Chrome 150 profiles per target and in-page <code>MutationObserver</code> completion timing. All 124 profiles passed row/input identity and removal/re-add reset checks. Kudzu led edit, tied Vue on remove, beat React and Svelte on reverse, and trailed Vue by 0.4 ms on reverse. A separate seven-profile 4x run measured Kudzu at 2.3/17.3/5.9/8.6 ms for edit/reverse/remove/re-add. The discarded external-CDP polling method added roughly 42–49 ms to reverse and unstable phase delay to short operations. Kudzu and the CSR targets have different initial-delivery architectures, so JavaScript, total output, and build values are not equivalent loading comparisons. The <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">raw performance record</a> contains environment, versions, methodology, caveats, and corrected distributions.</p>
-    <p>Older excluded-workspace snapshots remain in the <a href="https://github.com/kudzujs/kudzu/blob/v0.8.30/PERFORMANCE.md">raw performance archive</a> for provenance, but are omitted here because their runners and raw arrays are unavailable.</p>
+    <p>Older excluded-workspace snapshots remain in the <a href="https://github.com/kudzujs/kudzu/blob/v0.8.31/PERFORMANCE.md">raw performance archive</a> for provenance, but are omitted here because their runners and raw arrays are unavailable.</p>
   </section>
 }
 

@@ -1,8 +1,17 @@
-import { useEffect, useState } from "@kudzujs/core"
+import { useEffect, useRef, useState } from "@kudzujs/core"
 import { startTelemetry } from "./chart"
 
 export function Shell({ children }: { children?: unknown }) {
   const [layoutCount, setLayoutCount] = useState(0)
+  const layoutRef = useRef<HTMLSpanElement | null>(null)
+
+  async function updateLayoutLate() {
+    await new Promise<void>(resolve => {
+      ;(document.body as any).nativeDisposalResolver = resolve
+    })
+    layoutRef.current?.setAttribute("data-resolved", "true")
+    setLayoutCount(value => value + 1)
+  }
 
   useEffect(() => {
     document.body.dataset.effectLog = `${document.body.dataset.effectLog ?? ""}|layout setup`
@@ -29,6 +38,8 @@ export function Shell({ children }: { children?: unknown }) {
   return <div data-layout>
     <header>
       <button data-layout-count onClick={() => setLayoutCount(value => value + 1)}>Layout {layoutCount}</button>
+      <button data-layout-late onClick={updateLayoutLate}>Late layout</button>
+      <span ref={layoutRef} data-layout-ref />
       <nav>
         <a href="/shop/product">Product</a>
         <a href="/shop/cart">Cart</a>

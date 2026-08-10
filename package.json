@@ -1,6 +1,6 @@
 {
   "name": "@kudzujs/core",
-  "version": "0.8.30",
+  "version": "0.8.31",
   "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM",
   "type": "module",
   "license": "MIT",
@@ -58,6 +58,7 @@
     "benchmark": "node test/performance.mjs",
     "benchmark:keyed": "node test/keyed-performance.mjs",
     "benchmark:commerce": "node test/commerce-build-performance.mjs",
+    "benchmark:native": "node test/native-performance.mjs",
     "prepublishOnly": "npm run check && npm test",
     "deploy": "wrangler deploy",
     "preview": "wrangler dev"

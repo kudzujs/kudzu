@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.31 - Async native-handler ownership
+
+Kudzu 0.8.31 completes P0.4 by tying every mounted native-handler context to its DOM registration lifetime. Async work may finish after route, keyed, or conditional removal, but it cannot write through ownership that no longer exists.
+
+### Changed in 0.8.31
+
+- Native registrations expose one active lifetime to direct setters, captured setters, queued commits, and captured object refs.
+- `unmountNative()` invalidates the registration before removing its listener. Enhanced navigation, keyed removal, and conditional removal use the shared unmount hook; non-persisted `pagehide` directly releases document registrations.
+- Late state writes become no-ops instead of recreating released state IDs; already queued commits clear without touching replacement DOM.
+- Captured object refs resolve to `null` after release, so a late handler cannot find a replacement node that reused the same compiler-owned ref ID.
+- Application promises are not cancelled, and no scheduler, task registry, component runtime, or public API is added.
+
+### Performance
+
+- Twenty-one alternating headless Chrome processes measured 5,000 synchronous native event dispatches at a 6.4 ms median for both `0.8.30` and `0.8.31`; the recorded ranges overlap.
+- The maintained `native-bubbling` fixture keeps the same eight JavaScript paths. `kudzu-native.js` and `kudzu-serialization.js` add 209 B raw / 94 B aggregate gzip; the runner rejects any other artifact change.
+- Environment, raw arrays, artifact bytes, methodology, and limitations are recorded in `PERFORMANCE.md`.
+
+### Validation
+
+- `npm run check`, `npm test`, `npm run test:package`, and all 189 tests pass.
+- Chrome starts async route and keyed-row handlers, releases and recreates their owners, and proves late state writes and refs cannot mutate replacement ownership. A persistent layout handler also proves non-persisted document disposal invalidates pending work.
+- Focused context checks cover queued direct commits and captured setters. The browser suite retains normal synchronous native event semantics; unaffected static routes remain zero JavaScript.
+- P0.5 atomic and collision-safe output is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.31
+```
+
 ## 0.8.30 - Graph failure diagnostics
 
 Kudzu 0.8.30 completes P0.3 by making ordinary source-graph failures stop at the original importer before compilation, generated module loading, or `.kudzu` paths can obscure the source error.
