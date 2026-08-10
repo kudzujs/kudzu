@@ -189,11 +189,15 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
     return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(reducer.state), update])
   }
 
-  function printReactiveBinding({ exportName, expression, captures, states }) {
+  function printReactiveBinding({ exportName, expression, captures, states, bindingIndex }) {
     const factory = ts.factory
     const transformer = context => root => {
       const visitor = node => {
-        if (ts.isShorthandPropertyAssignment(node) && states.has(node.name.text)) {
+        const reference = ts.isShorthandPropertyAssignment(node) ? node.name : ts.isIdentifier(node) ? node : undefined
+        const resolution = reference ? bindingIndex?.resolveReference(reference, expression) : undefined
+        const indexedState = resolution?.kind === "capture" && states.has(resolution.debugName)
+        const indexedCapture = ["capture", "unresolved"].includes(resolution?.kind) && captures.has(resolution.debugName)
+        if (ts.isShorthandPropertyAssignment(node) && states.has(node.name.text) && (!bindingIndex || indexedState)) {
           return factory.createPropertyAssignment(
             node.name,
             factory.createCallExpression(
@@ -203,17 +207,17 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
             )
           )
         }
-        if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression)) {
+        if (ts.isIdentifier(node) && states.has(node.text) && isReferenceIdentifier(node) && (bindingIndex ? indexedState : !isShadowedByParameter(node, expression))) {
           return factory.createCallExpression(
             factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "get"),
             undefined,
             [factory.createStringLiteral(node.text)]
           )
         }
-        if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text)) {
+        if (ts.isShorthandPropertyAssignment(node) && captures.has(node.name.text) && (!bindingIndex || indexedCapture)) {
           return factory.createPropertyAssignment(node.name, scopeRead(factory, node.name.text))
         }
-        if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node)) {
+        if (ts.isIdentifier(node) && captures.has(node.text) && isReferenceIdentifier(node) && (!bindingIndex || indexedCapture)) {
           return scopeRead(factory, node.text)
         }
         return ts.visitEachChild(node, visitor, context)

@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.27` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.28` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -12,6 +12,7 @@ This maps the current `0.8.27` architecture built on the completed `0.8.23` Goal
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every structural change. Imported source uses the same pipeline. |
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
 | Shared AST/scope helpers | [`framework/compiler/ast-helpers.mjs`](../../framework/compiler/ast-helpers.mjs) | Binding, scope, reference, effect-return, and source-location analysis. |
+| Source-local binding index | [`framework/compiler/analysis/binding-index.mjs`](../../framework/compiler/analysis/binding-index.mjs) | After normalization, assigns deterministic lexical slots and classifies local, parameter, import, capture, global, and unresolved references. Reactive binding discovery/lowering consumes complete indexed expressions; synthesized expressions retain the existing fallback. |
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
 | Main semantic analysis | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, keyed, and effect ownership results. |
 | Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, and source provenance; AST identity remains private to its source-local session. |
@@ -38,7 +39,9 @@ This maps the current `0.8.27` architecture built on the completed `0.8.23` Goal
 src/pages entries + config
   -> project discovery and reachable relative graph
   -> compileSource()
-       -> ordered normalization and main transformer semantic analysis
+       -> ordered normalization and parent repair
+       -> source-local binding index
+       -> main transformer semantic analysis
        -> TypeScript transpilation
        -> JSON-safe build module, ModuleIR, handler module, and imported assets
   -> build orchestration writes .kudzu executable and handler modules
@@ -64,6 +67,7 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 - `build()` still owns explicit artifact selection and filesystem writes after generator results are produced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
 - Source reachability and source compilation share one module because both consume the same normalization and import graph contracts.
+- Native handler, effect, state/setter, list, Router, React, and Zustand discovery still contains name-based analysis. The binding index is intentionally adopted one consumer family at a time; P0.2 moves the next descriptor consumers without changing cross-module semantics.
 
 These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.
 

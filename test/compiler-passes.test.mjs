@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import test from "node:test"
 import ts from "typescript"
+import { createBindingIndex } from "../framework/compiler/analysis/binding-index.mjs"
 import { createComponentAnalysis, createComponentAnalysisSession } from "../framework/compiler/analysis/component-analysis.mjs"
 import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
@@ -366,6 +367,43 @@ const row = item.label
   assert.equal("nativeHandlers" in semantic || "reactiveBindings" in semantic || "clientImports" in semantic, false)
   assertJsonData(semantic.moduleIR)
   assert.deepEqual(JSON.parse(JSON.stringify(semantic.moduleIR)), semantic.moduleIR)
+})
+
+test("uses lexical bindings for reactive capture and import discovery", () => {
+  const source = ts.createSourceFile("binding-shadow.ts", `
+import { format } from "./format"
+const document = "local"
+const binding = count ? document + [1].map(document => document + 1).join("") + [1].map(format => format + 1).join("") + console : ""
+`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const semantic = createSemanticArtifact("binding-shadow.ts")
+  const binding = source.statements[2].declarationList.declarations[0].initializer
+  const result = ts.transform(source, [context => file => {
+    const session = createDescriptorSession({
+      semantic,
+      handlerUrl: "/assets/handlers/binding-shadow.js",
+      factory: context.factory,
+      context,
+      bindingIndex: createBindingIndex(file),
+      compileEventCommand: () => undefined,
+      handlerLowering,
+      isPrimitiveLiteral: () => false,
+      rejectWorkerConstructions: () => {}
+    })
+    session.compileReactiveBinding(binding, {
+      setters: new Map([["setCount", "count"]]),
+      importBindings: new Map([["format", { kind: "named", imported: "format", local: "format", target: "/src/format.ts" }]])
+    })
+    session.finalize()
+    return file
+  }])
+  result.dispose()
+
+  assert.deepEqual(semantic.moduleIR.bindings[0].states, ["count"])
+  assert.deepEqual(semantic.moduleIR.bindings[0].captures, [{ name: "document", source: "scope" }])
+  assert.deepEqual(semantic.moduleIR.bindings[0].imports, [])
+  assert.deepEqual(semantic.moduleIR.clientModules, [])
+  assert.match(semantic.moduleIR.bindings[0].code, /__k\.scope\("document"\).+document => document \+ 1/s)
+  assert.doesNotMatch(semantic.moduleIR.bindings[0].code, /document => __k\.scope\("document"\)/)
 })
 
 test("encodes collection expressions with item, index, and state reads", () => {

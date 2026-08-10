@@ -2,7 +2,7 @@
 
 ## Status
 
-Active execution plan after `0.8.27`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Active execution plan after `0.8.28`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
 [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. This plan is authoritative for the order and completion evidence of compiler generalization, large-application foundations, compatibility boundaries, AI tooling, and scale validation. If implementation evidence changes a boundary, update this document before broadening a patch.
 
@@ -126,6 +126,11 @@ This is an incremental evolution of the current repository:
 - File splitting that does not reduce semantic coupling.
 
 ## Priority Program
+
+### Execution Status
+
+- [x] P0.1 Source-local binding index is complete in `0.8.28`. Reactive binding capture/import discovery and lowering use the index only when the complete expression is indexed; synthesized keyed expressions retain the existing fail-safe path. Focused scope tests, a 1,000-reference guard, browser integration, all 185 tests, and packed-package smoke pass.
+- [ ] P0.2 Symbol-aware descriptor discovery is next. It must migrate native handler, effect, and remaining binding discovery without broadening into cross-module symbols, semantic StateWrite IR, or ecosystem features.
 
 ### P0: Semantic Correctness And Compiler Foundation
 

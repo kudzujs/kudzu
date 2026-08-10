@@ -1,5 +1,35 @@
 # Kudzu Releases
 
+## 0.8.28 - Source-local binding index
+
+Kudzu 0.8.28 completes the first large-application compiler foundation by resolving source-local lexical bindings before descriptor discovery and lowering.
+
+### Changed in 0.8.28
+
+- A source-local binding index classifies value references as local declarations, parameters, imports, outer captures, known globals, or unresolved names with deterministic slots and source ranges.
+- The index models module, function parameter/body, block, loop, catch, switch, class, computed method, namespace, import, destructuring, `var`, `let`, and `const` scopes without adding a TypeScript Program or cross-module graph.
+- Reactive binding capture/import discovery uses lexical identity, so component locals named `document`, `location`, `history`, `navigator`, or `console` no longer become browser globals and shadowed callback parameters no longer become imports.
+- Reactive binding lowering rewrites only the indexed occurrences that resolve to state or capture bindings. Same-named nested parameters remain local.
+- Synthesized keyed expressions use the existing fail-safe path unless the complete expression can be indexed, preserving keyed row state and identity behavior.
+
+### Performance And Architecture
+
+- A focused 1,000-reference guard verifies one index construction followed by direct indexed lookups and reports construction/lookup timing without making a cross-machine performance claim.
+- The index is constructed after ordered normalization and parent repair, once per compiled source. It adds no public API, browser runtime, client metadata, or JavaScript bytes.
+- Native handler, effect, and remaining descriptor discovery still use the existing analysis path; symbol-aware migration of those consumers remains the next P0.2 scope.
+
+### Validation
+
+- `npm run check`, `npm run test:package`, and all 185 tests pass.
+- Browser integration verifies shadowed browser-global names through initial HTML and reactive evaluator updates.
+- React, Router, Zustand, keyed row, nested list, effect, Worker, navigation, and static-route zero-JavaScript behavior remain covered.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.28
+```
+
 ## 0.8.27 - Large-application compiler roadmap
 
 Kudzu 0.8.27 records the evidence-backed path from the current static-first compiler to large production applications without adding a React runtime, generic client framework, or speculative resource API.

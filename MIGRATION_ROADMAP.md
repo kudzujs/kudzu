@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.27` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.28` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -269,6 +269,12 @@ This queue orders the next investigations by general migration value. Start only
 - A reduced E2B Dashboard terminal fixture establishes callback-shared mutable browser resources, asynchronous generation invalidation, and BFCache retain/resume/discard behavior as a concrete Goal C boundary.
 - Unsupported page-level mutable value refs fail during source analysis with a source location and the existing effect-owned animation-frame exception; no resource API or runtime is added.
 - The large-application and AI-native execution plan orders symbol resolution, semantic operations, project/module analysis, IR authority, application foundations, ecosystem compatibility, AI tooling, and scale validation before broad feature work.
+
+### Completed In 0.8.28
+
+- A source-local binding index assigns deterministic lexical identities to locals, parameters, imports, captures, known globals, and unresolved references after normalization.
+- Reactive binding capture/import discovery and lowering distinguish outer application values from same-named browser globals and nested callback parameters without changing source syntax or adding browser bytes.
+- Synthesized keyed expressions retain the existing fail-safe lowering path; native handler, effect, and remaining descriptor consumers stay ordered behind the next symbol-aware compiler patch.
 
 ## Cross-Cutting Performance Gates
 

@@ -1,6 +1,7 @@
 import { readFile, realpath, stat } from "node:fs/promises"
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import ts from "typescript"
+import { createBindingIndex } from "./analysis/binding-index.mjs"
 import { createComponentAnalysisSession } from "./analysis/component-analysis.mjs"
 import { normalizeEffectAnimationFrameRefs } from "./animation-frame-pass.mjs"
 import { bindingNames, containsJsx, effectReturns, functionVarDeclaresName, importDeclarationNames, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceLocation, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
@@ -248,6 +249,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const normalized = normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedStaticCollections, sourceFiles, sourceIndex })
     sourceFile = normalized.sourceFile
     const { customHookTimerStates } = normalized
+    const bindingIndex = createBindingIndex(sourceFile)
     const factory = context.factory
     const sourceName = source => relative(root, source.fileName).replaceAll(sep, "/")
     const componentAnalysis = createComponentAnalysisSession(semantic.componentAnalysis)
@@ -256,6 +258,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       handlerUrl,
       factory,
       context,
+      bindingIndex,
       compileEventCommand,
       handlerLowering,
       isPrimitiveLiteral: isPrimitiveDefaultLiteral,

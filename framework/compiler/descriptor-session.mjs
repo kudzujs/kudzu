@@ -1,5 +1,6 @@
 import ts from "typescript"
 import { createComponentAnalysis } from "./analysis/component-analysis.mjs"
+import { knownGlobalNames } from "./analysis/binding-index.mjs"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
 import { assertModuleIRReferences, createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerEffect, registerKeyedBlock, registerModuleHandler } from "./ir/module-ir.mjs"
@@ -8,7 +9,7 @@ export function createSemanticArtifact(file) {
   return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file) }
 }
 
-export function createDescriptorSession({ semantic, handlerUrl, factory, context, compileEventCommand, handlerLowering, isPrimitiveLiteral, rejectWorkerConstructions, sourceName = source => source.fileName }) {
+export function createDescriptorSession({ semantic, handlerUrl, factory, context, bindingIndex, compileEventCommand, handlerLowering, isPrimitiveLiteral, rejectWorkerConstructions, sourceName = source => source.fileName }) {
   const { moduleIR } = semantic
   const nativeHandlers = []
   const effectHandlers = []
@@ -66,12 +67,16 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   function compileReactiveExpression(expression, setters, importBindings = new Map(), keyedBlock) {
     const usedStates = referencedStateNames(expression, setters)
-    const importedNames = referencedImportedBindings(expression, importBindings)
+    const indexed = bindingIndex?.references(expression, expression)
+    const importedNames = indexed ? new Set(indexed.filter(reference => reference.kind === "import" && importBindings.has(reference.debugName)).map(reference => reference.debugName)) : referencedImportedBindings(expression, importBindings)
     const imports = [...importedNames].map(name => importBindings.get(name))
     registerClientImports(imports)
-    const captures = new Set([...captureNames(expression, expression, setters)].filter(name => !importedNames.has(name)))
+    const allStateNames = new Set(setters.values())
+    const captures = indexed
+      ? new Set(indexed.filter(reference => ["capture", "unresolved"].includes(reference.kind) && !setters.has(reference.debugName) && !allStateNames.has(reference.debugName) && !importedNames.has(reference.debugName)).map(reference => reference.debugName))
+      : new Set([...captureNames(expression, expression, setters)].filter(name => !importedNames.has(name)))
     const exportName = `binding${reactiveBindings.length}`
-    reactiveBindings.push({ exportName, expression, captures, states: usedStates, imports, role: "binding", keyedBlock })
+    reactiveBindings.push({ exportName, expression, captures, states: usedStates, imports, role: "binding", keyedBlock, ...(indexed ? { bindingIndex } : {}) })
     const states = [...usedStates].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))
     const scope = [...captures].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))
     const stateNames = new Set(usedStates)
@@ -303,14 +308,10 @@ export function captureNames(declarationRoot, referenceRoot, setters) {
     if (ts.isTypeNode(node)) return
     if (ts.isIdentifier(node)) {
       const declared = isFunctionLike(declarationRoot) ? isShadowedIdentifier(node, declarationRoot) : local.has(node.text)
-      if (isReferenceIdentifier(node) && !declared && !setters.has(node.text) && !stateNames.has(node.text) && !nativeGlobals.has(node.text)) captures.add(node.text)
+      if (isReferenceIdentifier(node) && !declared && !setters.has(node.text) && !stateNames.has(node.text) && !knownGlobalNames.has(node.text)) captures.add(node.text)
     }
     ts.forEachChild(node, visit)
   }
   visit(referenceRoot)
   return captures
 }
-
-const nativeGlobals = new Set([
-  "Array", "ArrayBuffer", "BigInt", "Blob", "Boolean", "Date", "Error", "Event", "FileReader", "FormData", "Infinity", "IntersectionObserver", "Intl", "JSON", "Map", "Math", "NaN", "Number", "Object", "Promise", "Proxy", "RangeError", "ReferenceError", "Reflect", "RegExp", "Set", "String", "Symbol", "TypeError", "URL", "URLSearchParams", "WeakMap", "WeakSet", "WebSocket", "Worker", "alert", "atob", "btoa", "cancelAnimationFrame", "clearInterval", "clearTimeout", "console", "crypto", "document", "fetch", "globalThis", "history", "isFinite", "isNaN", "localStorage", "location", "navigator", "parseFloat", "parseInt", "performance", "queueMicrotask", "requestAnimationFrame", "setInterval", "setTimeout", "structuredClone", "undefined", "window"
-])

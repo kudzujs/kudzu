@@ -18,6 +18,11 @@ export default function BindingPage() {
   const derivedStatus = `${decoratedName}:${active ? "active" : "idle"}`
   const displayValue = active ? 1234.6 : 12.2
   const formattedValue = new Intl.NumberFormat("en-US").format(Math.round(displayValue))
+  const document = "document"
+  const location = "location"
+  const history = "history"
+  const navigator = "navigator"
+  const console = "console"
 
   return (
     <main>
@@ -28,6 +33,7 @@ export default function BindingPage() {
       <StaticBadge active={active} />
       {[1].map(item => <div className={active ? `nested-${item}` : "nested-idle"}>Nested</div>)}
       <div className={[false].map(active => active ? "on" : "off").join(" ")}>Shadowed</div>
+      <div data-shadowed>{name + ":" + document + "|" + location + "|" + history + "|" + navigator + "|" + console}</div>
       <button disabled={!active} onClick={() => setActive(true)}>Activate</button>
       <button disabled={active} onClick={() => setActive(false)}>Reset</button>
       <input value={name} onChange={() => setName("Grown")} />

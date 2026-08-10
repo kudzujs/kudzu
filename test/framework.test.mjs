@@ -57,7 +57,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.27/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.28/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -74,9 +74,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.27"/)
-  assert.match(release, /Kudzu 0\.8\.27.*Start from evidence.*Build toward applications/s)
-  assert.match(release, /CHARACTERIZE · GENERALIZE · SCALE.*APPLICATION COMPILER.*npm install @kudzujs\/core@\^0\.8\.27/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.28"/)
+  assert.match(release, /Kudzu 0\.8\.28.*Resolve the source.*Lower the right value/s)
+  assert.match(release, /RESOLVE · CLASSIFY · LOWER.*COMPILER FOUNDATION.*npm install @kudzujs\/core@\^0\.8\.28/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -790,6 +790,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(html, /class="prop-idle" data-k-bind-class=.*>Static prop/)
   assert.match(html, /class="nested-idle" data-k-bind-class=.*>Nested/)
   assert.match(html, /class="off">Shadowed/)
+  assert.match(html, /data-shadowed="true">.*Kudzu:document\|location\|history\|navigator\|console.*<\/div>/)
   assert.match(html, /<body data-k-state=/)
   assert.match(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
@@ -809,13 +810,13 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(bindings, /new Intl\.NumberFormat\("en-US"\)\.format\(Math\.round/)
   assert.doesNotMatch(bindings, /displayValue|formattedValue/)
   assert.doesNotMatch(bindings, /\beval\b|new Function/)
-  assert.equal(plan.bindings.length, 23)
+  assert.equal(plan.bindings.length, 24)
   assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
 
   const evaluators = await import(`${new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
   const context = {
     get: name => name === "active" ? true : name === "name" ? "Kudzu" : undefined,
-    scope: name => name === "active" ? true : name === "activeClass" ? "is-active" : name === "item" ? 1 : name === "value" ? "Kudzu!" : undefined
+    scope: name => name === "active" ? true : name === "activeClass" ? "is-active" : name === "item" ? 1 : name === "value" ? "Kudzu!" : ["document", "location", "history", "navigator", "console"].includes(name) ? name : undefined
   }
   assert.equal(evaluators.binding0(context), "prop-active")
   assert.equal(evaluators.binding1(context), "Kudzu!")
@@ -823,10 +824,11 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.equal(evaluators.binding3(context), "Kudzu!:active")
   assert.equal(evaluators.binding4(context), JSON.stringify({ active: true }))
   assert.equal(evaluators.binding5(context), "nested-1")
-  assert.equal(evaluators.binding6(context), false)
-  assert.equal(evaluators.binding7(context), "Kudzu!")
+  assert.equal(evaluators.binding7(context), false)
+  assert.equal(evaluators.binding8(context), "Kudzu!")
   assert.ok(Object.values(evaluators).some(evaluate => evaluate(context) === "Kudzu!:active"))
   assert.ok(Object.values(evaluators).some(evaluate => evaluate(context) === "1,235"))
+  assert.ok(Object.values(evaluators).some(evaluate => evaluate(context) === "Kudzu:document|location|history|navigator|console"))
 
   const attributes = new Map()
   let value = "old"
