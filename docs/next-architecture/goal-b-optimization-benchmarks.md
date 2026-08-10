@@ -33,6 +33,19 @@ The maintained benchmark measured a 26.3 ms restoration median. For top-level fl
 
 The `0.8.25` investigation isolated repeated esbuild work by comparing ordinary transformation with build-local reuse keyed by the complete generated route-entry source. Seven alternating 1,011-page builds measured 13,851.0 ms and 12,581.4 ms medians, a 9.17% improvement, with identical emitted paths and hashes. The retained implementation applies only to native, parameter, and effect route entries and keeps no data beyond one build.
 
+### Baseline Coverage Status
+
+| Area | Current evidence | Status |
+|---|---|---|
+| Build and artifact graph | Worker and commerce clean builds, emitted manifests, deterministic hashes, raw/gzip JavaScript and Worker bytes | Recorded |
+| Static exclusion | Complete-site and representative fixture comparisons plus static zero-JavaScript assertions | Recorded |
+| Keyed operations | Append, filter, bulk restoration, reverse, retained/released identity, state reset, and handler checks | Recorded |
+| Worker ownership | Throughput, cadence, bounded history, stale writes, and repeated start/termination/listener ownership | Recorded |
+| Command, binding, effect, and navigation semantics | Maintained integration and Chrome behavior tests | Correctness recorded; no standalone timing baseline because no material loss is currently reproduced |
+| Heap trend | Repeated ownership counters and bounded fixture data | No general heap series; add one only when a reproduced ownership or memory loss requires it |
+
+The broad baseline list is an investigation inventory, not a requirement to manufacture timings without a candidate. New timing or heap work begins only when a current fixture reproduces the corresponding loss.
+
 ## Candidate Order
 
 1. Profile the largest measured loss in a maintained fixture.
@@ -70,4 +83,4 @@ Reject an optimization that:
 - [x] Select one measured loss, not a speculative hotspot.
 - [x] Add one minimal benchmark or reuse a maintained one.
 - [x] Record before/after raw arrays and artifacts.
-- [ ] Revert experiments that do not clear correctness and materiality gates.
+- [x] Keep no experiment that fails correctness or materiality gates in the release tree.

@@ -389,13 +389,13 @@ async function writeJavaScript(file, source, minify, define) {
   await writeFile(file, code)
 }
 
-async function writeRouteEntry(file, source, minify, transforms) {
+export async function writeRouteEntry(file, source, minify, transforms, transformSource = transform, write = writeFile) {
   let code = transforms.get(source)
   if (code === undefined) {
-    code = minify ? (await transform(source, { format: "esm", legalComments: "none", minify, target: "es2022" })).code : source
+    code = minify ? (await transformSource(source, { format: "esm", legalComments: "none", minify, target: "es2022" })).code : source
     transforms.set(source, code)
   }
-  await writeFile(file, code)
+  await write(file, code)
 }
 
 async function writeBundledJavaScript(file, source, minify, define) {

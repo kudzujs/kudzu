@@ -7,7 +7,7 @@ import config from "../kudzu.config.mjs"
 
 test("generates canonical SEO output for Cloudflare static assets", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "kudzu-seo-"))
-  const routes = ["/", "/docs", "/example", "/releases/0.8.2", "/releases/0.8.15", "/releases/0.8.16", "/releases/0.8.17", "/releases/0.8.18", "/releases/0.8.19", "/releases/0.8.20", "/releases/0.8.21", "/releases/0.8.22", "/releases/0.8.23", "/releases/0.8.24", "/releases/0.8.25", "/example/blog/personal", "/example/blog/personal/demo", "/example/blog/personal/demo/a-room-made-for-reading"]
+  const routes = ["/", "/docs", "/example", "/releases/0.8.2", "/releases/0.8.15", "/releases/0.8.16", "/releases/0.8.17", "/releases/0.8.18", "/releases/0.8.19", "/releases/0.8.20", "/releases/0.8.21", "/releases/0.8.22", "/releases/0.8.23", "/releases/0.8.24", "/releases/0.8.25", "/releases/0.8.26", "/example/blog/personal", "/example/blog/personal/demo", "/example/blog/personal/demo/a-room-made-for-reading"]
   try {
     for (const route of routes) {
       const directory = route === "/" ? outDir : join(outDir, route.slice(1))
@@ -30,6 +30,7 @@ test("generates canonical SEO output for Cloudflare static assets", async () => 
     assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.8\.23\/<\/loc>/)
     assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.8\.24\/<\/loc>/)
     assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.8\.25\/<\/loc>/)
+    assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.8\.26\/<\/loc>/)
     assert.doesNotMatch(sitemap, /\/demo/)
 
     const showcase = await readFile(join(outDir, "example/blog/personal/index.html"), "utf8")

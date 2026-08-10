@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import test from "node:test"
 import ts from "typescript"
@@ -472,6 +472,9 @@ test("plans binding and list runtime specializations", () => {
   assert.equal(manifest.lists.generalRowHooks, true)
   assert.equal(manifest.lists.svg, true)
   assert.equal(manifest.runtime.shared, true)
+  const runtime = generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest).source
+  assert.match(runtime, /addedNodes\?\.length > 32 && addedNodes\.length \* 2 > next\.length && addedNodes\.length \* 2 > parent\.children\.length && !list\.descriptor\.children && !list\.descriptor\.ownerField\) mountDom\(parent\)/)
+  assert.match(runtime, /else if \(addedNodes\) for \(const node of addedNodes\) mountDom\(node\)/)
 })
 
 test("plans native, effect, capture, and dependency runtime capabilities", () => {

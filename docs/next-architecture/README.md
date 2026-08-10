@@ -7,7 +7,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 | Goal | Decision | Start condition |
 |---|---|---|
 | A: compiler foundation | Complete in `0.8.23` | The no-write source compiler, RouteIR v1, CapabilityIR v1, generator boundaries, and output baseline are recorded. |
-| B: optimization benchmarks | Active | The first measured bulk keyed restoration optimization is retained; continue one reproduced loss at a time. |
+| B: optimization benchmarks | Active | Keyed restoration, no-op normalization, and exact route-entry transform reuse are retained; continue only when another current fixture reproduces a material loss. |
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 

@@ -256,6 +256,12 @@ This queue orders the next investigations by general migration value. Start only
 - Normalization pass results and finalized ModuleIR cross-slot references now fail closed at their compiler boundaries.
 - Node 22 compatibility, required Chrome coverage, packed-package installation, version alignment, and post-publish registry checks are explicit release gates.
 
+### Completed In 0.8.26
+
+- The maintained commerce runner requires byte-identical output by default while explicit expected deltas preserve historical benchmark reproduction.
+- The standard suite counts exact route-entry transforms across repeated, distinct, and new-build sources and protects the safe keyed bulk-mount guard plus its per-root fallback.
+- Goal B records which build, output, keyed, Worker, integration, and heap evidence exists; no new optimization is authorized without another reproduced material loss.
+
 ## Cross-Cutting Performance Gates
 
 Every migration feature must preserve:

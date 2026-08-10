@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.24` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.26` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -15,7 +15,7 @@ This maps the current `0.8.24` architecture built on the completed `0.8.23` Goal
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
 | Main semantic analysis | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, keyed, and effect ownership results. |
 | Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, and source provenance; AST identity remains private to its source-local session. |
-| Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Keeps AST descriptors private during analysis, then finalizes deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, KeyedBlockIR, EffectIR, imports, and client roots into ModuleIR. |
+| Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Keeps AST descriptors private during analysis, then finalizes deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, KeyedBlockIR, EffectIR, imports, and client roots into ModuleIR and validates every local slot reference. |
 | Command IR and codegen | [`framework/compiler/optimize/command-specialization.mjs`](../../framework/compiler/optimize/command-specialization.mjs), [`framework/compiler/ir/module-ir.mjs`](../../framework/compiler/ir/module-ir.mjs), [`framework/compiler/codegen/command-codegen.mjs`](../../framework/compiler/codegen/command-codegen.mjs) | Supported command handlers specialize to JSON-safe ModuleIR, then emit the existing `__kBehavior` AST without changing route plans. |
 | Source compilation | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `compileSource()` | Runs TypeScript with the Kudzu transformer, rejects surviving React/Router references, and returns a JSON-safe project-relative build module, component analysis, ModuleIR, optional handler module, and imported assets without filesystem writes. |
 | Handler/evaluator lowering | [`framework/compiler/handler-lowering.mjs`](../../framework/compiler/handler-lowering.mjs) | Completes source-local callback/binding/list AST rewriting and diagnostics before the JSON-safe IR boundary. |
@@ -27,7 +27,7 @@ This maps the current `0.8.24` architecture built on the completed `0.8.23` Goal
 | Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Validates RouteIR v1 and purely folds rendered plans and route facts into CapabilityIR v1. |
 | Effect entry generation | [`framework/compiler/effect-codegen.mjs`](../../framework/compiler/effect-codegen.mjs) | Generates ordinary, dependency, owned, and navigable effect entries from rendered descriptors. |
 | Runtime generation | [`framework/compiler/runtime-codegen.mjs`](../../framework/compiler/runtime-codegen.mjs), [`framework/compiler/list-runtime-codegen.mjs`](../../framework/compiler/list-runtime-codegen.mjs), [`framework/compiler/param-codegen.mjs`](../../framework/compiler/param-codegen.mjs) | Consumes versioned contracts, specializes authored capability sources with fail-closed anchors, and returns source/define results without filesystem ownership. |
-| Artifact emission | `framework/build.mjs` | Selects required files from CapabilityIR and writes or bundles generated sources with esbuild. |
+| Artifact emission | `framework/build.mjs` | Selects required files from CapabilityIR and writes or bundles generated sources with esbuild. Byte-identical native, parameter, and effect route entries reuse one exact-source transform result within the current build only. |
 | Browser capabilities | [`framework/*.js`](../../framework/) | Small optional modules for commands, bindings, lists, effects, native handlers, serialization, parameters, and navigation; no component runtime. |
 | Opt-in navigation | [`framework/navigation-runtime.js`](../../framework/navigation-runtime.js) plus `framework/build.mjs` navigation configuration/emission | Fetches and validates complete same-origin documents, replaces only the marked route range, manages route/layout disposal, history, focus, finite prefetch retention, and native fallback. |
 | Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Rebuild/watch/SSE and response-only short-lived state restoration; never changes production `dist/`. |
@@ -50,6 +50,7 @@ src/pages entries + config
    -> planRouteCapabilities(RouteIR records, route facts)
        -> CapabilityIR v1
   -> specialize and emit only selected runtime/capability ESM
+       -> reuse exact generated route-entry transforms within this build
   -> write route index.html, CSS/assets, Worker graphs, rewrites, and .kudzu/kudzu-plan.json
   -> optional afterBuild()
 ```

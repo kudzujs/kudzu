@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.24` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.26` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -15,6 +15,8 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.22` | Version the existing RouteIR and CapabilityIR, formalize numeric slots plus readable debug metadata, and extract focused runtime generators. | RouteIR and CapabilityIR reject unsupported versions; runtime generator contracts, output gates, and the recorded benchmark pass. |
 | `0.8.23` | Forward-fix Goal A by moving source normalization, semantic analysis, ModuleIR finalization, handler generation, and build-module generation behind one no-write source compiler result. | `build.mjs` contains no TSX feature analysis; source results are JSON-safe and project-relative; diagnostics, deploy bytes, tests, and build performance remain equivalent. |
 | `0.8.24` | Start Goal B with measured large keyed restoration and no-op normalization optimizations. | Fresh-profile keyed restoration improves materially; alternating 1,000-product builds improve materially; correctness, output, and byte deltas are recorded. |
+| `0.8.25` | Reuse byte-identical generated native, parameter, and effect route-entry transforms within one build and strengthen compiler/release boundaries. | Alternating 1,011-page builds improve materially with identical deploy hashes; normalization and ModuleIR fail closed; Node, Chrome, package, and registry gates pass. |
+| `0.8.26` | Harden Goal B benchmark reproducibility and ordinary regression coverage without changing runtime behavior. | Commerce comparison defaults to exact output; route transform counts and keyed bulk/fallback guards are protected by the standard suite; baseline coverage and limits are explicit. |
 
 ## Sequence Rules
 

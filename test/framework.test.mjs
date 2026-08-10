@@ -5,7 +5,7 @@ import { spawn, spawnSync } from "node:child_process"
 import { gzipSync } from "node:zlib"
 import { createConnection } from "node:net"
 import test from "node:test"
-import { build, normalizeNavigation, specializeRuntime } from "../framework/build.mjs"
+import { build, normalizeNavigation, specializeRuntime, writeRouteEntry } from "../framework/build.mjs"
 import { behavior, conditional, createContext, list, listConditional, nativeBehavior, renderPage, useContext, useEffect, useId, useParams, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
@@ -20,6 +20,28 @@ if (process.env.KUDZU_REQUIRE_CHROME && !chromePaths.some(fileExistsSync)) throw
 // Keep fixture listeners outside the ephemeral range used by headless Chrome.
 let browserPort = 10000 + process.pid % 10000
 const nextBrowserPort = () => browserPort++
+
+test("reuses only exact route-entry transforms within one build", async () => {
+  const transforms = new Map()
+  const writes = []
+  let calls = 0
+  const transform = async source => ({ code: `compiled:${source}:${++calls}` })
+  const write = async (file, code) => writes.push([file, code])
+
+  await writeRouteEntry("first.js", "same", true, transforms, transform, write)
+  await writeRouteEntry("second.js", "same", true, transforms, transform, write)
+  await writeRouteEntry("third.js", "different", true, transforms, transform, write)
+  await writeRouteEntry("next-build.js", "same", true, new Map(), transform, write)
+
+  assert.equal(calls, 3)
+  assert.deepEqual(writes, [
+    ["first.js", "compiled:same:1"],
+    ["second.js", "compiled:same:1"],
+    ["third.js", "compiled:different:2"],
+    ["next-build.js", "compiled:same:3"]
+  ])
+})
+
 const inspectSourceResult = (fixture, file) => {
   const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
 const { build } = await import(${JSON.stringify(new URL("../framework/build.mjs", import.meta.url).href)})
@@ -35,7 +57,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.25/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.26/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -52,9 +74,9 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.25"/)
-  assert.match(release, /Kudzu 0\.8\.25.*Transform once.*Prove every boundary/s)
-  assert.match(release, /REUSE · VALIDATE · RELEASE.*GOAL B.*npm install @kudzujs\/core@\^0\.8\.25/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.26"/)
+  assert.match(release, /Kudzu 0\.8\.26.*Keep the proof.*Protect the path/s)
+  assert.match(release, /REPRODUCE · PROTECT · CONTINUE.*GOAL B.*npm install @kudzujs\/core@\^0\.8\.26/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)

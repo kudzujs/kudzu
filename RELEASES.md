@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.26 - Goal B benchmark hardening
+
+Kudzu 0.8.26 makes the retained Goal B optimizations reproducible and directly regression-tested without changing generated runtime behavior or authoring support.
+
+### Changed in 0.8.26
+
+- `benchmark:commerce` requires byte-identical candidate output by default; `EXPECTED_CHANGES` explicitly preserves historical comparisons with known artifact deltas.
+- The standard suite verifies that exact route-entry sources transform once per build, distinct sources do not collide, and a new build owns a fresh transform map.
+- List runtime generation tests retain the measured bulk-mount threshold, majority guards, nested/owner exclusions, and per-root fallback.
+- The architecture packet now covers `0.8.25`, records Goal B baseline evidence and deliberate gaps, and closes the retained-experiment checklist.
+
+### Performance Validation
+
+- Seven alternating `v0.8.24` and current-tree commerce builds emitted 1,011 pages and 3,056 files with no changed deploy hash.
+- The measured medians were 14,766.5 ms and 12,202.4 ms. This validates the maintained runner and release direction but is not attributed to one optimization because the revisions include all `0.8.25` compiler-boundary changes.
+- No new runtime bytes, scheduler, persistent cache, retained tree, or public browser capability was added.
+
+### Validation
+
+- `npm run check`, `npm run test:package`, and all 175 tests pass.
+- The exact-output commerce runner passed seven alternating 1,011-page builds.
+- No accepted syntax, runtime behavior, DOM ownership, effect cleanup, or `create-kudzu` template changed.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.26
+```
+
 ## 0.8.25 - Exact route-entry reuse
 
 Kudzu 0.8.25 removes measured repeated esbuild work from large multi-route builds, strengthens compiler boundary validation, and makes package publication gates explicit without changing generated deploy bytes or browser behavior.

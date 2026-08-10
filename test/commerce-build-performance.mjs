@@ -9,6 +9,7 @@ const baseline = resolve(process.env.BASELINE_ROOT || "")
 const candidate = resolve(process.env.CANDIDATE_ROOT || ".")
 const runs = Number(process.env.RUNS || 21)
 const catalogSize = String(process.env.CATALOG_SIZE || 1000)
+const expectedChanges = (process.env.EXPECTED_CHANGES || "").split(",").filter(Boolean).sort()
 const coreLink = resolve(app, "node_modules/@kudzujs/core")
 const outputRoot = resolve(app, "dist")
 
@@ -61,8 +62,9 @@ function build(name) {
   expectedOutput ??= output
   if (output.files !== expectedOutput.files || output.pages !== expectedOutput.pages) throw new Error(`${name} output ${JSON.stringify(output)} differs from baseline ${JSON.stringify(expectedOutput)}`)
   expectedManifest ??= manifest
-  const changed = [...manifest].filter(([file, hash]) => expectedManifest.get(file) !== hash).map(([file]) => file)
-  if ([...expectedManifest.keys()].some(file => !manifest.has(file)) || changed.some(file => file !== "assets/kudzu-list.js") || (name === "candidate") !== (changed.length === 1)) throw new Error(`${name} output differs from baseline at ${JSON.stringify(changed)}`)
+  const changed = [...manifest].filter(([file, hash]) => expectedManifest.get(file) !== hash).map(([file]) => file).sort()
+  const allowed = name === "candidate" ? expectedChanges : []
+  if ([...expectedManifest.keys()].some(file => !manifest.has(file)) || JSON.stringify(changed) !== JSON.stringify(allowed)) throw new Error(`${name} output differs from baseline at ${JSON.stringify(changed)}; expected ${JSON.stringify(allowed)}`)
   return elapsed
 }
 
@@ -76,7 +78,7 @@ try {
   console.log(JSON.stringify({
     fixture: `${catalogSize}-product kudzu-based-bench storefront`,
     methodology: `one warm-up and ${runs} alternating clean builds`,
-    output: { ...expectedOutput, candidateChanges: ["assets/kudzu-list.js"] },
+    output: { ...expectedOutput, candidateChanges: expectedChanges },
     timings,
     medians: { baseline: median(timings.baseline), candidate: median(timings.candidate) }
   }, null, 2))

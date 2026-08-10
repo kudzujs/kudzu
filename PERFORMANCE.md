@@ -2,6 +2,17 @@
 
 Reproducibility classes: `npm run benchmark` and `npm run benchmark:keyed` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.8.26 Goal B Benchmark Hardening
+
+The checked-in `benchmark:commerce` runner now requires byte-identical candidate output by default. `EXPECTED_CHANGES` is reserved for explicitly recorded historical comparisons; the route-entry reuse path also has a focused transform-count regression test in the ordinary suite.
+
+After that runner update, seven alternating `v0.8.24` versus current-tree builds on the same Linux machine verified 1,011 pages, 3,056 files, and no changed deploy hash. The 14,766.5 ms and 12,202.4 ms medians validate the maintained runner and released-tree direction, but are not attributed to route-entry reuse alone because the compared revisions include all `0.8.25` compiler-boundary changes.
+
+```text
+v0.8.24: [14311.1,14766.5,15294.2,14718.0,13440.6,15245.2,15007.0]
+current:  [12202.4,12243.2,11701.2,12320.8,11994.6,12461.4,12073.3]
+```
+
 ## 0.8.25 Route Entry Transform Reuse
 
 Measured UTC 2026-08-10 on an Intel Core i5-9500 with 6 cores, Linux 6.17.0-19-generic, Node 24.14.0, and npm 11.9.0. The public 1,000-product storefront fixture at `f2d5be1` generated 1,011 pages against the `0.8.24` tree plus the same compiler-boundary safety changes in both targets.
@@ -122,7 +133,7 @@ candidate reverse: [5.8,6.0,6.2,5.8,5.8,6.1,6.2,6.2,6.3,6.0,6.1,6.2,6.2,6.0,6.3,
 
 The public [`SimYunSup/kudzu-based-bench`](https://github.com/SimYunSup/kudzu-based-bench) commerce fixture at `f2d5be1` generated 1,000 deterministic products and 1,011 complete Kudzu pages. On the same Apple M3 / Node 25.6.1 machine, clean `0.8.23` and the Goal B candidate received one warm-up and 21 alternating clean builds. Output and `.kudzu` cleanup remained outside timing.
 
-The paired runner generates the catalog once, alternates the two compiler roots, cleans `dist` and `.kudzu` outside timing, compares relative output manifests and hashes, permits only the recorded `assets/kudzu-list.js` delta, and restores the external app's package symlink afterward:
+The paired runner generates the catalog once, alternates the two compiler roots, cleans `dist` and `.kudzu` outside timing, compares relative output manifests and hashes, permits only the explicitly configured historical `assets/kudzu-list.js` delta, and restores the external app's package symlink afterward:
 
 ```bash
 git clone https://github.com/SimYunSup/kudzu-based-bench.git /tmp/kudzu-based-bench
@@ -134,6 +145,7 @@ ln -s "$PWD/node_modules" /tmp/kudzu-0.8.23/node_modules
 APP_ROOT=/tmp/kudzu-based-bench/apps/shop-kudzu \
 BASELINE_ROOT=/tmp/kudzu-0.8.23 \
 CANDIDATE_ROOT="$PWD" RUNS=21 CATALOG_SIZE=1000 \
+EXPECTED_CHANGES=assets/kudzu-list.js \
 npm run benchmark:commerce
 ```
 
