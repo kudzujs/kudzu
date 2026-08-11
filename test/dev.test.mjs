@@ -238,6 +238,7 @@ test("dev server reports build errors and reloads without changing output HTML",
     events = await eventStream(`${url}/__kudzu_reload?session=${secondClient.session}&revision=2`)
     await writeFile(source, "export default function Broken() { return <main>{</main> }\n")
     assert.match((await events.next("build-error")).data, /Expression expected/)
+    assert.match(await readFile(output, "utf8"), /Second valid build/)
     await writeFile(source, original)
     await events.next("reload")
   } finally {

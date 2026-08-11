@@ -41,14 +41,12 @@ export function patchBinding(node, target, value) {
 
 function commitBindings(id) {
   const bindings = bindingTargets.get(id)
-  if (!bindings) return
-  for (const binding of bindings) {
-    if (!binding.node.isConnected) bindings.delete(binding)
-    else patchBinding(binding.node, binding.target, binding.read())
+  if (bindings) {
+    for (const binding of bindings) {
+      if (!binding.node.isConnected) bindings.delete(binding)
+      else patchBinding(binding.node, binding.target, binding.read())
+    }
   }
-}
-
-function commitConditions(id) {
   const conditions = conditionTargets.get(id)
   if (!conditions) return
   for (const condition of conditions) {
@@ -58,7 +56,6 @@ function commitConditions(id) {
 }
 
 registerCommitter(commitBindings)
-registerCommitter(commitConditions)
 registerMountHook(mountBindings)
 registerMountHook(mountConditions)
 registerUnmountHook(unmountBindings)

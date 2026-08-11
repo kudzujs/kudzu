@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.31` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.32` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -295,6 +295,12 @@ This queue orders the next investigations by general migration value. Start only
 - Direct and captured setters cannot recreate released state, queued commits clear without touching replacement DOM, and captured object refs resolve to `null` after release.
 - Chrome coverage removes and recreates the same route and keyed row before old work resolves, proving replacement ownership stays fresh without cancelling application promises or adding a scheduler.
 - The focused 5,000-event Chrome dispatch median remains 6.4 ms; the native fixture retains its emitted paths with a measured 209 B raw / 94 B aggregate gzip correctness cost.
+
+### Completed In 0.8.32
+
+- Production artifacts complete in staging; public/generated collisions and late `afterBuild()` failure preserve the previous successful `dist`.
+- Same-root builds use an exclusive PID lock, stale locks fail closed, interrupted promotion backups recover on the next admitted build after lock removal, and successful replacement removes stale output.
+- Route HTML writes use bounded batches, keyed reverse/remove paths avoid repeated map reconstruction, and binding/condition commits share one dispatch without adding a runtime or public API.
 
 ## Cross-Cutting Performance Gates
 

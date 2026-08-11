@@ -21,7 +21,7 @@ export function ArchitectureSection() {
       <div><strong>Generate</strong><p>Dedicated codegen modules produce native handlers, reactive evaluators, keyed-list expressions, effects, parameters, and navigation capabilities.</p></div>
       <div><strong>Exclude</strong><p>Final route plans remove unreferenced handlers and Workers. Static routes emit complete HTML and no browser JavaScript.</p></div>
     </div>
-    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs. The <a href="https://github.com/kudzujs/kudzu/tree/v0.8.31/docs/next-architecture">architecture packet</a> records source-local symbols, graph diagnostics, native-handler ownership, and the ordered large-application compiler program.</p>
+    <p>The compiler uses TypeScript AST transforms through <code>transpileModule()</code>; semantic type checking remains the separate <code>tsc --noEmit</code> project check. Browser runtime is capability-specific rather than absent: a route receives only the command, binding, list, effect, native-handler, parameter, Worker, or navigation modules it needs. The <a href="https://github.com/kudzujs/kudzu/tree/v0.8.32/docs/next-architecture">architecture packet</a> records source-local symbols, graph diagnostics, output safety, and the ordered large-application compiler program.</p>
   </section>
 }
 
@@ -48,14 +48,20 @@ dist/
     ├── kudzu-list.js (when used)
     ├── kudzu-native.js (when used)
     └── kudzu-serialization.js (when used)`} />
-    <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use. Runtime bracket pages emit one fallback HTML file plus a route-specific parameter matcher. Ordered host rewrites are written to <code>.kudzu/kudzu-plan.json</code> and passed to <code>afterBuild()</code>.</p>
+    <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use. Runtime bracket pages emit one fallback HTML file plus a route-specific parameter matcher. Production artifacts and <code>afterBuild()</code> output complete in a staging tree; public files cannot replace generated paths, and the previous <code>dist</code> remains available after ordinary build or hook failure. Ordered host rewrites are written to <code>.kudzu/kudzu-plan.json</code>.</p>
   </section>
 }
 
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.31 results</strong><span>Performance records include optimization wins and correctness-guard costs. Raw arrays, environments, artifact lists, and limitations are retained in PERFORMANCE.md.</span></div>
+    <div className="docs-callout"><strong>Current 0.8.32 results</strong><span>Performance records include output replacement, keyed interaction, optimization wins, and correctness-guard costs. Retained measurements, environments, artifact lists, and explicit provenance limitations are recorded in PERFORMANCE.md.</span></div>
+    <h3>Staged output replacement</h3>
+    <BenchmarkTable columns={["Target", "Pages", "Replacement build", "Deploy output"]} rows={[
+      ["0.8.31 baseline", "1,011", "20,392.7 ms", "3,056 files / 11,137,074 B"],
+      ["0.8.32 pre-release candidate", "1,011", "19,229.1 ms", "Byte-identical"]
+    ]} />
+    <p>Twenty-one alternating local replacement builds exercised staging, collision validation, promotion, and previous-tree removal before final lock/recovery hardening. The observed median was 5.71% lower while every deploy path and SHA-256 hash matched. This is a recorded fixture result, not a general build-speed claim.</p>
     <h3>Async native-handler ownership guard</h3>
     <BenchmarkTable columns={["Target", "5,000 sync events", "Native fixture JS raw / gzip", "Late ownership"]} rows={[
       ["0.8.30 baseline", "6.4 ms", "13,629 B / 6,177 B", "Writes after unmount"],
@@ -87,7 +93,7 @@ export function BenchmarksSection() {
 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \\
   node --test --test-name-pattern="bundles relative TypeScript Workers" test/framework.test.mjs`} />
     <p>On Node 22.23.2, the 0.8.24 candidate retained a 907 B raw / 477 B gzip Worker graph and a 12,148 B raw / 5,411 B aggregate gzip window graph. The maintained benchmark and focused Chrome test verify build output, throughput, cadence, bounded history, stale writes, and 30-cycle start/termination and listener ownership.</p>
-    <div className="docs-callout"><strong>Historical comparison</strong><span>This dated 0.7.12 snapshot retains raw arrays in PERFORMANCE.md. It is not a current 0.8.31 framework ranking.</span></div>
+    <div className="docs-callout"><strong>Historical comparison</strong><span>This dated 0.7.12 snapshot retains raw arrays in PERFORMANCE.md. It is not a current 0.8.32 framework ranking.</span></div>
     <h3>Historical 0.7.12 keyed local state</h3>
     <BenchmarkTable columns={["Target", "Initial rows", "JS gzip", "Build", "Edit", "Reverse", "Remove", "Re-add"]} rows={[
       ["Kudzu", "Yes", "8,610 B", "238 ms", "0.5 ms", "4.2 ms", "1.3 ms", "1.9 ms"],

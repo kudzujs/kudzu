@@ -2,6 +2,82 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, and `npm run benchmark:native` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 2026-08-11 React, Vue, And Svelte Check
+
+This is a current local check, not a maintained framework ranking. The external `/home/kft/Documents/etc/demo/benchmarks` workspace is not Git-provenanced, but its matched fixtures, validators, dependencies, and raw result files were present and reused without source changes. The Kudzu target used this P0.5 candidate with `0.8.31` package metadata; controls were React 19.2.7, Vue 3.5.40, Svelte 5.56.6, and Vite 7.3.6 on Node 24.14.0, Linux x64, and Chrome 142.0.7444.175.
+
+Each fixture received one warm-up and seven rotating clean production builds. Seven fresh headless Chrome profiles per target validated exact row count/order/text, retained and released DOM identity, fresh state on re-entry, and effect lifecycle counts before recording MutationObserver completion. React, Vue, and Svelte are CSR controls with no initial rows in HTML; Kudzu emits all initial rows, so total deploy size is reported but is not architecture-equivalent.
+
+| Fixture | Framework | Build median | Initial JS gzip | Total deploy raw |
+|---|---|---:|---:|---:|
+| 1,000 keyed rows with local state | Kudzu | 1,212 ms | 10.2 KB | 576.0 KB |
+| | Svelte | 1,745 ms | 13.1 KB | 33.8 KB |
+| | Vue | 1,584 ms | 24.4 KB | 61.6 KB |
+| | React | 1,939 ms | 59.4 KB | 189.5 KB |
+| 1,000 keyed effects | Kudzu | 735 ms | 9.8 KB | 226.0 KB |
+| | Svelte | 1,554 ms | 12.5 KB | 32.4 KB |
+| | Vue | 1,444 ms | 24.5 KB | 61.9 KB |
+| | React | 1,741 ms | 59.5 KB | 189.7 KB |
+| 100 parents x 10 keyed children | Kudzu | 732 ms | 8.2 KB | 354.6 KB |
+| | Svelte | 1,613 ms | 13.1 KB | 33.8 KB |
+| | Vue | 1,437 ms | 24.6 KB | 62.1 KB |
+| | React | 1,718 ms | 59.5 KB | 190.0 KB |
+
+Kudzu's build medians were 23% to 58% lower and its initial JavaScript gzip was 21% to 86% lower than the three CSR controls. A separate seven-run GNU `time` check on the keyed-row fixture measured median build peak RSS of 157.4 MiB for Kudzu, 209.2 MiB for Svelte, 208.0 MiB for Vue, and 281.3 MiB for React.
+
+| Fixture operation | Kudzu | Svelte | Vue | React |
+|---|---:|---:|---:|---:|
+| Row edit | 5.6 ms | 4.9 ms | 5.7 ms | 11.9 ms |
+| Reverse 1,000 rows | 28.2 ms | 94.3 ms | 23.2 ms | 51.8 ms |
+| Remove row | 5.0 ms | 8.7 ms | 7.6 ms | 15.6 ms |
+| Re-add row | 7.7 ms | 16.8 ms | 8.1 ms | 18.5 ms |
+| Effect dependency update | 4.8 ms | 9.8 ms | 10.0 ms | 14.9 ms |
+| Effect-unrelated update | 2.8 ms | 7.3 ms | 2.7 ms | 10.1 ms |
+| Reverse effect rows | 11.7 ms | 71.5 ms | 13.4 ms | 29.5 ms |
+| Nested child update | 2.7 ms | 3.4 ms | 6.5 ms | 12.0 ms |
+| Reverse 10 children | 0.7 ms | 1.1 ms | 3.1 ms | 9.0 ms |
+| Reverse 100 parents | 6.8 ms | 7.7 ms | 7.3 ms | 11.1 ms |
+| Remove parent | 1.1 ms | 1.5 ms | 3.4 ms | 6.7 ms |
+
+These initial browser runs were grouped by target and some seven-sample ranges were wide, so they were treated as directional rather than a framework ranking. The candidate then removed repeated keyed-root lookups and redundant removal-map reconstruction across the generic, nested, and reducer list paths, and merged binding/condition state dispatch into one committer. The keyed-row JavaScript graph decreased from 26,962 B raw / 10,508 B gzip to 26,768 B raw / 10,485 B gzip.
+
+A 31-round rotating follow-up ran fresh Chrome profiles in alternating and periodically reversed framework order. Its full-list completion predicate retained the exact 1,000-row content and identity checks inside timing:
+
+| Framework | Edit | Reverse | Remove | Re-add |
+|---|---:|---:|---:|---:|
+| Kudzu | 5.9 ms | 23.4 ms | 5.6 ms | 8.0 ms |
+| Svelte | 5.5 ms | 97.0 ms | 9.2 ms | 14.7 ms |
+| Vue | 6.8 ms | 26.6 ms | 9.6 ms | 10.0 ms |
+| React | 14.7 ms | 51.0 ms | 20.2 ms | 14.3 ms |
+
+Paired sign tests established Kudzu's reverse, remove, and re-add advantage over Vue at 6.0 ms (`p=0.00143`), 4.1 ms (`p=0.000192`), and 2.1 ms (`p=0.0107`) median differences. Kudzu also beat Svelte for those operations in 31/31, 28/31, and 27/31 rounds. The full-list edit result remained dominated by the validator: Kudzu versus Svelte had a 0.8 ms directional loss with `p=0.281`, while Kudzu versus Vue had a 0.4 ms directional gain with `p=0.720`.
+
+A final edit-only protocol kept complete 1,000-row correctness validation after each measurement but used only the edited row's class/input identity as the completion signal. Over 31 rotating rounds, Kudzu measured 0.7 ms versus Svelte 1.4 ms and Vue 1.8 ms. Paired differences favored Kudzu by 0.7 ms in 30/31 rounds (`p=2.98e-8`) versus Svelte and by 0.9 ms in 31/31 rounds (`p=9.31e-10`) versus Vue. Complete seven-run suite samples remain in the external workspace's `benchmarks/results/*-current.{json,md}` files; rotating raw samples are temporary measurement artifacts and this section remains a current local check rather than a maintained general ranking.
+
+## 0.8.32 Staged Output Emission
+
+Measured UTC 2026-08-11 on an Intel Core i5-9500 with 6 cores, Linux 6.17.0-19-generic, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.31` at `06b436e`; baseline and the pre-release P0.5 candidate used the same installed dependencies and the public 1,000-product storefront fixture at `f2d5be1a516c539e30f7125f6870d42b1dd02ecd`. The later same-root lock and interrupted-backup recovery hardening was correctness-tested but not included in this timing array.
+
+One warm-up followed by 21 alternating replacement builds preserved the preceding output so the candidate exercised staging, promotion, and prior-tree removal on every run. Generated `.kudzu` scratch was cleaned outside timing. The candidate folds collision validation into one public copy traversal and writes the already-rendered route HTML in bounded batches of 64.
+
+| Target | Build median | Output |
+|---|---:|---:|
+| `v0.8.31` | 20,392.7 ms | 3,056 files / 11,137,074 B |
+| P0.5 candidate | 19,229.1 ms | 3,056 files / 11,137,074 B |
+
+The candidate median is 5.71% lower. Every relative artifact path and SHA-256 hash matched, so deploy raw and gzip sizes are unchanged and no browser bytes are added.
+
+```text
+v0.8.31: [20868.5,19436.9,22023.6,21433.5,20634.0,20410.1,20392.7,21408.8,20252.0,19858.3,20489.9,20835.2,20450.2,18727.3,17239.1,17578.2,17672.1,17465.1,21087.0,18892.8,18727.9]
+candidate: [20481.6,18692.6,21060.7,19881.9,19510.8,20844.1,20348.6,19229.1,20304.8,19852.9,18929.3,20472.5,17384.9,18628.6,17890.2,18841.0,19755.6,17805.9,18282.5,17770.5,17370.3]
+```
+
+```bash
+APP_ROOT=/tmp/opencode/kudzu-based-bench/apps/shop-kudzu \
+BASELINE_ROOT=/tmp/opencode/kudzu-p05-profile \
+PRESERVE_OUTPUT=1 RUNS=21 npm run benchmark:commerce
+```
+
 ## 0.8.31 Async Native Handler Ownership
 
 Measured UTC 2026-08-10 on Apple M3, 8 logical CPUs, 8 GiB RAM, macOS 26.5.2 / Darwin 25.5.0, Node 25.6.1, npm 11.18.0, and Chrome 151.0.7922.76. The baseline was clean tag `v0.8.30` at `9bb5ce8`; baseline and candidate used the same installed dependencies.

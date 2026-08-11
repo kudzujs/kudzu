@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.32 - Staged and collision-safe output
+
+Kudzu 0.8.32 completes P0.5 by building production artifacts away from the active deploy tree, rejecting public/generated collisions, and replacing `dist` only after generation and trusted `afterBuild()` work succeed.
+
+### Changed in 0.8.32
+
+- Route HTML, runtime, handler, chunk, Worker, source CSS, and configured CSS artifacts complete in a project-local staging tree before promotion.
+- Public files merge only into unowned paths. A public file cannot replace a generated file or directory, and duplicate configured stylesheet outputs fail before publication.
+- Ordinary compiler, bundler, public-copy, and `afterBuild()` failures leave the previous successful `dist` unchanged.
+- Same-root builds use an exclusive PID lock. Active overlap and dead/invalid lock files fail closed; after an operator removes a stale lock, the next admitted build recovers a backup left by interrupted promotion. Promotion is a guarded rollback/recovery sequence rather than a lock-free atomic directory exchange.
+- Successful replacement removes stale output and staging/backup artifacts. Development rebuild errors retain the previous on-disk HTML while the existing error overlay reports the source failure.
+- Route HTML writes use bounded batches. Keyed reverse/remove paths avoid repeated root-map work, and binding plus condition updates share one state commit dispatch.
+
+### Performance
+
+- Before final lock/recovery hardening, twenty-one alternating local replacement builds of the 1,011-page commerce fixture observed a 20,392.7 ms to 19,229.1 ms median change, 5.71% lower, while all 3,056 paths and 11,137,074 deploy bytes retained identical SHA-256 hashes.
+- The optimized 1,000-row browser graph decreased by 194 B raw / 23 B gzip. External exploratory browser comparisons and their non-publication limitations are documented in `PERFORMANCE.md`; they are not a release gate or maintained general ranking.
+
+### Validation
+
+- `npm run check`, `npm test`, `npm run test:package`, and all 190 tests pass.
+- Focused integration coverage verifies seven public/generated namespaces, configured-style collisions, late hook failure, successful stale-file removal, same-root overlap rejection, stale-lock diagnosis, interrupted-backup recovery after lock removal, and no staging/backup remnants.
+- Existing keyed identity/state, nested lists, reducer rows, SVG, effects, Workers, navigation, async ownership, and static zero-JavaScript behavior remain covered.
+- P0.6 ProjectSession and explicit root is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.32
+```
+
 ## 0.8.31 - Async native-handler ownership
 
 Kudzu 0.8.31 completes P0.4 by tying every mounted native-handler context to its DOM registration lifetime. Async work may finish after route, keyed, or conditional removal, but it cannot write through ownership that no longer exists.

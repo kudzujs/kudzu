@@ -195,12 +195,13 @@ function updateList(list) {
     const currentTokens = [...list.roots.keys()]
     const nextTokens = entries.map(entry => entry.token)
     if (nextTokens.length === currentTokens.length && nextTokens.every((token, index) => token === currentTokens[currentTokens.length - index - 1])) {
+      const nextRoots = nextTokens.map(token => [token, list.roots.get(token)])
       const parent = list.container ?? list.start.parentNode
       const reordered = parent.ownerDocument.createDocumentFragment()
-      reordered.append(...nextTokens.map(token => list.roots.get(token)))
+      reordered.append(...nextRoots.map(([, node]) => node))
       parent.insertBefore(reordered, list.boundary)
-      list.roots = new Map(nextTokens.map(token => [token, list.roots.get(token)]))
-      if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots = nextTokens.map(token => list.roots.get(token))
+      list.roots = new Map(nextRoots)
+      if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots = nextRoots.map(([, node]) => node)
       list.container ??= parent
       list.items = items
       return
@@ -210,7 +211,6 @@ function updateList(list) {
       const removedIndex = currentTokens.indexOf(removed)
       if (removed && nextTokens.every((token, index) => token === currentTokens[index >= removedIndex ? index + 1 : index])) {
         removeListRoot(list, removed)
-        list.roots = new Map(nextTokens.map(token => [token, list.roots.get(token)]))
         if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots = nextTokens.map(token => list.roots.get(token))
         list.items = items
         return
@@ -472,12 +472,12 @@ function updateNestedList(list, items) {
     return true
   }
   if (items.length === previous.length && items.every((item, index) => item === previous[previous.length - index - 1])) {
-    const tokens = [...list.roots.keys()].reverse()
+    const roots = [...list.roots].reverse()
     const parent = list.container ?? list.start.parentNode
     const reordered = parent.ownerDocument.createDocumentFragment()
-    reordered.append(...tokens.map(token => list.roots.get(token)))
+    reordered.append(...roots.map(([, node]) => node))
     parent.insertBefore(reordered, list.boundary)
-    list.roots = new Map(tokens.map(token => [token, list.roots.get(token)]))
+    list.roots = new Map(roots)
     list.items = items
     list.container ??= parent
     return true
@@ -487,10 +487,6 @@ function updateNestedList(list, items) {
     while (removed < items.length && items[removed] === previous[removed]) removed++
     if (items.every((item, index) => item === previous[index >= removed ? index + 1 : index])) {
       removeListRoot(list, keyToken(previous[removed]?.[list.descriptor.key]))
-      list.roots = new Map(items.map(item => {
-        const token = keyToken(item[list.descriptor.key])
-        return [token, list.roots.get(token)]
-      }))
       list.items = items
       return true
     }
@@ -540,12 +536,12 @@ function updateReducerList(list, items) {
     return true
   }
   if (items.length === previous.length && items.every((item, index) => item === previous[previous.length - index - 1])) {
-    const tokens = [...list.roots.keys()].reverse()
+    const roots = [...list.roots].reverse()
     const parent = list.container ?? list.start.parentNode
     const reordered = parent.ownerDocument.createDocumentFragment()
-    reordered.append(...tokens.map(token => list.roots.get(token)))
+    reordered.append(...roots.map(([, node]) => node))
     parent.insertBefore(reordered, list.boundary)
-    list.roots = new Map(tokens.map(token => [token, list.roots.get(token)]))
+    list.roots = new Map(roots)
     list.items = items
     list.container ??= parent
     return true
@@ -555,10 +551,6 @@ function updateReducerList(list, items) {
     while (removed < items.length && items[removed] === previous[removed]) removed++
     if (items.every((item, index) => item === previous[index >= removed ? index + 1 : index])) {
       removeListRoot(list, keyToken(previous[removed]?.[list.descriptor.key]))
-      list.roots = new Map(items.map(item => {
-        const token = keyToken(item[list.descriptor.key])
-        return [token, list.roots.get(token)]
-      }))
       list.items = items
       return true
     }

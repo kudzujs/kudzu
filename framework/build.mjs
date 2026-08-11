@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
-import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises"
+import { cp, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
@@ -35,6 +35,31 @@ async function loadConfig() {
 }
 
 export async function build({ quiet = false, minify = true } = {}) {
+  const stagedOutput = join(root, ".kudzu-dist-staging")
+  const backupOutput = join(root, ".kudzu-dist-backup")
+  const lockPath = join(root, ".kudzu-build.lock")
+  const lock = await acquireBuildLock(lockPath)
+  try {
+    await recoverOutput(outputDirectory, backupOutput)
+    await rm(stagedOutput, { recursive: true, force: true })
+    const { result, pageCount, behaviorCount } = await buildInto(stagedOutput, { minify })
+    await promoteOutput(stagedOutput, outputDirectory, backupOutput)
+    if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
+    return result
+  } finally {
+    try {
+      await rm(stagedOutput, { recursive: true, force: true })
+    } finally {
+      try {
+        await lock.close()
+      } finally {
+        await rm(lockPath, { force: true })
+      }
+    }
+  }
+}
+
+async function buildInto(outputDirectory, { minify }) {
   const config = await loadConfig()
   const base = normalizeBase(config.base)
   const configuredStyles = normalizeStyles(config.styles, base)
@@ -52,7 +77,6 @@ export async function build({ quiet = false, minify = true } = {}) {
     group.hasParams = false
   }
   await rm(workDirectory, { recursive: true, force: true })
-  await rm(outputDirectory, { recursive: true, force: true })
   await mkdir(workDirectory, { recursive: true })
   await mkdir(outputDirectory, { recursive: true })
 
@@ -227,11 +251,13 @@ export async function build({ quiet = false, minify = true } = {}) {
     runtime: { shared: hasSharedRuntime, dependency: hasDependencyRuntime }
   } = capabilityIR
   const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
-  for (const entry of pageEntries) {
-    const routeDirectory = join(outputDirectory, entry.route)
-    await mkdir(routeDirectory, { recursive: true })
-    const html = preloadModules(entry.html.replace(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/${runtimeName(entry.usesDependencyRuntime)}`))))
-    await writeFile(join(routeDirectory, "index.html"), html)
+  for (let offset = 0; offset < pageEntries.length; offset += 64) {
+    await Promise.all(pageEntries.slice(offset, offset + 64).map(async entry => {
+      const routeDirectory = join(outputDirectory, entry.route)
+      await mkdir(routeDirectory, { recursive: true })
+      const html = preloadModules(entry.html.replace(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/${runtimeName(entry.usesDependencyRuntime)}`))))
+      await writeFile(join(routeDirectory, "index.html"), html)
+    }))
   }
   if (navigationRoutes.length || behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
     const runtimeFile = hasSharedRuntime ? "./shared-runtime.js" : "./runtime.js"
@@ -316,10 +342,6 @@ export async function build({ quiet = false, minify = true } = {}) {
   }
   const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
-  for (const file of new Set([...cssFiles, ...importedAssets])) {
-    const collision = join(publicDirectory, "assets", relative(sourceDirectory, file))
-    if (await exists(collision)) throw new Error(`${relative(root, collision)} collides with emitted source asset ${relative(root, file)}`)
-  }
   for (const file of cssFiles) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
     await mkdir(dirname(output), { recursive: true })
@@ -339,17 +361,95 @@ export async function build({ quiet = false, minify = true } = {}) {
       if (typeof css !== "string") throw new Error(`${style.label}.transform must return CSS text or an object with a css string`)
     }
     const output = join(outputDirectory, style.output.slice(1))
+    if (await exists(output)) throw new Error(`${style.label}.output ${JSON.stringify(style.output)} collides with a generated artifact`)
     await mkdir(dirname(output), { recursive: true })
     await writeFile(output, css)
   }
-  if (await exists(publicDirectory)) await cp(publicDirectory, outputDirectory, { recursive: true })
+  if (await exists(publicDirectory)) {
+    await copyPublic(publicDirectory, outputDirectory)
+  }
   if (config.afterBuild !== undefined) {
     if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
     await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites })
   }
 
-  if (!quiet) console.log(`Built ${plans.length} page(s), ${behaviorCount} interactive page(s) into dist/`)
-  return { sourceResults }
+  return { result: { sourceResults }, pageCount: plans.length, behaviorCount }
+}
+
+async function acquireBuildLock(lockPath) {
+  let lock
+  try {
+    lock = await open(lockPath, "wx")
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw error
+  }
+  if (lock) {
+    try {
+      await lock.writeFile(String(process.pid))
+      return lock
+    } catch (error) {
+      await lock.close()
+      await rm(lockPath, { force: true })
+      throw error
+    }
+  }
+  const owner = Number(await readFile(lockPath, "utf8").catch(() => ""))
+  if (Number.isInteger(owner) && owner > 0) {
+    let active = true
+    try {
+      process.kill(owner, 0)
+    } catch (error) {
+      if (error?.code === "ESRCH") active = false
+      else throw error
+    }
+    if (active) throw new Error(`Another Kudzu build is already running for ${root} (PID ${owner})`)
+    throw new Error(`A stale Kudzu build lock for PID ${owner} exists at ${lockPath}; remove it before building`)
+  }
+  throw new Error(`An invalid Kudzu build lock exists at ${lockPath}; remove it before building`)
+}
+
+async function recoverOutput(finalOutput, backupOutput) {
+  if (!await exists(backupOutput)) return
+  if (await exists(finalOutput)) await rm(backupOutput, { recursive: true, force: true })
+  else await rename(backupOutput, finalOutput)
+}
+
+async function promoteOutput(stagedOutput, finalOutput, backup) {
+  const previous = await exists(finalOutput)
+  if (previous) await rename(finalOutput, backup)
+  try {
+    await rename(stagedOutput, finalOutput)
+  } catch (error) {
+    if (previous) {
+      try {
+        await rename(backup, finalOutput)
+      } catch (rollbackError) {
+        throw new AggregateError([error, rollbackError], "Kudzu output promotion and rollback both failed")
+      }
+    }
+    throw error
+  }
+  if (previous) await rm(backup, { recursive: true, force: true }).catch(error => console.warn(`Built output was promoted, but ${backup} could not be removed and will be retried on the next build: ${error.message}`))
+}
+
+async function copyPublic(sourceDirectory, destinationDirectory, destinationRoot = destinationDirectory) {
+  for (const entry of await readdir(sourceDirectory, { withFileTypes: true })) {
+    const source = join(sourceDirectory, entry.name)
+    const destination = join(destinationDirectory, entry.name)
+    let generated
+    try {
+      generated = await stat(destination)
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error
+    }
+    if (!generated) {
+      await cp(source, destination, { recursive: entry.isDirectory(), force: false, errorOnExist: true })
+    } else if (entry.isDirectory() && generated.isDirectory()) {
+      await copyPublic(source, destination, destinationRoot)
+    } else {
+      throw new Error(`${relative(root, source)} collides with generated output ${relative(destinationRoot, destination).replaceAll(sep, "/")}`)
+    }
+  }
 }
 
 function preloadModules(html) {
@@ -551,6 +651,7 @@ function normalizeStyles(value, base) {
   if (!Array.isArray(value)) throw new Error("kudzu.config styles must be an array")
   const urls = []
   const sources = []
+  const outputs = new Set()
   for (let index = 0; index < value.length; index++) {
     const style = value[index]
     const label = `kudzu.config styles[${index}]`
@@ -570,6 +671,8 @@ function normalizeStyles(value, base) {
     if (typeof style.source !== "string" || !style.source) throw new Error(`${label}.source must be a non-empty file path`)
     if (typeof style.output !== "string" || !style.output.startsWith("/") || style.output.startsWith("//") || /[%?#\\\0]/.test(style.output) || style.output.split("/").includes("..") || !style.output.endsWith(".css")) throw new Error(`${label}.output must be a root-relative .css path without query, hash, or traversal`)
     if (style.transform !== undefined && typeof style.transform !== "function") throw new Error(`${label}.transform must be a function`)
+    if (outputs.has(style.output)) throw new Error(`${label}.output duplicates another configured style output ${JSON.stringify(style.output)}`)
+    outputs.add(style.output)
     const entry = { label, source: resolve(root, style.source), output: style.output, transform: style.transform }
     sources.push(entry)
     urls.push(withBase(base, style.output))

@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .kudzu/
+.kudzu-build.lock*
+.kudzu-dist-*
 test/fixtures/**/.kudzu/
 test/fixtures/**/dist/
 benchmarks/

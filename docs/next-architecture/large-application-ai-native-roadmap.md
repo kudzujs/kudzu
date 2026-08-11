@@ -2,7 +2,7 @@
 
 ## Status
 
-Active execution plan after `0.8.31`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Active execution plan after `0.8.32`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
 [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. This plan is authoritative for the order and completion evidence of compiler generalization, large-application foundations, compatibility boundaries, AI tooling, and scale validation. If implementation evidence changes a boundary, update this document before broadening a patch.
 
@@ -112,7 +112,7 @@ This is an incremental evolution of the current repository:
 - Resource-specific ownership passes into a package-neutral ResourceIR when evidence permits.
 - Serialized handler URL searches into explicit artifact references.
 - Site-wide capability unions into route capability signatures.
-- Full destructive development builds into project-session invalidation and atomic output.
+- Full destructive development builds into project-session invalidation and rollback-safe output.
 - String-only diagnostics into structured diagnostics suitable for machines and AI agents.
 
 ### Avoid
@@ -133,7 +133,8 @@ This is an incremental evolution of the current repository:
 - [x] P0.2 Symbol-aware descriptor discovery is complete in `0.8.29`. Native handler, effect, remaining binding, list evaluator, optimized-command, and effect-resource discovery/lowering use the source-local binding index when it owns the complete AST; synthesized trees retain the existing fail-safe path. Focused lexical-shadow, JSON-safe IR, resource-ownership checks, all 187 tests, and packed-package smoke pass.
 - [x] P0.3 Graph diagnostics is complete in `0.8.30`. Reachable ordinary modules validate relative runtime imports/re-exports and reject every dynamic `import()` at the importer source location before compilation or generated module loading. Ordinary and Worker traversal retain separate ownership, type-only and unreachable edges remain excluded, focused page/helper/re-export/dynamic fixtures pass with all 189 tests and packed-package smoke, and no export-symbol graph, ProjectSession, runtime, or public API is added.
 - [x] P0.4 Async native handler ownership is complete in `0.8.31`. Mounted native registrations invalidate direct/captured setters, queued commits, and captured refs before listener removal. Chrome route, keyed-row, document-disposal, and synchronous event-dispatch checks, all 189 tests, and packed-package smoke pass without cancelling application promises or adding a scheduler.
-- [ ] P0.5 Atomic and collision-safe output is next. Failed builds must preserve prior output and public content must not overwrite generated artifacts.
+- [x] P0.5 Staged and collision-safe output is complete in `0.8.32`. Production output completes in one project-local staging tree, public files are compared against generated route/runtime/handler/chunk/Worker/CSS paths while copying, `afterBuild` runs before rollback-safe promotion, and ordinary failures preserve the prior `dist`. Same-root overlap and stale locks fail closed; after stale-lock removal, an interrupted promotion backup recovers on the next admitted build. Focused collision/replacement/dev checks pass with equivalent `v0.8.31` commerce deploy output; `.kudzu` remains compiler scratch for P0.6.
+- [ ] P0.6 Explicit ProjectSession is next. Root and caches must become build-scoped so independent projects can compile safely in one process.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -145,7 +146,7 @@ P0 creates the semantic base required by every later large-application capabilit
 | P0.2 | Descriptor consumers use SymbolRef | P0.1 | Handler/effect/binding capture and import discovery no longer depends only on text names |
 | P0.3 | Graph diagnostics | P0.1 | Relative dynamic imports and unresolved runtime edges fail at the source location |
 | P0.4 | Async native handler ownership | None | Pending handlers cannot write after route or DOM ownership is released |
-| P0.5 | Atomic collision-safe build | None | Failed builds preserve prior output and public files cannot overwrite generated artifacts |
+| P0.5 | Staged collision-safe build | None | Failed builds preserve prior output and public files cannot overwrite generated artifacts |
 | P0.6 | Explicit ProjectSession | P0.1 | Root and caches are build-scoped; two projects can compile safely in one process |
 | P0.7 | Parsed module/export cache | P0.6 | Shared modules are parsed and summarized once per build |
 | P0.8 | Stable ModuleSymbol and SiteId | P0.6-P0.7 | Imports, re-exports, aliases, owners, and call sites use stable identities outside a pass |
@@ -275,7 +276,7 @@ Every result carries a stable source-local binding slot, debug name, declaration
 
 **Completed in `0.8.31`:** the existing native registration lifetime now guards state mutation, queued commits, and captured ref lookup. Route and keyed-row browser checks recreate the same ownership IDs before old work resolves, and document disposal invalidates a pending layout handler. Replacement state and DOM remain fresh. Both 5,000-event Chrome dispatch medians are 6.4 ms, and the 209 B raw / 94 B aggregate gzip runtime cost is recorded in `PERFORMANCE.md`.
 
-### PR 5: Atomic And Collision-Safe Output
+### PR 5: Staged And Collision-Safe Output
 
 **Objective:** make production builds safe before scaling the build graph.
 
@@ -283,7 +284,9 @@ Every result carries a stable source-local binding slot, debug name, declaration
 
 **Tests:** public collisions with route HTML, core runtime, handler entry, chunk, Worker namespace, source CSS, and configured CSS; failed build preserves prior `dist`.
 
-**Done condition:** output is staged, validated, and atomically promoted; public content cannot silently replace generated artifacts.
+**Done condition:** output is staged, validated, and promoted with rollback/recovery; public content cannot silently replace generated artifacts.
+
+**Completed in `0.8.32`:** Kudzu emits into a locked project-local staging sibling, validates public files during one collision-safe copy traversal, runs trusted `afterBuild` mutation there, and promotes with backup rollback. Active overlap and stale locks fail closed; after stale-lock removal, the next admitted build restores an interrupted promotion backup. This is a guarded two-rename replacement, not a lock-free atomic directory exchange. Route HTML is written in bounded batches. Route HTML, core runtime, handler entry, actual esbuild chunk, Worker namespace, source CSS, and configured CSS collisions preserve the complete prior manifest; late hook failure also preserves it and successful replacement removes stale files. Before final lock/recovery hardening, twenty-one alternating 1,011-page replacement builds observed a 5.71% lower median with identical 3,056-file / 11,137,074-byte commerce deploy output.
 
 ### PR 6: ProjectSession And Explicit Root
 
@@ -430,7 +433,7 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 ## Production Gates Before 1.0
 
 - Async native and effect work cannot write after ownership release.
-- Build output is atomic and collision-safe.
+- Build output is staged, collision-safe, and rollback/recovery guarded.
 - Source maps connect generated route code to TS/TSX diagnostics.
 - Chrome, Firefox, and WebKit pass required journeys.
 - Accessibility automation and keyboard checks cover forms, navigation, dialogs, menus, charts, and errors.
@@ -457,4 +460,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 4 are complete. The next PR is **PR 5: Atomic And Collision-Safe Output**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 5 are complete. The next PR is **PR 6: ProjectSession And Explicit Root**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.

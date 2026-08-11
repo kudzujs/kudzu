@@ -44,7 +44,7 @@ export default function ReleasePage() {
           <article><span>STATE</span><h3>Setters become no-ops</h3><p>Direct and captured setters check the mounted registration before mutating browser state.</p></article>
           <article><span>COMMITS</span><h3>Queued writes are cleared</h3><p>A microtask scheduled before unmount drops its commit. The measured correctness cost is 94 B aggregate gzip.</p></article>
           <article><span>REFS</span><h3>Replacement nodes stay isolated</h3><p>Captured object refs resolve to null after release instead of finding a new node with the same compiler ID.</p></article>
-          <article><span>NEXT</span><h3>Build output safety</h3><p>P0.5 stages and validates output before atomically replacing the previous successful build.</p></article>
+          <article><span>NEXT</span><h3>Build output safety</h3><p>P0.5 stages and validates output before replacing the previous successful build with rollback protection.</p></article>
         </div>
       </section>
 

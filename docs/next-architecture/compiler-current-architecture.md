@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.31` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.32` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -28,10 +28,10 @@ This maps the current `0.8.31` architecture built on the completed `0.8.23` Goal
 | Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Validates RouteIR v1 and purely folds rendered plans and route facts into CapabilityIR v1. |
 | Effect entry generation | [`framework/compiler/effect-codegen.mjs`](../../framework/compiler/effect-codegen.mjs) | Generates ordinary, dependency, owned, and navigable effect entries from rendered descriptors. |
 | Runtime generation | [`framework/compiler/runtime-codegen.mjs`](../../framework/compiler/runtime-codegen.mjs), [`framework/compiler/list-runtime-codegen.mjs`](../../framework/compiler/list-runtime-codegen.mjs), [`framework/compiler/param-codegen.mjs`](../../framework/compiler/param-codegen.mjs) | Consumes versioned contracts, specializes authored capability sources with fail-closed anchors, and returns source/define results without filesystem ownership. |
-| Artifact emission | `framework/build.mjs` | Selects required files from CapabilityIR and writes or bundles generated sources with esbuild. Byte-identical native, parameter, and effect route entries reuse one exact-source transform result within the current build only. |
+| Artifact emission | `framework/build.mjs` | Selects required files from CapabilityIR, writes route HTML in bounded batches, writes and bundles the complete generation in a project-local staging sibling, copies public subtrees without replacing generated paths, runs `afterBuild`, then promotes with rollback so failed builds preserve the prior `dist`. Byte-identical native, parameter, and effect route entries reuse one exact-source transform result within the current build only. |
 | Browser capabilities | [`framework/*.js`](../../framework/) | Small optional modules for commands, bindings, lists, effects, native handlers, serialization, parameters, and navigation; native contexts invalidate writes and refs at DOM ownership release, with no component runtime. |
 | Opt-in navigation | [`framework/navigation-runtime.js`](../../framework/navigation-runtime.js) plus `framework/build.mjs` navigation configuration/emission | Fetches and validates complete same-origin documents, replaces only the marked route range, manages route/layout disposal, history, focus, finite prefetch retention, and native fallback. |
-| Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Rebuild/watch/SSE and response-only short-lived state restoration; never changes production `dist/`. |
+| Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Rebuild/watch/SSE and response-only short-lived state restoration; failed rebuilds show the existing error overlay while preserving the previous on-disk output. |
 
 ## Current Data Flow
 
@@ -54,8 +54,10 @@ src/pages entries + config
        -> CapabilityIR v1
   -> specialize and emit only selected runtime/capability ESM
        -> reuse exact generated route-entry transforms within this build
-  -> write route index.html, CSS/assets, Worker graphs, rewrites, and .kudzu/kudzu-plan.json
-  -> optional afterBuild()
+  -> write route index.html, CSS/assets, Worker graphs, and rewrites into staging
+  -> copy public paths only where they do not replace generated artifacts
+  -> optional afterBuild() against staging
+  -> rollback-safe promotion to dist; recover an interrupted backup on the next admitted build after stale-lock removal
 ```
 
 The browser consumes static HTML first. State seeds and descriptors in that HTML connect only to emitted command, binding, list, native-handler, effect, parameter, or navigation modules. Browser execution patches owned DOM directly; it does not invoke component functions or reconstruct a component tree.
