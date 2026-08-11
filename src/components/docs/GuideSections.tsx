@@ -6,6 +6,7 @@ export function InstallationSection() {
     <p>Kudzu requires Node.js 22 or newer. Create a project and start the development server:</p>
     <CodeBlock language="shell" code={`npm create kudzu@latest my-app
 cd my-app
+npm install
 npm run dev`} />
     <p>To add Kudzu to an existing project, install <code>@kudzujs/core</code> and <code>typescript</code>, configure TypeScript with <code>jsxImportSource: "@kudzujs/core"</code>, and add these scripts to <code>package.json</code>:</p>
     <CodeBlock language="text" code={`{

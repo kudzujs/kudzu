@@ -315,6 +315,59 @@ test("specializes exact command forms to plain data", () => {
   assertJsonData(command("setCount(count + 1)"))
 })
 
+test("lowers equivalent state operations to identical command semantics", () => {
+  const file = resolve("src/pages/semantic-state.tsx")
+  const source = `
+import { useState } from "@kudzujs/core"
+export default function Page() {
+  const [count, setCount] = useState(0)
+  return <>
+    <button onClick={() => setCount(count + 1)}>Direct</button>
+    <button onClick={() => { const next = count + 1; setCount(next) }}>Alias</button>
+    <button onClick={() => { const increment = () => setCount(count + 1); increment() }}>Arrow</button>
+    <button onClick={() => { function increment(value) { setCount(value + 1) }; increment(count) }}>Function</button>
+  </>
+}
+`
+  const result = compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), "")
+
+  assert.equal(result.handlerModule, undefined)
+  assert.equal(result.moduleIR.handlers.length, 4)
+  assert.deepEqual(result.moduleIR.handlers.map(handler => handler.kind), ["commands", "commands", "commands", "commands"])
+  assert.deepEqual(result.moduleIR.handlers.map(handler => handler.commands), Array.from({ length: 4 }, () => [{ operation: "add", signal: 0, value: 1 }]))
+  assert.deepEqual(result.moduleIR.signals, [{ slot: 0, key: "owner:0:count", debugName: "count" }])
+  assert.equal((result.buildModule.code.match(/__kBehavior\(/g) ?? []).length, 4)
+  assert.doesNotMatch(result.buildModule.code, /__kNativeBehavior/)
+  assert.deepEqual(JSON.parse(JSON.stringify(result.moduleIR)), result.moduleIR)
+})
+
+test("rejects unsafe semantic state operation helpers with source diagnostics", () => {
+  const file = resolve("src/pages/semantic-state-invalid.tsx")
+  const failure = handler => {
+    const source = `
+import { useState } from "@kudzujs/core"
+export default function Page() {
+  const [count, setCount] = useState(0)
+  return <button onClick={() => { ${handler} }}>Update</button>
+}
+`
+    try {
+      compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), "")
+      assert.fail("Expected semantic state operation compilation to fail")
+    } catch (error) {
+      assert.match(error.message, /src\/pages\/semantic-state-invalid\.tsx:\d+:\d+/)
+      assert.doesNotMatch(error.message, /\.kudzu/)
+      return error.message
+    }
+  }
+
+  assert.match(failure("function increment(value) { setCount(value + 1); increment(value) }; increment(count)"), /cannot be recursive/)
+  assert.match(failure("const increment = () => setCount(count + 1); const escaped = increment; escaped()"), /cannot escape/)
+  assert.match(failure("let next = count + 1; next++; setCount(next)"), /must remain immutable/)
+  assert.match(failure("const increment = () => setCount(count + 1); increment?.()"), /do not support dynamic dispatch/)
+  assert.match(failure("const actions = { increment: () => setCount(count + 1) }; actions[name]()"), /do not support dynamic dispatch/)
+})
+
 test("registers JSON-safe command ModuleIR with deterministic slots", () => {
   const moduleIR = createModuleIR("src/pages/counter.tsx")
   registerCommandHandler(moduleIR, [{ operation: "add", state: "total", value: 1 }], { file: "src/pages/counter.tsx", start: 20, end: 45 }, "component:0")

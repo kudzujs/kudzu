@@ -2,6 +2,31 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## P0.9 Semantic State Operations
+
+Measured UTC 2026-08-11 on the Intel Core i5-9500 Linux x64 host with Node 24.14.0. The baseline was clean tag `v0.8.35` at `f25700d9d2b247c01db19f0e8c95f16cb1fa81a5`. The compiler and focused-check patch had SHA-256 `4c3c8a3de18b1e792ea84cf7608a89971850195036a58f37dd76e359bfc8a58d`, produced by:
+
+```bash
+git diff --binary v0.8.35 -- framework/compiler/optimize/command-specialization.mjs framework/compiler/descriptor-session.mjs test/compiler-passes.test.mjs test/fixtures/effect-isolation/src/pages/command.tsx test/framework.test.mjs | sha256sum
+```
+
+The maintained 100-importer fixture used three warm-ups and 21 alternating fresh-process samples. P0.9 keeps the existing direct command fast path first and invokes whole-handler semantic analysis only after direct specialization fails. Baseline and candidate produced the same normalized 382,603-byte graph, SHA-256 `8c35b3f6d2c571306bd97c4d51d4af76ca244badd36c57363bf579ef961f41aa`, 395,346-byte source result, and 103 / 103 / 100 parse, summary, and clone counts.
+
+| Target | Compiler median | Range | Peak RSS median | Source-result bytes |
+|---|---:|---:|---:|---:|
+| `v0.8.35` | 947.100 ms | 839.270-1,064.444 ms | 258.0 MiB | 395,346 B |
+| P0.9 candidate | 942.596 ms | 849.656-1,215.997 ms | 258.1 MiB | 395,346 B |
+
+The candidate's unpaired median is 0.48% lower. Round-paired candidate-minus-baseline differences had a +1.754 ms median with the candidate faster in 10/21 pairs and the baseline faster in 11/21. Timing and peak-RSS ranges overlap, so no material improvement or regression is claimed. An initial implementation that routed every direct handler through whole-handler analysis measured a +12.584 ms paired median and 10.6 MiB higher RSS median; restoring the direct fast path and narrowing the analyzer removed that regression before this final record.
+
+```text
+v0.8.35: [955.382,927.389,935.312,852.622,839.270,918.424,943.013,1026.033,936.514,1019.725,921.591,1064.444,949.671,975.729,933.380,896.773,949.751,951.418,947.100,998.950,1041.266]
+candidate: [942.596,1215.997,965.312,849.656,877.468,928.334,971.812,966.482,938.268,1016.268,932.327,939.217,928.284,1082.782,1086.319,976.534,881.665,915.266,962.642,905.596,1000.939]
+paired candidate-baseline: [-12.786,288.608,30.000,-2.966,38.198,9.910,28.799,-59.551,1.754,-3.457,10.736,-125.227,-21.387,107.053,152.939,79.761,-68.086,-36.152,15.542,-93.354,-40.327]
+```
+
+The four required source forms lower to the same existing command HandlerIR and command-only browser path. Alias/helper forms therefore avoid the native handler module and native runtime they previously required; no command ABI, state batching, ownership, runtime source, or unaffected route artifact changes.
+
 ## P0.8 Stable ModuleSymbol And SiteId
 
 Measured UTC 2026-08-11 on the same Intel Core i5-9500 Linux x64 host with Node 24.14.0. The baseline was clean tag `v0.8.34` at `007fcb6e23c7d5bc742fa37c28388d070da9f598`. The compiler and maintained-check patch had SHA-256 `10ed6beb448b9e86961afab0b798f010932b8a29f98475d41f7bd8cfad04a872`, produced by:

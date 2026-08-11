@@ -17,6 +17,7 @@ test("creates a Kudzu project", async t => {
   })
 
   assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /cd app\s+npm install\s+npm run dev/)
   const packageJson = JSON.parse(await readFile(join(directory, "app/package.json"), "utf8"))
   const tsconfig = JSON.parse(await readFile(join(directory, "app/tsconfig.json"), "utf8"))
   const page = await readFile(join(directory, "app/src/pages/index.tsx"), "utf8")
@@ -36,6 +37,7 @@ test("creates a Kudzu project", async t => {
   assert.match(component, /function CapabilityCard/)
   assert.match(readme, /working Kudzu showcase/)
   assert.match(readme, /kudzu\.config\.mjs.*optional/)
+  assert.match(readme, /npm install\s+npm run dev/)
   assert.equal(generatorLock.version, generatorPackage.version)
   assert.equal(generatorLock.packages[""].version, generatorPackage.version)
 })

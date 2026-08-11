@@ -44,16 +44,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.8.35">
-        <span>v0.8.35</span>
-        <strong>Stable module identity</strong>
+      <a className="release-banner" href="/releases/0.8.36">
+        <span>v0.8.36</span>
+        <strong>Semantic state operations</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.8.35</span> COMPILER FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.8.36</span> COMPILER FRAMEWORK</p>
             <h1>React-shaped input.<br /><em>Static-first output.</em></h1>
             <p className="intro">Kudzu analyzes TypeScript ASTs and specializes familiar components, hooks, routes, effects, and collections into complete HTML plus only the browser capabilities each route uses.</p>
             <div className="actions">
@@ -91,12 +91,13 @@ export default function Counter() {
           <div>
             <p className="eyebrow">QUICK START</p>
             <h2>From zero to HTML.</h2>
-            <p>Create a project, enter the directory, and start growing. No framework setup required.</p>
+            <p>Create a project, enter the directory, install dependencies, and start growing.</p>
           </div>
           <div className="terminal" aria-label="Installation commands">
             <div><span>01</span><code>npm create kudzu@latest my-app</code></div>
             <div><span>02</span><code>cd my-app</code></div>
-            <div><span>03</span><code>npm run dev</code></div>
+            <div><span>03</span><code>npm install</code></div>
+            <div><span>04</span><code>npm run dev</code></div>
           </div>
         </section>
 

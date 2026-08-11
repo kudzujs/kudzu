@@ -149,8 +149,9 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   function compileOptimizedEvent(expression, setters, stateOwners, owner, keyedBlock) {
     const statements = ts.isBlock(expression.body) ? expression.body.statements : [factory.createExpressionStatement(expression.body)]
-    const commands = statements.map(statement => ts.isExpressionStatement(statement) && canSpecializeCommand(statement.expression, expression, setters) ? compileEventCommand(statement.expression, setters) : undefined)
-    if (!commands.length || commands.some(command => !command)) return undefined
+    let commands = statements.map(statement => ts.isExpressionStatement(statement) && canSpecializeCommand(statement.expression, expression, setters) ? compileEventCommand(statement.expression, setters) : undefined)
+    if ((!commands.length || commands.some(command => !command)) && compileEventCommand.handler) commands = compileEventCommand.handler(expression, setters, bindingIndex)
+    if (!commands?.length || commands.some(command => !command)) return undefined
     const original = ts.getOriginalNode(expression)
     const source = original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
     const handler = registerCommandHandler(moduleIR, commands.map(command => ({ ...command, owner: stateOwners.get(command.state) ?? owner })), source, owner)

@@ -221,6 +221,7 @@ This starter is a working Kudzu showcase, not an empty scaffold.
 \`kudzu.config.mjs\` is optional. Add it only when the project needs a base path, external public directory, transformed source styles, global metadata, navigation groups, or post-build artifacts.
 
 \`\`\`bash
+npm install
 npm run dev
 npm run check
 npm run build
@@ -239,4 +240,4 @@ if (!skipInstall) {
   if (result.status !== 0) process.exit(result.status ?? 1)
 }
 
-console.log(`\nCreated ${name} in ${root}\n\n  cd ${target}\n  npm run dev\n`)
+console.log(`\nCreated ${name} in ${root}${skipInstall ? "" : " with dependencies installed"}\n\n  cd ${target}\n${skipInstall ? "  npm install\n" : ""}  npm run dev\n`)

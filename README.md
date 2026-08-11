@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.35 - Stable module identity.** Cross-module declarations now resolve through stable ModuleSymbol and source-local SiteId records across aliases, barrel chains, `export *`, and cloned transformer trees. Read the [release notes](./RELEASES.md#0835---stable-module-identity), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.35), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.36 - Semantic state operations.** Equivalent direct, aliased, and local-helper state updates now lower to the same command IR without adding handler JavaScript. Read the [release notes](./RELEASES.md#0836---semantic-state-operations), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.36), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -32,6 +32,7 @@ Kudzu requires Node.js 22 or newer.
 ```bash
 npm create kudzu@latest my-app
 cd my-app
+npm install
 npm run dev
 ```
 

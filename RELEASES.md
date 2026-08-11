@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.36 - Semantic state operations
+
+Kudzu 0.8.36 completes P0.9 by proving equivalent direct, aliased, and local-helper state updates and lowering them through the existing command HandlerIR path.
+
+### Changed in 0.8.36
+
+- Direct `setCount(count + 1)`, an immutable result alias, a zero-argument arrow helper, and a one-parameter function helper emit the same structured `add` command.
+- Binding identity proves state, setter, helper, and parameter ownership before specialization.
+- Recursion, helper or alias escape, mutation, optional calls, and object-based dynamic dispatch fail at authored source locations.
+- The existing direct command fast path remains first; whole-handler analysis runs only when direct specialization fails.
+- Quick Start instructions now include an explicit `npm install`, and `create-kudzu@0.1.102` reports install-aware next steps and includes the install command in generated READMEs.
+
+### Performance
+
+- The maintained 100-importer fixture preserves the same normalized graph, source-result bytes, digest, and 103 / 103 / 100 parse, summary, and clone counts.
+- Twenty-one alternating `v0.8.35`/candidate samples measured compiler medians of 947.100 ms and 942.596 ms. The +1.754 ms paired candidate-minus-baseline median and overlapping RSS ranges establish no material improvement or regression.
+- Alias and helper forms avoid native handler ESM and reuse the existing command runtime; direct command artifacts remain unchanged.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 197 tests and 151 generated pages.
+- Focused coverage proves identical JSON-safe command IR, signal ownership, build-module behavior calls, RouteIR commands, and zero native-handler artifacts for all four source forms.
+- Existing command ABI, synchronous batching, ownership, browser runtime, and unrelated native handlers remain unchanged.
+- P0.10 ModuleIR reference unification is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.36
+```
+
 ## 0.8.35 - Stable module identity
 
 Kudzu 0.8.35 completes P0.8 by giving cross-module declarations and authored compiler sites stable identities that do not depend on transformed TypeScript AST objects or readable names.

@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.35` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.36` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -26,6 +26,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.33` | Move root, graph, source records, compiler paths, and Worker ownership into an explicit build-scoped ProjectSession. | Two independent roots compile through one imported build entry without config, source, `.kudzu`, Worker, or output leakage; CLI CWD behavior remains unchanged. |
 | `0.8.34` | Cache canonical parsed modules and narrow export summaries within one ProjectSession while cloning transformer input. | A 100-importer fixture parses and summarizes 103 unique modules once, creates independent normalization trees, preserves the complete source-result digest, and leaks no cache state across projects. |
 | `0.8.35` | Resolve cross-module declarations through stable ModuleSymbol and source-local SiteId records. | Default/named exports, aliases, barrel chains, `export *`, cycles, ambiguity, repeated compilation, source invalidation, private clones, and measured build behavior remain deterministic. |
+| `0.8.36` | Lower equivalent direct, aliased, and local-helper state updates through existing command HandlerIR. | The four required forms emit identical commands and no native handler module; recursion, escape, mutation, and dynamic dispatch fail at authored source locations. |
 
 ## Sequence Rules
 
@@ -38,7 +39,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-Keep `create-kudzu@0.1.101` while its template remains unchanged. Its `@kudzujs/core` range `^0.8.15` already accepts every planned Goal A patch. Publish `0.1.102` only when the template or minimum core range changes; a future `0.9.0` template must use `^0.9.0`.
+`create-kudzu@0.1.102` adds an explicit install step to the generated README and clearer completion output. Its `@kudzujs/core` range `^0.8.15` accepts every current `0.8.x` patch; a future `0.9.0` template must use `^0.9.0`.
 
 ## Release Boundary
 

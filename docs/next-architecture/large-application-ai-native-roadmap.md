@@ -137,6 +137,7 @@ This is an incremental evolution of the current repository:
 - [x] P0.6 Explicit ProjectSession is complete in `0.8.33`. Each build owns an absolute root, project paths, source records, bound graph operations, and Worker compiler. Explicit-root build/dev entry points preserve omitted-root CLI CWD behavior. One imported build function compiles two same-shaped roots with isolated config, HTML, `.kudzu`, source results, and Worker bundles; all 191 tests and package checks pass without browser or source-syntax changes.
 - [x] P0.7 Parsed module and export summary caching is complete in `0.8.34`. Canonical read-only source trees and narrow export summaries are invalidated together by source text and remain ProjectSession-local; every normalization context receives a deep clone with independent parent links. A 100-importer fixture parses and summarizes 103 unique page/barrel/component/helper modules exactly once and creates 200 importer-local clones. The maintained paired benchmark preserves the complete source-result digest and establishes no material timing or peak-RSS conclusion; all 193 tests and package checks pass without broadening exports, source syntax, or browser output.
 - [x] P0.8 Stable ModuleSymbol and SiteId is complete in `0.8.35`. ProjectSession records source-local declaration, import, and re-export sites and resolves stable ModuleSymbol records through default/named exports, aliases, barrel chains, `export *`, ambiguity, and cycles. Cross-module compiler consumers locate resolved declarations by SiteId in their private normalized clones, while component calls, hooks, keyed blocks, effects, and ownership records expose deterministic source-local SiteIds. Repeated sessions and compilations preserve IDs, and symbol-only barrel traversal avoids cloning intermediate modules without changing browser artifacts or source syntax.
+- [x] P0.9 Semantic State Operations is complete in `0.8.36`. Direct setters, one immutable state-value alias, one synchronous zero-argument arrow helper, and one synchronous one-parameter function helper lower to identical existing command HandlerIR. Binding identity proves state/setter/helper/parameter ownership; recursion, escape, mutation, and dynamic helper dispatch fail at authored source locations. Existing direct command specialization remains first, unrelated safe handlers retain native ESM, and no command ABI, runtime, JavaScript VM, or general expression IR is added.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -339,6 +340,8 @@ function increment(value) { setCount(value + 1) }; increment(count)
 
 **Done condition:** the equivalent forms produce the same StateWrite semantics, browser result, ownership references, and zero-unused-runtime behavior; recursion, escape, mutation, and dynamic dispatch fail with explicit diagnostics.
 
+**Completed in `0.8.36`:** The command specializer now performs narrow whole-handler analysis only when the existing direct fast path fails. The four required forms emit the same `add` command, signal slot, owner, build-module behavior call, RouteIR command, and browser command runtime; alias/helper forms emit no native handler module. Focused compiler and command-only fixture coverage proves JSON-safe IR equivalence, source diagnostics, no native behavior artifacts, and unchanged batching/runtime ABI. The maintained 100-importer benchmark retains identical output and cache counts with no material timing or peak-RSS conclusion.
+
 ### PR 10: ModuleIR Reference Unification
 
 **Objective:** replace mixed state names, export strings, formatted owner strings, and slots with validated source-local slots and SymbolRef records.
@@ -468,4 +471,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 8 are complete. The next PR is **PR 9: Semantic State Operations**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 9 are complete. The next PR is **PR 10: ModuleIR Reference Unification**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
