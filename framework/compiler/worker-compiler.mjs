@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { mkdir, readFile } from "node:fs/promises"
+import { mkdir } from "node:fs/promises"
 import { dirname, relative, resolve, sep } from "node:path"
 import { build as bundle } from "esbuild"
 import ts from "typescript"
@@ -9,7 +9,7 @@ export function createWorkerCompiler({
   root,
   sourceDirectory,
   assetPath,
-  parseSourceFile,
+  readSourceModule,
   resolveSourceImport,
   runtimeModuleReference
 }) {
@@ -106,7 +106,7 @@ export function createWorkerCompiler({
       const file = queue.shift()
       if (visited.has(file)) continue
       visited.add(file)
-      const sourceFile = parseSourceFile(file, await readFile(file, "utf8"))
+      const sourceFile = readSourceModule(file).sourceFile
       if (containsJsx(sourceFile)) throw sourceNodeError(sourceFile, sourceFile, "Worker modules must not contain JSX")
       const visit = node => {
         if (ts.isImportEqualsDeclaration(node)) throw sourceNodeError(node, sourceFile, "TypeScript import-equals declarations are not supported in Worker modules; use a relative ESM import")

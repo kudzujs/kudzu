@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.33` architecture built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.34` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -8,6 +8,7 @@ This maps the current `0.8.33` architecture built on the completed `0.8.23` Goal
 |---|---|---|
 | CLI entry | [`bin/kudzu.mjs`](../../bin/kudzu.mjs) | Dispatches build and development commands. |
 | Project session | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs), `createProjectSession()` | Owns one absolute root, standard project paths, source records, bound graph operations, and Worker compiler for a build. Omitted roots resolve from call-time CWD. |
+| Parsed module cache | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs) | Parses each unchanged source module and summarizes its supported exports once per ProjectSession. Read-only graph/export/style/Worker consumers share the canonical tree; normalization receives a fresh deep clone with independent parent links. |
 | Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()` | Coordinates config, discovery, source compilation, RouteIR rendering, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. |
 | Reachability/import resolution | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `reachableSourceFiles()`; [`framework/compiler/source-graph.mjs`](../../framework/compiler/source-graph.mjs), `ordinaryRuntimeDependencies()`, `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, excludes unreachable migration source, and fails unresolved ordinary edges or dynamic imports at the importer source location before code generation. |
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every structural change. Imported source uses the same pipeline. |
@@ -38,7 +39,7 @@ This maps the current `0.8.33` architecture built on the completed `0.8.23` Goal
 
 ```text
 src/pages entries + config
-  -> ProjectSession(root) with project paths, source records, graph, and Worker compiler
+  -> ProjectSession(root) with project paths, source records, parsed/export caches, graph, and Worker compiler
   -> project discovery and reachable relative graph
   -> compileSource()
        -> ordered normalization and parent repair
@@ -70,7 +71,7 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 - Transient component rewrite indexes remain source-local AST indexes; handler, binding, derived, keyed, effect, and component ownership now have explicit JSON-safe source results.
 - `build()` still owns explicit artifact selection and filesystem writes after generator results are produced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
-- Source reachability and source compilation remain in one session-bound compiler factory because both consume the same normalization and import graph contracts; parsed-module and export-summary caching is deferred to P0.7.
+- Source reachability and source compilation remain in one session-bound compiler factory because both consume the same normalization and import graph contracts. Export summaries deliberately preserve the existing narrow forms; stable ModuleSymbol and SiteId identity remains P0.8 work.
 - Imported, specialized, and compiler-synthesized trees still use conservative name/scope fallback where the source-local binding index does not own the complete AST; cross-module semantics remain deferred to stable ModuleSymbol and SiteId work.
 
 These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.

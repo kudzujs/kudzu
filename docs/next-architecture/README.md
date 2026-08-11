@@ -11,7 +11,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 
-The active post-`0.8.33` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.6 ProjectSession and explicit root is complete; P0.7 parsed module and export summary caching is next. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
+The active post-`0.8.34` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.7 parsed module and export summary caching is complete; P0.8 stable ModuleSymbol and SiteId is next. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
 
 ## Required Invariants
 

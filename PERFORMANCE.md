@@ -1,6 +1,57 @@
 # Performance Records
 
-Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, and `npm run benchmark:native` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+
+## P0.7 Parsed Module And Export Summary Cache
+
+Measured UTC 2026-08-11 on an Intel Core i5-9500 with 6 physical/logical cores, 31.2 GiB RAM, Linux 6.17.0-19-generic x64, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.33` at `65c96b13802c73e9c9a109cebbaac88bae7704a7`; both targets used the same installed dependencies. The implementation and maintained benchmark patch had SHA-256 `bca61b37f14c77488c4a35b62856faa6b471dd01081abcb69c47027b3b4615d9`, produced by:
+
+```bash
+{ git diff --binary v0.8.33 -- framework/compiler/project-session.mjs framework/compiler/source-compiler.mjs framework/compiler/worker-compiler.mjs test/compiler-passes.test.mjs package.json; git diff --binary --no-index /dev/null test/module-cache-performance.mjs || true; } | sha256sum
+```
+
+The maintained in-memory fixture has 100 page importers sharing one barrel component and helper, for 103 unique modules. Each sample starts a fresh Node process; fixture generation and result hashing occur outside timing. Three warm-ups followed by 21 alternating samples compiled every reachable module. The candidate parsed and summarized each unique module once and created 200 importer-local normalization clones. Baseline and candidate produced the same 382,603-byte serialized source-result graph with SHA-256 `8c35b3f6d2c571306bd97c4d51d4af76ca244badd36c57363bf579ef961f41aa`.
+
+| Target | Compiler median | Range | Peak RSS median | Parse / summary / clone misses |
+|---|---:|---:|---:|---:|
+| `v0.8.33` | 2,386.735 ms | 1,183.385–3,249.719 ms | 261.3 MiB | not instrumented |
+| P0.7 candidate | 2,188.745 ms | 1,321.352–2,957.883 ms | 257.1 MiB | 103 / 103 / 200 |
+
+Both timing arrays drifted upward during the run, making their raw 8.29% median difference unsuitable as an improvement claim. Round-paired candidate-minus-baseline differences had a +33.324 ms median, with the candidate faster in 9/21 pairs and the baseline faster in 12/21. Peak RSS ranges also overlap. This establishes bounded parse/summary work and identical compiler output with no material performance conclusion on this machine; it does not establish a speedup.
+
+```text
+v0.8.33: [1512.096,1244.231,1183.385,1655.352,1669.380,2033.448,1820.868,1774.702,1847.652,1889.290,2386.735,2926.474,2853.159,3249.719,2716.963,2569.254,2531.427,2727.951,2483.411,2492.172,2597.774]
+candidate: [1943.630,1416.969,1321.352,1603.967,1340.557,1440.993,1913.509,2060.240,1796.133,2011.796,2188.745,2888.145,2957.883,2947.417,2750.287,2745.883,2799.166,2620.866,2499.916,2541.054,2530.391]
+paired candidate-baseline: [431.534,172.738,137.967,-51.385,-328.823,-592.455,92.641,285.538,-51.519,122.506,-197.990,-38.329,104.724,-302.302,33.324,176.629,267.739,-107.085,16.505,48.882,-67.383]
+```
+
+```bash
+git worktree add --detach /tmp/opencode/kudzu-v0.8.33 v0.8.33
+ln -s "$PWD/node_modules" /tmp/opencode/kudzu-v0.8.33/node_modules
+BASELINE_ROOT=/tmp/opencode/kudzu-v0.8.33 CANDIDATE_ROOT="$PWD" WARMUPS=3 RUNS=21 npm run benchmark:module-cache
+```
+
+### Current Cross-Framework Whole-Build Context
+
+This separate local check is not a parsed-module-cache comparison or maintained ranking. The external `/tmp/opencode/kudzu-dependency-benchmark` workspace is not Git-provenanced. It used Kudzu's current candidate, React 19.2.7, Vue 3.5.40, Svelte 5.56.6, Astro 7.1.1, and Vite 7.3.6. Every target emitted matched initial device content, and headless Chrome passed detail fetch, list filters, empty state, superseded async command, stale-result rejection, and HTTP error behavior. React, Vue, and Svelte perform separate client, SSR, and prerender builds; Astro uses its native build; Kudzu runs one static compiler build, so build stages and artifact architectures differ.
+
+| Target | Build median | HTML raw / gzip | JavaScript raw / gzip | Total output |
+|---|---:|---:|---:|---:|
+| Kudzu | 856.2 ms | 5,647 B / 1,324 B | 30,712 B / 12,233 B | 36,359 B |
+| React SSR | 2,802.0 ms | 1,338 B / 562 B | 195,864 B / 61,488 B | 197,202 B |
+| Vue SSR | 2,295.3 ms | 1,348 B / 567 B | 69,643 B / 27,756 B | 70,991 B |
+| Svelte SSR | 2,972.9 ms | 1,399 B / 582 B | 40,781 B / 15,898 B | 42,180 B |
+| Astro native | 1,482.9 ms | 3,307 B / 1,229 B | 2,201 B / 883 B | 3,307 B |
+
+```text
+Kudzu: [672.2,697.5,796.0,856.2,884.2,937.9,985.9]
+React SSR: [2238.5,2345.7,2598.5,2802.0,2843.9,2848.5,3253.6]
+Vue SSR: [1968.1,2068.9,2150.7,2295.3,2494.6,2617.1,3380.0]
+Svelte SSR: [2615.6,2922.0,2926.6,2972.9,3020.5,3168.3,3739.9]
+Astro native: [1444.9,1445.7,1451.2,1482.9,1732.5,1744.0,2236.9]
+```
+
+The cross-framework result provides current whole-build context only. It does not show that Kudzu's module cache is faster than another framework's cache: this fixture has one application module per target and exposes no equivalent parser/cache counters. A cache-specific cross-framework claim would require matched 100-importer module graphs, equivalent output, equal cold/warm policy, and framework-specific cache instrumentation.
 
 ## 2026-08-11 React, Vue, And Svelte Check
 

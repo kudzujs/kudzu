@@ -16,10 +16,11 @@ import { generateListRuntime } from "../framework/compiler/list-runtime-codegen.
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
 import { createCommandSpecializer } from "../framework/compiler/optimize/command-specialization.mjs"
 import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
+import { createProjectSession } from "../framework/compiler/project-session.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime } from "../framework/compiler/runtime-codegen.mjs"
-import { compileSource, reachableSourceFiles } from "../framework/compiler/source-compiler.mjs"
+import { compileSource, createSourceCompiler, reachableSourceFiles } from "../framework/compiler/source-compiler.mjs"
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
 
 const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
@@ -95,6 +96,82 @@ test("reports ordinary graph failures at the importer source", () => {
     [page, 'import type { Missing } from "./missing"\nexport default function Page() {}'],
     [helper, 'import "./missing"']
   ])), [page])
+})
+
+test("caches canonical modules and clones mutable transformer input", () => {
+  const file = resolve("src/cache.tsx")
+  const sourceIndex = new Map([[file, "function Row() { return <li /> }\nexport { Row as Item }"]])
+  const counters = {}
+  const project = createProjectSession(process.cwd(), { counters, sourceIndex })
+  const first = project.modules.read(file)
+
+  assert.equal(project.modules.read(file), first)
+  assert.equal(first.exports.get("Item").local, "Row")
+  assert.deepEqual(counters, { parsedModules: 1, exportSummaries: 1 })
+
+  let left
+  let right
+  const transformed = ts.transform(ts.createSourceFile("clone.ts", "", ts.ScriptTarget.Latest, true), [context => sourceFile => {
+    left = project.modules.clone(file, context.factory, context)
+    right = project.modules.clone(file, context.factory, context)
+    return sourceFile
+  }])
+  transformed.dispose()
+
+  assert.notEqual(left, right)
+  assert.notEqual(left.statements[0], right.statements[0])
+  assert.notEqual(left.statements[0], first.sourceFile.statements[0])
+  assert.equal(left.statements[0].parent, left)
+  assert.equal(right.statements[0].parent, right)
+  assert.equal(first.sourceFile.statements[0].parent, first.sourceFile)
+  assert.equal(counters.clonedModules, 2)
+
+  sourceIndex.set(file, "export function Next() { return <li /> }")
+  const changed = project.modules.read(file)
+  assert.notEqual(changed, first)
+  assert.equal(changed.exports.has("Item"), false)
+  assert.equal(changed.exports.get("Next").local, "Next")
+  assert.deepEqual(counters, { parsedModules: 2, exportSummaries: 2, clonedModules: 2 })
+
+  const isolatedCounters = {}
+  const isolated = createProjectSession(process.cwd(), { counters: isolatedCounters, sourceIndex })
+  assert.notEqual(isolated.modules.read(file), changed)
+  assert.deepEqual(isolatedCounters, { parsedModules: 1, exportSummaries: 1 })
+})
+
+test("parses shared modules once for one hundred importers", () => {
+  const sourceDirectory = resolve("src")
+  const pages = Array.from({ length: 100 }, (_, index) => resolve(sourceDirectory, "pages", `cache-${index}.tsx`))
+  const barrel = resolve(sourceDirectory, "components", "index.tsx")
+  const shared = resolve(sourceDirectory, "components", "Shared.tsx")
+  const helper = resolve(sourceDirectory, "helper.ts")
+  const sourceIndex = new Map([
+    [barrel, 'export { Shared } from "./Shared"'],
+    [shared, `
+import { format } from "../helper"
+export function Shared({ item }) {
+  return <li><button onClick={() => { document.title = format(item.id) }}>{item.id}</button></li>
+}
+`],
+    [helper, "export const format = value => String(value)"]
+  ])
+  for (const [index, page] of pages.entries()) sourceIndex.set(page, `
+import { Shared } from "../components"
+import { useState } from "@kudzujs/core"
+export default function Page() {
+  const [items, setItems] = useState([{ id: ${index} }])
+  return <><button onClick={() => setItems([...items])}>Refresh</button><ul>{items.map(item => <Shared key={item.id} item={item} />)}</ul></>
+}
+`)
+  const counters = {}
+  const project = createProjectSession(process.cwd(), { counters, sourceIndex })
+  const compiler = createSourceCompiler(project)
+  const allFiles = new Set(sourceIndex.keys())
+  const reachable = compiler.reachableSourceFiles(pages, allFiles, sourceIndex)
+  for (const file of reachable) compiler.compileSource(file, new Set(reachable), sourceIndex, new Set(), new Map(), "")
+
+  assert.equal(reachable.length, 103)
+  assert.deepEqual(counters, { parsedModules: 103, exportSummaries: 103, clonedModules: 200 })
 })
 
 test("normalizes render control flow without changing lowercase helpers", () => {

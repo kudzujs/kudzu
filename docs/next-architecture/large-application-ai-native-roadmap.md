@@ -2,7 +2,7 @@
 
 ## Status
 
-Active execution plan after `0.8.33`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Active execution plan after `0.8.34`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
 [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. This plan is authoritative for the order and completion evidence of compiler generalization, large-application foundations, compatibility boundaries, AI tooling, and scale validation. If implementation evidence changes a boundary, update this document before broadening a patch.
 
@@ -34,7 +34,7 @@ The current limiting architecture is observable in these files:
 
 | Concern | Current owner | Limitation to remove |
 |---|---|---|
-| Project graph | `framework/compiler/project-session.mjs`, `source-graph.mjs`, `build.mjs` | Explicit build-scoped root and source ownership; repeated parsing, narrow export resolution, and no incremental invalidation remain |
+| Project graph | `framework/compiler/project-session.mjs`, `source-graph.mjs`, `build.mjs` | Explicit build-scoped root, parsed-module/export-summary cache, and source ownership; narrow export resolution and no incremental invalidation remain |
 | Normalization | `framework/compiler/source-compiler.mjs`, focused passes | Pass order and package ownership are implicit; semantically equal source often follows different shape-specific paths |
 | Component/state analysis | `framework/compiler/source-compiler.mjs`, `analysis/component-analysis.mjs` | AST identity, identifier text, source offsets, and caller-side AST specialization remain central |
 | Handler/binding analysis | `framework/compiler/descriptor-session.mjs`, `handler-lowering.mjs` | Capture/import/state discovery is name-based and arbitrary handlers become code before IR finalization |
@@ -135,7 +135,8 @@ This is an incremental evolution of the current repository:
 - [x] P0.4 Async native handler ownership is complete in `0.8.31`. Mounted native registrations invalidate direct/captured setters, queued commits, and captured refs before listener removal. Chrome route, keyed-row, document-disposal, and synchronous event-dispatch checks, all 189 tests, and packed-package smoke pass without cancelling application promises or adding a scheduler.
 - [x] P0.5 Staged and collision-safe output is complete in `0.8.32`. Production output completes in one project-local staging tree, public files are compared against generated route/runtime/handler/chunk/Worker/CSS paths while copying, `afterBuild` runs before rollback-safe promotion, and ordinary failures preserve the prior `dist`. Same-root overlap and stale locks fail closed; after stale-lock removal, an interrupted promotion backup recovers on the next admitted build. Focused collision/replacement/dev checks pass with equivalent `v0.8.31` commerce deploy output; `.kudzu` remains compiler scratch for P0.6.
 - [x] P0.6 Explicit ProjectSession is complete in `0.8.33`. Each build owns an absolute root, project paths, source records, bound graph operations, and Worker compiler. Explicit-root build/dev entry points preserve omitted-root CLI CWD behavior. One imported build function compiles two same-shaped roots with isolated config, HTML, `.kudzu`, source results, and Worker bundles; all 191 tests and package checks pass without browser or source-syntax changes.
-- [ ] P0.7 Parsed module and export summary caching is next. Shared modules must be parsed and summarized once per project session without sharing transformed mutable AST.
+- [x] P0.7 Parsed module and export summary caching is complete in `0.8.34`. Canonical read-only source trees and narrow export summaries are invalidated together by source text and remain ProjectSession-local; every normalization context receives a deep clone with independent parent links. A 100-importer fixture parses and summarizes 103 unique page/barrel/component/helper modules exactly once and creates 200 importer-local clones. The maintained paired benchmark preserves the complete source-result digest and establishes no material timing or peak-RSS conclusion; all 193 tests and package checks pass without broadening exports, source syntax, or browser output.
+- [ ] P0.8 Stable ModuleSymbol and SiteId is next. Cross-module declarations, aliases, re-exports, owners, and call sites must stop depending on transient AST identity outside one pass.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -309,6 +310,8 @@ Every result carries a stable source-local binding slot, debug name, declaration
 
 **Done condition:** each unchanged module is parsed and summarized once per project session; transformed mutable AST is not shared across transformer contexts.
 
+**Completed in `0.8.34`:** ProjectSession caches one canonical parsed tree and one supported-export summary per file/source-text pair. Reachability, static collection, Zustand, client-helper, style, layout-diagnostic, and Worker graph reads reuse canonical trees; importer normalization deep-clones every node and repairs clone-local parents. Optional injected counters add no production logging. Unit coverage proves source invalidation and cross-session isolation; 100 pages sharing one barrel component and helper produce 103 parse misses, 103 summary misses, and 200 independent normalization clones.
+
 ### PR 8: Stable ModuleSymbol And SiteId
 
 **Objective:** represent declarations, imports, re-exports, component calls, hooks, and ownership sites independently of transformed AST identity.
@@ -463,4 +466,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 6 are complete. The next PR is **PR 7: Parsed Module And Export Summary Cache**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 7 are complete. The next PR is **PR 8: Stable ModuleSymbol And SiteId**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.

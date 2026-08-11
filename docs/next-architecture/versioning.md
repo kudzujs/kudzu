@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.33` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.34` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -24,6 +24,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.31` | Invalidate pending native-handler contexts when their route, keyed, conditional, or document DOM owner is released. | Late setters, queued commits, and captured refs cannot mutate replacement ownership; synchronous dispatch remains within the performance gate and runtime bytes are recorded. |
 | `0.8.32` | Stage and validate production output before rollback-safe promotion, reject same-root overlap, and tighten keyed browser paths. | Build/hook failures preserve the prior output, stale locks fail closed, interrupted backups recover on the next admitted build after lock removal, public/generated collisions fail, and deploy output remains equivalent. |
 | `0.8.33` | Move root, graph, source records, compiler paths, and Worker ownership into an explicit build-scoped ProjectSession. | Two independent roots compile through one imported build entry without config, source, `.kudzu`, Worker, or output leakage; CLI CWD behavior remains unchanged. |
+| `0.8.34` | Cache canonical parsed modules and narrow export summaries within one ProjectSession while cloning transformer input. | A 100-importer fixture parses and summarizes 103 unique modules once, creates independent normalization trees, preserves the complete source-result digest, and leaks no cache state across projects. |
 
 ## Sequence Rules
 

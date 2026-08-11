@@ -1,5 +1,39 @@
 # Kudzu Releases
 
+## 0.8.34 - Session-local module cache
+
+Kudzu 0.8.34 completes P0.7 by making source parsing and supported-export summarization proportional to unique modules within one ProjectSession instead of repeated importer edges.
+
+### Changed in 0.8.34
+
+- ProjectSession caches one canonical read-only TypeScript AST and one narrow export summary for each file/source-text pair.
+- Reachability, static collection, Zustand, client-helper, style, layout-diagnostic, and Worker graph consumers reuse canonical module records.
+- Importer normalization receives a deep clone of every node with independent parent links; transformed mutable AST is never shared between transformer contexts.
+- Source-text changes invalidate the parsed tree and export summary together, and independent ProjectSessions never share records.
+- Export summaries preserve the existing supported direct, aliased, default, and named re-export forms. Stable ModuleSymbol/SiteId identity and `export *` expansion remain P0.8 work.
+- Optional injected counters expose parse, summary, and clone misses to tests and the maintained benchmark without production logging.
+
+### Performance
+
+- A 100-importer fixture contains 103 unique page/barrel/component/helper modules. The candidate records exactly 103 parses, 103 export summaries, and 200 importer-local clones.
+- Baseline and candidate produce the same 382,603-byte source-result graph and SHA-256 digest.
+- The 21-pair timing run drifted materially on the measurement host. Paired candidate-minus-baseline differences had a +33.324 ms median, with the candidate faster in 9/21 pairs; no material speedup or regression is claimed.
+- A separate matched SSR/native whole-build check measured Kudzu at 856.2 ms, Astro at 1,482.9 ms, Vue at 2,295.3 ms, React at 2,802.0 ms, and Svelte at 2,972.9 ms. Every target passed the same Chrome behavior validation; this is whole-build context, not a module-cache comparison.
+
+### Validation
+
+- `npm run check`, `npm test`, `npm run test:package`, and all 193 tests pass.
+- Unit coverage verifies cache hits, source-text invalidation, export summaries, cross-session isolation, independent cloned node identity, and clone-local parent links.
+- Existing imported components, re-export cycles, static collections, Zustand, client helpers, Workers, source diagnostics, and generated artifacts remain covered.
+- The repository build emits 149 pages; unaffected static routes remain complete zero-JavaScript documents.
+- P0.8 stable ModuleSymbol and SiteId is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.34
+```
+
 ## 0.8.33 - Project-scoped compilation
 
 Kudzu 0.8.33 completes P0.6 by replacing import-time project globals with an explicit build-scoped ProjectSession. Independent roots can now compile in one Node process without sharing paths, source records, graph resolution, or Worker compiler ownership.

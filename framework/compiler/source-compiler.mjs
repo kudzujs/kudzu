@@ -22,8 +22,9 @@ import { createProjectSession } from "./project-session.mjs"
 import { createZustandPass } from "./zustand-pass.mjs"
 
 export function createSourceCompiler(project) {
-const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler } = project
-const { ordinaryRuntimeDependencies, parseSourceFile, resolveSourceImport, runtimeModuleReference } = project.graph
+const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, modules } = project
+const { ordinaryRuntimeDependencies, resolveSourceImport, runtimeModuleReference } = project.graph
+const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
 
 function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
@@ -282,7 +283,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const importedSource = target => {
       let result = importedSourceCache.get(target)
       if (!result) {
-        result = normalizeCompilerSource(parseSourceFile(target, sourceIndex.get(target)), { base, context, file: target, sourceFiles, sourceIndex })
+        result = normalizeCompilerSource(modules.clone(target, context.factory, context), { base, context, file: target, sourceFiles, sourceIndex })
         importedSourceCache.set(target, result)
       }
       return result.sourceFile
@@ -2723,33 +2724,19 @@ function resolveComponentExport(file, exportName, getSource, sourceFiles, trail 
   if (trail.includes(key)) throw new Error(`Imported keyed list component re-export cycle: ${[...trail, key].map(entry => relative(root, entry.slice(0, entry.lastIndexOf(":")))).join(" -> ")}`)
   const sourceFile = getSource(file)
   const nextTrail = [...trail, key]
-
-  for (const statement of sourceFile.statements) {
-    if (ts.isFunctionDeclaration(statement)) {
-      const isDefault = statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)
-      const isExported = statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)
-      if (exportName === "default" && isDefault || exportName !== "default" && isExported && statement.name?.text === exportName) return statement
-    }
-    if (ts.isVariableStatement(statement) && statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword) && exportName !== "default") {
-      const declaration = statement.declarationList.declarations.find(entry => ts.isIdentifier(entry.name) && entry.name.text === exportName)
-      if (declaration?.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) return declaration.initializer
-    }
-    if (exportName === "default" && ts.isExportAssignment(statement) && !statement.isExportEquals && ts.isIdentifier(statement.expression)) {
-      const component = localComponentDeclaration(sourceFile, statement.expression.text)
-      if (component) return component
-    }
-    if (ts.isExportDeclaration(statement) && ts.isNamedExports(statement.exportClause)) {
-      const entry = statement.exportClause.elements.find(element => !element.isTypeOnly && element.name.text === exportName)
-      if (!entry) continue
-      const imported = (entry.propertyName ?? entry.name).text
-      if (statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
-        if (!statement.moduleSpecifier.text.startsWith(".")) throw sourceNodeError(statement, sourceFile, "Imported keyed list components must use relative TypeScript re-exports")
-        const target = resolveSourceImport(file, statement.moduleSpecifier.text, sourceFiles)
-        return resolveComponentExport(target, imported, getSource, sourceFiles, nextTrail)
-      }
-      const component = localComponentDeclaration(sourceFile, imported)
-      if (component) return component
-    }
+  const entry = modules.read(file).exports.get(exportName)
+  if (entry?.kind === "reexport") {
+    if (!entry.specifier.startsWith(".")) throw sourceNodeError(entry.node, modules.read(file).sourceFile, "Imported keyed list components must use relative TypeScript re-exports")
+    const target = resolveSourceImport(file, entry.specifier, sourceFiles)
+    return resolveComponentExport(target, entry.imported, getSource, sourceFiles, nextTrail)
+  }
+  if (entry?.kind === "function" && !entry.local) {
+    const component = sourceFile.statements.find(statement => ts.isFunctionDeclaration(statement) && statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword))
+    if (component) return component
+  }
+  if (entry?.local) {
+    const component = localComponentDeclaration(sourceFile, entry.local)
+    if (component) return component
   }
   throw new Error(`${relative(root, file)} does not export a statically analyzable keyed list component named ${JSON.stringify(exportName)}`)
 }
@@ -2771,8 +2758,8 @@ async function collectClientModules(entries, sourceFiles) {
   while (queue.length) {
     const file = queue.shift()
     if (modules.has(file)) continue
-    const source = await readFile(file, "utf8")
-    const sourceFile = parseSourceFile(file, source)
+    const source = project.sourceIndex.get(file) ?? await readFile(file, "utf8")
+    const sourceFile = project.modules.read(file, source).sourceFile
     workerCompiler.rejectConstructions(sourceFile, sourceFile, "Relative TypeScript Worker construction is only supported directly inside an inline useEffect() callback, not imported client helpers")
     if (containsJsx(sourceFile)) throw new Error(`${relative(root, file)} Imported client helpers must not contain JSX`)
     rejectUnsupportedClientImports(sourceFile, file)
@@ -2974,12 +2961,12 @@ const normalizeReactRouterSyntax = createRouterPass({ withBase })
 return { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles }
 }
 
-const currentCompiler = () => createSourceCompiler(createProjectSession())
+const currentCompiler = sourceIndex => createSourceCompiler(createProjectSession(process.cwd(), { sourceIndex }))
 export const collectClientModules = (...arguments_) => currentCompiler().collectClientModules(...arguments_)
 export const compileClientModule = (...arguments_) => currentCompiler().compileClientModule(...arguments_)
 export const compiledPath = (...arguments_) => currentCompiler().compiledPath(...arguments_)
-export const compileSource = (...arguments_) => currentCompiler().compileSource(...arguments_)
-export const layoutExportError = (...arguments_) => currentCompiler().layoutExportError(...arguments_)
-export const orderSourceStyles = (...arguments_) => currentCompiler().orderSourceStyles(...arguments_)
-export const reachableSourceFiles = (...arguments_) => currentCompiler().reachableSourceFiles(...arguments_)
+export const compileSource = (...arguments_) => currentCompiler(arguments_[2]).compileSource(...arguments_)
+export const layoutExportError = (...arguments_) => currentCompiler(new Map([[arguments_[0], arguments_[1]]])).layoutExportError(...arguments_)
+export const orderSourceStyles = (...arguments_) => currentCompiler(arguments_[2]).orderSourceStyles(...arguments_)
+export const reachableSourceFiles = (...arguments_) => currentCompiler(arguments_[2]).reachableSourceFiles(...arguments_)
 export const safeStaticFiles = (...arguments_) => currentCompiler().safeStaticFiles(...arguments_)
