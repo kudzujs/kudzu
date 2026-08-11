@@ -2,6 +2,31 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## P0.10 Structural ModuleIR References
+
+Measured UTC 2026-08-11 on an Apple M4 macOS arm64 host with 10 logical CPUs, 16 GiB RAM, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.36` at `268cd9023c9f47a912601f298963a9ffe9c00da2`. The compiler and focused-check patch had SHA-256 `f684c79027b290bc8c7d549667ef0d7f21a9d0057b5d6291fcce18b91947eff2`, produced by:
+
+```bash
+git diff --binary v0.8.36 -- framework/compiler/analysis/binding-index.mjs framework/compiler/analysis/component-analysis.mjs framework/compiler/descriptor-session.mjs framework/compiler/ir/module-ir.mjs framework/compiler/source-compiler.mjs test/compiler-passes.test.mjs test/framework.test.mjs | shasum -a 256
+```
+
+The maintained 100-importer fixture used one warm-up and seven alternating fresh-process samples. Both targets retain 103 parse misses, 103 export-summary misses, and 100 importer-local clones. ModuleIR and ComponentAnalysis v2 intentionally change the serialized compiler graph, so the previous equal-digest gate correctly rejects direct v1/v2 comparison: normalized result size changes from 382,603 B to 447,977 B and source-result size changes from 395,346 B to 460,720 B. The additional 65,374 B is deterministic structural slot, signal, symbol, and ownership metadata in compiler scratch; it is not deployed browser JavaScript.
+
+| Target | Compiler median | Range | Peak RSS median | Source-result bytes |
+|---|---:|---:|---:|---:|
+| `v0.8.36` | 224.506 ms | 220.888-313.782 ms | 281.6 MiB | 395,346 B |
+| `0.8.37` | 227.158 ms | 224.744-272.594 ms | 282.9 MiB | 460,720 B |
+
+The candidate's unpaired median is 1.18% higher. Round-paired candidate-minus-baseline differences had a +6.270 ms median, with the candidate faster in two of seven pairs and the baseline faster in five. Timing ranges overlap, peak RSS differs by 1.3 MiB, and neither result crosses the 5% material-regression threshold.
+
+```text
+v0.8.36: [220.888,222.461,313.782,224.506,249.086,222.746,242.721]
+candidate: [227.158,224.744,225.098,236.027,225.158,239.672,272.594]
+paired candidate-baseline: [6.270,2.283,-88.684,11.521,-23.928,16.926,29.873]
+```
+
+ModuleIR and ComponentAnalysis are build-scratch contracts. Runtime-facing state names and export spellings remain only where generated module and browser ABIs require them. The standard suite verifies static zero-JavaScript output, capability exclusion, keyed identity, effect cleanup, Workers, navigation, and migration behavior; no browser runtime source was added for P0.10.
+
 ## P0.9 Semantic State Operations
 
 Measured UTC 2026-08-11 on the Intel Core i5-9500 Linux x64 host with Node 24.14.0. The baseline was clean tag `v0.8.35` at `f25700d9d2b247c01db19f0e8c95f16cb1fa81a5`. The compiler and focused-check patch had SHA-256 `4c3c8a3de18b1e792ea84cf7608a89971850195036a58f37dd76e359bfc8a58d`, produced by:

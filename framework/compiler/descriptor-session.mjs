@@ -3,23 +3,45 @@ import { createComponentAnalysis } from "./analysis/component-analysis.mjs"
 import { knownGlobalNames } from "./analysis/binding-index.mjs"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
-import { assertModuleIRReferences, createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerEffect, registerKeyedBlock, registerModuleHandler } from "./ir/module-ir.mjs"
+import { assertModuleIRReferences, createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerEffect, registerKeyedBlock, registerModuleHandler, registerSignal } from "./ir/module-ir.mjs"
 
 export function createSemanticArtifact(file) {
   return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file) }
 }
 
-export function createDescriptorSession({ semantic, handlerUrl, factory, context, bindingIndex, compileEventCommand, handlerLowering, isPrimitiveLiteral, rejectWorkerConstructions, sourceName = source => source.fileName }) {
+export function createDescriptorSession({ semantic, handlerUrl, factory, context, bindingIndex, compileEventCommand, handlerLowering, isPrimitiveLiteral, rejectWorkerConstructions, stateReferences = () => new Map(), symbolReference, sourceName = source => source.fileName }) {
   const { moduleIR } = semantic
+  moduleIR.symbols = bindingIndex.bindings()
   const nativeHandlers = []
   const effectHandlers = []
   const reactiveBindings = []
   const listExpressions = []
+  const pendingEffects = []
   const clientModules = new Set()
+
+  const signal = (name, node, references, aliases = []) => {
+    let reference = references?.get(name) ?? stateReferences(node).get(name)
+    if (!reference && bindingIndex) {
+      const original = ts.getOriginalNode(node)
+      const names = new Set([name, ...aliases])
+      let symbol = bindingIndex.references(original, original)?.find(entry => names.has(entry.debugName))?.slot
+      if (symbol === undefined) {
+        for (let current = node; current && symbol === undefined; current = current.parent) if (isFunctionLike(current)) {
+          const parameter = current.parameters.map(parameter => bindingIdentifier(parameter.name, names)).find(Boolean)
+          symbol = parameter && bindingIndex.resolveBinding(parameter)?.slot
+          break
+        }
+      }
+      if (symbol !== undefined) reference = { kind: "symbol", symbol }
+    }
+    reference ??= symbolReference?.(name, node, aliases)
+    if (!reference) throw new Error(`ModuleIR state ${JSON.stringify(name)} has no resolved StateRef`)
+    return registerSignal(moduleIR, reference, name).slot
+  }
 
   function compileListExpression(read, expression, item, index, states = new Set(), keyedBlock, indexedBindingIndex) {
     const exportName = `listExpression${listExpressions.length}`
-    listExpressions.push({ exportName, expression, item, index, states, role: "list-expression", keyedBlock, bindingIndex: indexedBindingIndex })
+    listExpressions.push({ exportName, expression, item, index, states, signalRefs: new Map([...states].map(name => [name, signal(name, expression)])), role: "list-expression", keyedBlock, bindingIndex: indexedBindingIndex })
     const arguments_ = [read, factory.createStringLiteral(handlerUrl), factory.createStringLiteral(exportName)]
     if (states.size) arguments_.push(factory.createArrayLiteralExpression([...states].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))))
     return factory.createCallExpression(factory.createIdentifier("__kListExpression"), undefined, arguments_)
@@ -28,7 +50,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
   function compileListConditional(entry) {
     const exportName = `listExpression${listExpressions.length}`
     const indexed = indexedReferences(bindingIndex, entry.condition, entry.condition)
-    listExpressions.push({ exportName, expression: entry.condition, item: entry.item, index: entry.index, role: "list-conditional", keyedBlock: entry.keyedBlock, bindingIndex: indexed ? bindingIndex : undefined })
+    listExpressions.push({ exportName, expression: entry.condition, item: entry.item, index: entry.index, states: new Set(), signalRefs: new Map(), role: "list-conditional", keyedBlock: entry.keyedBlock, bindingIndex: indexed ? bindingIndex : undefined })
     const read = factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), entry.condition)
     const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
     return factory.createCallExpression(factory.createIdentifier("__kListConditional"), undefined, [
@@ -57,9 +79,10 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     const parts = conditionalParts(expression)
     const state = parts && directStateIdentifier(parts.condition, setters, bindingIndex)
     if (state && isPrimitiveLiteral(parts.truthy) && isPrimitiveLiteral(parts.falsy)) {
-      return factory.createCallExpression(factory.createIdentifier("__kSelect"), undefined, [state, parts.truthy, parts.falsy])
+      return { node: factory.createCallExpression(factory.createIdentifier("__kSelect"), undefined, [state, parts.truthy, parts.falsy]) }
     }
-    return factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, importBindings, keyedBlock))
+    const binding = reactiveBindings.length
+    return { node: factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, importBindings, keyedBlock)), binding }
   }
 
   function compileConditional(kind, expression, truthy, falsy, setters) {
@@ -81,7 +104,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
       ? new Set(indexed.filter(reference => ["capture", "unresolved"].includes(reference.kind) && !setters.has(reference.debugName) && !allStateNames.has(reference.debugName) && !importedNames.has(reference.debugName)).map(reference => reference.debugName))
       : new Set([...captureNames(expression, expression, setters)].filter(name => !importedNames.has(name)))
     const exportName = `binding${reactiveBindings.length}`
-    reactiveBindings.push({ exportName, expression, captures, states: usedStates, imports, role: "binding", keyedBlock, ...(indexed ? { bindingIndex } : {}) })
+    reactiveBindings.push({ slot: reactiveBindings.length, exportName, expression, captures, states: usedStates, signalRefs: new Map([...usedStates].map(name => [name, signal(name, expression)])), imports, role: "binding", keyedBlock, ...(indexed ? { bindingIndex } : {}) })
     const states = [...usedStates].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))
     const scope = [...captures].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))
     const stateNames = new Set(usedStates)
@@ -107,7 +130,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters, stateOwners, owner, keyedBlock)
     if (optimized) return optimized
     rejectWorkerConstructions(expression)
-    const descriptor = compileNativeCallback(expression, { setters, reducers, entries: nativeHandlers, importBindings, prefix: "handler", role: "native", listItem, keyedBlock })
+    const descriptor = compileNativeCallback(expression, { setters, reducers, entries: nativeHandlers, importBindings, prefix: "handler", role: "native", listItem, keyedBlock, stateOwners })
     return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
       factory.createStringLiteral(handlerUrl), factory.createStringLiteral(descriptor.exportName), descriptor.states, descriptor.scope
     ])
@@ -117,7 +140,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     return compileNativeCallback(expression, { ...options, entries: effectHandlers, prefix: "effect", role: "effect" })
   }
 
-  function compileNativeCallback(expression, { setters, reducers, entries, importBindings, prefix, role, listItem, keyedBlock, deferValues = false, snapshotNested = false, liveStates = new Set() }) {
+  function compileNativeCallback(expression, { setters, reducers, entries, importBindings, prefix, role, listItem, keyedBlock, stateOwners, deferValues = false, snapshotNested = false, liveStates = new Set() }) {
     const indexedBindingIndex = indexedReferences(bindingIndex, expression, expression) ? bindingIndex : undefined
     const allCaptures = nativeCaptureNames(expression, setters, indexedBindingIndex)
     const usedReducers = referencedReducerDispatches(expression.body, reducers, expression, indexedBindingIndex)
@@ -131,11 +154,13 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
       if (reducer.contextAction) for (const state of referencedStateNames(reducer.contextAction.body, reducer.states, reducer.contextAction, bindingIndex)) usedStates.add(state)
     }
     const exportName = `${prefix}${entries.length}`
-    entries.push({ exportName, expression, captures, deferValues, imports, listItem, keyedBlock, liveStates, role, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested, usedStates, bindingIndex: indexedBindingIndex })
+    const entry = { exportName, expression, captures, deferValues, imports, listItem, keyedBlock, liveStates, role, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested, usedStates, signalRefs: new Map([...usedStates].map(name => [name, signal(name, expression, stateOwners, [...setters].filter(([, state]) => state === name).map(([setter]) => setter))])), bindingIndex: indexedBindingIndex }
+    entries.push(entry)
     const value = name => deferValues
       ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
       : factory.createIdentifier(name)
     return {
+      entry,
       exportName,
       states: factory.createArrayLiteralExpression([...usedStates].map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), value(name)]))),
       scope: factory.createArrayLiteralExpression([...captures].map(name => factory.createArrayLiteralExpression([
@@ -154,7 +179,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     if (!commands?.length || commands.some(command => !command)) return undefined
     const original = ts.getOriginalNode(expression)
     const source = original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
-    const handler = registerCommandHandler(moduleIR, commands.map(command => ({ ...command, owner: stateOwners.get(command.state) ?? owner })), source, owner)
+    const handler = registerCommandHandler(moduleIR, commands.map(command => ({ ...command, reference: stateOwners.get(command.state) ?? stateReferences(expression).get(command.state) })), source)
     if (keyedBlock !== undefined) handler.keyedBlock = keyedBlock
     return generateCommandBehavior(moduleIR, handler, factory)
   }
@@ -176,7 +201,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   function registerDerivedResult(kind, value, states = [], node) {
     const normalized = JSON.parse(JSON.stringify(value))
-    return registerDerived(moduleIR, { kind, [kind]: normalized, states: [...states], ...(source(node) ? { source: source(node) } : {}) })
+    return registerDerived(moduleIR, { kind, [kind]: normalized, signals: [...states].map(name => signal(name, node)), ...(source(node) ? { source: source(node) } : {}) })
   }
 
   function registerKeyedBlockResult(descriptor) {
@@ -184,68 +209,79 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
   }
 
   function registerEffectResult(handler, descriptor) {
-    return registerEffect(moduleIR, { ...descriptor, setup: { exportName: handler.exportName } })
+    const effect = { ...descriptor, setup: handler }
+    pendingEffects.push(effect)
+    return effect
   }
 
   function finalize() {
     const callbacks = [...nativeHandlers, ...effectHandlers]
+    const imports = [...callbacks, ...reactiveBindings].flatMap(entry => entry.imports ?? []).map(importRecord)
+    moduleIR.imports = [...new Map(imports.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry])).values()].map((entry, slot) => ({ slot, ...entry }))
+    const importSlots = new Map(moduleIR.imports.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry.slot]))
+    const importSlot = entry => importSlots.get(`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`)
     for (const entry of callbacks) {
       const lowered = handlerLowering.lowerNativeHandler(entry)
       const setters = Map.groupBy(entry.setters, ([, state]) => state)
-      registerModuleHandler(moduleIR, {
+      entry.handler = registerModuleHandler(moduleIR, {
         role: entry.role,
         ...(entry.keyedBlock !== undefined ? { keyedBlock: entry.keyedBlock } : {}),
         exportName: entry.exportName,
         async: Boolean(entry.expression.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)),
         generator: Boolean(entry.expression.asteriskToken),
         signals: [...entry.usedStates].map(name => ({
+          signal: entry.signalRefs.get(name),
           name,
           setters: (setters.get(name) ?? []).map(([setter]) => setter),
           value: entry.deferValues ? "deferred" : "direct",
           snapshot: lowered.stateSnapshots.includes(name)
         })),
         captures: [...entry.captures].map(name => ({
+          ...(symbolSlot(entry, name) !== undefined ? { symbol: symbolSlot(entry, name) } : {}),
           name,
           source: name === (typeof entry.listItem === "string" ? entry.listItem : entry.listItem?.item) ? "list-item" : name === entry.listItem?.index ? "list-index" : "scope",
           value: entry.deferValues ? "deferred" : "direct",
           snapshot: lowered.captureSnapshots.includes(name)
         })),
-        imports: entry.imports.map(importRecord),
+        imports: entry.imports.map(entry => importSlot(importRecord(entry))),
         code: lowered.code,
         ...(source(entry.expression) ? { source: source(entry.expression) } : {})
       })
     }
     for (const entry of reactiveBindings) registerBinding(moduleIR, {
+      slot: entry.slot,
       role: entry.role,
       ...(entry.keyedBlock !== undefined ? { keyedBlock: entry.keyedBlock } : {}),
       exportName: entry.exportName,
       parameters: ["__k"],
-      states: [...entry.states],
-      captures: [...entry.captures].map(name => ({ name, source: "scope" })),
-      imports: entry.imports.map(importRecord),
+      signals: [...entry.states].map(name => entry.signalRefs.get(name)),
+      captures: [...entry.captures].map(name => ({ ...(symbolSlot(entry, name) !== undefined ? { symbol: symbolSlot(entry, name) } : {}), name, source: "scope" })),
+      imports: entry.imports.map(entry => importSlot(importRecord(entry))),
       code: handlerLowering.lowerReactiveBinding(entry),
       ...(source(entry.expression) ? { source: source(entry.expression) } : {})
     })
-    for (const entry of listExpressions) registerBinding(moduleIR, {
+    for (const [index, entry] of listExpressions.entries()) registerBinding(moduleIR, {
+      slot: reactiveBindings.length + index,
       role: entry.role,
       ...(entry.keyedBlock !== undefined ? { keyedBlock: entry.keyedBlock } : {}),
       exportName: entry.exportName,
       parameters: [entry.item, entry.index ?? "__kIndex", "__k"],
-      states: [...(entry.states ?? [])],
+      signals: [...(entry.states ?? [])].map(name => entry.signalRefs.get(name)),
       captures: [],
       imports: [],
       code: handlerLowering.lowerListExpression(entry),
       ...(source(entry.expression) ? { source: source(entry.expression) } : {})
     })
-    for (const effect of moduleIR.effects) {
-      const handler = moduleIR.handlers.find(candidate => candidate.kind === "module-export" && candidate.role === "effect" && candidate.exportName === effect.setup.exportName)
-      if (!handler) throw new Error(`Effect handler ${JSON.stringify(effect.setup.exportName)} was not finalized`)
-      effect.setup = { handler: handler.slot }
+    for (const effect of pendingEffects) {
+      if (!effect.setup.entry.handler) throw new Error(`Effect handler ${JSON.stringify(effect.setup.exportName)} was not finalized`)
+      registerEffect(moduleIR, { ...effect, setup: { handler: effect.setup.entry.handler.slot } })
     }
-    const imports = [...callbacks, ...reactiveBindings].flatMap(entry => entry.imports ?? []).map(importRecord)
-    moduleIR.imports = [...new Map(imports.map(entry => [`${entry.target}:${entry.kind}:${entry.imported ?? ""}:${entry.local}`, entry])).values()]
     moduleIR.clientModules = [...clientModules]
-    assertModuleIRReferences(moduleIR)
+    assertModuleIRReferences(moduleIR, semantic.componentAnalysis)
+  }
+
+  function symbolSlot(entry, name) {
+    return entry.bindingIndex?.references(entry.expression, entry.expression)?.find(reference => reference.debugName === name)?.slot
   }
 
   function source(node) {
@@ -256,7 +292,15 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   const importRecord = entry => ({ target: entry.target, kind: entry.kind, local: entry.local, ...(entry.imported ? { imported: entry.imported } : {}), package: Boolean(entry.package) })
 
-  return { compileConditional, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding, finalize, registerDerived: registerDerivedResult, registerEffect: registerEffectResult, registerKeyedBlock: registerKeyedBlockResult }
+  return { compileConditional, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding, finalize, registerDerived: registerDerivedResult, registerEffect: registerEffectResult, registerKeyedBlock: registerKeyedBlockResult, signal }
+}
+
+function bindingIdentifier(name, names) {
+  if (ts.isIdentifier(name)) return names.has(name.text) ? name : undefined
+  for (const element of name.elements) if (ts.isBindingElement(element)) {
+    const identifier = bindingIdentifier(element.name, names)
+    if (identifier) return identifier
+  }
 }
 
 function directStateIdentifier(expression, setters, bindingIndex) {

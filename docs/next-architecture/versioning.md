@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.36` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.37` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -27,6 +27,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.34` | Cache canonical parsed modules and narrow export summaries within one ProjectSession while cloning transformer input. | A 100-importer fixture parses and summarizes 103 unique modules once, creates independent normalization trees, preserves the complete source-result digest, and leaks no cache state across projects. |
 | `0.8.35` | Resolve cross-module declarations through stable ModuleSymbol and source-local SiteId records. | Default/named exports, aliases, barrel chains, `export *`, cycles, ambiguity, repeated compilation, source invalidation, private clones, and measured build behavior remain deterministic. |
 | `0.8.36` | Lower equivalent direct, aliased, and local-helper state updates through existing command HandlerIR. | The four required forms emit identical commands and no native handler module; recursion, escape, mutation, and dynamic dispatch fail at authored source locations. |
+| `0.8.37` | Unify ModuleIR and ComponentAnalysis references through deterministic source-local slots and stable symbols. | Every handler, binding, derived, effect, keyed, specialization, state, ref, capture, and import edge validates before build-module generation. |
 
 ## Sequence Rules
 

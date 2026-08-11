@@ -335,7 +335,7 @@ export default function Page() {
   assert.equal(result.moduleIR.handlers.length, 4)
   assert.deepEqual(result.moduleIR.handlers.map(handler => handler.kind), ["commands", "commands", "commands", "commands"])
   assert.deepEqual(result.moduleIR.handlers.map(handler => handler.commands), Array.from({ length: 4 }, () => [{ operation: "add", signal: 0, value: 1 }]))
-  assert.deepEqual(result.moduleIR.signals, [{ slot: 0, key: "owner:0:count", debugName: "count" }])
+  assert.deepEqual(result.moduleIR.signals, [{ slot: 0, reference: { kind: "state", owner: { kind: "component", slot: 0 }, slot: 0 }, debugName: "count" }])
   assert.equal((result.buildModule.code.match(/__kBehavior\(/g) ?? []).length, 4)
   assert.doesNotMatch(result.buildModule.code, /__kNativeBehavior/)
   assert.deepEqual(JSON.parse(JSON.stringify(result.moduleIR)), result.moduleIR)
@@ -370,17 +370,19 @@ export default function Page() {
 
 test("registers JSON-safe command ModuleIR with deterministic slots", () => {
   const moduleIR = createModuleIR("src/pages/counter.tsx")
-  registerCommandHandler(moduleIR, [{ operation: "add", state: "total", value: 1 }], { file: "src/pages/counter.tsx", start: 20, end: 45 }, "component:0")
-  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", value: -2 }], { file: "src/pages/counter.tsx", start: 50, end: 74 }, "component:0")
-  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", owner: "component:1", value: 3 }], undefined, "component:0")
+  const reference = (owner, slot) => ({ kind: "state", owner: { kind: "component", slot: owner }, slot })
+  registerCommandHandler(moduleIR, [{ operation: "add", state: "total", reference: reference(0, 0), value: 1 }], { file: "src/pages/counter.tsx", start: 20, end: 45 })
+  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", reference: reference(0, 1), value: -2 }], { file: "src/pages/counter.tsx", start: 50, end: 74 })
+  registerCommandHandler(moduleIR, [{ operation: "set", state: "count", reference: reference(1, 0), value: 3 }])
 
   assert.deepEqual(moduleIR, {
-    version: 1,
+    version: 2,
     file: "src/pages/counter.tsx",
+    symbols: [],
     signals: [
-      { slot: 0, key: "component:0:total", debugName: "total" },
-      { slot: 1, key: "component:0:count", debugName: "count" },
-      { slot: 2, key: "component:1:count", debugName: "count" }
+      { slot: 0, reference: reference(0, 0), debugName: "total" },
+      { slot: 1, reference: reference(0, 1), debugName: "count" },
+      { slot: 2, reference: reference(1, 0), debugName: "count" }
     ],
     handlers: [
       { slot: 0, kind: "commands", commands: [{ operation: "add", signal: 0, value: 1 }], source: { file: "src/pages/counter.tsx", start: 20, end: 45 } },
@@ -437,7 +439,48 @@ test("registers JSON-safe effect ownership with handler and Worker edges", () =>
 test("rejects dangling ModuleIR slot references", () => {
   const moduleIR = createModuleIR("src/pages/broken.tsx")
   moduleIR.handlers.push({ slot: 0, kind: "commands", commands: [{ operation: "set", signal: 0, value: 1 }] })
-  assert.throws(() => assertModuleIRReferences(moduleIR), /handler 0 command signal references missing slot 0/)
+  assert.throws(() => assertModuleIRReferences(moduleIR), /HandlerIR 0 command 0 references missing SignalIR slot 0/)
+})
+
+test("validates ModuleIR v2 structural references after JSON round-tripping", () => {
+  const analysis = createComponentAnalysis("src/pages/valid.tsx")
+  const components = createComponentAnalysisSession(analysis)
+  const page = {}
+  components.registerOwner(page, { name: "Page" })
+  components.registerState(page, { name: "count", setter: "setCount", kind: "state" })
+  components.registerSpecialization({ kind: "Keyed list", owner: { kind: "component", slot: 0 }, refs: [{ name: "button", kind: "row" }] })
+  const valid = () => ({
+    version: 2,
+    file: "src/pages/valid.tsx",
+    symbols: [{ slot: 0, debugName: "items", declarationKind: "const" }],
+    signals: [{ slot: 0, reference: { kind: "state", owner: { kind: "component", slot: 0 }, slot: 0 }, debugName: "count" }],
+    handlers: [{ slot: 0, kind: "module-export", role: "effect", exportName: "effect0", signals: [{ signal: 0 }], captures: [{ symbol: 0 }], imports: [], code: "" }],
+    bindings: [{ slot: 0, kind: "module-export", role: "binding", exportName: "binding0", signals: [0], captures: [{ symbol: 0 }], imports: [], code: "" }],
+    derived: [{ slot: 0, kind: "expression", expression: ["state", "count"], signals: [0] }],
+    effects: [{ slot: 0, setup: { handler: 0 }, dependencies: [{ kind: "derived", derived: 0, sources: [0] }], subscriptions: [0], dependencySignals: [0], ownership: { owner: { kind: "component", slot: 0 } } }],
+    keyedBlocks: [
+      { slot: 0, children: [1], collection: { kind: "static" }, selectorSignals: [], specializations: [], rowStates: [], rowRefs: [] },
+      { slot: 1, parent: 0, children: [], collection: { kind: "symbol", symbol: 0 }, selector: 0, selectorSignals: [0], specializations: [0], rowStates: [{ signal: 0 }], rowRefs: [{ specialization: 0, ref: 0 }] }
+    ],
+    imports: [],
+    clientModules: []
+  })
+
+  assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(valid())), analysis), valid())
+  assert.throws(() => assertModuleIRReferences({ ...valid(), version: 1 }, analysis), /Unsupported ModuleIR version/)
+  const missingSignal = valid()
+  missingSignal.bindings[0].signals[0] = 4
+  assert.throws(() => assertModuleIRReferences(missingSignal, analysis), /BindingIR 0 signal 0 references missing SignalIR slot 4/)
+  const duplicateExport = valid()
+  duplicateExport.bindings[0].exportName = "effect0"
+  assert.throws(() => assertModuleIRReferences(duplicateExport, analysis), /export "effect0" is declared by both/)
+  const brokenParent = valid()
+  brokenParent.keyedBlocks[0].children = []
+  assert.throws(() => assertModuleIRReferences(brokenParent, analysis), /does not reciprocally list child 1/)
+  const cycle = valid()
+  cycle.keyedBlocks[0].parent = 1
+  cycle.keyedBlocks[1].children = [0]
+  assert.throws(() => assertModuleIRReferences(cycle, analysis), /parent cycle/)
 })
 
 test("classifies mixed signal and derived effect dependencies without deriving signals", () => {
@@ -497,21 +540,24 @@ const independent = () => setCount(count + 1)
       handlerUrl: "/handlers.js",
       factory: context.factory,
       context,
+      bindingIndex: createBindingIndex(file),
       compileEventCommand: createCommandSpecializer({ isPrimitiveLiteral: () => false }),
       isPrimitiveLiteral: () => false,
       rejectWorkerConstructions: () => {}
     })
     const shared = new Map([["setCount", "count"]])
-    session.compileEvent(handlers[0], { owner: "owner:0", setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
-    session.compileEvent(handlers[1], { owner: "owner:0", setters: shared, reducers: new Map(), functions: new Map(), importBindings: new Map() })
-    session.compileEvent(handlers[2], { owner: "owner:1", setters: new Map(shared), reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    const first = new Map([["count", { kind: "module-symbol", symbol: { id: "owners.ts#first", module: "owners.ts", site: "first", name: "count" } }]])
+    const second = new Map([["count", { kind: "module-symbol", symbol: { id: "owners.ts#second", module: "owners.ts", site: "second", name: "count" } }]])
+    session.compileEvent(handlers[0], { setters: shared, stateOwners: first, reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    session.compileEvent(handlers[1], { setters: shared, stateOwners: first, reducers: new Map(), functions: new Map(), importBindings: new Map() })
+    session.compileEvent(handlers[2], { setters: new Map(shared), stateOwners: second, reducers: new Map(), functions: new Map(), importBindings: new Map() })
     return file
   }])
   result.dispose()
 
   assert.deepEqual(semantic.moduleIR.signals, [
-    { slot: 0, key: "owner:0:count", debugName: "count" },
-    { slot: 1, key: "owner:1:count", debugName: "count" }
+    { slot: 0, reference: { kind: "module-symbol", symbol: { id: "owners.ts#first", module: "owners.ts", site: "first", name: "count" } }, debugName: "count" },
+    { slot: 1, reference: { kind: "module-symbol", symbol: { id: "owners.ts#second", module: "owners.ts", site: "second", name: "count" } }, debugName: "count" }
   ])
   assert.deepEqual(semantic.moduleIR.handlers.map(handler => handler.commands[0].signal), [0, 0, 1])
 })
@@ -528,34 +574,37 @@ test("records JSON-safe component ownership and specialization results", () => {
   session.registerId(page, { name: "labelId" })
   session.registerOwner(child, { kind: "specialized", name: "KSetterComponent50", props: [] })
   session.registerState(child, { name: "value", setter: "setValue", kind: "component" })
-  session.registerSpecialization({ kind: "Setter-callback", owner: 0, props: [{ name: "onChange", local: "onChange", provided: true }], states: [{ name: "value", setter: "setValue", kind: "component" }], refs: [{ name: "inputRef", kind: "component" }], ids: [{ name: "inputId" }] })
+  session.registerSpecialization({ kind: "Setter-callback", owner: { kind: "component", slot: 0 }, props: [{ name: "onChange", local: "onChange", provided: true }], states: [{ name: "value", setter: "setValue", kind: "component" }], refs: [{ name: "inputRef", kind: "component" }], ids: [{ name: "inputId" }] })
 
   assert.deepEqual(analysis.owners.map(owner => [owner.slot, owner.name, owner.states.map(state => state.name), owner.setters.map(setter => [setter.name, setter.signal]), owner.refs.map(ref => ref.name), owner.ids.map(id => id.name)]), [
     [0, "Page", ["count"], [["setCount", 0], ["dispatch", 0]], ["buttonRef"], ["labelId"]],
     [1, "KSetterComponent50", ["value"], [["setValue", 0]], [], []]
   ])
-  assert.equal(analysis.specializations[0].owner, 0)
+  assert.deepEqual(analysis.specializations[0].owner, { kind: "component", slot: 0 })
   assertJsonData(analysis)
   assert.deepEqual(JSON.parse(JSON.stringify(analysis)), analysis)
 })
 
 test("registers deterministic per-source handler, binding, and list descriptors", () => {
   const source = ts.createSourceFile("descriptors.ts", `
+import { format } from "./format"
 const binding = format(count + extra)
 const handler = () => setCount(count + delta)
 const row = item.label
 `, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const semantic = createSemanticArtifact("descriptors.ts")
-  const [binding, handler, row] = source.statements.map(statement => statement.declarationList.declarations[0].initializer)
+  const [binding, handler, row] = source.statements.slice(1).map(statement => statement.declarationList.declarations[0].initializer)
   const result = ts.transform(source, [context => file => {
     const session = createDescriptorSession({
       semantic,
       handlerUrl: "/assets/handlers/descriptors.js",
       factory: context.factory,
       context,
+      bindingIndex: createBindingIndex(file),
       compileEventCommand: () => undefined,
       handlerLowering,
       isPrimitiveLiteral: node => ts.isStringLiteral(node) || ts.isNumericLiteral(node),
+      stateReferences: () => new Map([["count", { kind: "module-symbol", symbol: { id: "descriptors.ts#count", module: "descriptors.ts", site: "count", name: "count" } }]]),
       rejectWorkerConstructions: () => {}
     })
     const setters = new Map([["setCount", "count"]])
@@ -576,15 +625,15 @@ const row = item.label
 
   assert.deepEqual(semantic.moduleIR.handlers.map(({ exportName, role }) => [exportName, role]), [["handler0", "native"], ["effect0", "effect"]])
   assert.deepEqual(semantic.moduleIR.bindings.map(({ exportName, role }) => [exportName, role]), [["binding0", "binding"], ["binding1", "binding"], ["listExpression0", "list-expression"]])
-  assert.deepEqual(semantic.moduleIR.bindings[0].states, ["count"])
-  assert.deepEqual(semantic.moduleIR.bindings[0].captures, [{ name: "extra", source: "scope" }])
+  assert.deepEqual(semantic.moduleIR.bindings[0].signals, [0])
+  assert.deepEqual(semantic.moduleIR.bindings[0].captures, [{ symbol: 5, name: "extra", source: "scope" }])
   assert.deepEqual(semantic.moduleIR.clientModules, ["/src/format.ts"])
-  assert.deepEqual(semantic.moduleIR.handlers[0].signals, [{ name: "count", setters: ["setCount"], value: "direct", snapshot: false }])
-  assert.deepEqual(semantic.moduleIR.handlers[0].captures, [{ name: "delta", source: "scope", value: "direct", snapshot: false }])
-  assert.deepEqual(semantic.moduleIR.imports, [{ target: "/src/format.ts", kind: "named", local: "format", imported: "format", package: false }])
-  assert.deepEqual(semantic.moduleIR.derived.map(({ slot, kind, states, expression, selector }) => ({ slot, kind, states, expression, selector })), [
-    { slot: 0, kind: "expression", states: ["count"], expression: ["binary", "+", ["state", "count"], ["value", 1]], selector: undefined },
-    { slot: 1, kind: "selector", states: ["count"], expression: undefined, selector: [["slice", ["value", 0], null]] }
+  assert.deepEqual(semantic.moduleIR.handlers[0].signals, [{ signal: 0, name: "count", setters: ["setCount"], value: "direct", snapshot: false }])
+  assert.deepEqual(semantic.moduleIR.handlers[0].captures, [{ symbol: 7, name: "delta", source: "scope", value: "direct", snapshot: false }])
+  assert.deepEqual(semantic.moduleIR.imports, [{ slot: 0, target: "/src/format.ts", kind: "named", local: "format", imported: "format", package: false }])
+  assert.deepEqual(semantic.moduleIR.derived.map(({ slot, kind, signals, expression, selector }) => ({ slot, kind, signals, expression, selector })), [
+    { slot: 0, kind: "expression", signals: [0], expression: ["binary", "+", ["state", "count"], ["value", 1]], selector: undefined },
+    { slot: 1, kind: "selector", signals: [0], expression: undefined, selector: [["slice", ["value", 0], null]] }
   ])
   assert.equal("nativeHandlers" in semantic || "reactiveBindings" in semantic || "clientImports" in semantic, false)
   assertJsonData(semantic.moduleIR)
@@ -620,8 +669,8 @@ const binding = count ? document + [1].map(document => document + 1).join("") + 
   }])
   result.dispose()
 
-  assert.deepEqual(semantic.moduleIR.bindings[0].states, ["count"])
-  assert.deepEqual(semantic.moduleIR.bindings[0].captures, [{ name: "document", source: "scope" }])
+  assert.deepEqual(semantic.moduleIR.bindings[0].signals, [0])
+  assert.deepEqual(semantic.moduleIR.bindings[0].captures, [{ symbol: 1, name: "document", source: "scope" }])
   assert.deepEqual(semantic.moduleIR.bindings[0].imports, [])
   assert.deepEqual(semantic.moduleIR.clientModules, [])
   assert.match(semantic.moduleIR.bindings[0].code, /__k\.scope\("document"\).+document => document \+ 1/s)
@@ -671,9 +720,9 @@ const row = count + [1].map(count => count)[0] + item.value
   result.dispose()
 
   for (const handler of semantic.moduleIR.handlers) {
-    assert.deepEqual(handler.signals, [{ name: "count", setters: ["setCount"], value: "direct", snapshot: false }])
-    assert.deepEqual(handler.captures, [{ name: "document", source: "scope", value: "direct", snapshot: false }])
-    assert.deepEqual(handler.imports, [{ target: "/src/format.ts", kind: "named", local: "format", imported: "format", package: false }])
+    assert.deepEqual(handler.signals, [{ signal: 0, name: "count", setters: ["setCount"], value: "direct", snapshot: false }])
+    assert.deepEqual(handler.captures, [{ symbol: 1, name: "document", source: "scope", value: "direct", snapshot: false }])
+    assert.deepEqual(handler.imports, [0])
     assert.match(handler.code, /format\(__k\.get\("count"\)\)/)
     assert.match(handler.code, /__k\.scope\("document"\)\.toString\(\)/)
     assert.match(handler.code, /format => format/)

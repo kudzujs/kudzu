@@ -8,6 +8,7 @@ export function createBindingIndex(sourceFile) {
   const scopeByNode = new WeakMap()
   const referenceBindings = new WeakMap()
   const originalReferenceBindings = new WeakMap()
+  const declarationBindings = new WeakMap()
   const bindings = []
   const rootScope = createScope(undefined, sourceFile, "module")
   const pseudoBindings = new Map()
@@ -31,6 +32,8 @@ export function createBindingIndex(sourceFile) {
       bindings.push(binding)
       scope.bindings.set(identifier.text, binding)
     }
+    declarationBindings.set(identifier, binding)
+    declarationBindings.set(ts.getOriginalNode(identifier), binding)
     return binding
   }
 
@@ -218,6 +221,17 @@ export function createBindingIndex(sourceFile) {
     }
   }
 
+  function resolveBinding(identifier) {
+    const binding = declarationBindings.get(identifier) ?? declarationBindings.get(ts.getOriginalNode(identifier)) ?? lexicalBinding(scopeByNode.get(identifier) ?? rootScope, identifier.text)
+    if (!binding) return undefined
+    return {
+      slot: binding.slot,
+      debugName: binding.debugName,
+      declarationKind: binding.declarationKind,
+      ...(binding.declaration ? { declarationRange: range(binding.declaration) } : {})
+    }
+  }
+
   function references(root, boundary = root) {
     const found = []
     let complete = true
@@ -234,7 +248,7 @@ export function createBindingIndex(sourceFile) {
     return complete ? found : undefined
   }
 
-  return { bindings: () => bindings.map(({ declaration, ...binding }) => ({ ...binding, ...(declaration ? { declarationRange: range(declaration) } : {}) })), hasNode: node => scopeByNode.has(node), references, resolveReference }
+  return { bindings: () => bindings.map(({ declaration, ...binding }) => ({ ...binding, ...(declaration ? { declarationRange: range(declaration) } : {}) })), hasNode: node => scopeByNode.has(node), references, resolveBinding, resolveReference }
 }
 
 function inside(node, boundary) {

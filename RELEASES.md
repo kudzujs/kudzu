@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.8.37 - Structural ModuleIR references
+
+Kudzu 0.8.37 completes P0.10 by replacing mixed state names, export strings, formatted owner keys, and partial slots with one validated structural reference graph.
+
+### Changed in 0.8.37
+
+- ModuleIR v2 assigns deterministic slots to symbols, signals, handlers, bindings, derived values, effects, keyed blocks, and imports.
+- ComponentAnalysis v2 assigns deterministic owner, specialization, state, ref, and ID slots.
+- StateRef, OwnerRef, source-local SymbolRef, and stable ModuleSymbol records connect state, capture, import, effect, collection, specialization, prop-signal, and row ownership edges.
+- Descriptor finalization resolves effect handlers and imports structurally instead of searching by export spelling.
+- Readable state and export names remain only as codegen, runtime ABI, and diagnostic metadata.
+- One fail-closed pre-codegen validator rejects unsupported versions, malformed slots, duplicate exports, invalid effect handlers, broken keyed parent-child reciprocity, ownership cycles, and dangling specialization/ref edges.
+
+### Performance
+
+- The maintained 100-importer fixture retains 103 parse misses, 103 export-summary misses, and 100 importer-local clones.
+- Seven alternating fresh-process samples measured `v0.8.36` and 0.8.37 compiler medians of 224.506 ms and 227.158 ms. The +6.270 ms paired median and overlapping timing/RSS ranges establish no material regression.
+- Source-result size increases from 395,346 B to 460,720 B because ModuleIR and ComponentAnalysis now serialize structural symbol, signal, owner, and slot metadata. This is compiler scratch data, not deployed browser JavaScript.
+- Existing static, command, binding, keyed, effect, Worker, navigation, and migration fixtures retain their browser behavior and zero-unused-runtime checks.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 198 tests and 152 generated pages.
+- Focused checks cover unsupported versions, malformed references, duplicate exports, parent-child reciprocity, cycles, effect-handler roles, specialization ownership, and JSON round trips.
+- Package smoke installation passes from the packed tarball.
+- P0.11 explicit route artifact graph is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.37
+```
+
 ## 0.8.36 - Semantic state operations
 
 Kudzu 0.8.36 completes P0.9 by proving equivalent direct, aliased, and local-helper state updates and lowering them through the existing command HandlerIR path.

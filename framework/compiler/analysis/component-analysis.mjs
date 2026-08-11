@@ -1,5 +1,5 @@
 export function createComponentAnalysis(file) {
-  return { version: 1, file, owners: [], specializations: [] }
+  return { version: 2, file, owners: [], specializations: [] }
 }
 
 export function createComponentAnalysisSession(analysis) {
@@ -40,7 +40,13 @@ export function createComponentAnalysisSession(analysis) {
   }
 
   function registerSpecialization(descriptor) {
-    const specialization = { slot: analysis.specializations.length, ...descriptor }
+    const specialization = {
+      slot: analysis.specializations.length,
+      ...descriptor,
+      states: (descriptor.states ?? []).map((state, slot) => ({ slot, ...state })),
+      refs: (descriptor.refs ?? []).map((ref, slot) => ({ slot, ...ref })),
+      ids: (descriptor.ids ?? []).map((id, slot) => ({ slot, ...id }))
+    }
     analysis.specializations.push(specialization)
     return specialization
   }

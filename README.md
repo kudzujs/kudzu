@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.36 - Semantic state operations.** Equivalent direct, aliased, and local-helper state updates now lower to the same command IR without adding handler JavaScript. Read the [release notes](./RELEASES.md#0836---semantic-state-operations), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.36), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.37 - Structural ModuleIR references.** Compiler ownership and dependency edges now use validated source-local slots and stable symbols instead of formatted names. Read the [release notes](./RELEASES.md#0837---structural-moduleir-references), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.37), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

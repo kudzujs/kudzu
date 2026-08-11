@@ -138,6 +138,7 @@ This is an incremental evolution of the current repository:
 - [x] P0.7 Parsed module and export summary caching is complete in `0.8.34`. Canonical read-only source trees and narrow export summaries are invalidated together by source text and remain ProjectSession-local; every normalization context receives a deep clone with independent parent links. A 100-importer fixture parses and summarizes 103 unique page/barrel/component/helper modules exactly once and creates 200 importer-local clones. The maintained paired benchmark preserves the complete source-result digest and establishes no material timing or peak-RSS conclusion; all 193 tests and package checks pass without broadening exports, source syntax, or browser output.
 - [x] P0.8 Stable ModuleSymbol and SiteId is complete in `0.8.35`. ProjectSession records source-local declaration, import, and re-export sites and resolves stable ModuleSymbol records through default/named exports, aliases, barrel chains, `export *`, ambiguity, and cycles. Cross-module compiler consumers locate resolved declarations by SiteId in their private normalized clones, while component calls, hooks, keyed blocks, effects, and ownership records expose deterministic source-local SiteIds. Repeated sessions and compilations preserve IDs, and symbol-only barrel traversal avoids cloning intermediate modules without changing browser artifacts or source syntax.
 - [x] P0.9 Semantic State Operations is complete in `0.8.36`. Direct setters, one immutable state-value alias, one synchronous zero-argument arrow helper, and one synchronous one-parameter function helper lower to identical existing command HandlerIR. Binding identity proves state/setter/helper/parameter ownership; recursion, escape, mutation, and dynamic helper dispatch fail at authored source locations. Existing direct command specialization remains first, unrelated safe handlers retain native ESM, and no command ABI, runtime, JavaScript VM, or general expression IR is added.
+- [x] P0.10 ModuleIR Reference Unification is complete in `0.8.37`. ModuleIR and ComponentAnalysis v2 assign deterministic slots to symbols, signals, handlers, bindings, derived values, effects, keyed blocks, imports, owners, specializations, states, refs, and IDs. State, capture, import, effect, collection, parent/child, specialization, and row edges use structural slots or ModuleSymbol records while readable names remain codegen/debug metadata. A fail-closed pre-codegen validator rejects malformed slots, unsupported versions, duplicate exports, broken reciprocity, and ownership cycles; focused JSON round-trip checks and all 198 tests pass without changing browser runtime behavior.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -350,6 +351,8 @@ function increment(value) { setCount(value + 1) }; increment(count)
 
 **Done condition:** every HandlerIR, BindingIR, DerivedIR, EffectIR, KeyedBlockIR, and component specialization edge validates before build-module generation.
 
+**Completed in `0.8.37`:** ModuleIR and ComponentAnalysis v2 replace formatted owner keys and cross-record export/name lookups with source-local slots, StateRef/OwnerRef records, SymbolRef slots, and stable ModuleSymbol records. Descriptor finalization resolves imports, handlers, bindings, effects, derived dependencies, keyed collections, row ownership, and component prop signals before one fail-closed validation boundary. The validator checks slot/index integrity, state/setter ownership, captures/imports, duplicate exports, effect-handler roles, keyed parent/child reciprocity and cycles, specialization/ref edges, and JSON-safe round trips. Existing export names and state spellings remain only where emitted module/runtime ABIs require them.
+
 ### PR 11: RouteBuildRecord And Artifact Graph
 
 **Objective:** make route artifact selection structural.
@@ -471,4 +474,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 9 are complete. The next PR is **PR 10: ModuleIR Reference Unification**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 10 are complete. The next PR is **PR 11: RouteBuildRecord And Artifact Graph**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
