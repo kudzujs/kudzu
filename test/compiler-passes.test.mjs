@@ -67,6 +67,9 @@ export default function Page() {
   assert.deepEqual(result.importedAssets, [])
   assert.deepEqual(JSON.parse(JSON.stringify(result)), result)
   assert.equal(existsSync(output), false)
+  assert.match(result.componentAnalysis.owners[0].site, /^owner:\d+:\d+$/)
+  assert.match(result.componentAnalysis.owners[0].states[0].site, /^hook:\d+:\d+$/)
+  assert.deepEqual(compileSource(file, new Set([file, helper]), new Map([[file, source], [helper, "export const format = value => String(value)"]]), new Set(), new Map(), "").componentAnalysis, result.componentAnalysis)
 })
 
 test("reports ordinary graph failures at the importer source", () => {
@@ -139,6 +142,66 @@ test("caches canonical modules and clones mutable transformer input", () => {
   assert.deepEqual(isolatedCounters, { parsedModules: 1, exportSummaries: 1 })
 })
 
+test("resolves stable module symbols through aliases, barrels, and export stars", () => {
+  const files = {
+    component: resolve("src/symbols/Component.tsx"),
+    alias: resolve("src/symbols/alias.ts"),
+    barrel: resolve("src/symbols/index.ts"),
+    page: resolve("src/pages/symbols.tsx")
+  }
+  const sourceIndex = new Map([
+    [files.component, "export default function Row() { return <li /> }\nexport const Label = () => <span />"],
+    [files.alias, 'export { default as Item } from "./Component"'],
+    [files.barrel, 'export * from "./alias"\nexport { Label as Text } from "./Component"'],
+    [files.page, 'import { Item as Row, Text } from "../symbols"\nexport default function Page() { return <><Row /><Text /></> }']
+  ])
+  const sourceFiles = new Set(sourceIndex.keys())
+  const first = createProjectSession(process.cwd(), { sourceIndex })
+  const item = first.modules.resolveExport(files.barrel, "Item", sourceFiles)
+  const text = first.modules.resolveExport(files.barrel, "Text", sourceFiles)
+  const pageImport = first.modules.read(files.page).imports.get("Row")
+
+  assert.deepEqual(item, {
+    id: `src/symbols/Component.tsx#${item.site}`,
+    module: "src/symbols/Component.tsx",
+    site: item.site,
+    name: "Row"
+  })
+  assert.equal(text.name, "Label")
+  assert.equal(first.modules.resolveExport(files.component, "Row", sourceFiles), undefined)
+  assert.match(item.site, /^declaration:\d+:\d+$/)
+  assert.deepEqual(pageImport, { kind: "named", imported: "Item", specifier: "../symbols", site: pageImport.site })
+  assert.match(pageImport.site, /^import:\d+:\d+$/)
+  assert.equal(ts.isFunctionDeclaration(first.modules.declaration(item)), true)
+
+  const second = createProjectSession(process.cwd(), { sourceIndex })
+  assert.deepEqual(second.modules.resolveExport(files.barrel, "Item", sourceFiles), item)
+  assert.deepEqual(second.modules.read(files.page).imports.get("Row"), pageImport)
+
+  sourceIndex.set(files.component, `\n${sourceIndex.get(files.component)}`)
+  assert.notEqual(first.modules.resolveExport(files.barrel, "Item", sourceFiles).id, item.id)
+})
+
+test("reports deterministic export-star ambiguity and re-export cycles", () => {
+  const left = resolve("src/symbol-errors/left.ts")
+  const right = resolve("src/symbol-errors/right.ts")
+  const barrel = resolve("src/symbol-errors/index.ts")
+  const cycleA = resolve("src/symbol-errors/cycle-a.ts")
+  const cycleB = resolve("src/symbol-errors/cycle-b.ts")
+  const sourceIndex = new Map([
+    [left, "export const Item = () => null"],
+    [right, "export const Item = () => null"],
+    [barrel, 'export * from "./left"\nexport * from "./right"'],
+    [cycleA, 'export { Item } from "./cycle-b"'],
+    [cycleB, 'export { Item } from "./cycle-a"']
+  ])
+  const sourceFiles = new Set(sourceIndex.keys())
+  const project = createProjectSession(process.cwd(), { sourceIndex })
+
+  assert.throws(() => project.modules.resolveExport(barrel, "Item", sourceFiles), /src\/symbol-errors\/index\.ts has an ambiguous export named "Item"/)
+  assert.throws(() => project.modules.resolveExport(cycleA, "Item", sourceFiles), /Imported keyed list component re-export cycle: src\/symbol-errors\/cycle-a\.ts -> src\/symbol-errors\/cycle-b\.ts -> src\/symbol-errors\/cycle-a\.ts/)
+})
+
 test("parses shared modules once for one hundred importers", () => {
   const sourceDirectory = resolve("src")
   const pages = Array.from({ length: 100 }, (_, index) => resolve(sourceDirectory, "pages", `cache-${index}.tsx`))
@@ -146,7 +209,7 @@ test("parses shared modules once for one hundred importers", () => {
   const shared = resolve(sourceDirectory, "components", "Shared.tsx")
   const helper = resolve(sourceDirectory, "helper.ts")
   const sourceIndex = new Map([
-    [barrel, 'export { Shared } from "./Shared"'],
+    [barrel, 'export * from "./Shared"'],
     [shared, `
 import { format } from "../helper"
 export function Shared({ item }) {
@@ -171,7 +234,7 @@ export default function Page() {
   for (const file of reachable) compiler.compileSource(file, new Set(reachable), sourceIndex, new Set(), new Map(), "")
 
   assert.equal(reachable.length, 103)
-  assert.deepEqual(counters, { parsedModules: 103, exportSummaries: 103, clonedModules: 200 })
+  assert.deepEqual(counters, { parsedModules: 103, exportSummaries: 103, clonedModules: 100 })
 })
 
 test("normalizes render control flow without changing lowercase helpers", () => {

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.34 - Session-local module cache.** Each unchanged source module is parsed and export-summarized once per ProjectSession, while every transformer receives an independent deep clone so mutable TypeScript AST state cannot leak across importers or projects. Read the [release notes](./RELEASES.md#0834---session-local-module-cache), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.34), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.35 - Stable module identity.** Cross-module declarations now resolve through stable ModuleSymbol and source-local SiteId records across aliases, barrel chains, `export *`, and cloned transformer trees. Read the [release notes](./RELEASES.md#0835---stable-module-identity), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.35), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

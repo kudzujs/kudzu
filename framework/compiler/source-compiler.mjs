@@ -324,6 +324,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const original = ts.getOriginalNode(node)
       return original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
     }
+    const analysisSite = (node, role) => {
+      const original = ts.getOriginalNode(node)
+      return original.pos >= 0 && original.end >= 0 ? modules.siteId(original, role) : undefined
+    }
     const analyzedProps = owner => {
       if (owner.parameters.length !== 1 || !ts.isObjectBindingPattern(owner.parameters[0].name)) return []
       return owner.parameters[0].name.elements.map(element => ({
@@ -334,14 +338,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }))
     }
     const ownerName = owner => owner.name?.text ?? (ts.isVariableDeclaration(owner.parent) && ts.isIdentifier(owner.parent.name) ? owner.parent.name.text : "anonymous")
-    const ensureOwner = (owner, kind = "component") => componentAnalysis.registerOwner(owner, { kind, name: ownerName(owner), props: analyzedProps(owner), source: analysisSource(owner) })
+    const ensureOwner = (owner, kind = "component") => componentAnalysis.registerOwner(owner, { kind, name: ownerName(owner), props: analyzedProps(owner), site: analysisSite(owner, "owner"), source: analysisSource(owner) })
     const registerState = (owner, state, setter, kind, node, externalOwner) => {
       const ownerRecord = ensureOwner(owner)
       const stateOwner = externalOwner ?? `owner:${ownerRecord.slot}`
       const stateOwners = stateOwnersByFunction.get(owner) ?? new Map()
       stateOwners.set(state, stateOwner)
       stateOwnersByFunction.set(owner, stateOwners)
-      return componentAnalysis.registerState(owner, { name: state, setter, kind, ...(externalOwner ? { owner: externalOwner } : {}), source: analysisSource(node) })
+      return componentAnalysis.registerState(owner, { name: state, setter, kind, ...(externalOwner ? { owner: externalOwner } : {}), site: analysisSite(node, "hook"), source: analysisSource(node) })
     }
     const stateOwnersForNode = node => {
       for (let current = node.parent; current; current = current.parent) {
@@ -643,12 +647,12 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           if (!nullInitializer && owner.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)) throw sourceNodeError(node.initializer, sourceFile, "Mutable value useRef() is unsupported except for an effect-owned useRef(0) animation-frame handle; otherwise keep resource-private mutable values inside the owning effect")
           if (nullInitializer) {
             ensureOwner(owner)
-            componentAnalysis.registerRef(owner, { name: node.name.text, source: analysisSource(node) })
+            componentAnalysis.registerRef(owner, { name: node.name.text, site: analysisSite(node, "hook"), source: analysisSource(node) })
           }
         }
         if (owner && node.initializer.expression.text === "useId" && node.initializer.arguments.length === 0) {
           ensureOwner(owner)
-          componentAnalysis.registerId(owner, { name: node.name.text, source: analysisSource(node) })
+          componentAnalysis.registerId(owner, { name: node.name.text, site: analysisSite(node, "hook"), source: analysisSource(node) })
         }
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "createContext") contexts.add(node.name.text)
@@ -834,6 +838,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       result.analysis = componentAnalysis.registerSpecialization({
         kind: label,
         ...(owner ? { owner: ensureOwner(owner).slot } : {}),
+        ...(analysisSite(call, "component-call") ? { site: analysisSite(call, "component-call") } : {}),
         ...(analysisSource(call) ? { source: analysisSource(call) } : {}),
         props: result.props.map(prop => {
           const expression = result.propExpressions.get(prop.name)
@@ -841,11 +846,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           return { ...prop, ...(signals.length ? { signals } : {}) }
         }),
         states: [
-          ...result.rowStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "row", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })),
-          ...result.ordinaryStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "component", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
+          ...result.rowStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "row", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })),
+          ...result.ordinaryStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "component", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
         ],
-        refs: [...result.rowRefs.map(({ name, source }) => ({ name, kind: "row", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })), ...result.ordinaryRefs.map(({ name, source }) => ({ name, kind: "component", ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))],
-        ids: result.ordinaryIds.map(({ name, source }) => ({ name, ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
+        refs: [...result.rowRefs.map(({ name, source }) => ({ name, kind: "row", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })), ...result.ordinaryRefs.map(({ name, source }) => ({ name, kind: "component", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))],
+        ids: result.ordinaryIds.map(({ name, source }) => ({ name, ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
       })
       for (const state of [...result.rowStates, ...result.ordinaryStates]) state.analysisOwner = `specialization:${result.analysis.slot}`
       for (const ref of [...result.rowRefs, ...result.ordinaryRefs]) ref.analysisOwner = `specialization:${result.analysis.slot}`
@@ -1427,6 +1432,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const rowRefs = (listParts.rowRefs ?? []).map(ref => ({ name: ref.name, owner: ref.analysisOwner, ...(analysisSource(ref.source) ? { source: analysisSource(ref.source) } : {}) }))
       const specializations = [...new Set([...(listParts.specializations ?? []), ...rowStates.map(state => state.owner), ...rowRefs.map(ref => ref.owner)].filter(value => value !== undefined).map(value => typeof value === "string" ? Number(value.slice(value.lastIndexOf(":") + 1)) : value))]
       const block = descriptors.registerKeyedBlock({
+        ...(analysisSite(node, "keyed-list") ? { site: analysisSite(node, "keyed-list") } : {}),
         ...(analysisSource(node) ? { source: analysisSource(node) } : {}),
         ...(parent ? { parent: parent.slot } : {}),
         children: [],
@@ -1607,9 +1613,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           ownership: {
             kind: activeKeyedBlock ? "keyed" : "component",
             ...(activeKeyedBlock ? { keyedBlock: activeKeyedBlock.block.slot } : {}),
-            ...(lexicalOwner ? { component: { name: ownerName(lexicalOwner), ...(analysisSource(lexicalOwner) ? { source: analysisSource(lexicalOwner) } : {}) } } : {})
+            ...(lexicalOwner ? { component: { name: ownerName(lexicalOwner), ...(analysisSite(lexicalOwner, "owner") ? { site: analysisSite(lexicalOwner, "owner") } : {}), ...(analysisSource(lexicalOwner) ? { source: analysisSource(lexicalOwner) } : {}) } } : {})
           },
           workers,
+          ...(analysisSite(effectSource, "hook") ? { site: analysisSite(effectSource, "hook") } : {}),
           ...(analysisSource(effectSource) ? { source: analysisSource(effectSource) } : {})
         })
         const dependencyExpressions = effect.dependencies.map(dependency => dependency.kind === "derived" ? moduleIR.derived[dependency.derived].expression : ["state", dependency.name])
@@ -2719,25 +2726,12 @@ function normalizeImportedStaticCollections(sourceFile, collections, factory, co
   return ts.visitNode(sourceFile, visitor)
 }
 
-function resolveComponentExport(file, exportName, getSource, sourceFiles, trail = []) {
-  const key = `${file}:${exportName}`
-  if (trail.includes(key)) throw new Error(`Imported keyed list component re-export cycle: ${[...trail, key].map(entry => relative(root, entry.slice(0, entry.lastIndexOf(":")))).join(" -> ")}`)
-  const sourceFile = getSource(file)
-  const nextTrail = [...trail, key]
-  const entry = modules.read(file).exports.get(exportName)
-  if (entry?.kind === "reexport") {
-    if (!entry.specifier.startsWith(".")) throw sourceNodeError(entry.node, modules.read(file).sourceFile, "Imported keyed list components must use relative TypeScript re-exports")
-    const target = resolveSourceImport(file, entry.specifier, sourceFiles)
-    return resolveComponentExport(target, entry.imported, getSource, sourceFiles, nextTrail)
-  }
-  if (entry?.kind === "function" && !entry.local) {
-    const component = sourceFile.statements.find(statement => ts.isFunctionDeclaration(statement) && statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword))
-    if (component) return component
-  }
-  if (entry?.local) {
-    const component = localComponentDeclaration(sourceFile, entry.local)
-    if (component) return component
-  }
+function resolveComponentExport(file, exportName, getSource, sourceFiles) {
+  const symbol = modules.resolveExport(file, exportName, sourceFiles)
+  const target = symbol && resolve(root, symbol.module)
+  const declaration = symbol && modules.declaration(symbol, getSource(target))
+  if (declaration && ts.isFunctionDeclaration(declaration)) return declaration
+  if (declaration && ts.isVariableDeclaration(declaration) && declaration.initializer && (ts.isArrowFunction(declaration.initializer) || ts.isFunctionExpression(declaration.initializer))) return declaration.initializer
   throw new Error(`${relative(root, file)} does not export a statically analyzable keyed list component named ${JSON.stringify(exportName)}`)
 }
 

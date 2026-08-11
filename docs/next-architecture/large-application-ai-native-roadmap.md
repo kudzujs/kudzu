@@ -2,7 +2,7 @@
 
 ## Status
 
-Active execution plan after `0.8.34`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Active execution plan after `0.8.35`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
 [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. This plan is authoritative for the order and completion evidence of compiler generalization, large-application foundations, compatibility boundaries, AI tooling, and scale validation. If implementation evidence changes a boundary, update this document before broadening a patch.
 
@@ -136,7 +136,7 @@ This is an incremental evolution of the current repository:
 - [x] P0.5 Staged and collision-safe output is complete in `0.8.32`. Production output completes in one project-local staging tree, public files are compared against generated route/runtime/handler/chunk/Worker/CSS paths while copying, `afterBuild` runs before rollback-safe promotion, and ordinary failures preserve the prior `dist`. Same-root overlap and stale locks fail closed; after stale-lock removal, an interrupted promotion backup recovers on the next admitted build. Focused collision/replacement/dev checks pass with equivalent `v0.8.31` commerce deploy output; `.kudzu` remains compiler scratch for P0.6.
 - [x] P0.6 Explicit ProjectSession is complete in `0.8.33`. Each build owns an absolute root, project paths, source records, bound graph operations, and Worker compiler. Explicit-root build/dev entry points preserve omitted-root CLI CWD behavior. One imported build function compiles two same-shaped roots with isolated config, HTML, `.kudzu`, source results, and Worker bundles; all 191 tests and package checks pass without browser or source-syntax changes.
 - [x] P0.7 Parsed module and export summary caching is complete in `0.8.34`. Canonical read-only source trees and narrow export summaries are invalidated together by source text and remain ProjectSession-local; every normalization context receives a deep clone with independent parent links. A 100-importer fixture parses and summarizes 103 unique page/barrel/component/helper modules exactly once and creates 200 importer-local clones. The maintained paired benchmark preserves the complete source-result digest and establishes no material timing or peak-RSS conclusion; all 193 tests and package checks pass without broadening exports, source syntax, or browser output.
-- [ ] P0.8 Stable ModuleSymbol and SiteId is next. Cross-module declarations, aliases, re-exports, owners, and call sites must stop depending on transient AST identity outside one pass.
+- [x] P0.8 Stable ModuleSymbol and SiteId is complete in `0.8.35`. ProjectSession records source-local declaration, import, and re-export sites and resolves stable ModuleSymbol records through default/named exports, aliases, barrel chains, `export *`, ambiguity, and cycles. Cross-module compiler consumers locate resolved declarations by SiteId in their private normalized clones, while component calls, hooks, keyed blocks, effects, and ownership records expose deterministic source-local SiteIds. Repeated sessions and compilations preserve IDs, and symbol-only barrel traversal avoids cloning intermediate modules without changing browser artifacts or source syntax.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -320,6 +320,8 @@ Every result carries a stable source-local binding slot, debug name, declaration
 
 **Done condition:** cross-module semantic consumers use ModuleSymbol records and source-local SiteId values; readable names remain diagnostic metadata.
 
+**Completed in `0.8.35`:** ProjectSession export summaries now include stable declaration/import/re-export records. ModuleSymbol identity is project-relative module path plus declaration SiteId and excludes readable names; cycle-safe resolution supports direct/default/named/aliased/barrel/`export *` paths and rejects ambiguity. Imported semantic consumers resolve symbols first, then find the authored SiteId in an importer-private normalized clone. Component analysis and ModuleIR ownership records carry deterministic owner, component-call, hook, keyed-list, and effect SiteIds. Focused fixtures verify default/named aliases, barrels, `export *`, cycles, ambiguity, repeated-session determinism, repeated-compilation determinism, and source-dependent resolution-cache invalidation. The 100-importer fixture retains 103 parse and summary misses while removing 100 intermediate barrel clones.
+
 ### PR 9: Semantic State Operations
 
 **Objective:** lower semantically equivalent state updates to the existing structured HandlerIR path.
@@ -466,4 +468,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 7 are complete. The next PR is **PR 8: Stable ModuleSymbol And SiteId**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 8 are complete. The next PR is **PR 9: Semantic State Operations**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.

@@ -1,5 +1,39 @@
 # Kudzu Releases
 
+## 0.8.35 - Stable module identity
+
+Kudzu 0.8.35 completes P0.8 by giving cross-module declarations and authored compiler sites stable identities that do not depend on transformed TypeScript AST objects or readable names.
+
+### Changed in 0.8.35
+
+- ProjectSession summarizes declaration, import, named re-export, and `export *` sites as source-local SiteId records.
+- ModuleSymbol identity combines a project-relative module path with the authored declaration SiteId; readable names remain diagnostic metadata.
+- Default and named exports, local aliases, barrel chains, `export *`, cycles, and ambiguous star exports resolve through one cycle-safe symbol graph.
+- Imported semantic consumers resolve ModuleSymbols first, then locate the authored SiteId in their private normalized AST clone instead of rescanning by declaration name.
+- Component owners, component calls, hooks, keyed lists, effects, states, refs, and IDs expose deterministic source-local SiteIds in compiler analysis records.
+- Repeated symbol resolutions are cached against their source dependencies and invalidate when any dependency source changes.
+
+### Performance
+
+- The 100-importer fixture retains 103 parse and 103 summary misses while removing 100 unnecessary intermediate barrel clones, reducing importer-local clones from 200 to 100.
+- Twenty-one alternating `v0.8.34`/candidate samples measured compiler medians of 760.967 ms and 755.595 ms. The paired candidate-minus-baseline median was -2.971 ms, with the candidate faster in 13/21 pairs; this is a small directional improvement, not a material speedup claim.
+- Peak RSS medians were 256.9 MiB and 257.8 MiB. The 12,743-byte source-result increase is deterministic SiteId metadata in build scratch, not deployed JavaScript.
+- A matched whole-build check measured Kudzu at 495.4 ms, Astro at 974.5 ms, Vue SSR at 1,477.3 ms, React SSR at 1,639.5 ms, and Svelte SSR at 2,033.1 ms. Kudzu shipped less JavaScript gzip than React, Vue, and Svelte; Astro's direct imperative implementation remained much smaller.
+
+### Validation
+
+- `npm run check`, `npm test`, `npm run test:package`, and all 195 tests pass.
+- Focused coverage verifies default/named exports, aliases, barrel chains, `export *`, ambiguity, cycles, repeated-session IDs, repeated-compilation IDs, resolution-cache invalidation, and clone-local declaration lookup.
+- All five cross-framework device targets pass the same Chrome checks for initial HTML, filtering, empty state, detail fetch, superseded commands, stale-result rejection, and HTTP failures.
+- Existing browser runtime code, route capabilities, source syntax, and deployed JavaScript remain unchanged; the repository build emits 150 pages.
+- P0.9 semantic state operations is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.35
+```
+
 ## 0.8.34 - Session-local module cache
 
 Kudzu 0.8.34 completes P0.7 by making source parsing and supported-export summarization proportional to unique modules within one ProjectSession instead of repeated importer edges.

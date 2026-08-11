@@ -2,6 +2,37 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## P0.8 Stable ModuleSymbol And SiteId
+
+Measured UTC 2026-08-11 on the same Intel Core i5-9500 Linux x64 host with Node 24.14.0. The baseline was clean tag `v0.8.34` at `007fcb6e23c7d5bc742fa37c28388d070da9f598`. The compiler and maintained-check patch had SHA-256 `10ed6beb448b9e86961afab0b798f010932b8a29f98475d41f7bd8cfad04a872`, produced by:
+
+```bash
+git diff --binary v0.8.34 -- framework/compiler/project-session.mjs framework/compiler/source-compiler.mjs framework/compiler/analysis/component-analysis.mjs test/compiler-passes.test.mjs test/module-cache-performance.mjs | sha256sum
+```
+
+The maintained 100-importer fixture used three warm-ups and 21 alternating fresh-process samples. Because P0.8 intentionally adds source-local `site` metadata, the runner removes only `site` keys for output-equivalence hashing and reports the unmodified source-result size separately. The normalized 382,603-byte graph retained SHA-256 `8c35b3f6d2c571306bd97c4d51d4af76ca244badd36c57363bf579ef961f41aa`; parse and summary misses remained 103 each. Stable symbol traversal removed unnecessary normalization of intermediate barrel modules, reducing importer-local clones from 200 to 100.
+
+| Target | Compiler median | Range | Peak RSS median | Source-result bytes | Parse / summary / clone misses |
+|---|---:|---:|---:|---:|---:|
+| `v0.8.34` | 760.967 ms | 696.626-796.908 ms | 256.9 MiB | 382,603 B | not instrumented |
+| `0.8.35` | 755.595 ms | 692.365-804.376 ms | 257.8 MiB | 395,346 B | 103 / 103 / 100 |
+
+The candidate's unpaired median is 0.71% lower. Round-paired candidate-minus-baseline differences had a -2.971 ms median with the candidate faster in 13/21 pairs and the baseline faster in 8/21. This is a small directional improvement, not a material speedup claim. Peak RSS differs by 0.9 MiB and ranges overlap. The 12,743-byte source-result increase is deterministic SiteId metadata in build scratch, not deployed browser JavaScript.
+
+Two measurements before removing intermediate barrel clones showed paired medians of +12.142 ms and +21.954 ms and RSS medians 11.7-12.3 MiB above baseline. Removing those clones reduced the paired median to +4.951 ms; caching repeated ModuleSymbol resolutions produced the final -2.971 ms result. The earlier measurements are not the final candidate record.
+
+```text
+v0.8.34: [791.247,780.543,796.908,783.896,786.968,790.739,784.589,753.377,697.477,696.626,701.336,718.764,709.913,743.865,749.294,791.943,743.784,758.566,783.665,763.691,760.967]
+candidate: [783.482,799.855,760.681,768.299,804.376,802.390,783.124,799.484,692.365,720.229,708.652,707.073,712.554,708.853,750.750,756.400,742.668,755.595,776.556,747.370,751.392]
+paired candidate-baseline: [-7.765,19.312,-36.227,-15.597,17.408,11.651,-1.465,46.107,-5.112,23.603,7.316,-11.691,2.641,-35.012,1.456,-35.543,-1.116,-2.971,-7.109,-16.321,-9.575]
+```
+
+```bash
+git worktree add --detach /tmp/opencode/kudzu-v0.8.34 v0.8.34
+ln -s "$PWD/node_modules" /tmp/opencode/kudzu-v0.8.34/node_modules
+BASELINE_ROOT=/tmp/opencode/kudzu-v0.8.34 CANDIDATE_ROOT="$PWD" WARMUPS=3 RUNS=21 npm run benchmark:module-cache
+```
+
 ## P0.7 Parsed Module And Export Summary Cache
 
 Measured UTC 2026-08-11 on an Intel Core i5-9500 with 6 physical/logical cores, 31.2 GiB RAM, Linux 6.17.0-19-generic x64, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.33` at `65c96b13802c73e9c9a109cebbaac88bae7704a7`; both targets used the same installed dependencies. The implementation and maintained benchmark patch had SHA-256 `bca61b37f14c77488c4a35b62856faa6b471dd01081abcb69c47027b3b4615d9`, produced by:
@@ -33,25 +64,32 @@ BASELINE_ROOT=/tmp/opencode/kudzu-v0.8.33 CANDIDATE_ROOT="$PWD" WARMUPS=3 RUNS=2
 
 ### Current Cross-Framework Whole-Build Context
 
-This separate local check is not a parsed-module-cache comparison or maintained ranking. The external `/tmp/opencode/kudzu-dependency-benchmark` workspace is not Git-provenanced. It used Kudzu's current candidate, React 19.2.7, Vue 3.5.40, Svelte 5.56.6, Astro 7.1.1, and Vite 7.3.6. Every target emitted matched initial device content, and headless Chrome passed detail fetch, list filters, empty state, superseded async command, stale-result rejection, and HTTP error behavior. React, Vue, and Svelte perform separate client, SSR, and prerender builds; Astro uses its native build; Kudzu runs one static compiler build, so build stages and artifact architectures differ.
+Measured again after the P0.8 optimization on 2026-08-11. This separate local check is not a parsed-module-cache comparison or maintained ranking. The external `/tmp/opencode/kudzu-dependency-benchmark` workspace is not Git-provenanced. It used Kudzu 0.8.35, React 19.2.7, Vue 3.5.40, Svelte 5.56.6, Astro 7.1.1, and Vite 7.3.6. Every target emitted matched initial device content, and fresh headless Chrome runs passed detail fetch, list filters, empty state, superseded async command, stale-result rejection, and HTTP error behavior. One warm-up preceded seven rotated clean builds. React, Vue, and Svelte perform separate client, SSR, and prerender builds; Astro uses its native build and an application-specific imperative script; Kudzu runs one static compiler build, so build stages and artifact architectures differ.
 
 | Target | Build median | HTML raw / gzip | JavaScript raw / gzip | Total output |
 |---|---:|---:|---:|---:|
-| Kudzu | 856.2 ms | 5,647 B / 1,324 B | 30,712 B / 12,233 B | 36,359 B |
-| React SSR | 2,802.0 ms | 1,338 B / 562 B | 195,864 B / 61,488 B | 197,202 B |
-| Vue SSR | 2,295.3 ms | 1,348 B / 567 B | 69,643 B / 27,756 B | 70,991 B |
-| Svelte SSR | 2,972.9 ms | 1,399 B / 582 B | 40,781 B / 15,898 B | 42,180 B |
-| Astro native | 1,482.9 ms | 3,307 B / 1,229 B | 2,201 B / 883 B | 3,307 B |
+| Kudzu | 495.4 ms | 5,647 B / 1,324 B | 30,712 B / 12,233 B | 36,359 B |
+| React SSR | 1,639.5 ms | 1,338 B / 562 B | 195,864 B / 61,488 B | 197,202 B |
+| Vue SSR | 1,477.3 ms | 1,348 B / 567 B | 69,643 B / 27,756 B | 70,991 B |
+| Svelte SSR | 2,033.1 ms | 1,399 B / 582 B | 40,781 B / 15,898 B | 42,180 B |
+| Astro native | 974.5 ms | 3,307 B / 1,229 B | 2,201 B / 883 B | 3,307 B |
 
 ```text
-Kudzu: [672.2,697.5,796.0,856.2,884.2,937.9,985.9]
-React SSR: [2238.5,2345.7,2598.5,2802.0,2843.9,2848.5,3253.6]
-Vue SSR: [1968.1,2068.9,2150.7,2295.3,2494.6,2617.1,3380.0]
-Svelte SSR: [2615.6,2922.0,2926.6,2972.9,3020.5,3168.3,3739.9]
-Astro native: [1444.9,1445.7,1451.2,1482.9,1732.5,1744.0,2236.9]
+Kudzu: [474.3,482.6,493.4,495.4,498.0,503.5,504.9]
+React SSR: [1589.6,1617.1,1638.4,1639.5,1640.7,1662.7,1667.5]
+Vue SSR: [1433.8,1448.2,1450.0,1477.3,1486.0,1498.2,1500.5]
+Svelte SSR: [1956.3,1993.7,2025.4,2033.1,2036.9,2060.2,2072.8]
+Astro native: [943.3,945.9,964.7,974.5,988.8,996.4,999.5]
 ```
 
-The cross-framework result provides current whole-build context only. It does not show that Kudzu's module cache is faster than another framework's cache: this fixture has one application module per target and exposes no equivalent parser/cache counters. A cache-specific cross-framework claim would require matched 100-importer module graphs, equivalent output, equal cold/warm policy, and framework-specific cache instrumentation.
+```bash
+node /tmp/opencode/kudzu-dependency-benchmark/device-run.mjs
+node /tmp/opencode/kudzu-dependency-benchmark/device-verify.mjs
+```
+
+Kudzu's build median was 69.8% lower than React SSR, 66.5% lower than Vue SSR, 75.6% lower than Svelte SSR, and 49.2% lower than Astro native in this protocol. Kudzu shipped 80.1%, 55.9%, and 23.1% less JavaScript gzip than React, Vue, and Svelte respectively. Astro shipped only 883 B JavaScript gzip and a 3,307 B single-file output, so Kudzu's JavaScript gzip was 13.9 times and total output 11.0 times larger than Astro's direct imperative implementation. Kudzu's larger HTML carries static content and capability descriptors; its 1,324 B gzip was close to Astro's 1,229 B but larger than the hydrated SSR controls' 562-582 B HTML.
+
+The cross-framework result provides current whole-build and deploy-artifact context only. It does not show that Kudzu's ModuleSymbol cache is faster than another framework's module cache: this fixture has one application module per target and exposes no equivalent parser/cache counters. A cache-specific cross-framework claim would require matched 100-importer module graphs, equivalent output, equal cold/warm policy, and framework-specific cache instrumentation. The browser run verifies behavior rather than interaction latency; the maintained larger keyed benchmarks below remain the runtime-performance evidence.
 
 ## 2026-08-11 React, Vue, And Svelte Check
 

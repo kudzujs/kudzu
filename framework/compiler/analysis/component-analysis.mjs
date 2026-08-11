@@ -8,7 +8,7 @@ export function createComponentAnalysisSession(analysis) {
   function registerOwner(identity, descriptor = {}) {
     let owner = owners.get(identity)
     if (!owner) {
-      owner = { slot: analysis.owners.length, kind: descriptor.kind ?? "component", name: descriptor.name ?? "anonymous", props: descriptor.props ?? [], states: [], setters: [], refs: [], ids: [], ...(descriptor.source ? { source: descriptor.source } : {}) }
+      owner = { slot: analysis.owners.length, kind: descriptor.kind ?? "component", name: descriptor.name ?? "anonymous", props: descriptor.props ?? [], states: [], setters: [], refs: [], ids: [], ...(descriptor.site ? { site: descriptor.site } : {}), ...(descriptor.source ? { source: descriptor.source } : {}) }
       owners.set(identity, owner)
       analysis.owners.push(owner)
     }
@@ -20,7 +20,7 @@ export function createComponentAnalysisSession(analysis) {
     if (!owner) throw new Error("Component owner must be registered before its state")
     let state = owner.states.find(entry => entry.name === descriptor.name && entry.owner === descriptor.owner)
     if (!state) {
-      state = { slot: owner.states.length, name: descriptor.name, kind: descriptor.kind, ...(descriptor.owner ? { owner: descriptor.owner } : {}), ...(descriptor.source ? { source: descriptor.source } : {}) }
+      state = { slot: owner.states.length, name: descriptor.name, kind: descriptor.kind, ...(descriptor.owner ? { owner: descriptor.owner } : {}), ...(descriptor.site ? { site: descriptor.site } : {}), ...(descriptor.source ? { source: descriptor.source } : {}) }
       owner.states.push(state)
     }
     if (descriptor.setter && !owner.setters.some(entry => entry.name === descriptor.setter)) owner.setters.push({ name: descriptor.setter, signal: state.slot, kind: descriptor.kind })

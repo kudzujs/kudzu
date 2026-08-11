@@ -47,12 +47,14 @@ export default function Page() {
     buildModule: result.buildModule,
     handlerModule: result.handlerModule
   })))
+  const comparableOutput = JSON.stringify(JSON.parse(output, (key, value) => key === "site" ? undefined : value))
   process.stdout.write(JSON.stringify({
     elapsed: Number(elapsed.toFixed(3)),
     maxRssMiB: Number((process.resourceUsage().maxRSS / 1024).toFixed(1)),
     modules: reachable.length,
-    bytes: Buffer.byteLength(output),
-    digest: createHash("sha256").update(output).digest("hex"),
+    bytes: Buffer.byteLength(comparableOutput),
+    digest: createHash("sha256").update(comparableOutput).digest("hex"),
+    sourceResultBytes: Buffer.byteLength(output),
     counters
   }))
   process.exit(0)
@@ -77,7 +79,7 @@ function sample(name) {
   const output = { modules: value.modules, bytes: value.bytes, digest: value.digest }
   expected ??= output
   if (JSON.stringify(output) !== JSON.stringify(expected)) throw new Error(`${name} output ${JSON.stringify(output)} differs from ${JSON.stringify(expected)}`)
-  if (name === "candidate" && JSON.stringify(value.counters) !== JSON.stringify({ parsedModules: 103, exportSummaries: 103, clonedModules: 200 })) throw new Error(`Candidate cache counters differ: ${JSON.stringify(value.counters)}`)
+  if (name === "candidate" && JSON.stringify(value.counters) !== JSON.stringify({ parsedModules: 103, exportSummaries: 103, clonedModules: 100 })) throw new Error(`Candidate cache counters differ: ${JSON.stringify(value.counters)}`)
   return value
 }
 
@@ -98,12 +100,13 @@ const summarize = name => ({
   maxRssMiB: {
     runs: samples[name].map(value => value.maxRssMiB),
     median: median(samples[name].map(value => value.maxRssMiB))
-  }
+  },
+  sourceResultBytes: samples[name][0].sourceResultBytes
 })
 
 console.log(JSON.stringify({
   fixture: "100 pages sharing one barrel component and helper",
-  topology: { importers: 100, uniqueModules: 103, candidateClones: 200 },
+  topology: { importers: 100, uniqueModules: 103, candidateClones: 100 },
   methodology: `${warmups} warm-up${warmups === 1 ? "" : "s"} and ${runs} alternating samples in fresh Node processes; fixture generation and output hashing excluded from timing`,
   environment: { node: process.version, platform: process.platform, arch: process.arch, cpu: cpus()[0]?.model, logicalCpus: cpus().length, memoryGiB: Number((totalmem() / 2 ** 30).toFixed(1)) },
   output: expected,

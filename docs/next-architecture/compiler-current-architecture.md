@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.34` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.35` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -8,7 +8,7 @@ This maps the current `0.8.34` architecture, built on the completed `0.8.23` Goa
 |---|---|---|
 | CLI entry | [`bin/kudzu.mjs`](../../bin/kudzu.mjs) | Dispatches build and development commands. |
 | Project session | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs), `createProjectSession()` | Owns one absolute root, standard project paths, source records, bound graph operations, and Worker compiler for a build. Omitted roots resolve from call-time CWD. |
-| Parsed module cache | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs) | Parses each unchanged source module and summarizes its supported exports once per ProjectSession. Read-only graph/export/style/Worker consumers share the canonical tree; normalization receives a fresh deep clone with independent parent links. |
+| Parsed module cache and symbols | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs) | Parses each unchanged source module once per ProjectSession and records source-local declaration/import/re-export sites. Stable ModuleSymbol records resolve direct, aliased, barrel, and `export *` exports with cycle and ambiguity checks; repeated resolutions are cached against their source dependencies, and normalization consumers locate the resolved SiteId in a fresh clone with independent parent links. |
 | Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()` | Coordinates config, discovery, source compilation, RouteIR rendering, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. |
 | Reachability/import resolution | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `reachableSourceFiles()`; [`framework/compiler/source-graph.mjs`](../../framework/compiler/source-graph.mjs), `ordinaryRuntimeDependencies()`, `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, excludes unreachable migration source, and fails unresolved ordinary edges or dynamic imports at the importer source location before code generation. |
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every structural change. Imported source uses the same pipeline. |
@@ -17,7 +17,7 @@ This maps the current `0.8.34` architecture, built on the completed `0.8.23` Goa
 | Source-local binding index | [`framework/compiler/analysis/binding-index.mjs`](../../framework/compiler/analysis/binding-index.mjs) | After normalization, assigns deterministic lexical slots and classifies local, parameter, import, capture, global, and unresolved references. Native handler, effect, binding, list evaluator, optimized-command, and effect-resource consumers use complete index-owned AST; synthesized expressions retain the existing fallback. |
 | Pure collection language | [`framework/compiler/collection-analysis.mjs`](../../framework/compiler/collection-analysis.mjs) | Analyzes collection roots/selectors and serializes the allowed pure expression language used by lists and derived dependencies. |
 | Main semantic analysis | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `createKudzuTransformer()` | Produces transformed source plus explicit component, handler, binding, derived, keyed, and effect ownership results. |
-| Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, and source provenance; AST identity remains private to its source-local session. |
+| Component ownership analysis | [`framework/compiler/analysis/component-analysis.mjs`](../../framework/compiler/analysis/component-analysis.mjs) | Retains ordered JSON-safe owner and specialization records for state, setters, props, refs, IDs, direct signal links, source-local SiteIds, and source provenance; AST identity remains private to its source-local session. |
 | Per-source descriptor registration | [`framework/compiler/descriptor-session.mjs`](../../framework/compiler/descriptor-session.mjs), `createSemanticArtifact()`, `createDescriptorSession()` | Keeps AST descriptors private during analysis, then finalizes deterministic JSON-safe HandlerIR, BindingIR, DerivedIR, KeyedBlockIR, EffectIR, imports, and client roots into ModuleIR and validates every local slot reference. |
 | Command IR and codegen | [`framework/compiler/optimize/command-specialization.mjs`](../../framework/compiler/optimize/command-specialization.mjs), [`framework/compiler/ir/module-ir.mjs`](../../framework/compiler/ir/module-ir.mjs), [`framework/compiler/codegen/command-codegen.mjs`](../../framework/compiler/codegen/command-codegen.mjs) | Supported command handlers specialize to JSON-safe ModuleIR, then emit the existing `__kBehavior` AST without changing route plans. |
 | Source compilation | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `compileSource()` | Runs TypeScript with the Kudzu transformer, rejects surviving React/Router references, and returns a JSON-safe project-relative build module, component analysis, ModuleIR, optional handler module, and imported assets without filesystem writes. |
@@ -39,7 +39,7 @@ This maps the current `0.8.34` architecture, built on the completed `0.8.23` Goa
 
 ```text
 src/pages entries + config
-  -> ProjectSession(root) with project paths, source records, parsed/export caches, graph, and Worker compiler
+  -> ProjectSession(root) with project paths, source records, parsed/symbol caches, graph, and Worker compiler
   -> project discovery and reachable relative graph
   -> compileSource()
        -> ordered normalization and parent repair
@@ -71,8 +71,8 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 - Transient component rewrite indexes remain source-local AST indexes; handler, binding, derived, keyed, effect, and component ownership now have explicit JSON-safe source results.
 - `build()` still owns explicit artifact selection and filesystem writes after generator results are produced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
-- Source reachability and source compilation remain in one session-bound compiler factory because both consume the same normalization and import graph contracts. Export summaries deliberately preserve the existing narrow forms; stable ModuleSymbol and SiteId identity remains P0.8 work.
-- Imported, specialized, and compiler-synthesized trees still use conservative name/scope fallback where the source-local binding index does not own the complete AST; cross-module semantics remain deferred to stable ModuleSymbol and SiteId work.
+- Source reachability and source compilation remain in one session-bound compiler factory because both consume the same normalization and import graph contracts. ModuleSymbol resolution is stable across canonical and cloned trees; unsupported export syntax remains intentionally narrow.
+- Imported declarations resolve by ModuleSymbol and source-local SiteId. Specialized and compiler-synthesized trees still use conservative name/scope fallback where the source-local binding index does not own the complete AST.
 
 These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.
 

@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.34` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.35` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -313,6 +313,13 @@ This queue orders the next investigations by general migration value. Start only
 - Each unchanged source module is parsed and export-summarized once per ProjectSession, with source-text invalidation and no cross-project cache sharing.
 - Read-only graph consumers share a canonical AST while importer normalization deep-clones every node and repairs independent parent links before transformation.
 - A 100-importer fixture proves bounded parse/summary work and identical source results without changing accepted migration syntax or browser output.
+
+### Completed In 0.8.35
+
+- Cross-module declarations resolve through stable project-relative ModuleSymbol records rather than transformed AST identity or readable names.
+- Source-local SiteIds identify imports, re-exports, component calls, hooks, keyed lists, effects, and ownership records across private transformer clones.
+- Default/named exports, aliases, barrel chains, `export *`, cycles, ambiguity, repeated compilation, and source-dependent cache invalidation are covered without changing migration syntax or browser runtime behavior.
+- The 100-importer fixture reduces private clones from 200 to 100 and records a small directional build improvement; current React/Vue/Svelte/Astro whole-build and artifact context is retained in `PERFORMANCE.md`.
 
 ## Cross-Cutting Performance Gates
 
