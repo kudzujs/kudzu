@@ -7,7 +7,7 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 Measured UTC 2026-08-11 on an Intel Core i5-9500 with 6 physical/logical cores, 31.2 GiB RAM, Linux 6.17.0-19-generic x64, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.33` at `65c96b13802c73e9c9a109cebbaac88bae7704a7`; both targets used the same installed dependencies. The implementation and maintained benchmark patch had SHA-256 `bca61b37f14c77488c4a35b62856faa6b471dd01081abcb69c47027b3b4615d9`, produced by:
 
 ```bash
-{ git diff --binary v0.8.33 -- framework/compiler/project-session.mjs framework/compiler/source-compiler.mjs framework/compiler/worker-compiler.mjs test/compiler-passes.test.mjs package.json; git diff --binary --no-index /dev/null test/module-cache-performance.mjs || true; } | sha256sum
+git diff --binary v0.8.33..v0.8.34 -- framework/compiler/project-session.mjs framework/compiler/source-compiler.mjs framework/compiler/worker-compiler.mjs test/compiler-passes.test.mjs test/module-cache-performance.mjs package.json | sha256sum
 ```
 
 The maintained in-memory fixture has 100 page importers sharing one barrel component and helper, for 103 unique modules. Each sample starts a fresh Node process; fixture generation and result hashing occur outside timing. Three warm-ups followed by 21 alternating samples compiled every reachable module. The candidate parsed and summarized each unique module once and created 200 importer-local normalization clones. Baseline and candidate produced the same 382,603-byte serialized source-result graph with SHA-256 `8c35b3f6d2c571306bd97c4d51d4af76ca244badd36c57363bf579ef961f41aa`.
