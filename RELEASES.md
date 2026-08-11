@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.8.33 - Project-scoped compilation
+
+Kudzu 0.8.33 completes P0.6 by replacing import-time project globals with an explicit build-scoped ProjectSession. Independent roots can now compile in one Node process without sharing paths, source records, graph resolution, or Worker compiler ownership.
+
+### Changed in 0.8.33
+
+- Each `build()` creates a ProjectSession containing the absolute project root, `src`, `src/pages`, `.kudzu`, and `dist` paths.
+- Source graph resolution, source indexes, reachable source sets, source compiler helpers, and Worker compilation are bound to that session instead of the directory where compiler modules were first imported.
+- The internal programmatic build and development entry points accept an explicit `root`; omitted roots still use call-time `process.cwd()`, preserving existing `kudzu build` and `kudzu dev` behavior.
+- Config loading, styles, static assets, route diagnostics, generated modules, output locking, staging, promotion, and development serving all resolve against the selected project.
+- Parsed-module and export-summary caching remains deferred to P0.7; this release establishes ownership without adding speculative shared caches or changing browser output.
+
+### Validation
+
+- `npm run check`, `npm test`, `npm run test:package`, and all 191 tests pass.
+- One imported `build()` function compiles two roots with identical source filenames in sequence and verifies isolated config metadata, HTML, source results, `.kudzu` modules, and content-distinct Worker bundles.
+- The standard CLI output-safety fixture still verifies staging, collision rejection, lock behavior, recovery, and replacement through call-time CWD.
+- The repository build emits 148 pages, and existing static zero-JavaScript, interactive capability, Worker, navigation, ownership, and migration behavior remains covered.
+- P0.7 parsed module and export summary caching is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.33
+```
+
 ## 0.8.32 - Staged and collision-safe output
 
 Kudzu 0.8.32 completes P0.5 by building production artifacts away from the active deploy tree, rejecting public/generated collisions, and replacing `dist` only after generation and trusted `afterBuild()` work succeed.

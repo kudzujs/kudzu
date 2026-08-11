@@ -18,17 +18,15 @@ import { assetPath, relativeModulePath, withBase } from "./path-helpers.mjs"
 import { createReactMigrationPass, reactMemoExpression } from "./react-migration-pass.mjs"
 import { normalizeRenderControlFlow } from "./render-control-pass.mjs"
 import { createRouterPass } from "./router-pass.mjs"
-import { ordinaryRuntimeDependencies, parseSourceFile, resolveSourceImport, runtimeModuleReference } from "./source-graph.mjs"
-import { createWorkerCompiler } from "./worker-compiler.mjs"
+import { createProjectSession } from "./project-session.mjs"
 import { createZustandPass } from "./zustand-pass.mjs"
 
-const root = process.cwd()
-const sourceDirectory = join(root, "src")
-const pagesDirectory = join(sourceDirectory, "pages")
-const workDirectory = join(root, ".kudzu")
+export function createSourceCompiler(project) {
+const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler } = project
+const { ordinaryRuntimeDependencies, parseSourceFile, resolveSourceImport, runtimeModuleReference } = project.graph
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
 
-export function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
+function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
   const importedAssets = new Set()
   const source = sourceIndex.get(file)
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
@@ -90,7 +88,7 @@ function emittedPackageReference(source, file, packages) {
   return found
 }
 
-export function reachableSourceFiles(entries, sourceFiles, sourceIndex) {
+function reachableSourceFiles(entries, sourceFiles, sourceIndex) {
   const reachable = new Set()
   const ordinary = new Set()
   const workers = new Set()
@@ -2767,7 +2765,7 @@ function localComponentDeclaration(sourceFile, name) {
   return undefined
 }
 
-export async function collectClientModules(entries, sourceFiles) {
+async function collectClientModules(entries, sourceFiles) {
   const modules = new Set()
   const queue = [...new Set(entries)]
   while (queue.length) {
@@ -2795,7 +2793,7 @@ export async function collectClientModules(entries, sourceFiles) {
   return [...modules].sort()
 }
 
-export async function compileClientModule(file, sourceFiles, staticFiles, cssModules, base) {
+async function compileClientModule(file, sourceFiles, staticFiles, cssModules, base) {
   const importedAssets = new Set()
   const source = await readFile(file, "utf8")
   const transformer = context => sourceFile => {
@@ -2840,7 +2838,7 @@ function resolveStaticImport(importer, specifier, staticFiles) {
   return target
 }
 
-export async function safeStaticFiles(files) {
+async function safeStaticFiles(files) {
   const sourceRoot = await realpath(sourceDirectory)
   const entries = await Promise.all(files.map(async file => {
     try {
@@ -2855,7 +2853,7 @@ export async function safeStaticFiles(files) {
   return new Set(entries.filter(Boolean))
 }
 
-export function orderSourceStyles(cssFiles, sourceFiles, sourceIndex, staticFiles) {
+function orderSourceStyles(cssFiles, sourceFiles, sourceIndex, staticFiles) {
   const ordered = []
   const seenStyles = new Set()
   const seenSources = new Set()
@@ -2940,7 +2938,7 @@ function rejectUnsupportedClientImports(sourceFile, file) {
   visit(sourceFile)
 }
 
-export function layoutExportError(file, source) {
+function layoutExportError(file, source) {
   const sourceFile = parseSourceFile(file, source)
   for (const statement of sourceFile.statements) {
     if (ts.isExportDeclaration(statement) && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
@@ -2956,20 +2954,32 @@ export function layoutExportError(file, source) {
   return new Error(`${relative(root, file)} layout export must be a function`)
 }
 
-export function clientModulePath(file) {
+function clientModulePath(file) {
   return `modules/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
 }
 
-export function compiledPath(file) {
+function compiledPath(file) {
   return join(workDirectory, relative(sourceDirectory, file)).replace(/\.(?:ts|tsx)$/, ".mjs")
 }
 
 const compileEventCommand = createCommandSpecializer({ isPrimitiveLiteral: isPrimitiveDefaultLiteral })
 const { analyzeZustandStores, normalizeZustandMigrationSyntax } = createZustandPass({ isSerializableStateLiteral, nativeCaptureNames, sourceDirectory })
-const workerCompiler = createWorkerCompiler({ root, sourceDirectory, assetPath, parseSourceFile, resolveSourceImport, runtimeModuleReference })
 const handlerLowering = createHandlerLowering({ cloneAst, synthesizeTree })
 const printHandlerModule = createHandlerCodegen({
   resolveClientImport: (entry, handlerPath) => entry.package ? entry.target : relativeModulePath(handlerPath, clientModulePath(entry.target))
 })
 const { normalizeReactMigrationSyntax, validateUseIdSyntax } = createReactMigrationPass({ cloneAst, jsxTagName })
 const normalizeReactRouterSyntax = createRouterPass({ withBase })
+
+return { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles }
+}
+
+const currentCompiler = () => createSourceCompiler(createProjectSession())
+export const collectClientModules = (...arguments_) => currentCompiler().collectClientModules(...arguments_)
+export const compileClientModule = (...arguments_) => currentCompiler().compileClientModule(...arguments_)
+export const compiledPath = (...arguments_) => currentCompiler().compiledPath(...arguments_)
+export const compileSource = (...arguments_) => currentCompiler().compileSource(...arguments_)
+export const layoutExportError = (...arguments_) => currentCompiler().layoutExportError(...arguments_)
+export const orderSourceStyles = (...arguments_) => currentCompiler().orderSourceStyles(...arguments_)
+export const reachableSourceFiles = (...arguments_) => currentCompiler().reachableSourceFiles(...arguments_)
+export const safeStaticFiles = (...arguments_) => currentCompiler().safeStaticFiles(...arguments_)

@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:f
 import { dirname, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
+import { build as buildProject } from "../framework/build.mjs"
 
 const cli = resolve("bin/kudzu.mjs")
 
@@ -98,6 +99,45 @@ export default {
   await assert.rejects(readFile(join(fixture, "dist/old-only.txt")))
   assert.deepEqual((await readdir(fixture)).filter(name => name.startsWith(".kudzu-dist-")), [])
   assert.equal((await readdir(fixture)).includes(".kudzu-build.lock"), false)
+})
+
+test("builds independent project roots in one process", async t => {
+  const fixture = await mkdtemp(resolve("test/fixtures/project-session-"))
+  t.after(() => rm(fixture, { recursive: true, force: true }))
+  const roots = [join(fixture, "first"), join(fixture, "second")]
+
+  for (const [index, root] of roots.entries()) {
+    const name = index ? "Second project" : "First project"
+    await mkdir(join(root, "src", "pages"), { recursive: true })
+    await writeFile(join(root, "src", "label.ts"), `export const label = ${JSON.stringify(name)}`)
+    await writeFile(join(root, "src", "task.worker.ts"), `self.addEventListener("message", () => postMessage(${JSON.stringify(`${name} worker`)}))`)
+    await writeFile(join(root, "src", "pages", "index.tsx"), `
+import { useEffect } from "@kudzujs/core"
+import { label } from "../label"
+export default function Page() {
+  useEffect(() => {
+    const worker = new Worker(new URL("../task.worker.ts", import.meta.url), { type: "module" })
+    return () => worker.terminate()
+  }, [])
+  return <h1>{label}</h1>
+}
+`)
+    await writeFile(join(root, "kudzu.config.mjs"), `export default { base: ${JSON.stringify(index ? "/second" : "/first")}, metadata: { title: ${JSON.stringify(name)} } }`)
+  }
+
+  const first = await buildProject({ root: roots[0], quiet: true, minify: false })
+  const second = await buildProject({ root: roots[1], quiet: true, minify: false })
+
+  assert.match(await readFile(join(roots[0], "dist", "index.html"), "utf8"), /<title>First project<\/title>.*<h1>First project<\/h1>/s)
+  assert.match(await readFile(join(roots[1], "dist", "index.html"), "utf8"), /<title>Second project<\/title>.*<h1>Second project<\/h1>/s)
+  assert.deepEqual(first.sourceResults.map(result => result.file), ["src/label.ts", "src/pages/index.tsx"])
+  assert.deepEqual(second.sourceResults.map(result => result.file), ["src/label.ts", "src/pages/index.tsx"])
+  assert.match(await readFile(join(roots[0], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
+  assert.match(await readFile(join(roots[1], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
+  const firstWorker = (await readdir(join(roots[0], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
+  const secondWorker = (await readdir(join(roots[1], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
+  assert.match(await readFile(join(roots[0], "dist", "assets", "workers", firstWorker), "utf8"), /First project worker/)
+  assert.match(await readFile(join(roots[1], "dist", "assets", "workers", secondWorker), "utf8"), /Second project worker/)
 })
 
 function page(title) {

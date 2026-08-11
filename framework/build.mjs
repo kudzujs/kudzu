@@ -6,24 +6,18 @@ import { build as bundle, transform } from "esbuild"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
-import { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } from "./compiler/source-compiler.mjs"
+import { createProjectSession } from "./compiler/project-session.mjs"
+import { createSourceCompiler } from "./compiler/source-compiler.mjs"
 import { createParamCodegen } from "./compiler/param-codegen.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "./compiler/route-capability-planner.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime, specializeRuntime } from "./compiler/runtime-codegen.mjs"
-import { emitWorkers } from "./compiler/worker-compiler.mjs"
 import { renderPage } from "./core.mjs"
 import { parseDevHost, parseDevPort, startDevServer } from "./dev-server.mjs"
 
 export { parseDevHost, parseDevPort }
 export { specializeRuntime }
 
-const root = process.cwd()
-const sourceDirectory = join(root, "src")
-const pagesDirectory = join(sourceDirectory, "pages")
-const workDirectory = join(root, ".kudzu")
-const outputDirectory = join(root, "dist")
-
-async function loadConfig() {
+async function loadConfig(root) {
   for (const name of ["kudzu.config.mjs", "kudzu.config.js"]) {
     const file = join(root, name)
     if (!(await exists(file))) continue
@@ -34,7 +28,9 @@ async function loadConfig() {
   return {}
 }
 
-export async function build({ quiet = false, minify = true } = {}) {
+export async function build({ quiet = false, minify = true, root: projectRoot = process.cwd() } = {}) {
+  const project = createProjectSession(projectRoot)
+  const { root, outputDirectory } = project
   const stagedOutput = join(root, ".kudzu-dist-staging")
   const backupOutput = join(root, ".kudzu-dist-backup")
   const lockPath = join(root, ".kudzu-build.lock")
@@ -42,7 +38,7 @@ export async function build({ quiet = false, minify = true } = {}) {
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount } = await buildInto(stagedOutput, { minify })
+    const { result, pageCount, behaviorCount } = await buildInto(project, stagedOutput, { minify })
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
     return result
@@ -59,11 +55,13 @@ export async function build({ quiet = false, minify = true } = {}) {
   }
 }
 
-async function buildInto(outputDirectory, { minify }) {
-  const config = await loadConfig()
+async function buildInto(project, outputDirectory, { minify }) {
+  const { root, sourceDirectory, pagesDirectory, workDirectory } = project
+  const { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
+  const config = await loadConfig(root)
   const base = normalizeBase(config.base)
-  const configuredStyles = normalizeStyles(config.styles, base)
-  const publicDirectory = normalizePublicDirectory(config.publicDir)
+  const configuredStyles = normalizeStyles(config.styles, base, project)
+  const publicDirectory = normalizePublicDirectory(config.publicDir, project)
   const navigationGroups = normalizeNavigation(config.navigation)
   const navigationRoutes = navigationGroups.flatMap(group => group.routes)
   const navigationByRoute = new Map(navigationGroups.flatMap(group => group.routes.map(route => [route, group])))
@@ -86,15 +84,17 @@ async function buildInto(outputDirectory, { minify }) {
   const discoveredCssFiles = projectFiles.filter(file => file.toLowerCase().endsWith(".css") && !configuredStyleSources.has(file)).sort()
   if (!allSourceFiles.length) throw new Error("No TypeScript files found in src/")
   const allSourceFileSet = new Set(allSourceFiles)
-  const sourceIndex = new Map(await Promise.all(allSourceFiles.map(async file => [file, await readFile(file, "utf8")])))
+  const sourceIndex = project.sourceIndex
+  for (const [file, source] of await Promise.all(allSourceFiles.map(async file => [file, await readFile(file, "utf8")]))) sourceIndex.set(file, source)
   const pageFiles = allSourceFiles.filter(file => file.startsWith(`${pagesDirectory}${sep}`) && file.endsWith(".tsx"))
   if (!pageFiles.length) throw new Error("No pages found in src/pages/")
   const sourceFiles = reachableSourceFiles(pageFiles, allSourceFileSet, sourceIndex)
-  const sourceFileSet = new Set(sourceFiles)
+  const sourceFileSet = project.sourceFiles
+  for (const file of sourceFiles) sourceFileSet.add(file)
   const staticFiles = await safeStaticFiles(projectFiles)
   const cssFiles = orderSourceStyles(discoveredCssFiles, sourceFiles, sourceIndex, staticFiles)
   const importedAssets = new Set()
-  const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base)
+  const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base, project)
 
   const sourceResults = []
   for (const file of sourceFiles) {
@@ -137,7 +137,7 @@ async function buildInto(outputDirectory, { minify }) {
     if (typeof module.default !== "function") throw new Error(`${relative(root, pageFile)} must export a default component`)
     if (Object.hasOwn(module, "layout") && typeof module.layout !== "function") throw layoutExportError(pageFile, sourceIndex.get(pageFile))
 
-    const runtimeSchema = runtimeRouteSchema(module, pageFile)
+    const runtimeSchema = runtimeRouteSchema(module, pageFile, project)
     if (runtimeSchema) {
       const conflicting = rewrites.find(rewrite => sameRuntimePrecedence(rewrite, runtimeSchema))
       if (conflicting) throw new Error(`Ambiguous runtime routes: ${conflicting.route} and ${runtimeSchema.route}`)
@@ -149,9 +149,9 @@ async function buildInto(outputDirectory, { minify }) {
         segments: runtimeSchema.segments
       })
     }
-    const entries = runtimeSchema ? [{ params: {}, props: {} }] : await staticPathEntries(module, pageFile)
+    const entries = runtimeSchema ? [{ params: {}, props: {} }] : await staticPathEntries(module, pageFile, root)
     for (const { params, props } of entries) {
-      const route = runtimeSchema?.route ?? routeFromPage(pageFile, params)
+      const route = runtimeSchema?.route ?? routeFromPage(pageFile, params, pagesDirectory)
       const applicationRoute = `/${route}`
       const routePath = withBase(base, `/${route}`)
       const metadataContext = { route: routePath, params, props }
@@ -231,7 +231,7 @@ async function buildInto(outputDirectory, { minify }) {
   const renderedEffects = new Set(plans.flatMap(plan => plan.effects.map(effect => `${effect.module}:${effect.handler}`)))
   const renderedWorkerReferences = workerReferences.filter(reference => renderedEffects.has(`${reference.module}:${reference.handler}`))
   if (renderedWorkerReferences.length && await exists(join(publicDirectory, "assets", "workers"))) throw new Error("public/assets/workers collides with Kudzu's generated Worker asset namespace")
-  const workerAssets = await emitWorkers(renderedWorkerReferences, sourceFileSet, assetsDirectory, base, minify)
+  const workerAssets = await project.workerCompiler.emit(renderedWorkerReferences, sourceFileSet, assetsDirectory, base, minify)
   for (const module of emittedHandlerModules) {
     for (const reference of workerReferences) {
       if (reference.module !== assetPath(base, `assets/${module.path}`)) continue
@@ -366,7 +366,7 @@ async function buildInto(outputDirectory, { minify }) {
     await writeFile(output, css)
   }
   if (await exists(publicDirectory)) {
-    await copyPublic(publicDirectory, outputDirectory)
+    await copyPublic(publicDirectory, outputDirectory, outputDirectory, root)
   }
   if (config.afterBuild !== undefined) {
     if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
@@ -376,7 +376,7 @@ async function buildInto(outputDirectory, { minify }) {
   return { result: { sourceResults }, pageCount: plans.length, behaviorCount }
 }
 
-async function acquireBuildLock(lockPath) {
+async function acquireBuildLock(lockPath, root = dirname(lockPath)) {
   let lock
   try {
     lock = await open(lockPath, "wx")
@@ -432,7 +432,7 @@ async function promoteOutput(stagedOutput, finalOutput, backup) {
   if (previous) await rm(backup, { recursive: true, force: true }).catch(error => console.warn(`Built output was promoted, but ${backup} could not be removed and will be retried on the next build: ${error.message}`))
 }
 
-async function copyPublic(sourceDirectory, destinationDirectory, destinationRoot = destinationDirectory) {
+async function copyPublic(sourceDirectory, destinationDirectory, destinationRoot, root) {
   for (const entry of await readdir(sourceDirectory, { withFileTypes: true })) {
     const source = join(sourceDirectory, entry.name)
     const destination = join(destinationDirectory, entry.name)
@@ -445,7 +445,7 @@ async function copyPublic(sourceDirectory, destinationDirectory, destinationRoot
     if (!generated) {
       await cp(source, destination, { recursive: entry.isDirectory(), force: false, errorOnExist: true })
     } else if (entry.isDirectory() && generated.isDirectory()) {
-      await copyPublic(source, destination, destinationRoot)
+      await copyPublic(source, destination, destinationRoot, root)
     } else {
       throw new Error(`${relative(root, source)} collides with generated output ${relative(destinationRoot, destination).replaceAll(sep, "/")}`)
     }
@@ -514,11 +514,13 @@ async function writeBundledJavaScript(file, source, minify, define) {
   await writeFile(file, result.outputFiles[0].contents)
 }
 
-export async function dev({ port = parseDevPort(process.env.PORT), host = parseDevHost(process.env.HOST) } = {}) {
+export async function dev({ port = parseDevPort(process.env.PORT), host = parseDevHost(process.env.HOST), root: projectRoot = process.cwd() } = {}) {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`Invalid dev server port: ${port}`)
   if (typeof host !== "string" || !host.trim()) throw new Error(`Invalid dev server host: ${host}`)
-  const base = normalizeBase((await loadConfig()).base)
-  return startDevServer({ build, port, host, base, sourceDirectory, workDirectory, outputDirectory })
+  const project = createProjectSession(projectRoot)
+  const { root, sourceDirectory, workDirectory, outputDirectory } = project
+  const base = normalizeBase((await loadConfig(root)).base)
+  return startDevServer({ build: options => build({ ...options, root }), port, host, base, sourceDirectory, workDirectory, outputDirectory })
 }
 
 function inlineJson(value) {
@@ -533,11 +535,11 @@ function escapeAttribute(value) {
   return escapeHtml(value).replaceAll('"', "&quot;").replaceAll("'", "&#39;")
 }
 
-async function prepareSourceStyles(cssFiles, staticFiles, importedAssets, base) {
+async function prepareSourceStyles(cssFiles, staticFiles, importedAssets, base, { root, sourceDirectory }) {
   const cssModules = new Map()
   const cssOutputs = new Map()
   for (const file of cssFiles) {
-    let css = rewriteCssUrls(await readFile(file, "utf8"), file, staticFiles, importedAssets, base)
+    let css = rewriteCssUrls(await readFile(file, "utf8"), file, staticFiles, importedAssets, base, root, sourceDirectory)
     if (file.toLowerCase().endsWith(".module.css")) {
       if (/\bcomposes\s*:/i.test(maskCssCommentsAndStrings(css))) throw new Error(`${relative(root, file)} CSS Modules composes is not supported`)
       const prefix = `k${createHash("sha256").update(relative(sourceDirectory, file).replaceAll(sep, "/")).digest("hex").slice(0, 8)}`
@@ -551,7 +553,7 @@ async function prepareSourceStyles(cssFiles, staticFiles, importedAssets, base) 
   return { cssModules, cssOutputs }
 }
 
-function rewriteCssUrls(css, file, staticFiles, importedAssets, base) {
+function rewriteCssUrls(css, file, staticFiles, importedAssets, base, root, sourceDirectory) {
   let output = ""
   let cursor = 0
   let index = 0
@@ -596,7 +598,7 @@ function rewriteCssUrls(css, file, staticFiles, importedAssets, base) {
       continue
     }
     const value = css.slice(valueStart, end).trim()
-    const replacement = rewriteCssUrl(value, quote, file, staticFiles, importedAssets, base)
+    const replacement = rewriteCssUrl(value, quote, file, staticFiles, importedAssets, base, root, sourceDirectory)
     output += css.slice(cursor, index) + (replacement ?? css.slice(index, close + 1))
     cursor = close + 1
     index = close + 1
@@ -604,7 +606,7 @@ function rewriteCssUrls(css, file, staticFiles, importedAssets, base) {
   return output + css.slice(cursor)
 }
 
-function rewriteCssUrl(value, quote, file, staticFiles, importedAssets, base) {
+function rewriteCssUrl(value, quote, file, staticFiles, importedAssets, base, root, sourceDirectory) {
   if (!value || value.startsWith("/") || value.startsWith("#") || value.startsWith("//") || /^[a-z][a-z\d+.-]*:/i.test(value)) return undefined
   const split = value.search(/[?#]/)
   const pathname = split === -1 ? value : value.slice(0, split)
@@ -646,7 +648,7 @@ function maskCssCommentsAndStrings(css) {
   return masked.join("")
 }
 
-function normalizeStyles(value, base) {
+function normalizeStyles(value, base, { root }) {
   if (value === undefined) return { urls: [], sources: [] }
   if (!Array.isArray(value)) throw new Error("kudzu.config styles must be an array")
   const urls = []
@@ -680,7 +682,7 @@ function normalizeStyles(value, base) {
   return { urls, sources }
 }
 
-function normalizePublicDirectory(value) {
+function normalizePublicDirectory(value, { root, outputDirectory, workDirectory }) {
   if (value === undefined) return join(root, "public")
   if (typeof value !== "string" || !value) throw new Error("kudzu.config publicDir must be a non-empty directory path")
   const directory = resolve(root, value)
@@ -771,7 +773,7 @@ function normalizeBase(value) {
 const printEffectEntry = createEffectCodegen({ assetPath, inlineJson, relativeModulePath })
 const printParamEntry = createParamCodegen({ browserPath, inlineJson, relativeModulePath })
 
-async function staticPathEntries(module, file) {
+async function staticPathEntries(module, file, root) {
   if (typeof module.getStaticPaths !== "function") return [{ params: {}, props: {} }]
   const entries = await module.getStaticPaths()
   if (!Array.isArray(entries)) throw new Error(`${relative(root, file)} getStaticPaths() must return an array`)
@@ -785,11 +787,11 @@ async function staticPathEntries(module, file) {
   })
 }
 
-function runtimeRouteSchema(module, file) {
+function runtimeRouteSchema(module, file, { root, pagesDirectory }) {
   if (!Object.hasOwn(module, "runtimeParams")) return undefined
   if (module.runtimeParams !== true) throw new Error(`${relative(root, file)} runtimeParams must be exactly true`)
   if (typeof module.getStaticPaths === "function") throw new Error(`${relative(root, file)} runtimeParams cannot be combined with getStaticPaths()`)
-  const route = pageRoutePattern(file)
+  const route = pageRoutePattern(file, pagesDirectory)
   if (route.includes("[...")) throw new Error(`Catch-all routes are not supported: ${route}`)
   const names = new Set()
   const segments = route.split("/").map(segment => {
@@ -808,7 +810,7 @@ function runtimeRouteSchema(module, file) {
   return { route, segments, params: [...names] }
 }
 
-function pageRoutePattern(file) {
+function pageRoutePattern(file, pagesDirectory) {
   const page = relative(pagesDirectory, file).replace(/\\/g, "/").replace(/\.tsx$/, "")
   return page === "index" ? "" : page.replace(/\/index$/, "")
 }
@@ -822,7 +824,7 @@ function sameRuntimePrecedence(left, right) {
   return left.segments.every((segment, index) => segment.literal === undefined || right.segments[index].literal === undefined || segment.literal === right.segments[index].literal)
 }
 
-function routeFromPage(file, params = {}) {
+function routeFromPage(file, params = {}, pagesDirectory) {
   const page = relative(pagesDirectory, file).replace(/\\/g, "/").replace(/\.tsx$/, "")
   if (page.includes("[...")) throw new Error(`Catch-all routes are not supported: ${page}`)
   const filled = page.replace(/\[([^\]]+)\]/g, (_, name) => {

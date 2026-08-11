@@ -4,8 +4,6 @@ import { dirname, relative, resolve, sep } from "node:path"
 import { build as bundle } from "esbuild"
 import ts from "typescript"
 import { containsJsx, isUnshadowedGlobal, nearestFunction, sourceNodeError } from "./ast-helpers.mjs"
-import { assetPath } from "./path-helpers.mjs"
-import { parseSourceFile, resolveSourceImport, runtimeModuleReference } from "./source-graph.mjs"
 
 export function createWorkerCompiler({
   root,
@@ -167,10 +165,4 @@ export function createWorkerCompiler({
   }
 
   return { candidate, emit, rejectConstructions, rejectOrdinaryImports, rewriteEffect }
-}
-
-export function emitWorkers(references, sourceFiles, assetsDirectory, base, minify) {
-  const root = process.cwd()
-  const sourceDirectory = resolve(root, "src")
-  return createWorkerCompiler({ root, sourceDirectory, assetPath, parseSourceFile, resolveSourceImport, runtimeModuleReference }).emit(references, sourceFiles, assetsDirectory, base, minify)
 }

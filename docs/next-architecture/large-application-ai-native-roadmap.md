@@ -2,7 +2,7 @@
 
 ## Status
 
-Active execution plan after `0.8.32`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Active execution plan after `0.8.33`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
 [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. This plan is authoritative for the order and completion evidence of compiler generalization, large-application foundations, compatibility boundaries, AI tooling, and scale validation. If implementation evidence changes a boundary, update this document before broadening a patch.
 
@@ -34,7 +34,7 @@ The current limiting architecture is observable in these files:
 
 | Concern | Current owner | Limitation to remove |
 |---|---|---|
-| Project graph | `framework/compiler/source-graph.mjs`, `framework/build.mjs` | Global root, repeated parsing, narrow export resolution, no incremental project session |
+| Project graph | `framework/compiler/project-session.mjs`, `source-graph.mjs`, `build.mjs` | Explicit build-scoped root and source ownership; repeated parsing, narrow export resolution, and no incremental invalidation remain |
 | Normalization | `framework/compiler/source-compiler.mjs`, focused passes | Pass order and package ownership are implicit; semantically equal source often follows different shape-specific paths |
 | Component/state analysis | `framework/compiler/source-compiler.mjs`, `analysis/component-analysis.mjs` | AST identity, identifier text, source offsets, and caller-side AST specialization remain central |
 | Handler/binding analysis | `framework/compiler/descriptor-session.mjs`, `handler-lowering.mjs` | Capture/import/state discovery is name-based and arbitrary handlers become code before IR finalization |
@@ -112,7 +112,7 @@ This is an incremental evolution of the current repository:
 - Resource-specific ownership passes into a package-neutral ResourceIR when evidence permits.
 - Serialized handler URL searches into explicit artifact references.
 - Site-wide capability unions into route capability signatures.
-- Full destructive development builds into project-session invalidation and rollback-safe output.
+- Full development rebuilds into project-session invalidation; rollback-safe production output and explicit session ownership are complete.
 - String-only diagnostics into structured diagnostics suitable for machines and AI agents.
 
 ### Avoid
@@ -134,7 +134,8 @@ This is an incremental evolution of the current repository:
 - [x] P0.3 Graph diagnostics is complete in `0.8.30`. Reachable ordinary modules validate relative runtime imports/re-exports and reject every dynamic `import()` at the importer source location before compilation or generated module loading. Ordinary and Worker traversal retain separate ownership, type-only and unreachable edges remain excluded, focused page/helper/re-export/dynamic fixtures pass with all 189 tests and packed-package smoke, and no export-symbol graph, ProjectSession, runtime, or public API is added.
 - [x] P0.4 Async native handler ownership is complete in `0.8.31`. Mounted native registrations invalidate direct/captured setters, queued commits, and captured refs before listener removal. Chrome route, keyed-row, document-disposal, and synchronous event-dispatch checks, all 189 tests, and packed-package smoke pass without cancelling application promises or adding a scheduler.
 - [x] P0.5 Staged and collision-safe output is complete in `0.8.32`. Production output completes in one project-local staging tree, public files are compared against generated route/runtime/handler/chunk/Worker/CSS paths while copying, `afterBuild` runs before rollback-safe promotion, and ordinary failures preserve the prior `dist`. Same-root overlap and stale locks fail closed; after stale-lock removal, an interrupted promotion backup recovers on the next admitted build. Focused collision/replacement/dev checks pass with equivalent `v0.8.31` commerce deploy output; `.kudzu` remains compiler scratch for P0.6.
-- [ ] P0.6 Explicit ProjectSession is next. Root and caches must become build-scoped so independent projects can compile safely in one process.
+- [x] P0.6 Explicit ProjectSession is complete in `0.8.33`. Each build owns an absolute root, project paths, source records, bound graph operations, and Worker compiler. Explicit-root build/dev entry points preserve omitted-root CLI CWD behavior. One imported build function compiles two same-shaped roots with isolated config, HTML, `.kudzu`, source results, and Worker bundles; all 191 tests and package checks pass without browser or source-syntax changes.
+- [ ] P0.7 Parsed module and export summary caching is next. Shared modules must be parsed and summarized once per project session without sharing transformed mutable AST.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -295,6 +296,8 @@ Every result carries a stable source-local binding slot, debug name, declaration
 **Files:** add `compiler/project-session.mjs`; update build, source graph, source compiler, and tests.
 
 **Done condition:** two independent roots compile in one process, current CLI behavior and artifacts remain unchanged, and source caches cannot leak between projects.
+
+**Completed in `0.8.33`:** `createProjectSession()` resolves one explicit or call-time-CWD root and owns standard paths, source records, bound graph resolution, and a root-bound Worker compiler. Build, development, config, styles, routes, generated modules, locking, staging, and promotion consume that ownership. One process compiles two roots with identical module names and verifies distinct config, HTML, `.kudzu`, source results, and Worker bundles. Existing CLI output-safety coverage remains unchanged; no parsed-module cache, browser runtime, source syntax, or public migration API is added.
 
 ### PR 7: Parsed Module And Export Summary Cache
 
@@ -460,4 +463,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 5 are complete. The next PR is **PR 6: ProjectSession And Explicit Root**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 6 are complete. The next PR is **PR 7: Parsed Module And Export Summary Cache**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
