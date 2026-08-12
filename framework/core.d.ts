@@ -133,6 +133,7 @@ export type ListDescriptor = {
 
 export interface RouteIR {
   version: 1
+  route?: string
   states: Array<{ slot: number; id: string; name: string; initialValue: unknown; lifetime?: "layout" | "route"; internal?: true }>
   params: Array<{ name: string; id: string }>
   searchParams: Array<{ name: string; id: string }>

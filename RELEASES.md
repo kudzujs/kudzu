@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.8.39 - Fail-closed route contracts
+
+Kudzu 0.8.39 completes P0.12 by deeply validating the concrete RouteIR, RouteBuildRecord, and CapabilityIR contracts before artifact selection and browser code generation.
+
+### Changed in 0.8.39
+
+- RouteIR v1 rejects duplicate state/parameter IDs, missing command targets, unsupported command operations, malformed captures, and invalid effect dependencies.
+- Direct and evaluator bindings validate recursively, including nested scope bindings and every referenced state.
+- Conditions validate identity, kinds, reactive sources, and owned states.
+- Keyed lists validate state/key identity, row ownership templates, child reciprocity, duplicate parents, and ownership cycles.
+- RouteBuildRecord verifies behavior, binding, list, effect, native, and parameter capability reciprocity before artifact planning.
+- CapabilityIR validates standalone event/count/flag implications and exact projection equality from its validated route records before codegen.
+- Strict JSON-safe checks reject cyclic, lossy, nonfinite, BigInt, sparse, accessor, symbol, and non-plain contract data with a deterministic field path.
+
+### Performance
+
+- Seven alternating clean 153-page builds measured `v0.8.38` and candidate medians of 2,356.477 ms and 2,352.382 ms. The +14.255 ms paired median and overlapping ranges establish no material speedup or regression.
+- Peak RSS medians were 352.7 MiB and 356.8 MiB. Repeated validation of the same immutable contracts is eliminated by identity caching.
+- Both targets emit the same 174 files, 3,840,694 raw bytes, 1,981,560 aggregate gzip bytes, deploy digest, and byte-identical `kudzu-plan.json`.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 203 tests and 154 generated pages.
+- Focused checks cover duplicate/missing identity, malformed commands, effects, captures, bindings, conditions, lists, ownership, capabilities, versions, and JSON safety.
+- Existing static, command, binding, keyed, effect, Worker, package-import, navigation, reducer, and migration fixtures retain browser behavior and zero-unused-runtime checks.
+- The next migration-backed investigation is property-level derived dependencies over ordinary object state.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.39
+```
+
 ## 0.8.38 - Structural route artifacts
 
 Kudzu 0.8.38 completes P0.11 by replacing serialized route-output searches and parallel route facts with one validated RouteBuildRecord artifact graph.

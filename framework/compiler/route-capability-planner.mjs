@@ -1,13 +1,16 @@
+import { assertRouteBuildRecord } from "./route-build-record.mjs"
+import { assertJsonSafe, assertRouteIR } from "./route-ir.mjs"
+
 export function usesRouteDependencyRuntime({ plan, navigable, hasBindings, hasLists }) {
   assertRouteIR(plan)
   const hasDependencies = plan.effects.some(effect => effect.dependencies?.length)
   return !navigable && hasDependencies && !plan.effects.some(effect => effect.owner) && !hasBindings && !hasLists && !plan.events.some(event => event.native)
 }
 
-export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}) {
+export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}, validate = true) {
   for (const record of records) assertRouteBuildRecord(record)
   const plans = records.map(record => record.plan)
-  for (const plan of plans) assertRouteIR(plan)
+  for (const plan of plans) assertRouteIR(plan, { concrete: true })
   const commandEvents = new Set()
   const nativeEvents = new Set()
   const bindings = { count: 0, text: false, svgConditions: false }
@@ -93,7 +96,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
   lists.asyncParts = lists.expressions || lists.expressionAttributes || lists.conditions
   lists.mounts ||= lists.conditions || lists.nested
 
-  return {
+  const capabilityIR = {
     version: 1,
     routes: routeCounts,
     events: { command: [...commandEvents].sort(), native: [...nativeEvents].sort(), hasNativeHandlers: nativeEvents.size > 0 },
@@ -106,19 +109,10 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
       dependency: routeEntries.some(route => route.usesDependencyRuntime)
     }
   }
+  return validate ? assertCapabilityIR(capabilityIR, records, { navigationRouteCount }) : capabilityIR
 }
 
-function assertRouteIR(plan) {
-  if (plan?.version !== 1) throw new Error(`Unsupported RouteIR version: ${JSON.stringify(plan?.version)}`)
-  if (!["states", "params", "searchParams", "events", "effects", "bindings", "conditions", "lists"].every(name => Array.isArray(plan[name])) || typeof plan.searchParamsWritable !== "boolean") throw new Error("Invalid RouteIR v1 structure")
-  if (plan.states.some((state, slot) => state?.slot !== slot || typeof state.id !== "string" || typeof state.name !== "string" || !Object.hasOwn(state, "initialValue") || state.lifetime !== undefined && !["layout", "route"].includes(state.lifetime) || state.internal !== undefined && state.internal !== true)) throw new Error("Invalid RouteIR v1 state")
-  if ([...plan.params, ...plan.searchParams].some(param => !isRecord(param) || typeof param.name !== "string" || typeof param.id !== "string")) throw new Error("Invalid RouteIR v1 parameter")
-  if (plan.events.some(event => !isRecord(event) || typeof event.event !== "string" || event.commands !== undefined && (!Array.isArray(event.commands) || event.commands.some(command => !Array.isArray(command))) || event.native !== undefined && (!isRecord(event.native) || typeof event.native.module !== "string" || typeof event.native.handler !== "string" || !isRecord(event.native.states) || !isRecord(event.native.scope)))) throw new Error("Invalid RouteIR v1 event")
-  if (plan.effects.some(effect => !isRecord(effect) || typeof effect.module !== "string" || typeof effect.handler !== "string" || !isRecord(effect.states) || !isRecord(effect.scope))) throw new Error("Invalid RouteIR v1 effect")
-  if (plan.bindings.some(binding => !isRecord(binding) || typeof binding.target !== "string") || plan.conditions.some(condition => !isRecord(condition) || condition.svg !== undefined && typeof condition.svg !== "boolean") || plan.lists.some(list => !isRouteList(list))) throw new Error("Invalid RouteIR v1 binding, condition, or list")
-}
-
-export function assertCapabilityIR(capabilityIR) {
+export function assertCapabilityIR(capabilityIR, records, options = {}) {
   if (capabilityIR?.version !== 1) throw new Error(`Unsupported CapabilityIR version: ${JSON.stringify(capabilityIR?.version)}`)
   const sections = ["routes", "events", "bindings", "lists", "effects", "captures", "runtime"]
   if (!sections.every(name => isRecord(capabilityIR[name]))) throw new Error("Invalid CapabilityIR v1 structure")
@@ -128,17 +122,23 @@ export function assertCapabilityIR(capabilityIR) {
   const listFlags = ["conditions", "svg", "deepConditions", "textRanges", "attributes", "events", "expressions", "expressionAttributes", "seeds", "effects", "rowHooks", "rowRefs", "complexRowState", "nested", "selectors", "calculated", "static", "indexes", "stableFastPaths", "generalRowHooks", "asyncParts", "mounts"]
   if (!isCount(capabilityIR.lists.count) || !isCount(capabilityIR.lists.styleCount) || !listFlags.every(name => typeof capabilityIR.lists[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 lists")
   if (!["any", "derivedDependencies", "itemDependencies", "captures", "navigable", "navigableOwners"].every(name => typeof capabilityIR.effects[name] === "boolean") || !["nestedState", "setter"].every(name => typeof capabilityIR.captures[name] === "boolean") || !["shared", "dependency"].every(name => typeof capabilityIR.runtime[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 effect, capture, or runtime flags")
+  if (capabilityIR.events.hasNativeHandlers !== Boolean(capabilityIR.events.native.length)) throw new Error("CapabilityIR native handler flag does not match native events")
+  for (const events of [capabilityIR.events.command, capabilityIR.events.native]) if (new Set(events).size !== events.length || events.some(event => !event)) throw new Error("CapabilityIR events must be unique nonempty names")
+  if (capabilityIR.lists.styleCount > capabilityIR.lists.count) throw new Error("CapabilityIR list style count exceeds list count")
+  if (!capabilityIR.lists.count && (capabilityIR.lists.styleCount || listFlags.some(name => capabilityIR.lists[name]))) throw new Error("CapabilityIR list features require at least one list")
+  if (capabilityIR.lists.rowRefs && !capabilityIR.lists.rowHooks || capabilityIR.lists.generalRowHooks && !capabilityIR.lists.rowHooks) throw new Error("CapabilityIR row ownership requires row hooks")
+  if (capabilityIR.effects.navigableOwners && (!capabilityIR.effects.navigable || !capabilityIR.effects.any)) throw new Error("CapabilityIR navigable effect owners require navigable effects")
+  if ((capabilityIR.bindings.count || capabilityIR.lists.count || capabilityIR.events.native.length || options.navigationRouteCount) && !capabilityIR.runtime.shared) throw new Error("CapabilityIR shared runtime flag is inconsistent")
+  assertJsonSafe(capabilityIR, "CapabilityIR")
+  if (records) {
+    const expected = planRouteCapabilities(records, options, false)
+    if (JSON.stringify(capabilityIR) !== JSON.stringify(expected)) throw new Error("CapabilityIR does not match RouteBuildRecord projection")
+  }
+  return capabilityIR
 }
 
 const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value)
 const isCount = value => Number.isSafeInteger(value) && value >= 0
-const isRouteList = list => isRecord(list)
-  && typeof list.id === "string"
-  && typeof list.state === "string"
-  && (typeof list.key === "string" || list.key === null)
-  && Array.isArray(list.keys)
-  && ["svg", "static", "indexed", "reducer", "mount", "nested", "effects", "conditions", "conditionHandlers", "textRanges", "attributes", "events", "expressions", "expressionAttributes", "fastRelease"].every(name => list[name] === undefined || list[name] === true)
-  && ["selector", "children", "expressionStates", "rowStates", "rowConditions", "rowRefs"].every(name => list[name] === undefined || Array.isArray(list[name]))
 
 function hasCaptureType(value, type) {
   if (!value || typeof value !== "object") return false
@@ -153,4 +153,3 @@ function hasNestedCaptureState(value, insideCapture = false) {
   if (value.type === "object") return value.value.some(([, entry]) => hasNestedCaptureState(entry, true))
   return (Array.isArray(value) ? value : Object.values(value)).some(entry => hasNestedCaptureState(entry, false))
 }
-import { assertRouteBuildRecord } from "./route-build-record.mjs"

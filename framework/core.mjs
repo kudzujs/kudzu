@@ -629,7 +629,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     }
   }
   if (node?.[conditionalMarker]) {
-    const descriptor = bindingDescriptor(node)
+    const descriptor = node.state ? { state: node.state } : bindingDescriptor(node)
     const stateIds = reactiveStateIds(descriptor)
     if (!stateIds.size) return renderNode(node.value ? node.truthy() : node.falsy(), namespace, selectValue)
     if (namespace === "math") throw new Error("Reactive conditional DOM is not supported inside math")

@@ -19,7 +19,8 @@ import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
 import { createRouteBuildRecord, planRouteArtifacts } from "../framework/compiler/route-build-record.mjs"
-import { planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
+import { assertCapabilityIR, planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
+import { assertRouteIR } from "../framework/compiler/route-ir.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime } from "../framework/compiler/runtime-codegen.mjs"
 import { compileSource, createSourceCompiler, reachableSourceFiles } from "../framework/compiler/source-compiler.mjs"
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
@@ -835,6 +836,39 @@ test("plans a static route with no browser capabilities", () => {
   assert.equal(printParamEntry(undefined, [], [], false, "/out.js", "/assets", "", "kudzu.js", false), 'import { browserState, commitDom } from "./kudzu.js"\n')
 })
 
+test("rejects invalid concrete RouteIR references before artifact planning", () => {
+  const state = { slot: 0, id: "s0", name: "count", initialValue: 0 }
+  const plan = routePlan({ states: [state] })
+  assert.throws(() => assertRouteIR({ ...plan, states: [state, { ...state, slot: 1, name: "other" }] }), /duplicate state ID "s0"/)
+  assert.throws(() => assertRouteIR({ ...plan, params: [{ name: "id", id: "s0" }] }), /duplicate state or parameter ID "s0"/)
+  assert.throws(() => assertRouteIR({ ...plan, events: [{ event: "click", commands: [["add", "missing", 1]] }] }), /command references missing state "missing"/)
+  assert.throws(() => assertRouteIR({ ...plan, events: [{ event: "click", commands: [["explode", "s0", 1]] }] }), /unsupported operation "explode"/)
+  assert.throws(() => assertRouteIR({ ...plan, effects: [{ module: "/handler.js", handler: "effect0", states: {}, scope: {}, dependencies: ["missing"] }] }), /effect 0 dependency references missing state "missing"/)
+  assert.throws(() => assertRouteIR({ ...plan, bindings: [{ target: "text", state: "missing" }] }), /binding 0 references missing state "missing"/)
+  assert.throws(() => assertRouteIR({ ...plan, conditions: [{ id: "c0", kind: "invalid", initial: false, state: "s0" }] }), /condition has invalid kind "invalid"/)
+  assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "l0", state: "missing", key: "id", keys: [] }] }), /list 0 references missing state "missing"/)
+  assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "l0", state: "s0", key: "id", keys: [1, 1] }] }), /duplicate key 1/)
+  assert.throws(() => assertRouteIR({ ...plan, states: [{ ...state, initialValue: 1n }] }), /RouteIR .* is not JSON-safe/)
+})
+
+test("rejects broken nested list ownership and malformed captures", () => {
+  const state = { slot: 0, id: "s0", name: "items", initialValue: [] }
+  const plan = routePlan({ states: [state] })
+  assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "child", state: "s0", key: "id", keys: [], ownerField: "children" }] }), /nested list "child" has no parent/)
+  assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "parent", state: "s0", key: "id", keys: [], children: [{ id: "missing", field: "children", key: "id" }] }] }), /references missing child "missing"/)
+  assert.throws(() => assertRouteIR({ ...plan, events: [{ event: "click", native: { module: "/handler.js", handler: "handler0", states: {}, scope: { update: { type: "setter", id: "missing" } } } }] }), /capture setter references missing state "missing"/)
+  assert.throws(() => assertRouteIR({ ...plan, events: [{ event: "click", native: { module: "/handler.js", handler: "handler0", states: {}, scope: { values: { type: "array", value: "bad" } } } }] }), /capture array requires an array value/)
+})
+
+test("validates CapabilityIR consistency and projection", () => {
+  const record = routeRecord(routePlan())
+  const capability = planRouteCapabilities([record])
+  assert.equal(assertCapabilityIR(capability, [record]), capability)
+  assert.throws(() => assertCapabilityIR({ ...capability, events: { ...capability.events, hasNativeHandlers: true } }), /native handler flag does not match native events/)
+  assert.throws(() => assertCapabilityIR({ ...capability, lists: { ...capability.lists, count: 0, rowRefs: true } }), /list features require at least one list/)
+  assert.throws(() => assertCapabilityIR({ ...capability, runtime: { ...capability.runtime, shared: true } }, [record]), /does not match RouteBuildRecord projection/)
+})
+
 test("plans route artifacts from structural handler and effect edges", () => {
   const live = "/assets/handlers/live.js"
   const dead = "/assets/handlers/dead.js"
@@ -879,7 +913,7 @@ test("rejects malformed route artifact references", () => {
 })
 
 test("plans command-only runtime specialization and state seeds", () => {
-  const plan = routePlan({ events: [{ event: "click", commands: [["add", "count", 1]] }] })
+  const plan = routePlan({ states: [{ slot: 0, id: "count", name: "count", initialValue: 0 }], events: [{ event: "click", commands: [["add", "count", 1]] }] })
   const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasStateSeed: true })])
 
   assert.deepEqual(manifest.events.command, ["click"])
@@ -890,11 +924,12 @@ test("plans command-only runtime specialization and state seeds", () => {
 
 test("plans binding and list runtime specializations", () => {
   const plan = routePlan({
-    bindings: [{ target: "text" }],
-    conditions: [{ svg: true }],
-    lists: [{ id: "l0", state: "s0", key: "id", keys: [], selector: [["filter"]], expressions: true, conditions: true, rowRefs: [{}], static: true, svg: true }]
+    states: [{ slot: 0, id: "s0", name: "items", initialValue: [] }],
+    bindings: [{ target: "text", state: "s0" }],
+    conditions: [{ id: "c0", kind: "and", initial: true, state: "s0", svg: true }],
+    lists: [{ id: "l0", state: "s0", key: "id", keys: [], selector: [["filter"]], expressions: true, conditions: true, rowRefs: ["r0:$k"], static: true, svg: true }]
   })
-  const manifest = planRouteCapabilities([routeRecord(plan, { hasBindings: true, hasLists: true, hasListStyles: true })])
+  const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasBindings: true, hasLists: true, hasListStyles: true })])
 
   assert.deepEqual(manifest.bindings, { count: 1, text: true, svgConditions: true })
   assert.equal(manifest.lists.count, 1)
@@ -912,16 +947,16 @@ test("plans binding and list runtime specializations", () => {
 
 test("plans native, effect, capture, and dependency runtime capabilities", () => {
   const native = { module: "/handler.js", handler: "handler0", states: {}, scope: { nested: { type: "array", value: [{ type: "state", id: "count" }] }, update: { type: "setter", id: "count" } } }
-  const effect = { module: "/handler.js", handler: "effect0", states: {}, scope: { label: "ready" }, dependencyExpressions: [["state", "count"]], itemDependencies: ["id"], owner: "row" }
-  const plan = routePlan({ events: [{ event: "submit", native }], effects: [effect] })
-  const manifest = planRouteCapabilities([routeRecord(plan, { navigable: true, hasBehaviors: true, hasEffects: true })])
+  const effect = { module: "/handler.js", handler: "effect0", states: {}, scope: { label: "ready" }, dependencyExpressions: [["state", "count"]], itemDependencies: ["id"], listState: "items", owner: "row" }
+  const plan = routePlan({ states: [{ slot: 0, id: "count", name: "count", initialValue: 0 }, { slot: 1, id: "items", name: "items", initialValue: [] }], events: [{ event: "submit", native }], effects: [effect], lists: [{ id: "l0", state: "items", key: "id", keys: [] }] })
+  const manifest = planRouteCapabilities([routeRecord(plan, { navigable: true, hasBehaviors: true, hasEffects: true, hasLists: true })])
 
   assert.deepEqual(manifest.events.native, ["submit"])
   assert.equal(manifest.events.hasNativeHandlers, true)
   assert.deepEqual(manifest.effects, { any: true, derivedDependencies: true, itemDependencies: true, captures: true, navigable: true, navigableOwners: true })
   assert.deepEqual(manifest.captures, { nestedState: true, setter: true })
   assert.equal(manifest.runtime.shared, true)
-  assert.equal(usesRouteDependencyRuntime({ plan: routePlan({ effects: [{ module: "/handler.js", handler: "effect1", states: {}, scope: {}, dependencies: ["count"] }] }), navigable: false, hasBindings: false, hasLists: false }), true)
+  assert.equal(usesRouteDependencyRuntime({ plan: routePlan({ states: [{ slot: 0, id: "count", name: "count", initialValue: 0 }], effects: [{ module: "/handler.js", handler: "effect1", states: {}, scope: {}, dependencies: ["count"] }] }), navigable: false, hasBindings: false, hasLists: false }), true)
   assert.equal(usesRouteDependencyRuntime({ plan, navigable: false, hasBindings: false, hasLists: false }), false)
 })
 

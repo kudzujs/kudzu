@@ -2,6 +2,31 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## P0.12 Deep RouteIR And CapabilityIR Validation
+
+Measured UTC 2026-08-12 on the Intel Core i5-9500 Linux x64 host with 6 physical cores, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.38` at `918f721d369fed486c5ff04a7423f79563e1c42e`. The focused implementation files had SHA-256 `f8f58432f264d5df12cadfba07986712cecf148be300b6071c03adaf42fd6594`, produced by:
+
+```bash
+sha256sum framework/compiler/route-ir.mjs framework/compiler/route-build-record.mjs framework/compiler/route-capability-planner.mjs framework/core.mjs test/compiler-passes.test.mjs | sha256sum
+```
+
+The repository's 153-page build used one warm-up and seven alternating clean fresh-process samples. Every sample produced the same 174-file deploy graph, 3,840,694 raw bytes, 1,981,560 aggregate gzip bytes, and SHA-256 `6c37ee550a217f4cf78494662e1e1ab4533582f031a2422b07eec74ed50eae74`. Baseline and candidate `kudzu-plan.json` files are byte-identical.
+
+| Target | Clean build median | Range | Peak RSS median | Deploy bytes |
+|---|---:|---:|---:|---:|
+| `v0.8.38` | 2,356.477 ms | 2,159.934-2,389.644 ms | 352.7 MiB | 3,840,694 B |
+| P0.12 candidate | 2,352.382 ms | 2,193.576-2,527.911 ms | 356.8 MiB | 3,840,694 B |
+
+The candidate's unpaired median is 0.17% lower. Round-paired candidate-minus-baseline differences had a +14.255 ms median, with the candidate faster in one of seven pairs and the baseline faster in six. Timing ranges overlap and remain below the 5% material-regression threshold; candidate peak-RSS median is 4.1 MiB higher.
+
+```text
+v0.8.38: [2159.934,2223.405,2313.086,2378.192,2356.477,2380.726,2389.644]
+candidate: [2193.576,2223.644,2317.685,2410.142,2352.382,2394.981,2527.911]
+paired candidate-baseline: [33.642,0.239,4.599,31.950,-4.095,14.255,138.267]
+```
+
+RouteIR v1 now validates concrete state and parameter IDs, commands, native/effect captures, dependencies, reactive descriptors, conditions, keyed-list identity and ownership, marker fields, and strict JSON safety. RouteBuildRecord validates those references before artifact selection, while CapabilityIR validates standalone implications and exact projection from its route records before codegen. Repeated checks of the same immutable in-memory contracts are cached by identity. No runtime source, accepted TSX, deploy artifact, or browser behavior changes.
+
 ## P0.11 Structural Route Artifact Graph
 
 Measured UTC 2026-08-11 on the Intel Core i5-9500 Linux x64 host with 6 physical cores, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.37` at `8b4e8850c40f2856216e43f23ad02ada8434eb37`. The focused implementation files had SHA-256 `1a93b7fff5d80f271c588f89486a47dc262427195a6a768fe392be949eb99b5e`, produced by:

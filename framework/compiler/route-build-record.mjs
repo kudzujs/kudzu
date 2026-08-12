@@ -1,3 +1,7 @@
+import { assertJsonSafe, assertRouteIR } from "./route-ir.mjs"
+
+const validated = new WeakSet()
+
 export function createRouteBuildRecord(input) {
   const record = {
     version: input.version ?? 1,
@@ -18,8 +22,10 @@ export function createRouteBuildRecord(input) {
 }
 
 export function assertRouteBuildRecord(record) {
+  if (validated.has(record)) return record
   if (record?.version !== 1) throw new Error(`Unsupported RouteBuildRecord version: ${JSON.stringify(record?.version)}`)
   if (typeof record.route !== "string" || typeof record.output !== "string" || typeof record.html !== "string" || !isRecord(record.plan)) throw new Error("Invalid RouteBuildRecord v1 structure")
+  assertRouteIR(record.plan, { concrete: true })
   if (record.plan.route !== record.route) throw new Error(`RouteBuildRecord route ${JSON.stringify(record.route)} does not match RouteIR route ${JSON.stringify(record.plan.route)}`)
   const capabilityNames = ["navigable", "usesDependencyRuntime", "hasBehaviors", "hasBindings", "hasLists", "hasListStyles", "hasStateSeed", "hasParams", "hasEffects"]
   if (!isRecord(record.capabilities) || !capabilityNames.every(name => typeof record.capabilities[name] === "boolean")) throw new Error("Invalid RouteBuildRecord v1 capabilities")
@@ -46,6 +52,11 @@ export function assertRouteBuildRecord(record) {
   if (Boolean(record.entries.effect) !== record.capabilities.hasEffects || record.capabilities.hasEffects !== Boolean(record.plan.effects?.length)) throw new Error(`RouteBuildRecord ${JSON.stringify(record.route)} has inconsistent effect artifacts`)
   if (Boolean(record.entries.native) !== hasNative) throw new Error(`RouteBuildRecord ${JSON.stringify(record.route)} has inconsistent native artifacts`)
   if (Boolean(record.entries.param) !== record.capabilities.hasParams) throw new Error(`RouteBuildRecord ${JSON.stringify(record.route)} has inconsistent parameter artifacts`)
+  if (record.capabilities.hasBindings !== Boolean(record.plan.bindings.length || record.plan.conditions.length || record.plan.lists.some(list => list.source))) throw new Error(`RouteBuildRecord ${JSON.stringify(record.route)} has inconsistent binding capability`)
+  if (record.capabilities.hasLists !== Boolean(record.plan.lists.length)) throw new Error(`RouteBuildRecord ${JSON.stringify(record.route)} has inconsistent list capability`)
+  if (record.capabilities.hasBehaviors !== Boolean(record.plan.events.length || record.plan.effects.length || record.plan.bindings.length || record.plan.conditions.length || record.plan.lists.length || record.capabilities.hasParams)) throw new Error(`RouteBuildRecord ${JSON.stringify(record.route)} has inconsistent behavior capability`)
+  assertJsonSafe(record, "RouteBuildRecord")
+  validated.add(record)
   return record
 }
 

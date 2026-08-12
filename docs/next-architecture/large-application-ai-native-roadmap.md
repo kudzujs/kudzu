@@ -140,6 +140,7 @@ This is an incremental evolution of the current repository:
 - [x] P0.9 Semantic State Operations is complete in `0.8.36`. Direct setters, one immutable state-value alias, one synchronous zero-argument arrow helper, and one synchronous one-parameter function helper lower to identical existing command HandlerIR. Binding identity proves state/setter/helper/parameter ownership; recursion, escape, mutation, and dynamic helper dispatch fail at authored source locations. Existing direct command specialization remains first, unrelated safe handlers retain native ESM, and no command ABI, runtime, JavaScript VM, or general expression IR is added.
 - [x] P0.10 ModuleIR Reference Unification is complete in `0.8.37`. ModuleIR and ComponentAnalysis v2 assign deterministic slots to symbols, signals, handlers, bindings, derived values, effects, keyed blocks, imports, owners, specializations, states, refs, and IDs. State, capture, import, effect, collection, parent/child, specialization, and row edges use structural slots or ModuleSymbol records while readable names remain codegen/debug metadata. A fail-closed pre-codegen validator rejects malformed slots, unsupported versions, duplicate exports, broken reciprocity, and ownership cycles; focused JSON round-trip checks and all 198 tests pass without changing browser runtime behavior.
 - [x] P0.11 RouteBuildRecord and Artifact Graph is complete in `0.8.38`. Each rendered route records RouteIR, capability facts, route-entry paths, styles, and exact handler/effect references. Build orchestration derives Handler ESM, Worker, package-client, and chunk closure from those edges; serialized HTML/plan `includes()` searches, formatted effect keys, and parallel route-fact/entry arrays are removed. Focused malformed-reference and JSON round-trip checks plus the standard suite preserve the exact 173-file deploy digest and bytes.
+- [x] P0.12 Deep RouteIR and CapabilityIR Validation is complete in `0.8.39`. RouteIR v1 validates state/parameter identity, commands, captures, effects, bindings, conditions, keyed-list ownership, and JSON safety before artifact selection. RouteBuildRecord checks concrete capability reciprocity, and CapabilityIR validates standalone implications plus exact projection from route records before codegen. Identity caching avoids repeated validation of immutable contracts; all 203 tests and byte-identical deploy checks pass without runtime or accepted-source changes.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -370,6 +371,8 @@ function increment(value) { setCount(value + 1) }; increment(count)
 
 **Done condition:** duplicate/missing state IDs, invalid event/effect dependencies, broken list ownership, invalid binding descriptors, and artifact mismatches have focused tests and deterministic diagnostics.
 
+**Completed in `0.8.39`:** A focused RouteIR validator now indexes state and parameter identities, validates command vocabulary and targets, recursively checks native/effect captures and binding descriptors, proves condition and keyed-list identity/ownership, and rejects non-JSON-safe contracts. RouteBuildRecord invokes that boundary before artifact selection and verifies behavior/binding/list/entry reciprocity. CapabilityIR validates event/count/flag implications and recomputes its exact expected projection from validated records before codegen. The clean 153-page baseline and candidate builds retain byte-identical plans, 174 deploy files, raw/gzip bytes, and deploy digest with no material build-time regression.
+
 ## Large Application Capability Order
 
 After the relevant P0 foundations, investigate capabilities in this order:
@@ -477,4 +480,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 11 are complete. The next PR is **PR 12: Deep RouteIR And CapabilityIR Validation**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 12 are complete. The next migration-backed investigation is **property-level derived dependencies over ordinary object state**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
