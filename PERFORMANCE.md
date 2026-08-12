@@ -2,7 +2,31 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
-## Current 0.8.41 Release Snapshot
+## Current 0.8.42 Release Snapshot
+
+Kudzu 0.8.42 retains the tracked 0.8.41 runtime and six-route commerce matrices below and adds two focused external-fixture optimizations. Those focused samples compare Kudzu before and after the patch; they do not establish a current cross-framework ranking.
+
+The maintained external 1,000-product fixture exposed 1,011 byte-identical native route entries and 1,011 byte-identical effect route entries. A three-run check against clean `v0.8.41` produced:
+
+| Target | Cold build | Warm build | Output |
+|---|---:|---:|---:|
+| `v0.8.41` | 13,866 ms | 13,560 ms | 10.48 MB |
+| Route-entry sharing candidate | 13,203 ms | 13,087 ms | 9.53 MB |
+
+Cold build is 4.8% lower, warm build is 3.5% lower, and output is 9.1% smaller in this sample. A 100-product artifact inspection reduced 101 native and 101 effect route files to three native and five effect files because only byte-identical generated sources share paths. Single-route URLs and nonidentical entries retain their existing route paths. A seven-run alternating measurement is still required before making a stronger build-time attribution claim.
+
+The external form fixture then replaced effect-delayed query carry with direct read-only query bindings on hidden `value` and `disabled` properties. Five Slow 4G sessions measured readiness at 348 ms versus the prior 783 ms, a 55.6% reduction. This is a narrow critical form path, not a general inline-capability policy; writable search state, handlers, effects, conditions, lists, unrelated bindings, and nonmatching markup retain the existing parameter capability path.
+
+A static-catalog same-document navigation experiment was rejected. After compressing concrete route records to remove the first implementation's payload blowup, three Slow 4G sessions still favored native document navigation:
+
+| Navigation | Detail | Back | Session transfer | Degraded capabilities |
+|---|---:|---:|---:|---:|
+| Native document | 314 ms | 107 ms | 322.2 KB | 15/18 |
+| Enhanced candidate | 575 ms | 297 ms | 511 KB | 12/18 |
+
+The static `getStaticPaths()` pattern expansion was removed. Existing exact and `runtimeParams` enhanced-navigation groups are unchanged, and native document navigation remains the default.
+
+## Maintained 0.8.41 Cross-Framework Snapshot
 
 Measured UTC 2026-08-12 on the Intel Core i5-9500 Linux x64 host, Node 24.14.0, and Chrome 142.0.7444.175. The tracked runtime matrix used one warm-up, seven interleaved clean builds, and seven rotating fresh Chrome profiles. Every correctness, accessibility, identity, effect-cleanup, and browser-error gate passed. Kudzu emits complete initial HTML while React, Vue, and Svelte start from client-rendered shells, so initial delivery and artifact totals are not architecture-equivalent.
 

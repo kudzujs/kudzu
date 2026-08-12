@@ -1,5 +1,43 @@
 # Kudzu Releases
 
+## 0.8.42 - Large-route artifact sharing
+
+Kudzu 0.8.42 reduces generated filesystem work for large static route sets and accelerates one proven hidden query form carry shape without adding a general runtime or changing the native-navigation default.
+
+### Changed in 0.8.42
+
+- Byte-identical native, parameter, and effect route-entry sources share the first generated route path and one emitted file within the current build.
+- Existing single-route artifact URLs remain stable; deduplication is build-local and does not add a persistent or generalized cache.
+- A read-only literal query shape bound only to matching hidden input `value` and `disabled` properties initializes those controls from `location.search` in a small inline script before deferred parameter ESM arrives.
+- The inline form specialization requires exactly the proven hidden carry shape and falls back to existing parameter capabilities when handlers, effects, conditions, lists, writable query state, or unrelated bindings are present.
+- Static siblings remain complete zero-JavaScript documents.
+
+### Performance
+
+- On the maintained external 1,000-product fixture, a three-run candidate check reduced cold build time from 13,866 ms to 13,203 ms, warm build time from 13,560 ms to 13,087 ms, and output from 10.48 MB to 9.53 MB.
+- The generated catalog changed from 1,011 native plus 1,011 effect route entries to three native plus five effect files in the 100-product candidate inspection, while route HTML continued to reference valid complete capabilities.
+- Five Slow 4G form sessions reduced hidden query carry readiness from 783 ms to 348 ms, about 56%.
+- These are focused Kudzu before/after measurements, not a cross-framework fastest claim. A seven-run alternating catalog measurement remains the stronger follow-up for precise build attribution.
+
+### Navigation decision
+
+- A compressed static-catalog same-document navigation experiment was measured and removed rather than released.
+- In three Slow 4G sessions, native navigation beat the enhanced candidate on detail latency (314 ms versus 575 ms), back latency (107 ms versus 297 ms), transfer (322.2 KB versus 511 KB), and degraded-capability survival (15/18 versus 12/18).
+- Native document navigation therefore remains the default for `getStaticPaths()` catalogs; existing explicit exact and `runtimeParams` navigation groups are unchanged.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 208 tests and 156 generated pages.
+- A three-route static-path fixture proves one shared native entry and one shared effect entry.
+- A focused query form fixture proves three hidden fields initialize through the narrow inline path while a static sibling emits no script.
+- Sites whose Content Security Policy forbids inline scripts should not rely on this optional fast path without an allowed policy; existing deferred parameter ESM remains in the document.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.42
+```
+
 ## 0.8.41 - Two-boundary callback ownership
 
 Kudzu 0.8.41 extends ordinary React-shaped component migration through one additional proven callback/ref forwarding boundary without retaining component functions or adding browser runtime machinery.

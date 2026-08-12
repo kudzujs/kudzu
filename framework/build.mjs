@@ -116,6 +116,8 @@ async function buildInto(project, outputDirectory, { minify }) {
 
   const routeRecords = []
   const routeEntryTransforms = new Map()
+  const routeEntrySources = new Map()
+  const routeEntryPaths = new Map()
   const rewrites = []
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
@@ -190,11 +192,30 @@ async function buildInto(project, outputDirectory, { minify }) {
         navigationGroup.hasParams ||= result.hasParams
       }
       const usesDependencyRuntime = usesRouteDependencyRuntime({ plan: result.plan, navigable, hasBindings: result.hasBindings, hasLists: result.hasLists })
+      const routeRuntimeName = usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
       const plan = { route: routePath, ...result.plan }
+      const entries = {}
+      let html = inlineQueryFormCarry(result.html, plan)
+      if (result.hasParams) {
+        const entry = retainRouteEntry(paramPath, output => printParamEntry(runtimeSchema, plan.params, plan.searchParams, plan.searchParamsWritable, output, join(outputDirectory, "assets"), base, routeRuntimeName, navigable), routeEntrySources, routeEntryPaths, outputDirectory)
+        entries.param = entry.path
+        html = html.replaceAll(assetPath(base, `assets/${paramPath}`), assetPath(base, `assets/${entry.path}`))
+      }
+      if (result.hasEffects) {
+        const entry = retainRouteEntry(effectPath, output => printEffectEntry(runtimeEffects(plan.effects, navigable), output, handlerModules, join(outputDirectory, "assets"), base, entries.param, routeRuntimeName, navigable), routeEntrySources, routeEntryPaths, outputDirectory)
+        entries.effect = entry.path
+        html = html.replaceAll(assetPath(base, `assets/${effectPath}`), assetPath(base, `assets/${entry.path}`))
+      }
+      if (plan.events.some(event => event.native)) {
+        const modules = [...new Set(plan.events.filter(event => event.native).map(event => event.native.module))]
+        const entry = retainRouteEntry(nativePath, () => printNativeEntrySource(modules, base), routeEntrySources, routeEntryPaths, outputDirectory)
+        entries.native = entry.path
+        html = html.replaceAll(assetPath(base, `assets/${nativePath}`), assetPath(base, `assets/${entry.path}`))
+      }
       routeRecords.push(createRouteBuildRecord({
         route: routePath,
         output: route,
-        html: result.html,
+        html,
         plan,
         handlerReferences: result.handlerReferences,
         styles: styleUrls,
@@ -209,11 +230,7 @@ async function buildInto(project, outputDirectory, { minify }) {
           hasParams: result.hasParams,
           hasEffects: result.hasEffects
         },
-        entries: {
-          ...(result.hasParams ? { param: paramPath } : {}),
-          ...(result.hasEffects ? { effect: effectPath } : {}),
-          ...(result.plan.events.some(event => event.native) ? { native: nativePath } : {})
-        },
+        entries,
         runtimeSchema
       }))
     }
@@ -293,10 +310,7 @@ async function buildInto(project, outputDirectory, { minify }) {
   if (hasNativeHandlers) {
     const generated = generateNativeRuntime(await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"), capabilityIR)
     await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), generated.source, minify, generated.define)
-    for (const record of routeRecords) if (record.entries.native) await printNativeEntry({
-      path: record.entries.native,
-      modules: [...new Set(record.plan.events.filter(event => event.native).map(event => event.native.module))]
-    }, assetsDirectory, base, minify, routeEntryTransforms)
+    for (const [path, source] of routeEntrySources) if (path.startsWith("native/")) await writeRetainedRouteEntry(path, source, assetsDirectory, minify, routeEntryTransforms)
   }
   if (navigationGroups.length) {
     const navigationSource = await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8")
@@ -309,16 +323,7 @@ async function buildInto(project, outputDirectory, { minify }) {
     await mkdir(resolve(output, ".."), { recursive: true })
     await writeJavaScript(output, handlerModule.code, minify)
   }
-  for (const record of routeRecords) if (record.entries.param) {
-    const output = join(assetsDirectory, record.entries.param)
-    await mkdir(dirname(output), { recursive: true })
-    await writeRouteEntry(output, printParamEntry(record.runtimeSchema, record.plan.params, record.plan.searchParams, record.plan.searchParamsWritable, output, assetsDirectory, base, runtimeName(record.capabilities.usesDependencyRuntime), record.capabilities.navigable), minify, routeEntryTransforms)
-  }
-  for (const record of routeRecords) if (record.entries.effect) {
-    const output = join(assetsDirectory, record.entries.effect)
-    await mkdir(dirname(output), { recursive: true })
-    await writeRouteEntry(output, printEffectEntry(runtimeEffects(record.plan.effects, record.capabilities.navigable), output, emittedHandlerModules, assetsDirectory, base, record.entries.param, runtimeName(record.capabilities.usesDependencyRuntime), record.capabilities.navigable), minify, routeEntryTransforms)
-  }
+  for (const [path, source] of routeEntrySources) if (path.startsWith("params/") || path.startsWith("effects/")) await writeRetainedRouteEntry(path, source, assetsDirectory, minify, routeEntryTransforms)
   const clientModules = await collectClientModules(emittedHandlerModules.flatMap(module => module.clientImports).map(file => resolve(root, file)), sourceFileSet)
   for (const file of clientModules) {
     const module = await compileClientModule(file, sourceFileSet, staticFiles, cssModules, base)
@@ -464,13 +469,41 @@ function preloadModules(html) {
   return html.replace(scripts[0][0], `${links}${scripts[0][0]}`)
 }
 
-async function printNativeEntry(entry, assetsDirectory, base, minify, transforms) {
-  const output = join(assetsDirectory, entry.path)
-  await mkdir(dirname(output), { recursive: true })
-  const imports = entry.modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
-  const registrations = entry.modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
+function inlineQueryFormCarry(html, plan) {
+  if (plan.searchParamsWritable || !plan.searchParams.length || plan.events.length || plan.effects.length || plan.conditions.length || plan.lists.length || plan.bindings.length !== plan.searchParams.length * 2) return html
+  const ids = new Map(plan.searchParams.map(param => [param.id, param.name]))
+  const pairs = new Map(plan.searchParams.map(param => [param.name, new Set()]))
+  for (const binding of plan.bindings) {
+    const signalIds = Object.values(binding.scopeStates ?? {})
+    const name = signalIds.length === 1 ? ids.get(signalIds[0]) : undefined
+    if (!name || !["value", "disabled"].includes(binding.target) || Object.keys(binding.states ?? {}).length || Object.keys(binding.scopeBindings ?? {}).length) return html
+    pairs.get(name).add(binding.target)
+  }
+  if ([...pairs].some(([name, targets]) => targets.size !== 2 || !html.includes(`type="hidden" name="${escapeAttribute(name)}"`))) return html
+  const script = `<script>(()=>{const q=new URLSearchParams(location.search);for(const e of document.querySelectorAll('input[type="hidden"][data-k-query-carry]')){if(q.has(e.name)){e.value=q.get(e.name)??"";e.disabled=false}else{e.value="";e.disabled=true}}})()</script>`
+  for (const name of pairs.keys()) html = html.replace(`type="hidden" name="${escapeAttribute(name)}"`, `type="hidden" data-k-query-carry name="${escapeAttribute(name)}"`)
+  return html.replace("</body>", `${script}</body>`)
+}
+
+function printNativeEntrySource(modules, base) {
+  const imports = modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
+  const registrations = modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
   const runtime = assetPath(base, "assets/kudzu-native.js")
-  await writeRouteEntry(output, `import { registerNativeModules } from ${JSON.stringify(runtime)}\n${imports}\nregisterNativeModules([${registrations}])`, minify, transforms)
+  return `import { registerNativeModules } from ${JSON.stringify(runtime)}\n${imports}\nregisterNativeModules([${registrations}])`
+}
+
+function retainRouteEntry(requestedPath, generate, sources, paths, outputDirectory) {
+  const source = generate(join(outputDirectory, "assets", requestedPath))
+  const path = paths.get(source) ?? requestedPath
+  paths.set(source, path)
+  sources.set(path, source)
+  return { path, source }
+}
+
+async function writeRetainedRouteEntry(path, source, assetsDirectory, minify, transforms) {
+  const output = join(assetsDirectory, path)
+  await mkdir(dirname(output), { recursive: true })
+  await writeRouteEntry(output, source, minify, transforms)
 }
 
 function runtimeEffects(effects, lifetimes = false) {

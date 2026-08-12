@@ -7,11 +7,11 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 | Goal | Decision | Start condition |
 |---|---|---|
 | A: compiler foundation | Complete in `0.8.23` | The no-write source compiler, RouteIR v1, CapabilityIR v1, generator boundaries, and output baseline are recorded. |
-| B: optimization benchmarks | Active | Keyed restoration, no-op normalization, and exact route-entry transform reuse are retained; continue only when another current fixture reproduces a material loss. |
+| B: optimization benchmarks | Active | Keyed restoration, no-op normalization, exact route-entry transform reuse, and identical route-entry file sharing are retained; continue only when another current fixture reproduces a material loss. |
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 
-The active post-`0.8.41` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.12 validation, property-level object-state dependencies, and the first direct two-boundary callback/ref slice are complete; broader multi-boundary component/prop/callback/ref/context dataflow remains the next migration-backed investigation. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
+The active post-`0.8.42` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.12 validation, property-level object-state dependencies, the first direct two-boundary callback/ref slice, and the measured route-entry output optimization are complete; broader multi-boundary component/prop/callback/ref/context dataflow remains the next migration-backed investigation. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
 
 ## Required Invariants
 

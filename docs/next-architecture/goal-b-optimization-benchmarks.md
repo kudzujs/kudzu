@@ -55,7 +55,7 @@ The broad baseline list is an investigation inventory, not a requirement to manu
 
 Known historical pressure points include large keyed-list removal/reconciliation and broad runtime specialization, but neither is authorized without a reproduced current loss.
 
-Repeated esbuild transformation of byte-identical generated route entries cleared the materiality and output gates. Further optimization is not authorized until another current fixture isolates a measured loss; do not broaden the route-entry map into a generalized cache.
+Repeated esbuild transformation of byte-identical generated route entries cleared the materiality and output gates. The later maintained 1,000-product fixture isolated filesystem scaling from 2,022 byte-identical native/effect route-entry files, authorizing build-local source deduplication to the first existing route path. This remains limited to generated route entries and is not a generalized cache.
 
 ## Benchmark Contract
 

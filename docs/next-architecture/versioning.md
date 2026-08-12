@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.41` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.42` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -32,6 +32,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.39` | Deeply validate concrete RouteIR, RouteBuildRecord, and CapabilityIR contracts. | Invalid state, command, effect, binding, condition, list, ownership, capability, and JSON references fail before codegen without changing deploy output. |
 | `0.8.40` | Add property-level derived effect dependencies over ordinary object state. | Direct property paths and immutable primitive locals reuse existing DerivedIR and `Object.is`; whole-object/dynamic dependencies fail, runtime JavaScript is unchanged, and measured build/RSS changes remain below 5%. |
 | `0.8.41` | Preserve callback, setter, and ref ownership through one additional direct presentation-component boundary. | Parent signals, child hooks, IDs, effects, refs, conditional cleanup, static zero-JavaScript output, and byte-identical deploy graphs pass; a third callback boundary fails closed. |
+| `0.8.42` | Share byte-identical generated route entries and accelerate one proven read-only query form carry shape. | A static-path fixture emits one native/effect file for three routes; hidden GET carry initializes before deferred parameter ESM; static siblings remain zero-JavaScript; the losing catalog navigation experiment is excluded. |
 
 ## Sequence Rules
 

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.41 - Two-boundary callback ownership.** Direct setters, simple state callbacks, and object refs can now follow one additional presentation-component boundary while Kudzu preserves parent signals and child ownership without a browser component tree. Read the [release notes](./RELEASES.md#0841---two-boundary-callback-ownership), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.41), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.42 - Large-route artifact sharing.** Byte-identical generated route entries now share one emitted file within a build, and a narrow read-only query form shape initializes hidden carry fields before deferred route capabilities arrive. Native document navigation remains the default after the measured static-catalog experiment lost on latency, transfer, and resilience. Read the [release notes](./RELEASES.md#0842---large-route-artifact-sharing), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.42), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

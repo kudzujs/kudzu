@@ -55,10 +55,10 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.41 release results</strong><span>Measured August 12, 2026 on Node 24.14.0, Linux x64, and Chrome 142. Each maintained run used one warm-up and seven clean builds or fresh browser profiles. Architectures differ, so these are artifact and workload measurements rather than claims of framework equivalence.</span></div>
+    <div className="docs-callout"><strong>Current 0.8.42 release context</strong><span>The maintained cross-framework matrix below remains the 0.8.41 snapshot. The 0.8.42 external scale and form measurements are focused before/after Kudzu results, not a cross-framework ranking.</span></div>
     <h3>Runtime matrix</h3>
     <BenchmarkTable columns={["Target", "Build", "JS raw / gzip", "Total raw / gzip", "Initial DOM"]} rows={[
-      ["Kudzu 0.8.41", "1,475.480 ms", "33,575 / 12,928 B", "212,963 / 49,936 B", "532.9 ms"],
+      ["Kudzu 0.8.41 snapshot", "1,475.480 ms", "33,575 / 12,928 B", "212,963 / 49,936 B", "532.9 ms"],
       ["React 19.2.8", "856.231 ms", "193,685 / 60,043 B", "193,967 / 60,262 B", "510.6 ms"],
       ["Vue 3.5.40", "1,053.062 ms", "64,023 / 24,772 B", "64,304 / 24,993 B", "357.6 ms"],
       ["Svelte 5.56.7", "1,733.637 ms", "40,726 / 15,659 B", "41,007 / 15,878 B", "401.1 ms"]
@@ -80,6 +80,9 @@ node benchmarks/runtime-matrix/run.mjs`} />
       ["SvelteKit static export", "4,725.279 ms", "19", "102,659 / 41,047 B"]
     ]} />
     <p>Seven rotating clean builds used the tracked matched-content commerce sources. The browser suite timed out in Kudzu's existing in-flight rejection-navigation wait before cross-target sampling, so no commerce browser timing is published.</p>
+    <h3>Large static catalogs and query carry</h3>
+    <p>On the maintained external 1,000-product fixture, sharing byte-identical route entries reduced cold build time from 13,866 ms to 13,203 ms, warm build time from 13,560 ms to 13,087 ms, and output from 10.48 MB to 9.53 MB across the three-run candidate check. A five-session Slow 4G form check reduced hidden query carry readiness from 783 ms to 348 ms. These focused samples establish the optimization direction but are not a claim that Kudzu is the fastest framework overall.</p>
+    <p>A three-session Slow 4G static-catalog navigation experiment was rejected: native navigation reached product detail in 314 ms versus 575 ms, returned in 107 ms versus 297 ms, transferred 322.2 KB versus 511 KB, and preserved 15/18 degraded capabilities versus 12/18. Kudzu therefore keeps native document navigation as the catalog default.</p>
     <h3>Tracked Worker fixture</h3>
     <p>The maintained Worker build median is 1,823.2 ms. Its Worker graph is 907 B raw / 477 B gzip and its aggregate window graph is 12,148 B raw / 5,411 B gzip. The focused Chrome test verifies throughput, cadence, bounded history, stale writes, and 30-cycle termination and listener ownership.</p>
     <div className="docs-callout"><strong>Historical records retained</strong><span>Paired release measurements, optimization wins, raw arrays, limitations, and the dated 0.7.12 framework snapshot remain in PERFORMANCE.md for provenance. They are not current rankings.</span></div>
