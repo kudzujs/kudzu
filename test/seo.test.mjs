@@ -7,7 +7,7 @@ import config from "../kudzu.config.mjs"
 
 test("generates canonical SEO output for Cloudflare static assets", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "kudzu-seo-"))
-  const routes = ["/", "/docs", "/example", "/releases/0.8.2", "/releases/0.8.15", "/releases/0.8.16", "/releases/0.8.17", "/releases/0.8.18", "/releases/0.8.19", "/releases/0.8.20", "/releases/0.8.21", "/releases/0.8.22", "/releases/0.8.23", "/releases/0.8.24", "/releases/0.8.25", "/releases/0.8.26", "/releases/0.8.27", "/releases/0.8.28", "/releases/0.8.29", "/releases/0.8.30", "/releases/0.8.31", "/releases/0.8.32", "/releases/0.8.33", "/releases/0.8.34", "/releases/0.8.35", "/releases/0.8.36", "/releases/0.8.37", "/releases/0.8.38", "/releases/0.8.39", "/example/blog/personal", "/example/blog/personal/demo", "/example/blog/personal/demo/a-room-made-for-reading"]
+  const routes = ["/", "/docs", "/example", "/releases/0.8.2", "/releases/0.8.15", "/releases/0.8.16", "/releases/0.8.17", "/releases/0.8.18", "/releases/0.8.19", "/releases/0.8.20", "/releases/0.8.21", "/releases/0.8.22", "/releases/0.8.23", "/releases/0.8.24", "/releases/0.8.25", "/releases/0.8.26", "/releases/0.8.27", "/releases/0.8.28", "/releases/0.8.29", "/releases/0.8.30", "/releases/0.8.31", "/releases/0.8.32", "/releases/0.8.33", "/releases/0.8.34", "/releases/0.8.35", "/releases/0.8.36", "/releases/0.8.37", "/releases/0.8.38", "/releases/0.8.39", "/releases/0.8.40", "/example/blog/personal", "/example/blog/personal/demo", "/example/blog/personal/demo/a-room-made-for-reading"]
   try {
     for (const route of routes) {
       const directory = route === "/" ? outDir : join(outDir, route.slice(1))

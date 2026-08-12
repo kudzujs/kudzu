@@ -2,6 +2,50 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## P1 Property-Level Object-State Effect Dependencies
+
+Measured UTC 2026-08-12 on the Intel Core i5-9500 Linux x64 host with 6 physical cores, Node 24.14.0, npm 11.9.0, and Chrome 142.0.7444.175. The baseline was clean tag `v0.8.39` at `090b42124d596260bdd6a0814c014e5b906dc0eb`. The focused implementation and migration checks had SHA-256 `c097c10e786ff5d09537b52384c1bf3d32cb46998ef62125c23dda3355b62277`, produced by:
+
+```bash
+sha256sum framework/compiler/effect-analysis.mjs framework/core.mjs test/compiler-passes.test.mjs test/fixtures/zustand-migration/src/Shell.tsx test/framework.test.mjs | sha256sum
+```
+
+The complete 154-page repository build used one warm-up and 21 alternating clean fresh-process samples. Both targets emit 175 files and byte-identical `kudzu-plan.json` (`be842101f08aab2d8b3af5daa3ed0539a6a08ea8c3cba15cd25f3a36d53ef61f`). The only deploy difference is the updated public explanation in `docs/index.html`: candidate output adds 98 raw bytes and 31 aggregate gzip bytes. Compiler, effect runtime, route JavaScript, and all other artifacts are byte-identical.
+
+| Target | Clean build median | Range | Peak RSS median | Deploy raw / gzip bytes |
+|---|---:|---:|---:|---:|
+| `v0.8.39` | 3,753.276 ms | 3,097.211-5,294.316 ms | 356.9 MiB | 3,845,393 / 1,983,262 B |
+| Property dependency candidate | 3,883.841 ms | 3,533.936-4,919.378 ms | 363.7 MiB | 3,845,491 / 1,983,293 B |
+
+The candidate unpaired median is 3.48% higher and the round-paired candidate-minus-baseline median is +103.031 ms. Peak RSS is 1.92% higher. Timing ranges overlap substantially and both changes remain below the 5% material-regression threshold, so no material build or memory regression is established.
+
+```text
+v0.8.39: [5294.316,4885.317,4462.086,3696.012,3105.264,3491.623,3852.100,3414.218,3753.276,3854.507,4311.174,3833.095,3097.211,3669.963,3567.084,3399.614,3626.351,3687.408,3883.556,4104.665,3880.847]
+candidate: [4919.378,4548.065,4236.325,3752.842,3788.156,3738.609,3883.841,4110.706,4055.150,4116.317,3710.973,4016.578,3533.936,3625.603,3670.115,3840.795,4045.689,3988.434,3619.226,3944.068,3760.976]
+paired candidate-baseline: [-374.938,-337.252,-225.761,56.830,682.892,246.986,31.741,696.488,301.874,261.810,-600.201,183.483,436.725,-44.360,103.031,441.181,419.338,301.026,-264.330,-160.597,-119.871]
+```
+
+The tracked runtime matrix then ran one warm-up, seven interleaved clean builds, and seven rotating fresh Chrome profiles for matched Kudzu, React/Vite, Vue/Vite, and Svelte/Vite workloads. Every correctness, accessibility, identity, effect-cleanup, and browser-error gate passed. This matrix uses a primitive effect dependency, so it is broad regression evidence rather than a property-dependency-specific framework claim.
+
+| Runtime matrix target | Build median | JS raw / gzip B | Total raw / gzip B | Initial DOM | Effect update + cleanup |
+|---|---:|---:|---:|---:|---:|
+| Kudzu `0.8.39` candidate | 862.432 ms | 33,575 / 12,928 | 212,963 / 49,936 | 363.4 ms | 1.9 ms |
+| React 19.2.8 + Vite 8.1.5 | 498.572 ms | 193,685 / 60,043 | 193,967 / 60,262 | 355.7 ms | 4.4 ms |
+| Vue 3.5.40 + Vite 8.1.5 | 655.787 ms | 64,023 / 24,772 | 64,304 / 24,993 | 283.0 ms | 1.9 ms |
+| Svelte 5.56.7 + Vite 8.1.5 | 907.584 ms | 40,726 / 15,659 | 41,007 / 15,878 | 307.9 ms | 2.5 ms |
+
+The tracked six-route commerce sources also completed seven rotating clean builds for Kudzu, React SSR + Vite hydration, Next.js static export, Nuxt generation, and SvelteKit adapter-static. These targets have matched initial content and behavior contracts but materially different architectures.
+
+| Commerce target | Build median | Files | HTML raw / gzip B | JS raw / gzip B | Total raw / gzip B |
+|---|---:|---:|---:|---:|---:|
+| Kudzu | 1,062.059 ms | 17 | 17,123 / 5,376 | 18,428 / 8,261 | 37,434 / 14,689 |
+| React 19.2.8 SSR + Vite hydration | 1,020.288 ms | 10 | 9,304 / 4,265 | 198,261 / 61,464 | 209,270 / 66,741 |
+| Next.js 16.2.11 static export | 7,939.352 ms | 74 | 72,890 / 19,860 | 643,484 / 191,844 | 814,186 / 247,612 |
+| Nuxt 4.5.0 generation | 8,566.437 ms | 26 | 17,557 / 7,857 | 191,758 / 70,925 | 215,851 / 82,075 |
+| SvelteKit 2.70.1 static export | 5,778.467 ms | 19 | 15,832 / 6,520 | 85,095 / 33,482 | 102,659 / 41,061 |
+
+Kudzu commerce output is 4.54x-16.86x smaller in aggregate gzip than the compared hydrated/client-navigation outputs. React's clean build median is 3.9% lower than Kudzu's on this small fixture; Kudzu builds 5.4x-8.1x faster than the three full static-export frameworks. The full commerce browser command was attempted twice, but both runs timed out in Kudzu's existing in-flight rejection-navigation wait before cross-target browser sampling; no commerce browser timing result is claimed. The complete runtime matrix browser run above passed. Property-path effects reuse existing DerivedIR, source subscriptions, expression evaluation, and `Object.is`; no runtime module or field-signal mechanism was added.
+
 ## P0.12 Deep RouteIR And CapabilityIR Validation
 
 Measured UTC 2026-08-12 on the Intel Core i5-9500 Linux x64 host with 6 physical cores, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.38` at `918f721d369fed486c5ff04a7423f79563e1c42e`. The focused implementation files had SHA-256 `f8f58432f264d5df12cadfba07986712cecf148be300b6071c03adaf42fd6594`, produced by:

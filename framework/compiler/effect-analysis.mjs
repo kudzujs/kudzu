@@ -20,9 +20,6 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
       ordinaryDependencies.push(dependency)
     }
   }
-  const invalidDependency = ordinaryDependencies.find(dependency => !ts.isIdentifier(dependency))
-  if (invalidDependency) fail(invalidDependency, "useEffect() dependencies must be direct state or runtime parameter identifiers")
-
   const entries = []
   const dependencyStates = new Map()
   const substitutions = new Map()
@@ -30,28 +27,36 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
   let hasDerived = false
   const stateNames = new Set(setters.values())
   for (const dependency of ordinaryDependencies) {
-    const declarations = localDeclarations?.get(dependency.text)
+    const direct = ts.isIdentifier(dependency)
+    if (!direct && !statePropertyDependency(dependency, stateNames)) fail(dependency, "useEffect() dependencies must be direct state or runtime parameter identifiers or property reads")
+    const declarations = direct ? localDeclarations?.get(dependency.text) : undefined
     const initializer = declarations?.length === 1 ? declarations[0].initializer : undefined
     const indexedInitializer = initializer && bindingIndex?.hasNode(initializer) ? bindingIndex : undefined
     const directAlias = initializer && ts.isIdentifier(unwrapExpression(initializer)) && stateNames.has(unwrapExpression(initializer).text) && (!indexedInitializer || ["capture", "unresolved"].includes(indexedInitializer.resolveReference(unwrapExpression(initializer), initializer)?.kind))
-    const derivedStates = initializer && !directAlias ? referencedStateNames(initializer, setters, initializer, bindingIndex) : new Set()
+    const expressionSource = initializer && !directAlias ? initializer : direct ? undefined : dependency
+    let derivedStates = expressionSource ? referencedStateNames(expressionSource, setters, expressionSource, bindingIndex) : new Set()
+    if (!derivedStates.size && expressionSource) derivedStates = referencedStateNames(expressionSource, setters, expressionSource)
     if (derivedStates.size) {
       const usedStates = new Set()
-      const expression = collectionExpression(initializer, { fail, stateNames, selectorStates: usedStates })
-      if (!usedStates.size) fail(dependency, `useEffect() derived dependency "${dependency.text}" must read direct primitive state`)
-      entries.push({ kind: "derived", name: dependency.text, expression, states: usedStates, source: initializer })
+      const expression = collectionExpression(expressionSource, { fail, stateNames, selectorStates: usedStates })
+      if (!usedStates.size) fail(dependency, `useEffect() derived dependency must read direct state`)
+      entries.push({ kind: "derived", name: direct ? dependency.text : dependency.getText(), expression, states: usedStates, source: expressionSource })
       for (const name of usedStates) {
         subscriptions.push(factory.createIdentifier(name))
         dependencyStates.set(name, factory.createIdentifier(name))
       }
-      substitutions.set(dependency.text, initializer)
+      if (initializer) substitutions.set(dependency.text, initializer)
       hasDerived = true
     } else {
+      if (!direct) fail(dependency, "useEffect() dependencies must be direct state or runtime parameter identifiers or property reads")
       subscriptions.push(dependency)
       entries.push({ kind: "signal", name: dependency.text })
       dependencyStates.set(dependency.text, dependency)
     }
   }
+  const derivedSourceNames = new Set(entries.filter(entry => entry.kind === "derived").flatMap(entry => [...entry.states]))
+  const ambiguous = entries.find(entry => entry.kind === "signal" && derivedSourceNames.has(entry.name))
+  if (ambiguous) fail(ordinaryDependencies[entries.indexOf(ambiguous)], `useEffect() cannot mix whole-object and property dependencies for state ${JSON.stringify(ambiguous.name)}`)
   if (!hasDerived) dependencyStates.clear()
   return { dependencyItem, itemDependencies, ordinaryDependencies, entries, dependencyStates, substitutions, subscriptions, hasDerived }
 }
@@ -90,4 +95,15 @@ function isDestructuredParameter(identifier, fn) {
 function directProperty(expression, objectName) {
   const value = unwrapExpression(expression)
   return ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression) && value.expression.text === objectName ? value.name.text : undefined
+}
+
+function statePropertyDependency(expression, stateNames) {
+  let value = unwrapExpression(expression)
+  let property = false
+  while (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) {
+    if (ts.isElementAccessExpression(value) && !ts.isStringLiteral(value.argumentExpression) && !ts.isNumericLiteral(value.argumentExpression)) return false
+    property = true
+    value = unwrapExpression(value.expression)
+  }
+  return property && ts.isIdentifier(value) && stateNames.has(value.text)
 }

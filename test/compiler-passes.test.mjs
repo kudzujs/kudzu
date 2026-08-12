@@ -511,6 +511,40 @@ function Page() {
   assert.deepEqual(result.subscriptions.map(entry => entry.text), ["page", "count"])
 })
 
+test("classifies ordinary object property effect dependencies as derived", () => {
+  const source = ts.createSourceFile("effect.tsx", `
+function Page() {
+  useEffect(() => {}, [profile.name])
+}
+`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const call = source.statements[0].body.statements[0].expression
+  const result = analyzeEffectDependencies({
+    dependencies: call.arguments[1],
+    node: call,
+    listEffect: false,
+    setters: new Map([["setProfile", "profile"]]),
+    factory: ts.factory,
+    fail(node, message) { throw new Error(message) }
+  })
+
+  assert.equal(result.hasDerived, true)
+  assert.deepEqual(result.entries.map(entry => [entry.kind, entry.expression, [...entry.states]]), [["derived", ["get", ["state", "profile"], "name", false], ["profile"]]])
+  assert.deepEqual(result.subscriptions.map(entry => entry.text), ["profile"])
+})
+
+test("rejects mixed whole-object and property effect dependencies", () => {
+  const source = ts.createSourceFile("effect.tsx", "function Page() { useEffect(() => {}, [profile, profile.name]) }", ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const call = source.statements[0].body.statements[0].expression
+  assert.throws(() => analyzeEffectDependencies({
+    dependencies: call.arguments[1],
+    node: call,
+    listEffect: false,
+    setters: new Map([["setProfile", "profile"]]),
+    factory: ts.factory,
+    fail(node, message) { throw new Error(message) }
+  }), /cannot mix whole-object and property dependencies for state "profile"/)
+})
+
 test("generates the existing command behavior AST from HandlerIR", () => {
   const source = ts.createSourceFile("counter.tsx", "setCount(count + 1)", ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   const specialize = createCommandSpecializer({ isPrimitiveLiteral: () => false })

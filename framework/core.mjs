@@ -174,12 +174,13 @@ export function useEffect(callback, dependencies, module, handler, states, scope
   if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
   if (typeof callback !== "function" || !Array.isArray(dependencies) || !module || !handler) throw new Error("useEffect() must be compiled with a literal dependency array")
   if (itemDependencies.length && !renderContext.listDepth) throw new Error(`${source} useEffect() item-property dependencies are only supported in direct keyed row components`)
+  const derivedSources = new Set(dependencyStates.map(([, dependency]) => dependency))
   const dependencyIds = [...new Set(dependencies.map(dependency => {
-    if (!dependency?.[signalMarker] || !validEffectDependency(dependency.value)) throw new Error(`${source} useEffect() dependencies must be primitive Kudzu state or runtime parameter identifiers`)
+    if (!dependency?.[signalMarker] || !derivedSources.has(dependency) && !validEffectDependency(dependency.value)) throw new Error(`${source} useEffect() dependencies must be primitive Kudzu state or runtime parameter identifiers`)
     return dependency.id
   }))]
   const dependencyStateIds = Object.fromEntries(dependencyStates.map(([name, dependency]) => {
-    if (!dependency?.[signalMarker] || !validEffectDependency(dependency.value)) throw new Error(`${source} useEffect() derived dependency state ${JSON.stringify(name)} must be primitive Kudzu state`)
+    if (!dependency?.[signalMarker]) throw new Error(`${source} useEffect() derived dependency state ${JSON.stringify(name)} must be Kudzu state`)
     return [name, dependency.id]
   }))
   let owner

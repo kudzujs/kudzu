@@ -1,5 +1,37 @@
 # Kudzu Releases
 
+## 0.8.40 - Property-level effect dependencies
+
+Kudzu 0.8.40 starts the large-application foundation sequence by allowing ordinary object state to expose property-level effect dependencies without artificial primitive-state decomposition.
+
+### Changed in 0.8.40
+
+- Direct property paths over ordinary object state compile to existing tagged DerivedIR.
+- Top-level immutable primitive locals derived from object properties use the same source subscription and expression evaluator.
+- Source object commits schedule dependency comparison, while `Object.is` prevents cleanup and rerun when the selected property value is unchanged.
+- Whole-object, dynamic-property, object-valued, and mixed whole-object/property dependencies remain fail-closed.
+- The Zustand migration fixture proves property updates, equality across enhanced navigation, persistent layout ownership, and removal.
+- No field signal, proxy, component rerender, RouteIR field, or browser runtime module was added.
+
+### Performance
+
+- Twenty-one alternating clean builds measured `v0.8.39` and candidate medians of 3,753.276 ms and 3,883.841 ms, with a +103.031 ms paired median.
+- Peak RSS medians were 356.9 MiB and 363.7 MiB. Build and memory deltas remain below the 5% material-regression threshold.
+- Both targets emit 175 files and byte-identical `kudzu-plan.json`; only updated docs add 98 raw and 31 aggregate gzip bytes. Runtime and route JavaScript are unchanged.
+- Seven-build/fresh-profile React, Vue, and Svelte runtime comparisons pass. The matched commerce build matrix records Kudzu output at 14,689 aggregate gzip bytes versus 66,741 for React hydration, 247,612 for Next, 82,075 for Nuxt, and 41,061 for SvelteKit.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 205 tests and 155 generated pages.
+- Focused checks cover direct object-property classification, canonical DerivedIR, whole-object/property ambiguity, RouteIR projection, browser equality behavior, and layout lifetime.
+- The next migration-backed investigation is multi-boundary component/prop/callback/ref/context dataflow.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.40
+```
+
 ## 0.8.39 - Fail-closed route contracts
 
 Kudzu 0.8.39 completes P0.12 by deeply validating the concrete RouteIR, RouteBuildRecord, and CapabilityIR contracts before artifact selection and browser code generation.

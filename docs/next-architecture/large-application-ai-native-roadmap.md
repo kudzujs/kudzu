@@ -166,7 +166,7 @@ P0 creates the semantic base required by every later large-application capabilit
 | Objective | Required result |
 |---|---|
 | Cross-module component and prop dataflow | Deep composition, callbacks, setters, refs, context, and children retain semantic links without repeated AST inlining |
-| Property-level derived dependencies | Object state can expose path-level dependencies without splitting application state into artificial primitives |
+| Property-level derived dependencies | Object state exposes direct property-path effect dependencies through existing DerivedIR without splitting application state into artificial primitives; multi-boundary propagation remains ordered next |
 | Package-neutral shared state and actions | Existing Zustand support lowers through generic signal/action records; Redux-shaped research has a reusable target |
 | Resource ownership | WebSocket, SSE, subscriptions, timers, observers, Workers, and imperative SDKs can share acquire/owner/dependency/cleanup semantics |
 | Browser-only package modules | Native JS packages may be bundled only into effect/handler/resource chunks without build-time execution |
@@ -377,8 +377,8 @@ function increment(value) { setCount(value + 1) }; increment(count)
 
 After the relevant P0 foundations, investigate capabilities in this order:
 
-1. Property-level derived dependencies over ordinary object state.
-2. Multi-boundary component/prop/callback/ref/context dataflow.
+1. Property-level derived dependencies over ordinary object state. **Completed in `0.8.40`:** direct property paths and top-level immutable primitive locals over object state reuse tagged DerivedIR, subscribe to the source signal, and compare selected values with `Object.is`; whole-object and dynamic dependencies remain rejected.
+2. Multi-boundary component/prop/callback/ref/context dataflow. **Next.**
 3. Package-neutral shared state/actions and migration of current Zustand internals.
 4. Browser-only package imports in owned effect/resource modules.
 5. ResourceIR from at least two independent WebSocket/SSE/SDK fixtures with the same semantics.
@@ -480,4 +480,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 12 are complete. The next migration-backed investigation is **property-level derived dependencies over ordinary object state**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 12 and the `0.8.40` P1 property-dependency slice are complete. The next migration-backed investigation is **multi-boundary component/prop/callback/ref/context dataflow**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.

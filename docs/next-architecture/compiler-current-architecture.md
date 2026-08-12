@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.39` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.40` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -25,7 +25,7 @@ This maps the current `0.8.39` architecture, built on the completed `0.8.23` Goa
 | Source compilation | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `compileSource()` | Runs TypeScript with the Kudzu transformer, rejects surviving React/Router references, and returns a JSON-safe project-relative build module, component analysis, ModuleIR, optional handler module, and imported assets without filesystem writes. |
 | Handler/evaluator lowering | [`framework/compiler/handler-lowering.mjs`](../../framework/compiler/handler-lowering.mjs) | Completes source-local callback/binding/list AST rewriting and diagnostics before the JSON-safe IR boundary. |
 | Handler module codegen | [`framework/compiler/handler-codegen.mjs`](../../framework/compiler/handler-codegen.mjs) | Renders finalized ordered imports and concatenates generated module-export source without TypeScript AST or semantic discovery. |
-| Effect analysis | [`framework/compiler/effect-analysis.mjs`](../../framework/compiler/effect-analysis.mjs) | Classifies ordered signal, derived, and keyed-item dependencies and validates cleanup-owned browser resources before EffectIR registration. |
+| Effect analysis | [`framework/compiler/effect-analysis.mjs`](../../framework/compiler/effect-analysis.mjs) | Classifies ordered signal, ordinary object-property DerivedIR, and keyed-item dependencies and validates cleanup-owned browser resources before EffectIR registration. Object sources keep one signal subscription while the existing tagged evaluator and `Object.is` compare the selected primitive value. |
 | Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Returns functional Worker rewrite results and JSON-safe EffectIR edges, validates relative graphs, emits content-hashed ESM, and resolves placeholders only for rendered effects. |
 | Shared path conversion | [`framework/compiler/path-helpers.mjs`](../../framework/compiler/path-helpers.mjs) | Converts project-relative module, browser, asset, and base paths for build and development serving. |
 | Build-time JSX execution | [`framework/core.mjs`](../../framework/core.mjs), `renderPage()` | Executes compiled pages/layouts, allocates deterministic route/layout ownership IDs, emits complete HTML, and returns RouteIR v1 plus capability facts and exact retained handler references. |

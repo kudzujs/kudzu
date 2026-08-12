@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.39 - Fail-closed route contracts.** RouteIR, RouteBuildRecord, and CapabilityIR now reject invalid state, command, effect, binding, condition, list, ownership, and capability references before browser code generation. Read the [release notes](./RELEASES.md#0839---fail-closed-route-contracts), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.39), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.40 - Property-level effect dependencies.** Effects can now depend on direct property paths and immutable primitive locals over ordinary object state while reusing existing DerivedIR and `Object.is` comparison. Read the [release notes](./RELEASES.md#0840---property-level-effect-dependencies), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.40), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
