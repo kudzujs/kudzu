@@ -2,7 +2,11 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
-## Current 0.8.42 Release Snapshot
+## Current 0.8.43 Release Snapshot
+
+Kudzu 0.8.43 extends compiler-only callback/ref specialization from two to three direct component boundaries. The maintained browser fixture retains the same parent state operations, child state/effect/ref ownership, conditional cleanup, and static zero-JavaScript sibling while the added forwarding component is absent from emitted JavaScript. No browser runtime module or public API changed, and no new performance ranking is claimed.
+
+## Maintained 0.8.42 Optimization Snapshot
 
 Kudzu 0.8.42 retains the tracked 0.8.41 runtime and six-route commerce matrices below and adds two focused external-fixture optimizations. Those focused samples compare Kudzu before and after the patch; they do not establish a current cross-framework ranking.
 

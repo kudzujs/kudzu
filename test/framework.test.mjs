@@ -91,7 +91,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.42/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.43/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -108,12 +108,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.42"/)
-  assert.match(release, /Kudzu 0\.8\.42.*Emit repeated work once.*Keep the faster path/s)
-  assert.match(release, /MEASURE · SHARE · KEEP NATIVE.*MEASURED OUTPUT.*npm install @kudzujs\/core@\^0\.8\.42/s)
-  assert.match(release, /<title>Kudzu 0\.8\.42 - Large-route artifact sharing<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.42"/)
-  assert.match(release, /Emit one route entry.*Keep catalogs native/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.43"/)
+  assert.match(release, /Kudzu 0\.8\.43.*Cross a third boundary.*Keep ownership direct/s)
+  assert.match(release, /FORWARD · VALIDATE · ERASE.*CALLBACK OWNERSHIP.*npm install @kudzujs\/core@\^0\.8\.43/s)
+  assert.match(release, /<title>Kudzu 0\.8\.43 - Three-boundary callback ownership<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.43"/)
+  assert.match(release, /Keep the parent signal.*Stop at four/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1757,7 +1757,7 @@ test("rejects media query stores without matching cleanup", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Media query subscriptions must add and remove one matching change listener/)
 })
 
-test("owns setter callbacks and object refs across two component boundaries", async t => {
+test("owns setter callbacks and object refs across three component boundaries", async t => {
   const fixture = new URL("./fixtures/callback-ref-ownership", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/callback-ref-ownership/.kudzu", import.meta.url), { recursive: true, force: true })
@@ -1775,7 +1775,7 @@ test("owns setter callbacks and object refs across two component boundaries", as
   assert.equal(html.match(/role="tooltip"/g)?.length, 2)
   assert.doesNotMatch(staticHtml, /<script/)
   const emitted = (await Promise.all((await readdir(new URL("./fixtures/callback-ref-ownership/dist/", import.meta.url), { recursive: true })).filter(file => file.endsWith(".js")).map(file => readFile(new URL(file, new URL("./fixtures/callback-ref-ownership/dist/", import.meta.url)), "utf8")))).join("\n")
-  assert.doesNotMatch(emitted, /function (?:ImportedControls|ImportedButton|ImportedSearchField|ImportedSearch)\b|["']react["']/)
+  assert.doesNotMatch(emitted, /function (?:ImportedControls|ImportedControlRow|ImportedButton|ImportedSearchField|ImportedSearch)\b|["']react["']/)
   const signalNames = slots => slots.map(slot => sourceResult.moduleIR.signals[slot].debugName)
   const specializationProp = (file, prop) => sourceResult.componentAnalysis.specializations.find(entry => entry.source?.file === file).props.find(entry => entry.name === prop)
   assert.deepEqual(signalNames(specializationProp("src/ImportedControls.tsx", "onPress").signals), ["count"])
@@ -1812,11 +1812,11 @@ test("rejects hookful nested setter children on dynamic paths", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/Adapter\.tsx:\d+:\d+ Hookful nested setter-callback components require an unconditional or statically truthy render path/)
 })
 
-test("rejects setter callbacks across a third component boundary", () => {
+test("rejects setter callbacks across a fourth component boundary", () => {
   const fixture = new URL("./fixtures/setter-third-boundary-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Setter callbacks cannot cross more than two component boundaries/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Setter callbacks cannot cross more than three component boundaries/)
 })
 
 test("rejects forwardRef without direct intrinsic ref forwarding", () => {

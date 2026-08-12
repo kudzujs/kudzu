@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.43 - Three-boundary callback ownership
+
+Kudzu 0.8.43 extends ordinary React-shaped callback and ref composition through one more proven direct forwarding component without adding a callback registry, browser component tree, or runtime module.
+
+### Changed in 0.8.43
+
+- A direct setter or inline/simple `const` callback may cross a child component and two additional direct forwarding components before one intrinsic handler invokes it.
+- Each forwarding component must destructure the callback and pass it directly exactly once as an `on*` JSX prop.
+- Callback substitution now occurs after recursive component expansion, so each authored forwarding boundary is validated before the original parent callback is specialized into the leaf handler.
+- Parent SignalIR, child state, effects, deterministic IDs, and parent/child object refs retain their existing ownership through the deeper tree.
+- A fourth callback boundary, aliases, spreads, intermediate adapters, repeated callback uses, and dynamic hook paths remain fail-closed.
+
+### Output and performance
+
+- The forwarding components are specialized away and do not appear as retained browser functions.
+- Static siblings remain complete zero-JavaScript documents.
+- No browser runtime source or public API changed. This release makes no new build or cross-framework performance claim.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 208 tests and 157 generated pages.
+- Chrome coverage proves parent callback updates, leaf local state/effects/IDs, mounted refs, conditional cleanup, null refs after removal, fresh remount state, and prop synchronization across three boundaries.
+- Compiler-result checks retain the original parent signal through imported specialization and prove every forwarding component is erased from emitted JavaScript.
+- A dedicated four-boundary fixture fails at the authored source location.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.43
+```
+
 ## 0.8.42 - Large-route artifact sharing
 
 Kudzu 0.8.42 reduces generated filesystem work for large static route sets and accelerates one proven hidden query form carry shape without adding a general runtime or changing the native-navigation default.

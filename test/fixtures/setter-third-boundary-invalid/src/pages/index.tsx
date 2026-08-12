@@ -4,8 +4,12 @@ function Leaf({ onChange }: { onChange: (value: string) => void }) {
   return <input onInput={event => onChange(event.currentTarget.value)} />
 }
 
-function Middle({ onChange }: { onChange: (value: string) => void }) {
+function Inner({ onChange }: { onChange: (value: string) => void }) {
   return <Leaf onChange={onChange} />
+}
+
+function Middle({ onChange }: { onChange: (value: string) => void }) {
+  return <Inner onChange={onChange} />
 }
 
 function Outer({ onChange }: { onChange: (value: string) => void }) {

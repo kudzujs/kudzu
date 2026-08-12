@@ -1027,7 +1027,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (references.length !== 1) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be used exactly once in the component`)
       }
     }
-    const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters, parentStateOwners, callbackDepth = 1) => {
+    const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters, parentStateOwners, callbackDepth = 2) => {
       root = foldSetterStaticConditions(root)
       const replacements = new WeakMap()
       let count = 0
@@ -1066,24 +1066,24 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const callbackProps = jsxSetterCallbackProps(node, setters, functionsForNode(node), reducersForNode(node, reducersByFunction))
           const callbackSubstitutions = new Map()
           if (callbackProps.length) {
-            if (!callbackDepth) fail(node, "Setter callbacks cannot cross more than two component boundaries")
+            if (!callbackDepth) fail(node, "Setter callbacks cannot cross more than three component boundaries")
             const attributes = ts.isJsxElement(node) ? node.openingElement.attributes : node.attributes
             for (const prop of callbackProps) {
               const attribute = attributes.properties.find(entry => ts.isJsxAttribute(entry) && entry.name.text === prop)
               const value = attribute?.initializer && ts.isJsxExpression(attribute.initializer) ? unwrapExpression(attribute.initializer.expression) : undefined
-              if (!value || !ts.isIdentifier(value)) fail(attribute ?? node, "A second-boundary setter callback must be forwarded directly as one JSX event prop")
+              if (!value || !ts.isIdentifier(value)) fail(attribute ?? node, "A nested setter callback must be forwarded directly as one JSX event prop")
               const callback = functionsForNode(value).get(value.text)
               if (callback) callbackSubstitutions.set(value.text, callback)
             }
             validateSetterCallbackProps(node, component, callbackProps)
           }
           const nested = specialize(node, component, "Nested setter-callback", true, true, new Set(setters.values()), { setters, stateOwners })
+          if (dynamic && (nested.hookDeclarations.length || nested.effects.length)) fail(node, "Hookful nested setter-callback components require an unconditional or statically truthy render path")
+          nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters, stateOwners, callbackDepth - Boolean(callbackProps.length))
           if (callbackSubstitutions.size) {
             nested.root = substituteClone(nested.root, callbackSubstitutions, factory, context)
             for (const effect of nested.effects) effect.call = substituteClone(effect.call, callbackSubstitutions, factory, context)
           }
-          if (dynamic && (nested.hookDeclarations.length || nested.effects.length)) fail(node, "Hookful nested setter-callback components require an unconditional or statically truthy render path")
-          nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters, stateOwners, callbackDepth - Boolean(callbackProps.length))
           if (imported) synthesizeTree(nested.root = mergeSpecializedImports(nested.root, component.getSourceFile(), node, nested.effects))
           aggregate.calculations.push(...nested.calculations)
           aggregate.effects.push(...nested.effects)

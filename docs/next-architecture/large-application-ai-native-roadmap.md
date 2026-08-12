@@ -378,7 +378,7 @@ function increment(value) { setCount(value + 1) }; increment(count)
 After the relevant P0 foundations, investigate capabilities in this order:
 
 1. Property-level derived dependencies over ordinary object state. **Completed in `0.8.40`:** direct property paths and top-level immutable primitive locals over object state reuse tagged DerivedIR, subscribe to the source signal, and compare selected values with `Object.is`; whole-object and dynamic dependencies remain rejected.
-2. Multi-boundary component/prop/callback/ref/context dataflow. **In progress after `0.8.42`:** one additional direct setter-callback/ref forwarding component preserves the parent SignalIR and final intrinsic ownership; `0.8.42` separately completed measured route-entry sharing and hidden query carry without broadening this dataflow scope. Broader prop, callback, ref, and Context graphs remain migration-led work.
+2. Multi-boundary component/prop/callback/ref/context dataflow. **Three-boundary callback/ref ownership completed in `0.8.43`:** two additional direct forwarding components preserve the parent SignalIR and final intrinsic ownership. Each forwarding component must destructure and forward the callback directly once; a fourth boundary remains fail-closed. Broader prop, callback, ref, and Context graphs remain migration-led work.
 3. Package-neutral shared state/actions and migration of current Zustand internals.
 4. Browser-only package imports in owned effect/resource modules.
 5. ResourceIR from at least two independent WebSocket/SSE/SDK fixtures with the same semantics.
@@ -480,4 +480,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 12, the `0.8.40` property-dependency slice, the `0.8.41` direct multi-boundary callback/ref slice, and the `0.8.42` measured route-output optimization are complete. Continue **multi-boundary component/prop/callback/ref/context dataflow** from the next real migration blocker. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 12, the `0.8.40` property-dependency slice, the `0.8.41` and `0.8.43` direct multi-boundary callback/ref slices, and the `0.8.42` measured route-output optimization are complete. Continue broader **component/prop/callback/ref/context dataflow** only from the next real migration blocker. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
