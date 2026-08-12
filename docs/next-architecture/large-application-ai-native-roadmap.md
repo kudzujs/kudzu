@@ -139,6 +139,7 @@ This is an incremental evolution of the current repository:
 - [x] P0.8 Stable ModuleSymbol and SiteId is complete in `0.8.35`. ProjectSession records source-local declaration, import, and re-export sites and resolves stable ModuleSymbol records through default/named exports, aliases, barrel chains, `export *`, ambiguity, and cycles. Cross-module compiler consumers locate resolved declarations by SiteId in their private normalized clones, while component calls, hooks, keyed blocks, effects, and ownership records expose deterministic source-local SiteIds. Repeated sessions and compilations preserve IDs, and symbol-only barrel traversal avoids cloning intermediate modules without changing browser artifacts or source syntax.
 - [x] P0.9 Semantic State Operations is complete in `0.8.36`. Direct setters, one immutable state-value alias, one synchronous zero-argument arrow helper, and one synchronous one-parameter function helper lower to identical existing command HandlerIR. Binding identity proves state/setter/helper/parameter ownership; recursion, escape, mutation, and dynamic helper dispatch fail at authored source locations. Existing direct command specialization remains first, unrelated safe handlers retain native ESM, and no command ABI, runtime, JavaScript VM, or general expression IR is added.
 - [x] P0.10 ModuleIR Reference Unification is complete in `0.8.37`. ModuleIR and ComponentAnalysis v2 assign deterministic slots to symbols, signals, handlers, bindings, derived values, effects, keyed blocks, imports, owners, specializations, states, refs, and IDs. State, capture, import, effect, collection, parent/child, specialization, and row edges use structural slots or ModuleSymbol records while readable names remain codegen/debug metadata. A fail-closed pre-codegen validator rejects malformed slots, unsupported versions, duplicate exports, broken reciprocity, and ownership cycles; focused JSON round-trip checks and all 198 tests pass without changing browser runtime behavior.
+- [x] P0.11 RouteBuildRecord and Artifact Graph is complete in `0.8.38`. Each rendered route records RouteIR, capability facts, route-entry paths, styles, and exact handler/effect references. Build orchestration derives Handler ESM, Worker, package-client, and chunk closure from those edges; serialized HTML/plan `includes()` searches, formatted effect keys, and parallel route-fact/entry arrays are removed. Focused malformed-reference and JSON round-trip checks plus the standard suite preserve the exact 173-file deploy digest and bytes.
 
 ### P0: Semantic Correctness And Compiler Foundation
 
@@ -361,6 +362,8 @@ function increment(value) { setCount(value + 1) }; increment(count)
 
 **Done condition:** handler, effect, Worker, CSS, package, and chunk reachability derives from explicit route edges; serialized `includes()` searches and parallel route-fact maps are removed.
 
+**Completed in `0.8.38`:** `renderPage()` retains exact handler references only when final event, effect, binding, conditional, or keyed-list descriptors are emitted. RouteBuildRecord validates those references with RouteIR, capability facts, route-entry paths, and styles before `build.mjs` projects runtime entries and artifact closure. Handler modules resolve by exact URL, Worker references resolve by structural module/handler pairs, and package-client/chunk roots derive from retained modules. The clean 152-page baseline and candidate builds produce byte-identical `kudzu-plan.json`, 173 deploy files, raw/gzip bytes, and deploy digest with no material build-time regression.
+
 ### PR 12: Deep RouteIR And CapabilityIR Validation
 
 **Objective:** fail before codegen for invalid concrete route references and capability projections.
@@ -474,4 +477,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 10 are complete. The next PR is **PR 11: RouteBuildRecord And Artifact Graph**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 11 are complete. The next PR is **PR 12: Deep RouteIR And CapabilityIR Validation**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.

@@ -185,6 +185,6 @@ export function renderPage<Props = Record<string, never>>(
   hasLists: boolean
   hasListStyles: boolean
   hasStateSeed: boolean
-  handlerModules: string[]
+  handlerReferences: Array<{ module: string; handler: string }>
   plan: RouteIR
 }>

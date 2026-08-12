@@ -207,8 +207,10 @@ export function useEffect(callback, dependencies, module, handler, states, scope
     owner = nextRenderId("e")
     owners.push(owner)
   }
-  if (!renderContext.listDepth || list) renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(dependencyExpressions.length ? { dependencyExpressions, dependencyStates: dependencyStateIds } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
-  renderContext.handlerModules.add(module)
+  if (!renderContext.listDepth || list) {
+    renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(dependencyExpressions.length ? { dependencyExpressions, dependencyStates: dependencyStateIds } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
+    retainHandlerReference(module, handler)
+  }
   renderContext.hasBehaviors = true
   renderContext.hasEffects = true
 }
@@ -254,7 +256,6 @@ export function behavior(commands) {
 }
 
 export function nativeBehavior(module, handler, states, scope) {
-  renderContext?.handlerModules.add(module)
   return {
     [nativeBehaviorMarker]: true,
     module,
@@ -325,7 +326,6 @@ export function listField(read, field) {
 }
 
 export function listExpression(read, module, handler, states = []) {
-  renderContext?.handlerModules.add(module)
   const stateMap = Object.fromEntries(states.map(([name, state]) => {
     if (!state?.[signalMarker] || !validEffectDependency(state.value)) throw new Error(`Derived keyed list item expression state ${JSON.stringify(name)} must be primitive Kudzu state`)
     return [name, state.id]
@@ -346,7 +346,6 @@ export function listIndex() {
 }
 
 export function listConditional(kind, read, truthy, falsy, module, handler) {
-  renderContext?.handlerModules.add(module)
   return { [listConditionalMarker]: true, kind, value: renderContext?.listTemplate ? undefined : read(), truthy, falsy, module, handler }
 }
 
@@ -380,7 +379,6 @@ function assertListValue(value, seen) {
 }
 
 function reactiveDescriptor(module, handler, states, scope) {
-  renderContext?.handlerModules.add(module)
   const scopeStates = {}
   const serializedScope = {}
   const scopeBindings = {}
@@ -400,6 +398,16 @@ function reactiveDescriptor(module, handler, states, scope) {
     scopeStates,
     scopeBindings
   }
+}
+
+function retainHandlerReference(module, handler) {
+  const reference = { module, handler }
+  renderContext?.handlerReferences.set(JSON.stringify([module, handler]), reference)
+}
+
+function retainDescriptorHandlers(descriptor) {
+  if (descriptor?.module && descriptor.handler) retainHandlerReference(descriptor.module, descriptor.handler)
+  for (const nested of Object.values(descriptor?.scopeBindings ?? {})) retainDescriptorHandlers(nested)
 }
 
 export function bindingValue(value) {
@@ -449,7 +457,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerModules: new Set(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -525,7 +533,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
       hasLists: renderContext.hasLists,
       hasListStyles: renderContext.hasListStyles,
       hasStateSeed: initialState.length > 0,
-      handlerModules: [...renderContext.handlerModules],
+      handlerReferences: [...renderContext.handlerReferences.values()],
       plan: {
         version: 1,
         states: Object.entries(renderContext.states).map(([id, state], slot) => ({ slot, id, ...state })),
@@ -648,6 +656,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     const metadata = { id, kind: node.kind, initial: node.value, ...descriptor, ...(namespace === "svg" ? { svg: true } : {}), ...(owned ? { owned } : {}), ...(mount ? { mount: true } : {}) }
     for (const stateId of stateIds) renderContext.conditionStates.add(stateId)
     renderContext.conditions.push(metadata)
+    retainDescriptorHandlers(metadata)
     renderContext.hasBehaviors = true
     renderContext.hasBindings = true
     const encoded = escapeJsonAttribute(metadata)
@@ -667,7 +676,9 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   }
   if (node?.[listExpressionMarker]) {
     const descriptor = { module: node.module, handler: node.handler, ...(Object.keys(node.states).length ? { states: node.states } : {}) }
-    const marker = renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch ? ` data-k-list-expression='${escapeJsonAttribute(descriptor)}'` : ""
+    const retained = renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch
+    if (retained) retainDescriptorHandlers(descriptor)
+    const marker = retained ? ` data-k-list-expression='${escapeJsonAttribute(descriptor)}'` : ""
     return `<template${marker}></template>${escapeHtml(node.value ?? "")}<template data-k-list-expression-end></template>`
   }
   if (node?.[bindingMarker]) {
@@ -675,6 +686,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
     const reactive = reactiveStateIds(descriptor).size > 0
     if (!reactive) return renderNode(node.value, namespace, selectValue)
     renderContext.bindings.push({ target: "text", ...descriptor })
+    retainDescriptorHandlers(descriptor)
     if (renderContext.conditionDepth || renderContext.listDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
     renderContext.hasBehaviors = true
     renderContext.hasBindings = true
@@ -685,6 +697,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
   if (node?.[listConditionalMarker]) {
     if (namespace === "svg") throw new Error("Keyed row conditions are not supported inside svg")
     const descriptor = { kind: node.kind, module: node.module, handler: node.handler }
+    retainDescriptorHandlers(descriptor)
     const owner = renderContext.listRoot ?? renderContext.listRowRoot
     if (owner) owner.conditions = true
     const previousBranch = renderContext.listConditionalBranch
@@ -800,6 +813,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
         const native = template
         attributes += ` data-k-native-${event}='${escapeJsonAttribute(native)}'`
         renderContext.events.push({ event, native })
+        retainDescriptorHandlers(native)
         if (renderContext.listDepth && Object.values(template.scope).some(entry => entry?.type === "list-item" || entry?.type === "list-index")) listEvents.push([event, template])
         renderContext.hasNativeBehaviors = true
       } else {
@@ -817,9 +831,10 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
       if (name === "style") renderContext.hasListStyles = true
       continue
     }
-    if (value?.[listExpressionMarker]) {
+      if (value?.[listExpressionMarker]) {
       attributes += renderAttribute(name, value.value)
-      listExpressionAttributes.push([name, value.module, value.handler, ...(Object.keys(value.states).length ? [value.states] : [])])
+        listExpressionAttributes.push([name, value.module, value.handler, ...(Object.keys(value.states).length ? [value.states] : [])])
+        if (renderContext.listTemplate || renderContext.listInitialMarkers || renderContext.listConditionalBranch) retainHandlerReference(value.module, value.handler)
       if (name === "style") renderContext.hasListStyles = true
       continue
     }
@@ -837,6 +852,7 @@ async function renderNode(node, namespace, selectValue = noSelectValue) {
       if (propertyTarget) attributes += ` data-k-bind-${name}='${escapeJsonAttribute(descriptor)}'`
       else attributeBindings.push({ target: name, ...descriptor })
       renderContext.bindings.push({ target: name, ...descriptor })
+      retainDescriptorHandlers(descriptor)
       if (renderContext.conditionDepth || renderContext.listDepth) for (const stateId of reactiveStateIds(descriptor)) renderContext.conditionStates.add(stateId)
       renderContext.hasBehaviors = true
       renderContext.hasBindings = true
@@ -944,6 +960,7 @@ async function renderList(node, namespace, selectValue) {
     }
     if (!node.ownerField || ownerTemplate && !rowList.planned) {
       renderContext.lists.push(descriptor)
+      retainDescriptorHandlers(descriptor.source)
       if (rowList) rowList.planned = true
     }
     renderContext.hasBehaviors = true

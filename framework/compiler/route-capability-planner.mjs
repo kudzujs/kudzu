@@ -4,7 +4,9 @@ export function usesRouteDependencyRuntime({ plan, navigable, hasBindings, hasLi
   return !navigable && hasDependencies && !plan.effects.some(effect => effect.owner) && !hasBindings && !hasLists && !plan.events.some(event => event.native)
 }
 
-export function planRouteCapabilities(plans, { routes = new Map(), navigationRouteCount = 0 } = {}) {
+export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}) {
+  for (const record of records) assertRouteBuildRecord(record)
+  const plans = records.map(record => record.plan)
   for (const plan of plans) assertRouteIR(plan)
   const commandEvents = new Set()
   const nativeEvents = new Set()
@@ -39,7 +41,7 @@ export function planRouteCapabilities(plans, { routes = new Map(), navigationRou
 
   for (let index = 0; index < plans.length; index++) {
     const plan = plans[index]
-    const route = routes.get(plan.route)
+    const route = records[index].capabilities
     for (const event of plan.events) {
       if (event.commands) commandEvents.add(event.event)
       if (event.native) nativeEvents.add(event.event)
@@ -77,7 +79,7 @@ export function planRouteCapabilities(plans, { routes = new Map(), navigationRou
     }
   }
 
-  const routeEntries = [...routes.values()]
+  const routeEntries = records.map(record => record.capabilities)
   const routeCounts = {
     behaviors: routeEntries.filter(route => route.hasBehaviors).length,
     regularBehaviors: routeEntries.filter(route => route.hasBehaviors && !route.usesDependencyRuntime).length,
@@ -151,3 +153,4 @@ function hasNestedCaptureState(value, insideCapture = false) {
   if (value.type === "object") return value.value.some(([, entry]) => hasNestedCaptureState(entry, true))
   return (Array.isArray(value) ? value : Object.values(value)).some(entry => hasNestedCaptureState(entry, false))
 }
+import { assertRouteBuildRecord } from "./route-build-record.mjs"

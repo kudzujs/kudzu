@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.37 - Structural ModuleIR references.** Compiler ownership and dependency edges now use validated source-local slots and stable symbols instead of formatted names. Read the [release notes](./RELEASES.md#0837---structural-moduleir-references), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.37), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.38 - Structural route artifacts.** Handler, effect, Worker, CSS, package-client, and chunk retention now follows validated per-route artifact edges instead of serialized output searches. Read the [release notes](./RELEASES.md#0838---structural-route-artifacts), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.38), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

@@ -2,6 +2,31 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## P0.11 Structural Route Artifact Graph
+
+Measured UTC 2026-08-11 on the Intel Core i5-9500 Linux x64 host with 6 physical cores, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.37` at `8b4e8850c40f2856216e43f23ad02ada8434eb37`. The focused implementation files had SHA-256 `1a93b7fff5d80f271c588f89486a47dc262427195a6a768fe392be949eb99b5e`, produced by:
+
+```bash
+sha256sum framework/build.mjs framework/compiler/route-build-record.mjs framework/compiler/route-capability-planner.mjs framework/core.mjs framework/core.d.ts test/compiler-passes.test.mjs | sha256sum
+```
+
+The repository's 152-page build used one warm-up and seven alternating clean fresh-process samples. Every sample produced the same 173-file deploy graph, 3,835,970 raw bytes, 1,979,875 aggregate gzip bytes, and SHA-256 `c1f95f25d43589b61d1abe7ecf256e5b5e9dddd5647fbcf6368c08cc5ae3ee20`. Baseline and candidate `kudzu-plan.json` files are byte-identical.
+
+| Target | Clean build median | Range | Peak RSS median | Deploy bytes |
+|---|---:|---:|---:|---:|
+| `v0.8.37` | 1,820.186 ms | 1,769.592-1,910.670 ms | 351.6 MiB | 3,835,970 B |
+| P0.11 candidate | 1,804.568 ms | 1,756.849-1,843.941 ms | 351.4 MiB | 3,835,970 B |
+
+The candidate's unpaired median is 0.86% lower. Round-paired candidate-minus-baseline differences had a -20.933 ms median, with the candidate faster in five of seven pairs and the baseline faster in two. Timing ranges overlap, so no material improvement is claimed; peak-RSS medians differ by 0.3 MiB.
+
+```text
+v0.8.37: [1786.548,1834.792,1910.670,1853.493,1820.186,1769.592,1778.201]
+candidate: [1756.849,1804.568,1843.941,1832.560,1811.390,1798.756,1782.132]
+paired candidate-baseline: [-29.698,-30.225,-66.729,-20.933,-8.796,29.164,3.930]
+```
+
+RouteBuildRecord now owns each rendered route's RouteIR, capabilities, entry paths, styles, and exact handler/effect edges. Handler, Worker, package-client, and chunk closure starts from those structural edges instead of serialized HTML/plan searches or formatted effect keys. This changes build-scratch orchestration only; browser runtime source, RouteIR v1, CapabilityIR v1, emitted files, and deploy bytes remain unchanged.
+
 ## P0.10 Structural ModuleIR References
 
 Measured UTC 2026-08-11 on an Apple M4 macOS arm64 host with 10 logical CPUs, 16 GiB RAM, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.36` at `268cd9023c9f47a912601f298963a9ffe9c00da2`. The compiler and focused-check patch had SHA-256 `f684c79027b290bc8c7d549667ef0d7f21a9d0057b5d6291fcce18b91947eff2`, produced by:

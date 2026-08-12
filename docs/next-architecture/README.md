@@ -11,7 +11,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 
-The active post-`0.8.37` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.10 ModuleIR reference unification is complete; P0.11 explicit route artifact graph is next. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
+The active post-`0.8.38` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.11 explicit route artifact graph is complete; P0.12 deep RouteIR and CapabilityIR validation is next. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
 
 ## Required Invariants
 

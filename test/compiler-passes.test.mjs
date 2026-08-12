@@ -18,6 +18,7 @@ import { createCommandSpecializer } from "../framework/compiler/optimize/command
 import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
+import { createRouteBuildRecord, planRouteArtifacts } from "../framework/compiler/route-build-record.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime } from "../framework/compiler/runtime-codegen.mjs"
 import { compileSource, createSourceCompiler, reachableSourceFiles } from "../framework/compiler/source-compiler.mjs"
@@ -805,7 +806,8 @@ test("preserves source diagnostics for mutating collection sort", () => {
 })
 
 test("plans a static route with no browser capabilities", () => {
-  const manifest = planRouteCapabilities([routePlan()], { routes: routeCapabilities([{}]) })
+  const record = routeRecord(routePlan())
+  const manifest = planRouteCapabilities([record])
 
   assert.equal(manifest.version, 1)
   assert.deepEqual(manifest.events, { command: [], native: [], hasNativeHandlers: false })
@@ -816,10 +818,10 @@ test("plans a static route with no browser capabilities", () => {
   assert.deepEqual(manifest.runtime, { shared: false, dependency: false })
   assertJsonData(manifest)
   assert.deepEqual(JSON.parse(JSON.stringify(manifest)), manifest)
-  assert.throws(() => planRouteCapabilities([{ ...routePlan(), version: 2 }]), /Unsupported RouteIR version: 2/)
+  assert.throws(() => planRouteCapabilities([{ ...record, plan: { ...record.plan, version: 2 } }]), /Unsupported RouteIR version: 2/)
   assert.throws(() => usesRouteDependencyRuntime({ plan: { ...routePlan(), version: undefined } }), /Unsupported RouteIR version: undefined/)
-  assert.throws(() => planRouteCapabilities([{ version: 1 }]), /Invalid RouteIR v1 structure/)
-  assert.throws(() => planRouteCapabilities([{ ...routePlan(), events: [{}] }]), /Invalid RouteIR v1 event/)
+  assert.throws(() => planRouteCapabilities([{ ...record, plan: { version: 1, route: "/test", events: [], effects: [] } }]), /Invalid RouteIR v1 structure/)
+  assert.throws(() => planRouteCapabilities([{ ...record, plan: { ...record.plan, events: [{}] } }]), /Invalid RouteIR v1 event/)
   assert.throws(() => generateListRuntime("", { ...manifest, version: 2 }), /Unsupported CapabilityIR version: 2/)
   assert.throws(() => generateListRuntime("", { version: 1 }), /Invalid CapabilityIR v1 structure/)
   assert.throws(() => generateListRuntime("", { ...manifest, effects: {} }), /Invalid CapabilityIR v1 effect, capture, or runtime flags/)
@@ -833,11 +835,52 @@ test("plans a static route with no browser capabilities", () => {
   assert.equal(printParamEntry(undefined, [], [], false, "/out.js", "/assets", "", "kudzu.js", false), 'import { browserState, commitDom } from "./kudzu.js"\n')
 })
 
+test("plans route artifacts from structural handler and effect edges", () => {
+  const live = "/assets/handlers/live.js"
+  const dead = "/assets/handlers/dead.js"
+  const record = createRouteBuildRecord({
+    route: "/test",
+    output: "test",
+    html: `<p>${JSON.stringify(dead)}</p>`,
+    plan: routePlan({ effects: [{ module: live, handler: "effect0", states: {}, scope: {} }] }),
+    handlerReferences: [{ module: live, handler: "effect0" }],
+    styles: ["/assets/style.css"],
+    capabilities: routeCapability({ hasBehaviors: true, hasEffects: true }),
+    entries: { effect: "effects/test.js" }
+  })
+  const modules = [{ path: "handlers/live.js" }, { path: "handlers/dead.js" }]
+  const workers = [
+    { module: live, handler: "effect0", placeholder: "live" },
+    { module: live, handler: "effect1", placeholder: "dead" }
+  ]
+  const artifacts = planRouteArtifacts([record], modules, workers, module => `/assets/${module.path}`)
+
+  assert.deepEqual(artifacts.handlerModules, [modules[0]])
+  assert.deepEqual(artifacts.workerReferences, [workers[0]])
+  assert.deepEqual(artifacts.styles, ["/assets/style.css"])
+  assertJsonData(record)
+  assert.deepEqual(JSON.parse(JSON.stringify(record)), record)
+})
+
+test("rejects malformed route artifact references", () => {
+  const base = {
+    route: "/test",
+    output: "test",
+    html: "",
+    plan: routePlan(),
+    styles: [],
+    capabilities: routeCapability(),
+    entries: {}
+  }
+  assert.throws(() => createRouteBuildRecord({ ...base, version: 2 }), /Unsupported RouteBuildRecord version: 2/)
+  assert.throws(() => createRouteBuildRecord({ ...base, handlerReferences: [{ module: "/handler.js", handler: "run" }, { module: "/handler.js", handler: "run" }] }), /duplicate handler reference/)
+  const dangling = createRouteBuildRecord({ ...base, handlerReferences: [{ module: "/missing.js", handler: "run" }] })
+  assert.throws(() => planRouteArtifacts([dangling], [], [], module => module.path), /Handler module was not compiled: \/missing\.js/)
+})
+
 test("plans command-only runtime specialization and state seeds", () => {
   const plan = routePlan({ events: [{ event: "click", commands: [["add", "count", 1]] }] })
-  const manifest = planRouteCapabilities([plan], {
-    routes: routeCapabilities([{ hasBehaviors: true, hasStateSeed: true, usesDependencyRuntime: false }])
-  })
+  const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasStateSeed: true })])
 
   assert.deepEqual(manifest.events.command, ["click"])
   assert.equal(manifest.events.hasNativeHandlers, false)
@@ -851,9 +894,7 @@ test("plans binding and list runtime specializations", () => {
     conditions: [{ svg: true }],
     lists: [{ id: "l0", state: "s0", key: "id", keys: [], selector: [["filter"]], expressions: true, conditions: true, rowRefs: [{}], static: true, svg: true }]
   })
-  const manifest = planRouteCapabilities([plan], {
-    routes: routeCapabilities([{ hasBindings: true, hasLists: true, hasListStyles: true }])
-  })
+  const manifest = planRouteCapabilities([routeRecord(plan, { hasBindings: true, hasLists: true, hasListStyles: true })])
 
   assert.deepEqual(manifest.bindings, { count: 1, text: true, svgConditions: true })
   assert.equal(manifest.lists.count, 1)
@@ -873,7 +914,7 @@ test("plans native, effect, capture, and dependency runtime capabilities", () =>
   const native = { module: "/handler.js", handler: "handler0", states: {}, scope: { nested: { type: "array", value: [{ type: "state", id: "count" }] }, update: { type: "setter", id: "count" } } }
   const effect = { module: "/handler.js", handler: "effect0", states: {}, scope: { label: "ready" }, dependencyExpressions: [["state", "count"]], itemDependencies: ["id"], owner: "row" }
   const plan = routePlan({ events: [{ event: "submit", native }], effects: [effect] })
-  const manifest = planRouteCapabilities([plan], { routes: routeCapabilities([{ navigable: true }]) })
+  const manifest = planRouteCapabilities([routeRecord(plan, { navigable: true, hasBehaviors: true, hasEffects: true })])
 
   assert.deepEqual(manifest.events.native, ["submit"])
   assert.equal(manifest.events.hasNativeHandlers, true)
@@ -888,6 +929,34 @@ function routePlan(overrides = {}) {
   return { version: 1, route: "/test", states: [], params: [], searchParams: [], searchParamsWritable: false, events: [], effects: [], bindings: [], conditions: [], lists: [], ...overrides }
 }
 
+function routeCapability(overrides = {}) {
+  return { navigable: false, usesDependencyRuntime: false, hasBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false, hasStateSeed: false, hasParams: false, hasEffects: false, ...overrides }
+}
+
+function routeRecord(plan, capabilities = {}) {
+  const references = [
+    ...plan.effects,
+    ...plan.events.map(event => event.native).filter(Boolean),
+    ...plan.bindings,
+    ...plan.conditions,
+    ...plan.lists.map(list => list.source).filter(Boolean)
+  ].filter(reference => reference.module && reference.handler)
+  const unique = [...new Map(references.map(reference => [JSON.stringify([reference.module, reference.handler]), { module: reference.module, handler: reference.handler }])).values()]
+  return createRouteBuildRecord({
+    route: plan.route,
+    output: "test",
+    html: "",
+    plan,
+    handlerReferences: unique,
+    styles: [],
+    capabilities: routeCapability(capabilities),
+    entries: {
+      ...(plan.effects.length ? { effect: "effects/test.js" } : {}),
+      ...(plan.events.some(event => event.native) ? { native: "native/test.js" } : {})
+    }
+  })
+}
+
 function assertJsonData(value) {
   if (typeof value === "number") {
     assert.equal(Number.isFinite(value) && !Object.is(value, -0), true)
@@ -899,8 +968,4 @@ function assertJsonData(value) {
   assert.equal(typeof value.kind === "number" && typeof value.pos === "number" && typeof value.end === "number", false)
   assert.ok(Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   for (const entry of Array.isArray(value) ? value : Object.values(value)) assertJsonData(entry)
-}
-
-function routeCapabilities(entries) {
-  return new Map(entries.map((entry, index) => [index ? `/test-${index}` : "/test", entry]))
 }

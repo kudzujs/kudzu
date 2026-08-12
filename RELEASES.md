@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.38 - Structural route artifacts
+
+Kudzu 0.8.38 completes P0.11 by replacing serialized route-output searches and parallel route facts with one validated RouteBuildRecord artifact graph.
+
+### Changed in 0.8.38
+
+- Each emitted route records its RouteIR, capability facts, route-entry paths, styles, and exact handler/effect references.
+- Final event, effect, binding, conditional, and keyed-list descriptors retain handler references only when they are rendered.
+- Handler modules resolve by exact module URL, and Worker references resolve by structural module/handler pairs instead of formatted keys.
+- CSS output, package-client compilation, and bundle entry/chunk closure derive from retained route edges.
+- CapabilityIR now folds RouteBuildRecord values directly; serialized HTML/plan `includes()` searches and parallel route capability/entry arrays are removed.
+
+### Performance
+
+- Seven alternating clean 152-page builds measured `v0.8.37` and candidate medians of 1,820.186 ms and 1,804.568 ms. The -20.933 ms paired median and overlapping ranges establish no material speedup or regression.
+- Peak RSS medians were 351.6 MiB and 351.4 MiB.
+- Both targets emit the same 173 files, 3,835,970 raw bytes, 1,979,875 aggregate gzip bytes, deploy digest, and byte-identical `kudzu-plan.json`.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 200 tests and 153 generated pages.
+- Focused checks reject unsupported versions, malformed and duplicate references, missing handler modules, inconsistent route entries, and invalid JSON round trips.
+- Existing static, command, binding, keyed, effect, Worker, package-import, navigation, and migration fixtures retain their browser behavior and zero-unused-runtime checks.
+- P0.12 deep RouteIR and CapabilityIR validation is next.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.38
+```
+
 ## 0.8.37 - Structural ModuleIR references
 
 Kudzu 0.8.37 completes P0.10 by replacing mixed state names, export strings, formatted owner keys, and partial slots with one validated structural reference graph.
