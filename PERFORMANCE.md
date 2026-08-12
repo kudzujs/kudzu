@@ -2,6 +2,52 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## Current 0.8.41 Release Snapshot
+
+Measured UTC 2026-08-12 on the Intel Core i5-9500 Linux x64 host, Node 24.14.0, and Chrome 142.0.7444.175. The tracked runtime matrix used one warm-up, seven interleaved clean builds, and seven rotating fresh Chrome profiles. Every correctness, accessibility, identity, effect-cleanup, and browser-error gate passed. Kudzu emits complete initial HTML while React, Vue, and Svelte start from client-rendered shells, so initial delivery and artifact totals are not architecture-equivalent.
+
+| Runtime matrix target | Build median | HTML raw / gzip B | JS raw / gzip B | Total raw / gzip B | Complete initial DOM |
+|---|---:|---:|---:|---:|---:|
+| Kudzu `0.8.41` release tree | 1,475.480 ms | 179,388 / 37,008 | 33,575 / 12,928 | 212,963 / 49,936 | 532.9 ms |
+| React 19.2.8 + Vite 8.1.5 | 856.231 ms | 282 / 219 | 193,685 / 60,043 | 193,967 / 60,262 | 510.6 ms |
+| Vue 3.5.40 + Vite 8.1.5 | 1,053.062 ms | 281 / 221 | 64,023 / 24,772 | 64,304 / 24,993 | 357.6 ms |
+| Svelte 5.56.7 + Vite 8.1.5 | 1,733.637 ms | 281 / 219 | 40,726 / 15,659 | 41,007 / 15,878 | 401.1 ms |
+
+Raw runtime arrays, quartiles, checkout metadata, source hash, and validation results are checked in at `benchmarks/runtime-matrix/results/raw.json`. The maintained 2,000-row keyed run used one warm-up, seven clean builds, and seven fresh Chrome profiles: build 901.4 ms, append 14.7 ms, filter 25.4 ms, restore 126.2 ms, reverse 25.1 ms, and JavaScript 28,450 B raw / 11,036 B gzip. A requested 21-profile keyed run exceeded the 600-second limit and produced no result.
+
+The maintained Worker benchmark recorded a 1,823.2 ms build median, 907 B raw / 477 B gzip Worker graph, and 12,148 B raw / 5,411 B gzip aggregate window graph. The tracked six-route commerce sources used one warm-up and seven rotating clean builds:
+
+| Commerce target | Build median | Files | HTML raw / gzip B | JS raw / gzip B | Total raw / gzip B |
+|---|---:|---:|---:|---:|---:|
+| Kudzu | 867.188 ms | 17 | 17,123 / 5,376 | 18,428 / 8,261 | 37,434 / 14,689 |
+| React 19.2.8 SSR + Vite hydration | 859.125 ms | 10 | 9,304 / 4,265 | 198,261 / 61,464 | 209,270 / 66,741 |
+| Next.js 16.2.11 static export | 7,290.533 ms | 74 | 72,890 / 19,857 | 643,484 / 191,844 | 814,186 / 247,596 |
+| Nuxt 4.5.0 generation | 7,334.287 ms | 26 | 17,557 / 7,850 | 191,758 / 70,925 | 215,851 / 82,067 |
+| SvelteKit 2.70.1 static export | 4,725.279 ms | 19 | 15,832 / 6,511 | 85,095 / 33,477 | 102,659 / 41,047 |
+
+The commerce targets share initial content and behavior contracts but use materially different architectures. The browser suite timed out in Kudzu's existing in-flight rejection-navigation wait before cross-target sampling, so no commerce browser timing is claimed.
+
+## P1 Direct Two-Boundary Callback And Ref Dataflow
+
+Measured UTC 2026-08-12 on the Intel Core i5-9500 Linux x64 host with 6 physical cores, Node 24.14.0, and npm 11.9.0. The baseline was clean tag `v0.8.40` at `c88b94f91b40d76fad58a208f3261de399c6d2b4`. The compiler and migration checks had SHA-256 `f80ec9c532376a90805c6d99b8cbfa162578592c71c5e62f1cb92e16a64a5ba3`.
+
+One warm-up and seven alternating clean fresh-process builds produced byte-identical 176-file deploy graphs, 3,850,245 raw bytes, 1,984,991 aggregate gzip bytes, deploy SHA-256 `d24f9d4608b9ae096fa5e334cf8c6556e51d8588bff02d15e3eacf0c6711db81`, and `kudzu-plan.json` SHA-256 `302d75dac6f58306c139b398a436480cf60cdd5743e6100ab1c728bd255e16be`.
+
+| Target | Clean build median | Range | Peak RSS median |
+|---|---:|---:|---:|
+| `v0.8.40` | 3,565.236 ms | 2,960.844-3,995.094 ms | 364.6 MiB |
+| Two-boundary candidate | 3,470.277 ms | 3,099.259-3,842.591 ms | 362.0 MiB |
+
+The candidate unpaired median is 2.66% lower; round-paired candidate-minus-baseline differences have a +59.834 ms median. Peak RSS is 0.74% lower. Ranges overlap and no material performance change is claimed.
+
+```text
+v0.8.40: [3671.298,3995.094,3776.594,3295.688,2960.844,3565.236,3563.737]
+candidate: [3099.259,3674.641,3842.591,3400.780,3418.781,3470.277,3623.571]
+paired candidate-baseline: [-572.039,-320.453,65.997,105.092,457.937,-94.959,59.834]
+```
+
+The FIRE-derived callback/ref fixture now forwards both a direct setter adapter and a simple state callback through one imported presentation component. Browser checks preserve parent state updates, child-local state/effects/IDs, parent ref resolution, conditional cleanup, fresh remount, and a zero-JavaScript static sibling. ComponentAnalysis retains the same parent SignalIR on each nested specialization. A third callback-carrying boundary remains rejected. No browser runtime, callback registry, component function, route artifact, or deploy byte was added.
+
 ## P1 Property-Level Object-State Effect Dependencies
 
 Measured UTC 2026-08-12 on the Intel Core i5-9500 Linux x64 host with 6 physical cores, Node 24.14.0, npm 11.9.0, and Chrome 142.0.7444.175. The baseline was clean tag `v0.8.39` at `090b42124d596260bdd6a0814c014e5b906dc0eb`. The focused implementation and migration checks had SHA-256 `c097c10e786ff5d09537b52384c1bf3d32cb46998ef62125c23dda3355b62277`, produced by:

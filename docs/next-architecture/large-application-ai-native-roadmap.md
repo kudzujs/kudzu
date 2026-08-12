@@ -378,7 +378,7 @@ function increment(value) { setCount(value + 1) }; increment(count)
 After the relevant P0 foundations, investigate capabilities in this order:
 
 1. Property-level derived dependencies over ordinary object state. **Completed in `0.8.40`:** direct property paths and top-level immutable primitive locals over object state reuse tagged DerivedIR, subscribe to the source signal, and compare selected values with `Object.is`; whole-object and dynamic dependencies remain rejected.
-2. Multi-boundary component/prop/callback/ref/context dataflow. **Next.**
+2. Multi-boundary component/prop/callback/ref/context dataflow. **In progress after `0.8.41`:** one additional direct setter-callback/ref forwarding component preserves the parent SignalIR and final intrinsic ownership; broader prop, callback, ref, and Context graphs remain migration-led work.
 3. Package-neutral shared state/actions and migration of current Zustand internals.
 4. Browser-only package imports in owned effect/resource modules.
 5. ResourceIR from at least two independent WebSocket/SSE/SDK fixtures with the same semantics.
@@ -480,4 +480,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 12 and the `0.8.40` P1 property-dependency slice are complete. The next migration-backed investigation is **multi-boundary component/prop/callback/ref/context dataflow**. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 12, the `0.8.40` property-dependency slice, and the `0.8.41` direct multi-boundary callback/ref slice are complete. Continue **multi-boundary component/prop/callback/ref/context dataflow** from the next real migration blocker. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.

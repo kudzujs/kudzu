@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "@kudzujs/core"
-import { ImportedButton } from "../ImportedButton"
+import { ImportedControls } from "../ImportedControls"
 import { ImportedAgeInput } from "../ImportedAgeInput"
-import { ImportedSearch } from "../ImportedSearch"
+import { ImportedSearchField } from "../ImportedSearchField"
 
 type ButtonRef = { readonly current: HTMLButtonElement | null }
 
@@ -36,7 +36,7 @@ export default function Page() {
     <p id="count">{count}</p>
     <p id="query">{query}</p>
     <p id="age">{age}</p>
-    <ImportedSearch onValueChange={setQuery} />
+    <ImportedSearchField onValueChange={setQuery} />
     <button id="toggle" onClick={() => setShown(!shown)}>Toggle</button>
     <button id="record-refs" onClick={recordRefs}>Record refs</button>
     <button id="set-age" onClick={() => setAge(42)}>Set age</button>
@@ -44,7 +44,7 @@ export default function Page() {
       <ImportedAgeInput value={age} onChange={setAge} tooltip="Current age help" />
       <ImportedAgeInput id="age-input-plain" value={age} onChange={setAge} />
       <LocalButton buttonRef={localRef} onPress={() => setCount(count + 1)} />
-      <ImportedButton buttonRef={importedRef} onPress={increment} />
+      <ImportedControls buttonRef={importedRef} onPress={increment} />
     </section>}
   </main>
 }

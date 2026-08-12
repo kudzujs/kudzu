@@ -1013,7 +1013,21 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       folded.parent = root.parent
       return folded
     }
-    const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters, parentStateOwners) => {
+    const validateSetterCallbackProps = (call, component, callbackProps) => {
+      if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, "Setter-callback components must use one destructured props parameter")
+      for (const prop of callbackProps) {
+        const element = component.parameters[0].name.elements.find(entry => !entry.dotDotDotToken && (entry.propertyName ?? entry.name).getText() === prop)
+        if (!element || !ts.isIdentifier(element.name)) fail(call, `Setter-callback component must destructure callback prop ${JSON.stringify(prop)}`)
+        const references = []
+        const collectReferences = node => {
+          if (ts.isIdentifier(node) && node.text === element.name.text && isReferenceIdentifier(node)) references.push(node)
+          ts.forEachChild(node, collectReferences)
+        }
+        collectReferences(component.body)
+        if (references.length !== 1) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be used exactly once in the component`)
+      }
+    }
+    const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters, parentStateOwners, callbackDepth = 1) => {
       root = foldSetterStaticConditions(root)
       const replacements = new WeakMap()
       let count = 0
@@ -1049,10 +1063,27 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           for (const state of aggregate.ordinaryStates) setters.set(state.setter, state.state)
           const stateOwners = new Map(parentStateOwners)
           for (const state of aggregate.ordinaryStates) stateOwners.set(state.state, state.analysisReference)
-          if (jsxSetterCallbackProps(node, setters, functionsForNode(node), reducersForNode(node, reducersByFunction)).length) fail(node, "Setter callbacks cannot cross a second component boundary")
+          const callbackProps = jsxSetterCallbackProps(node, setters, functionsForNode(node), reducersForNode(node, reducersByFunction))
+          const callbackSubstitutions = new Map()
+          if (callbackProps.length) {
+            if (!callbackDepth) fail(node, "Setter callbacks cannot cross more than two component boundaries")
+            const attributes = ts.isJsxElement(node) ? node.openingElement.attributes : node.attributes
+            for (const prop of callbackProps) {
+              const attribute = attributes.properties.find(entry => ts.isJsxAttribute(entry) && entry.name.text === prop)
+              const value = attribute?.initializer && ts.isJsxExpression(attribute.initializer) ? unwrapExpression(attribute.initializer.expression) : undefined
+              if (!value || !ts.isIdentifier(value)) fail(attribute ?? node, "A second-boundary setter callback must be forwarded directly as one JSX event prop")
+              const callback = functionsForNode(value).get(value.text)
+              if (callback) callbackSubstitutions.set(value.text, callback)
+            }
+            validateSetterCallbackProps(node, component, callbackProps)
+          }
           const nested = specialize(node, component, "Nested setter-callback", true, true, new Set(setters.values()), { setters, stateOwners })
+          if (callbackSubstitutions.size) {
+            nested.root = substituteClone(nested.root, callbackSubstitutions, factory, context)
+            for (const effect of nested.effects) effect.call = substituteClone(effect.call, callbackSubstitutions, factory, context)
+          }
           if (dynamic && (nested.hookDeclarations.length || nested.effects.length)) fail(node, "Hookful nested setter-callback components require an unconditional or statically truthy render path")
-          nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters, stateOwners)
+          nested.root = expandSetterComponents(nested.root, component.getSourceFile(), [...trail, component], nested, setters, stateOwners, callbackDepth - Boolean(callbackProps.length))
           if (imported) synthesizeTree(nested.root = mergeSpecializedImports(nested.root, component.getSourceFile(), node, nested.effects))
           aggregate.calculations.push(...nested.calculations)
           aggregate.effects.push(...nested.effects)
@@ -1111,19 +1142,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
     const specializeSetterCallbacks = (call, component, callbackProps, imported) => {
       if (componentSpecializations.has(call)) fail(call, "Setter callback props cannot be combined with another component specialization")
-      if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) fail(component, "Setter-callback components must use one destructured props parameter")
-      for (const prop of callbackProps) {
-        const element = component.parameters[0].name.elements.find(entry => !entry.dotDotDotToken && (entry.propertyName ?? entry.name).getText() === prop)
-        if (!element || !ts.isIdentifier(element.name)) fail(call, `Setter-callback component must destructure callback prop ${JSON.stringify(prop)}`)
-        const references = []
-        const collectReferences = node => {
-          if (ts.isIdentifier(node) && node.text === element.name.text && isReferenceIdentifier(node)) references.push(node)
-          ts.forEachChild(node, collectReferences)
-        }
-        collectReferences(component.body)
-        if (references.length !== 1) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be used exactly once in the component`)
-      }
-      const specialization = specialize(call, component, "Setter-callback", false, true, new Set(settersForNode(call, settersByFunction).values()))
+      validateSetterCallbackProps(call, component, callbackProps)
+      const specialization = specialize(call, component, "Setter-callback", true, true, new Set(settersForNode(call, settersByFunction).values()))
       if (specialization.hookDeclarations.length || specialization.effects.length) {
         const substitutions = new Map()
         const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes

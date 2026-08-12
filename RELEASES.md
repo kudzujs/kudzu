@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.8.41 - Two-boundary callback ownership
+
+Kudzu 0.8.41 extends ordinary React-shaped component migration through one additional proven callback/ref forwarding boundary without retaining component functions or adding browser runtime machinery.
+
+### Changed in 0.8.41
+
+- A direct setter or inline/simple `const` state callback may cross a child component and one additional direct forwarding component before one intrinsic handler invokes it.
+- The forwarding component must destructure the callback and pass it directly once as an `on*` JSX prop; aliases, spreads, intermediate adapters, repeated uses, and a third callback boundary remain fail-closed.
+- Parent SignalIR remains stable through nested specialization, including direct setter input adapters and simple callbacks that capture parent state.
+- Specialized children retain independent local state, effects, deterministic IDs, and `null`-initialized object refs through conditional cleanup and fresh remount.
+- A parent-owned object ref may follow the same proven component tree to one direct intrinsic root.
+- Static siblings still emit complete HTML with zero JavaScript; no callback registry, retained component tree, or browser runtime module was added.
+
+### Performance
+
+- Seven alternating clean builds measured `v0.8.40` and candidate medians of 3,565.236 ms and 3,470.277 ms. The +59.834 ms paired candidate-minus-baseline median and overlapping ranges establish no material build change.
+- Peak RSS medians were 364.6 MiB and 362.0 MiB.
+- Both targets emit byte-identical 176-file deploy graphs: 3,850,245 raw bytes, 1,984,991 aggregate gzip bytes, and identical route plans and deploy digests.
+- Current maintained Worker, keyed-list, runtime-matrix, and commerce build measurements are recorded in `PERFORMANCE.md`; architecture and timeout limitations are explicit.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 206 tests and 156 generated pages.
+- Browser coverage proves parent updates, child-local state/effects/IDs, parent ref resolution, conditional cleanup, and fresh remount across two boundaries.
+- Compiler-result checks prove nested specializations retain the original parent signal, while a dedicated fixture rejects a third callback boundary at the authored source.
+- Broader prop, callback, ref, and Context graphs remain migration-led work.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.41
+```
+
 ## 0.8.40 - Property-level effect dependencies
 
 Kudzu 0.8.40 starts the large-application foundation sequence by allowing ordinary object state to expose property-level effect dependencies without artificial primitive-state decomposition.

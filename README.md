@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.40 - Property-level effect dependencies.** Effects can now depend on direct property paths and immutable primitive locals over ordinary object state while reusing existing DerivedIR and `Object.is` comparison. Read the [release notes](./RELEASES.md#0840---property-level-effect-dependencies), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.40), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.41 - Two-boundary callback ownership.** Direct setters, simple state callbacks, and object refs can now follow one additional presentation-component boundary while Kudzu preserves parent signals and child ownership without a browser component tree. Read the [release notes](./RELEASES.md#0841---two-boundary-callback-ownership), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.41), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
