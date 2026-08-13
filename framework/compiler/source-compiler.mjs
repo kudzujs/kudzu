@@ -1087,7 +1087,23 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           ts.forEachChild(node, collectReferences)
         }
         collectReferences(component.body)
-        if (references.length !== 1) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be used exactly once in the component`)
+        if (!references.length) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be called by at least one intrinsic event handler`)
+        if (references.length === 1 && ts.isJsxExpression(references[0].parent) && ts.isJsxAttribute(references[0].parent.parent) && /^on[A-Z]/.test(references[0].parent.parent.name.text)) continue
+        const handlers = new Set()
+        for (const reference of references) {
+          if (!ts.isCallExpression(reference.parent) || reference.parent.expression !== reference) fail(reference, `Setter-callback prop ${JSON.stringify(prop)} must be called directly inside an intrinsic event handler`)
+          let attribute
+          for (let current = reference.parent; current && current !== component.body; current = current.parent) {
+            if (ts.isJsxAttribute(current) && /^on[A-Z]/.test(current.name.text)) {
+              attribute = current
+              break
+            }
+          }
+          const tag = attribute?.parent?.parent && (ts.isJsxOpeningElement(attribute.parent.parent) || ts.isJsxSelfClosingElement(attribute.parent.parent)) ? attribute.parent.parent.tagName : undefined
+          if (!attribute || !ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(reference, `Setter-callback prop ${JSON.stringify(prop)} must be called directly inside an intrinsic event handler`)
+          if (handlers.has(attribute)) fail(reference, `Setter-callback prop ${JSON.stringify(prop)} may only be called once per event handler`)
+          handlers.add(attribute)
+        }
       }
     }
     const expandSetterComponents = (root, componentSource, trail, aggregate, parentSetters, parentStateOwners, callbackDepth = 2) => {

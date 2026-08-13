@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.48 - Multi-handler setter callbacks
+
+Kudzu 0.8.48 lets one compiler-specialized setter-callback prop be called once from each of multiple direct intrinsic event handlers.
+
+### Changed in 0.8.48
+
+- A specialized leaf may call the same setter callback from multiple intrinsic `on*` attributes.
+- Each handler call lowers independently to the same parent state signal.
+- Direct callback forwarding through the existing three-boundary limit remains supported.
+- Repeated calls inside one handler, aliases, non-handler uses, forwarding fan-out, and a fourth callback boundary remain source-diagnosed.
+
+### Output and performance
+
+- Command-only handlers continue to emit plain state-operation descriptors.
+- No callback registry, component runtime, browser runtime module, or public Kudzu API is added.
+- This release makes no new performance claim.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 213 tests and 163 generated pages.
+- A positive fixture emits two independent click descriptors targeting the same parent signal.
+- A focused negative fixture retains a source diagnostic for calling the callback twice inside one event handler.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.48
+```
+
 ## 0.8.47 - Direct primitive prop state
 
 Kudzu 0.8.47 lets a compiler-specialized setter-callback child initialize local state directly from one primitive parent state prop without a migration-only wrapper expression.

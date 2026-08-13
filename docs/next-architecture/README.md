@@ -11,7 +11,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 
-The active post-`0.8.47` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.12 validation, property-level object-state dependencies, direct three-boundary callback/ref ownership, direct primitive prop state initialization, collision-free and private Context action setters, measured route-entry output optimization, and the plain TypeScript source-scale fast path are complete; broader prop, callback, ref, and Context dataflow remains migration-backed work. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
+The active post-`0.8.48` implementation sequence is [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md). P0.12 validation, property-level object-state dependencies, direct three-boundary callback/ref ownership, direct primitive prop state initialization, repeated direct leaf-handler callback use, collision-free and private Context action setters, measured route-entry output optimization, and the plain TypeScript source-scale fast path are complete; broader prop, callback, ref, and Context dataflow remains migration-backed work. The plan orders compiler semantic generalization, large-application foundations, compatibility boundaries, AI tooling, and production validation without changing the invariants below.
 
 ## Required Invariants
 

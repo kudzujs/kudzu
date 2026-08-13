@@ -3,5 +3,6 @@ import { Adapter } from "../Adapter"
 
 export default function Page() {
   const [value, setValue] = useState("")
-  return <main><output id="value">{value}</output><Adapter onValueChange={setValue} /></main>
+  console.log(value)
+  return <Adapter onValueChange={setValue} />
 }

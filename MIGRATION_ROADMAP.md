@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.47` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.48` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -145,6 +145,7 @@ This queue orders the next investigations by general migration value. Start only
 - Context actions inline into existing route handler ESM and compile to concrete state operations. Private captures, dynamic Provider objects, and multiple Provider implementations remain diagnosed; no browser Context tree, callback registry, or shared runtime was added.
 - In `0.8.46`, the same Notes migration may omit action-only setters from its public Context type and authored Provider value when the corresponding state remains exposed. Kudzu restores those setters only in build scratch so existing concrete state operations, RouteIR signals, CRUD behavior, and zero-Context runtime output remain unchanged. Fully hidden action state and exposed setters without state remain diagnosed.
 - In `0.8.47`, a specialized setter-callback child may initialize local state directly from one primitive parent state prop. Build scratch reads the parent signal's build value while retaining the structural prop signal for handlers/effects; direct object/array props, aliases, and composed initializer expressions remain diagnosed.
+- In `0.8.48`, one setter-callback prop may be called once from each of multiple direct intrinsic event handlers in the specialized leaf. Each call lowers independently to the same parent signal; forwarding fan-out, aliases, non-handler uses, and repeated calls inside one handler remain diagnosed, and no callback registry or handler runtime is added.
 
 ### Completed In 0.8.10
 

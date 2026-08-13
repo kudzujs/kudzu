@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.47 - Direct primitive prop state.** Specialized setter-callback children may initialize local state directly from one primitive parent state prop. Kudzu reads the build-known primitive value while retaining independent child ownership and the structural parent signal. Read the [release notes](./RELEASES.md#0847---direct-primitive-prop-state), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.47), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.48 - Multi-handler setter callbacks.** One specialized setter-callback prop may be called once from each of multiple direct intrinsic event handlers. Kudzu lowers every call to the same parent signal without shipping callbacks or a component runtime. Read the [release notes](./RELEASES.md#0848---multi-handler-setter-callbacks), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.48), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

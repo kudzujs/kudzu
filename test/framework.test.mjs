@@ -91,7 +91,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.47/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.48/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -108,12 +108,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.47"/)
-  assert.match(release, /Kudzu 0\.8\.47.*Pass primitive state.*Initialize children directly/s)
-  assert.match(release, /LINK · SEED · OWN.*PROP DATAFLOW.*npm install @kudzujs\/core@\^0\.8\.47/s)
-  assert.match(release, /<title>Kudzu 0\.8\.47 - Direct primitive prop state<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.47"/)
-  assert.match(release, /Use state directly.*Ship existing capabilities/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.48"/)
+  assert.match(release, /Kudzu 0\.8\.48.*Use one callback.*Handle multiple events/s)
+  assert.match(release, /SHARE · LOWER · OWN.*CALLBACK DATAFLOW.*npm install @kudzujs\/core@\^0\.8\.48/s)
+  assert.match(release, /<title>Kudzu 0\.8\.48 - Multi-handler setter callbacks<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.48"/)
+  assert.match(release, /Reuse one callback.*Add nothing global/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1784,11 +1784,28 @@ test("owns setter callbacks and object refs across three component boundaries", 
   if (chrome) await runCallbackRefOwnershipBrowserTest(fixture, chrome)
 })
 
-test("rejects repeated setter adapter callback use", () => {
+test("uses one setter callback from multiple intrinsic handlers", async t => {
   const fixture = new URL("./fixtures/setter-adapter-invalid", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/setter-adapter-invalid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/setter-adapter-invalid/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/setter-adapter-invalid/dist/index.html", import.meta.url), "utf8")
+  assert.match(html, /id="first"[^>]*data-k-on-click='\[\["set","s0","first"\]\]'/)
+  assert.match(html, /id="second"[^>]*data-k-on-click='\[\["set","s0","second"\]\]'/)
+})
+
+test("rejects repeated setter callback calls in one handler", t => {
+  const fixture = new URL("./fixtures/setter-adapter-repeated-handler-invalid", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/setter-adapter-repeated-handler-invalid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/setter-adapter-repeated-handler-invalid/dist", import.meta.url), { recursive: true, force: true })
+  })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/Adapter\.tsx:\d+:\d+ Setter-callback prop "onValueChange" must be used exactly once in the component/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/Adapter\.tsx:\d+:\d+ Setter-callback prop "onValueChange" may only be called once per event handler/)
 })
 
 test("rejects non-null setter-child refs", () => {
