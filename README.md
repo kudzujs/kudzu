@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.43 - Three-boundary callback ownership.** Direct setters, simple state callbacks, and object refs can now cross a child plus two direct forwarding components while Kudzu preserves parent signals, child hooks, and DOM ownership without retaining component functions. Read the [release notes](./RELEASES.md#0843---three-boundary-callback-ownership), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.43), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.44 - Collision-free Context actions.** Context actions can now use Provider state and setters whose names also exist as ordinary consumer locals; Kudzu assigns compiler-owned aliases and still emits concrete state operations without a Context runtime. Read the [release notes](./RELEASES.md#0844---collision-free-context-actions), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.44), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

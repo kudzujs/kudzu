@@ -2,7 +2,11 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
-## Current 0.8.43 Release Snapshot
+## Current 0.8.44 Release Snapshot
+
+Kudzu 0.8.44 changes compiler-only naming for action-private Context state and setters. The maintained Context browser fixture retains the same emitted concrete state operations and CRUD behavior while a same-named consumer local remains ordinary static content. No browser runtime module or public API changed, and no new performance claim is made.
+
+## Maintained 0.8.43 Release Snapshot
 
 Kudzu 0.8.43 extends compiler-only callback/ref specialization from two to three direct component boundaries. The maintained browser fixture retains the same parent state operations, child state/effect/ref ownership, conditional cleanup, and static zero-JavaScript sibling while the added forwarding component is absent from emitted JavaScript. No browser runtime module or public API changed, and no new performance ranking is claimed.
 

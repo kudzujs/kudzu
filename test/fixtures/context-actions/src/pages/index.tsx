@@ -3,9 +3,10 @@ import { useNotes } from "../useNotes"
 
 function Notes() {
   const { notes, activeId, createNote, renameNote, deleteNote, selectNote } = useNotes()
+  const setNotes = "consumer binding"
 
   return <main>
-    <button data-create onClick={() => createNote("New")}>Create</button>
+    <button data-create aria-label={setNotes} onClick={() => createNote("New")}>Create</button>
     <output data-active>{activeId}</output>
     {notes.map(note => <section key={note.id} data-note={note.id}>
       <button data-select onClick={() => selectNote(note.id)}>{note.title}</button>

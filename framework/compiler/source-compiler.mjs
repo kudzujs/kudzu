@@ -548,22 +548,33 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               if (callback) for (const state of referencedStateNames(callback.body, hook.states, callback)) requiredContextStates.add(state)
             }
           }
+          const contextSubstitutions = new Map()
           for (const [setter, state] of hook.states) {
             if (hook.context) {
               if (names.has(setter) && !names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative Context setter ${JSON.stringify(setter)} requires state ${JSON.stringify(state)} to be destructured`)
               if (!names.has(state) && !requiredContextStates.has(state)) continue
-              const localSetter = names.has(setter) || requiredContextStates.has(state) ? setter : `__kContextState_${state}`
-              setters.set(localSetter, state)
-              registerState(owner, state, localSetter, "context", node, { owner: hook.stateOwner, state: hook.stateSymbols.get(state) })
+              const privateFields = customHookPrivateFields.get(node) ?? []
+              const localName = field => {
+                if (names.has(field)) return field
+                const occupied = name => owner.parameters.some(parameter => bindingNames(parameter.name).includes(name)) || owner.body.statements.some(statement => statement !== node.parent.parent && statementDeclaresName(statement, name))
+                if (!occupied(field)) return field
+                let index = 0
+                let local
+                do local = `__kContext_${field}${index++ || ""}`
+                while (occupied(local))
+                return local
+              }
+              const localState = localName(state)
+              const localSetter = localName(setter)
+              setters.set(localSetter, localState)
+              registerState(owner, localState, localSetter, "context", node, { owner: hook.stateOwner, state: hook.stateSymbols.get(state) })
               if (requiredContextStates.has(state)) {
-                const fields = customHookPrivateFields.get(node) ?? []
-                for (const field of [state, setter]) {
-                  if (names.has(field) || fields.includes(field)) continue
-                  const conflict = owner.parameters.some(parameter => bindingNames(parameter.name).includes(field)) || owner.body.statements.some(statement => statement !== node.parent.parent && statementDeclaresName(statement, field))
-                  if (conflict) throw sourceNodeError(node.name, sourceFile, `Context action state field ${JSON.stringify(field)} conflicts with a consumer binding`)
-                  fields.push(field)
+                for (const [field, local] of [[state, localState], [setter, localSetter]]) {
+                  if (names.has(field) || privateFields.some(entry => (typeof entry === "string" ? entry : entry.property) === field)) continue
+                  privateFields.push({ property: field, local })
+                  if (field !== local) contextSubstitutions.set(field, factory.createIdentifier(local))
                 }
-                customHookPrivateFields.set(node, fields)
+                customHookPrivateFields.set(node, privateFields)
               }
               continue
             }
@@ -584,12 +595,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           settersByFunction.set(owner, setters)
           for (const name of names) {
             if (hook.callbacks.has(name)) {
+              const callback = contextSubstitutions.size ? substituteClone(hook.callbacks.get(name), contextSubstitutions, factory, context) : hook.callbacks.get(name)
               const callbacks = customHookFunctionsByOwner.get(owner) ?? new Map()
-              callbacks.set(name, hook.callbacks.get(name))
+              callbacks.set(name, callback)
               customHookFunctionsByOwner.set(owner, callbacks)
               if (hook.context) {
                 const reducers = reducersByFunction.get(owner) ?? new Map()
-                reducers.set(name, { contextAction: hook.callbacks.get(name), states: hook.states })
+                const states = new Map([...hook.states].map(([setter, state]) => [contextSubstitutions.get(setter)?.text ?? setter, contextSubstitutions.get(state)?.text ?? state]))
+                reducers.set(name, { contextAction: callback, states })
                 reducersByFunction.set(owner, reducers)
               }
             }
@@ -1549,7 +1562,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const privateFields = customHookPrivateFields.get(node)
         return factory.updateVariableDeclaration(node, factory.updateObjectBindingPattern(node.name, [
           ...node.name.elements,
-          ...privateFields.map(name => factory.createBindingElement(undefined, undefined, name))
+          ...privateFields.map(entry => typeof entry === "string"
+            ? factory.createBindingElement(undefined, undefined, entry)
+            : factory.createBindingElement(undefined, entry.property === entry.local ? undefined : entry.property, entry.local))
         ]), node.exclamationToken, node.type, node.initializer)
       }
       if (ts.isBlock(node) && setterHookHelpers.has(node)) {

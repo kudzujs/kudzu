@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.44 - Collision-free Context actions
+
+Kudzu 0.8.44 removes a compiler-only naming restriction from relative Context-hook actions: Provider state and setter fields needed privately by an action may now share names with ordinary consumer locals.
+
+### Changed in 0.8.44
+
+- Action-required Provider state/setter fields that are not publicly selected receive compiler-owned collision-free aliases in the consumer destructuring.
+- The specialized action AST and its state map use the same aliases before existing HandlerIR lowering.
+- Alias selection checks component parameters and top-level declarations and increments the compiler-owned suffix when necessary.
+- Consumer source keeps its chosen local names and public hook destructuring; no application rename or extra Context field selection is required.
+- Provider state identity, direct state operations, and existing Context action diagnostics remain unchanged.
+
+### Output and performance
+
+- Context action functions, Context objects, and Provider trees remain absent from browser output.
+- Static siblings remain complete zero-JavaScript documents.
+- No browser runtime module or public API changed. This release makes no new performance claim.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 208 tests and 158 generated pages.
+- The maintained Notes Context fixture now declares a consumer-local `setNotes` while create, rename, delete, select, list identity, and active-note updates continue to pass in Chrome.
+- A focused counter fixture previously rejected for consumer `setCount` collision now builds successfully.
+- Private Provider captures, hidden state pairs, and indirect action references remain source-diagnosed.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.44
+```
+
 ## 0.8.43 - Three-boundary callback ownership
 
 Kudzu 0.8.43 extends ordinary React-shaped callback and ref composition through one more proven direct forwarding component without adding a callback registry, browser component tree, or runtime module.
