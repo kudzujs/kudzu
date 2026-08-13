@@ -11,6 +11,7 @@ export function createProjectSession(projectRoot = process.cwd(), { counters, so
   const graph = createSourceGraph(root)
   const modules = createModuleCache(root, sourceIndex, graph, counters)
   return {
+    counters,
     root,
     sourceDirectory,
     pagesDirectory: join(sourceDirectory, "pages"),

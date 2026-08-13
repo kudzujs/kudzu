@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.45 - Plain TypeScript fast path
+
+Kudzu 0.8.45 reduces large-project compiler work by sending proven plain `.ts` modules through TypeScript transpilation and relative ESM path rewriting without running Kudzu's TSX semantic transformer.
+
+### Changed in 0.8.45
+
+- The fast path is limited to `.ts` files whose runtime imports and exports are resolvable relative TypeScript modules.
+- TSX, package imports, static assets, unresolved edges, and all uncertain module shapes retain the existing Kudzu transformer.
+- `npm run benchmark:source-scale` deterministically generates 500 reachable modules and supports alternating baseline/candidate measurements with deploy-output equivalence checks.
+- Compiler counters report the number of plain modules selected.
+
+### Output and performance
+
+- Seven alternating samples against clean `v0.8.44` reduced compile median from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%) on the maintained source-scale fixture.
+- Compiler scratch decreased from 7,328,390 to 1,971,061 bytes and compile peak-RSS median decreased from 571.2 MiB to 552.6 MiB.
+- Both targets emitted the same 50 HTML files, 10,980 deploy bytes, and SHA-256 digest. No browser runtime or public API changed.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 209 tests and 160 generated pages.
+- A reduced deterministic source-scale run remains in the standard suite.
+- The maintained benchmark alternates target order and rejects any deploy digest, file-count, page-count, or byte-count difference.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.45
+```
+
 ## 0.8.44 - Collision-free Context actions
 
 Kudzu 0.8.44 removes a compiler-only naming restriction from relative Context-hook actions: Provider state and setter fields needed privately by an action may now share names with ordinary consumer locals.

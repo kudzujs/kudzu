@@ -22,7 +22,7 @@ import { createProjectSession } from "./project-session.mjs"
 import { createZustandPass } from "./zustand-pass.mjs"
 
 export function createSourceCompiler(project) {
-const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, modules } = project
+const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, modules, counters } = project
 const { ordinaryRuntimeDependencies, resolveSourceImport, runtimeModuleReference } = project.graph
 const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
@@ -32,6 +32,8 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
   const source = sourceIndex.get(file)
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
+  const plain = plainTypeScriptModule(file, source, sourceFiles)
+  if (plain && counters) counters.plainModules = (counters.plainModules ?? 0) + 1
   const result = ts.transpileModule(source, {
     fileName: file,
     compilerOptions: {
@@ -40,7 +42,7 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
       jsx: ts.JsxEmit.ReactJSX,
       jsxImportSource: "@kudzujs/core"
     },
-    transformers: { before: [createKudzuTransformer({ semantic, handlerUrl: assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base })] },
+    transformers: { before: [plain ? createPlainModuleTransformer(file, sourceFiles) : createKudzuTransformer({ semantic, handlerUrl: assetPath(base, `assets/${handlerPath}`), file, sourceFiles, sourceIndex, staticFiles, importedAssets, cssModules, base })] },
     reportDiagnostics: true
   })
 
@@ -69,6 +71,27 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
   normalizeModulePaths(moduleIR)
   sourceResult.handlerModule = { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: moduleHandlers.some(handler => handler.role === "native"), hasEffects: moduleHandlers.some(handler => handler.role === "effect"), clientImports: moduleIR.clientModules, hasPackageImports: moduleIR.imports.some(entry => entry.package) }
   return sourceResult
+}
+
+function plainTypeScriptModule(file, source, sourceFiles) {
+  if (!file.endsWith(".ts")) return false
+  const sourceFile = parseSourceFile(file, source)
+  for (const statement of sourceFile.statements) {
+    if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement)) continue
+    if (!statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".") || isStaticImport(statement.moduleSpecifier.text)) return false
+    try { resolveSourceImport(file, statement.moduleSpecifier.text, sourceFiles) } catch { return false }
+  }
+  return true
+}
+
+function createPlainModuleTransformer(file, sourceFiles) {
+  return context => sourceFile => context.factory.updateSourceFile(sourceFile, sourceFile.statements.map(statement => {
+    if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) return statement
+    const target = resolveSourceImport(file, statement.moduleSpecifier.text, sourceFiles)
+    const specifier = context.factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target)))
+    if (ts.isImportDeclaration(statement)) return context.factory.updateImportDeclaration(statement, statement.modifiers, statement.importClause, specifier, statement.attributes)
+    return context.factory.updateExportDeclaration(statement, statement.modifiers, statement.isTypeOnly, statement.exportClause, specifier, statement.attributes)
+  }))
 }
 
 function normalizeModulePaths(moduleIR) {

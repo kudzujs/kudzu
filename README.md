@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.44 - Collision-free Context actions.** Context actions can now use Provider state and setters whose names also exist as ordinary consumer locals; Kudzu assigns compiler-owned aliases and still emits concrete state operations without a Context runtime. Read the [release notes](./RELEASES.md#0844---collision-free-context-actions), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.44), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.45 - Plain TypeScript fast path.** Proven relative-only `.ts` modules skip Kudzu's TSX semantic transformer while uncertain modules retain the existing path. The maintained 500-module fixture reduced compile median 39.2% and clean-build median 28.4% with identical deploy output. Read the [release notes](./RELEASES.md#0845---plain-typescript-fast-path), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.45), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

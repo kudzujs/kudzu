@@ -236,7 +236,7 @@ export default function Page() {
   for (const file of reachable) compiler.compileSource(file, new Set(reachable), sourceIndex, new Set(), new Map(), "")
 
   assert.equal(reachable.length, 103)
-  assert.deepEqual(counters, { parsedModules: 103, exportSummaries: 103, clonedModules: 100 })
+  assert.deepEqual(counters, { parsedModules: 103, exportSummaries: 103, plainModules: 1, clonedModules: 100 })
 })
 
 test("normalizes render control flow without changing lowercase helpers", () => {

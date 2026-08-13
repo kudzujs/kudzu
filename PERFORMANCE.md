@@ -1,8 +1,16 @@
 # Performance Records
 
-Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, and `npm run benchmark:module-cache` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
-## Current 0.8.44 Release Snapshot
+`npm run benchmark:source-scale` generates its fixture outside the repository so 50,000 lines of synthetic source are not tracked. The default topology is 50 pages plus 450 route-owned imported modules. Generation is excluded from timing; fresh-process samples separately report source reads, reachable-graph discovery, source compilation, clean production build, compiler-result and deploy digests, output files/bytes, cache counters, and peak RSS. `ROUTES`, `MODULES_PER_ROUTE`, `FILLER_LINES`, `WARMUPS`, and `RUNS` may reduce or expand the fixture without changing the default acceptance floor. `TARGET_ROOT` measures another checkout; `BASELINE_ROOT` alternates that checkout with the current tree and requires identical deploy output.
+
+The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
+
+## Current 0.8.45 Optimization Snapshot
+
+Kudzu 0.8.45 adds the plain TypeScript fast path and maintained paired source-scale runner described above. It changes compiler scratch only: the measured deploy graph is byte-identical to `v0.8.44`, and no browser runtime or public API changed.
+
+## Maintained 0.8.44 Release Snapshot
 
 Kudzu 0.8.44 changes compiler-only naming for action-private Context state and setters. The maintained Context browser fixture retains the same emitted concrete state operations and CRUD behavior while a same-named consumer local remains ordinary static content. No browser runtime module or public API changed, and no new performance claim is made.
 
