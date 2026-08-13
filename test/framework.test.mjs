@@ -91,7 +91,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.46/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.47/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -108,12 +108,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.46"/)
-  assert.match(release, /Kudzu 0\.8\.46.*Keep setters private.*Ship concrete actions/s)
-  assert.match(release, /HIDE · PROVE · SPECIALIZE.*CONTEXT DATAFLOW.*npm install @kudzujs\/core@\^0\.8\.46/s)
-  assert.match(release, /<title>Kudzu 0\.8\.46 - Private Context action setters<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.46"/)
-  assert.match(release, /Expose state, not setters.*Ship no Context tree/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.47"/)
+  assert.match(release, /Kudzu 0\.8\.47.*Pass primitive state.*Initialize children directly/s)
+  assert.match(release, /LINK · SEED · OWN.*PROP DATAFLOW.*npm install @kudzujs\/core@\^0\.8\.47/s)
+  assert.match(release, /<title>Kudzu 0\.8\.47 - Direct primitive prop state<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.47"/)
+  assert.match(release, /Use state directly.*Ship existing capabilities/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1798,11 +1798,32 @@ test("rejects non-null setter-child refs", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/InvalidInput\.tsx:\d+:\d+ Setter-callback component useRef\(\) must use the direct initial value null/)
 })
 
-test("rejects unsupported setter-child state initializers", () => {
+test("initializes setter-child state from a direct primitive state prop", async t => {
   const fixture = new URL("./fixtures/setter-child-invalid-initializer", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/setter-child-invalid-initializer/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/setter-child-invalid-initializer/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/setter-child-invalid-initializer/dist/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/setter-child-invalid-initializer/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.match(html, /<input value="initial"/)
+  assert.deepEqual(plan.routes[0].states.map(state => state.initialValue), ["initial", "initial"])
+})
+
+test("rejects indirect setter-child state initializers", () => {
+  const fixture = new URL("./fixtures/setter-child-indirect-initializer-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/InvalidInput\.tsx:\d+:\d+ Setter-callback component useState\(\) must use one directly serializable primitive, plain object, or array initial value or direct primitive state prop\.toString\(\); other dynamic initializers are not supported/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/InvalidInput\.tsx:\d+:\d+ Setter-callback component useState\(\) must use one directly serializable primitive, plain object, or array initial value or direct primitive state prop, optionally followed by \.toString\(\); other dynamic initializers are not supported/)
+})
+
+test("rejects object-state setter-child initializers", () => {
+  const fixture = new URL("./fixtures/setter-child-object-initializer-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/ObjectInput\.tsx:\d+:\d+ Setter-callback component useState\(\) must use one directly serializable primitive, plain object, or array initial value or direct primitive state prop, optionally followed by \.toString\(\); other dynamic initializers are not supported/)
 })
 
 test("rejects hookful nested setter children on dynamic paths", () => {

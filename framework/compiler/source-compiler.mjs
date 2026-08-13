@@ -2440,10 +2440,12 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState") {
         const hookLabel = ordinaryHooks ? "Setter-callback component" : "Keyed row"
         const initialArgument = declaration.initializer.arguments[0]
-        const propReceiver = ordinaryHooks && initialArgument && ts.isCallExpression(initialArgument) && initialArgument.arguments.length === 0 && !initialArgument.questionDotToken && ts.isPropertyAccessExpression(initialArgument.expression) && !initialArgument.expression.questionDotToken && initialArgument.expression.name.text === "toString" && ts.isIdentifier(initialArgument.expression.expression) ? initialArgument.expression.expression : undefined
+        const propReceiver = ordinaryHooks && initialArgument && (ts.isIdentifier(initialArgument) ? initialArgument : ts.isCallExpression(initialArgument) && initialArgument.arguments.length === 0 && !initialArgument.questionDotToken && ts.isPropertyAccessExpression(initialArgument.expression) && !initialArgument.expression.questionDotToken && initialArgument.expression.name.text === "toString" && ts.isIdentifier(initialArgument.expression.expression) ? initialArgument.expression.expression : undefined)
         const substitutedProp = propReceiver ? substitutions.get(propReceiver.text) : undefined
-        const propStringInitializer = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) && ordinaryStateNames.has(unwrapExpression(substitutedProp).text)
-        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propStringInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct primitive state prop.toString()" : ""}; other dynamic initializers are not supported`)
+        const substitutedState = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) ? unwrapExpression(substitutedProp).text : undefined
+        const directProp = ts.isIdentifier(initialArgument)
+        const propInitializer = substitutedState && ordinaryStateNames.has(substitutedState) && (!directProp || hasPrimitiveStateInitializer(call, substitutedState))
+        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct primitive state prop, optionally followed by .toString()" : ""}; other dynamic initializers are not supported`)
         if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), `${hookLabel} useState() must use [state, setter] identifier destructuring`)
         const suffix = `${Math.max(0, call.pos)}_${ordinaryHooks ? ordinaryStates.length : rowStates.length}`
         const state = ordinaryHooks ? `__kComponentState${suffix}` : `__kRowState${suffix}`
@@ -2454,7 +2456,11 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(state)),
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(setter))
         ])
-        const initialValue = propStringInitializer ? substituteClone(initialArgument, substitutions, factory, context) : cloneAst(initialArgument, factory, context)
+        const initialValue = propInitializer
+          ? ts.isIdentifier(initialArgument)
+            ? factory.createPropertyAccessExpression(cloneAst(substitutedProp, factory, context), "value")
+            : substituteClone(initialArgument, substitutions, factory, context)
+          : cloneAst(initialArgument, factory, context)
         synthesizeTree(initialValue)
         const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseState" : "__kRowUseState"), undefined, [initialValue])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(binding, undefined, undefined, initializer)], ts.NodeFlags.Const)))
@@ -2535,6 +2541,20 @@ function isSerializableStateLiteral(node) {
   if (ts.isArrayLiteralExpression(value)) return value.elements.every(element => !ts.isSpreadElement(element) && !ts.isOmittedExpression(element) && isSerializableStateLiteral(element))
   if (!ts.isObjectLiteralExpression(value)) return false
   return value.properties.every(property => ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && property.name.text !== "__proto__" && isSerializableStateLiteral(property.initializer))
+}
+
+function hasPrimitiveStateInitializer(call, name) {
+  const owner = nearestFunction(call)
+  if (!owner || !ts.isBlock(owner.body)) return false
+  for (const statement of owner.body.statements) {
+    if (!ts.isVariableStatement(statement)) continue
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isArrayBindingPattern(declaration.name) || !declaration.initializer || !ts.isCallExpression(declaration.initializer) || !ts.isIdentifier(declaration.initializer.expression) || declaration.initializer.expression.text !== "useState") continue
+      const state = declaration.name.elements[0]
+      if (state && ts.isBindingElement(state) && ts.isIdentifier(state.name) && state.name.text === name) return declaration.initializer.arguments.length === 1 && isPrimitiveDefaultLiteral(unwrapExpression(declaration.initializer.arguments[0]))
+    }
+  }
+  return false
 }
 
 function synthesizeSerializableStateLiteral(node, factory) {

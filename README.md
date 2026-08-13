@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.46 - Private Context action setters.** Context actions may use Provider setters without exposing those implementation details in the authored Provider value or public Context type. Kudzu restores required setters only in compiler scratch and still emits concrete state operations without a Context runtime. Read the [release notes](./RELEASES.md#0846---private-context-action-setters), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.46), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.47 - Direct primitive prop state.** Specialized setter-callback children may initialize local state directly from one primitive parent state prop. Kudzu reads the build-known primitive value while retaining independent child ownership and the structural parent signal. Read the [release notes](./RELEASES.md#0847---direct-primitive-prop-state), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.47), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

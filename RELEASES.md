@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.47 - Direct primitive prop state
+
+Kudzu 0.8.47 lets a compiler-specialized setter-callback child initialize local state directly from one primitive parent state prop without a migration-only wrapper expression.
+
+### Changed in 0.8.47
+
+- `useState(value)` is accepted when `value` is a direct specialized prop linked to parent state with a proven primitive literal initializer.
+- Build scratch reads the parent signal's initial primitive value while preserving the structural prop signal for handlers and effects.
+- Existing direct `value.toString()` initialization remains supported for string input buffers.
+- Composed expressions, aliases, and object/array state props remain source-diagnosed.
+
+### Output and performance
+
+- Parent and child retain independent state IDs and JSON-safe initial values.
+- Handler specialization continues to target the same parent and child signals without a component runtime.
+- No browser runtime module, public Kudzu API, or new performance claim is added.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 212 tests and 162 generated pages.
+- A direct string-state prop emits complete initial input HTML and two matching RouteIR state seeds.
+- Focused negative fixtures retain diagnostics for composed initializer expressions and object-state props.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.47
+```
+
 ## 0.8.46 - Private Context action setters
 
 Kudzu 0.8.46 lets relative Context-hook actions use Provider-owned setters without forcing those implementation-only setters into the authored Provider value or public Context type.

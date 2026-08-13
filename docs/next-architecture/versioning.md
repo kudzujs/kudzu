@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.46` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.47` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -37,6 +37,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.44` | Remove consumer-local name collisions from specialized Context actions. | Action-private Provider state/setter fields receive deterministic collision-free aliases; CRUD browser behavior, direct state operations, diagnostics, and zero Context runtime output pass. |
 | `0.8.45` | Add a source-scale benchmark and skip Kudzu semantic transformation for proven plain TypeScript modules. | Seven alternating samples improve compile and clean-build medians with identical deploy output; uncertain modules retain the existing transformer. |
 | `0.8.46` | Remove action-only setter fields from authored Context Provider APIs. | Compiler scratch restores required setters while Notes CRUD, RouteIR signals, concrete state operations, diagnostics, and zero Context runtime output pass. |
+| `0.8.47` | Initialize specialized child state from one direct primitive parent state prop. | Build-known primitive seeds, independent state ownership, existing handler specialization, and negative object/expression diagnostics pass without a runtime change. |
 
 ## Sequence Rules
 
