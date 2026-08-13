@@ -3,9 +3,7 @@ import { createContext, useState } from "@kudzujs/core"
 type Note = { id: number; title: string }
 type NotesValue = {
   notes: Note[]
-  setNotes: (value: Note[] | ((previous: Note[]) => Note[])) => void
   activeId: number
-  setActiveId: (value: number) => void
   createNote: (title: string) => void
   renameNote: (id: number, title: string) => void
   deleteNote: (id: number) => void
@@ -31,7 +29,7 @@ export function NotesProvider({ children }: { children: unknown }) {
   }
   const selectNote = (id: number) => setActiveId(id)
 
-  return <NotesContext.Provider value={{ notes, setNotes, activeId, setActiveId, createNote, renameNote, deleteNote, selectNote }}>
+  return <NotesContext.Provider value={{ notes, activeId, createNote, renameNote, deleteNote, selectNote }}>
     {children}
   </NotesContext.Provider>
 }

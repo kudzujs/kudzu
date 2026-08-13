@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.46 - Private Context action setters
+
+Kudzu 0.8.46 lets relative Context-hook actions use Provider-owned setters without forcing those implementation-only setters into the authored Provider value or public Context type.
+
+### Changed in 0.8.46
+
+- An action-required setter may be omitted when its corresponding Provider state value remains exposed.
+- Kudzu adds only the required setter fields to compiler build scratch so existing setter identity and HandlerIR lowering remain unchanged.
+- Consumer scratch receives collision-free private bindings for action lowering without changing authored hook destructuring.
+- Fully hidden action state and Provider setters exposed without their state remain source-diagnosed.
+
+### Output and performance
+
+- The Notes migration retains the same two RouteIR signals and concrete `notes` and `activeId` state operations.
+- Context objects, Provider trees, action functions, and a setter registry remain absent from browser output; the static sibling remains zero JavaScript.
+- No browser runtime module, public Kudzu API, or new performance claim is added.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 210 tests and 161 generated pages.
+- The maintained Chrome Notes journey passes create, rename, select, delete, list identity, and active-note updates with authored setters omitted.
+- Focused negative fixtures retain diagnostics for fully hidden action state, setter-only exposure, private captures, and indirect action references.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.46
+```
+
 ## 0.8.45 - Plain TypeScript fast path
 
 Kudzu 0.8.45 reduces large-project compiler work by sending proven plain `.ts` modules through TypeScript transpilation and relative ESM path rewriting without running Kudzu's TSX semantic transformer.

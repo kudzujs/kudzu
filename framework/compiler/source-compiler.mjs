@@ -359,6 +359,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const functions = new Map()
     const customHookFunctionsByOwner = new Map()
     const customHookPrivateFields = new WeakMap()
+    const contextProviderPrivateSetters = new WeakMap()
     const components = new Map()
     const contexts = new Set()
     const customHooks = new Map()
@@ -490,7 +491,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         fields.add(name)
       }
       for (const [setter, state] of states) {
-        if (fields.has(setter) !== fields.has(state)) throw sourceNodeError(value, providerSource, `Context Provider state ${JSON.stringify(state)} and setter ${JSON.stringify(setter)} must be exposed together`)
+        if (fields.has(setter) && !fields.has(state)) throw sourceNodeError(value, providerSource, `Context Provider setter ${JSON.stringify(setter)} requires exposed state ${JSON.stringify(state)}`)
       }
       for (const [name, callback] of callbacks) {
         if (!fields.has(name)) continue
@@ -499,7 +500,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (capture) throw sourceNodeError(callback, providerSource, `Context action ${JSON.stringify(name)} cannot capture private binding ${JSON.stringify(capture)}`)
         for (const state of referencedStateNames(callback.body, states, callback)) {
           const setter = [...states].find(([, candidate]) => candidate === state)?.[0]
-          if (!setter || !fields.has(state) || !fields.has(setter)) throw sourceNodeError(callback, providerSource, `Context action ${JSON.stringify(name)} requires exposed state and setter fields for ${JSON.stringify(state)}`)
+          if (!setter || !fields.has(state)) throw sourceNodeError(callback, providerSource, `Context action ${JSON.stringify(name)} requires exposed state field ${JSON.stringify(state)}`)
         }
       }
       return { callbacks: new Map([...callbacks].filter(([name]) => fields.has(name))), context: true, fields, privateStates: new Set(), stateOwner, stateSymbols, states }
@@ -739,6 +740,32 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       ts.forEachChild(node, collect)
     }
     collect(sourceFile)
+    const collectContextProviderPrivateSetters = node => {
+      if (ts.isJsxAttribute(node) && isContextProviderValue(node, contexts)) {
+        const value = node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression ? unwrapExpression(node.initializer.expression) : undefined
+        const owner = nearestFunction(node)
+        if (value && ts.isObjectLiteralExpression(value) && owner) {
+          const states = new Map()
+          const callbacks = new Map()
+          const visitOwner = current => {
+            if (ts.isVariableDeclaration(current) && nearestFunction(current) === owner) {
+              if (ts.isArrayBindingPattern(current.name) && current.initializer && ts.isCallExpression(current.initializer) && ts.isIdentifier(current.initializer.expression) && current.initializer.expression.text === "useState") {
+                const [state, setter] = current.name.elements
+                if (current.name.elements.length === 2 && state && setter && ts.isBindingElement(state) && ts.isBindingElement(setter) && ts.isIdentifier(state.name) && ts.isIdentifier(setter.name)) states.set(setter.name.text, state.name.text)
+              }
+              if (ts.isIdentifier(current.name) && current.initializer && (ts.isArrowFunction(current.initializer) || ts.isFunctionExpression(current.initializer))) callbacks.set(current.name.text, current.initializer)
+            }
+            ts.forEachChild(current, visitOwner)
+          }
+          visitOwner(owner.body)
+          const fields = new Set(value.properties.filter(ts.isShorthandPropertyAssignment).map(property => property.name.text))
+          const missing = [...states].filter(([setter, state]) => fields.has(state) && !fields.has(setter) && [...callbacks].some(([name, callback]) => fields.has(name) && referencedStateNames(callback.body, states, callback).has(state))).map(([setter]) => setter)
+          if (missing.length) contextProviderPrivateSetters.set(node, missing)
+        }
+      }
+      ts.forEachChild(node, collectContextProviderPrivateSetters)
+    }
+    collectContextProviderPrivateSetters(sourceFile)
     const functionsForNode = node => {
       const callbacks = customHookFunctionsByOwner.get(nearestFunction(node))
       return callbacks ? new Map([...functions, ...callbacks]) : functions
@@ -1581,6 +1608,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, arguments_))
     }
     const visitor = node => {
+      if (ts.isJsxAttribute(node) && contextProviderPrivateSetters.has(node)) {
+        const expression = unwrapExpression(node.initializer.expression)
+        const value = factory.updateObjectLiteralExpression(expression, [...expression.properties, ...contextProviderPrivateSetters.get(node).map(name => factory.createShorthandPropertyAssignment(name))])
+        return factory.updateJsxAttribute(node, node.name, factory.updateJsxExpression(node.initializer, value))
+      }
       if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && customHookPrivateFields.has(node)) {
         const privateFields = customHookPrivateFields.get(node)
         return factory.updateVariableDeclaration(node, factory.updateObjectBindingPattern(node.name, [

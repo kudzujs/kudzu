@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.45` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.46` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -36,6 +36,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.43` | Preserve callback, setter, and ref ownership through a third direct component boundary. | Parent SignalIR, child state/effects/IDs, object refs, conditional cleanup, fresh remount, and static zero-JavaScript output pass in Chrome; a fourth callback boundary fails closed. |
 | `0.8.44` | Remove consumer-local name collisions from specialized Context actions. | Action-private Provider state/setter fields receive deterministic collision-free aliases; CRUD browser behavior, direct state operations, diagnostics, and zero Context runtime output pass. |
 | `0.8.45` | Add a source-scale benchmark and skip Kudzu semantic transformation for proven plain TypeScript modules. | Seven alternating samples improve compile and clean-build medians with identical deploy output; uncertain modules retain the existing transformer. |
+| `0.8.46` | Remove action-only setter fields from authored Context Provider APIs. | Compiler scratch restores required setters while Notes CRUD, RouteIR signals, concrete state operations, diagnostics, and zero Context runtime output pass. |
 
 ## Sequence Rules
 
