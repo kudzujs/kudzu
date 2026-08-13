@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.49 - Setter callback fan-out
+
+Kudzu 0.8.49 lets one component forward the same destructured setter callback directly through multiple child component `on*` props.
+
+### Changed in 0.8.49
+
+- A specialized component may pass one callback prop directly to multiple child controls.
+- Each child branch specializes independently to the original parent state signal.
+- Fan-out composes with multiple direct intrinsic handlers within the existing three-boundary limit.
+- Aliases, ordinary prop names, spreads, intermediate adapters, and a fourth callback boundary remain source-diagnosed.
+
+### Output and performance
+
+- Every leaf continues to emit its existing concrete state-operation descriptor.
+- No callback registry, component runtime, browser runtime module, or public Kudzu API is added.
+- This release makes no new performance claim.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 214 tests and 164 generated pages.
+- A relative component fans one callback out to two child controls whose click descriptors target the same parent signal.
+- Existing repeated-call and fourth-boundary negative fixtures retain their source diagnostics.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.49
+```
+
 ## 0.8.48 - Multi-handler setter callbacks
 
 Kudzu 0.8.48 lets one compiler-specialized setter-callback prop be called once from each of multiple direct intrinsic event handlers.

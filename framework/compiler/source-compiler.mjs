@@ -1088,9 +1088,17 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         }
         collectReferences(component.body)
         if (!references.length) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be called by at least one intrinsic event handler`)
-        if (references.length === 1 && ts.isJsxExpression(references[0].parent) && ts.isJsxAttribute(references[0].parent.parent) && /^on[A-Z]/.test(references[0].parent.parent.name.text)) continue
         const handlers = new Set()
         for (const reference of references) {
+          if (ts.isJsxExpression(reference.parent) && ts.isJsxAttribute(reference.parent.parent) && /^on[A-Z]/.test(reference.parent.parent.name.text)) {
+            const attribute = reference.parent.parent
+            const tag = attribute.parent?.parent && (ts.isJsxOpeningElement(attribute.parent.parent) || ts.isJsxSelfClosingElement(attribute.parent.parent)) ? attribute.parent.parent.tagName : undefined
+            if (ts.isIdentifier(tag) && tag.text[0] !== tag.text[0].toLowerCase()) continue
+            if (ts.isIdentifier(tag) && !handlers.has(attribute)) {
+              handlers.add(attribute)
+              continue
+            }
+          }
           if (!ts.isCallExpression(reference.parent) || reference.parent.expression !== reference) fail(reference, `Setter-callback prop ${JSON.stringify(prop)} must be called directly inside an intrinsic event handler`)
           let attribute
           for (let current = reference.parent; current && current !== component.body; current = current.parent) {

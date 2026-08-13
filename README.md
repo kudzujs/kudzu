@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.48 - Multi-handler setter callbacks.** One specialized setter-callback prop may be called once from each of multiple direct intrinsic event handlers. Kudzu lowers every call to the same parent signal without shipping callbacks or a component runtime. Read the [release notes](./RELEASES.md#0848---multi-handler-setter-callbacks), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.48), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.49 - Setter callback fan-out.** One component may forward the same destructured setter callback directly to multiple child controls. Kudzu specializes every branch to the original parent signal without shipping callbacks or a component runtime. Read the [release notes](./RELEASES.md#0849---setter-callback-fan-out), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.49), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
