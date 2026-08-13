@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.49 - Setter callback fan-out.** One component may forward the same destructured setter callback directly to multiple child controls. Kudzu specializes every branch to the original parent signal without shipping callbacks or a component runtime. Read the [release notes](./RELEASES.md#0849---setter-callback-fan-out), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.49), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.50 - Package-neutral shared state IR.** Reduced Zustand migration now lowers through validated `SharedStateIR` and `SharedActionIR` records before generic signal and handler consumers. Existing layout ownership, action behavior, and source diagnostics remain unchanged without adding a public store API or runtime. Read the [release notes](./RELEASES.md#0850---package-neutral-shared-state-ir), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.50), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

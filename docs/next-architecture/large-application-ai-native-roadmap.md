@@ -183,7 +183,7 @@ P0 creates the semantic base required by every later large-application capabilit
 - Add an internal compatibility adapter registry.
 - Consolidate React compatibility ownership behind one adapter contract.
 - Register React Router ownership without changing native navigation semantics.
-- Move Zustand-specific logic out of generic core, handler, and state paths onto package-neutral shared-state/action IR.
+- Move Zustand-specific logic out of generic core, handler, and state paths onto package-neutral shared-state/action IR. **Completed in `0.8.50`:** the Zustand pass preserves package diagnostics while generic compiler consumers use validated SharedStateIR/SharedActionIR identities and references; no public adapter or store runtime was added.
 - Characterize Redux/RTK, TanStack Query, React Hook Form, Zod, Radix/Headless UI/MUI, CSS-in-JS, animation, chart, drag/drop, virtualization, auth, REST, and GraphQL against real application fixtures.
 - Prefer native packages and Web APIs, then compilation, deterministic migration, adapters, partial support, or explicit unsupported status in that order.
 - Publish no public adapter API until an external adapter requires independent versioning.
@@ -380,7 +380,7 @@ After the relevant P0 foundations, investigate capabilities in this order:
 
 1. Property-level derived dependencies over ordinary object state. **Completed in `0.8.40`:** direct property paths and top-level immutable primitive locals over object state reuse tagged DerivedIR, subscribe to the source signal, and compare selected values with `Object.is`; whole-object and dynamic dependencies remain rejected.
 2. Multi-boundary component/prop/callback/ref/context dataflow. **Three-boundary callback/ref ownership completed in `0.8.43`; collision-free Context action-private state completed in `0.8.44`; action-only Provider setter exposure removed in `0.8.46`; direct primitive prop state initialization completed in `0.8.47`; repeated direct leaf-handler callback use completed in `0.8.48`; direct child callback fan-out completed in `0.8.49`:** forwarding preserves parent SignalIR, Context action lowering uses compiler-owned aliases when consumer locals reuse Provider state/setter names, action-required setters may remain compiler-only when their state is publicly exposed, specialized children may seed local state from a direct primitive parent signal, and one callback may branch through multiple component `on*` props and intrinsic handlers. A fourth callback boundary, callback aliases/non-handler uses, fully hidden Context state, and object/array prop initializers remain fail-closed. Broader prop, callback, ref, and Context graphs remain migration-led work.
-3. Package-neutral shared state/actions and migration of current Zustand internals.
+3. Package-neutral shared state/actions and migration of current Zustand internals. **Completed in `0.8.50`:** Zustand source normalization produces one generic shared-state adapter descriptor; selectors and handlers register JSON-safe SharedStateIR/SharedActionIR records, handler lowering consumes package-neutral actions, and existing RouteIR, layout ownership, same-turn updates, navigation persistence, and browser output remain unchanged. Redux/RTK and public adapter APIs remain unsupported.
 4. Browser-only package imports in owned effect/resource modules.
 5. ResourceIR from at least two independent WebSocket/SSE/SDK fixtures with the same semantics.
 6. Route/layout capability and CSS chunk closure.
@@ -405,7 +405,7 @@ Current factual baseline:
 |---|---|
 | React source | Compiled, partial |
 | React Router | Compiled, partial |
-| Zustand | Compiled, partial, insufficiently isolated |
+| Zustand | Compiled, partial, isolated through internal shared-state/action IR |
 | Redux/RTK | Unsupported |
 | TanStack Query | Migrated recipe, partial |
 | React Hook Form | Migrated recipe, partial |
@@ -481,4 +481,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 12, the `0.8.40` property-dependency slice, the `0.8.41` and `0.8.43` direct multi-boundary callback/ref slices, the `0.8.44` Context alias slice, the `0.8.46` action-only Provider setter slice, the `0.8.47` direct primitive prop initializer slice, the `0.8.48` repeated direct leaf-handler callback slice, the `0.8.49` direct child callback fan-out slice, and the `0.8.42` measured route-output optimization are complete. Continue broader **component/prop/callback/ref/context dataflow** only from the next real migration blocker. Do not skip directly to a store, resource, router, virtualization, or ecosystem package feature.
+PR 1 through PR 12, the `0.8.40` property-dependency slice, the `0.8.41` and `0.8.43` direct multi-boundary callback/ref slices, the `0.8.44` Context alias slice, the `0.8.46` action-only Provider setter slice, the `0.8.47` direct primitive prop initializer slice, the `0.8.48` repeated direct leaf-handler callback slice, the `0.8.49` direct child callback fan-out slice, the `0.8.50` package-neutral shared-state/action slice, and the `0.8.42` measured route-output optimization are complete. Continue with **browser-only package imports in owned effect/resource modules** only from a real migration blocker. Do not skip directly to a public adapter/store API, router, virtualization, or unsupported ecosystem package feature.

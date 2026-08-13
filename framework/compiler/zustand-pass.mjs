@@ -51,7 +51,18 @@ export function createZustandPass({ isSerializableStateLiteral, nativeCaptureNam
           }
           validateAction(action.body)
         }
-        stores.set(declaration.name.text, { name: declaration.name.text, setName: callback.parameters[0].name.text, field: data[0].name, initialValue: data[0].value, actions, declaration })
+        stores.set(declaration.name.text, {
+          name: declaration.name.text,
+          identity: `${relative(sourceDirectory, sourceFile.fileName).replaceAll(sep, "/")}#${declaration.name.text}`,
+          sourceKind: "Zustand",
+          selectorExample: "state => state.quantities",
+          setName: callback.parameters[0].name.text,
+          field: data[0].name,
+          initialValue: data[0].value,
+          initialData: serializableLiteralValue(data[0].value),
+          actions,
+          declaration
+        })
       }
     }
     const visit = node => {
@@ -70,26 +81,37 @@ export function createZustandPass({ isSerializableStateLiteral, nativeCaptureNam
       if (declaration) throw sourceNodeError(declaration, sourceFile, "Zustand create must directly initialize an exported const store")
       return sourceFile
     }
-    const identity = name => `${relative(sourceDirectory, sourceFile.fileName).replaceAll(sep, "/")}#${name}`
     const visitor = node => {
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && stores.has(node.name.text)) {
         const store = stores.get(node.name.text)
-        return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createCallExpression(factory.createIdentifier("__kCreateStore"), undefined, [
-          factory.createStringLiteral(identity(store.name)),
+        return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createCallExpression(factory.createIdentifier("__kCreateSharedState"), undefined, [
+          factory.createStringLiteral(store.identity),
           factory.createStringLiteral(store.field),
           store.initialValue,
-          factory.createArrayLiteralExpression([...store.actions.keys()].map(name => factory.createStringLiteral(name)))
+          factory.createArrayLiteralExpression([...store.actions.keys()].map(name => factory.createStringLiteral(name))),
+          factory.createStringLiteral(store.sourceKind)
         ]))
       }
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "zustand") return undefined
       return ts.visitEachChild(node, visitor, context)
     }
     const normalized = ts.visitNode(sourceFile, visitor)
-    const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports([factory.createImportSpecifier(false, undefined, factory.createIdentifier("__kCreateStore"))])), factory.createStringLiteral("@kudzujs/core"))
+    const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports([factory.createImportSpecifier(false, undefined, factory.createIdentifier("__kCreateSharedState"))])), factory.createStringLiteral("@kudzujs/core"))
     const statements = [...normalized.statements]
     statements.splice(statements.findLastIndex(statement => ts.isImportDeclaration(statement)) + 1, 0, declaration)
     return factory.updateSourceFile(normalized, statements)
   }
 
   return { analyzeZustandStores, normalizeZustandMigrationSyntax }
+}
+
+function serializableLiteralValue(node) {
+  const value = unwrapExpression(node)
+  if (ts.isStringLiteral(value) || ts.isNumericLiteral(value)) return ts.isNumericLiteral(value) ? Number(value.text) : value.text
+  if (value.kind === ts.SyntaxKind.TrueKeyword) return true
+  if (value.kind === ts.SyntaxKind.FalseKeyword) return false
+  if (value.kind === ts.SyntaxKind.NullKeyword) return null
+  if (ts.isPrefixUnaryExpression(value)) return value.operator === ts.SyntaxKind.MinusToken ? -Number(value.operand.text) : Number(value.operand.text)
+  if (ts.isArrayLiteralExpression(value)) return value.elements.map(serializableLiteralValue)
+  return Object.fromEntries(value.properties.map(property => [property.name.text, serializableLiteralValue(property.initializer)]))
 }

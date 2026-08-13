@@ -1,5 +1,5 @@
 export function createModuleIR(file) {
-  return { version: 2, file, symbols: [], signals: [], handlers: [], bindings: [], derived: [], effects: [], keyedBlocks: [], imports: [], clientModules: [] }
+  return { version: 2, file, symbols: [], sharedStates: [], sharedActions: [], signals: [], handlers: [], bindings: [], derived: [], effects: [], keyedBlocks: [], imports: [], clientModules: [] }
 }
 
 export function assertModuleIRReferences(moduleIR, componentAnalysis) {
@@ -15,6 +15,8 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
     })
   }
   indexed("SymbolRef", moduleIR.symbols)
+  indexed("SharedStateIR", moduleIR.sharedStates)
+  indexed("SharedActionIR", moduleIR.sharedActions)
   indexed("SignalIR", moduleIR.signals)
   indexed("HandlerIR", moduleIR.handlers)
   indexed("BindingIR", moduleIR.bindings)
@@ -22,6 +24,7 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
   indexed("EffectIR", moduleIR.effects)
   indexed("KeyedBlockIR", moduleIR.keyedBlocks)
   indexed("ImportIR", moduleIR.imports)
+  for (const action of moduleIR.sharedActions) slot(moduleIR.sharedStates, action.state, `SharedActionIR ${action.slot}`, "SharedStateIR")
   if (componentAnalysis) {
     indexed("Component owner", componentAnalysis.owners)
     indexed("Component specialization", componentAnalysis.specializations)
@@ -54,6 +57,7 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
     if (!reference || typeof reference !== "object") throw new Error(`${label} must be a StateRef`)
     if (reference.kind === "module-symbol") return moduleSymbol(reference.symbol, label)
     if (reference.kind === "symbol") return slot(moduleIR.symbols, reference.symbol, label, "SymbolRef")
+    if (reference.kind === "shared-state") return slot(moduleIR.sharedStates, reference.sharedState, label, "SharedStateIR")
     if (reference.kind !== "state") throw new Error(`${label} has invalid kind ${JSON.stringify(reference.kind)}`)
     const owner = ownerRef(reference.owner, `${label} owner`)
     const states = reference.owner.kind === "component" || reference.owner.kind === "specialization" ? owner.states : []
@@ -74,6 +78,7 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
     for (const [index, signal] of (handler.signals ?? []).entries()) slot(moduleIR.signals, signal.signal, `HandlerIR ${handler.slot} signal ${index}`, "SignalIR")
     for (const [index, imported] of (handler.imports ?? []).entries()) slot(moduleIR.imports, imported, `HandlerIR ${handler.slot} import ${index}`, "ImportIR")
     for (const [index, capture] of (handler.captures ?? []).entries()) if (capture.symbol !== undefined) slot(moduleIR.symbols, capture.symbol, `HandlerIR ${handler.slot} capture ${index}`, "SymbolRef")
+    for (const [index, action] of (handler.actions ?? []).entries()) slot(moduleIR.sharedActions, action, `HandlerIR ${handler.slot} action ${index}`, "SharedActionIR")
     if (handler.keyedBlock !== undefined) slot(moduleIR.keyedBlocks, handler.keyedBlock, `HandlerIR ${handler.slot} keyed block`, "KeyedBlockIR")
   }
   for (const binding of moduleIR.bindings) {
@@ -147,6 +152,24 @@ export function registerSignal(moduleIR, reference, debugName) {
     moduleIR.signals.push(signal)
   }
   return signal
+}
+
+export function registerSharedState(moduleIR, descriptor) {
+  let state = moduleIR.sharedStates.find(entry => entry.identity === descriptor.identity && entry.field === descriptor.field)
+  if (!state) {
+    state = { ...descriptor, slot: moduleIR.sharedStates.length }
+    moduleIR.sharedStates.push(state)
+  }
+  return state
+}
+
+export function registerSharedAction(moduleIR, descriptor) {
+  let action = moduleIR.sharedActions.find(entry => entry.state === descriptor.state && entry.name === descriptor.name)
+  if (!action) {
+    action = { ...descriptor, slot: moduleIR.sharedActions.length }
+    moduleIR.sharedActions.push(action)
+  }
+  return action
 }
 
 export function registerCommandHandler(moduleIR, commands, source) {

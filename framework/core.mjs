@@ -80,18 +80,18 @@ export function useReducer(reducer, initialValue, name) {
   return [state, dispatch]
 }
 
-export function __kCreateStore(name, field, initialValue, actions) {
+export function __kCreateSharedState(name, field, initialValue, actions, sourceKind = "Shared state") {
   return selector => {
-    if (!renderContext) throw new Error("Zustand stores can only be read while rendering a Kudzu component")
-    let store = renderContext.stores.get(name)
+    if (!renderContext) throw new Error(`${sourceKind} stores can only be read while rendering a Kudzu component`)
+    let store = renderContext.sharedStates.get(name)
     if (!store) {
-      if (renderContext.scoped && renderContext.renderScope !== "layout") throw new Error(`Zustand store ${JSON.stringify(name)} must be initialized by the shared layout before route components use it`)
-      if (renderContext.listRoot || renderContext.listRowRoot || renderContext.listTemplate) throw new Error(`Zustand store ${JSON.stringify(name)} cannot be initialized inside a keyed row`)
+      if (renderContext.scoped && renderContext.renderScope !== "layout") throw new Error(`${sourceKind} store ${JSON.stringify(name)} must be initialized by the shared layout before route components use it`)
+      if (renderContext.listRoot || renderContext.listRowRoot || renderContext.listTemplate) throw new Error(`${sourceKind} store ${JSON.stringify(name)} cannot be initialized inside a keyed row`)
       const [state] = useState(initialValue, `${name}.${field}`)
       store = { [field]: state }
       for (const action of actions) {
         const marker = () => {
-          throw new Error("Zustand actions are compiled into browser handlers")
+          throw new Error(`${sourceKind} actions are compiled into browser handlers`)
         }
         Object.defineProperties(marker, {
           [signalMarker]: { value: true },
@@ -100,7 +100,7 @@ export function __kCreateStore(name, field, initialValue, actions) {
         })
         store[action] = marker
       }
-      renderContext.stores.set(name, store)
+      renderContext.sharedStates.set(name, store)
     }
     return selector(store)
   }
@@ -458,7 +458,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], stores: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }

@@ -21,18 +21,18 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
             ts.setParentRecursive(call, false)
             return ts.visitNode(call, visitor)
           }
-          if (reducer.store) return zustandActionDispatch(factory, reducer, node.arguments.map(argument => ts.visitNode(argument, visitor)))
+          if (reducer.sharedAction) return sharedActionDispatch(factory, reducer, node.arguments.map(argument => ts.visitNode(argument, visitor)))
           if (node.arguments.length !== 1) throw sourceNodeError(node, expression.getSourceFile(), "Reducer dispatches require exactly one action")
           return reducerDispatch(factory, reducer, ts.visitNode(node.arguments[0], visitor))
         }
         if (ts.isShorthandPropertyAssignment(node) && reducers.has(node.name.text) && matchesExternalReference(node.name, expression, bindingIndex)) {
           if (reducers.get(node.name.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
-          if (reducers.get(node.name.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
+          if (reducers.get(node.name.text).sharedAction) throw sourceNodeError(node, expression.getSourceFile(), `${reducers.get(node.name.text).sourceKind} actions must be called directly inside an event handler`)
           return factory.createPropertyAssignment(node.name, reducerReference(factory, reducers.get(node.name.text)))
         }
         if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && matchesExternalReference(node, expression, bindingIndex)) {
           if (reducers.get(node.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
-          if (reducers.get(node.text).store) throw sourceNodeError(node, expression.getSourceFile(), "Zustand actions must be called directly inside an event handler")
+          if (reducers.get(node.text).sharedAction) throw sourceNodeError(node, expression.getSourceFile(), `${reducers.get(node.text).sourceKind} actions must be called directly inside an event handler`)
           return reducerReference(factory, reducers.get(node.text))
         }
         if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && setters.has(node.expression.text) && matchesExternalReference(node.expression, expression, bindingIndex)) {
@@ -156,19 +156,20 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
   }
 
   function reducerDispatch(factory, reducer, action) {
-    if (reducer.store) return zustandActionDispatch(factory, reducer, [action])
+    if (reducer.sharedAction) return sharedActionDispatch(factory, reducer, [action])
     const previous = factory.createUniqueName("__kPrevious")
     const update = factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, previous)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createCallExpression(factory.createIdentifier(reducer.reducer), undefined, [previous, action]))
     return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(reducer.state), update])
   }
 
-  function zustandActionDispatch(factory, reducer, args) {
+  function sharedActionDispatch(factory, reducer, args) {
     const previous = factory.createUniqueName("__kPrevious")
     const current = factory.createUniqueName("__kStore")
     const updateValue = factory.createUniqueName("__kUpdate")
     const partial = factory.createUniqueName("__kPartial")
     const action = factory.createUniqueName("__kAction")
-    const set = factory.createIdentifier(reducer.store.setName)
+    const shared = reducer.sharedAction
+    const set = factory.createIdentifier(shared.setName)
     const merge = factory.createExpressionStatement(factory.createBinaryExpression(current, factory.createToken(ts.SyntaxKind.EqualsToken), factory.createObjectLiteralExpression([
       factory.createSpreadAssignment(current),
       factory.createSpreadAssignment(partial)
@@ -184,11 +185,11 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
       merge
     ], true)
     const body = factory.createBlock([
-      factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(current, undefined, undefined, factory.createObjectLiteralExpression([factory.createPropertyAssignment(reducer.store.field, previous)]))], ts.NodeFlags.Let)),
+      factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(current, undefined, undefined, factory.createObjectLiteralExpression([factory.createPropertyAssignment(shared.field, previous)]))], ts.NodeFlags.Let)),
       factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(set, undefined, undefined, factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, updateValue)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), setBody))], ts.NodeFlags.Const)),
-      factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(action, undefined, undefined, synthesizeTree(reducer.store.actions.get(reducer.action)))], ts.NodeFlags.Const)),
+      factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(action, undefined, undefined, synthesizeTree(shared.implementation))], ts.NodeFlags.Const)),
       factory.createExpressionStatement(factory.createCallExpression(action, undefined, args)),
-      factory.createReturnStatement(factory.createPropertyAccessExpression(current, reducer.store.field))
+      factory.createReturnStatement(factory.createPropertyAccessExpression(current, shared.field))
     ], true)
     const update = factory.createArrowFunction(undefined, undefined, [factory.createParameterDeclaration(undefined, undefined, previous)], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), body)
     return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(reducer.state), update])

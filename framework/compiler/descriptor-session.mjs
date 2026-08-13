@@ -244,6 +244,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
           snapshot: lowered.captureSnapshots.includes(name)
         })),
         imports: entry.imports.map(entry => importSlot(importRecord(entry))),
+        actions: [...entry.reducers.values()].flatMap(reducer => reducer.sharedAction ? [reducer.sharedAction.slot] : []),
         code: lowered.code,
         ...(source(entry.expression) ? { source: source(entry.expression) } : {})
       })

@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.50 - Package-neutral shared state IR
+
+Kudzu 0.8.50 contains reduced Zustand migration syntax behind package-neutral shared-state and action records before generic signal and handler consumers.
+
+### Changed in 0.8.50
+
+- ModuleIR v2 records JSON-safe `SharedStateIR` identities, fields, and initial values.
+- `SharedActionIR` records reference their owning shared state through validated slots.
+- HandlerIR records the shared actions used by route-specific native handlers.
+- The Zustand adapter preserves package-specific source diagnostics while generic compiler and build-time rendering paths consume shared-state metadata.
+
+### Output and performance
+
+- Existing RouteIR layout state, functional action updates, same-turn behavior, and enhanced-navigation persistence remain unchanged.
+- React, Zustand, subscriptions, and a generic store runtime remain absent from deploy output.
+- No public store or compatibility-adapter API is added, and this release makes no new performance claim.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 215 tests and 165 generated pages.
+- Focused ModuleIR tests validate JSON round-tripping and reject dangling shared-action state references.
+- The maintained Zustand browser journey retains repeated same-turn updates, batched effects, layout identity, navigation persistence, and removal behavior.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.50
+```
+
 ## 0.8.49 - Setter callback fan-out
 
 Kudzu 0.8.49 lets one component forward the same destructured setter callback directly through multiple child component `on*` props.

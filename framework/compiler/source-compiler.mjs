@@ -12,6 +12,7 @@ import { captureNames, createDescriptorSession, createSemanticArtifact, nativeCa
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "./effect-analysis.mjs"
 import { createHandlerCodegen } from "./handler-codegen.mjs"
 import { createHandlerLowering } from "./handler-lowering.mjs"
+import { registerSharedAction, registerSharedState } from "./ir/module-ir.mjs"
 import { createCommandSpecializer } from "./optimize/command-specialization.mjs"
 import { applyNormalizationPasses } from "./normalization-pipeline.mjs"
 import { assetPath, relativeModulePath, withBase } from "./path-helpers.mjs"
@@ -346,14 +347,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const stateOwnersByFunction = new Map()
     const localStateSettersByFunction = new Map()
     const reducersByFunction = new Map()
-    const zustandStores = new Map()
-    const resolvedZustandStore = entry => {
+    const sharedStateAdapters = new Map()
+    const resolvedSharedState = entry => {
       const exportName = entry.kind === "default" ? "default" : entry.imported
       const key = `${entry.target}:${exportName}`
-      if (zustandStores.has(key)) return zustandStores.get(key)
+      if (sharedStateAdapters.has(key)) return sharedStateAdapters.get(key)
       const targetSource = parseSourceFile(entry.target, sourceIndex.get(entry.target))
       const store = analyzeZustandStores(targetSource).get(exportName)
-      zustandStores.set(key, store)
+      sharedStateAdapters.set(key, store)
       return store
     }
     const functions = new Map()
@@ -552,7 +553,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
         const callName = ts.isIdentifier(node.initializer.expression) ? node.initializer.expression.text : ""
-        if (callName && /^use[A-Z]/.test(callName) && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace" && !resolvedZustandStore(importBindings.get(callName))) {
+        if (callName && /^use[A-Z]/.test(callName) && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace" && !resolvedSharedState(importBindings.get(callName))) {
           if (!isLocalConst(node) || !ts.isObjectBindingPattern(node.name) || node.initializer.arguments.length) throw sourceNodeError(node, sourceFile, "Relative custom hooks must initialize one top-level const object destructuring with no arguments")
           const hook = resolveCustomHook(importBindings.get(callName), node.initializer)
           const names = new Set()
@@ -635,26 +636,31 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         }
         if (ts.isIdentifier(node.name) && callName && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace") {
           const storeImport = importBindings.get(callName)
-          const store = resolvedZustandStore(storeImport)
+          const store = resolvedSharedState(storeImport)
           if (store) {
             const selector = node.initializer.arguments[0]
-            if (node.initializer.arguments.length !== 1 || !selector || !ts.isArrowFunction(selector) || selector.parameters.length !== 1 || !ts.isIdentifier(selector.parameters[0].name) || !ts.isPropertyAccessExpression(unwrapExpression(selector.body)) || !ts.isIdentifier(unwrapExpression(selector.body).expression) || unwrapExpression(selector.body).expression.text !== selector.parameters[0].name.text) throw sourceNodeError(node.initializer, sourceFile, "Zustand selectors must be direct arrows such as state => state.quantities")
+            if (node.initializer.arguments.length !== 1 || !selector || !ts.isArrowFunction(selector) || selector.parameters.length !== 1 || !ts.isIdentifier(selector.parameters[0].name) || !ts.isPropertyAccessExpression(unwrapExpression(selector.body)) || !ts.isIdentifier(unwrapExpression(selector.body).expression) || unwrapExpression(selector.body).expression.text !== selector.parameters[0].name.text) throw sourceNodeError(node.initializer, sourceFile, `${store.sourceKind} selectors must be direct arrows such as ${store.selectorExample}`)
             const selected = unwrapExpression(selector.body).name.text
             const owner = nearestFunction(node)
-            if (!owner) throw sourceNodeError(node, sourceFile, "Zustand stores cannot be used outside a Kudzu component")
+            if (!owner) throw sourceNodeError(node, sourceFile, `${store.sourceKind} stores cannot be used outside a Kudzu component`)
             const setters = settersByFunction.get(owner) ?? new Map()
+            const sharedState = registerSharedState(moduleIR, { identity: store.identity, field: store.field, initialValue: store.initialData })
+            const sharedReference = { kind: "shared-state", sharedState: sharedState.slot }
             if (selected === store.field) {
               const setter = `__kStoreState_${node.name.text}`
               setters.set(setter, node.name.text)
-              registerState(owner, node.name.text, setter, "store", node)
+              registerState(owner, node.name.text, setter, "shared-state", node)
+              stateOwnersByFunction.get(owner).set(node.name.text, sharedReference)
             }
             else if (store.actions.has(selected)) {
               setters.set(node.name.text, node.name.text)
-              registerState(owner, node.name.text, node.name.text, "store-action", node)
+              registerState(owner, node.name.text, node.name.text, "shared-action", node)
+              stateOwnersByFunction.get(owner).set(node.name.text, sharedReference)
+              const action = registerSharedAction(moduleIR, { state: sharedState.slot, name: selected })
               const reducers = reducersByFunction.get(owner) ?? new Map()
-              reducers.set(node.name.text, { state: node.name.text, store, action: selected })
+              reducers.set(node.name.text, { state: node.name.text, sourceKind: store.sourceKind, sharedAction: { ...action, setName: store.setName, field: store.field, implementation: store.actions.get(selected) } })
               reducersByFunction.set(owner, reducers)
-            } else throw sourceNodeError(unwrapExpression(selector.body).name, sourceFile, `Zustand store ${JSON.stringify(store.name)} has no supported property ${JSON.stringify(selected)}`)
+            } else throw sourceNodeError(unwrapExpression(selector.body).name, sourceFile, `${store.sourceKind} store ${JSON.stringify(store.name)} has no supported property ${JSON.stringify(selected)}`)
             settersByFunction.set(owner, setters)
           }
         }

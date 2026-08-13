@@ -11,7 +11,7 @@ import { generateCommandBehavior } from "../framework/compiler/codegen/command-c
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "../framework/compiler/effect-analysis.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
-import { assertModuleIRReferences, createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock } from "../framework/compiler/ir/module-ir.mjs"
+import { assertModuleIRReferences, createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock, registerSharedAction, registerSharedState } from "../framework/compiler/ir/module-ir.mjs"
 import { generateListRuntime } from "../framework/compiler/list-runtime-codegen.mjs"
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
 import { createCommandSpecializer } from "../framework/compiler/optimize/command-specialization.mjs"
@@ -286,9 +286,16 @@ export const useCount = create(set => ({ count: 0, increment: () => set({ count:
   const output = ts.createPrinter().printFile(result.transformed[0])
   result.dispose()
 
-  assert.equal(pass.analyzeZustandStores(source).get("useCount").field, "count")
+  const shared = pass.analyzeZustandStores(source).get("useCount")
+  assert.deepEqual({ identity: shared.identity, field: shared.field, initialValue: shared.initialData, actions: [...shared.actions.keys()], sourceKind: shared.sourceKind }, {
+    identity: "store.ts#useCount",
+    field: "count",
+    initialValue: 0,
+    actions: ["increment"],
+    sourceKind: "Zustand"
+  })
   assert.doesNotMatch(output, /from "zustand"/)
-  assert.match(output, /__kCreateStore\("store.ts#useCount", "count", 0, \["increment"\]\)/)
+  assert.match(output, /__kCreateSharedState\("store.ts#useCount", "count", 0, \["increment"\], "Zustand"\)/)
 
   function normalize(context, file) {
     return pass.normalizeZustandMigrationSyntax(file, context.factory, context)
@@ -381,6 +388,8 @@ test("registers JSON-safe command ModuleIR with deterministic slots", () => {
     version: 2,
     file: "src/pages/counter.tsx",
     symbols: [],
+    sharedStates: [],
+    sharedActions: [],
     signals: [
       { slot: 0, reference: reference(0, 0), debugName: "total" },
       { slot: 1, reference: reference(0, 1), debugName: "count" },
@@ -444,6 +453,20 @@ test("rejects dangling ModuleIR slot references", () => {
   assert.throws(() => assertModuleIRReferences(moduleIR), /HandlerIR 0 command 0 references missing SignalIR slot 0/)
 })
 
+test("registers package-neutral shared state and action IR", () => {
+  const moduleIR = createModuleIR("src/pages/shared.tsx")
+  const state = registerSharedState(moduleIR, { identity: "store.ts#useCart", field: "quantities", initialValue: {} })
+  const action = registerSharedAction(moduleIR, { state: state.slot, name: "add" })
+  moduleIR.signals.push({ slot: 0, reference: { kind: "shared-state", sharedState: state.slot }, debugName: "quantities" })
+  moduleIR.handlers.push({ slot: 0, kind: "module-export", role: "native", exportName: "handler0", signals: [{ signal: 0 }], actions: [action.slot], captures: [], imports: [], code: "" })
+
+  assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(moduleIR))), moduleIR)
+  assert.doesNotMatch(JSON.stringify({ sharedStates: moduleIR.sharedStates, sharedActions: moduleIR.sharedActions }), /zustand|store-action|__kCreateStore/i)
+  const broken = JSON.parse(JSON.stringify(moduleIR))
+  broken.sharedActions[0].state = 1
+  assert.throws(() => assertModuleIRReferences(broken), /SharedActionIR 0 references missing SharedStateIR slot 1/)
+})
+
 test("validates ModuleIR v2 structural references after JSON round-tripping", () => {
   const analysis = createComponentAnalysis("src/pages/valid.tsx")
   const components = createComponentAnalysisSession(analysis)
@@ -455,6 +478,8 @@ test("validates ModuleIR v2 structural references after JSON round-tripping", ()
     version: 2,
     file: "src/pages/valid.tsx",
     symbols: [{ slot: 0, debugName: "items", declarationKind: "const" }],
+    sharedStates: [],
+    sharedActions: [],
     signals: [{ slot: 0, reference: { kind: "state", owner: { kind: "component", slot: 0 }, slot: 0 }, debugName: "count" }],
     handlers: [{ slot: 0, kind: "module-export", role: "effect", exportName: "effect0", signals: [{ signal: 0 }], captures: [{ symbol: 0 }], imports: [], code: "" }],
     bindings: [{ slot: 0, kind: "module-export", role: "binding", exportName: "binding0", signals: [0], captures: [{ symbol: 0 }], imports: [], code: "" }],
