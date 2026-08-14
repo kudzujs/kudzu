@@ -19,13 +19,20 @@ test("stages output and rejects public artifact collisions", { timeout: 120_000 
 
   await put("src/pages/index.tsx", page("Generation A"))
   await put("src/pages/about.tsx", `
+import { useEffect } from "@kudzujs/core"
 import { label } from "../shared"
 export default function About() {
+  useEffect(() => {
+    const worker = new Worker(new URL("../about.worker.ts", import.meta.url), { type: "module" })
+    return () => worker.terminate()
+  }, [])
   return <button onClick={() => { document.title = label("about") }}>About</button>
 }
 `)
   await put("src/shared.ts", `export const label = value => String(value)`)
-  await put("src/task.worker.ts", `self.addEventListener("message", () => postMessage("ready"))`)
+  await put("src/worker-shared.ts", `export const ready = "ready"`)
+  await put("src/task.worker.ts", `import { ready } from "./worker-shared"; self.addEventListener("message", () => postMessage(ready))`)
+  await put("src/about.worker.ts", `import { ready } from "./worker-shared"; self.addEventListener("message", () => postMessage(ready))`)
   await put("src/app.css", `main { color: rebeccapurple; }`)
   await put("theme.css", `body { background: white; }`)
   await put("public/old-only.txt", "old")
@@ -48,6 +55,21 @@ export default {
   const expected = await fileManifest(join(fixture, "dist"))
   const chunk = Object.keys(expected).find(path => path.startsWith("assets/handlers/chunks/"))
   assert.ok(chunk, "fixture must emit a shared handler chunk")
+  const artifacts = JSON.parse(await readFile(join(fixture, ".kudzu", "kudzu-artifacts.json"), "utf8"))
+  const homeArtifacts = artifacts.routes.find(route => route.route === "/")
+  const aboutArtifacts = artifacts.routes.find(route => route.route === "/about")
+  const chunkUrl = `/${chunk}`
+  assert.equal(artifacts.version, 1)
+  assert.deepEqual(homeArtifacts.handlers.entries, ["/assets/handlers/pages/index.js"])
+  assert.deepEqual(aboutArtifacts.handlers.entries, ["/assets/handlers/pages/about.js"])
+  assert.equal(homeArtifacts.handlers.chunks.includes(chunkUrl), true)
+  assert.equal(aboutArtifacts.handlers.chunks.includes(chunkUrl), true)
+  assert.deepEqual(artifacts.sharedChunks.find(entry => entry.path === chunkUrl), { path: chunkUrl, routes: ["/", "/about"] })
+  assert.equal(homeArtifacts.workers.length, 1)
+  assert.equal(aboutArtifacts.workers.length, 1)
+  const workerChunk = homeArtifacts.workers[0].chunks.find(path => aboutArtifacts.workers[0].chunks.includes(path))
+  assert.match(workerChunk, /^\/assets\/workers\/chunks\//)
+  assert.deepEqual(artifacts.sharedChunks.find(entry => entry.path === workerChunk), { path: workerChunk, routes: ["/", "/about"] })
 
   const collisions = [
     ["index.html", /public\/index\.html collides with generated output index\.html/],

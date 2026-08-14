@@ -8,6 +8,7 @@ import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
 import { createProjectSession } from "./compiler/project-session.mjs"
 import { createRouteBuildRecord, planRouteArtifacts } from "./compiler/route-build-record.mjs"
+import { createRouteArtifactReport } from "./compiler/route-artifact-report.mjs"
 import { createSourceCompiler } from "./compiler/source-compiler.mjs"
 import { createParamCodegen } from "./compiler/param-codegen.mjs"
 import { planRouteCapabilities, usesRouteDependencyRuntime } from "./compiler/route-capability-planner.mjs"
@@ -124,6 +125,7 @@ async function buildInto(project, outputDirectory, { minify }) {
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
   const emittedNavigationRecords = []
+  const navigationAssets = new Map()
   const runtimePlaceholder = `/__kudzu_runtime_${randomUUID()}.js`
 
   for (const pageFile of pageFiles) {
@@ -156,6 +158,7 @@ async function buildInto(project, outputDirectory, { minify }) {
       const pageMetadata = await resolveDocumentMetadata(module.metadata, metadataContext, `${relative(root, pageFile)} metadata`)
       const navigationGroup = navigationByRoute.get(applicationRoute)
       const navigable = Boolean(navigationGroup)
+      if (navigationGroup) navigationAssets.set(routePath, navigationGroup.assetPath)
       const effectPath = `effects/${route ? `${route}/index` : "index"}.js`
       const nativePath = `native/${route ? `${route}/index` : "index"}.js`
       const paramPath = `params/${route ? `${route}/index` : "index"}.js`
@@ -250,7 +253,7 @@ async function buildInto(project, outputDirectory, { minify }) {
   const { handlerModules: emittedHandlerModules, workerReferences: renderedWorkerReferences, styles: renderedStyles } = planRouteArtifacts(routeRecords, handlerModules, workerReferences, module => assetPath(base, `assets/${module.path}`))
   const renderedStyleUrls = new Set(renderedStyles)
   if (renderedWorkerReferences.length && await exists(join(publicDirectory, "assets", "workers"))) throw new Error("public/assets/workers collides with Kudzu's generated Worker asset namespace")
-  const workerAssets = await project.workerCompiler.emit(renderedWorkerReferences, sourceFileSet, assetsDirectory, base, minify)
+  const { assets: workerAssets, outputs: workerOutputs } = await project.workerCompiler.emit(renderedWorkerReferences, sourceFileSet, assetsDirectory, base, minify)
   for (const module of emittedHandlerModules) {
     for (const reference of workerReferences) {
       if (reference.module !== assetPath(base, `assets/${module.path}`)) continue
@@ -333,8 +336,9 @@ async function buildInto(project, outputDirectory, { minify }) {
     await mkdir(dirname(output), { recursive: true })
     await writeJavaScript(output, module.code, minify)
   }
+  let handlerMetafile
   if (clientModules.length || emittedHandlerModules.some(module => module.hasPackageImports)) {
-    await bundle({
+    const result = await bundle({
       entryPoints: emittedHandlerModules.map(module => join(assetsDirectory, module.path)),
       outbase: join(assetsDirectory, "handlers"),
       outdir: join(assetsDirectory, "handlers"),
@@ -347,12 +351,16 @@ async function buildInto(project, outputDirectory, { minify }) {
       target: "es2022",
       minify,
       legalComments: "none",
+      metafile: true,
       logLevel: "silent"
     })
+    handlerMetafile = result.metafile
     await rm(join(assetsDirectory, "modules"), { recursive: true, force: true })
   }
   const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
+  const artifacts = createRouteArtifactReport(routeRecords, { base, handlerMetafile, outputDirectory, navigationAssets, workerReferences: renderedWorkerReferences, workerOutputs })
+  await writeFile(join(workDirectory, "kudzu-artifacts.json"), JSON.stringify(artifacts, null, 2))
   const emittedCssFiles = new Set()
   for (const file of cssFiles.filter(file => renderedStyleUrls.has(assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)))) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
@@ -384,7 +392,7 @@ async function buildInto(project, outputDirectory, { minify }) {
   }
   if (config.afterBuild !== undefined) {
     if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
-    await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites })
+    await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites, artifacts })
   }
 
   return { result: { sourceResults }, pageCount: plans.length, behaviorCount }

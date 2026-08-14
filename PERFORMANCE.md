@@ -6,7 +6,11 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
-## Current 0.8.53 Release Snapshot
+## Current 0.8.54 Release Snapshot
+
+Kudzu 0.8.54 retains esbuild output metadata and writes one compiler-scratch artifact report after bundling. Deploy runtime behavior and output selection are unchanged, and no new performance claim is made.
+
+## Maintained 0.8.53 Release Snapshot
 
 Kudzu 0.8.53 removes unrelated source stylesheet links from route HTML and reuses shared layout links during enhanced navigation. Static routes add no JavaScript, and no new performance claim is made.
 

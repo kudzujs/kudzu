@@ -130,7 +130,7 @@ export function createWorkerCompiler({
 
   const emit = async (references, sourceFiles, assetsDirectory, base, minify) => {
     const roots = [...new Set(references.map(reference => resolve(sourceDirectory, reference.root)))].sort()
-    if (!roots.length) return new Map()
+    if (!roots.length) return { assets: new Map(), outputs: new Map() }
     await validateGraphs(roots, sourceFiles)
     const workerDirectory = resolve(assetsDirectory, "workers")
     await mkdir(workerDirectory, { recursive: true })
@@ -152,16 +152,35 @@ export function createWorkerCompiler({
       logLevel: "silent"
     })
     const emitted = new Map()
+    const outputUrls = new Map(Object.keys(result.metafile.outputs).map(output => {
+      const outputFile = resolve(root, output)
+      return [outputFile, assetPath(base, relative(resolve(assetsDirectory, ".."), outputFile).replaceAll(sep, "/"))]
+    }))
+    const outputImports = new Map(Object.entries(result.metafile.outputs).map(([output, metadata]) => {
+      const outputFile = resolve(root, output)
+      return [outputUrls.get(outputFile), (metadata.imports ?? []).filter(entry => !entry.external).map(entry => outputUrls.get(resolve(root, entry.path)) ?? outputUrls.get(resolve(outputFile, "..", entry.path))).filter(Boolean)]
+    }))
+    const outputs = new Map()
     for (const [output, metadata] of Object.entries(result.metafile.outputs)) {
       if (!metadata.entryPoint) continue
       const entry = resolve(root, metadata.entryPoint)
       const rootReferences = references.filter(reference => resolve(sourceDirectory, reference.root) === entry)
       const outputFile = resolve(root, output)
-      const url = assetPath(base, relative(resolve(assetsDirectory, ".."), outputFile).replaceAll(sep, "/"))
-      for (const reference of rootReferences) emitted.set(reference.placeholder, url)
+      const url = outputUrls.get(outputFile)
+      const closure = new Set()
+      const visit = path => {
+        if (closure.has(path)) return
+        closure.add(path)
+        for (const imported of outputImports.get(path) ?? []) visit(imported)
+      }
+      visit(url)
+      for (const reference of rootReferences) {
+        emitted.set(reference.placeholder, url)
+        outputs.set(reference.placeholder, { entry: url, chunks: [...closure].filter(path => path !== url).sort() })
+      }
     }
     for (const reference of references) if (!emitted.has(reference.placeholder)) throw new Error(`Worker entry was not emitted: ${reference.root}`)
-    return emitted
+    return { assets: emitted, outputs }
   }
 
   return { candidate, emit, rejectConstructions, rejectOrdinaryImports, rewriteEffect }

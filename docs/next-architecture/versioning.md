@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.53` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.54` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -44,6 +44,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.51` | Bundle direct browser-only package references from inline owned effect setup/cleanup callbacks. | Package code stays in referenced route effect ESM; build scratch and static siblings omit it while indirect/render-time uses fail. |
 | `0.8.52` | Lower effect-exclusive mutable refs into setup-invocation closures. | E2B and WebSocket fixtures preserve generation, replacement, BFCache, and cleanup without captures, ResourceIR, or static-sibling JavaScript. |
 | `0.8.53` | Close source CSS over each route's reachable TypeScript graph and reconcile managed styles during navigation. | Routes exclude unrelated CSS; destination styles load before replacement, shared layout links retain identity, and cancelled loads roll back safely. |
+| `0.8.54` | Project per-route capability requirements and post-bundle handler/Worker chunk closure into an inspectable artifact contract. | Deterministic signatures, exact retained entries, transitive chunks, reverse shared ownership, static-route exclusion, and `afterBuild()` access pass. |
 
 ## Sequence Rules
 

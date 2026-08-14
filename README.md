@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.53 - Route-aware CSS closure.** Relative source CSS follows each page's reachable TypeScript import and re-export graph, while configured styles remain explicitly global. Enhanced navigation loads destination styles before route replacement, retains shared layout links, removes outgoing styles, and rolls back cancelled loads. Read the [release notes](./RELEASES.md#0853---route-aware-css-closure), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.53), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.54 - Inspectable route artifact closure.** Every route now reports its exact CapabilityIR signature and runtime requirements plus emitted handler, Worker, stylesheet, and transitive shared-chunk ownership. Read the [release notes](./RELEASES.md#0854---inspectable-route-artifact-closure), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.54), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

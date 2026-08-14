@@ -19,6 +19,7 @@ import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
 import { createRouteBuildRecord, planRouteArtifacts } from "../framework/compiler/route-build-record.mjs"
+import { createRouteArtifactReport } from "../framework/compiler/route-artifact-report.mjs"
 import { assertCapabilityIR, planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { assertRouteIR } from "../framework/compiler/route-ir.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime } from "../framework/compiler/runtime-codegen.mjs"
@@ -953,6 +954,32 @@ test("plans route artifacts from structural handler and effect edges", () => {
   assert.deepEqual(artifacts.styles, ["/assets/style.css"])
   assertJsonData(record)
   assert.deepEqual(JSON.parse(JSON.stringify(record)), record)
+})
+
+test("reports exact route capability and bundled chunk closure", () => {
+  const root = resolve("test/fixtures/artifact-report")
+  const output = resolve(root, "dist")
+  const a = routeRecord({ ...routePlan({ events: [{ event: "click", native: { module: "/assets/handlers/a.js", handler: "run", states: {}, scope: {} } }] }), route: "/a" }, { hasBehaviors: true })
+  const b = routeRecord({ ...routePlan({ events: [{ event: "input", native: { module: "/assets/handlers/b.js", handler: "run", states: {}, scope: {} } }] }), route: "/b" }, { hasBehaviors: true })
+  const file = path => resolve(output, path)
+  const metafile = { outputs: {
+    [file("assets/handlers/a.js")]: { imports: [{ path: "chunks/a.js", kind: "import-statement" }, { path: "chunks/shared.js", kind: "import-statement" }] },
+    [file("assets/handlers/b.js")]: { imports: [{ path: "chunks/b.js", kind: "import-statement" }, { path: "chunks/shared.js", kind: "import-statement" }] },
+    [file("assets/handlers/chunks/a.js")]: { imports: [] },
+    [file("assets/handlers/chunks/b.js")]: { imports: [] },
+    [file("assets/handlers/chunks/shared.js")]: { imports: [{ path: "external.js", external: true }] }
+  } }
+  const report = createRouteArtifactReport([b, a], { handlerMetafile: metafile, outputDirectory: output })
+
+  assert.deepEqual(report.routes.map(route => route.route), ["/a", "/b"])
+  assert.deepEqual(report.routes[0].handlers, { entries: ["/assets/handlers/a.js"], chunks: ["/assets/handlers/chunks/a.js", "/assets/handlers/chunks/shared.js"] })
+  assert.deepEqual(report.routes[1].handlers, { entries: ["/assets/handlers/b.js"], chunks: ["/assets/handlers/chunks/b.js", "/assets/handlers/chunks/shared.js"] })
+  assert.deepEqual(report.sharedChunks, [{ path: "/assets/handlers/chunks/shared.js", routes: ["/a", "/b"] }])
+  assert.deepEqual(report.routes[0].runtime.requirements, ["/assets/kudzu.js", "/assets/kudzu-native.js", "/assets/kudzu-serialization.js"].sort())
+  assert.notEqual(report.routes[0].capability.signature, report.routes[1].capability.signature)
+  assert.deepEqual(report.routes[0].capability.manifest.events.native, ["click"])
+  assert.deepEqual(report.routes[1].capability.manifest.events.native, ["input"])
+  assertJsonData(report)
 })
 
 test("rejects malformed route artifact references", () => {

@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.54 - Inspectable route artifact closure
+
+Kudzu 0.8.54 projects each validated route edge through the final handler and Worker bundle graphs into one inspectable artifact contract.
+
+### Changed in 0.8.54
+
+- `.kudzu/kudzu-artifacts.json` records every route in deterministic order.
+- Each route receives its exact CapabilityIR manifest, SHA-256 signature, and required runtime families.
+- Handler entry ownership derives from retained RouteBuildRecord references rather than HTML or filename inference.
+- Handler and Worker esbuild metafiles are followed transitively to report route-owned and shared chunks.
+- Chunks reached by multiple routes include a sorted reverse ownership list.
+- `afterBuild()` receives the same JSON-safe report as `artifacts`.
+
+### Boundaries
+
+- The report distinguishes exact route runtime requirements from the currently site-specialized runtime files.
+- Enhanced-navigation routes still share their existing ESM singleton and lifecycle boundary.
+- Signature-keyed runtime emission remains the next route-closure slice.
+- No runtime loader, manifest fetch, SPA router, or browser behavior is added.
+
+### Validation
+
+- Focused checks cover route-only and shared handler chunks, external-import exclusion, Worker ownership, shared Worker chunks, deterministic route order, and distinct capability signatures.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 220 tests and 169 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.54
+```
+
 ## 0.8.53 - Route-aware CSS closure
 
 Kudzu 0.8.53 links source styles only from routes whose reachable TypeScript graph imports them.
