@@ -1,7 +1,6 @@
 import { useState } from "@kudzujs/core"
-import { ShellA } from "../ShellA"
-
-export const layout = ShellA
+export { ShellA as layout } from "../ShellA"
+import "../styles/alpha.css"
 
 export default function Alpha() {
   const [count, setCount] = useState(0)

@@ -1,6 +1,7 @@
 import { useEffect, useParams, useState } from "@kudzujs/core"
 import { useSearchParams } from "react-router-dom"
 import { ShellA } from "../../ShellA"
+import "../../styles/item.css"
 
 export const layout = ShellA
 export const runtimeParams = true

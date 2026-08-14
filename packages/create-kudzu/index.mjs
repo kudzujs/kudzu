@@ -51,7 +51,9 @@ const files = {
     }
   }, null, 2)}\n`,
   ".gitignore": "node_modules/\ndist/\n.kudzu/\n",
-  "src/components/SiteHeader.tsx": `export function SiteHeader({ current }: { current: "home" | "about" }) {
+  "src/components/SiteHeader.tsx": `import "../style.css"
+
+export function SiteHeader({ current }: { current: "home" | "about" }) {
   return <header className="site-header">
     <a className="brand" href="/"><span>K</span>Kudzu</a>
     <nav aria-label="Main navigation">
@@ -128,7 +130,7 @@ export default function HomePage() {
           <CapabilityCard number="03" title="Static HTML" description="Pages without browser behavior emit no JavaScript." output="about.html + 0 B JS" />
           <CapabilityCard number="04" title="Local state" description="Use React-shaped state and synchronous event handlers." output="useState(0)" />
           <CapabilityCard number="05" title="Metadata" description="Export page titles, descriptions, and theme colors." output="export const metadata" />
-          <CapabilityCard number="06" title="Source CSS" description="CSS under src is emitted and linked automatically." output="src/style.css" />
+          <CapabilityCard number="06" title="Source CSS" description="Imported CSS is emitted only for routes that reach it." output="src/style.css" />
         </div>
       </section>
     </main>
@@ -216,7 +218,7 @@ This starter is a working Kudzu showcase, not an empty scaffold.
 - \`src/pages/index.tsx\` demonstrates metadata, state, handlers, and component composition.
 - \`src/pages/about.tsx\` is a static route that ships zero client JavaScript.
 - \`src/components\` contains reusable typed function components.
-- \`src/style.css\` is emitted and linked automatically.
+- \`src/style.css\` is imported by the shared header and linked only by routes that reach it.
 
 \`kudzu.config.mjs\` is optional. Add it only when the project needs a base path, external public directory, transformed source styles, global metadata, navigation groups, or post-build artifacts.
 

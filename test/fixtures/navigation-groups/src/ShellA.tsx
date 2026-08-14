@@ -1,4 +1,5 @@
 import { useEffect, useState } from "@kudzujs/core"
+import "./styles/shell-a.css"
 
 export function ShellA({ children }: { children?: unknown }) {
   const [count, setCount] = useState(0)

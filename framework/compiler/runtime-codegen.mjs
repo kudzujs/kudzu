@@ -113,7 +113,7 @@ async function mountInitial() {
 `, "", "initial effect mount"],
     ["  await ready\n", "", "initial effect readiness"],
     ["    const { incoming, parsed, capabilities } = documentResult\n", "    const { incoming, parsed } = documentResult\n", "navigation capability result"],
-    ["    await routeDispose()\n    if (current !== revision) return\n", "", "route effect disposal"],
+    ["    await routeDispose()\n    if (current !== revision) {\n      styleUpdate.rollback()\n      return\n    }\n", "", "route effect disposal"],
     ["    commit(incoming, parsed.nodes, capabilities.params, url.pathname, url.search)\n", "    commit(incoming, parsed.nodes)\n", "navigation capability commit"],
     ["    routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose\n", "", "route effect mount"],
     ["  return { incoming, parsed, capabilities: await loadCapabilities(parsed), record }\n", "  await Promise.all(parsed.assets.filter(path => path !== navigationAsset).map(path => import(path)))\n  return { incoming, parsed, record }\n", "navigation capability load"],

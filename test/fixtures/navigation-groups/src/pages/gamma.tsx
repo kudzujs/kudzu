@@ -1,5 +1,6 @@
 import { useState } from "@kudzujs/core"
 import { ShellB } from "../ShellB"
+import "../styles/gamma.css"
 
 export const layout = ShellB
 

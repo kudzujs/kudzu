@@ -1,5 +1,6 @@
 import { useState } from "@kudzujs/core"
 import { ShellB } from "../ShellB"
+import "../styles/beta.css"
 
 export const layout = ShellB
 

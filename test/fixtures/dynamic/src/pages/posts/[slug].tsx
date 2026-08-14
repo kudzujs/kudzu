@@ -1,4 +1,6 @@
 import { useEffect, useState } from "@kudzujs/core"
+import "../../newsletter.css"
+import "../../style.css"
 
 type Props = { title: string; score: number; html: string }
 

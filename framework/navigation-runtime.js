@@ -12,6 +12,7 @@ status.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;padding
 document.body.append(status)
 
 let request
+let pendingStyleUpdate
 let revision = 0
 const documents = new Map()
 let observer
@@ -115,9 +116,12 @@ async function navigate(url, push) {
   const record = matchRoute(url.pathname)
   if (!record) return fallback(url, push)
   const current = ++revision
+  pendingStyleUpdate?.rollback()
+  pendingStyleUpdate = undefined
   request?.abort()
   request = new AbortController()
   let committed = false
+  let styleUpdate
   try {
     let documentResult
     const cached = documents.get(url.href)
@@ -128,8 +132,20 @@ async function navigate(url, push) {
     documents.set(url.href, Promise.resolve(documentResult))
     const { incoming, parsed, capabilities } = documentResult
     if (current !== revision) return
+    styleUpdate = prepareStyles(parsed.styles)
+    pendingStyleUpdate = styleUpdate
+    await styleUpdate.ready
+    if (current !== revision) {
+      styleUpdate.rollback()
+      return
+    }
     await routeDispose()
-    if (current !== revision) return
+    if (current !== revision) {
+      styleUpdate.rollback()
+      return
+    }
+    styleUpdate.commit()
+    if (pendingStyleUpdate === styleUpdate) pendingStyleUpdate = undefined
     commit(incoming, parsed.nodes, capabilities.params, url.pathname, url.search)
     committed = true
     routeDispose = await capabilities.effects?.mountRouteEffects?.() ?? noDispose
@@ -139,6 +155,8 @@ async function navigate(url, push) {
     status.textContent = `Navigated to ${document.title}`
     discover()
   } catch (error) {
+    styleUpdate?.rollback()
+    if (pendingStyleUpdate === styleUpdate) pendingStyleUpdate = undefined
     if (current !== revision || error.name === "AbortError") return
     fallback(url, push)
     if (committed) return
@@ -173,7 +191,73 @@ function validate(incoming, record) {
     return url.pathname
   })
   if (!assets.includes(navigationAsset)) throw new Error("Navigation capability asset is missing")
-  return { nodes, assets: [...new Set(assets)] }
+  const styles = [...incoming.head.querySelectorAll('link[data-k-route-style][rel="stylesheet"][href]')]
+  const styleUrls = styles.map(link => {
+    const url = new URL(link.href)
+    if (url.origin !== location.origin) throw new Error("Navigation stylesheet must be same-origin")
+    return url.href
+  })
+  if (new Set(styleUrls).size !== styleUrls.length) throw new Error("Navigation document has duplicate route stylesheets")
+  return { nodes, assets: [...new Set(assets)], styles }
+}
+
+function prepareStyles(incoming) {
+  const anchor = document.head.querySelector("meta[data-k-style-anchor]")
+  if (!anchor || document.head.querySelectorAll("meta[data-k-style-anchor]").length !== 1) throw new Error("Current navigation style anchor is invalid")
+  const current = [...document.head.querySelectorAll('link[data-k-route-style][rel="stylesheet"][href]')]
+  const place = links => {
+    let previous = anchor
+    for (const link of links) {
+      if (link.previousSibling !== previous) previous.after(link)
+      previous = link
+    }
+  }
+  const byUrl = new Map(current.map(link => [new URL(link.href).href, link]))
+  const next = []
+  const created = []
+  const loads = []
+  for (const source of incoming) {
+    const href = new URL(source.href).href
+    let link = byUrl.get(href)
+    if (link) byUrl.delete(href)
+    else {
+      link = document.importNode(source, true)
+      created.push(link)
+      loads.push(new Promise((resolve, reject) => {
+        link.addEventListener("load", resolve, { once: true })
+        link.addEventListener("error", () => reject(new Error("Navigation stylesheet failed to load")), { once: true })
+      }))
+    }
+    next.push(link)
+  }
+  let settled = false
+  let cancel
+  const update = {
+    ready: Promise.race([
+      Promise.all(loads),
+      new Promise((resolve, reject) => {
+        cancel = () => {
+          const error = new Error("Navigation stylesheet load was cancelled")
+          error.name = "AbortError"
+          reject(error)
+        }
+      })
+    ]),
+    commit() {
+      if (settled) return
+      settled = true
+      for (const link of byUrl.values()) link.remove()
+    },
+    rollback() {
+      if (settled) return
+      settled = true
+      place(current)
+      for (const link of created) link.remove()
+      cancel()
+    }
+  }
+  place(next)
+  return update
 }
 
 function commit(incoming, incomingNodes, initializeParams, pathname, search) {

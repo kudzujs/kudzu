@@ -3059,7 +3059,7 @@ async function safeStaticFiles(files) {
   return new Set(entries.filter(Boolean))
 }
 
-function orderSourceStyles(cssFiles, sourceFiles, sourceIndex, staticFiles) {
+function orderSourceStyles(entryFiles, sourceFiles, sourceIndex, staticFiles) {
   const ordered = []
   const seenStyles = new Set()
   const seenSources = new Set()
@@ -3069,11 +3069,13 @@ function orderSourceStyles(cssFiles, sourceFiles, sourceIndex, staticFiles) {
     seenSources.add(file)
     const sourceFile = parseSourceFile(file, sourceIndex.get(file))
     for (const statement of sourceFile.statements) {
-      if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) continue
+      if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) continue
       const specifier = statement.moduleSpecifier.text
-      if (staticImportExtension(specifier) === ".css") {
-        let target
-        try { target = resolveStaticImport(file, specifier, staticFiles) } catch { continue }
+      const queryIndex = specifier.indexOf("?")
+      const query = queryIndex === -1 ? "" : specifier.slice(queryIndex + 1)
+      if (ts.isImportDeclaration(statement) && staticImportExtension(specifier) === ".css") {
+        if (query) continue
+        const target = resolveStaticImport(file, specifier, staticFiles)
         if (!seenStyles.has(target)) {
           seenStyles.add(target)
           ordered.push(target)
@@ -3081,12 +3083,11 @@ function orderSourceStyles(cssFiles, sourceFiles, sourceIndex, staticFiles) {
         continue
       }
       if (isStaticImport(specifier)) continue
-      try { visit(resolveSourceImport(file, specifier, sourceSet)) } catch {}
+      visit(resolveSourceImport(file, specifier, sourceSet))
     }
   }
-  for (const file of sourceFiles.filter(file => file.startsWith(`${pagesDirectory}${sep}`) && file.endsWith(".tsx"))) visit(file)
-  for (const file of sourceFiles) visit(file)
-  return [...ordered, ...cssFiles.filter(file => !seenStyles.has(file))]
+  for (const file of entryFiles) visit(file)
+  return ordered
 }
 
 function staticImportEntry(node, sourceFile, file, staticFiles, importedAssets, cssModules, base, factory) {
@@ -3105,7 +3106,7 @@ function staticImportEntry(node, sourceFile, file, staticFiles, importedAssets, 
   const extension = staticImportExtension(specifier)
   if (query === "url") {
     if (!node.importClause?.name || node.importClause.isTypeOnly || node.importClause.namedBindings) throw sourceNodeError(node, sourceFile, "Static assets require one default import")
-    if (extension !== ".css") importedAssets.add(target)
+    importedAssets.add(target)
     const value = factory.createStringLiteral(assetPath(base, `assets/${relative(sourceDirectory, target).replaceAll(sep, "/")}`))
     return staticImportReplacement(node.importClause.name.text, value, factory)
   }

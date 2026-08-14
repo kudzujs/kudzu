@@ -19,12 +19,22 @@ const notIntercepted = selector => {
 try {
   if (location.pathname === "/app/alpha") {
     const shell = document.querySelector('[data-shell="a"]')
+    const shellStyle = document.querySelector('link[data-k-route-style][href$="/styles/shell-a.css"]')
+    if (!shellStyle || !document.querySelector('link[data-k-route-style][href$="/styles/alpha.css"]')) throw new Error("initial-route-styles")
+    document.querySelector("[data-item]").click()
+    await waitFor(async () => await requestCount("/app/assets/styles/item.css") > 0)
+    document.querySelector("[data-k-navigation-status]").textContent = ""
+    document.querySelector("[data-alpha]").click()
+    await waitFor(() => document.querySelector("[data-k-navigation-status]").textContent && document.querySelector('[data-route="alpha"]') && !document.querySelector('link[data-k-route-style][href$="/styles/item.css"]'))
+    if (document.querySelector('[data-shell="a"]') !== shell || document.querySelector('link[data-k-route-style][href$="/styles/shell-a.css"]') !== shellStyle || !document.querySelector('link[data-k-route-style][href$="/styles/alpha.css"]')) throw new Error("cancelled-route-styles")
     document.querySelector("[data-layout-count]").click()
     document.querySelector("[data-route-count]").click()
     await waitFor(() => document.querySelector("[data-layout-count]").textContent === "A 1")
     document.querySelector("[data-item]").click()
     await waitFor(() => document.querySelector('[data-route="item"]')?.dataset.id === "oak")
     if (document.querySelector('[data-shell="a"]') !== shell || document.querySelector("[data-layout-count]").textContent !== "A 1" || document.querySelector("[data-route-count]").textContent !== "Route 0" || document.querySelector('[data-route="item"]').dataset.view !== "full" || document.body.dataset.itemEffect !== "oak:full") throw new Error("group-a-lifetimes")
+    if (document.querySelector('link[data-k-route-style][href$="/styles/shell-a.css"]') !== shellStyle || document.querySelector('link[data-k-route-style][href$="/styles/alpha.css"]') || !document.querySelector('link[data-k-route-style][href$="/styles/item.css"]')) throw new Error("group-a-style-links")
+    if (getComputedStyle(document.querySelector('[data-route="item"]')).outlineWidth !== "7px") throw new Error("group-a-style-active")
     const item = document.querySelector('[data-route="item"]')
     document.querySelector("[data-query-write]").click()
     await waitFor(() => item.dataset.view === "compact" && document.body.dataset.itemEffect === "oak:compact")

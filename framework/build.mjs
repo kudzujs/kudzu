@@ -62,6 +62,8 @@ async function buildInto(project, outputDirectory, { minify }) {
   const config = await loadConfig(root)
   const base = normalizeBase(config.base)
   const configuredStyles = normalizeStyles(config.styles, base, project)
+  const globalStyleUrls = [...new Set(configuredStyles.urls)]
+  const globalStyleUrlSet = new Set(globalStyleUrls)
   const publicDirectory = normalizePublicDirectory(config.publicDir, project)
   const navigationGroups = normalizeNavigation(config.navigation)
   const navigationRoutes = navigationGroups.flatMap(group => group.routes)
@@ -82,7 +84,6 @@ async function buildInto(project, outputDirectory, { minify }) {
   const projectFiles = await walk(sourceDirectory)
   const allSourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file) && !file.endsWith(".d.ts")).sort()
   const configuredStyleSources = new Set(configuredStyles.sources.map(style => style.source))
-  const discoveredCssFiles = projectFiles.filter(file => file.toLowerCase().endsWith(".css") && !configuredStyleSources.has(file)).sort()
   if (!allSourceFiles.length) throw new Error("No TypeScript files found in src/")
   const allSourceFileSet = new Set(allSourceFiles)
   const sourceIndex = project.sourceIndex
@@ -93,7 +94,8 @@ async function buildInto(project, outputDirectory, { minify }) {
   const sourceFileSet = project.sourceFiles
   for (const file of sourceFiles) sourceFileSet.add(file)
   const staticFiles = await safeStaticFiles(projectFiles)
-  const cssFiles = orderSourceStyles(discoveredCssFiles, sourceFiles, sourceIndex, staticFiles)
+  const stylesByPage = new Map(pageFiles.map(file => [file, orderSourceStyles([file], sourceFiles, sourceIndex, staticFiles).filter(style => !configuredStyleSources.has(style))]))
+  const cssFiles = [...new Set([...stylesByPage.values()].flat())]
   const importedAssets = new Set()
   const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base, project)
 
@@ -122,13 +124,11 @@ async function buildInto(project, outputDirectory, { minify }) {
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
   const emittedNavigationRecords = []
-  const styleUrls = [...new Set([
-    ...cssFiles.map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)),
-    ...configuredStyles.urls
-  ])]
   const runtimePlaceholder = `/__kudzu_runtime_${randomUUID()}.js`
 
   for (const pageFile of pageFiles) {
+    const sourceStyleUrls = stylesByPage.get(pageFile).map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)).filter(url => !globalStyleUrlSet.has(url))
+    const styleUrls = [...sourceStyleUrls, ...globalStyleUrls]
     const compiledFile = compiledPath(pageFile)
     const module = await import(`${pathToFileURL(compiledFile).href}?v=${Date.now()}`)
     if (typeof module.default !== "function") throw new Error(`${relative(root, pageFile)} must export a default component`)
@@ -179,6 +179,7 @@ async function buildInto(project, outputDirectory, { minify }) {
         ...configuredMetadata,
         ...pageMetadata,
         styles: styleUrls.length ? styleUrls : false,
+        managedStyles: navigable ? sourceStyleUrls : [],
         base,
         runtimeAsset: runtimePlaceholder,
         effectAsset: assetPath(base, `assets/${effectPath}`),
@@ -352,16 +353,19 @@ async function buildInto(project, outputDirectory, { minify }) {
   }
   const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
+  const emittedCssFiles = new Set()
   for (const file of cssFiles.filter(file => renderedStyleUrls.has(assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)))) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
     await mkdir(dirname(output), { recursive: true })
     await writeFile(output, cssOutputs.get(file))
+    emittedCssFiles.add(file)
   }
   for (const file of [...importedAssets].sort()) {
-    if (cssOutputs.has(file)) continue
     const output = join(assetsDirectory, relative(sourceDirectory, file))
     await mkdir(dirname(output), { recursive: true })
-    await writeFile(output, await readFile(file))
+    if (cssOutputs.has(file)) {
+      if (!emittedCssFiles.has(file)) await writeFile(output, cssOutputs.get(file))
+    } else await writeFile(output, await readFile(file))
   }
   for (const style of configuredStyles.sources.filter(style => renderedStyleUrls.has(withBase(base, style.output)))) {
     let css = await readFile(style.source, "utf8")

@@ -22,6 +22,7 @@ const blogs = {
 }
 
 export default {
+  styles: [{ source: "src/style.css", output: "/assets/style.css" }],
   async afterBuild({ outDir, routes }) {
     const indexed = []
     for (const route of routes) {

@@ -1,5 +1,50 @@
 # Kudzu Releases
 
+## 0.8.53 - Route-aware CSS closure
+
+Kudzu 0.8.53 links source styles only from routes whose reachable TypeScript graph imports them.
+
+### Changed in 0.8.53
+
+- Relative CSS imports follow each page's runtime import and re-export graph in deterministic source order.
+- RouteBuildRecord receives each route's exact source stylesheet URLs instead of one site-wide CSS list.
+- `kudzu.config styles` remains explicitly global, deduplicated, and excluded from route-managed ownership.
+- CSS `?url` imports emit downloadable assets without creating stylesheet links.
+- Unimported source CSS is no longer implicitly linked; applications import route/layout styles or configure true globals.
+
+### Enhanced navigation
+
+- Navigable documents mark route-managed source styles separately from configured global links.
+- Destination styles load before route cleanup and DOM replacement.
+- Shared layout stylesheet links retain URL, DOM identity, and cascade order across navigation.
+- Outgoing route styles are removed after successful preparation.
+- Overlapping navigation cancels and rolls back provisional stylesheet transactions without disturbing the newer route.
+- Invalid, duplicate, cross-origin, or failed managed stylesheets fall back to native document navigation.
+
+### Migration evidence
+
+- The React/Vite static sibling excludes the interactive app stylesheet while retaining zero JavaScript.
+- Independent navigation groups exclude one another's layout and route styles.
+- A delayed stylesheet browser test verifies cancellation rollback, shared-link identity, destination activation, and outgoing-link removal.
+- Global style fixtures prove configured source/URL deduplication, while dynamic routes now import their intended CSS explicitly.
+- The starter imports shared CSS through its common header so both generated routes reach the style intentionally.
+
+### Output and performance
+
+- Route HTML omits unrelated feature CSS and its cascade effects.
+- Static pages remain JavaScript-free; only configured enhanced-navigation routes receive managed-style reconciliation.
+- No CSS bundler, style runtime, SPA router, or new performance claim is added.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 219 tests and 168 generated pages.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.53
+```
+
 ## 0.8.52 - Effect-private mutable refs
 
 Kudzu 0.8.52 compiles component-authored mutable refs when one inline effect exclusively owns their complete lifecycle.

@@ -58,5 +58,6 @@
 - Reactive conditionals and flat intrinsic keyed lists may render inside SVG. Compiler-generated branch and row prototypes are parsed in the actual SVG parent context and reuse existing ownership; keyed-item conditions, nested SVG lists, MathML structures, and namespaced attributes remain unsupported.
 - Accessible selected-point SVG charts use ordinary parent state, focus/click/keyboard handlers on flat keyed SVG rows, and an external HTML tooltip. Retained rows read the latest item after collection updates; do not add a chart runtime for this composition.
 - Put routes in `src/pages`; `index.tsx` maps to `/`.
+- Relative source CSS imports follow each page's reachable TypeScript import and re-export graph. Only routes that reach a stylesheet link it; declare truly global styles through `kudzu.config styles`. Enhanced navigation loads destination styles before route replacement, retains shared layout links by URL and DOM identity, and removes outgoing route styles.
 - Do not add a VDOM, hydration, state library, general component runtime, or default SPA router.
 - Run `npm run check` and `npm test` after changes.

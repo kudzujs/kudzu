@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.52 - Effect-private mutable refs.** Top-level `useRef(null)` and `useRef(0)` values used exclusively by one inline effect graph lower to invocation-private closure objects. Browser SDK handles, WebSockets, generation tokens, animation frames, replacement, and cleanup retain ordinary React-shaped source without ResourceIR or a runtime. Read the [release notes](./RELEASES.md#0852---effect-private-mutable-refs), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.52), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.53 - Route-aware CSS closure.** Relative source CSS follows each page's reachable TypeScript import and re-export graph, while configured styles remain explicitly global. Enhanced navigation loads destination styles before route replacement, retains shared layout links, removes outgoing styles, and rolls back cancelled loads. Read the [release notes](./RELEASES.md#0853---route-aware-css-closure), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.53), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
