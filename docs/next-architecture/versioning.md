@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.51` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.52` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -42,6 +42,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.49` | Fan one setter-callback prop out through multiple direct child component event props. | Every branch lowers to the original parent signal; aliases, ordinary props, spreads, and the fourth boundary fail without a runtime change. |
 | `0.8.50` | Isolate reduced Zustand migration behind package-neutral shared-state and action IR. | Validated shared identities/actions preserve RouteIR, layout lifetime, same-turn updates, diagnostics, browser behavior, and zero store runtime. |
 | `0.8.51` | Bundle direct browser-only package references from inline owned effect setup/cleanup callbacks. | Package code stays in referenced route effect ESM; build scratch and static siblings omit it while indirect/render-time uses fail. |
+| `0.8.52` | Lower effect-exclusive mutable refs into setup-invocation closures. | E2B and WebSocket fixtures preserve generation, replacement, BFCache, and cleanup without captures, ResourceIR, or static-sibling JavaScript. |
 
 ## Sequence Rules
 

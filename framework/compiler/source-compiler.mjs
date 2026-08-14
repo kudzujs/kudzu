@@ -3,7 +3,7 @@ import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node
 import ts from "typescript"
 import { createBindingIndex } from "./analysis/binding-index.mjs"
 import { createComponentAnalysisSession } from "./analysis/component-analysis.mjs"
-import { normalizeEffectAnimationFrameRefs } from "./animation-frame-pass.mjs"
+import { normalizeEffectPrivateRefs } from "./effect-private-ref-pass.mjs"
 import { bindingNames, containsJsx, effectReturns, functionVarDeclaresName, importDeclarationNames, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceLocation, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 import { normalizeMediaQueryExternalStores, normalizeNavigatorCapabilityConditions } from "./browser-signal-passes.mjs"
 import { analyzeCollectionPipeline, collectionExpression, collectionParameters, isArrayFromCall, mutatingCollectionMethods as mutatingListMethods, pureCollectionMathMethods as pureMathMethods, pureCollectionMethods as pureListMethods } from "./collection-analysis.mjs"
@@ -249,7 +249,7 @@ function normalizeCompilerSource(sourceFile, { base, context, file, importedColl
     source => normalizeMediaQueryExternalStores(source, factory, context),
     source => normalizeReactMigrationSyntax(source, factory, context, importedCollections ?? importedSerializableCollectionNames(source, file, sourceFiles, sourceIndex)),
     source => normalizeNavigatorCapabilityConditions(source, factory, context),
-    source => normalizeEffectAnimationFrameRefs(source, factory, context),
+    source => normalizeEffectPrivateRefs(source, factory, context),
     source => {
       const result = normalizeCustomHookTimerRefs(source, factory, context)
       customHookTimerStates = result.timerStates
@@ -723,7 +723,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const owner = nearestFunction(node)
         if (owner && node.initializer.expression.text === "useRef") {
           const nullInitializer = node.initializer.arguments.length === 1 && node.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword
-          if (!nullInitializer && owner.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)) throw sourceNodeError(node.initializer, sourceFile, "Mutable value useRef() is unsupported except for an effect-owned useRef(0) animation-frame handle; otherwise keep resource-private mutable values inside the owning effect")
+          if (!nullInitializer && owner.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)) throw sourceNodeError(node.initializer, sourceFile, "Mutable useRef() values must be referenced exclusively inside one owned effect; DOM refs require useRef(null)")
           if (nullInitializer) {
             ensureOwner(owner)
             componentAnalysis.registerRef(owner, { name: node.name.text, site: analysisSite(node, "hook"), source: analysisSource(node) })

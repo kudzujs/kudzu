@@ -251,7 +251,7 @@ return <>
 </>`} />
     <p>Meaningful icons need an explicit accessible name, while decorative icons should remain hidden from assistive technology. Kudzu emits the used SVG markup directly into complete HTML, removes build-folded evaluator artifacts, and never compiles unreachable icon modules. <code>lucide-react</code> execution, <code>createLucideIcon()</code>, dynamic icon-name lookup, package factories, and a generic icon runtime remain unsupported.</p>
     <h3>Scroll-spy migration</h3>
-    <p>A Memos-shaped outline can keep its ordinary effect-owned animation-frame ref. Kudzu specializes the narrow <code>useRef(0)</code> lifecycle into the existing effect scope rather than shipping an animation runtime.</p>
+    <p>A Memos-shaped outline can keep its ordinary effect-owned animation-frame ref. Kudzu moves the exclusive <code>useRef(0)</code> value into the effect invocation closure rather than serializing it or shipping an animation runtime.</p>
     <CodeBlock code={`const [activeSlug, setActiveSlug] = useState<string | null>(null)
 const rafRef = useRef(0)
 

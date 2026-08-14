@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.51` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.52` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -173,7 +173,7 @@ This queue orders the next investigations by general migration value. Start only
 ### Completed In 0.8.13
 
 - A reduced fixture from [Memos](https://github.com/usememos/memos) preserves its memo-outline scroll spy: native heading links, active `aria-current`, smooth scrolling, hash replacement, capture-phase scroll/resize listeners, and animation-frame coalescing with cleanup.
-- One effect-owned `useRef(0)` lowers to a serializable mutable effect capture when a local frame callback resets it and cleanup cancels the pending frame. Existing effect ownership handles setup, listener removal, and document disposal without state, a retained component, or an animation runtime.
+- Top-level `useRef(null)` and `useRef(0)` values used exclusively through direct `.current` references in one inline effect graph lower to invocation-private closure objects in effect ESM. Existing effect ownership handles SDK/WebSocket handles, generation invalidation, animation frames, dependency replacement, listener removal, BFCache-aware document disposal, and cleanup without serialized captures, ResourceIR, or a retained component.
 - Chrome validation covers burst coalescing, active-heading updates, outline clicks, hash replacement, pending-frame cancellation, listener cleanup, and a zero-JavaScript static sibling. Ref aliases, cross-effect/event use, nonzero initializers, multiple scheduling assignments, and missing cancellation remain unsupported.
 - A reduced fixture from [Excalidraw](https://github.com/excalidraw/excalidraw) preserves its active-room progressive sharing shape: a readonly collaboration URL, a Web Share button gated by `"share" in navigator`, direct `navigator.share()`, clipboard fallback, and accessible application-owned status.
 - Browser capability conditions lower to a false static state plus one existing mount effect and state-owned conditional branch. Supported browsers mount the Share DOM and handler; unsupported browsers keep both out of the document and accessibility tree. Node's build-time `navigator` can no longer fold browser capability UI incorrectly.
@@ -272,7 +272,7 @@ This queue orders the next investigations by general migration value. Start only
 
 ### Characterized In 0.8.27
 
-- A reduced E2B Dashboard terminal fixture establishes callback-shared mutable browser resources, asynchronous generation invalidation, and BFCache retain/resume/discard behavior as a concrete Goal C boundary.
+- Reduced E2B Dashboard terminal and route-owned WebSocket fixtures establish callback-shared mutable browser resources, asynchronous generation invalidation, dependency replacement, exact cleanup, and BFCache retain/resume/discard behavior. Exclusive effect-private refs now compile through ordinary effect ESM; shared transports and cross-owner subscriptions remain Goal C research.
 - Unsupported page-level mutable value refs fail during source analysis with a source location and the existing effect-owned animation-frame exception; no resource API or runtime is added.
 - The large-application and AI-native execution plan orders symbol resolution, semantic operations, project/module analysis, IR authority, application foundations, ecosystem compatibility, AI tooling, and scale validation before broad feature work.
 

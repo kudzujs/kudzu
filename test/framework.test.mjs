@@ -91,7 +91,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.51/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.52/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -108,12 +108,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.51"/)
-  assert.match(release, /Kudzu 0\.8\.51.*Import for the browser.*Ship only with the effect/s)
-  assert.match(release, /OWN · BUNDLE · RELEASE.*EFFECT PACKAGE OWNERSHIP.*npm install @kudzujs\/core@\^0\.8\.51/s)
-  assert.match(release, /<title>Kudzu 0\.8\.51 - Owned effect package imports<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.51"/)
-  assert.match(release, /Import directly.*Stay direct/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.52"/)
+  assert.match(release, /Kudzu 0\.8\.52.*Keep the handle.*Lose the runtime/s)
+  assert.match(release, /ISOLATE · OWN · CLEAN.*EFFECT-PRIVATE OWNERSHIP.*npm install @kudzujs\/core@\^0\.8\.52/s)
+  assert.match(release, /<title>Kudzu 0\.8\.52 - Effect-private mutable refs<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.52"/)
+  assert.match(release, /Keep ordinary refs.*Fail closed/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1636,16 +1636,90 @@ test("rejects effect-owned animation frames without cleanup cancellation", () =>
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Animation frame refs require direct cancellation in effect cleanup/)
 })
 
-test("characterizes E2B terminal ownership as unsupported Goal C research", async t => {
+test("lowers an effect-private E2B terminal handle without a resource runtime", async t => {
   const fixture = new URL("./fixtures/goal-c-e2b-terminal", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/goal-c-e2b-terminal/.kudzu", import.meta.url), { recursive: true, force: true })
     await rm(new URL("./fixtures/goal-c-e2b-terminal/dist", import.meta.url), { recursive: true, force: true })
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/goal-c-e2b-terminal/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/goal-c-e2b-terminal/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/goal-c-e2b-terminal/dist/static/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/goal-c-e2b-terminal/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(component, /useEffect\(\(\) => \{\s*const handleRef = \{ current: null \};\s*const generationRef = \{ current: 0 \}/)
+  assert.match(handler, /pagehide/)
+  assert.match(handler, /pageshow/)
+  assert.match(handler, /\.resume\(\)/)
+  assert.deepEqual(plan.effects[0].scope, {})
+  assert.doesNotMatch(staticHtml, /<script/)
+})
 
+test("owns effect-private WebSocket refs across replacement and cleanup", async t => {
+  const fixture = new URL("./fixtures/goal-c-route-websocket", import.meta.url)
+  const OriginalWebSocket = globalThis.WebSocket
+  t.after(async () => {
+    if (OriginalWebSocket === undefined) delete globalThis.WebSocket
+    else globalThis.WebSocket = OriginalWebSocket
+    await rm(new URL("./fixtures/goal-c-route-websocket/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/goal-c-route-websocket/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/goal-c-route-websocket/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/goal-c-route-websocket/dist/static/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/goal-c-route-websocket/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(component, /useEffect\(\(\) => \{\s*const socketRef = \{ current: null \};\s*const generationRef = \{ current: 0 \}/)
+  assert.deepEqual(plan.effects[0].scope, {})
+  assert.doesNotMatch(staticHtml, /<script/)
+
+  class FakeSocket {
+    static instances = []
+    listeners = new Map()
+    closeCount = 0
+    constructor(url) {
+      this.url = url
+      FakeSocket.instances.push(this)
+    }
+    addEventListener(name, callback) { this.listeners.set(name, callback) }
+    removeEventListener(name, callback) {
+      if (this.listeners.get(name) === callback) this.listeners.delete(name)
+    }
+    close() { this.closeCount += 1 }
+  }
+  globalThis.WebSocket = FakeSocket
+  const handler = await import(`${new URL("./fixtures/goal-c-route-websocket/dist/assets/handlers/pages/index.js", import.meta.url).href}?test=${Date.now()}`)
+  const writes = []
+  let room = "general"
+  const context = { get: name => name === "room" ? room : "connecting", set: (name, value) => writes.push([name, value]) }
+  const firstCleanup = handler.effect0(context)
+  const first = FakeSocket.instances[0]
+  assert.equal(first.url, "wss://example.invalid/rooms/general")
+  first.listeners.get("open")()
+  assert.deepEqual(writes.at(-1), ["status", "connected"])
+  const staleOpen = first.listeners.get("open")
+  firstCleanup()
+  const writesAfterCleanup = writes.length
+  staleOpen()
+  assert.equal(writes.length, writesAfterCleanup)
+  assert.equal(first.closeCount, 1)
+  assert.equal(first.listeners.size, 0)
+
+  room = "support"
+  const secondCleanup = handler.effect0(context)
+  const second = FakeSocket.instances[1]
+  assert.equal(second.url, "wss://example.invalid/rooms/support")
+  assert.notEqual(first, second)
+  secondCleanup()
+  assert.equal(second.closeCount, 1)
+})
+
+test("rejects mutable refs shared by multiple effects", () => {
+  const fixture = new URL("./fixtures/effect-private-ref-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:7:\d+ Mutable value useRef\(\) is unsupported except for an effect-owned useRef\(0\) animation-frame handle; otherwise keep resource-private mutable values inside the owning effect/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Mutable useRef\(\) values must be referenced exclusively inside one owned effect; DOM refs require useRef\(null\)/)
 })
 
 test("migrates locale routing, interactive MDX, and an effect-owned canvas", async t => {

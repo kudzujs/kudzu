@@ -1,5 +1,39 @@
 # Kudzu Releases
 
+## 0.8.52 - Effect-private mutable refs
+
+Kudzu 0.8.52 compiles component-authored mutable refs when one inline effect exclusively owns their complete lifecycle.
+
+### Changed in 0.8.52
+
+- Top-level `useRef(null)` and `useRef(0)` values lower when every direct `.current` reference belongs to one inline block-bodied effect setup, its nested callbacks, and cleanup.
+- The compiler removes those component declarations and creates fresh mutable objects inside each effect setup invocation.
+- Existing effect ownership handles dependency replacement, stale setter invalidation, conditional/keyed ownership, navigation, document disposal, and BFCache preservation.
+- Animation-frame refs use the same invocation-private lowering while retaining exact scheduler, reset, and cancellation validation.
+- JSX DOM refs remain component-owned; aliases, nonzero initializers, cross-effect/event use, missing cleanup invalidation, and escaped ref objects remain source-diagnosed.
+
+### Migration evidence
+
+- The E2B terminal fixture now preserves asynchronous generation invalidation, BFCache retain/resume, discard cleanup, and a static sibling without ResourceIR.
+- A native WebSocket fixture verifies dependency replacement, listener removal, stale callback rejection, distinct connection ownership, and one close per connection.
+- Mutable refs shared by multiple effects retain a focused source diagnostic.
+
+### Output and performance
+
+- Private refs stay inside existing route-specific effect handler ESM and are absent from build-time captures and RouteIR scope.
+- Static sibling routes remain zero JavaScript.
+- No ResourceIR record, component runtime, resource API, scheduler, or new performance claim is added.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 219 tests and 167 generated pages.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.52
+```
+
 ## 0.8.51 - Owned effect package imports
 
 Kudzu 0.8.51 lets inline owned effect setup and cleanup callbacks reference browser-only package imports directly.

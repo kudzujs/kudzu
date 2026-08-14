@@ -58,17 +58,21 @@ The repository-owned fixture at `test/fixtures/goal-c-e2b-terminal` preserves th
 - `pageshow.persisted` resuming the retained handle;
 - one unrelated static sibling route.
 
-The build fails before BFCache behavior can be evaluated:
+The fixture now compiles through a narrow effect-private ref specialization. Because both refs are initialized with `null` or `0` and every direct `.current` reference belongs to one inline effect graph, the compiler removes their component declarations and recreates them inside each setup invocation. Promise continuations, page lifecycle listeners, and cleanup share the same ordinary JavaScript closure. Persisted `pagehide` retains that invocation; non-persisted disposal invalidates late setters and runs the authored close path. No ref capture, ResourceIR record, or resource runtime is emitted, and the static sibling remains JavaScript-free.
 
-```text
-src/pages/index.tsx:7:25 Mutable value useRef() is unsupported except for an effect-owned useRef(0) animation-frame handle; otherwise keep resource-private mutable values inside the owning effect
-```
+### Route-Owned WebSocket Reduced Fixture
 
-The failure is triggered by the ordinary `useRef(0)` generation token during source analysis. Existing animation-frame specialization cannot safely cover this shape: the generation token has different writes and callback ownership, while the remote handle is a browser-only non-serializable value rather than a DOM ref. Supporting only the token would expose incorrect DOM-ref semantics for the handle.
+The repository-owned fixture at `test/fixtures/goal-c-route-websocket` adds an independent native WebSocket case with a narrower route lifetime:
 
-The remaining question before any state/resource API discussion is whether independent fixtures justify a narrow specialization for callback-shared effect resources with document and BFCache ownership. Until then, the source-located diagnostic preserves the current boundary.
+- one `null`-initialized socket handle ref shared by setup and cleanup;
+- one numeric generation ref invalidating callbacks from replaced connections;
+- a primitive room dependency that replaces the connection;
+- exact listener removal and socket closure on replacement or route unmount;
+- one unrelated static sibling route.
 
-An effect-local rewrite is a useful control, but requiring applications to restructure ordinary callback-shared refs is not automatically an acceptable migration solution. The fixture remains an expected failure until research answers that boundary.
+This fixture uses the same effect-private lowering. On dependency replacement, the previous invocation is invalidated and cleaned before a new closure and socket are created. The regression test executes the bundled effect handler with a fake WebSocket and verifies listener removal, stale callback rejection, one close per connection, and distinct replacement sockets. Its static sibling remains JavaScript-free.
+
+Both fixtures therefore resolve without ResourceIR: their mutable handles are private implementation details of one effect invocation, while existing effect ownership already supplies replacement, cleanup, navigation, and BFCache disposal. The remaining Goal C pressure is cross-owner sharing: document/layout transports with independently mounted subscribers, reconnect/replay state, or handles intentionally shared with event handlers cannot use this specialization.
 
 ## Decision Boundary
 
@@ -81,4 +85,4 @@ Research may produce notes, fixtures, measurements, or a narrow compiler-special
 - [ ] Classify build-known, browser-only, layout-owned, route-owned, and DOM-owned data.
 - [ ] Test existing compiler capabilities before proposing a new one.
 - [ ] Record unresolved semantics instead of filling them with a generic runtime.
-- [ ] Stop at research unless a separate implementation decision is approved.
+- [x] Stop at research unless a separate implementation decision is approved; the effect-private specialization was explicitly approved without approving ResourceIR.
