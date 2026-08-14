@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.51 - Owned effect package imports
+
+Kudzu 0.8.51 lets inline owned effect setup and cleanup callbacks reference browser-only package imports directly.
+
+### Changed in 0.8.51
+
+- Direct package references are accepted inside inline `useEffect` setup callbacks and their directly returned inline cleanup functions.
+- Existing package import records feed the route-specific effect handler ESM and package bundler.
+- Build scratch replaces package-owning effect callbacks with inert functions because build-time rendering records ownership without executing effect code.
+- Render-time, helper-indirect, mixed, side-effect, and dynamic package imports remain source-diagnosed.
+
+### Output and performance
+
+- Package code is retained only by routes whose effect graph references it.
+- Build-time component modules and static sibling routes omit the package and its JavaScript.
+- No package runtime, ResourceIR, public adapter API, or new performance claim is added.
+
+### Validation
+
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 217 tests and 166 generated pages.
+- A direct setup/cleanup fixture bundles TypeScript package data into one owned effect handler while its static sibling ships zero JavaScript.
+- Focused negative fixtures retain diagnostics for render-time and helper-indirect package references.
+
+### Upgrade
+
+```bash
+npm install @kudzujs/core@^0.8.51
+```
+
 ## 0.8.50 - Package-neutral shared state IR
 
 Kudzu 0.8.50 contains reduced Zustand migration syntax behind package-neutral shared-state and action records before generic signal and handler consumers.

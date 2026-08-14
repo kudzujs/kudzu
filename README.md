@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.50 - Package-neutral shared state IR.** Reduced Zustand migration now lowers through validated `SharedStateIR` and `SharedActionIR` records before generic signal and handler consumers. Existing layout ownership, action behavior, and source diagnostics remain unchanged without adding a public store API or runtime. Read the [release notes](./RELEASES.md#0850---package-neutral-shared-state-ir), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.50), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.51 - Owned effect package imports.** Browser-only package bindings may be referenced directly inside inline effect setup and cleanup callbacks. Kudzu bundles them only into route-owned effect ESM while build-time component modules and static siblings omit the package. Read the [release notes](./RELEASES.md#0851---owned-effect-package-imports), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.51), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.50 release context</strong><span>The maintained cross-framework matrix below remains the 0.8.41 snapshot. The 0.8.45 source-scale result remains the latest compiler performance comparison; 0.8.50 changes compiler and build-time shared-state metadata only and makes no new performance claim.</span></div>
+    <div className="docs-callout"><strong>Current 0.8.51 release context</strong><span>The maintained cross-framework matrix below remains the 0.8.41 snapshot. The 0.8.45 source-scale result remains the latest compiler performance comparison; 0.8.51 routes direct browser package references into owned effect ESM and makes no new performance claim.</span></div>
     <h3>Runtime matrix</h3>
     <BenchmarkTable columns={["Target", "Build", "JS raw / gzip", "Total raw / gzip", "Initial DOM"]} rows={[
       ["Kudzu 0.8.41 snapshot", "1,475.480 ms", "33,575 / 12,928 B", "212,963 / 49,936 B", "532.9 ms"],
@@ -115,7 +115,7 @@ export function LimitsSection() {
       <li>There is no request-time SSR, server actions, default/general router, HMR, or DevTools. Opt-in navigation supports independent emitted exact/runtime groups with one shared layout per group; cross-group path domains cannot overlap. Conditional and keyed effects follow their layout or route lifetime.</li>
       <li>Imported client helpers require relative TypeScript modules; package runtime imports, dynamic imports, JSX helpers, and non-serializable captures are rejected.</li>
       <li>Compilation follows relative runtime imports and re-exports from page entries, plus validated Worker references. Unreachable TypeScript files are excluded. A direct map over an imported exported JSON-safe immutable array folds to static rows. A synchronous relative calculation may initialize one top-level immutable result whose direct static primitive fields feed reactive JSX; state arguments use build values initially and route binding ESM reevaluates the helper after commits. One direct array field may feed a keyed intrinsic map through a compiler-owned array anchor, preserving retained DOM and SVG keys. The field must remain a JSON-safe array; indirect result aliases, dynamic fields, and nested calculated SVG lists are unsupported.</li>
-      <li>Package imports may be referenced directly inside intrinsic JSX event-handler callbacks only. They are removed from build-time modules and bundled into route handler ESM. Render-time, effect, helper-indirect, mixed, side-effect, and dynamic package imports are rejected.</li>
+      <li>Package imports may be referenced directly inside intrinsic JSX event-handler callbacks or inline owned effect setup and cleanup callbacks. They are removed from build-time modules and bundled into route handler or effect ESM. Render-time, helper-indirect, mixed, side-effect, and dynamic package imports are rejected.</li>
     </ul>
   </section>
 }

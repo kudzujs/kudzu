@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.50` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.51` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 

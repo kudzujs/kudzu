@@ -322,8 +322,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const packageBindings = packageImportBindings(sourceFile)
     for (const [name] of packageBindings) {
       const references = referenceIdentifiers(sourceFile, name)
-      const invalid = references.find(reference => !insideJsxEventHandler(reference, sourceFile))
-      if (invalid) throw sourceNodeError(invalid, sourceFile, `Package import ${JSON.stringify(name)} may only be referenced directly inside JSX event handlers`)
+      const invalid = references.find(reference => !insideJsxEventHandler(reference, sourceFile) && !insideOwnedEffectCallback(reference, sourceFile))
+      if (invalid) throw sourceNodeError(invalid, sourceFile, `Package import ${JSON.stringify(name)} may only be referenced directly inside JSX event handlers or owned effect setup/cleanup callbacks`)
     }
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
     const importedSourceCache = new Map()
@@ -1770,7 +1770,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const descriptor = descriptors.compileEffectCallback(compiledCallback, {
           setters,
           reducers: reducersForNode(node, reducersByFunction),
-          importBindings: specializedEffect?.imports ?? importBindings,
+          importBindings: specializedEffect?.imports ?? new Map([...importBindings, ...packageBindings]),
           listItem: dependencyItem,
           keyedBlock: activeKeyedBlock?.block.slot,
           stateOwners: new Map([...stateOwnersForNode(callbackArgument), ...stateOwnersForNode(node), ...(specializedEffectStateOwners.get(node)?.references ?? []), ...(activeStateOwners ?? [])]),
@@ -1804,8 +1804,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           ...(analysisSource(effectSource) ? { source: analysisSource(effectSource) } : {})
         })
         const dependencyExpressions = effect.dependencies.map((dependency, index) => dependency.kind === "derived" ? moduleIR.derived[dependency.derived].expression : ["state", dependencyEntries[index]?.name ?? ordinaryDependencies[index].text])
+        const buildCallback = [...packageBindings].some(([name]) => referenceIdentifiers(callback, name).length)
+          ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createBlock([], false))
+          : callback
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [
-          callback,
+          buildCallback,
           factory.createArrayLiteralExpression(subscriptionNames.map(name => factory.createIdentifier(name))),
           factory.createStringLiteral(handlerUrl),
           factory.createStringLiteral(effect.setup.exportName),
@@ -2149,6 +2152,24 @@ function runtimeImportNames(sourceFile, relative) {
 function insideJsxEventHandler(node, root) {
   for (let current = node.parent; current && current !== root.parent; current = current.parent) {
     if (ts.isJsxAttribute(current) && /^on[A-Z]/.test(current.name.text)) return true
+  }
+  return false
+}
+
+function insideOwnedEffectCallback(node, root) {
+  let callback
+  for (let current = node.parent; current && current !== root.parent; current = current.parent) {
+    if (!isFunctionLike(current)) continue
+    callback = current
+    break
+  }
+  if (!callback) return false
+  if (ts.isCallExpression(callback.parent) && callback.parent.arguments[0] === callback && ts.isIdentifier(callback.parent.expression) && callback.parent.expression.text === "useEffect") return true
+  const returned = callback.parent
+  if (!ts.isReturnStatement(returned)) return false
+  for (let current = returned.parent; current && current !== root.parent; current = current.parent) {
+    if (!isFunctionLike(current)) continue
+    return ts.isCallExpression(current.parent) && current.parent.arguments[0] === current && ts.isIdentifier(current.parent.expression) && current.parent.expression.text === "useEffect"
   }
   return false
 }
