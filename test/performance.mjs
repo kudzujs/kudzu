@@ -28,13 +28,15 @@ try {
     return total
   }, { raw: 0, gzip: 0 })
   const worker = `assets/workers/${readdirSync(resolve(fixture, "dist/assets/workers")).find(file => file.endsWith(".js"))}`
-  const windowFiles = [
-    "assets/kudzu.js",
-    "assets/kudzu-effect.js",
-    "assets/kudzu-navigation.js",
+  const artifacts = JSON.parse(readFileSync(resolve(fixture, ".kudzu/kudzu-artifacts.json")))
+  const route = artifacts.routes.find(route => route.route === "/dash/dashboard")
+  const deployPath = path => path.slice(path.indexOf("/assets/") + 1)
+  const windowFiles = [...new Set([
+    ...route.runtime.requirements.map(deployPath),
+    ...route.runtime.entries.filter(path => path.includes("kudzu-navigation")).map(deployPath),
     "assets/effects/dashboard/index.js",
     "assets/handlers/pages/dashboard.js"
-  ]
+  ])]
   const sorted = [...runs].sort((left, right) => left - right)
 
   console.log(JSON.stringify({

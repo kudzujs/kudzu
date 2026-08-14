@@ -59,7 +59,7 @@ export default {
   const homeArtifacts = artifacts.routes.find(route => route.route === "/")
   const aboutArtifacts = artifacts.routes.find(route => route.route === "/about")
   const chunkUrl = `/${chunk}`
-  assert.equal(artifacts.version, 1)
+  assert.equal(artifacts.version, 2)
   assert.deepEqual(homeArtifacts.handlers.entries, ["/assets/handlers/pages/index.js"])
   assert.deepEqual(aboutArtifacts.handlers.entries, ["/assets/handlers/pages/about.js"])
   assert.equal(homeArtifacts.handlers.chunks.includes(chunkUrl), true)
@@ -70,10 +70,13 @@ export default {
   const workerChunk = homeArtifacts.workers[0].chunks.find(path => aboutArtifacts.workers[0].chunks.includes(path))
   assert.match(workerChunk, /^\/assets\/workers\/chunks\//)
   assert.deepEqual(artifacts.sharedChunks.find(entry => entry.path === workerChunk), { path: workerChunk, routes: ["/", "/about"] })
+  const runtimeCore = homeArtifacts.runtime.requirements.find(path => path.endsWith("/kudzu.js"))
+  assert.match(runtimeCore, /^\/assets\/runtime\/[a-f0-9]{16}\/kudzu\.js$/)
+  assert.equal(Object.hasOwn(expected, runtimeCore.slice(1)), true)
 
   const collisions = [
     ["index.html", /public\/index\.html collides with generated output index\.html/],
-    ["assets/kudzu.js", /public\/assets\/kudzu\.js collides with generated output assets\/kudzu\.js/],
+    [runtimeCore.slice(1), /public\/assets\/runtime\/[a-f0-9]+\/kudzu\.js collides with generated output assets\/runtime\//],
     ["assets/handlers/pages/index.js", /public\/assets\/handlers\/pages\/index\.js collides with generated output assets\/handlers\/pages\/index\.js/],
     [chunk, /collides with generated output assets\/handlers\/chunks\//],
     ["assets/workers/public.txt", /public\/assets\/workers collides with Kudzu's generated Worker asset namespace/],

@@ -21,6 +21,36 @@ if (process.env.KUDZU_REQUIRE_CHROME && !chromePaths.some(fileExistsSync)) throw
 let browserPort = 10000 + process.pid % 10000
 const nextBrowserPort = () => browserPort++
 
+async function runtimeAssetUrl(fixture, name, route = "/") {
+  const root = fixture instanceof URL ? new URL("./", `${fixture.href}/`) : new URL(`./fixtures/${fixture}/`, import.meta.url)
+  const report = JSON.parse(await readFile(new URL(".kudzu/kudzu-artifacts.json", root), "utf8"))
+  const record = report.routes.find(entry => entry.route === route) ?? report.routes.find(entry => route === "/" ? entry.route.endsWith("/") : entry.route.endsWith(route))
+  const path = record?.runtime.requirements.find(entry => entry.endsWith(`/${name}`))
+  if (!path) return undefined
+  return new URL(`dist${path.slice(path.indexOf("/assets/"))}`, root)
+}
+
+async function readRuntime(fixture, name, route = "/") {
+  const url = await runtimeAssetUrl(fixture, name, route)
+  if (!url) throw new Error(`Runtime ${name} was not emitted for ${route}`)
+  return readFile(url, "utf8")
+}
+
+const hasRuntime = async (fixture, name, route = "/") => Boolean(await runtimeAssetUrl(fixture, name, route))
+
+async function navigationAssetUrl(fixture, route) {
+  const root = fixture instanceof URL ? new URL("./", `${fixture.href}/`) : new URL(`./fixtures/${fixture}/`, import.meta.url)
+  const report = JSON.parse(await readFile(new URL(".kudzu/kudzu-artifacts.json", root), "utf8"))
+  const record = report.routes.find(entry => entry.route === route) ?? report.routes.find(entry => route === "/" ? entry.route.endsWith("/") : entry.route.endsWith(route))
+  const path = record?.runtime.entries.find(entry => /\/kudzu-navigation(?:-[a-f0-9]+)?\.js$/.test(entry))
+  if (!path) throw new Error(`Navigation runtime was not emitted for ${route}`)
+  return new URL(`dist${path.slice(path.indexOf("/assets/"))}`, root)
+}
+
+async function readNavigationRuntime(fixture, route) {
+  return readFile(await navigationAssetUrl(fixture, route), "utf8")
+}
+
 test("reuses only exact route-entry transforms within one build", async () => {
   const transforms = new Map()
   const writes = []
@@ -58,6 +88,10 @@ test("emits identical static-path route entries once", async t => {
   const files = await readdir(new URL("assets", output), { recursive: true })
   assert.equal(files.filter(file => file.startsWith("native/") && file.endsWith(".js")).length, 1)
   assert.equal(files.filter(file => file.startsWith("effects/") && file.endsWith(".js")).length, 1)
+  const artifacts = JSON.parse(await readFile(new URL("./fixtures/route-entry-dedup/.kudzu/kudzu-artifacts.json", import.meta.url), "utf8"))
+  assert.equal(new Set(artifacts.routes.map(route => route.runtime.family)).size, 1)
+  assert.equal(artifacts.runtimeFamilies.length, 1)
+  assert.deepEqual(await readdir(new URL("assets/runtime", output)), [artifacts.runtimeFamilies[0].id])
 })
 
 test("inlines critical read-only query form carry", async t => {
@@ -89,9 +123,9 @@ process.stdout.write(JSON.stringify(result.sourceResults.find(source => source.f
 test("builds TSX into HTML and behavior commands without React", async () => {
   const buildResult = await build({ quiet: true })
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("../dist/assets/kudzu.js", import.meta.url), "utf8")
+  const runtime = await readRuntime(new URL("../", import.meta.url), "kudzu.js")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.54/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.55/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -108,12 +142,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.54"/)
-  assert.match(release, /Kudzu 0\.8\.54.*Trace the route.*Through every chunk/s)
-  assert.match(release, /SIGN · FOLLOW · ATTRIBUTE.*ROUTE ARTIFACT CLOSURE.*npm install @kudzujs\/core@\^0\.8\.54/s)
-  assert.match(release, /<title>Kudzu 0\.8\.54 - Inspectable route artifact closure<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.54"/)
-  assert.match(release, /Sign capabilities.*Expose to hooks/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.55"/)
+  assert.match(release, /Kudzu 0\.8\.55.*Split the runtime.*Keep the lifecycle whole/s)
+  assert.match(release, /HASH · SHARE · ISOLATE.*SIGNATURE-KEYED RUNTIME FAMILIES.*npm install @kudzujs\/core@\^0\.8\.55/s)
+  assert.match(release, /<title>Kudzu 0\.8\.55 - Signature-keyed runtime families<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.55"/)
+  assert.match(release, /Share exact signatures.*Keep navigation whole/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -281,13 +315,13 @@ test("enhances configured emitted routes sharing one layout", async t => {
   const itemParams = await readFile(new URL("./fixtures/navigation/dist/assets/params/items/[id]/index.js", import.meta.url), "utf8")
   const productEffects = await readFile(new URL("./fixtures/navigation/dist/assets/effects/product/index.js", import.meta.url), "utf8")
   const outside = await readFile(new URL("./fixtures/navigation/dist/outside/index.html", import.meta.url), "utf8")
-  const navigation = await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
+  const navigation = await readNavigationRuntime(fixture, "/shop/product")
 
   const second = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`)
   assert.equal(await readFile(new URL("./fixtures/navigation/dist/product/index.html", import.meta.url), "utf8"), product)
   assert.equal(await readFile(new URL("./fixtures/navigation/dist/cart/index.html", import.meta.url), "utf8"), cart)
-  assert.equal(await readFile(new URL("./fixtures/navigation/dist/assets/kudzu-navigation.js", import.meta.url), "utf8"), navigation)
+  assert.equal(await readNavigationRuntime(fixture, "/shop/product"), navigation)
 
   for (const html of [product, cart, chart, broken, item, newItem, genericItem]) {
     assert.match(html, /^<!doctype html>.*<body[^>]+data-k-application="a-a8d4d2fb8e9e69eb"[^>]+data-k-layout="l-a8d4d2fb8e9e69eb".*data-k-route-start.*data-k-route-end.*<\/body><\/html>$/s)
@@ -321,8 +355,8 @@ test("specializes effect-free exact navigation", async t => {
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, result.stderr)
-  const navigation = await readFile(new URL("./fixtures/navigation-static/dist/assets/kudzu-navigation.js", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/navigation-static/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const navigation = await readNavigationRuntime(fixture, "/")
+  const runtime = await readRuntime("navigation-static", "kudzu.js")
   assert.doesNotMatch(navigation, /capabilities|mountInitial|mountRouteEffects|initializeParams|pagehide|decodeSegment/)
   assert.doesNotMatch(runtime, /indexOf/)
 })
@@ -357,8 +391,14 @@ test("emits independent shared-layout navigation groups", async t => {
   const beta = await readFile(new URL("dist/beta/index.html", `${fixture.href}/`), "utf8")
   const outside = await readFile(new URL("dist/outside/index.html", `${fixture.href}/`), "utf8")
   const nativeItem = await readFile(new URL("dist/items/native/index.html", `${fixture.href}/`), "utf8")
-  const sourceA = await readFile(new URL(`dist/assets/${assetA}`, `${fixture.href}/`), "utf8")
-  const sourceB = await readFile(new URL(`dist/assets/${assetB}`, `${fixture.href}/`), "utf8")
+  const artifacts = JSON.parse(await readFile(new URL(".kudzu/kudzu-artifacts.json", `${fixture.href}/`), "utf8"))
+  const routeArtifact = route => artifacts.routes.find(entry => entry.route === route)
+  assert.equal(routeArtifact("/app/alpha").runtime.family, routeArtifact("/app/items/[id]").runtime.family)
+  assert.equal(routeArtifact("/app/beta").runtime.family, routeArtifact("/app/gamma").runtime.family)
+  assert.notEqual(routeArtifact("/app/alpha").runtime.family, routeArtifact("/app/beta").runtime.family)
+  assert.notEqual(routeArtifact("/app/alpha").capability.signature, routeArtifact("/app/items/[id]").capability.signature)
+  const sourceA = await readNavigationRuntime(fixture, "/app/alpha")
+  const sourceB = await readNavigationRuntime(fixture, "/app/beta")
   assert.match(alpha, new RegExp(assetA.replace(".", "\\.")))
   assert.doesNotMatch(alpha, new RegExp(assetB.replace(".", "\\.")))
   assert.match(beta, new RegExp(assetB.replace(".", "\\.")))
@@ -384,10 +424,11 @@ test("emits independent shared-layout navigation groups", async t => {
   await writeFile(config, `export default { base: "/app", navigation: { groups: [{ routes: ["/beta", "/gamma"] }, { routes: ["/alpha", "/items/[id]"] }] } }\n`)
   const reordered = buildFixture()
   assert.equal(reordered.status, 0, `${reordered.stdout}\n${reordered.stderr}`)
-  assert.equal(await readFile(new URL(`dist/assets/${assetA}`, `${fixture.href}/`), "utf8"), sourceA)
-  assert.equal(await readFile(new URL(`dist/assets/${assetB}`, `${fixture.href}/`), "utf8"), sourceB)
+  assert.equal(await readNavigationRuntime(fixture, "/app/alpha"), sourceA)
+  assert.equal(await readNavigationRuntime(fixture, "/app/beta"), sourceB)
   assert.equal(await readFile(new URL("dist/alpha/index.html", `${fixture.href}/`), "utf8"), alpha)
-  assert.deepEqual((await readdir(new URL("dist/assets", `${fixture.href}/`))).filter(name => name.startsWith("kudzu-navigation-")).sort(), [assetA, assetB].sort())
+  const reorderedArtifacts = JSON.parse(await readFile(new URL(".kudzu/kudzu-artifacts.json", `${fixture.href}/`), "utf8"))
+  assert.deepEqual([...new Set(reorderedArtifacts.routes.flatMap(route => route.runtime.entries.filter(path => path.includes("kudzu-navigation-"))).map(path => path.split("/").at(-1)))].sort(), [assetA, assetB].sort())
 
   await writeFile(config, originalConfig)
   const rebuilt = buildFixture()
@@ -435,8 +476,8 @@ test("owns conditional and keyed effects across navigation lifetimes", async t =
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const entry = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/kudzu.js", import.meta.url), "utf8")
-  const listRuntime = await readFile(new URL("./fixtures/navigation-owned-effects/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("navigation-owned-effects", "kudzu.js")
+  const listRuntime = await readRuntime("navigation-owned-effects", "kudzu-list.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/navigation-owned-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(entry, /registerMountHook|registerUnmountHook/)
   assert.match(entry, /registerListItemHook/)
@@ -711,7 +752,7 @@ export default {
   assert.match(oak, /href="\/newsletter\/assets\/style\.css"/)
   assert.match(oak, /rel="icon" href="\/newsletter\/icon\.svg"/)
   assert.match(oak, /rel="manifest" href="\/newsletter\/manifest\.webmanifest"/)
-  assert.match(oak, /src="\/newsletter\/assets\/kudzu(?:-native)?\.js"/)
+  assert.match(oak, /src="\/newsletter\/assets\/runtime\/[a-f0-9]+\/kudzu(?:-binding)?\.js"/)
   assert.match(oak, /src="\/newsletter\/assets\/effects\/posts\/oak\/index\.js"/)
   assert.match(oak, /data-title="Oak".*<h1>Oak<\/h1><p>Score: 7<\/p><p data-mounted="true">.*pending.*<\/p><section><article><strong>Oak body<\/strong><\/article><\/section>/)
   assert.match(pine, /data-title="Pine".*<h1>Pine<\/h1><p>Score: 9<\/p><p data-mounted="true">.*pending.*<\/p><section><article><strong>Pine body<\/strong><\/article><\/section>/)
@@ -832,9 +873,9 @@ test("patches reactive attributes and form properties without a VDOM", async t =
 
   const html = await readFile(new URL("./fixtures/bindings/dist/index.html", import.meta.url), "utf8")
   const bindings = await readFile(new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
-  const commandRuntime = await readFile(new URL("./fixtures/bindings/dist/assets/kudzu.js", import.meta.url), "utf8")
-  const bindingRuntime = await readFile(new URL("./fixtures/bindings/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
-  const serialization = await readFile(new URL("./fixtures/bindings/dist/assets/kudzu-serialization.js", import.meta.url), "utf8")
+  const commandRuntime = await readRuntime("bindings", "kudzu.js")
+  const bindingRuntime = await readRuntime("bindings", "kudzu-binding.js")
+  const serialization = await readRuntime("bindings", "kudzu-serialization.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/bindings/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /class="idle" data-k-bind-class=/)
   assert.match(html, /data-derived="true" title="Kudzu!:idle" data-k-bind-attrs=.*Kudzu!:idle/)
@@ -856,7 +897,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(html, /<body data-k-state=/)
   assert.match(html, /kudzu-binding\.js/)
   assert.doesNotMatch(html, /kudzu-list\.js/)
-  assert.equal(existsSync(new URL("./fixtures/bindings/dist/assets/kudzu-list.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("bindings", "kudzu-list.js"), false)
   assert.doesNotMatch(html, /kudzu-native\.js/)
   assert.doesNotMatch(commandRuntime, /patchBinding|data-k-bind/)
   assert.match(commandRuntime, /registerCommitter/)
@@ -864,7 +905,7 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.match(bindingRuntime, /patchBinding|data-k-bind/)
   assert.match(bindingRuntime, /Reactive text marker has no end|k-text:/)
   assert.match(bindingRuntime, /kudzu-style\.js/)
-  assert.equal(existsSync(new URL("./fixtures/bindings/dist/assets/kudzu-style.js", import.meta.url)), true)
+  assert.equal(await hasRuntime("bindings", "kudzu-style.js"), true)
   assert.match(serialization, /as deserialize/)
   assert.match(bindings, /as binding0/)
   assert.match(bindings, /\.get\("active"\)/)
@@ -988,10 +1029,10 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   const html = await readFile(new URL("./fixtures/conditionals/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/conditionals/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const evaluators = await readFile(new URL("./fixtures/conditionals/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/conditionals/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
-  const commandRuntime = await readFile(new URL("./fixtures/conditionals/dist/assets/kudzu.js", import.meta.url), "utf8")
-  const nativeRuntime = await readFile(new URL("./fixtures/conditionals/dist/assets/kudzu-native.js", import.meta.url), "utf8")
-  const serialization = await readFile(new URL("./fixtures/conditionals/dist/assets/kudzu-serialization.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("conditionals", "kudzu-binding.js")
+  const commandRuntime = await readRuntime("conditionals", "kudzu.js")
+  const nativeRuntime = await readRuntime("conditionals", "kudzu-native.js")
+  const serialization = await readRuntime("conditionals", "kudzu-serialization.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/conditionals/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
 
   assert.match(component, /__kConditional/)
@@ -1047,7 +1088,7 @@ test("compiles and patches keyed reactive lists without remounting existing keys
 
   const html = await readFile(new URL("./fixtures/lists/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/lists/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("lists", "kudzu-list.js")
   const handlers = await readFile(new URL("./fixtures/lists/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   const browserFiles = (await readdir(new URL("./fixtures/lists/dist", import.meta.url), { recursive: true })).filter(file => file.endsWith(".js"))
@@ -1084,12 +1125,12 @@ test("compiles and patches keyed reactive lists without remounting existing keys
   assert.match(html, /kudzu-list\.js/)
   assert.match(html, /assets\/native\/index\.js/)
   assert.match(runtime, /kudzu-style\.js/)
-  assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-style.js", import.meta.url)), true)
-  assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("lists", "kudzu-style.js"), true)
+  assert.equal(await hasRuntime("lists", "kudzu-collection-selector.js"), false)
   assert.doesNotMatch(runtime, /collection-selector|selectCollection|Rendered collection/)
   assert.doesNotMatch(runtime, /list-index|\.indexed|\.selector|kListConditionHandler|no matching template/)
   assert.doesNotMatch(html, /kudzu-binding\.js/)
-  assert.equal(existsSync(new URL("./fixtures/lists/dist/assets/kudzu-binding.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("lists", "kudzu-binding.js"), false)
   assert.match(runtime, /Keyed list state must remain an array/)
   assert.match(runtime, /Keyed list condition marker has no end/)
   assert.doesNotMatch(runtime, /createContextualFragment/)
@@ -1117,8 +1158,8 @@ test("patches conditional and keyed SVG ranges in their namespace", async t => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
 
   const html = await readFile(new URL("./fixtures/svg-structures/dist/index.html", import.meta.url), "utf8")
-  const bindingRuntime = await readFile(new URL("./fixtures/svg-structures/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
-  const listRuntime = await readFile(new URL("./fixtures/svg-structures/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const bindingRuntime = await readRuntime("svg-structures", "kudzu-binding.js")
+  const listRuntime = await readRuntime("svg-structures", "kudzu-list.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/svg-structures/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /data-k-svg-true=/)
   assert.match(html, /data-k-svg-template=/)
@@ -1147,7 +1188,7 @@ test("reevaluates calculated collection fields through keyed SVG lists", async t
   const html = await readFile(new URL("./fixtures/calculated-collections/dist/index.html", import.meta.url), "utf8")
   const ordinaryHtml = await readFile(new URL("./fixtures/calculated-collections/dist/ordinary/index.html", import.meta.url), "utf8")
   const staticHtml = await readFile(new URL("./fixtures/calculated-collections/dist/static/index.html", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/calculated-collections/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("calculated-collections", "kudzu-list.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/calculated-collections/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
   const route = plan.find(entry => entry.route === "/")
 
@@ -1161,7 +1202,7 @@ test("reevaluates calculated collection fields through keyed SVG lists", async t
   assert.doesNotMatch(runtime, /selectCollection/)
   assert.match(runtime, /import\("\.\/kudzu-binding\.js"\)/)
   assert.doesNotMatch(runtime, /kTextBindings/)
-  assert.equal(existsSync(new URL("./fixtures/calculated-collections/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("calculated-collections", "kudzu-collection-selector.js"), false)
   assert.match(ordinaryHtml, /kudzu-list\.js/)
   assert.doesNotMatch(ordinaryHtml, /kudzu-binding\.js/)
   assert.doesNotMatch(staticHtml, /<script/)
@@ -1182,7 +1223,7 @@ test("compiles synchronous rendered collection selectors and React positional ke
   assert.ok(derived.some(entry => entry.kind === "selector" && entry.selector.some(step => step[0] === "filter")))
   const html = await readFile(new URL("./fixtures/rendered-collections/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/rendered-collections/.kudzu/pages/index.mjs", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/rendered-collections/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("rendered-collections", "kudzu-list.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/rendered-collections/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /data-stable[\s\S]*"keys":\["a","c"\]/)
   assert.match(html, /data-reused[\s\S]*"keys":\["a","c"\]/)
@@ -1207,7 +1248,7 @@ test("compiles synchronous rendered collection selectors and React positional ke
   assert.ok(plan.lists.some(list => list.selector?.some(operation => operation[0] === "sort")))
   assert.ok(new Set(plan.lists.flatMap(list => Object.values(list.selectorStates ?? {}))).size >= 3)
   assert.doesNotMatch(runtime, /\beval\b|new Function|Promise|async /)
-  assert.equal(existsSync(new URL("./fixtures/rendered-collections/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("rendered-collections", "kudzu-collection-selector.js"), true)
   const invalid = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: new URL("./fixtures/rendered-collections-invalid", import.meta.url), encoding: "utf8" })
   assert.notEqual(invalid.status, 0)
   assert.match(`${invalid.stdout}\n${invalid.stderr}`, /rendered-collections-invalid\/src\/pages\/index\.tsx:\d+:\d+ Rendered collection filter\(\) callback must be a synchronous arrow function/)
@@ -1279,11 +1320,11 @@ test("refreshes indexed nested rows and treats optional direct properties as emp
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
-  const runtime = await readFile(new URL("./fixtures/nested-indexed-optional/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("nested-indexed-optional", "kudzu-list.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/nested-indexed-optional/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.ok(plan.lists.some(list => list.ownerField === "children" && list.indexed && !list.selector))
   assert.ok(plan.lists.some(list => list.ownerField === "optional" && !list.selector))
-  assert.equal(existsSync(new URL("./fixtures/nested-indexed-optional/dist/assets/kudzu-collection-selector.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("nested-indexed-optional", "kudzu-collection-selector.js"), false)
   assert.doesNotMatch(runtime, /collection-selector|selectCollection/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runNestedIndexedOptionalBrowserTest(fixture, chrome)
@@ -1346,7 +1387,7 @@ test("owns ordinary keyed-row hooks by structural site and ancestor key path", a
   assert.deepEqual(keyedBlocks[0].selectorSignals.map(slot => sourceResult.moduleIR.signals[slot].debugName), ["showSecond"])
   const html = await readFile(new URL("./fixtures/keyed-row-hooks/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/keyed-row-hooks/.kudzu/pages/index.mjs", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/keyed-row-hooks/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("keyed-row-hooks", "kudzu-list.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-row-hooks/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /l0%3Dstring%3Ap1%2Fl1%3Dstring%3Ashared/)
   assert.match(html, /data-k-ref=/)
@@ -1371,7 +1412,7 @@ test("owns flat keyed-row hooks without the nested-list capability", async t => 
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
-  const runtime = await readFile(new URL("./fixtures/keyed-row-hooks-flat/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("keyed-row-hooks-flat", "kudzu-list.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-row-hooks-flat/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.equal(plan.lists.length, 1)
   assert.equal(plan.lists[0].ownerField, undefined)
@@ -2499,7 +2540,7 @@ test("specializes relative imported state-backed list components", async t => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/imported-component-lists/dist/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/imported-component-lists/.kudzu/pages/index.mjs", import.meta.url), "utf8")
-  const nativeRuntime = await readFile(new URL("./fixtures/imported-component-lists/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  const nativeRuntime = await readRuntime("imported-component-lists", "kudzu-native.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/imported-component-lists/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(html, /data-default-list.*data-named-list.*data-barrel-list/s)
   assert.equal((component.match(/__kList\(/g) ?? []).length, 3)
@@ -2531,12 +2572,12 @@ test("emits only list capabilities for derived list expressions without handlers
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/list-expressions/dist/index.html", import.meta.url), "utf8")
   const handlers = await readFile(new URL("./fixtures/list-expressions/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/list-expressions/dist/assets/kudzu-list.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("list-expressions", "kudzu-list.js")
   assert.match(html, /kudzu-list\.js/)
   assert.doesNotMatch(html, /kudzu-binding\.js|kudzu-native\.js|kudzu-serialization\.js/)
-  assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-native.js", import.meta.url)), false)
-  assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-serialization.js", import.meta.url)), false)
-  assert.equal(existsSync(new URL("./fixtures/list-expressions/dist/assets/kudzu-style.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("list-expressions", "kudzu-native.js"), false)
+  assert.equal(await hasRuntime("list-expressions", "kudzu-serialization.js"), false)
+  assert.equal(await hasRuntime("list-expressions", "kudzu-style.js"), false)
   assert.match(handlers, /as listExpression/)
   assert.doesNotMatch(runtime, /data-k-list-condition|Keyed list condition marker has no end/)
 })
@@ -2553,7 +2594,7 @@ test("shares lifecycle cleanup between conditional and list capabilities", async
   })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/list-bindings/dist/index.html", import.meta.url), "utf8")
-  const shared = await readFile(new URL("./fixtures/list-bindings/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const shared = await readRuntime("list-bindings", "kudzu.js")
   assert.match(html, /kudzu-binding\.js/)
   assert.match(html, /kudzu-list\.js/)
   assert.match(shared, /registerMountHook|registerUnmountHook/)
@@ -2698,8 +2739,12 @@ test("bundles relative TypeScript Workers for inline effects", async t => {
     const plain = await readFile(new URL("dist/plain/index.html", fixture), "utf8")
     const staticHtml = await readFile(new URL("dist/static/index.html", fixture), "utf8")
     const handler = await readFile(new URL("dist/assets/handlers/pages/dashboard.js", fixture), "utf8")
-    const capabilityPaths = ["kudzu.js", "kudzu-effect.js", "kudzu-navigation.js", "effects/dashboard/index.js"]
-    const capabilities = await Promise.all(capabilityPaths.map(path => readFile(new URL(`dist/assets/${path}`, fixture))))
+    const capabilities = await Promise.all([
+      readRuntime(fixture, "kudzu.js", "/dashboard"),
+      readRuntime(fixture, "kudzu-effect.js", "/dashboard"),
+      readNavigationRuntime(fixture, "/dashboard"),
+      readFile(new URL("dist/assets/effects/dashboard/index.js", fixture))
+    ])
     assert.doesNotMatch([dashboard, plain, staticHtml].join("\n"), /assets\/workers|\.worker-/)
     assert.match(handler, new RegExp(`/dash/assets/workers/${firstFiles[0].replace(".", "\\.")}`))
     assert.doesNotMatch(handler, /__kudzu_worker_|import\.meta|telemetry\.worker\.ts/)
@@ -2723,7 +2768,12 @@ test("bundles relative TypeScript Workers for inline effects", async t => {
     const noWorker = buildFixture()
     assert.equal(noWorker.status, 0, `${noWorker.stdout}\n${noWorker.stderr}`)
     assert.equal(existsSync(new URL("dist/assets/workers", fixture)), false)
-    assert.deepEqual(await Promise.all(capabilityPaths.map(path => readFile(new URL(`dist/assets/${path}`, fixture)))), capabilities)
+    assert.deepEqual(await Promise.all([
+      readRuntime(fixture, "kudzu.js", "/dashboard"),
+      readRuntime(fixture, "kudzu-effect.js", "/dashboard"),
+      readNavigationRuntime(fixture, "/dashboard"),
+      readFile(new URL("dist/assets/effects/dashboard/index.js", fixture))
+    ]), capabilities)
 
     const unusedWorkerPage = `${noWorkerPage}\nfunction UnusedWorker() {\n${pageSource.slice(effectStart, effectEnd)}\n  return null\n}\n`
     await writeFile(pageUrl, unusedWorkerPage)
@@ -2885,8 +2935,8 @@ test("owns effects rendered by imported keyed row components", async t => {
   const entry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/index.js", import.meta.url), "utf8")
   const itemOnlyEntry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/item-only/index.js", import.meta.url), "utf8")
   const stateOnlyEntry = await readFile(new URL("./fixtures/keyed-effects/dist/assets/effects/state-only/index.js", import.meta.url), "utf8")
-  const listRuntime = await readFile(new URL("./fixtures/keyed-effects/dist/assets/kudzu-list.js", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/keyed-effects/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const listRuntime = await readRuntime("keyed-effects", "kudzu-list.js")
+  const runtime = await readRuntime("keyed-effects", "kudzu.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
   assert.match(html, /data-k-effects=/)
   assert.match(entry, /kEffectItem/)
@@ -2913,10 +2963,10 @@ test("omits keyed item notifications from state-only effect builds", async t => 
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const output = await Promise.all([
-    "dist/assets/effects/index.js",
-    "dist/assets/kudzu-list.js",
-    "dist/assets/kudzu.js"
-  ].map(path => readFile(new URL(path, `${fixture.href}/`), "utf8")))
+    readFile(new URL("dist/assets/effects/index.js", `${fixture.href}/`), "utf8"),
+    readRuntime("keyed-effects-state-only", "kudzu-list.js"),
+    readRuntime("keyed-effects-state-only", "kudzu.js")
+  ])
   assert.doesNotMatch(output.join("\n"), /itemDependencies|listState|registerListItemHook|notifyListItem|keyed item dependency/)
   assert.doesNotMatch(output.join("\n"), /\.length!==\w+\.items\.length/)
   assert.match(output[0], /registerCommitter/)
@@ -2932,7 +2982,7 @@ test("runs mount effect cleanup once on document disposal", async t => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const entryUrl = new URL("./fixtures/effect-cleanup/dist/assets/effects/index.js", import.meta.url)
   const entry = await readFile(entryUrl, "utf8")
-  const runtime = await readFile(new URL("./fixtures/effect-cleanup/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("effect-cleanup", "kudzu.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/effect-cleanup/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(entry, /registerUnmountHook.*pagehide/s)
   assert.doesNotMatch(runtime, /registerUnmountHook/)
@@ -2976,20 +3026,20 @@ test("reruns multiple primitive dependency effects after cleanup", async t => {
   assert.deepEqual(effects.map(effect => signalNames(effect.subscriptions)), [["count", "page"], ["countAlias"], ["count"], ["count"]])
   assert.deepEqual(JSON.parse(JSON.stringify(effects)), effects)
   const entryUrl = new URL("./fixtures/effect-dependencies/dist/assets/effects/index.js", import.meta.url)
-  const runtimeUrl = new URL("./fixtures/effect-dependencies/dist/assets/kudzu-deps.js", import.meta.url)
+  const runtimeUrl = await runtimeAssetUrl("effect-dependencies", "kudzu-deps.js", "/")
   const entry = await readFile(entryUrl, "utf8")
   const runtime = await readFile(runtimeUrl, "utf8")
-  const expressionRuntime = await readFile(new URL("./fixtures/effect-dependencies/dist/assets/kudzu-collection-selector.js", import.meta.url), "utf8")
+  const expressionRuntime = await readRuntime("effect-dependencies", "kudzu-collection-selector.js")
   const html = await readFile(new URL("./fixtures/effect-dependencies/dist/index.html", import.meta.url), "utf8")
   const commandHtml = await readFile(new URL("./fixtures/effect-dependencies/dist/command/index.html", import.meta.url), "utf8")
-  const commandRuntime = await readFile(new URL("./fixtures/effect-dependencies/dist/assets/kudzu.js", import.meta.url), "utf8")
+  const commandRuntime = await readRuntime("effect-dependencies", "kudzu.js", "/command")
   const plan = JSON.parse(await readFile(new URL("./fixtures/effect-dependencies/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.effects.length)
   assert.match(entry, /registerCommitter/)
   assert.match(entry, /kudzu-collection-selector/)
   assert.match(expressionRuntime, /evaluateCollectionExpression/)
   assert.match(runtime, /registerCommitter/)
   assert.match(html, /kudzu-deps\.js/)
-  assert.match(html, /\/docs&amp;notes\/assets\/kudzu-deps\.js/)
+  assert.match(html, /\/docs&amp;notes\/assets\/runtime\/[a-f0-9]+\/kudzu-deps\.js/)
   assert.match(html, /data-runtime-link="\/assets\/kudzu\.js"/)
   assert.doesNotMatch(commandHtml, /kudzu-deps\.js/)
   assert.doesNotMatch(commandRuntime, /registerCommitter/)
@@ -3038,10 +3088,10 @@ test("specializes one primitive dependency effect", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const entryUrl = new URL("./fixtures/effect-dependency-fast/dist/assets/effects/index.js", import.meta.url)
-  const runtimeUrl = new URL("./fixtures/effect-dependency-fast/dist/assets/kudzu-deps.js", import.meta.url)
+  const runtimeUrl = await runtimeAssetUrl("effect-dependency-fast", "kudzu-deps.js")
   const entry = await readFile(entryUrl, "utf8")
   assert.doesNotMatch(entry, /new Map|new Set|\.sort\(/)
-  assert.equal(existsSync(new URL("./fixtures/effect-dependency-fast/dist/assets/kudzu.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("effect-dependency-fast", "kudzu.js"), false)
 
   const browser = spawnSync(process.execPath, ["--input-type=module", "-e", `
 const listeners = new Map()
@@ -3115,8 +3165,8 @@ test("does not promote effect-only builds to the shared runtime", async t => {
   const command = await readFile(new URL("./fixtures/effect-isolation/dist/command/index.html", import.meta.url), "utf8")
   const commandModule = await readFile(new URL("./fixtures/effect-isolation/.kudzu/pages/command.mjs", import.meta.url), "utf8")
   const commandSource = inspectSourceResult(fixture, "src/pages/command.tsx")
-  const runtime = await readFile(new URL("./fixtures/effect-isolation/dist/assets/kudzu.js", import.meta.url), "utf8")
-  const effectRuntime = await readFile(new URL("./fixtures/effect-isolation/dist/assets/kudzu-effect.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("effect-isolation", "kudzu.js")
+  const effectRuntime = await readRuntime("effect-isolation", "kudzu-effect.js")
   assert.equal(commandSource.handlerModule, undefined)
   assert.deepEqual(commandSource.moduleIR.handlers.map(handler => handler.commands), Array.from({ length: 4 }, () => [{ operation: "add", signal: 0, value: 1 }]))
   assert.equal((command.match(/data-k-on-click=/g) ?? []).length, 4)
@@ -3127,7 +3177,7 @@ test("does not promote effect-only builds to the shared runtime", async t => {
   assert.doesNotMatch(command, /effects\//)
   assert.doesNotMatch(runtime, /registerMountHook|registerCommitter/)
   assert.doesNotMatch(effectRuntime, /deserialize|kudzu-serialization/)
-  assert.equal(existsSync(new URL("./fixtures/effect-isolation/dist/assets/kudzu-serialization.js", import.meta.url)), false)
+  assert.equal(await hasRuntime("effect-isolation", "kudzu-serialization.js"), false)
 })
 
 test("bundles package imports used only by direct event handlers", async t => {
@@ -3206,11 +3256,11 @@ test("compiles normal async JavaScript handlers to external ESM", async t => {
 
   const html = await readFile(new URL("./fixtures/native/dist/index.html", import.meta.url), "utf8")
   const handlerSource = await readFile(new URL("./fixtures/native/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
-  const commandRuntime = await readFile(new URL("./fixtures/native/dist/assets/kudzu.js", import.meta.url), "utf8")
-  const nativeRuntime = await readFile(new URL("./fixtures/native/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  const commandRuntime = await readRuntime("native", "kudzu.js")
+  const nativeRuntime = await readRuntime("native", "kudzu-native.js")
   const nativeEntry = await readFile(new URL("./fixtures/native/dist/assets/native/index.js", import.meta.url), "utf8")
   const otherNativeEntry = await readFile(new URL("./fixtures/native/dist/assets/native/other/index.js", import.meta.url), "utf8")
-  const serialization = await readFile(new URL("./fixtures/native/dist/assets/kudzu-serialization.js", import.meta.url), "utf8")
+  const serialization = await readRuntime("native", "kudzu-serialization.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/native/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const native = plan.routes[0].events[0].native
   assert.match(html, /data-k-native-click/)
@@ -3390,9 +3440,9 @@ test("mounts direct native handlers with browser event semantics", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const html = await readFile(new URL("./fixtures/native-bubbling/dist/index.html", import.meta.url), "utf8")
-  const runtime = await readFile(new URL("./fixtures/native-bubbling/dist/assets/kudzu-native.js", import.meta.url), "utf8")
+  const runtime = await readRuntime("native-bubbling", "kudzu-native.js")
   const nativeEntry = await readFile(new URL("./fixtures/native-bubbling/dist/assets/native/index.js", import.meta.url), "utf8")
-  const bindingRuntime = await readFile(new URL("./fixtures/native-bubbling/dist/assets/kudzu-binding.js", import.meta.url), "utf8")
+  const bindingRuntime = await readRuntime("native-bubbling", "kudzu-binding.js")
   assert.doesNotMatch(html, /"flags":/)
   assert.match(runtime, /addEventListener/)
   assert.match(runtime, /removeEventListener/)
@@ -4087,6 +4137,8 @@ async function runCalcomMediaQueryMigrationBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
+  const bindingAsset = html.match(/src="([^"]+\/kudzu-binding\.js)"/)?.[1]
+  assert.ok(bindingAsset)
   const instrumentation = `<script>
 const queries = new Map()
 globalThis.__mediaAdds = 0
@@ -4107,7 +4159,7 @@ globalThis.__setMedia = (query, value) => window.matchMedia(query).dispatch(valu
 </script>`
   await writeFile(htmlUrl, html.replace("<head>", `<head>${instrumentation}`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
-await import("/assets/kudzu-binding.js")
+await import(${JSON.stringify(bindingAsset)})
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
 const waitFor = async (test, label) => {
   for (let index = 0; index < 100; index++) {
@@ -5403,6 +5455,8 @@ async function runNestedComponentListBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
+  const listAsset = html.match(/src="([^"]+\/kudzu-list\.js)"/)?.[1]
+  assert.ok(listAsset)
   await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
@@ -5411,7 +5465,7 @@ const imported = id => document.querySelector('[data-imported-item="' + id + '"]
 const localItems = () => [...document.querySelectorAll("[data-local-item]")]
 const importedItems = () => [...document.querySelectorAll("[data-imported-item]")]
 try {
-  await import("/assets/kudzu-list.js")
+  await import(${JSON.stringify(listAsset)})
   let runtimeError = ""
   window.addEventListener("error", event => { runtimeError = event.error?.message || event.message })
   window.addEventListener("unhandledrejection", event => { runtimeError = event.reason?.message || String(event.reason) })
@@ -5633,12 +5687,14 @@ async function runNonKeyedChildStateBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
+  const runtimeAsset = html.match(/src="([^"]+\/kudzu\.js)"/)?.[1]
+  assert.ok(runtimeAsset)
   await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
 const toggle = id => document.querySelector('[data-toggle="' + id + '"]')
 try {
-  const { browserState } = await import("/assets/kudzu.js")
+  const { browserState } = await import(${JSON.stringify(runtimeAsset)})
   await wait()
   const localA = toggle("local-a")
   const localB = toggle("local-b")
@@ -6289,6 +6345,8 @@ async function runConditionalEffectBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
+  const runtimeAsset = html.match(/src="([^"]+\/kudzu\.js)"/)?.[1]
+  assert.ok(runtimeAsset)
   await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
@@ -6317,7 +6375,7 @@ try {
   control("open").click()
   await wait()
   if (document.body.dataset.effectLog !== "|setup 1|cleanup 1|setup 2|cleanup 2|setup 3") throw new Error("reopen")
-  const runtime = await import("/assets/kudzu.js")
+  const runtime = await import(${JSON.stringify(runtimeAsset)})
   runtime.unmountDom(document)
   runtime.unmountDom(document)
   await wait()
@@ -6352,6 +6410,8 @@ async function runKeyedEffectBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
+  const runtimeAsset = html.match(/src="([^"]+\/kudzu\.js)"/)?.[1]
+  assert.ok(runtimeAsset)
   await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const wait = () => new Promise(resolve => setTimeout(resolve, 50))
@@ -6364,7 +6424,7 @@ const waitFor = async (test, label) => {
 }
 try {
   const control = action => document.querySelector('[data-action="' + action + '"]')
-  const runtime = await import("/assets/kudzu.js")
+  const runtime = await import(${JSON.stringify(runtimeAsset)})
   const notifications = []
   runtime.registerListItemHook("s2", root => notifications.push(root.dataset.row))
   const errors = []

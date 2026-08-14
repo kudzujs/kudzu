@@ -9,9 +9,10 @@ import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler
 import { createProjectSession } from "./compiler/project-session.mjs"
 import { createRouteBuildRecord, planRouteArtifacts } from "./compiler/route-build-record.mjs"
 import { createRouteArtifactReport } from "./compiler/route-artifact-report.mjs"
+import { planRuntimeFamilies } from "./compiler/runtime-family-planner.mjs"
 import { createSourceCompiler } from "./compiler/source-compiler.mjs"
 import { createParamCodegen } from "./compiler/param-codegen.mjs"
-import { planRouteCapabilities, usesRouteDependencyRuntime } from "./compiler/route-capability-planner.mjs"
+import { usesRouteDependencyRuntime } from "./compiler/route-capability-planner.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime, specializeRuntime } from "./compiler/runtime-codegen.mjs"
 import { renderPage } from "./core.mjs"
 import { parseDevHost, parseDevPort, startDevServer } from "./dev-server.mjs"
@@ -67,7 +68,6 @@ async function buildInto(project, outputDirectory, { minify }) {
   const globalStyleUrlSet = new Set(globalStyleUrls)
   const publicDirectory = normalizePublicDirectory(config.publicDir, project)
   const navigationGroups = normalizeNavigation(config.navigation)
-  const navigationRoutes = navigationGroups.flatMap(group => group.routes)
   const navigationByRoute = new Map(navigationGroups.flatMap(group => group.routes.map(route => [route, group])))
   for (const group of navigationGroups) {
     group.assetPath = assetPath(base, `assets/${group.assetName}`)
@@ -75,6 +75,7 @@ async function buildInto(project, outputDirectory, { minify }) {
     group.layoutId = `l-${group.id}`
     group.records = []
     group.routeRecords = []
+    group.buildRecords = []
     group.hasEffects = false
     group.hasParams = false
   }
@@ -117,7 +118,8 @@ async function buildInto(project, outputDirectory, { minify }) {
     return effect.workers.map(worker => ({ ...worker, module: assetPath(base, `assets/${result.handlerModule.path}`), handler: handler.exportName }))
   }))
 
-  const routeRecords = []
+  let routeRecords = []
+  const routeDrafts = []
   const routeEntryTransforms = new Map()
   const routeEntrySources = new Map()
   const routeEntryPaths = new Map()
@@ -127,6 +129,8 @@ async function buildInto(project, outputDirectory, { minify }) {
   const emittedNavigationRecords = []
   const navigationAssets = new Map()
   const runtimePlaceholder = `/__kudzu_runtime_${randomUUID()}.js`
+  const bindingPlaceholder = `/__kudzu_binding_${randomUUID()}.js`
+  const listPlaceholder = `/__kudzu_list_${randomUUID()}.js`
 
   for (const pageFile of pageFiles) {
     const sourceStyleUrls = stylesByPage.get(pageFile).map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)).filter(url => !globalStyleUrlSet.has(url))
@@ -185,6 +189,8 @@ async function buildInto(project, outputDirectory, { minify }) {
         managedStyles: navigable ? sourceStyleUrls : [],
         base,
         runtimeAsset: runtimePlaceholder,
+        bindingAsset: bindingPlaceholder,
+        listAsset: listPlaceholder,
         effectAsset: assetPath(base, `assets/${effectPath}`),
         nativeAsset: assetPath(base, `assets/${nativePath}`),
         paramAsset: assetPath(base, `assets/${paramPath}`),
@@ -196,30 +202,16 @@ async function buildInto(project, outputDirectory, { minify }) {
         navigationGroup.hasParams ||= result.hasParams
       }
       const usesDependencyRuntime = usesRouteDependencyRuntime({ plan: result.plan, navigable, hasBindings: result.hasBindings, hasLists: result.hasLists })
-      const routeRuntimeName = usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
       const plan = { route: routePath, ...result.plan }
-      const entries = {}
-      let html = inlineQueryFormCarry(result.html, plan)
-      if (result.hasParams) {
-        const entry = retainRouteEntry(paramPath, output => printParamEntry(runtimeSchema, plan.params, plan.searchParams, plan.searchParamsWritable, output, join(outputDirectory, "assets"), base, routeRuntimeName, navigable), routeEntrySources, routeEntryPaths, outputDirectory)
-        entries.param = entry.path
-        html = html.replaceAll(assetPath(base, `assets/${paramPath}`), assetPath(base, `assets/${entry.path}`))
+      const entries = {
+        ...(result.hasParams ? { param: paramPath } : {}),
+        ...(result.hasEffects ? { effect: effectPath } : {}),
+        ...(plan.events.some(event => event.native) ? { native: nativePath } : {})
       }
-      if (result.hasEffects) {
-        const entry = retainRouteEntry(effectPath, output => printEffectEntry(runtimeEffects(plan.effects, navigable), output, handlerModules, join(outputDirectory, "assets"), base, entries.param, routeRuntimeName, navigable), routeEntrySources, routeEntryPaths, outputDirectory)
-        entries.effect = entry.path
-        html = html.replaceAll(assetPath(base, `assets/${effectPath}`), assetPath(base, `assets/${entry.path}`))
-      }
-      if (plan.events.some(event => event.native)) {
-        const modules = [...new Set(plan.events.filter(event => event.native).map(event => event.native.module))]
-        const entry = retainRouteEntry(nativePath, () => printNativeEntrySource(modules, base), routeEntrySources, routeEntryPaths, outputDirectory)
-        entries.native = entry.path
-        html = html.replaceAll(assetPath(base, `assets/${nativePath}`), assetPath(base, `assets/${entry.path}`))
-      }
-      routeRecords.push(createRouteBuildRecord({
+      const record = createRouteBuildRecord({
         route: routePath,
         output: route,
-        html,
+        html: inlineQueryFormCarry(result.html, plan),
         plan,
         handlerReferences: result.handlerReferences,
         styles: styleUrls,
@@ -236,7 +228,10 @@ async function buildInto(project, outputDirectory, { minify }) {
         },
         entries,
         runtimeSchema
-      }))
+      })
+      routeRecords.push(record)
+      if (navigationGroup) navigationGroup.buildRecords.push(record)
+      routeDrafts.push({ record, result, runtimeSchema, navigationGroup, effectPath, nativePath, paramPath })
     }
   }
 
@@ -247,6 +242,59 @@ async function buildInto(project, outputDirectory, { minify }) {
     for (const entry of emittedNavigationRecords) if (!entry.group && runtimeRecords.some(record => navigationDomainsOverlap(record, entry))) group.records.push({ ...entry.record, native: true })
     group.records.sort((left, right) => (right.segments?.filter(segment => segment !== null).length ?? 0) - (left.segments?.filter(segment => segment !== null).length ?? 0) || left.id.localeCompare(right.id))
   }
+
+  const runtimePlan = planRuntimeFamilies(routeRecords, navigationGroups)
+  for (const group of navigationGroups) {
+    group.runtimeFamily = runtimePlan.familyByRecord.get(group.buildRecords[0])
+    group.assetPath = assetPath(base, `assets/runtime/${group.runtimeFamily.id}/${group.assetName}`)
+  }
+  const runtimeFamilyByRecord = new Map()
+  routeRecords = routeDrafts.map(draft => {
+    const { record, result, runtimeSchema, navigationGroup, effectPath, nativePath, paramPath } = draft
+    const family = runtimePlan.familyByRecord.get(record)
+    if (record.capabilities.hasBehaviors && !family) throw new Error(`Interactive route has no runtime family: ${record.route}`)
+    const runtimeDirectory = family ? join(outputDirectory, "assets", "runtime", family.id) : undefined
+    const routeRuntimeName = record.capabilities.usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
+    const entries = {}
+    let html = record.html
+    if (record.capabilities.hasParams) {
+      const entry = retainRouteEntry(paramPath, output => printParamEntry(runtimeSchema, record.plan.params, record.plan.searchParams, record.plan.searchParamsWritable, output, runtimeDirectory, base, routeRuntimeName, record.capabilities.navigable), routeEntrySources, routeEntryPaths, outputDirectory)
+      entries.param = entry.path
+      html = html.replaceAll(assetPath(base, `assets/${paramPath}`), assetPath(base, `assets/${entry.path}`))
+    }
+    if (record.capabilities.hasEffects) {
+      const entry = retainRouteEntry(effectPath, output => printEffectEntry(runtimeEffects(record.plan.effects, record.capabilities.navigable), output, handlerModules, join(outputDirectory, "assets"), base, entries.param, routeRuntimeName, record.capabilities.navigable, runtimeDirectory), routeEntrySources, routeEntryPaths, outputDirectory)
+      entries.effect = entry.path
+      html = html.replaceAll(assetPath(base, `assets/${effectPath}`), assetPath(base, `assets/${entry.path}`))
+    }
+    if (record.plan.events.some(event => event.native)) {
+      const modules = [...new Set(record.plan.events.filter(event => event.native).map(event => event.native.module))]
+      const nativeRuntime = assetPath(base, `assets/runtime/${family.id}/kudzu-native.js`)
+      const entry = retainRouteEntry(nativePath, () => printNativeEntrySource(modules, nativeRuntime), routeEntrySources, routeEntryPaths, outputDirectory)
+      entries.native = entry.path
+      html = html.replaceAll(assetPath(base, `assets/${nativePath}`), assetPath(base, `assets/${entry.path}`))
+    }
+    if (family) {
+      html = html.replaceAll(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/${routeRuntimeName}`)))
+      html = html.replaceAll(bindingPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-binding.js`)))
+      html = html.replaceAll(listPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-list.js`)))
+    }
+    if (navigationGroup) html = html.replaceAll(escapeAttribute(navigationAssets.get(record.route)), escapeAttribute(navigationGroup.assetPath))
+    const finalRecord = createRouteBuildRecord({
+      route: record.route,
+      output: record.output,
+      html,
+      plan: record.plan,
+      handlerReferences: result.handlerReferences,
+      styles: record.artifacts.styles,
+      capabilities: record.capabilities,
+      entries,
+      runtimeSchema
+    })
+    if (family) runtimeFamilyByRecord.set(finalRecord, family)
+    if (navigationGroup) navigationAssets.set(finalRecord.route, navigationGroup.assetPath)
+    return finalRecord
+  })
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
@@ -263,63 +311,55 @@ async function buildInto(project, outputDirectory, { minify }) {
     if (module.code.includes("/__kudzu_worker_")) throw new Error(`Worker URL placeholder survived in ${module.path}`)
   }
   const plans = routeRecords.map(record => record.plan)
-  const capabilityIR = planRouteCapabilities(routeRecords, { navigationRouteCount: navigationRoutes.length })
-  const {
-    routes: { behaviors: behaviorCount, regularBehaviors: regularBehaviorCount, dependencyStateSeeds: dependencyStateSeedCount },
-    events: { command: commandEvents, hasNativeHandlers },
-    bindings: { count: bindingCount },
-    lists,
-    effects: { any: hasEffects, derivedDependencies: hasDerivedEffectDependencies, captures: hasEffectCaptures },
-    captures: { nestedState: hasNestedStateCaptures, setter: hasSetterCaptures },
-    runtime: { shared: hasSharedRuntime, dependency: hasDependencyRuntime }
-  } = capabilityIR
-  const runtimeName = usesDependencyRuntime => usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
+  const behaviorCount = routeRecords.filter(record => record.capabilities.hasBehaviors).length
   for (let offset = 0; offset < routeRecords.length; offset += 64) {
     await Promise.all(routeRecords.slice(offset, offset + 64).map(async record => {
       const routeDirectory = join(outputDirectory, record.output)
       await mkdir(routeDirectory, { recursive: true })
-      const html = preloadModules(record.html.replace(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/${runtimeName(record.capabilities.usesDependencyRuntime)}`))))
-      await writeFile(join(routeDirectory, "index.html"), html)
+      if ([runtimePlaceholder, bindingPlaceholder, listPlaceholder].some(placeholder => record.html.includes(placeholder))) throw new Error(`Runtime family placeholder survived in ${record.route}`)
+      await writeFile(join(routeDirectory, "index.html"), preloadModules(record.html))
     }))
   }
-  if (navigationRoutes.length || behaviorCount && (hasSharedRuntime || regularBehaviorCount)) {
-    const runtimeFile = hasSharedRuntime ? "./shared-runtime.js" : "./runtime.js"
-    const runtime = generateCoreRuntime(await readFile(new URL(runtimeFile, import.meta.url), "utf8"), capabilityIR)
-    await writeJavaScript(join(assetsDirectory, "kudzu.js"), runtime, minify)
+  for (const family of runtimePlan.families) {
+    const capabilityIR = family.capability
+    const { bindings, captures, effects, events, lists, routes, runtime } = capabilityIR
+    const familyDirectory = join(assetsDirectory, "runtime", family.id)
+    await mkdir(familyDirectory, { recursive: true })
+    if (runtime.dependency) {
+      const source = await readFile(new URL("./dependency-runtime.js", import.meta.url), "utf8")
+      await writeJavaScript(join(familyDirectory, "kudzu-deps.js"), specializeRuntime(source, events.command, routes.dependencyStateSeeds > 0), minify)
+    } else {
+      const source = await readFile(new URL(runtime.shared ? "./shared-runtime.js" : "./runtime.js", import.meta.url), "utf8")
+      await writeJavaScript(join(familyDirectory, "kudzu.js"), generateCoreRuntime(source, capabilityIR), minify)
+    }
+    if (bindings.count || events.hasNativeHandlers || effects.captures) await writeJavaScript(join(familyDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify, {
+      "globalThis.__KUDZU_CAPTURE_STATE__": String(captures.nestedState),
+      "globalThis.__KUDZU_CAPTURE_SETTER__": String(captures.setter)
+    })
+    if (effects.any) {
+      const generated = generateEffectRuntime(await readFile(new URL("./effect-runtime.js", import.meta.url), "utf8"), capabilityIR)
+      await writeBundledJavaScript(join(familyDirectory, "kudzu-effect.js"), generated.source, minify, generated.define)
+    }
+    if (bindings.count || lists.styleCount) await writeJavaScript(join(familyDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
+    if (bindings.count) {
+      const generated = generateBindingRuntime(await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"), capabilityIR, family.navigation)
+      await writeBundledJavaScript(join(familyDirectory, "kudzu-binding.js"), generated.source, minify, generated.define)
+    }
+    if (effects.derivedDependencies || lists.selectors) await writeJavaScript(join(familyDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
+    if (lists.count) {
+      const generated = generateListRuntime(await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"), capabilityIR)
+      await writeBundledJavaScript(join(familyDirectory, "kudzu-list.js"), generated.source, minify, generated.define)
+    }
+    if (events.hasNativeHandlers) {
+      const generated = generateNativeRuntime(await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"), capabilityIR)
+      await writeJavaScript(join(familyDirectory, "kudzu-native.js"), generated.source, minify, generated.define)
+    }
   }
-  if (hasDependencyRuntime) {
-    const runtime = specializeRuntime(await readFile(new URL("./dependency-runtime.js", import.meta.url), "utf8"), commandEvents, dependencyStateSeedCount > 0)
-    await writeJavaScript(join(assetsDirectory, "kudzu-deps.js"), runtime, minify)
-  }
-  if (bindingCount || hasNativeHandlers || hasEffectCaptures) await writeJavaScript(join(assetsDirectory, "kudzu-serialization.js"), await readFile(new URL("./serialization.js", import.meta.url), "utf8"), minify, {
-    "globalThis.__KUDZU_CAPTURE_STATE__": String(hasNestedStateCaptures),
-    "globalThis.__KUDZU_CAPTURE_SETTER__": String(hasSetterCaptures)
-  })
-  if (hasEffects) {
-    const generated = generateEffectRuntime(await readFile(new URL("./effect-runtime.js", import.meta.url), "utf8"), capabilityIR)
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-effect.js"), generated.source, minify, generated.define)
-  }
-  if (bindingCount || lists.styleCount) await writeJavaScript(join(assetsDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
-  if (bindingCount) {
-    const generated = generateBindingRuntime(await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"), capabilityIR, navigationRoutes.length > 0)
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-binding.js"), generated.source, minify, generated.define)
-  }
-  if (hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
-  if (lists.count) {
-    if (lists.selectors && !hasDerivedEffectDependencies) await writeJavaScript(join(assetsDirectory, "kudzu-collection-selector.js"), await readFile(new URL("./collection-selector.js", import.meta.url), "utf8"), minify)
-    const generated = generateListRuntime(await readFile(new URL("./list-runtime.js", import.meta.url), "utf8"), capabilityIR)
-    await writeBundledJavaScript(join(assetsDirectory, "kudzu-list.js"), generated.source, minify, generated.define)
-    if (lists.selectors && !hasDerivedEffectDependencies) await rm(join(assetsDirectory, "kudzu-collection-selector.js"))
-  }
-  if (hasNativeHandlers) {
-    const generated = generateNativeRuntime(await readFile(new URL("./native-runtime.js", import.meta.url), "utf8"), capabilityIR)
-    await writeJavaScript(join(assetsDirectory, "kudzu-native.js"), generated.source, minify, generated.define)
-    for (const [path, source] of routeEntrySources) if (path.startsWith("native/")) await writeRetainedRouteEntry(path, source, assetsDirectory, minify, routeEntryTransforms)
-  }
+  for (const [path, source] of routeEntrySources) if (path.startsWith("native/")) await writeRetainedRouteEntry(path, source, assetsDirectory, minify, routeEntryTransforms)
   if (navigationGroups.length) {
     const navigationSource = await readFile(new URL("./navigation-runtime.js", import.meta.url), "utf8")
     for (const group of navigationGroups) {
-      await writeJavaScript(join(assetsDirectory, group.assetName), generateNavigationRuntime(navigationSource, group), minify)
+      await writeJavaScript(join(assetsDirectory, "runtime", group.runtimeFamily.id, group.assetName), generateNavigationRuntime(navigationSource, group), minify)
     }
   }
   for (const handlerModule of emittedHandlerModules) {
@@ -359,7 +399,7 @@ async function buildInto(project, outputDirectory, { minify }) {
   }
   const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
   await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
-  const artifacts = createRouteArtifactReport(routeRecords, { base, handlerMetafile, outputDirectory, navigationAssets, workerReferences: renderedWorkerReferences, workerOutputs })
+  const artifacts = createRouteArtifactReport(routeRecords, { base, handlerMetafile, outputDirectory, navigationAssets, runtimeFamilies: runtimePlan.families, runtimeFamilyByRecord, workerReferences: renderedWorkerReferences, workerOutputs })
   await writeFile(join(workDirectory, "kudzu-artifacts.json"), JSON.stringify(artifacts, null, 2))
   const emittedCssFiles = new Set()
   for (const file of cssFiles.filter(file => renderedStyleUrls.has(assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)))) {
@@ -497,10 +537,9 @@ function inlineQueryFormCarry(html, plan) {
   return html.replace("</body>", `${script}</body>`)
 }
 
-function printNativeEntrySource(modules, base) {
+function printNativeEntrySource(modules, runtime) {
   const imports = modules.map((module, index) => `import * as __kNativeModule${index} from ${JSON.stringify(module)}`).join("\n")
   const registrations = modules.map((module, index) => `[${JSON.stringify(module)}, __kNativeModule${index}]`).join(",")
-  const runtime = assetPath(base, "assets/kudzu-native.js")
   return `import { registerNativeModules } from ${JSON.stringify(runtime)}\n${imports}\nregisterNativeModules([${registrations}])`
 }
 
@@ -553,7 +592,7 @@ async function writeBundledJavaScript(file, source, minify, define) {
     stdin: { contents: source, resolveDir: dirname(file), sourcefile: file },
     bundle: true,
     write: false,
-    external: ["./kudzu.js", "./kudzu-binding.js", "./kudzu-serialization.js", "./kudzu-style.js"],
+    external: ["./kudzu.js", "./kudzu-binding.js", "./kudzu-collection-selector.js", "./kudzu-serialization.js", "./kudzu-style.js"],
     define,
     format: "esm",
     target: "es2022",

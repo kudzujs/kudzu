@@ -90,7 +90,7 @@ if (sessionStorage.kNavigationFallback) {
     await waitFor(() => document.querySelector('[data-route="cart"]'))
     releaseProduct("stale")
     await new Promise(resolve => setTimeout(resolve, 0))
-    const runtime = await import("/shop/assets/kudzu.js")
+    const runtime = await import(document.querySelector('script[src$="/kudzu.js"]').src)
     if (runtime.browserState.has("rs2")) throw new Error("stale-cart-state")
     if (await requestCount("/shop/cart?coupon=leaf") !== 1) throw new Error("duplicate-navigation-request")
     if (document !== originalDocument || document.querySelector("[data-layout]") !== originalLayout) throw new Error("identity")

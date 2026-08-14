@@ -1,7 +1,7 @@
 import { join } from "node:path"
 
 export function createParamCodegen({ browserPath, inlineJson, relativeModulePath }) {
-  return function printParamEntry(schema, params, searchParams, searchParamsWritable, output, assetsDirectory, base, runtimeName, navigable) {
+  return function printParamEntry(schema, params, searchParams, searchParamsWritable, output, runtimeDirectory, base, runtimeName, navigable) {
     const hasSearch = searchParams.length || searchParamsWritable
     const signature = hasSearch ? "pathname, search" : "pathname"
     const prefix = navigable ? `export function initializeParams(${signature}) {\n${searchParamsWritable ? "globalThis.__kSetSearchParams = setSearchParams\n" : ""}` : `${schema ? "let pathname = location.pathname\n" : ""}${hasSearch ? "let search = location.search\n" : ""}`
@@ -66,7 +66,7 @@ function setSearchParams(update, replace) {
 }
 ${navigable ? "" : `globalThis.__kSetSearchParams = setSearchParams
 addEventListener("popstate", () => ${searchParams.length ? "initializeSearch(location.search)" : "undefined"})`}` : ""
-    return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}
+    return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, runtimeName)))}
 ${searchInitializer}${prefix}${pathname}${query}${suffix}${writer}`
   }
 }

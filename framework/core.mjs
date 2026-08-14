@@ -501,10 +501,10 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
       ? `<script type="module"${capability} src="${escapeAttribute(metadata.paramAsset)}"></script>`
       : ""
     const bindingRuntime = renderContext.hasBindings
-      ? `<script type="module"${capability} src="${assetPath(metadata.base, "assets/kudzu-binding.js")}"></script>`
+      ? `<script type="module"${capability} src="${escapeAttribute(metadata.bindingAsset ?? assetPath(metadata.base, "assets/kudzu-binding.js"))}"></script>`
       : ""
     const listRuntime = renderContext.hasLists
-      ? `<script type="module"${capability} src="${assetPath(metadata.base, "assets/kudzu-list.js")}"></script>`
+      ? `<script type="module"${capability} src="${escapeAttribute(metadata.listAsset ?? assetPath(metadata.base, "assets/kudzu-list.js"))}"></script>`
       : ""
     const effectRuntime = renderContext.hasEffects
       ? `<script type="module"${capability} src="${escapeAttribute(metadata.effectAsset)}"></script>`

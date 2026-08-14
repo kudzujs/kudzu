@@ -21,6 +21,7 @@ import { normalizeRenderControlFlow } from "../framework/compiler/render-control
 import { createRouteBuildRecord, planRouteArtifacts } from "../framework/compiler/route-build-record.mjs"
 import { createRouteArtifactReport } from "../framework/compiler/route-artifact-report.mjs"
 import { assertCapabilityIR, planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
+import { planRuntimeFamilies } from "../framework/compiler/runtime-family-planner.mjs"
 import { assertRouteIR } from "../framework/compiler/route-ir.mjs"
 import { generateBindingRuntime, generateCoreRuntime, generateEffectRuntime, generateNativeRuntime, generateNavigationRuntime } from "../framework/compiler/runtime-codegen.mjs"
 import { compileSource, createSourceCompiler, reachableSourceFiles } from "../framework/compiler/source-compiler.mjs"
@@ -975,11 +976,33 @@ test("reports exact route capability and bundled chunk closure", () => {
   assert.deepEqual(report.routes[0].handlers, { entries: ["/assets/handlers/a.js"], chunks: ["/assets/handlers/chunks/a.js", "/assets/handlers/chunks/shared.js"] })
   assert.deepEqual(report.routes[1].handlers, { entries: ["/assets/handlers/b.js"], chunks: ["/assets/handlers/chunks/b.js", "/assets/handlers/chunks/shared.js"] })
   assert.deepEqual(report.sharedChunks, [{ path: "/assets/handlers/chunks/shared.js", routes: ["/a", "/b"] }])
-  assert.deepEqual(report.routes[0].runtime.requirements, ["/assets/kudzu.js", "/assets/kudzu-native.js", "/assets/kudzu-serialization.js"].sort())
+  const family = report.runtimeFamilies.find(entry => entry.routes.includes("/a"))
+  assert.deepEqual(report.routes[0].runtime.requirements, ["kudzu.js", "kudzu-native.js", "kudzu-serialization.js"].map(name => `/assets/runtime/${family.id}/${name}`).sort())
   assert.notEqual(report.routes[0].capability.signature, report.routes[1].capability.signature)
   assert.deepEqual(report.routes[0].capability.manifest.events.native, ["click"])
   assert.deepEqual(report.routes[1].capability.manifest.events.native, ["input"])
   assertJsonData(report)
+})
+
+test("plans deterministic runtime families around navigation singleton boundaries", () => {
+  const commandPlan = routePlan({ events: [{ event: "click", commands: [["set", "count", 1]] }], states: [{ slot: 0, id: "count", name: "count", initialValue: 0 }] })
+  const first = routeRecord({ ...commandPlan, route: "/first" }, { hasBehaviors: true })
+  const second = routeRecord({ ...commandPlan, route: "/second" }, { hasBehaviors: true })
+  const native = routeRecord({ ...routePlan({ events: [{ event: "input", native: { module: "/handler.js", handler: "run", states: {}, scope: {} } }] }), route: "/native" }, { hasBehaviors: true })
+  const standalone = planRuntimeFamilies([native, second, first])
+  assert.equal(standalone.families.length, 2)
+  assert.equal(standalone.familyByRecord.get(first).id, standalone.familyByRecord.get(second).id)
+  assert.notEqual(standalone.familyByRecord.get(first).id, standalone.familyByRecord.get(native).id)
+  assert.deepEqual(standalone.families.map(family => family.id), [...standalone.families.map(family => family.id)].sort())
+
+  const navigableFirst = routeRecord({ ...commandPlan, route: "/first" }, { hasBehaviors: true, navigable: true })
+  const navigableNative = routeRecord({ ...routePlan({ events: [{ event: "input", native: { module: "/handler.js", handler: "run", states: {}, scope: {} } }] }), route: "/native" }, { hasBehaviors: true, navigable: true })
+  const grouped = planRuntimeFamilies([navigableFirst, navigableNative], [{ buildRecords: [navigableFirst, navigableNative] }])
+  assert.equal(grouped.families.length, 1)
+  assert.equal(grouped.familyByRecord.get(navigableFirst), grouped.familyByRecord.get(navigableNative))
+  assert.deepEqual(grouped.families[0].capability.events.command, ["click"])
+  assert.deepEqual(grouped.families[0].capability.events.native, ["input"])
+  assert.equal(grouped.families[0].navigation, true)
 })
 
 test("rejects malformed route artifact references", () => {

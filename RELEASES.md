@@ -1,5 +1,42 @@
 # Kudzu Releases
 
+## 0.8.55 - Signature-keyed runtime families
+
+Kudzu 0.8.55 replaces site-wide runtime specialization with deterministic capability families loaded only by the routes that require them.
+
+### Changed in 0.8.55
+
+- Equal standalone CapabilityIR signatures share one runtime family under `assets/runtime/<family>/`.
+- Different route signatures emit isolated core, binding, list, effect, native, serialization, style, and selector modules.
+- Route-specific parameter, effect, and native entries import their assigned family directly.
+- Artifact report v2 records exact route signatures, assigned families, emitted family requirements, handlers, Workers, styles, and chunks.
+- Development state restoration discovers the family core module from the rendered document.
+
+### Navigation ownership
+
+- Every enhanced-navigation group unions its route capabilities into one family.
+- Persistent layout state, committers, mount hooks, unmount hooks, and native listeners retain one ESM singleton identity across group navigation.
+- Independent groups may reuse byte-identical family files while keeping their own route matcher and layout/application identity modules.
+
+### Output
+
+- Static routes emit no runtime family and remain zero JavaScript.
+- An unrelated standalone route capability no longer changes another route's loaded runtime bytes or cache URL.
+- Legacy root-level `assets/kudzu*.js` runtime files are no longer emitted.
+- No runtime loader, hydration layer, VDOM, component tree, or SPA router is added.
+
+### Validation
+
+- Focused tests cover signature deduplication, distinct capability isolation, deterministic IDs, navigation unions, static exclusion, shared handler/Worker chunks, and family-aware public collisions.
+- Existing navigation, effect, list, native, parameter, Worker, base-path, development restoration, and browser ownership journeys pass.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 221 tests and 170 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.55
+```
+
 ## 0.8.54 - Inspectable route artifact closure
 
 Kudzu 0.8.54 projects each validated route edge through the final handler and Worker bundle graphs into one inspectable artifact contract.

@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.54` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.55` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -29,10 +29,10 @@ This maps the current `0.8.54` architecture, built on the completed `0.8.23` Goa
 | Worker graph | [`framework/compiler/worker-compiler.mjs`](../../framework/compiler/worker-compiler.mjs) | Returns functional Worker rewrite results and JSON-safe EffectIR edges, validates relative graphs, emits content-hashed ESM, and resolves placeholders only for rendered effects. |
 | Shared path conversion | [`framework/compiler/path-helpers.mjs`](../../framework/compiler/path-helpers.mjs) | Converts project-relative module, browser, asset, and base paths for build and development serving. |
 | Build-time JSX execution | [`framework/core.mjs`](../../framework/core.mjs), `renderPage()` | Executes compiled pages/layouts, allocates deterministic route/layout ownership IDs, emits complete HTML, and returns RouteIR v1 plus capability facts and exact retained handler references. |
-| Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()` | Validates RouteBuildRecord and RouteIR v1, purely folds their plans and capability facts into CapabilityIR v1, then checks standalone implications and exact projection equality before codegen. |
+| Route capability projection | [`framework/compiler/route-capability-planner.mjs`](../../framework/compiler/route-capability-planner.mjs), `planRouteCapabilities()`; [`framework/compiler/runtime-family-planner.mjs`](../../framework/compiler/runtime-family-planner.mjs), `planRuntimeFamilies()` | Validates RouteBuildRecord and RouteIR v1, projects exact route CapabilityIR, deduplicates equal standalone signatures, and unions each enhanced-navigation group at one required ESM singleton boundary. |
 | Effect entry generation | [`framework/compiler/effect-codegen.mjs`](../../framework/compiler/effect-codegen.mjs) | Generates ordinary, dependency, owned, and navigable effect entries from rendered descriptors. |
 | Runtime generation | [`framework/compiler/runtime-codegen.mjs`](../../framework/compiler/runtime-codegen.mjs), [`framework/compiler/list-runtime-codegen.mjs`](../../framework/compiler/list-runtime-codegen.mjs), [`framework/compiler/param-codegen.mjs`](../../framework/compiler/param-codegen.mjs) | Consumes versioned contracts, specializes authored capability sources with fail-closed anchors, and returns source/define results without filesystem ownership. |
-| Artifact emission | `framework/build.mjs` | Selects route artifacts from RouteBuildRecord edges and shared runtimes from CapabilityIR, writes route HTML in bounded batches, writes and bundles the complete generation in a project-local staging sibling, copies public subtrees without replacing generated paths, runs `afterBuild`, then promotes with rollback so failed builds preserve the prior `dist`. Byte-identical native, parameter, and effect route entries share the first existing route path and one emitted file within the current build. |
+| Artifact emission | `framework/build.mjs` | Selects route artifacts from RouteBuildRecord edges, emits each distinct runtime family under `assets/runtime/<family>/`, writes route HTML in bounded batches, bundles in a project-local staging sibling, copies public subtrees without replacing generated paths, runs `afterBuild`, then promotes with rollback. Byte-identical native, parameter, and effect entries share one file only when their family imports also match. |
 | Browser capabilities | [`framework/*.js`](../../framework/) | Small optional modules for commands, bindings, lists, effects, native handlers, serialization, parameters, and navigation; native contexts invalidate writes and refs at DOM ownership release, with no component runtime. |
 | Opt-in navigation | [`framework/navigation-runtime.js`](../../framework/navigation-runtime.js) plus `framework/build.mjs` navigation configuration/emission | Fetches and validates complete same-origin documents, replaces only the marked route range, manages route/layout disposal, history, focus, finite prefetch retention, and native fallback. |
 | Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Rebuild/watch/SSE and response-only short-lived state restoration; failed rebuilds show the existing error overlay while preserving the previous on-disk output. |
@@ -56,9 +56,9 @@ src/pages entries + config
   -> validated RouteBuildRecord per emitted route
        -> capability facts, route entries, styles, handler/effect artifact edges
   -> remove unrendered handlers/effects/Workers
-   -> planRouteCapabilities(RouteBuildRecord[])
-       -> CapabilityIR v1
-  -> specialize and emit only selected runtime/capability ESM
+    -> planRuntimeFamilies(RouteBuildRecord[], navigation groups)
+        -> exact route signatures plus deduplicated standalone/group CapabilityIR families
+  -> specialize and emit each selected runtime family under assets/runtime/<family>/
        -> reuse exact generated route-entry transforms within this build
   -> write route index.html, CSS/assets, Worker graphs, rewrites, and per-route artifact closure into staging/scratch
   -> copy public paths only where they do not replace generated artifacts
@@ -74,7 +74,6 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 - Transient component rewrite indexes remain source-local AST indexes; finalized handler, binding, derived, keyed, effect, signal, import, and component ownership edges use explicit JSON-safe slots or stable symbols.
 - `build()` still owns filesystem writes after structural route artifact selection and generator results are produced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
-- Per-route CapabilityIR signatures are inspectable, while emitted capability runtime files are still specialized from the site-wide union. Signature-keyed runtime families must preserve one ESM singleton boundary per enhanced-navigation group.
 - Source reachability and source compilation remain in one session-bound compiler factory because both consume the same normalization and import graph contracts. ModuleSymbol resolution is stable across canonical and cloned trees; unsupported export syntax remains intentionally narrow.
 - Imported declarations resolve by ModuleSymbol and source-local SiteId. Specialized and compiler-synthesized trees still use conservative name/scope fallback where the source-local binding index does not own the complete AST.
 

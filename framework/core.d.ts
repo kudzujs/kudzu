@@ -64,6 +64,8 @@ export type PageMetadata = {
   styles?: boolean | string[]
   base?: string
   runtimeAsset?: string
+  bindingAsset?: string
+  listAsset?: string
   effectAsset?: string
   nativeAsset?: string
   paramAsset?: string

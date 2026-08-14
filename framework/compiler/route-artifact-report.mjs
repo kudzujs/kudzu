@@ -1,18 +1,21 @@
-import { createHash } from "node:crypto"
 import { dirname, relative, resolve, sep } from "node:path"
 import { assetPath } from "./path-helpers.mjs"
 import { assertRouteBuildRecord } from "./route-build-record.mjs"
 import { planRouteCapabilities } from "./route-capability-planner.mjs"
+import { capabilitySignature, planRuntimeFamilies } from "./runtime-family-planner.mjs"
 
 export function createRouteArtifactReport(records, {
   base = "",
   handlerMetafile,
   outputDirectory,
   navigationAssets = new Map(),
+  runtimeFamilies,
+  runtimeFamilyByRecord,
   workerReferences = [],
   workerOutputs = new Map()
 } = {}) {
   for (const record of records) assertRouteBuildRecord(record)
+  if (!runtimeFamilies || !runtimeFamilyByRecord) ({ families: runtimeFamilies, familyByRecord: runtimeFamilyByRecord } = planRuntimeFamilies(records))
   const handlerGraph = handlerMetafile ? outputGraph(handlerMetafile, outputDirectory, base) : new Map()
   const routes = records.map(record => {
     const capability = planRouteCapabilities([record], { navigationRouteCount: Number(record.capabilities.navigable) })
@@ -29,10 +32,10 @@ export function createRouteArtifactReport(records, {
     return {
       route: record.route,
       capability: {
-        signature: createHash("sha256").update(JSON.stringify(capability)).digest("hex"),
+        signature: capabilitySignature(capability),
         manifest: capability
       },
-      runtime: routeRuntimeEdges(record, capability, base, navigationAssets.get(record.route)),
+      runtime: routeRuntimeEdges(record, capability, runtimeFamilyByRecord.get(record), base, navigationAssets.get(record.route)),
       handlers: {
         entries: handlerEntries,
         chunks: handlerOutputs.filter(output => !handlerEntries.includes(output))
@@ -50,27 +53,51 @@ export function createRouteArtifactReport(records, {
     }
   }
   return {
-    version: 1,
+    version: 2,
+    runtimeFamilies: runtimeFamilies.map(family => ({
+      id: family.id,
+      signature: family.signature,
+      navigation: family.navigation,
+      routes: records.filter(record => runtimeFamilyByRecord.get(record)?.id === family.id).map(record => record.route).sort(),
+      manifest: family.capability,
+      requirements: familyRuntimeRequirements(family, base)
+    })),
     routes,
     sharedChunks: [...owners].filter(([, routes]) => routes.size > 1).map(([path, routes]) => ({ path, routes: [...routes].sort() })).sort((left, right) => left.path.localeCompare(right.path))
   }
 }
 
-function routeRuntimeEdges(record, capability, base, navigationAsset) {
+function routeRuntimeEdges(record, capability, family, base, navigationAsset) {
   const entries = Object.values(record.entries).map(path => assetPath(base, `assets/${path}`))
   if (navigationAsset) entries.push(navigationAsset)
+  if (!family) return { family: null, entries: [...new Set(entries)].sort(), requirements: [] }
   const modules = []
-  const add = name => modules.push(assetPath(base, `assets/${name}`))
-  if (record.capabilities.hasBehaviors) add(record.capabilities.usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js")
+  const add = name => modules.push(runtimeAsset(base, family.id, name))
+  if (record.capabilities.hasBehaviors || record.capabilities.navigable) add(record.capabilities.usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js")
   if (record.capabilities.hasBindings) add("kudzu-binding.js")
   if (record.capabilities.hasLists) add("kudzu-list.js")
-  if (record.capabilities.hasBindings || record.capabilities.hasListStyles) add("kudzu-style.js")
-  if (capability.effects.derivedDependencies || capability.lists.selectors) add("kudzu-collection-selector.js")
-  if (record.capabilities.hasBindings || capability.events.hasNativeHandlers || capability.effects.captures) add("kudzu-serialization.js")
+  if (record.capabilities.hasBindings || record.capabilities.hasLists && family.capability.lists.styleCount) add("kudzu-style.js")
+  if (capability.effects.derivedDependencies || record.capabilities.hasLists && family.capability.lists.selectors) add("kudzu-collection-selector.js")
+  if (record.capabilities.hasBindings || capability.events.hasNativeHandlers || record.capabilities.hasEffects && family.capability.effects.captures) add("kudzu-serialization.js")
   if (record.capabilities.hasEffects) add("kudzu-effect.js")
   if (capability.events.hasNativeHandlers) add("kudzu-native.js")
-  return { entries: [...new Set(entries)].sort(), requirements: [...new Set(modules)].sort() }
+  return { family: family.id, entries: [...new Set(entries)].sort(), requirements: [...new Set(modules)].sort() }
 }
+
+function familyRuntimeRequirements(family, base) {
+  const { bindings, effects, events, lists, runtime } = family.capability
+  const names = [runtime.dependency ? "kudzu-deps.js" : "kudzu.js"]
+  if (bindings.count || events.hasNativeHandlers || effects.captures) names.push("kudzu-serialization.js")
+  if (effects.any) names.push("kudzu-effect.js")
+  if (bindings.count || lists.styleCount) names.push("kudzu-style.js")
+  if (bindings.count) names.push("kudzu-binding.js")
+  if (effects.derivedDependencies || lists.selectors) names.push("kudzu-collection-selector.js")
+  if (lists.count) names.push("kudzu-list.js")
+  if (events.hasNativeHandlers) names.push("kudzu-native.js")
+  return names.map(name => runtimeAsset(base, family.id, name)).sort()
+}
+
+const runtimeAsset = (base, id, name) => assetPath(base, `assets/runtime/${id}/${name}`)
 
 function outputGraph(metafile, outputDirectory, base) {
   if (!metafile || typeof metafile !== "object" || !metafile.outputs || typeof metafile.outputs !== "object") throw new Error("Invalid esbuild metafile")

@@ -48,14 +48,14 @@ dist/
     ├── kudzu-list.js (when used)
     ├── kudzu-native.js (when used)
     └── kudzu-serialization.js (when used)`} />
-    <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use. Runtime bracket pages emit one fallback HTML file plus a route-specific parameter matcher. Production artifacts and <code>afterBuild()</code> output complete in a staging tree; public files cannot replace generated paths, and the previous <code>dist</code> remains available after ordinary build or hook failure. Ordered host rewrites are written to <code>.kudzu/kudzu-plan.json</code>. Per-route capability signatures and runtime requirements plus emitted handler, Worker, stylesheet, and transitive chunk edges are written to <code>.kudzu/kudzu-artifacts.json</code> and passed to <code>afterBuild()</code>.</p>
+    <p>Static pages ship no JavaScript. Interactive pages receive only the command runtime and external handler or binding modules they use. Equal standalone capability signatures reuse one emitted runtime family; enhanced-navigation groups use one union family to preserve layout state and lifecycle singleton identity. Runtime bracket pages emit one fallback HTML file plus a route-specific parameter matcher. Production artifacts and <code>afterBuild()</code> output complete in a staging tree; public files cannot replace generated paths, and the previous <code>dist</code> remains available after ordinary build or hook failure. Ordered host rewrites are written to <code>.kudzu/kudzu-plan.json</code>. Exact route signatures, assigned runtime families, and emitted handler, Worker, stylesheet, and transitive chunk edges are written to <code>.kudzu/kudzu-artifacts.json</code> and passed to <code>afterBuild()</code>.</p>
   </section>
 }
 
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.54 release context</strong><span>The maintained cross-framework matrix below remains the 0.8.41 snapshot. The 0.8.45 source-scale result remains the latest compiler performance comparison; 0.8.54 adds inspectable route artifact closure and makes no new performance claim.</span></div>
+    <div className="docs-callout"><strong>Current 0.8.55 release context</strong><span>The maintained cross-framework matrix below remains the 0.8.41 snapshot. The 0.8.45 source-scale result remains the latest compiler performance comparison; 0.8.55 emits signature-keyed runtime families and makes no new timing claim.</span></div>
     <h3>Runtime matrix</h3>
     <BenchmarkTable columns={["Target", "Build", "JS raw / gzip", "Total raw / gzip", "Initial DOM"]} rows={[
       ["Kudzu 0.8.41 snapshot", "1,475.480 ms", "33,575 / 12,928 B", "212,963 / 49,936 B", "532.9 ms"],

@@ -1,7 +1,7 @@
 import { join } from "node:path"
 
 export function createEffectCodegen({ assetPath, inlineJson, relativeModulePath }) {
-function printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName) {
+function printEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base, paramPath, runtimeName) {
   const hasCleanup = effects.some(effect => effect.cleanup)
   const hasDependencies = effects.some(effect => effect.dependencies?.length || effect.itemDependencies?.length)
   const hasOwners = effects.some(effect => effect.owner)
@@ -14,10 +14,10 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, base
   })
   const imports = [
     hasCleanup || hasDependencies || hasOwners
-      ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}\nconst { browserState, commitDom } = __kRuntime`
-      : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, runtimeName)))}`,
-    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
-    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-collection-selector.js")))}`] : []),
+      ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, runtimeName)))}\nconst { browserState, commitDom } = __kRuntime`
+      : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, runtimeName)))}`,
+    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-effect.js")))}`,
+    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-collection-selector.js")))}`] : []),
     ...(paramPath ? [`import ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, paramPath)))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
@@ -178,7 +178,7 @@ addEventListener("pagehide", event => {
 })`
 }
 
-function printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+function printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base) {
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
@@ -187,9 +187,9 @@ function printNavigableEffectEntry(effects, output, handlerModules, assetsDirect
     return module
   })
   const imports = [
-    `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
-    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
-    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-collection-selector.js")))}`] : []),
+    `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu.js")))}`,
+    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-effect.js")))}`,
+    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-collection-selector.js")))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
@@ -300,7 +300,7 @@ ${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState
 }`
 }
 
-function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base) {
+function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
@@ -310,9 +310,9 @@ function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsD
     return module
   })
   const imports = [
-    `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu.js")))}`,
-    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-effect.js")))}`,
-    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, "kudzu-collection-selector.js")))}`] : []),
+    `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu.js")))}`,
+    `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-effect.js")))}`,
+    ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-collection-selector.js")))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)
   ]
   const entries = moduleUrls.map((url, index) => `[${JSON.stringify(url)}, __kEffectModule${index}]`).join(",")
@@ -876,9 +876,9 @@ async function invokeCleanup() {
 }${disposal}`
 }
 
-return (effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName, navigable) => navigable
+return (effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName, navigable, runtimeDirectory = assetsDirectory) => navigable
   ? effects.some(effect => effect.owner)
-    ? printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base)
-    : printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, base)
-  : printEffectEntry(effects, output, handlerModules, assetsDirectory, base, paramPath, runtimeName)
+    ? printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base)
+    : printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base)
+  : printEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base, paramPath, runtimeName)
 }
