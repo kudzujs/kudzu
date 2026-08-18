@@ -2011,6 +2011,40 @@ test("initializes setter-child state from a direct array state prop", async t =>
   if (chrome) await runArrayPropDraftBrowserTest(fixture, chrome)
 })
 
+test("synchronizes setter-child array state through a direct dependency effect", async t => {
+  const fixture = new URL("./fixtures/array-prop-effect-sync", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/array-prop-effect-sync/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/array-prop-effect-sync/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/array-prop-effect-sync/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/array-prop-effect-sync/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/array-prop-effect-sync/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /id="selected".*Solar.*id="add-draft"/s)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.equal(route.effects.length, 1)
+  assert.deepEqual(route.effects[0].dependencies, [route.states[1].id])
+  assert.deepEqual(route.states.map(state => state.initialValue), [[{ id: 1, label: "Solar" }], [{ id: 1, label: "Solar" }]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runArrayPropDraftBrowserTest(fixture, chrome, true)
+})
+
+test("rejects composed setter-child effect values", () => {
+  const fixture = new URL("./fixtures/array-prop-effect-sync-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/Dropdown\.tsx:\d+:\d+ Setter-callback prop "setSelectedItems" must be called directly inside an intrinsic event handler/)
+})
+
+test("rejects mismatched setter-child effect pairs", () => {
+  const fixture = new URL("./fixtures/array-prop-effect-pair-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Setter-callback effect prop "setSelectedItems" must target the same direct array state passed through "selectedItems"/)
+})
+
 test("rejects composed array-state setter-child initializers", () => {
   const fixture = new URL("./fixtures/setter-child-array-initializer-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
@@ -3159,10 +3193,10 @@ test("rejects unsupported mount effect forms", async () => {
   for (const [fixture, message] of [
     ["effect-invalid-dependencies", /dependencies must be direct state or runtime parameter identifiers/],
     ["effect-invalid-dependency-array", /dependencies must be a literal array/],
-    ["effect-invalid-dependency-local", /dependencies must be primitive Kudzu state or runtime parameter identifiers/],
+    ["effect-invalid-dependency-local", /dependencies must be primitive or array Kudzu state or runtime parameter identifiers/],
     ["effect-invalid-dependency-derived", /Rendered collection expressions cannot call arbitrary functions/],
     ["effect-invalid-callback-local", /callback must be inline or one top-level const function/],
-    ["effect-invalid-dependency-object", /dependencies must be primitive Kudzu state or runtime parameter identifiers/],
+    ["effect-invalid-dependency-object", /dependencies must be primitive or array Kudzu state or runtime parameter identifiers/],
     ["effect-invalid-cleanup", /async callbacks cannot return cleanup functions/],
     ["effect-invalid-cleanup-shape", /cleanup functions cannot declare parameters or be generators/],
     ["effect-invalid-cleanup-generator", /cleanup functions cannot declare parameters or be generators/],
@@ -3640,7 +3674,7 @@ http.createServer((request, response) => {
   }
 }
 
-async function runArrayPropDraftBrowserTest(fixture, chrome) {
+async function runArrayPropDraftBrowserTest(fixture, chrome, effectSync = false) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
@@ -3651,6 +3685,17 @@ const labels = () => [...document.querySelectorAll("#selected li")].map(item => 
 try {
   await wait()
   if (labels() !== "Solar") throw new Error("initial")
+  ${effectSync ? `
+  document.querySelector("#add-draft").click()
+  await wait()
+  if (labels() !== "Solar,Wind") throw new Error("effect-commit")
+  document.querySelector("#reset").click()
+  await wait()
+  if (labels() !== "Hydro") throw new Error("parent-reset")
+  document.querySelector("#add-draft").click()
+  await wait()
+  if (labels() !== "Solar,Wind") throw new Error("effect-rerun")
+  ` : `
   document.querySelector("#add-draft").click()
   await wait()
   if (labels() !== "Solar") throw new Error("independence")
@@ -3660,6 +3705,7 @@ try {
   document.querySelector("#apply-draft").click()
   await wait()
   if (labels() !== "Solar,Wind") throw new Error("commit")
+  `}
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

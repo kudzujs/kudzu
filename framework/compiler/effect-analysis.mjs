@@ -16,6 +16,8 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
       itemDependencies.push(field)
     } else if (dependencyItem && referencesIdentifier(dependency, dependencyItem)) {
       fail(dependency, "useEffect() keyed item dependencies must be direct item.<field> properties")
+    } else if (ts.isIdentifier(value) && setters.has(value.text)) {
+      continue
     } else {
       ordinaryDependencies.push(dependency)
     }

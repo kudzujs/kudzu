@@ -1095,6 +1095,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         }
         collectReferences(component.body)
         if (!references.length) fail(element, `Setter-callback prop ${JSON.stringify(prop)} must be called by at least one intrinsic event handler`)
+        const effect = directSetterPropEffect(component, prop)
+        if (effect) {
+          if (references.length !== effect.references.size || references.some(reference => !effect.references.has(reference))) fail(references.find(reference => !effect.references.has(reference)) ?? element, `Setter-callback prop ${JSON.stringify(prop)} effect must directly set its prop-derived state with exact [state, setter] dependencies`)
+          continue
+        }
         const handlers = new Set()
         for (const reference of references) {
           if (ts.isJsxExpression(reference.parent) && ts.isJsxAttribute(reference.parent.parent) && /^on[A-Z]/.test(reference.parent.parent.name.text)) {
@@ -1237,6 +1242,17 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const specializeSetterCallbacks = (call, component, callbackProps, imported) => {
       if (componentSpecializations.has(call)) fail(call, "Setter callback props cannot be combined with another component specialization")
       validateSetterCallbackProps(call, component, callbackProps)
+      const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
+      const setters = settersForNode(call, settersByFunction)
+      for (const prop of callbackProps) {
+        const effect = directSetterPropEffect(component, prop)
+        if (!effect) continue
+        const stateAttribute = attributes.properties.find(entry => ts.isJsxAttribute(entry) && entry.name.text === effect.stateProp)
+        const setterAttribute = attributes.properties.find(entry => ts.isJsxAttribute(entry) && entry.name.text === prop)
+        const stateValue = stateAttribute?.initializer && ts.isJsxExpression(stateAttribute.initializer) ? unwrapExpression(stateAttribute.initializer.expression) : undefined
+        const setterValue = setterAttribute?.initializer && ts.isJsxExpression(setterAttribute.initializer) ? unwrapExpression(setterAttribute.initializer.expression) : undefined
+        if (!ts.isIdentifier(stateValue) || !ts.isIdentifier(setterValue) || setters.get(setterValue.text) !== stateValue.text || !componentHasDirectArrayState(nearestFunction(call), stateValue.text)) fail(setterAttribute ?? call, `Setter-callback effect prop ${JSON.stringify(prop)} must target the same direct array state passed through ${JSON.stringify(effect.stateProp)}`)
+      }
       const specialization = specialize(call, component, "Setter-callback", true, true, new Set(settersForNode(call, settersByFunction).values()))
       if (specialization.hookDeclarations.length || specialization.effects.length) {
         const substitutions = new Map()
@@ -2130,6 +2146,34 @@ function componentHasDirectPropStateInitializer(component) {
   if (!component || component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name) || !ts.isBlock(component.body)) return false
   const props = new Set(component.parameters[0].name.elements.filter(element => !element.dotDotDotToken && ts.isIdentifier(element.name)).map(element => element.name.text))
   return component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isIdentifier(declaration.initializer.arguments[0]) && props.has(declaration.initializer.arguments[0].text)))
+}
+
+function componentHasDirectArrayState(component, state) {
+  return Boolean(component && ts.isBlock(component.body) && component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isArrayBindingPattern(declaration.name) && ts.isIdentifier(declaration.name.elements[0]?.name) && declaration.name.elements[0].name.text === state && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isArrayLiteralExpression(unwrapExpression(declaration.initializer.arguments[0])))))
+}
+
+function directSetterPropEffect(component, setterProp) {
+  if (!component || component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name) || !ts.isBlock(component.body)) return undefined
+  const props = component.parameters[0].name.elements.filter(element => !element.dotDotDotToken && ts.isIdentifier(element.name))
+  const setter = props.find(element => !element.propertyName && element.name.text === setterProp)
+  if (!setter) return undefined
+  for (const statement of component.body.statements) {
+    if (!ts.isVariableStatement(statement) || statement.declarationList.declarations.length !== 1) continue
+    const declaration = statement.declarationList.declarations[0]
+    if (!ts.isArrayBindingPattern(declaration.name) || !declaration.initializer || !ts.isCallExpression(declaration.initializer) || !ts.isIdentifier(declaration.initializer.expression) || declaration.initializer.expression.text !== "useState" || declaration.initializer.arguments.length !== 1 || !ts.isIdentifier(declaration.initializer.arguments[0]) || !ts.isIdentifier(declaration.name.elements[0]?.name)) continue
+    const stateProp = props.find(element => !element.propertyName && element.name.text === declaration.initializer.arguments[0].text)
+    if (!stateProp) continue
+    const state = declaration.name.elements[0].name.text
+    for (const effectStatement of component.body.statements) {
+      if (!ts.isExpressionStatement(effectStatement) || !ts.isCallExpression(effectStatement.expression) || !ts.isIdentifier(effectStatement.expression.expression) || effectStatement.expression.expression.text !== "useEffect" || effectStatement.expression.arguments.length !== 2) continue
+      const [callback, dependencies] = effectStatement.expression.arguments
+      if ((!ts.isArrowFunction(callback) && !ts.isFunctionExpression(callback)) || callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || !ts.isBlock(callback.body) || callback.body.statements.length !== 1 || !ts.isArrayLiteralExpression(dependencies) || dependencies.elements.length !== 2) continue
+      const body = callback.body.statements[0]
+      if (!ts.isExpressionStatement(body) || !ts.isCallExpression(body.expression) || !ts.isIdentifier(body.expression.expression) || body.expression.expression.text !== setter.name.text || body.expression.arguments.length !== 1 || !ts.isIdentifier(body.expression.arguments[0]) || body.expression.arguments[0].text !== state) continue
+      if (!ts.isIdentifier(dependencies.elements[0]) || dependencies.elements[0].text !== state || !ts.isIdentifier(dependencies.elements[1]) || dependencies.elements[1].text !== setter.name.text) continue
+      return { stateProp: (stateProp.propertyName ?? stateProp.name).getText(), references: new Set([body.expression.expression, dependencies.elements[1]]) }
+    }
+  }
 }
 
 function supportedSetterCallbackProps(component, props) {

@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.60 - Array draft effect sync
+
+Kudzu 0.8.60 lets a specialized child synchronize direct prop-derived array draft state through the matching parent setter in an ordinary dependency effect.
+
+### Changed in 0.8.60
+
+- `useEffect(() => { setSelectedItems(items) }, [items, setSelectedItems])` compiles for the matching direct array prop-draft specialization.
+- The compiler proves the parent state/setter pair, removes the stable setter dependency, and tracks the child array state through existing `Object.is` effect scheduling.
+- Parent replacement still does not synchronize the independently owned child draft; the next authored child-state replacement reruns the effect.
+
+### Boundaries
+
+- The effect must be top-level, synchronous, inline, and contain exactly one direct setter call with exact `[state, setter]` dependencies.
+- Setter aliases, composed values, mismatched parent state/setter pairs, cleanup, and additional callback uses remain rejected.
+- Object and derived array dependencies remain unchanged; no runtime module, EffectIR kind, component tree, or automatic prop synchronization is added.
+
+### Validation
+
+- The ClimateCompatibleGrowth-derived dropdown now preserves its authored setter effect shape.
+- Browser coverage proves initial setup, child replacement commit, independent parent reset, and effect rerun; a static sibling remains zero JavaScript.
+- Existing effect ownership and object-dependency diagnostics remain covered.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 228 tests and 174 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.60
+```
+
 ## 0.8.59 - Array prop draft state
 
 Kudzu 0.8.59 lets a specialized child initialize independent local array draft state directly from one parent array-state prop while preserving an authored direct `set*` setter prop.

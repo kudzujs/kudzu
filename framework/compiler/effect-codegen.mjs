@@ -104,7 +104,7 @@ function readDependencies(record) {
 ${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
   return (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
-    if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+    if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
     return value
   })
 }
@@ -260,7 +260,7 @@ function mount(lifetime) {
 ${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
     return (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
-      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+      if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
       return value
     })
   }
@@ -484,7 +484,7 @@ function mount(lifetime) {
 ${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
     const values = (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
-      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+      if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
       return value
     })
     ${hasItemDependencies ? `if (record.effect.itemDependencies) {
@@ -733,7 +733,7 @@ function readDependencies(record) {
 ${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
   const values = (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
-    if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+    if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
     return value
   })
   ${hasItemDependencies ? `if (record.effect.itemDependencies) {
@@ -848,7 +848,7 @@ async function flush() {
 }
 function readDependency() {
   const next = browserState.get(dependency)
-  if (next !== null && typeof next !== "string" && typeof next !== "boolean" && !(typeof next === "number" && Number.isFinite(next) && !Object.is(next, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive")
+  if (!Array.isArray(next) && next !== null && typeof next !== "string" && typeof next !== "boolean" && !(typeof next === "number" && Number.isFinite(next) && !Object.is(next, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
   return next
 }
 function invoke() {
