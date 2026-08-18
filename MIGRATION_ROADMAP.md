@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.62` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The active `0.9.0` execution sequence is maintained in [`docs/next-architecture/0.9-semantic-compression.md`](./docs/next-architecture/0.9-semantic-compression.md), with session-level implementation packets in [`docs/next-architecture/0.9-implementation-plan.md`](./docs/next-architecture/0.9-implementation-plan.md). Follow its ordered work queue and evidence gates for implementation work. The completed compiler foundation and longer-term sequence remain in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md); this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -19,6 +19,40 @@ ordinary React-shaped TSX
 Kudzu is a general migration compiler. Shops, dashboards, documentation, blogs, landing pages, forms, and administration screens are outcomes built on the same compiler model. No application category defines Kudzu's architecture.
 
 Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts the statically analyzable subset it can lower to build-time output and direct browser capabilities. Unsupported nearby patterns must fail at build time with a file, line, and actionable explanation.
+
+## Version Outcomes
+
+### 0.9.0: Proven Browser Advantage
+
+`0.9.0` is not complete when Semantic Compression merely works internally. On behavior-, content-, accessibility-, and environment-matched applications, Kudzu must prove its intended advantage against React + Vite and representative Vue, Svelte, and Astro baselines:
+
+- the least initial and session browser JavaScript;
+- no hydration and complete initial HTML;
+- fastest or statistically tied-fastest interaction readiness, event, and navigation results;
+- no material CPU or memory loss;
+- stronger JavaScript failure resilience;
+- no remaining material large-route build-scaling weakness.
+
+The active 0.9 plan defines the exact comparison and release gate. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
+
+### 1.0.0: Best Framework For AI-Assisted Delivery
+
+`1.0.0` means Kudzu Semantic IR v1 is stable and Kudzu is demonstrably the best framework in the maintained AI delivery benchmark, not merely the framework with the smallest runtime.
+
+Use the same agent model, system constraints, tools, starting application requirements, context budget, time budget, and acceptance suite for every framework. Agents receive public framework documentation and normal diagnostics; Kudzu must not receive private compiler knowledge or framework-specific prompt help unavailable to competitors.
+
+Evaluate complete production-representative tasks across at least content, forms, CRUD/shared state, commerce-derived state, and resource/realtime ownership. Each result must pass behavior, accessibility, build, browser, and output checks before it counts as successful.
+
+Kudzu qualifies for `1.0.0` only when repeated trials show:
+
+- success rate is highest or statistically tied for highest against the maintained framework set;
+- median cost per successful task is lowest;
+- completion time, correction cycles, tool calls, compiler attempts, and context consumption are lowest or statistically tied for lowest;
+- ordinary source abstraction and maintainability are not sacrificed to win;
+- the resulting browser output still passes the complete `0.9.0` performance advantage gate;
+- most new ecosystem coverage is delivered through normalization, adapters, diagnostics, and optimization rather than Semantic Kernel growth.
+
+Publish task definitions, prompts, framework versions, raw attempts including failures, acceptance results, token/cost accounting, source retention, artifacts, and browser measurements. A build-only success, cherry-picked successful run, or toy-only benchmark cannot authorize `1.0.0`.
 
 ## Product Invariants
 

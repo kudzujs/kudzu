@@ -2,9 +2,9 @@
 
 ## Status
 
-Active execution plan after `0.8.35`. This document turns the current compiler audit into an ordered implementation program. It does not mark any planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Completed compiler-foundation record and longer-term plan after `0.8.35`. The active post-`0.8.62` execution queue is [`0.9-semantic-compression.md`](./0.9-semantic-compression.md). This document does not mark any remaining planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
-[`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. This plan is authoritative for the order and completion evidence of compiler generalization, large-application foundations, compatibility boundaries, AI tooling, and scale validation. If implementation evidence changes a boundary, update this document before broadening a patch.
+[`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains authoritative for product invariants and fixture-driven feature selection. [`0.9-semantic-compression.md`](./0.9-semantic-compression.md) is authoritative for current work order and evidence; this plan retains the completed foundation, deferred program, and long-term production gates. If implementation evidence changes either boundary, update the relevant document before broadening a patch.
 
 ## Product Outcome
 
@@ -453,6 +453,8 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Production Gates Before 1.0
 
+- The active `0.9.0` cross-framework gate proves lower browser cost and matched user-facing performance against React + Vite, Vue, Svelte, and Astro before AI productivity claims are considered.
+- The maintained AI delivery suite uses the same model, tools, requirements, budgets, and acceptance checks across frameworks, includes failed attempts, and establishes the highest success rate plus lowest median cost per successful task before `1.0.0`.
 - Async native and effect work cannot write after ownership release.
 - Build output is staged, collision-safe, and rollback/recovery guarded.
 - Source maps connect generated route code to TS/TSX diagnostics.
@@ -481,4 +483,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-PR 1 through PR 12, the `0.8.40` property-dependency slice, the `0.8.41` and `0.8.43` direct multi-boundary callback/ref slices, the `0.8.44` Context alias slice, the `0.8.46` action-only Provider setter slice, the `0.8.47` direct primitive, `0.8.57` plain-object prop, `0.8.58` direct keyed item, `0.8.59` direct array prop initializer, `0.8.60` matching array-draft setter-effect, `0.8.61` parameterized primitive debounce-hook, and `0.8.62` direct-ref outside-click-hook slices, the `0.8.48` repeated direct leaf-handler callback slice, the `0.8.49` direct child callback fan-out slice, the `0.8.50` package-neutral shared-state/action slice, the `0.8.51` owned-effect package import slice, the `0.8.52` effect-private mutable-ref slice, the `0.8.53` route/layout CSS closure slice, the `0.8.54` structural per-route capability/chunk report, the `0.8.55` signature-keyed runtime families, item 7 incremental source and affected-route builds, and the `0.8.42` measured route-output optimization are complete. Continue migration-led semantic generalization; keep ResourceIR limited to independent fixtures, and do not add range ownership, virtualization, optimistic transactions, a public adapter/store API, or a router before evidence justifies them.
+PR 1 through PR 12, the `0.8.40` property-dependency slice, the `0.8.41` and `0.8.43` direct multi-boundary callback/ref slices, the `0.8.44` Context alias slice, the `0.8.46` action-only Provider setter slice, the `0.8.47` direct primitive, `0.8.57` plain-object prop, `0.8.58` direct keyed item, `0.8.59` direct array prop initializer, `0.8.60` matching array-draft setter-effect, `0.8.61` parameterized primitive debounce-hook, and `0.8.62` direct-ref outside-click-hook slices, the `0.8.48` repeated direct leaf-handler callback slice, the `0.8.49` direct child callback fan-out slice, the `0.8.50` package-neutral shared-state/action slice, the `0.8.51` owned-effect package import slice, the `0.8.52` effect-private mutable-ref slice, the `0.8.53` route/layout CSS closure slice, the `0.8.54` structural per-route capability/chunk report, the `0.8.55` signature-keyed runtime families, item 7 incremental source and affected-route builds, and the `0.8.42` measured route-output optimization are complete. Continue with `0.9.0-01` in the active Semantic Compression plan; keep ResourceIR limited to qualifying independent fixtures, and do not add range ownership, virtualization, optimistic transactions, a public adapter/store API, or a router before evidence justifies them.
