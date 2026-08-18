@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.59 - Array prop draft state
+
+Kudzu 0.8.59 lets a specialized child initialize independent local array draft state directly from one parent array-state prop while preserving an authored direct `set*` setter prop.
+
+### Changed in 0.8.59
+
+- `const [draft, setDraft] = useState(selectedItems)` compiles when `selectedItems` is one direct prop backed by a parent `useState([...])` literal.
+- A direct parent setter may enter that prop-draft specialization through an `on*` prop or an authored `set*` prop such as `setSelectedItems`.
+- Parent and child retain distinct state IDs and independently serialized arrays.
+- Mounted drafts remain local until the authored handler explicitly commits them to parent state.
+
+### Boundaries
+
+- `set*` support is limited to prop-derived state components; unrelated effect setter props retain their existing path.
+- Additional forwarding remains `on*`-only.
+- Aliases, property paths, array spreads, composed expressions, indirect callbacks, and automatic prop synchronization remain rejected.
+- No runtime module, VDOM, hydration, or retained component tree is added.
+
+### Validation
+
+- A fixture reduced from ClimateCompatibleGrowth's MIT-licensed teaching-kit `Dropdown` preserves its direct `selectedItems` and `setSelectedItems` source shape.
+- Browser coverage proves child draft independence, parent replacement without draft synchronization, explicit commit, and a static zero-JavaScript sibling.
+- Existing conditional-effect `setResult` props remain outside setter-callback specialization.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 225 tests and 174 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.59
+```
+
 ## 0.8.58 - Keyed item draft state
 
 Kudzu 0.8.58 lets a keyed row initialize independent local object draft state directly from its keyed item prop.

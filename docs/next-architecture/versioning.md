@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.58` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.59` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -49,6 +49,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.56` | Recompile and rerender only source-affected routes during development. | A route-owned helper edit recompiles two of four modules, rerenders one of two pages, and emits byte-identical deploy output to a fresh full build. |
 | `0.8.57` | Initialize specialized child draft state from one direct parent plain-object state prop. | A FIRE-derived editor preserves independent child draft state and parent commit behavior; arrays, aliases, property paths, and composed expressions remain rejected without runtime changes. |
 | `0.8.58` | Initialize keyed row object draft state from the direct keyed item prop. | Todo reducer rows retain independent drafts and DOM identity across reorder, release state on removal, recreate drafts from the current item on remount, reject aliases, and preserve a static zero-JavaScript sibling. |
+| `0.8.59` | Initialize specialized child draft state from one direct parent array-state prop and accept a direct matching `set*` setter prop. | A ClimateCompatibleGrowth-derived dropdown preserves independent array drafts, explicit parent commit, source naming, nearby diagnostics, and a static zero-JavaScript sibling without runtime changes. |
 
 ## Sequence Rules
 

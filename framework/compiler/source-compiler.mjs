@@ -1157,7 +1157,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           for (const state of aggregate.ordinaryStates) setters.set(state.setter, state.state)
           const stateOwners = new Map(parentStateOwners)
           for (const state of aggregate.ordinaryStates) stateOwners.set(state.state, state.analysisReference)
-          const callbackProps = jsxSetterCallbackProps(node, setters, functionsForNode(node), reducersForNode(node, reducersByFunction))
+          const callbackProps = supportedSetterCallbackProps(component, jsxSetterCallbackProps(node, setters, functionsForNode(node), reducersForNode(node, reducersByFunction)))
           const callbackSubstitutions = new Map()
           if (callbackProps.length) {
             if (!callbackDepth) fail(node, "Setter callbacks cannot cross more than three component boundaries")
@@ -1295,7 +1295,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
     for (const [name, component] of components) {
       for (const call of jsxTagUses(sourceFile, name)) {
-        const callbackProps = jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functionsForNode(call), reducersForNode(call, reducersByFunction))
+        const callbackProps = supportedSetterCallbackProps(component.function, jsxSetterCallbackProps(call, settersByFunction.get(nearestFunction(call)) ?? new Map(), functionsForNode(call), reducersForNode(call, reducersByFunction)))
         if (callbackProps.length) specializeSetterCallbacks(call, component.function, callbackProps, false)
       }
     }
@@ -1311,7 +1311,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       } catch {
         fail(callbackCalls[0].call, "Setter callback props require a component imported from a relative TypeScript module")
       }
-      for (const { call, callbackProps } of callbackCalls) specializeSetterCallbacks(call, component, callbackProps, true)
+      for (const { call, callbackProps } of callbackCalls) {
+        const supportedProps = supportedSetterCallbackProps(component, callbackProps)
+        if (supportedProps.length) specializeSetterCallbacks(call, component, supportedProps, true)
+      }
     }
     for (const [name, component] of components) {
       const calls = jsxTagUses(sourceFile, name)
@@ -2114,12 +2117,24 @@ function jsxCallHasDirectStateProp(call, setters) {
 function jsxSetterCallbackProps(call, setters, functions, reducers) {
   const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
   return attributes.properties.flatMap(attribute => {
-    if (!ts.isJsxAttribute(attribute) || !/^on[A-Z]/.test(attribute.name.text) || !attribute.initializer || !ts.isJsxExpression(attribute.initializer) || !attribute.initializer.expression) return []
+    if (!ts.isJsxAttribute(attribute) || !attribute.initializer || !ts.isJsxExpression(attribute.initializer) || !attribute.initializer.expression) return []
     const value = unwrapExpression(attribute.initializer.expression)
-    if (ts.isIdentifier(value) && setters.has(value.text)) return [attribute.name.text]
+    if (ts.isIdentifier(value) && setters.has(value.text) && (/^on[A-Z]/.test(attribute.name.text) || /^set[A-Z]/.test(attribute.name.text))) return [attribute.name.text]
+    if (!/^on[A-Z]/.test(attribute.name.text)) return []
     const callback = ts.isArrowFunction(value) || ts.isFunctionExpression(value) ? value : ts.isIdentifier(value) ? functions.get(value.text) : undefined
     return callback && !nativeCaptureNames(callback, setters).size && !referencedReducerDispatches(callback.body, reducers, callback).size && referencedStateNames(callback.body, setters, callback).size ? [attribute.name.text] : []
   })
+}
+
+function componentHasDirectPropStateInitializer(component) {
+  if (!component || component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name) || !ts.isBlock(component.body)) return false
+  const props = new Set(component.parameters[0].name.elements.filter(element => !element.dotDotDotToken && ts.isIdentifier(element.name)).map(element => element.name.text))
+  return component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isIdentifier(declaration.initializer.arguments[0]) && props.has(declaration.initializer.arguments[0].text)))
+}
+
+function supportedSetterCallbackProps(component, props) {
+  const acceptsSetProp = componentHasDirectPropStateInitializer(component)
+  return props.filter(prop => /^on[A-Z]/.test(prop) || acceptsSetProp)
 }
 
 function jsxCallHasDirectReducerProp(call, reducers) {
@@ -2498,10 +2513,10 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         const substitutedState = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) ? unwrapExpression(substitutedProp).text : undefined
         const directProp = ts.isIdentifier(initialArgument)
         const parentInitializer = substitutedState ? directStateInitializer(call, substitutedState) : undefined
-        const propInitializer = ordinaryHooks && substitutedState && ordinaryStateNames.has(substitutedState) && parentInitializer && (isPrimitiveDefaultLiteral(parentInitializer) || directProp && ts.isObjectLiteralExpression(parentInitializer))
+        const propInitializer = ordinaryHooks && substitutedState && ordinaryStateNames.has(substitutedState) && parentInitializer && (isPrimitiveDefaultLiteral(parentInitializer) || directProp && (ts.isObjectLiteralExpression(parentInitializer) || ts.isArrayLiteralExpression(parentInitializer)))
         const rowItemProp = propReceiver && elements.find(element => !element.dotDotDotToken && ts.isIdentifier(element.name) && element.name.text === propReceiver.text)
         const rowItemInitializer = !ordinaryHooks && directProp && substitutedState && rowItemProp && directProps.has((rowItemProp.propertyName ?? rowItemProp.name).text)
-        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propInitializer && !rowItemInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct state prop initialized with a primitive or plain object; .toString() requires a primitive prop" : " or the direct keyed item prop"}; other dynamic initializers are not supported`)
+        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propInitializer && !rowItemInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct state prop initialized with a primitive, plain object, or array; .toString() requires a primitive prop" : " or the direct keyed item prop"}; other dynamic initializers are not supported`)
         if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), `${hookLabel} useState() must use [state, setter] identifier destructuring`)
         const suffix = `${Math.max(0, call.pos)}_${ordinaryHooks ? ordinaryStates.length : rowStates.length}`
         const state = ordinaryHooks ? `__kComponentState${suffix}` : `__kRowState${suffix}`

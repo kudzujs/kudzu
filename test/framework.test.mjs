@@ -125,7 +125,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readRuntime(new URL("../", import.meta.url), "kudzu.js")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.58/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.59/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -142,12 +142,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.58"/)
-  assert.match(release, /Kudzu 0\.8\.58.*Keep the key.*Keep the draft/s)
-  assert.match(release, /CLONE · RETAIN · RELEASE.*KEYED ITEM DRAFT STATE.*npm install @kudzujs\/core@\^0\.8\.58/s)
-  assert.match(release, /<title>Kudzu 0\.8\.58 - Keyed item draft state<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.58"/)
-  assert.match(release, /Clone on mount.*Retain on reorder/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.59"/)
+  assert.match(release, /Kudzu 0\.8\.59.*Keep the array local.*Commit when ready/s)
+  assert.match(release, /SEED · EDIT · APPLY.*ARRAY PROP DRAFT STATE.*npm install @kudzujs\/core@\^0\.8\.59/s)
+  assert.match(release, /<title>Kudzu 0\.8\.59 - Array prop draft state<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.59"/)
+  assert.match(release, /Start from the prop.*Keep arrays independent/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1970,7 +1970,7 @@ test("rejects indirect setter-child state initializers", () => {
   const fixture = new URL("./fixtures/setter-child-indirect-initializer-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/InvalidInput\.tsx:\d+:\d+ Setter-callback component useState\(\) must use one directly serializable primitive, plain object, or array initial value or direct state prop initialized with a primitive or plain object; \.toString\(\) requires a primitive prop; other dynamic initializers are not supported/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/InvalidInput\.tsx:\d+:\d+ Setter-callback component useState\(\) must use one directly serializable primitive, plain object, or array initial value or direct state prop initialized with a primitive, plain object, or array; \.toString\(\) requires a primitive prop; other dynamic initializers are not supported/)
 })
 
 test("initializes setter-child state from a direct plain-object state prop", async t => {
@@ -1988,11 +1988,34 @@ test("initializes setter-child state from a direct plain-object state prop", asy
   assert.deepEqual(plan.routes[0].states.map(state => state.initialValue), [{ text: "initial" }, { text: "initial" }])
 })
 
-test("rejects array-state setter-child initializers", () => {
+test("initializes setter-child state from a direct array state prop", async t => {
+  const fixture = new URL("./fixtures/array-prop-draft", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/array-prop-draft/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/array-prop-draft/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/array-prop-draft/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/array-prop-draft/dist/static/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/array-prop-draft/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/array-prop-draft/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  const arrays = route.states.filter(state => Array.isArray(state.initialValue))
+  assert.match(html, /id="selected".*Solar.*id="dropdown"/s)
+  assert.doesNotMatch(`${html}\n${component}`, /from ["']react["']/)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.equal(arrays.length, 2)
+  assert.notEqual(arrays[0].id, arrays[1].id)
+  assert.deepEqual(arrays.map(state => state.initialValue), [[{ id: 1, label: "Solar" }], [{ id: 1, label: "Solar" }]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runArrayPropDraftBrowserTest(fixture, chrome)
+})
+
+test("rejects composed array-state setter-child initializers", () => {
   const fixture = new URL("./fixtures/setter-child-array-initializer-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/ArrayInput\.tsx:\d+:\d+ Setter-callback component useState\(\) must use one directly serializable primitive, plain object, or array initial value or direct state prop initialized with a primitive or plain object; \.toString\(\) requires a primitive prop; other dynamic initializers are not supported/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/ArrayInput\.tsx:\d+:\d+ Setter-callback component useState\(\) must use one directly serializable primitive, plain object, or array initial value or direct state prop initialized with a primitive, plain object, or array; \.toString\(\) requires a primitive prop; other dynamic initializers are not supported/)
 })
 
 test("rejects hookful nested setter children on dynamic paths", () => {
@@ -3591,6 +3614,52 @@ try {
   await wait()
   const restored = document.querySelector('[data-id="2"]')
   if (!restored || restored === editingRow || restored.classList.contains("editing") || restored.querySelector("input.edit") || restored.querySelector(".todo-draft") === shipDraft || restored.querySelector(".todo-draft").value !== "Restored" || restored.querySelector("span").textContent !== "Restored" || restored.dataset.edits !== "0" || document.querySelector("#count").textContent !== "5 todos") throw new Error("row-state-cleanup")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runArrayPropDraftBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const labels = () => [...document.querySelectorAll("#selected li")].map(item => item.textContent).join(",")
+try {
+  await wait()
+  if (labels() !== "Solar") throw new Error("initial")
+  document.querySelector("#add-draft").click()
+  await wait()
+  if (labels() !== "Solar") throw new Error("independence")
+  document.querySelector("#reset").click()
+  await wait()
+  if (labels() !== "Hydro") throw new Error("parent-reset")
+  document.querySelector("#apply-draft").click()
+  await wait()
+  if (labels() !== "Solar,Wind") throw new Error("commit")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message
