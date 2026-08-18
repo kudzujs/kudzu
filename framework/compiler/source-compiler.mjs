@@ -24,6 +24,7 @@ import { createZustandPass } from "./zustand-pass.mjs"
 
 export function createSourceCompiler(project) {
 const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, modules, counters } = project
+const buildDirectory = project.buildDirectory ?? workDirectory
 const { ordinaryRuntimeDependencies, resolveSourceImport, runtimeModuleReference } = project.graph
 const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
@@ -3166,7 +3167,7 @@ function clientModulePath(file) {
 }
 
 function compiledPath(file) {
-  return join(workDirectory, relative(sourceDirectory, file)).replace(/\.(?:ts|tsx)$/, ".mjs")
+  return join(buildDirectory, relative(sourceDirectory, file)).replace(/\.(?:ts|tsx)$/, ".mjs")
 }
 
 const compileEventCommand = createCommandSpecializer({ isPrimitiveLiteral: isPrimitiveDefaultLiteral })

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.55 - Signature-keyed runtime families.** Equal standalone capability signatures reuse one runtime family, different signatures stay isolated, and enhanced-navigation groups retain one union ESM singleton for layout state and lifecycle ownership. Read the [release notes](./RELEASES.md#0855---signature-keyed-runtime-families), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.55), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.56 - Incremental affected-route development builds.** Source edits now recompile and rerender only intersecting page graphs while preserving full-build output, navigation-group identity, and rollback-safe staging. Read the [release notes](./RELEASES.md#0856---incremental-affected-route-development-builds), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.56), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

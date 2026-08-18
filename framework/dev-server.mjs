@@ -85,6 +85,7 @@ export async function startDevServer({ build, port, host, base, sourceDirectory,
   let rebuilding = false
   let pending = false
   let changedFile
+  const changedFiles = new Set()
   const rebuild = async () => {
     if (rebuilding) {
       pending = true
@@ -93,13 +94,16 @@ export async function startDevServer({ build, port, host, base, sourceDirectory,
     rebuilding = true
     do {
       pending = false
+      const changes = [...changedFiles]
+      changedFiles.clear()
       try {
-        await build({ quiet: true, minify: false })
+        await build({ changedFiles: changes, quiet: true, minify: false })
         buildError = undefined
         revision++
         console.log(`Rebuilt after ${changedFile ?? "source change"}`)
         for (const client of clients) sendEvent(client, "reload")
       } catch (error) {
+        for (const file of changes) changedFiles.add(file)
         buildError = errorText(error)
         console.error(error)
         for (const client of clients) sendEvent(client, "build-error", buildError)
@@ -110,6 +114,7 @@ export async function startDevServer({ build, port, host, base, sourceDirectory,
   const watcher = watch(sourceDirectory, { recursive: true })
   for await (const event of watcher) {
     changedFile = event.filename
+    changedFiles.add(event.filename)
     clearTimeout(timer)
     timer = setTimeout(rebuild, 80)
   }

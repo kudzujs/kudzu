@@ -44,16 +44,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.8.55">
-        <span>v0.8.55</span>
-        <strong>Signature-keyed runtime families</strong>
+      <a className="release-banner" href="/releases/0.8.56">
+        <span>v0.8.56</span>
+        <strong>Incremental affected-route builds</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.8.55</span> COMPILER FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.8.56</span> COMPILER FRAMEWORK</p>
             <h1>React-shaped input.<br /><em>Static-first output.</em></h1>
             <p className="intro">Kudzu analyzes TypeScript ASTs and specializes familiar components, hooks, routes, effects, and collections into complete HTML plus only the browser capabilities each route uses.</p>
             <div className="actions">

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import { cp, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises"
-import { dirname, join, relative, resolve, sep } from "node:path"
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
@@ -33,6 +33,10 @@ async function loadConfig(root) {
 
 export async function build({ quiet = false, minify = true, root: projectRoot = process.cwd() } = {}) {
   const project = createProjectSession(projectRoot)
+  return buildWithSession(project, { quiet, minify })
+}
+
+export async function buildWithSession(project, { changedFiles, quiet = false, minify = true } = {}) {
   const { root, outputDirectory } = project
   const stagedOutput = join(root, ".kudzu-dist-staging")
   const backupOutput = join(root, ".kudzu-dist-backup")
@@ -41,8 +45,9 @@ export async function build({ quiet = false, minify = true, root: projectRoot = 
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount } = await buildInto(project, stagedOutput, { minify })
+    const { result, pageCount, behaviorCount, cache } = await buildInto(project, stagedOutput, { changedFiles, minify })
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
+    project.buildCache = cache
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
     return result
   } finally {
@@ -58,8 +63,11 @@ export async function build({ quiet = false, minify = true, root: projectRoot = 
   }
 }
 
-async function buildInto(project, outputDirectory, { minify }) {
+async function buildInto(project, outputDirectory, { changedFiles, minify }) {
   const { root, sourceDirectory, pagesDirectory, workDirectory } = project
+  const previous = project.buildCache
+  project.buildGeneration = (project.buildGeneration ?? 0) + 1
+  project.buildDirectory = project.buildGeneration > 1 ? join(workDirectory, "build", String(project.buildGeneration)) : workDirectory
   const { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
   const config = await loadConfig(root)
   const base = normalizeBase(config.base)
@@ -89,11 +97,14 @@ async function buildInto(project, outputDirectory, { minify }) {
   if (!allSourceFiles.length) throw new Error("No TypeScript files found in src/")
   const allSourceFileSet = new Set(allSourceFiles)
   const sourceIndex = project.sourceIndex
+  for (const file of sourceIndex.keys()) if (file.startsWith(`${sourceDirectory}${sep}`) && !allSourceFileSet.has(file)) sourceIndex.delete(file)
   for (const [file, source] of await Promise.all(allSourceFiles.map(async file => [file, await readFile(file, "utf8")]))) sourceIndex.set(file, source)
   const pageFiles = allSourceFiles.filter(file => file.startsWith(`${pagesDirectory}${sep}`) && file.endsWith(".tsx"))
   if (!pageFiles.length) throw new Error("No pages found in src/pages/")
-  const sourceFiles = reachableSourceFiles(pageFiles, allSourceFileSet, sourceIndex)
+  const pageSources = new Map(pageFiles.map(file => [file, new Set(reachableSourceFiles([file], allSourceFileSet, sourceIndex))]))
+  const sourceFiles = [...new Set([...pageSources.values()].flatMap(files => [...files]))].sort()
   const sourceFileSet = project.sourceFiles
+  sourceFileSet.clear()
   for (const file of sourceFiles) sourceFileSet.add(file)
   const staticFiles = await safeStaticFiles(projectFiles)
   const stylesByPage = new Map(pageFiles.map(file => [file, orderSourceStyles([file], sourceFiles, sourceIndex, staticFiles).filter(style => !configuredStyleSources.has(style))]))
@@ -101,15 +112,26 @@ async function buildInto(project, outputDirectory, { minify }) {
   const importedAssets = new Set()
   const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base, project)
 
+  const affectedPages = affectedPageFiles({ changedFiles, pageFiles, pageSources, previous, sourceDirectory })
+  expandAffectedNavigationGroups(affectedPages, previous?.pageRenders, navigationGroups)
+  const affectedSources = new Set([...affectedPages].flatMap(file => [...pageSources.get(file)]))
   const sourceResults = []
+  const sourceResultsByFile = new Map()
+  let compiledModules = 0
   for (const file of sourceFiles) {
     if (file.endsWith(".worker.ts")) continue
-    const result = compileSource(file, sourceFileSet, sourceIndex, staticFiles, cssModules, base)
+    let result = !affectedSources.has(file) ? previous?.sourceResults.get(file) : undefined
+    if (!result) {
+      result = compileSource(file, sourceFileSet, sourceIndex, staticFiles, cssModules, base)
+      compiledModules++
+    }
+    result = { ...result, buildModule: { ...result.buildModule, path: relative(root, compiledPath(file)).replaceAll(sep, "/") } }
     for (const asset of result.importedAssets) importedAssets.add(resolve(root, asset))
     const output = resolve(root, result.buildModule.path)
     await mkdir(dirname(output), { recursive: true })
     await writeFile(output, result.buildModule.code)
     sourceResults.push(result)
+    sourceResultsByFile.set(file, result)
   }
   const handlerModules = sourceResults.flatMap(result => result.handlerModule ? [result.handlerModule] : [])
   const workerReferences = sourceResults.flatMap(result => result.moduleIR.effects.flatMap(effect => {
@@ -128,11 +150,37 @@ async function buildInto(project, outputDirectory, { minify }) {
   const emittedApplicationRoutes = new Set()
   const emittedNavigationRecords = []
   const navigationAssets = new Map()
-  const runtimePlaceholder = `/__kudzu_runtime_${randomUUID()}.js`
-  const bindingPlaceholder = `/__kudzu_binding_${randomUUID()}.js`
-  const listPlaceholder = `/__kudzu_list_${randomUUID()}.js`
+  const placeholders = previous?.placeholders ?? {
+    runtime: `/__kudzu_runtime_${randomUUID()}.js`,
+    binding: `/__kudzu_binding_${randomUUID()}.js`,
+    list: `/__kudzu_list_${randomUUID()}.js`
+  }
+  const runtimePlaceholder = placeholders.runtime
+  const bindingPlaceholder = placeholders.binding
+  const listPlaceholder = placeholders.list
+  const pageRenders = new Map()
+  let renderedPages = 0
 
   for (const pageFile of pageFiles) {
+    const cached = !affectedPages.has(pageFile) ? previous?.pageRenders.get(pageFile) : undefined
+    if (cached) {
+      replayPageRender(cached, {
+        emittedApplicationRoutes,
+        emittedNavigationRecords,
+        emittedRoutes,
+        navigationAssets,
+        navigationByRoute,
+        routeDrafts,
+        routeRecords,
+        rewrites
+      })
+      pageRenders.set(pageFile, cached)
+      continue
+    }
+    renderedPages++
+    const draftOffset = routeDrafts.length
+    const navigationOffset = emittedNavigationRecords.length
+    const rewriteOffset = rewrites.length
     const sourceStyleUrls = stylesByPage.get(pageFile).map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)).filter(url => !globalStyleUrlSet.has(url))
     const styleUrls = [...sourceStyleUrls, ...globalStyleUrls]
     const compiledFile = compiledPath(pageFile)
@@ -231,8 +279,14 @@ async function buildInto(project, outputDirectory, { minify }) {
       })
       routeRecords.push(record)
       if (navigationGroup) navigationGroup.buildRecords.push(record)
-      routeDrafts.push({ record, result, runtimeSchema, navigationGroup, effectPath, nativePath, paramPath })
+      routeDrafts.push({ record, result, runtimeSchema, navigationGroup, applicationRoute, effectPath, nativePath, paramPath })
     }
+    pageRenders.set(pageFile, {
+      drafts: routeDrafts.slice(draftOffset).map(({ navigationGroup: _, ...draft }) => draft),
+      layout: module.layout,
+      navigationRecords: emittedNavigationRecords.slice(navigationOffset).map(({ group: _, ...record }) => record),
+      rewrites: rewrites.slice(rewriteOffset)
+    })
   }
 
   for (const group of navigationGroups) for (const route of group.routes) if (!emittedApplicationRoutes.has(route)) throw new Error(`${group.label} route ${JSON.stringify(route)} is not an emitted route`)
@@ -435,7 +489,78 @@ async function buildInto(project, outputDirectory, { minify }) {
     await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites, artifacts })
   }
 
-  return { result: { sourceResults }, pageCount: plans.length, behaviorCount }
+  const incremental = { compiledModules, renderedPages }
+  return {
+    result: { sourceResults, incremental },
+    pageCount: plans.length,
+    behaviorCount,
+    cache: { pageRenders, pageSources, placeholders, sourceResults: sourceResultsByFile }
+  }
+}
+
+function affectedPageFiles({ changedFiles, pageFiles, pageSources, previous, sourceDirectory }) {
+  if (!previous || changedFiles === undefined) return new Set(pageFiles)
+  if (changedFiles.some(file => typeof file !== "string")) return new Set(pageFiles)
+  const changes = new Set(changedFiles.map(file => isAbsolute(file) ? file : resolve(sourceDirectory, file)))
+  if ([...changes].some(file => !/\.(?:ts|tsx)$/.test(file))) return new Set(pageFiles)
+  const affected = new Set()
+  for (const page of pageFiles) {
+    const current = pageSources.get(page)
+    const prior = previous.pageSources.get(page)
+    if (!prior || [...changes].some(file => current.has(file) || prior.has(file))) affected.add(page)
+  }
+  return affected
+}
+
+function expandAffectedNavigationGroups(affected, pageRenders, groups) {
+  if (!affected.size || !pageRenders || !groups.length) return
+  const groupRoutes = groups.map(group => new Set(group.routes))
+  const groupIndexes = new Set()
+  for (const page of affected) {
+    const render = pageRenders.get(page)
+    if (!render) {
+      for (let index = 0; index < groups.length; index++) groupIndexes.add(index)
+      continue
+    }
+    for (const draft of render.drafts) for (let index = 0; index < groups.length; index++) if (groupRoutes[index].has(draft.applicationRoute)) groupIndexes.add(index)
+  }
+  for (const [page, render] of pageRenders) {
+    if (render.drafts.some(draft => [...groupIndexes].some(index => groupRoutes[index].has(draft.applicationRoute)))) affected.add(page)
+  }
+}
+
+function replayPageRender(cached, state) {
+  for (const rewrite of cached.rewrites) {
+    const conflicting = state.rewrites.find(entry => sameRuntimePrecedence(entry, rewrite))
+    if (conflicting) throw new Error(`Ambiguous runtime routes: ${conflicting.route} and ${rewrite.route}`)
+    state.rewrites.push(rewrite)
+  }
+  for (const entry of cached.navigationRecords) {
+    const group = state.navigationByRoute.get(entry.route)
+    const routeRecord = { ...entry, group }
+    state.emittedNavigationRecords.push(routeRecord)
+    state.emittedApplicationRoutes.add(entry.route)
+    if (!group) continue
+    if (typeof cached.layout !== "function") throw new Error(`${group.label} emitted route ${JSON.stringify(entry.record.path ?? entry.record.id)} must export a layout function so Kudzu can emit route markers`)
+    if (group.layoutIdentity && group.layoutIdentity !== cached.layout) throw new Error(`${group.label} routes ${JSON.stringify(group.layoutRoute)} and ${JSON.stringify(entry.route)} must export the same layout function identity`)
+    group.layoutIdentity = cached.layout
+    group.layoutRoute ??= entry.route
+    group.records.push(entry.record)
+    group.routeRecords.push(routeRecord)
+  }
+  for (const draft of cached.drafts) {
+    const navigationGroup = state.navigationByRoute.get(draft.applicationRoute)
+    if (state.emittedRoutes.has(draft.record.route)) throw new Error(`Duplicate route: ${draft.record.route}`)
+    state.emittedRoutes.add(draft.record.route)
+    if (navigationGroup) {
+      state.navigationAssets.set(draft.record.route, navigationGroup.assetPath)
+      navigationGroup.buildRecords.push(draft.record)
+      navigationGroup.hasEffects ||= draft.result.hasEffects
+      navigationGroup.hasParams ||= draft.result.hasParams
+    }
+    state.routeRecords.push(draft.record)
+    state.routeDrafts.push({ ...draft, navigationGroup })
+  }
 }
 
 async function acquireBuildLock(lockPath, root = dirname(lockPath)) {
@@ -609,7 +734,7 @@ export async function dev({ port = parseDevPort(process.env.PORT), host = parseD
   const project = createProjectSession(projectRoot)
   const { root, sourceDirectory, workDirectory, outputDirectory } = project
   const base = normalizeBase((await loadConfig(root)).base)
-  return startDevServer({ build: options => build({ ...options, root }), port, host, base, sourceDirectory, workDirectory, outputDirectory })
+  return startDevServer({ build: options => buildWithSession(project, options), port, host, base, sourceDirectory, workDirectory, outputDirectory })
 }
 
 function inlineJson(value) {

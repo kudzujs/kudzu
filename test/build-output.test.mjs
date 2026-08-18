@@ -3,7 +3,8 @@ import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:f
 import { dirname, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
-import { build as buildProject } from "../framework/build.mjs"
+import { build as buildProject, buildWithSession } from "../framework/build.mjs"
+import { createProjectSession } from "../framework/compiler/project-session.mjs"
 
 const cli = resolve("bin/kudzu.mjs")
 
@@ -163,6 +164,37 @@ export default function Page() {
   const secondWorker = (await readdir(join(roots[1], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
   assert.match(await readFile(join(roots[0], "dist", "assets", "workers", firstWorker), "utf8"), /First project worker/)
   assert.match(await readFile(join(roots[1], "dist", "assets", "workers", secondWorker), "utf8"), /Second project worker/)
+})
+
+test("incremental builds compile and render only affected routes", async t => {
+  const fixture = await mkdtemp(resolve("test/fixtures/incremental-build-"))
+  t.after(() => rm(fixture, { recursive: true, force: true }))
+  const put = async (path, contents) => {
+    const file = join(fixture, path)
+    await mkdir(dirname(file), { recursive: true })
+    await writeFile(file, contents)
+  }
+  await put("src/features/alpha.ts", `export const label = "Alpha one"`)
+  await put("src/features/beta.ts", `export const label = "Beta"`)
+  await put("src/pages/index.tsx", `import { label } from "../features/alpha"; export default function Page() { return <main>{label}</main> }`)
+  await put("src/pages/beta.tsx", `import { useState } from "@kudzujs/core"; import { label } from "../features/beta"; export default function Page() { const [count, setCount] = useState(0); return <button onClick={() => setCount(count + 1)}>{label} {count}</button> }`)
+
+  const project = createProjectSession(fixture)
+  const initial = await buildWithSession(project, { quiet: true, minify: false })
+  assert.deepEqual(initial.incremental, { compiledModules: 4, renderedPages: 2 })
+
+  await put("src/features/alpha.ts", `export const label = "Alpha two"`)
+  const incremental = await buildWithSession(project, { changedFiles: ["features/alpha.ts"], quiet: true, minify: false })
+  assert.deepEqual(incremental.incremental, { compiledModules: 2, renderedPages: 1 })
+  assert.match(await readFile(join(fixture, "dist", "index.html"), "utf8"), /Alpha two/)
+  assert.match(await readFile(join(fixture, "dist", "beta", "index.html"), "utf8"), /Beta/)
+  assert.doesNotMatch(await readFile(join(fixture, "dist", "index.html"), "utf8"), /<script type="module"/)
+  const expected = await fileManifest(join(fixture, "dist"))
+
+  const cleanBuild = `const { build } = await import(${JSON.stringify(new URL("../framework/build.mjs", import.meta.url).href)}); await build({ root: process.cwd(), quiet: true, minify: false })`
+  const clean = spawnSync(process.execPath, ["--input-type=module", "--eval", cleanBuild], { cwd: fixture, encoding: "utf8" })
+  assert.equal(clean.status, 0, `${clean.stdout}\n${clean.stderr}`)
+  assert.deepEqual(await fileManifest(join(fixture, "dist")), expected)
 })
 
 function page(title) {

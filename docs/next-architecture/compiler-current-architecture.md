@@ -1,15 +1,15 @@
 # Current Compiler Architecture
 
-This maps the current `0.8.55` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.8.56` architecture, built on the completed `0.8.23` Goal A compiler foundation. File and function names are the stable references; line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
 | Responsibility | Current owner | Current contract |
 |---|---|---|
 | CLI entry | [`bin/kudzu.mjs`](../../bin/kudzu.mjs) | Dispatches build and development commands. |
-| Project session | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs), `createProjectSession()` | Owns one absolute root, standard project paths, source records, bound graph operations, and Worker compiler for a build. Omitted roots resolve from call-time CWD. |
+| Project session | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs), `createProjectSession()` | Owns one absolute root, standard project paths, source records, bound graph operations, and Worker compiler. Production builds use one session; development retains it across rebuilds. Omitted roots resolve from call-time CWD. |
 | Parsed module cache and symbols | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs) | Parses each unchanged source module once per ProjectSession and records source-local declaration/import/re-export sites. Stable ModuleSymbol records resolve direct, aliased, barrel, and `export *` exports with cycle and ambiguity checks; repeated resolutions are cached against their source dependencies, and normalization consumers locate the resolved SiteId in a fresh clone with independent parent links. |
-| Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()` | Coordinates config, discovery, source compilation, RouteBuildRecord collection, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. |
+| Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()`, `buildWithSession()` | Coordinates config, discovery, source compilation, RouteBuildRecord collection, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. A retained session caches source results and pre-family route renders by page graph; successful builds alone replace that cache. |
 | Reachability/import resolution | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `reachableSourceFiles()`; [`framework/compiler/source-graph.mjs`](../../framework/compiler/source-graph.mjs), `ordinaryRuntimeDependencies()`, `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, excludes unreachable migration source, and fails unresolved ordinary edges or dynamic imports at the importer source location before code generation. |
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every structural change. Imported source uses the same pipeline. |
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
@@ -35,7 +35,7 @@ This maps the current `0.8.55` architecture, built on the completed `0.8.23` Goa
 | Artifact emission | `framework/build.mjs` | Selects route artifacts from RouteBuildRecord edges, emits each distinct runtime family under `assets/runtime/<family>/`, writes route HTML in bounded batches, bundles in a project-local staging sibling, copies public subtrees without replacing generated paths, runs `afterBuild`, then promotes with rollback. Byte-identical native, parameter, and effect entries share one file only when their family imports also match. |
 | Browser capabilities | [`framework/*.js`](../../framework/) | Small optional modules for commands, bindings, lists, effects, native handlers, serialization, parameters, and navigation; native contexts invalidate writes and refs at DOM ownership release, with no component runtime. |
 | Opt-in navigation | [`framework/navigation-runtime.js`](../../framework/navigation-runtime.js) plus `framework/build.mjs` navigation configuration/emission | Fetches and validates complete same-origin documents, replaces only the marked route range, manages route/layout disposal, history, focus, finite prefetch retention, and native fallback. |
-| Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Rebuild/watch/SSE and response-only short-lived state restoration; failed rebuilds show the existing error overlay while preserving the previous on-disk output. |
+| Development serving | [`framework/dev-server.mjs`](../../framework/dev-server.mjs) and [`framework/dev-state.js`](../../framework/dev-state.js) | Watches and batches changed source paths, recompiles and rerenders intersecting page graphs, then performs the existing complete staged artifact emission and SSE reload. Navigation groups invalidate together to retain one layout-function identity. Failed rebuilds preserve both prior output and pending invalidations while showing the existing error overlay. |
 
 ## Current Data Flow
 
@@ -43,6 +43,8 @@ This maps the current `0.8.55` architecture, built on the completed `0.8.23` Goa
 src/pages entries + config
   -> ProjectSession(root) with project paths, source records, parsed/symbol caches, graph, and Worker compiler
   -> project discovery and reachable relative graph
+       -> in development, intersect changed paths with current and prior per-page graphs
+       -> reuse unaffected SourceResult and pre-family route render records
   -> compileSource()
        -> ordered normalization and parent repair
        -> source-local binding index
@@ -75,6 +77,7 @@ The browser consumes static HTML first. State seeds and descriptors in that HTML
 - `build()` still owns filesystem writes after structural route artifact selection and generator results are produced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
 - Source reachability and source compilation remain in one session-bound compiler factory because both consume the same normalization and import graph contracts. ModuleSymbol resolution is stable across canonical and cloned trees; unsupported export syntax remains intentionally narrow.
+- Incremental development still reads the source tree, rebuilds graph closure, and emits a complete rollback-safe staging directory. It avoids unaffected compilation and build-time JSX execution; finer filesystem and artifact-write invalidation is not yet justified.
 - Imported declarations resolve by ModuleSymbol and source-local SiteId. Specialized and compiler-synthesized trees still use conservative name/scope fallback where the source-local binding index does not own the complete AST.
 
 These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.

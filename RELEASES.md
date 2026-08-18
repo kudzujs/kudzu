@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.8.56 - Incremental affected-route development builds
+
+Kudzu 0.8.56 keeps one project session alive during development so source edits recompile and rerender only the routes whose runtime graphs changed.
+
+### Changed in 0.8.56
+
+- The development server batches changed source paths and intersects them with current and prior per-page runtime graphs.
+- Unaffected compiled `SourceResult` and pre-family route render records are reused across successful rebuilds.
+- Every affected page recompiles its complete reachable graph so imported component specialization remains correct.
+- Enhanced-navigation groups invalidate together to preserve shared layout function and ESM singleton identity.
+- Generation-specific build-time module paths prevent stale Node ESM imports after both successful and failed builds.
+
+### Safety
+
+- Failed rebuilds retain the previous deployed output and carry every pending changed path into the next attempt.
+- Added and removed source files refresh the session index and reachable source set.
+- CSS, assets, and unknown source events conservatively invalidate every page.
+- Production builds retain the existing complete staging, collision checks, `afterBuild()`, and rollback-safe promotion.
+- No browser runtime, hydration layer, VDOM, retained component tree, or SPA router is added.
+
+### Validation
+
+- A focused independent-route fixture changes one route-owned helper and recompiles two of four modules while rerendering one of two pages.
+- Its unaffected interactive route is reused, its static sibling remains zero JavaScript, and incremental deploy output is byte-identical to a fresh-process full build.
+- Existing development error recovery, navigation groups, Workers, handlers, route families, and source-scale checks pass.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 222 tests and 171 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.56
+```
+
 ## 0.8.55 - Signature-keyed runtime families
 
 Kudzu 0.8.55 replaces site-wide runtime specialization with deterministic capability families loaded only by the routes that require them.
