@@ -70,7 +70,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
       lists.effects ||= Boolean(list.effects)
       lists.rowHooks ||= Boolean(list.rowStates?.length || list.rowRefs?.length)
       lists.rowRefs ||= Boolean(list.rowRefs?.length)
-      lists.complexRowState ||= Boolean(list.rowStates?.some(state => state.initialValue !== null && typeof state.initialValue === "object"))
+      lists.complexRowState ||= Boolean(list.rowStates?.some(state => state.initializer === "list-item" || state.initialValue !== null && typeof state.initialValue === "object"))
       lists.nested ||= Boolean(list.ownerField)
       lists.selectors ||= Boolean(list.selector)
       lists.calculated ||= Boolean(list.source)

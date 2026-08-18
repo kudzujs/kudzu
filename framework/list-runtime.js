@@ -237,7 +237,7 @@ function updateList(list) {
       if (!node) throw new Error("Keyed list template has no root element")
       node.removeAttribute("data-k-list-root")
       if (__KUDZU_NESTED_LISTS__ && list.childPrototypes) childPrototypes.set(node, list.childPrototypes)
-      if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner)
+      if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner, item)
       if (staticRoot) listItems.set(node, item)
       else if (list.parts.directFill) {
         listItems.set(node, item)
@@ -401,7 +401,7 @@ function updateStableList(list, items) {
     if (node?.dataset.kListRoot !== list.descriptor.id) node = undefined
     if (!node) throw new Error("Keyed list template has no root element")
     node.removeAttribute("data-k-list-root")
-    if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner)
+    if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner, item)
     if (list.parts.directFill) fillStructuralListParts(list.parts, node, item)
     else fillListItem(node, item, list.descriptor.nested, index, mapListItemParts(list.parts, node, list.descriptor.nested))
     fragment.append(node)
@@ -578,7 +578,7 @@ function addListRoot(list, { item, index = list.roots.size, key, token, value })
   if (!node) throw new Error("Keyed list template has no root element")
   node.removeAttribute("data-k-list-root")
   if (__KUDZU_NESTED_LISTS__ && list.childPrototypes) childPrototypes.set(node, list.childPrototypes)
-  if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner)
+  if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner, item)
   mapListItemParts(list.parts, node, list.descriptor.nested)
   fillListItem(node, item, list.descriptor.nested, index)
   const parent = list.container ?? list.start.parentNode
@@ -1046,7 +1046,7 @@ function keyToken(key) {
 }
 
 /* general-row-hooks */
-function initializeGeneralRowHooks(descriptor, key, root, owner) {
+function initializeGeneralRowHooks(descriptor, key, root, owner, item) {
   const token = keyToken(key)
   const path = [...(ownershipPaths.get(owner) ?? []), `${descriptor.id}=${token}`]
   ownershipPaths.set(root, path)
@@ -1055,7 +1055,7 @@ function initializeGeneralRowHooks(descriptor, key, root, owner) {
   const replacements = new Map()
   for (const state of descriptor.rowStates ?? []) {
     const id = rowStateId(state.id, statePath)
-    if (!browserState.has(id)) browserState.set(id, __KUDZU_COMPLEX_LIST_ROW_STATE__ && state.initialValue !== null && typeof state.initialValue === "object" ? structuredClone(state.initialValue) : state.initialValue)
+    if (!browserState.has(id)) browserState.set(id, state.initializer === "list-item" ? structuredClone(item) : __KUDZU_COMPLEX_LIST_ROW_STATE__ && state.initialValue !== null && typeof state.initialValue === "object" ? structuredClone(state.initialValue) : state.initialValue)
     replacements.set(state.id, id)
   }
   if (__KUDZU_LIST_ROW_REFS__) for (const ref of descriptor.rowRefs ?? []) replacements.set(ref, rowStateId(ref, statePath))

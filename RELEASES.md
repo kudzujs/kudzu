@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.58 - Keyed item draft state
+
+Kudzu 0.8.58 lets a keyed row initialize independent local object draft state directly from its keyed item prop.
+
+### Changed in 0.8.58
+
+- `const [draft, setDraft] = useState(todo)` compiles when `todo` is the direct item prop of a keyed row.
+- RouteIR marks the state with a narrow `list-item` initializer descriptor.
+- New keys clone the current item into existing key-scoped row-state ownership without a component runtime.
+- Retained keys preserve their draft state and DOM identity through item updates and reorder.
+
+### Boundaries
+
+- Removing a key releases its draft; re-adding that key creates a fresh draft from the current item.
+- Aliases, property paths, composed expressions, and indirect item props remain rejected.
+- This does not add prop-to-state synchronization, array prop drafts, a VDOM, hydration, or a retained component tree.
+- Static sibling routes remain complete HTML with zero JavaScript.
+
+### Validation
+
+- The Todo reducer fixture proves independent row drafts, retained draft and DOM identity through reorder, exact removal, and fresh remount initialization.
+- A dedicated alias fixture remains fail-closed with a source-located diagnostic.
+- RouteIR records the `list-item` initializer and capability planning emits the existing complex row-state path only where required.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 224 tests and 173 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.58
+```
+
 ## 0.8.57 - Plain-object prop draft state
 
 Kudzu 0.8.57 lets a specialized setter-callback child initialize independent local draft state directly from one parent state prop authored with a JSON-safe plain-object literal.

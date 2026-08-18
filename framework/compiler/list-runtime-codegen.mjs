@@ -40,7 +40,7 @@ export function generateListRuntime(source, capabilityIR) {
   if (lists.rowHooks && !lists.generalRowHooks) runtime = replaceSequenceRequired(replaceRequired(runtime, /\/\* general-row-hooks \*\/[\s\S]*?\/\* general-row-hooks-end \*\/\n/, "", "general row hooks"), [
     ["initializeGeneralRowHooks", "initializeRowStates", "general row initializer", true],
     ["if (__KUDZU_LIST_ROW_HOOKS__) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index], roots[index], nested?.owner)", "if (__KUDZU_LIST_ROW_HOOKS__ && descriptor.rowStates) for (let index = 0; index < roots.length; index++) initializeRowStates(descriptor, descriptor.keys[index])", "flat row initialization"],
-    ["if (__KUDZU_LIST_ROW_HOOKS__) initializeRowStates(list.descriptor, key, node, list.owner)", "if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)", "flat row add", true],
+    ["if (__KUDZU_LIST_ROW_HOOKS__) initializeRowStates(list.descriptor, key, node, list.owner, item)", "if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)", "flat row add", true],
     ["for (const node of registration.list.roots.values()) deleteRowStates(registration.list.descriptor, ownershipPaths.get(node))", "for (const token of registration.list.roots.keys()) deleteFlatRowStates(registration.list.descriptor, token)", "flat registration cleanup"],
     ["deleteRowStates(list.descriptor, ownershipPaths.get(node))", "deleteFlatRowStates(list.descriptor, token)", "flat row cleanup", true],
     ["  if (__KUDZU_LIST_ROW_HOOKS__) replaceRowIds(root, rowReplacements.get(root))\n", "", "row ID replacement"],

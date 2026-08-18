@@ -53,12 +53,12 @@ export function useId() {
   return `k-${nextRenderId("i")}`
 }
 
-export function useState(initialValue, name) {
+export function useState(initialValue, name, initializer) {
   if (!renderContext) {
     throw new Error("useState() can only run while rendering a Kudzu component")
   }
 
-  const id = renderContext.listRoot || renderContext.listRowRoot ? nextRowRenderId("s", initialValue) : nextRenderId("s")
+  const id = renderContext.listRoot || renderContext.listRowRoot ? nextRowRenderId("s", initialValue, initializer) : nextRenderId("s")
   const signal = createSignal(id, initialValue)
 
   const setter = () => {
@@ -1005,7 +1005,7 @@ function nextRenderId(kind) {
   return `${kind}${renderContext[counters[kind]]++}`
 }
 
-function nextRowRenderId(kind, initialValue) {
+function nextRowRenderId(kind, initialValue, initializer) {
   const root = renderContext.listRoot ?? renderContext.listRowRoot
   const index = root.rowIndexes[kind]++
   const entries = kind === "s" ? renderContext.listRowStates : kind === "r" ? renderContext.listRowRefs : renderContext.listRowConditions
@@ -1013,7 +1013,7 @@ function nextRowRenderId(kind, initialValue) {
     const entry = entries[index]
     if (entry) return entry.id
     const id = `${nextRenderId(kind)}:$k`
-    entries[index] = kind === "s" ? { id, initialValue } : { id }
+    entries[index] = kind === "s" ? { id, initialValue, ...(initializer ? { initializer } : {}) } : { id }
     return id
   }
   const entry = entries[index]

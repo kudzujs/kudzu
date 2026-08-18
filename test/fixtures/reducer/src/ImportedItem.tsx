@@ -5,6 +5,7 @@ import { removeType } from "./todoSupport"
 
 export function ImportedItem({ todo, dispatch }: { todo: Todo; dispatch: (action: TodoAction) => void }) {
   const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(todo)
   const beginEditing = () => setEditing(true)
   const commitEdit = (title: string) => {
     if (!editing) return
@@ -15,6 +16,7 @@ export function ImportedItem({ todo, dispatch }: { todo: Todo; dispatch: (action
   const removeItem = () => dispatch({ type: removeType, id: todo.id })
   return <li className={editing ? "editing" : ""} data-id={todo.id} data-edits={todo.edits}>
     <span>{todo.title}</span>
+    <input className="todo-draft" aria-label="Todo draft" value={draft.title} onInput={event => setDraft({ id: draft.id, title: event.currentTarget.value, edits: draft.edits })} />
     <button className="edit-toggle" onClick={beginEditing}>Edit</button>
     {editing ? <ImportedInput editing defaultValue={todo.title} onSubmit={commitEdit} onBlur={commitEdit} /> : null}
     <button className="remove" onClick={removeItem}>Remove</button>

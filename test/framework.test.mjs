@@ -125,7 +125,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readRuntime(new URL("../", import.meta.url), "kudzu.js")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.57/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.8.58/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -142,12 +142,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.57"/)
-  assert.match(release, /Kudzu 0\.8\.57.*Start with the object.*Keep the draft separate/s)
-  assert.match(release, /SNAPSHOT · EDIT · COMMIT.*PLAIN-OBJECT PROP DRAFT STATE.*npm install @kudzujs\/core@\^0\.8\.57/s)
-  assert.match(release, /<title>Kudzu 0\.8\.57 - Plain-object prop draft state<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.57"/)
-  assert.match(release, /Prove the parent.*Own the draft/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.58"/)
+  assert.match(release, /Kudzu 0\.8\.58.*Keep the key.*Keep the draft/s)
+  assert.match(release, /CLONE · RETAIN · RELEASE.*KEYED ITEM DRAFT STATE.*npm install @kudzujs\/core@\^0\.8\.58/s)
+  assert.match(release, /<title>Kudzu 0\.8\.58 - Keyed item draft state<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.58"/)
+  assert.match(release, /Clone on mount.*Retain on reorder/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -3353,7 +3353,9 @@ test("compiles imported reducers to functional state updates", async t => {
 
   const html = await readFile(new URL("./fixtures/reducer/dist/index.html", import.meta.url), "utf8")
   const lazyHtml = await readFile(new URL("./fixtures/reducer/dist/lazy/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/reducer/dist/static/index.html", import.meta.url), "utf8")
   const handlerSource = await readFile(new URL("./fixtures/reducer/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const listRuntime = await readRuntime(fixture, "kudzu-list.js")
   const compiled = await readFile(new URL("./fixtures/reducer/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const lazyCompiled = await readFile(new URL("./fixtures/reducer/.kudzu/pages/lazy.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("./fixtures/reducer/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
@@ -3375,6 +3377,9 @@ test("compiles imported reducers to functional state updates", async t => {
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedControls.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedInput.js", import.meta.url)), false)
   assert.equal(existsSync(new URL("./fixtures/reducer/dist/assets/handlers/ImportedItem.js", import.meta.url)), false)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.match(listRuntime, /structuredClone\(/)
+  assert.match(listRuntime, /list-item/)
   assert.ok(plan.routes[0].events.some(event => event.native?.scope.todo?.type === "list-item"))
   for (const event of plan.routes[0].events.filter(event => event.native && "todos" in event.native.states)) {
     assert.equal(event.native.states.todos, "s0")
@@ -3384,6 +3389,7 @@ test("compiles imported reducers to functional state updates", async t => {
   assert.equal(editEvents.length, 2)
   for (const event of editEvents) assert.ok(Object.values(event.native.states).some(id => id === "s1:$k"))
   assert.equal(plan.routes[0].lists[0].rowStates[0].id.endsWith(":$k"), true)
+  assert.deepEqual(plan.routes[0].lists[0].rowStates.map(state => state.initializer), [undefined, "list-item"])
 
   const state = new Map([["s0", []]])
   const commits = []
@@ -3402,6 +3408,13 @@ test("rejects dynamic lazy reducer initializers", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Lazy useReducer\(\) initializer must directly return a serializable primitive, plain-object, or array literal derived only from its initial argument/)
+})
+
+test("rejects aliased keyed item state initializers", () => {
+  const fixture = new URL("./fixtures/keyed-item-state-invalid-alias", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Keyed row useState\(\) must use one directly serializable primitive, plain object, or array initial value or the direct keyed item prop/)
 })
 
 test("rejects reducers that are not relative imports", async t => {
@@ -3537,7 +3550,16 @@ try {
   await wait()
   const titles = () => [...document.querySelectorAll("li span")].map(row => row.textContent).join(",")
   if (document.querySelector("#count").textContent !== "5 todos" || titles() !== "Read,Ship,Local,Imported,Nested" || document.querySelector("#parent-title").textContent !== "Parent") throw new Error("reducer-dom")
+  const readRow = document.querySelector('[data-id="1"]')
   const editingRow = document.querySelector('[data-id="2"]')
+  const readDraft = readRow.querySelector(".todo-draft")
+  const shipDraft = editingRow.querySelector(".todo-draft")
+  shipDraft.value = "Private Ship"
+  shipDraft.dispatchEvent(new InputEvent("input", { bubbles: true }))
+  readDraft.value = "Committed Read"
+  readDraft.dispatchEvent(new InputEvent("input", { bubbles: true }))
+  await wait()
+  if (shipDraft.value !== "Private Ship" || readDraft.value !== "Committed Read" || editingRow.querySelector("span").textContent !== "Ship" || readRow.querySelector("span").textContent !== "Read") throw new Error("row-object-draft")
   editingRow.querySelector(".edit-toggle").click()
   await wait()
   let editInput = editingRow.querySelector("input.edit")
@@ -3546,29 +3568,29 @@ try {
   editInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }))
   editInput.dispatchEvent(new FocusEvent("blur"))
   await wait()
-  if (editingRow.classList.contains("editing") || editingRow.querySelector("input.edit") || editingRow.querySelector("span").textContent !== "Updated Ship" || editingRow.dataset.edits !== "1") throw new Error("row-edit-submit")
+  if (editingRow.classList.contains("editing") || editingRow.querySelector("input.edit") || editingRow.querySelector("span").textContent !== "Updated Ship" || editingRow.dataset.edits !== "1" || shipDraft.value !== "Private Ship") throw new Error("row-edit-submit")
   editingRow.querySelector(".edit-toggle").click()
   await wait()
   editInput = editingRow.querySelector("input.edit")
   editInput.value = "Blurred Ship"
   editInput.dispatchEvent(new FocusEvent("blur"))
   await wait()
-  if (editingRow.classList.contains("editing") || editingRow.querySelector("input.edit") || editingRow.querySelector("span").textContent !== "Blurred Ship" || editingRow.dataset.edits !== "2") throw new Error("row-edit-blur")
+  if (editingRow.classList.contains("editing") || editingRow.querySelector("input.edit") || editingRow.querySelector("span").textContent !== "Blurred Ship" || editingRow.dataset.edits !== "2" || shipDraft.value !== "Private Ship") throw new Error("row-edit-blur")
   editingRow.querySelector(".edit-toggle").click()
   await wait()
   editInput = editingRow.querySelector("input.edit")
   editInput.value = "Draft Ship"
   document.querySelector("#reverse").click()
   await wait()
-  if (document.querySelector('[data-id="2"]') !== editingRow || !editingRow.classList.contains("editing") || editingRow.querySelector("input.edit") !== editInput || editInput.value !== "Draft Ship" || titles() !== "Nested,Imported,Local,Blurred Ship,Read") throw new Error("row-reorder")
+  if (document.querySelector('[data-id="2"]') !== editingRow || !editingRow.classList.contains("editing") || editingRow.querySelector("input.edit") !== editInput || editingRow.querySelector(".todo-draft") !== shipDraft || editInput.value !== "Draft Ship" || shipDraft.value !== "Private Ship" || readDraft.value !== "Committed Read" || titles() !== "Nested,Imported,Local,Blurred Ship,Read") throw new Error("row-reorder")
   editInput.value = ""
   editInput.dispatchEvent(new FocusEvent("blur"))
   await wait()
-  if (document.querySelector("#count").textContent !== "4 todos" || document.querySelector('[data-id="2"]') || titles() !== "Nested,Imported,Local,Read") throw new Error("row-edit-empty-remove")
+  if (document.querySelector("#count").textContent !== "4 todos" || document.querySelector('[data-id="2"]') || shipDraft.isConnected || titles() !== "Nested,Imported,Local,Read") throw new Error("row-edit-empty-remove")
   document.querySelector("#restore").click()
   await wait()
   const restored = document.querySelector('[data-id="2"]')
-  if (!restored || restored === editingRow || restored.classList.contains("editing") || restored.querySelector("input.edit") || document.querySelector("#count").textContent !== "5 todos") throw new Error("row-state-cleanup")
+  if (!restored || restored === editingRow || restored.classList.contains("editing") || restored.querySelector("input.edit") || restored.querySelector(".todo-draft") === shipDraft || restored.querySelector(".todo-draft").value !== "Restored" || restored.querySelector("span").textContent !== "Restored" || restored.dataset.edits !== "0" || document.querySelector("#count").textContent !== "5 todos") throw new Error("row-state-cleanup")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

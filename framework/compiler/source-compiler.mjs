@@ -2182,6 +2182,7 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
   const analysis = { values: [], conditions: [], nested: [] }
   const root = parts.root
   const item = parts.item
+  for (const state of rowStates) if (state.initializer && state.initializer !== item) throw sourceNodeError(state.source.initializer, state.source.getSourceFile(), "Keyed row useState() item initializer must be the direct keyed item prop")
   const nestedDiagnostic = "Nested keyed list collections must be a direct property of the parent item"
   const validateElement = node => {
     const tag = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName
@@ -2492,13 +2493,15 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState") {
         const hookLabel = ordinaryHooks ? "Setter-callback component" : "Keyed row"
         const initialArgument = declaration.initializer.arguments[0]
-        const propReceiver = ordinaryHooks && initialArgument && (ts.isIdentifier(initialArgument) ? initialArgument : ts.isCallExpression(initialArgument) && initialArgument.arguments.length === 0 && !initialArgument.questionDotToken && ts.isPropertyAccessExpression(initialArgument.expression) && !initialArgument.expression.questionDotToken && initialArgument.expression.name.text === "toString" && ts.isIdentifier(initialArgument.expression.expression) ? initialArgument.expression.expression : undefined)
+        const propReceiver = initialArgument && (ordinaryHooks ? ts.isIdentifier(initialArgument) ? initialArgument : ts.isCallExpression(initialArgument) && initialArgument.arguments.length === 0 && !initialArgument.questionDotToken && ts.isPropertyAccessExpression(initialArgument.expression) && !initialArgument.expression.questionDotToken && initialArgument.expression.name.text === "toString" && ts.isIdentifier(initialArgument.expression.expression) ? initialArgument.expression.expression : undefined : ts.isIdentifier(initialArgument) ? initialArgument : undefined)
         const substitutedProp = propReceiver ? substitutions.get(propReceiver.text) : undefined
         const substitutedState = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) ? unwrapExpression(substitutedProp).text : undefined
         const directProp = ts.isIdentifier(initialArgument)
         const parentInitializer = substitutedState ? directStateInitializer(call, substitutedState) : undefined
-        const propInitializer = substitutedState && ordinaryStateNames.has(substitutedState) && parentInitializer && (isPrimitiveDefaultLiteral(parentInitializer) || directProp && ts.isObjectLiteralExpression(parentInitializer))
-        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct state prop initialized with a primitive or plain object; .toString() requires a primitive prop" : ""}; other dynamic initializers are not supported`)
+        const propInitializer = ordinaryHooks && substitutedState && ordinaryStateNames.has(substitutedState) && parentInitializer && (isPrimitiveDefaultLiteral(parentInitializer) || directProp && ts.isObjectLiteralExpression(parentInitializer))
+        const rowItemProp = propReceiver && elements.find(element => !element.dotDotDotToken && ts.isIdentifier(element.name) && element.name.text === propReceiver.text)
+        const rowItemInitializer = !ordinaryHooks && directProp && substitutedState && rowItemProp && directProps.has((rowItemProp.propertyName ?? rowItemProp.name).text)
+        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propInitializer && !rowItemInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct state prop initialized with a primitive or plain object; .toString() requires a primitive prop" : " or the direct keyed item prop"}; other dynamic initializers are not supported`)
         if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), `${hookLabel} useState() must use [state, setter] identifier destructuring`)
         const suffix = `${Math.max(0, call.pos)}_${ordinaryHooks ? ordinaryStates.length : rowStates.length}`
         const state = ordinaryHooks ? `__kComponentState${suffix}` : `__kRowState${suffix}`
@@ -2509,16 +2512,18 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(state)),
           factory.createBindingElement(undefined, undefined, factory.createIdentifier(setter))
         ])
-        const initialValue = propInitializer
+        const initialValue = rowItemInitializer
+          ? cloneAst(substitutedProp, factory, context)
+          : propInitializer
           ? ts.isIdentifier(initialArgument)
             ? factory.createPropertyAccessExpression(cloneAst(substitutedProp, factory, context), "value")
             : substituteClone(initialArgument, substitutions, factory, context)
           : cloneAst(initialArgument, factory, context)
         synthesizeTree(initialValue)
-        const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseState" : "__kRowUseState"), undefined, [initialValue])
+        const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseState" : "__kRowUseState"), undefined, rowItemInitializer ? [initialValue, factory.createStringLiteral(state), factory.createStringLiteral("list-item")] : [initialValue])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(binding, undefined, undefined, initializer)], ts.NodeFlags.Const)))
         if (ordinaryHooks) ordinaryStates.push({ state, setter, source: declaration })
-        else rowStates.push({ state, setter, source: declaration })
+        else rowStates.push({ state, setter, source: declaration, ...(rowItemInitializer ? { initializer: substitutedState } : {}) })
         continue
       }
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useRef") {

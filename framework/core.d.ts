@@ -125,7 +125,7 @@ export type ListDescriptor = {
   expressions?: true
   expressionAttributes?: true
   expressionStates?: string[]
-  rowStates?: Array<{ id: string; initialValue: unknown }>
+  rowStates?: Array<{ id: string; initialValue: unknown; initializer?: "list-item" }>
   rowConditions?: string[]
   rowRefs?: string[]
   fastRelease?: true
