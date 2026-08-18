@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.60 - Array draft effect sync.** A specialized child can synchronize direct prop-derived array draft state through its matching parent setter in an ordinary dependency effect without a component runtime. Read the [release notes](./RELEASES.md#0860---array-draft-effect-sync), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.60), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.61 - Parameterized debounce hooks.** Relative `useDebounce(state, literalDelay)` hooks compile through existing state, effect, timeout cleanup, and ownership paths without a debounce runtime. Read the [release notes](./RELEASES.md#0861---parameterized-debounce-hooks), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.61), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

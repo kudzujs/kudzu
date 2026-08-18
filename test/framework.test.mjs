@@ -2251,6 +2251,40 @@ test("rejects dynamic private custom-hook timer delays", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/hooks\/useFlash\.ts:\d+:\d+ Private timeout refs require setTimeout\(\) with one zero-argument callback and a numeric literal delay/)
 })
 
+test("specializes a parameterized primitive debounce hook", async t => {
+  const fixture = new URL("./fixtures/parameterized-debounce-hook", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/parameterized-debounce-hook/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/parameterized-debounce-hook/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/parameterized-debounce-hook/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/parameterized-debounce-hook/dist/static/index.html", import.meta.url), "utf8")
+  const hook = await readFile(new URL("./fixtures/parameterized-debounce-hook/.kudzu/useDebounce.mjs", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/parameterized-debounce-hook/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /id="toggle".*id="query".*id="debounced"/s)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.match(hook, /useState\(value\.value, "debouncedValue"\)/)
+  assert.doesNotMatch(hook, /from ["']react["']/)
+  assert.equal(route.effects.length, 1)
+  assert.deepEqual(route.effects[0].dependencies, [route.states.find(state => state.name === "query").id])
+  assert.deepEqual(route.effects[0].scope, { delay: 80 })
+  assert.equal(route.effects[0].cleanup, true)
+  assert.ok(route.effects[0].owner)
+  const deployFiles = await readdir(new URL("./fixtures/parameterized-debounce-hook/dist/assets/", import.meta.url), { recursive: true })
+  assert.ok(!deployFiles.some(file => /kudzu-(?:debounce|timer)/.test(file)))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runParameterizedDebounceBrowserTest(fixture, chrome)
+})
+
+test("rejects dynamic parameterized debounce delays", () => {
+  const fixture = new URL("./fixtures/parameterized-debounce-hook-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Parameterized debounce hook delays must be numeric literals/)
+})
+
 test("rejects dynamic React Router Link destinations", () => {
   const fixture = new URL("./fixtures/react-router-link-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
@@ -3706,6 +3740,63 @@ try {
   await wait()
   if (labels() !== "Solar,Wind") throw new Error("commit")
   `}
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runParameterizedDebounceBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+const type = value => {
+  const input = document.querySelector("#query")
+  input.value = value
+  input.dispatchEvent(new InputEvent("input", { bubbles: true }))
+}
+try {
+  await wait(20)
+  type("a")
+  await wait(30)
+  type("ab")
+  await wait(40)
+  const staleOutput = document.querySelector("#debounced")
+  if (staleOutput.textContent !== "") throw new Error("early-commit")
+  document.querySelector("#toggle").click()
+  await wait(100)
+  if (staleOutput.isConnected || staleOutput.textContent !== "") throw new Error("cleanup")
+  document.querySelector("#toggle").click()
+  await wait(20)
+  if (document.querySelector("#debounced").textContent !== "") throw new Error("fresh-remount")
+  type("x")
+  await wait(30)
+  type("xy")
+  await wait(100)
+  if (document.querySelector("#debounced").textContent !== "xy") throw new Error("latest-value")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

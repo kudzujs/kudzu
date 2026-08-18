@@ -240,6 +240,60 @@ function normalizeLazyStateInitializers(sourceFile, factory, context, file, sour
   return ts.visitNode(sourceFile, visitor)
 }
 
+function parameterizedDebounceHook(hook) {
+  if (!hook || hook.parameters.length !== 2 || hook.asteriskToken || hook.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || !ts.isBlock(hook.body) || hook.body.statements.length !== 3) return undefined
+  const sourceFile = hook.getSourceFile()
+  if (!hasFrameworkImport(sourceFile, "useState") || !hasFrameworkImport(sourceFile, "useEffect")) return undefined
+  const [valueParameter, delayParameter] = hook.parameters
+  if (!ts.isIdentifier(valueParameter.name) || valueParameter.initializer || valueParameter.dotDotDotToken || !ts.isIdentifier(delayParameter.name) || delayParameter.initializer || delayParameter.dotDotDotToken) return undefined
+  const [stateStatement, effectStatement, returnStatement] = hook.body.statements
+  if (!ts.isVariableStatement(stateStatement) || !(stateStatement.declarationList.flags & ts.NodeFlags.Const) || stateStatement.declarationList.declarations.length !== 1) return undefined
+  const stateDeclaration = stateStatement.declarationList.declarations[0]
+  if (!ts.isArrayBindingPattern(stateDeclaration.name) || stateDeclaration.name.elements.length !== 2 || !ts.isIdentifier(stateDeclaration.name.elements[0]?.name) || !ts.isIdentifier(stateDeclaration.name.elements[1]?.name) || !stateDeclaration.initializer || !ts.isCallExpression(stateDeclaration.initializer) || !ts.isIdentifier(stateDeclaration.initializer.expression) || stateDeclaration.initializer.expression.text !== "useState" || stateDeclaration.initializer.arguments.length !== 1) return undefined
+  const stateArgument = unwrapExpression(stateDeclaration.initializer.arguments[0])
+  const directValue = ts.isIdentifier(stateArgument) && stateArgument.text === valueParameter.name.text
+  const normalizedValue = ts.isPropertyAccessExpression(stateArgument) && ts.isIdentifier(stateArgument.expression) && stateArgument.expression.text === valueParameter.name.text && stateArgument.name.text === "value"
+  if (!directValue && !normalizedValue) return undefined
+  if (!ts.isExpressionStatement(effectStatement) || !ts.isCallExpression(effectStatement.expression) || !ts.isIdentifier(effectStatement.expression.expression) || effectStatement.expression.expression.text !== "useEffect" || effectStatement.expression.arguments.length !== 2) return undefined
+  const [setup, dependencies] = effectStatement.expression.arguments
+  if ((!ts.isArrowFunction(setup) && !ts.isFunctionExpression(setup)) || setup.parameters.length || setup.asteriskToken || setup.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) || !ts.isBlock(setup.body) || setup.body.statements.length !== 2 || !ts.isArrayLiteralExpression(dependencies)) return undefined
+  const normalizedDependencies = dependencies.elements.length === 1 && ts.isIdentifier(dependencies.elements[0]) && dependencies.elements[0].text === valueParameter.name.text
+  const sourceDependencies = dependencies.elements.length === 2 && ts.isIdentifier(dependencies.elements[0]) && dependencies.elements[0].text === valueParameter.name.text && ts.isIdentifier(dependencies.elements[1]) && dependencies.elements[1].text === delayParameter.name.text
+  if (!normalizedDependencies && !sourceDependencies) return undefined
+  const timerStatement = setup.body.statements[0]
+  if (!ts.isVariableStatement(timerStatement) || !(timerStatement.declarationList.flags & ts.NodeFlags.Const) || timerStatement.declarationList.declarations.length !== 1) return undefined
+  const timerDeclaration = timerStatement.declarationList.declarations[0]
+  if (!ts.isIdentifier(timerDeclaration.name) || !timerDeclaration.initializer || !ts.isCallExpression(timerDeclaration.initializer) || !ts.isIdentifier(timerDeclaration.initializer.expression) || timerDeclaration.initializer.expression.text !== "setTimeout" || !isUnshadowedGlobal(timerDeclaration.initializer.expression, sourceFile) || timerDeclaration.initializer.arguments.length !== 2 || !ts.isIdentifier(timerDeclaration.initializer.arguments[1]) || timerDeclaration.initializer.arguments[1].text !== delayParameter.name.text) return undefined
+  const timeoutCallback = timerDeclaration.initializer.arguments[0]
+  const timeoutBody = (ts.isArrowFunction(timeoutCallback) || ts.isFunctionExpression(timeoutCallback)) && !timeoutCallback.parameters.length && !timeoutCallback.asteriskToken && !timeoutCallback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword) ? timeoutCallback.body : undefined
+  const setterCall = timeoutBody && (ts.isBlock(timeoutBody) ? timeoutBody.statements.length === 1 && ts.isExpressionStatement(timeoutBody.statements[0]) ? timeoutBody.statements[0].expression : undefined : timeoutBody)
+  if (!setterCall || !ts.isCallExpression(setterCall) || !ts.isIdentifier(setterCall.expression) || setterCall.expression.text !== stateDeclaration.name.elements[1].name.text || setterCall.arguments.length !== 1 || !ts.isIdentifier(setterCall.arguments[0]) || setterCall.arguments[0].text !== valueParameter.name.text) return undefined
+  const cleanupReturn = setup.body.statements[1]
+  const cleanup = ts.isReturnStatement(cleanupReturn) && cleanupReturn.expression && (ts.isArrowFunction(cleanupReturn.expression) || ts.isFunctionExpression(cleanupReturn.expression)) && !cleanupReturn.expression.parameters.length ? cleanupReturn.expression : undefined
+  const cleanupBody = cleanup && (ts.isBlock(cleanup.body) ? cleanup.body.statements.length === 1 && ts.isExpressionStatement(cleanup.body.statements[0]) ? cleanup.body.statements[0].expression : undefined : cleanup.body)
+  if (!cleanupBody || !ts.isCallExpression(cleanupBody) || !ts.isIdentifier(cleanupBody.expression) || cleanupBody.expression.text !== "clearTimeout" || !isUnshadowedGlobal(cleanupBody.expression, sourceFile) || cleanupBody.arguments.length !== 1 || !ts.isIdentifier(cleanupBody.arguments[0]) || cleanupBody.arguments[0].text !== timerDeclaration.name.text) return undefined
+  if (!ts.isReturnStatement(returnStatement) || !returnStatement.expression || !ts.isIdentifier(returnStatement.expression) || returnStatement.expression.text !== stateDeclaration.name.elements[0].name.text) return undefined
+  return { dependencies, delay: delayParameter.name.text, normalized: normalizedValue && normalizedDependencies, stateCall: stateDeclaration.initializer, state: stateDeclaration.name.elements[0].name.text, setter: stateDeclaration.name.elements[1].name.text, value: valueParameter.name.text }
+}
+
+function normalizeParameterizedDebounceHooks(sourceFile, factory, context) {
+  const visitor = node => {
+    if (ts.isFunctionDeclaration(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+      const hook = parameterizedDebounceHook(node)
+      if (hook && !hook.normalized) {
+        const rewrite = current => {
+          if (current === hook.stateCall) return factory.updateCallExpression(current, current.expression, current.typeArguments, [factory.createPropertyAccessExpression(factory.createIdentifier(hook.value), "value")])
+          if (current === hook.dependencies) return factory.updateArrayLiteralExpression(current, [factory.createIdentifier(hook.value)])
+          return ts.visitEachChild(current, rewrite, context)
+        }
+        return ts.visitEachChild(node, rewrite, context)
+      }
+    }
+    return ts.visitEachChild(node, visitor, context)
+  }
+  return ts.visitNode(sourceFile, visitor)
+}
+
 function normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedStaticCollections, sourceFiles, sourceIndex }) {
   const factory = context.factory
   let customHookTimerStates = new Set()
@@ -250,6 +304,7 @@ function normalizeCompilerSource(sourceFile, { base, context, file, importedColl
     source => normalizeMediaQueryExternalStores(source, factory, context),
     source => normalizeReactMigrationSyntax(source, factory, context, importedCollections ?? importedSerializableCollectionNames(source, file, sourceFiles, sourceIndex)),
     source => normalizeNavigatorCapabilityConditions(source, factory, context),
+    source => normalizeParameterizedDebounceHooks(source, factory, context),
     source => normalizeEffectPrivateRefs(source, factory, context),
     source => {
       const result = normalizeCustomHookTimerRefs(source, factory, context)
@@ -365,6 +420,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const components = new Map()
     const contexts = new Set()
     const customHooks = new Map()
+    const parameterizedDebounceCalls = new WeakSet()
+    const resolvedParameterizedDebounceHooks = new Map()
     const jsxLocalDeclarations = new Map()
     const jsxLocalsByFunction = new Map()
     const listLocalDeclarations = []
@@ -550,11 +607,36 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       customHooks.set(key, analysis)
       return analysis
     }
+    const resolveParameterizedDebounceHook = binding => {
+      const exportName = binding.kind === "default" ? "default" : binding.imported
+      const key = `${binding.target}:${exportName}`
+      if (resolvedParameterizedDebounceHooks.has(key)) return resolvedParameterizedDebounceHooks.get(key)
+      const hook = resolveComponentExport(binding.target, exportName, importedSource, sourceFiles)
+      const analysis = parameterizedDebounceHook(hook)
+      resolvedParameterizedDebounceHooks.set(key, analysis)
+      return analysis
+    }
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
         const callName = ts.isIdentifier(node.initializer.expression) ? node.initializer.expression.text : ""
-        if (callName && /^use[A-Z]/.test(callName) && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace" && !resolvedSharedState(importBindings.get(callName))) {
+        const customHookImport = callName && /^use[A-Z]/.test(callName) && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace" && !resolvedSharedState(importBindings.get(callName))
+        const debounce = customHookImport && ts.isIdentifier(node.name) ? resolveParameterizedDebounceHook(importBindings.get(callName)) : undefined
+        if (debounce) {
+          if (!isLocalConst(node)) throw sourceNodeError(node, sourceFile, "Parameterized debounce hooks must initialize one top-level const identifier")
+          const owner = nearestFunction(node)
+          const value = node.initializer.arguments[0] && unwrapExpression(node.initializer.arguments[0])
+          const delay = node.initializer.arguments[1] && unwrapExpression(node.initializer.arguments[1])
+          const setters = owner ? settersByFunction.get(owner) ?? new Map() : new Map()
+          if (!owner) throw sourceNodeError(node, sourceFile, "Parameterized debounce hooks cannot be used outside a Kudzu component")
+          if (node.initializer.arguments.length !== 2 || !ts.isIdentifier(value) || !new Set(setters.values()).has(value.text) || !componentHasDirectPrimitiveState(owner, value.text)) throw sourceNodeError(node.initializer, sourceFile, "Parameterized debounce hooks require one direct primitive state argument")
+          if (!ts.isNumericLiteral(delay)) throw sourceNodeError(node.initializer.arguments[1] ?? node.initializer, sourceFile, "Parameterized debounce hook delays must be numeric literals")
+          const syntheticSetter = `__kSetDebounced_${Math.max(0, node.pos)}`
+          setters.set(syntheticSetter, node.name.text)
+          registerState(owner, node.name.text, syntheticSetter, "custom-hook", node)
+          settersByFunction.set(owner, setters)
+          parameterizedDebounceCalls.add(node.initializer)
+        } else if (customHookImport) {
           if (!isLocalConst(node) || !ts.isObjectBindingPattern(node.name) || node.initializer.arguments.length) throw sourceNodeError(node, sourceFile, "Relative custom hooks must initialize one top-level const object destructuring with no arguments")
           const hook = resolveCustomHook(importBindings.get(callName), node.initializer)
           const names = new Set()
@@ -711,6 +793,13 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (node.parent === sourceFile) {
           components.set(node.name.text, { function: node, declaration: node })
           ensureOwner(node)
+          const debounce = parameterizedDebounceHook(node)
+          if (debounce) {
+            const setters = settersByFunction.get(node) ?? new Map()
+            setters.set(`__kDebounceSource_${Math.max(0, node.pos)}`, debounce.value)
+            registerState(node, debounce.value, `__kDebounceSource_${Math.max(0, node.pos)}`, "custom-hook", node.parameters[0])
+            settersByFunction.set(node, setters)
+          }
         }
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) {
@@ -736,7 +825,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         }
       }
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === "createContext") contexts.add(node.name.text)
-      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isLocalConst(node)) {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && isLocalConst(node) && !(ts.isCallExpression(node.initializer) && parameterizedDebounceCalls.has(node.initializer))) {
         const owner = nearestFunction(node)
         const declarations = jsxLocalDeclarations.get(owner) ?? new Map()
         const entries = declarations.get(node.name.text) ?? []
@@ -1857,6 +1946,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
 
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && importBindings.has(node.initializer.expression.text)) {
+        if (parameterizedDebounceCalls.has(node.initializer)) return node
         const setters = settersForNode(node, settersByFunction)
         const stateNames = new Set(setters.values())
         const rewrite = current => {
@@ -2146,6 +2236,10 @@ function componentHasDirectPropStateInitializer(component) {
   if (!component || component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name) || !ts.isBlock(component.body)) return false
   const props = new Set(component.parameters[0].name.elements.filter(element => !element.dotDotDotToken && ts.isIdentifier(element.name)).map(element => element.name.text))
   return component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isIdentifier(declaration.initializer.arguments[0]) && props.has(declaration.initializer.arguments[0].text)))
+}
+
+function componentHasDirectPrimitiveState(component, state) {
+  return Boolean(component && ts.isBlock(component.body) && component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isArrayBindingPattern(declaration.name) && ts.isIdentifier(declaration.name.elements[0]?.name) && declaration.name.elements[0].name.text === state && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && isPrimitiveDefaultLiteral(unwrapExpression(declaration.initializer.arguments[0])))))
 }
 
 function componentHasDirectArrayState(component, state) {

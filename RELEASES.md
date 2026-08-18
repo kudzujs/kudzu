@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.61 - Parameterized debounce hooks
+
+Kudzu 0.8.61 compiles the common relative `useDebounce(state, literalDelay)` custom-hook shape through existing state and effect ownership.
+
+### Changed in 0.8.61
+
+- A named or default relative synchronous hook may accept one direct primitive state value and one numeric literal delay.
+- The hook may initialize one state from that value, own one timeout dependency effect with exact cleanup, and directly return the debounced state.
+- The compiler preserves the source signal dependency, treats the literal delay as stable scope, and initializes the debounced signal from the source signal's build value.
+
+### Boundaries
+
+- The hook body must be the direct `useState(value)`, `useEffect()`, and returned-state shape proven by the ClimateCompatibleGrowth fixture.
+- Dynamic delays, non-primitive source state, aliases, additional statements/effects, intervals, and missing timeout cleanup remain rejected.
+- No debounce/timer runtime, component tree, hydration, or new effect capability is added.
+
+### Validation
+
+- A fixture reduced from ClimateCompatibleGrowth's MIT-licensed `useDebouce.ts` preserves its generic parameterized custom-hook source shape.
+- Browser coverage proves rapid replacement, pending-timeout cleanup on conditional removal, fresh remount state, and latest-value commit.
+- A static sibling remains zero JavaScript and dynamic delay input fails at its authored call site.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 230 tests and 174 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.61
+```
+
 ## 0.8.60 - Array draft effect sync
 
 Kudzu 0.8.60 lets a specialized child synchronize direct prop-derived array draft state through the matching parent setter in an ordinary dependency effect.
