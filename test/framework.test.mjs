@@ -1014,6 +1014,68 @@ test("rejects dynamic reactive Intl locales", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Reactive JSX Intl\.NumberFormat requires exactly one static string locale/)
 })
 
+test("compiles a selected Derived field as an effect dependency", async t => {
+  const fixture = new URL("./fixtures/derived-medusa-product-actions", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/derived-medusa-product-actions/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/derived-medusa-product-actions/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const derived = source.moduleIR.derived.find(entry => entry.kind === "calculation")
+  assert.deepEqual(derived.calculation, { binding: 0, fields: ["id", "price", "available"] })
+  assert.deepEqual(derived.signals, [0, 1])
+  assert.deepEqual(source.moduleIR.bindings[0].signals, [0, 1])
+  assert.deepEqual(source.moduleIR.bindings[1].derived, { derived: derived.slot, fields: ["price"] })
+  assert.deepEqual(source.moduleIR.bindings[2].derived, { derived: derived.slot, fields: ["available"] })
+  assert.deepEqual(source.moduleIR.effects[0].dependencies, [{ kind: "derived", derived: derived.slot, sources: [0, 1], field: "id", evaluator: 0 }])
+  assert.deepEqual(source.moduleIR.effects[0].subscriptions, [0, 1])
+
+  const html = await readFile(new URL("./fixtures/derived-medusa-product-actions/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/derived-medusa-product-actions/dist/static/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/derived-medusa-product-actions/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  const effectEntry = await readFile(new URL("./fixtures/derived-medusa-product-actions/dist/assets/effects/index.js", import.meta.url), "utf8")
+  assert.match(html, /<output>.*20,000.*<button[^>]*>Add to cart/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(plan.effects[0].dependencyEvaluators[0].field, "id")
+  assert.deepEqual(plan.effects[0].dependencyEvaluators[0].states, { color: "s0", size: "s1" })
+  assert.match(effectEntry, /calculated dependency/)
+  assert.doesNotMatch(effectEntry, /evaluateCollectionExpression|kudzu-collection-selector/)
+  assert.equal(await hasRuntime("derived-medusa-product-actions", "kudzu-collection-selector.js"), false)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runDerivedCalculationBrowserTest(fixture, chrome)
+})
+
+test("reuses one Derived identity for an unrelated financial projection", async t => {
+  const fixture = new URL("./fixtures/derived-mercury-profit-sharing", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/derived-mercury-profit-sharing/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/derived-mercury-profit-sharing/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const derived = source.moduleIR.derived.find(entry => entry.kind === "calculation")
+  assert.deepEqual(derived.calculation, { binding: 0, fields: ["totalProfit", "totalRevenue", "rows"] })
+  assert.deepEqual(derived.signals, [0, 1, 2, 3])
+  assert.deepEqual(source.moduleIR.effects[0].dependencies, [{ kind: "derived", derived: derived.slot, sources: [0, 1, 2, 3], field: "totalProfit", evaluator: 0 }])
+  const calculatedBlock = source.moduleIR.keyedBlocks.find(block => block.collection.kind === "binding")
+  assert.ok(calculatedBlock)
+  assert.deepEqual(source.moduleIR.bindings[calculatedBlock.collection.binding].derived, { derived: derived.slot, fields: ["rows"] })
+
+  const html = await readFile(new URL("./fixtures/derived-mercury-profit-sharing/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/derived-mercury-profit-sharing/dist/static/index.html", import.meta.url), "utf8")
+  assert.match(html, /data-revenue[^>]*>.*2310.*data-profit[^>]*>.*462/s)
+  assert.match(html, /data-year="1"[^>]*>.*1100.*220.*data-year="2"[^>]*>.*1210.*242/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(await hasRuntime("derived-mercury-profit-sharing", "kudzu-collection-selector.js"), false)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runMercuryDerivedBrowserTest(fixture, chrome)
+})
+
 test("compiles conditional DOM branches with nested behavior", async t => {
   const fixture = new URL("./fixtures/conditionals", import.meta.url)
   t.after(async () => {
@@ -4946,7 +5008,7 @@ http.createServer((request, response) => {
           if (!canvas) await new Promise(resolve => setTimeout(resolve, 20))
         }
         if (!canvas) throw new Error("chart did not load")
-        for (let index = 0; index < 300 && Number(canvas.dataset.generated) < 1130 && !canvas.dataset.workerError; index++) await new Promise(resolve => setTimeout(resolve, 20))
+        for (let index = 0; index < 300 && Number(canvas.dataset.generated ?? 0) < 1130 && !canvas.dataset.workerError; index++) await new Promise(resolve => setTimeout(resolve, 20))
         return { ...canvas.dataset }
       })()
     `, port + 1, new URL(".chrome-worker-profile", output))
@@ -6695,6 +6757,111 @@ http.createServer((request, response) => {
     const effectOnly = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/only/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(effectOnly.status, 0, effectOnly.stderr)
     assert.match(effectOnly.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runDerivedCalculationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 100))
+try {
+  await wait()
+  const buttons = [...document.querySelectorAll("main button")]
+  const output = document.querySelector("output")
+  const cart = buttons.at(-1)
+  if (document.body.dataset.variant !== "black-m" || document.body.dataset.variantRuns !== "1" || output.textContent !== "20,000" || cart.disabled) throw new Error("initial")
+  buttons[0].click()
+  await wait()
+  if (document.body.dataset.variantRuns !== "1") throw new Error("object-is")
+  buttons[1].click()
+  await wait()
+  if (document.body.dataset.variant !== "ivory-m" || document.body.dataset.variantRuns !== "2" || output.textContent !== "20,000" || !cart.disabled) throw new Error("ivory-medium")
+  buttons[2].click()
+  await wait()
+  if (document.body.dataset.variant !== "ivory-s" || document.body.dataset.variantRuns !== "3" || output.textContent !== "19,000" || cart.disabled) throw new Error("ivory-small")
+  document.body.dataset.derivedCalculationTest = "pass"
+} catch (error) {
+  document.body.dataset.derivedCalculationTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url === "/" ? "index.html" : request.url.slice(1)
+  const file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-derived-calculation-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runMercuryDerivedBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 100))
+try {
+  await wait()
+  const buttons = [...document.querySelectorAll("main button")]
+  const revenue = document.querySelector("[data-revenue]")
+  const profit = document.querySelector("[data-profit]")
+  const rows = () => [...document.querySelectorAll("[data-year]")]
+  const first = rows()[0]
+  const second = rows()[1]
+  if (document.body.dataset.totalProfit !== "462" || revenue.textContent !== "2310" || profit.textContent !== "462" || rows().length !== 2) throw new Error("initial")
+  buttons[0].click()
+  await wait()
+  if (revenue.textContent !== "4620" || profit.textContent !== "924" || rows()[0] !== first || rows()[1] !== second) throw new Error("inputs")
+  buttons[3].click()
+  await wait()
+  const third = rows()[2]
+  if (rows().length !== 3 || rows()[0] !== first || rows()[1] !== second || !third || revenue.textContent !== "7282" || profit.textContent !== "1456") throw new Error("append")
+  buttons[4].click()
+  await wait()
+  if (rows().length !== 2 || third.isConnected) throw new Error("remove")
+  buttons[3].click()
+  await wait()
+  if (rows().length !== 3 || rows()[2] === third || rows()[0] !== first || rows()[1] !== second) throw new Error("restore")
+  document.body.dataset.mercuryDerivedTest = "pass"
+} catch (error) {
+  document.body.dataset.mercuryDerivedTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url === "/" ? "index.html" : request.url.slice(1)
+  const file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-mercury-derived-test="pass"/)
   } finally {
     server.kill()
   }

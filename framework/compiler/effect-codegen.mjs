@@ -6,6 +6,7 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, runt
   const hasDependencies = effects.some(effect => effect.dependencies?.length || effect.itemDependencies?.length)
   const hasOwners = effects.some(effect => effect.owner)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -101,7 +102,7 @@ async function flush() {
   }
 }
 function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
   return (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
     if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
@@ -180,6 +181,7 @@ addEventListener("pagehide", event => {
 
 function printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base) {
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -257,7 +259,7 @@ function mount(lifetime) {
     }
   }
   function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("__kRuntime.browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
     return (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
       if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
@@ -303,6 +305,7 @@ ${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState
 function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -481,7 +484,7 @@ function mount(lifetime) {
     }
   }
   function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("__kRuntime.browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
     const values = (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
       if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
@@ -554,18 +557,25 @@ ${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState
 }`
 }
 
-function printDerivedDependencyRead(state) {
-  return `    if (record.effect.dependencyExpressions) return record.effect.dependencyExpressions.map(expression => {
+function printDerivedDependencyRead(state, hasExpressions, hasEvaluators) {
+  return `${hasEvaluators ? `    if (record.effect.dependencyEvaluators) return record.effect.dependencyEvaluators.map(evaluator => {
+      const result = modules.get(evaluator.module)[evaluator.handler](createEffectContext(${state}, evaluator.states, () => {}, evaluator.scope))
+      const value = result[evaluator.field]
+      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() calculated dependency must remain a JSON-safe primitive")
+      return value
+    })
+` : ""}${hasExpressions ? `    if (record.effect.dependencyExpressions) return record.effect.dependencyExpressions.map(expression => {
       const value = __kEvaluateDependency(expression, undefined, undefined, name => ${state}.get(record.effect.dependencyStates[name]))
       if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() derived dependency must remain a JSON-safe primitive")
       return value
-    })`
+    })` : ""}`
 }
 
 function printOwnedEffectEntry(imports, effects, entries) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasOrdinaryDependencies = effects.some(effect => effect.dependencies?.length)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
   const hasRowState = effects.some(effect => JSON.stringify([effect.dependencies, effect.dependencyStates, effect.states, effect.scope]).includes("$k"))
   return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
@@ -730,7 +740,7 @@ async function flush() {
   }
 }
 function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
   const values = (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
     if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")

@@ -27,14 +27,16 @@ The active milestone is [`0.9-semantic-compression.md`](./0.9-semantic-compressi
 
 1. [`0.9-semantic-compression.md`](./0.9-semantic-compression.md): active scope, ordered queue, evidence, and release gates.
 2. [`0.9-implementation-plan.md`](./0.9-implementation-plan.md): detailed session packets, benchmark plan, reports, and release procedure.
-3. [`compiler-current-architecture.md`](./compiler-current-architecture.md): exact current responsibilities and data flow.
-4. [`performance-gates.md`](./performance-gates.md): output, build, and browser gates.
-5. [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md): completed foundation, longer-term direction, and completion evidence.
-6. [`goal-a-compiler-foundation.md`](./goal-a-compiler-foundation.md): completed extraction and generator foundation.
-7. [`versioning.md`](./versioning.md): completed patch sequence and future sequencing rules.
-8. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): active measurements, retained optimizations, and continuation rules.
-9. [`goal-c-state-resource-research.md`](./goal-c-state-resource-research.md): research boundary only.
-10. [`goal-d-routing-compatibility-decisions.md`](./goal-d-routing-compatibility-decisions.md): routing and islands decisions.
+3. [`0.9-baseline.md`](./0.9-baseline.md): dated architecture, pass, IR, runtime-concept, LOC, and test baseline.
+4. [`0.9-benchmark-contracts.md`](./0.9-benchmark-contracts.md): frozen matched-content, stateful, commerce, scale, resource, and anti-gaming contracts.
+5. [`compiler-current-architecture.md`](./compiler-current-architecture.md): exact current responsibilities and data flow.
+6. [`performance-gates.md`](./performance-gates.md): output, build, and browser gates.
+7. [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md): completed foundation, longer-term direction, and completion evidence.
+8. [`goal-a-compiler-foundation.md`](./goal-a-compiler-foundation.md): completed extraction and generator foundation.
+9. [`versioning.md`](./versioning.md): completed patch sequence and future sequencing rules.
+10. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): active measurements, retained optimizations, and continuation rules.
+11. [`goal-c-state-resource-research.md`](./goal-c-state-resource-research.md): research boundary only.
+12. [`goal-d-routing-compatibility-decisions.md`](./goal-d-routing-compatibility-decisions.md): routing and islands decisions.
 
 ## Resume Checklist
 

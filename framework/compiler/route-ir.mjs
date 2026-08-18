@@ -76,6 +76,13 @@ function assertEffect(effect, index, ids, lists) {
   if (new Set(effect.dependencies ?? []).size !== (effect.dependencies ?? []).length) throw new Error(`${label} has duplicate dependencies`)
   for (const state of Object.values(effect.dependencyStates ?? {})) if (!ids.has(state) && !rowTemplate(state)) throw new Error(`${label} derived dependency references missing state ${JSON.stringify(state)}`)
   if (effect.dependencyExpressions !== undefined && !Array.isArray(effect.dependencyExpressions) || effect.itemDependencies !== undefined && (!Array.isArray(effect.itemDependencies) || effect.itemDependencies.some(field => !nonempty(field)))) throw new Error(`${label} has invalid dependencies`)
+  if (effect.dependencyEvaluators !== undefined) {
+    if (!Array.isArray(effect.dependencyEvaluators) || !effect.dependencyEvaluators.length) throw new Error(`${label} has invalid calculation dependency evaluators`)
+    for (const [dependencyIndex, evaluator] of effect.dependencyEvaluators.entries()) {
+      assertReactiveDescriptor(evaluator, `${label} calculation dependency ${dependencyIndex}`, ids)
+      if (!nonempty(evaluator.field) || ["__proto__", "constructor", "prototype"].includes(evaluator.field)) throw new Error(`${label} calculation dependency ${dependencyIndex} has invalid field`)
+    }
+  }
   if (effect.itemDependencies?.length) {
     if (!nonempty(effect.listState) || !lists.some(list => list.state === effect.listState) || !effect.owner) throw new Error(`${label} item dependencies require a matching owned list`)
   }

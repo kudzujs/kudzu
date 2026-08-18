@@ -154,6 +154,7 @@ export interface RouteIR {
     dependencies?: string[]
     dependencyExpressions?: unknown[]
     dependencyStates?: Record<string, string>
+    dependencyEvaluators?: Array<{ module: string; handler: string; states: Record<string, string>; scope: Record<string, unknown>; field: string }>
     itemDependencies?: string[]
     listState?: string
     cleanup?: true

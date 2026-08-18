@@ -3,7 +3,7 @@ import { nearestFunction, referencesIdentifier, unwrapExpression } from "./ast-h
 import { collectionExpression } from "./collection-analysis.mjs"
 import { referencedStateNames } from "./descriptor-session.mjs"
 
-export function analyzeEffectDependencies({ dependencies, node, listEffect, keyedItem, setters, localDeclarations, factory, fail, bindingIndex }) {
+export function analyzeEffectDependencies({ dependencies, node, listEffect, keyedItem, setters, localDeclarations, factory, fail, bindingIndex, resolveCalculation }) {
   const itemDependencies = []
   const ordinaryDependencies = []
   let dependencyItem = listEffect ? keyedItem : undefined
@@ -29,6 +29,17 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
   let hasDerived = false
   const stateNames = new Set(setters.values())
   for (const dependency of ordinaryDependencies) {
+    const calculation = resolveCalculation?.(dependency)
+    if (calculation) {
+      entries.push({ kind: "calculation", ...calculation })
+      for (const name of calculation.states) {
+        subscriptions.push(factory.createIdentifier(name))
+        dependencyStates.set(name, factory.createIdentifier(name))
+      }
+      substitutions.set(calculation.name, calculation.call)
+      hasDerived = true
+      continue
+    }
     const direct = ts.isIdentifier(dependency)
     if (!direct && !statePropertyDependency(dependency, stateNames)) fail(dependency, "useEffect() dependencies must be direct state or runtime parameter identifiers or property reads")
     const declarations = direct ? localDeclarations?.get(dependency.text) : undefined
@@ -56,7 +67,7 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
       dependencyStates.set(dependency.text, dependency)
     }
   }
-  const derivedSourceNames = new Set(entries.filter(entry => entry.kind === "derived").flatMap(entry => [...entry.states]))
+  const derivedSourceNames = new Set(entries.filter(entry => entry.kind !== "signal").flatMap(entry => [...entry.states]))
   const ambiguous = entries.find(entry => entry.kind === "signal" && derivedSourceNames.has(entry.name))
   if (ambiguous) fail(ordinaryDependencies[entries.indexOf(ambiguous)], `useEffect() cannot mix whole-object and property dependencies for state ${JSON.stringify(ambiguous.name)}`)
   if (!hasDerived) dependencyStates.clear()

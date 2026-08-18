@@ -503,6 +503,16 @@ test("validates ModuleIR v2 structural references after JSON round-tripping", ()
   const duplicateExport = valid()
   duplicateExport.bindings[0].exportName = "effect0"
   assert.throws(() => assertModuleIRReferences(duplicateExport, analysis), /export "effect0" is declared by both/)
+  const calculation = valid()
+  calculation.derived[0] = { slot: 0, kind: "calculation", calculation: { binding: 0, fields: ["id"] }, signals: [0] }
+  calculation.effects[0].dependencies[0] = { kind: "derived", derived: 0, sources: [0], field: "id", evaluator: 0 }
+  assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(calculation)), analysis), calculation)
+  const brokenEvaluator = JSON.parse(JSON.stringify(calculation))
+  brokenEvaluator.effects[0].dependencies[0].evaluator = 1
+  assert.throws(() => assertModuleIRReferences(brokenEvaluator, analysis), /must use its calculation evaluator/)
+  const brokenField = JSON.parse(JSON.stringify(calculation))
+  brokenField.effects[0].dependencies[0].field = "price"
+  assert.throws(() => assertModuleIRReferences(brokenField, analysis), /unknown calculation field "price"/)
   const brokenParent = valid()
   brokenParent.keyedBlocks[0].children = []
   assert.throws(() => assertModuleIRReferences(brokenParent, analysis), /does not reciprocally list child 1/)
@@ -570,6 +580,52 @@ test("rejects mixed whole-object and property effect dependencies", () => {
     factory: ts.factory,
     fail(node, message) { throw new Error(message) }
   }), /cannot mix whole-object and property dependencies for state "profile"/)
+})
+
+test("rejects unsafe selected imported calculation effect dependencies", () => {
+  const page = resolve("test/fixtures/derived-effect-boundary/src/pages/index.tsx")
+  const derive = resolve("test/fixtures/derived-effect-boundary/src/derive.ts")
+  const catalog = resolve("test/fixtures/derived-effect-boundary/src/catalog.ts")
+  const baseHelper = `
+import { variants } from "./catalog"
+export function derive(color: string, size: string) {
+  const selected = variants.find(variant => variant.color === color && variant.size === size)
+  return { id: selected?.id ?? "", price: selected?.price ?? "", available: selected?.available ?? false }
+}`
+  const baseCatalog = `export const variants = [{ id: "black-m", color: "Black", size: "M", price: "20", available: true }] as const`
+  const failure = ({ helper = baseHelper, dependency = "selected.id", call = "derive(color, size)", catalogSource = baseCatalog }) => {
+    const pageSource = `
+import { useEffect, useState } from "react"
+import { derive } from "../derive"
+export default function Page() {
+  const [color, setColor] = useState("Black")
+  const [size, setSize] = useState("M")
+  const selected = ${call}
+  const field = "id"
+  useEffect(() => { document.body.dataset.selected = selected.id }, [${dependency}])
+  return <button onClick={() => { setColor("Black"); setSize("M") }}>{selected.price}</button>
+    }`
+    const sourceIndex = new Map([[page, pageSource], [derive, helper], [catalog, catalogSource]])
+    try {
+      compileSource(page, new Set(sourceIndex.keys()), sourceIndex, new Set(), new Map(), "")
+    } catch (error) {
+      assert.match(error.message, /src\/(?:pages\/index\.tsx|derive\.ts)/)
+      return error.message
+    }
+    assert.fail("Expected selected calculation compilation to fail")
+  }
+
+  assert.match(failure({ dependency: "selected[field]" }), /computed result properties are not supported/)
+  assert.match(failure({ dependency: "selected" }), /cannot depend on the whole imported calculation result "selected"/)
+  assert.match(failure({ call: "derive(color.toLowerCase(), size)" }), /arguments must be direct primitive state identifiers/)
+  assert.match(failure({ helper: baseHelper.replace("const selected =", "variants.sort(); const selected =") }), /mutating method "sort" is not supported/)
+  assert.match(failure({ helper: baseHelper.replace("const selected =", "const first = second; const second = first; const selected =") }), /derived-local cycle: first -> second -> first/)
+  assert.match(failure({ helper: baseHelper.replace('selected?.id ?? ""', 'String(Math.random())') }), /must be deterministic; call "Math.random" is not supported/)
+  assert.match(failure({ helper: baseHelper.replace('import { variants } from "./catalog"', 'import { variants, metadata } from "./catalog"').replace('selected?.id ?? ""', "metadata.id"), catalogSource: `${baseCatalog}\nexport const metadata = { id: "opaque" } as const` }), /capture "metadata" is opaque or nonserializable/)
+  assert.match(failure({ helper: `import { pick } from "example-package"\nexport function derive(color: string, size: string) { return { id: pick(color), price: size, available: true } }` }), /cannot reference package import "pick" from "example-package"/)
+  assert.match(failure({ helper: `export function derive(color: string, size: string) { if (color) return { id: color, price: size, available: true }; return { id: size, available: false } }` }), /same direct plain-object fields on every path/)
+  assert.match(failure({ helper: `export function derive(color: string, size: string) { if (color) return { id: color, price: size, available: true } }` }), /must end with an unconditional return/)
+  assert.match(failure({ helper: `export async function derive(color: string, size: string) { return { id: color, price: size, available: true } }` }), /must be synchronous functions/)
 })
 
 test("generates the existing command behavior AST from HandlerIR", () => {

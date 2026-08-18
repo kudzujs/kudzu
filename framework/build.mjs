@@ -688,6 +688,7 @@ function runtimeEffects(effects, lifetimes = false) {
     handler: effect.handler,
     ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
     ...(effect.dependencyExpressions ? { dependencyExpressions: effect.dependencyExpressions, dependencyStates: effect.dependencyStates } : {}),
+    ...(effect.dependencyEvaluators ? { dependencyEvaluators: effect.dependencyEvaluators } : {}),
     ...(effect.itemDependencies ? { itemDependencies: effect.itemDependencies, listState: effect.listState } : {}),
     ...(effect.cleanup ? { cleanup: true } : {}),
     ...(effect.owner ? { owner: effect.owner } : {}),

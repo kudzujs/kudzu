@@ -75,14 +75,30 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
       : compileListExpression(read, expression, entry.item, entry.index, entry.states, entry.keyedBlock, indexed ? bindingIndex : undefined)
   }
 
-  function compileReactiveBinding(expression, { setters, importBindings = new Map(), keyedBlock }) {
+  function compileReactiveBinding(expression, { setters, importBindings = new Map(), keyedBlock, derived }) {
     const parts = conditionalParts(expression)
     const state = parts && directStateIdentifier(parts.condition, setters, bindingIndex)
     if (state && isPrimitiveLiteral(parts.truthy) && isPrimitiveLiteral(parts.falsy)) {
       return { node: factory.createCallExpression(factory.createIdentifier("__kSelect"), undefined, [state, parts.truthy, parts.falsy]) }
     }
     const binding = reactiveBindings.length
-    return { node: factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, importBindings, keyedBlock)), binding }
+    const node = factory.createCallExpression(factory.createIdentifier("__kBinding"), undefined, compileReactiveExpression(expression, setters, importBindings, keyedBlock))
+    if (derived) reactiveBindings[binding].derived = derived
+    return { node, binding }
+  }
+
+  function compileDerivedEvaluator(expression, { setters, importBindings = new Map() }) {
+    const binding = reactiveBindings.length
+    const [, module, handler, states, scope] = compileReactiveExpression(expression, setters, importBindings)
+    return {
+      binding,
+      descriptor: factory.createObjectLiteralExpression([
+        factory.createPropertyAssignment("module", module),
+        factory.createPropertyAssignment("handler", handler),
+        factory.createPropertyAssignment("states", states),
+        factory.createPropertyAssignment("scope", scope)
+      ])
+    }
   }
 
   function compileConditional(kind, expression, truthy, falsy, setters) {
@@ -258,6 +274,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
       signals: [...entry.states].map(name => entry.signalRefs.get(name)),
       captures: [...entry.captures].map(name => ({ ...(symbolSlot(entry, name) !== undefined ? { symbol: symbolSlot(entry, name) } : {}), name, source: "scope" })),
       imports: entry.imports.map(entry => importSlot(importRecord(entry))),
+      ...(entry.derived ? { derived: entry.derived } : {}),
       code: handlerLowering.lowerReactiveBinding(entry),
       ...(source(entry.expression) ? { source: source(entry.expression) } : {})
     })
@@ -293,7 +310,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
 
   const importRecord = entry => ({ target: entry.target, kind: entry.kind, local: entry.local, ...(entry.imported ? { imported: entry.imported } : {}), package: Boolean(entry.package) })
 
-  return { compileConditional, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding, finalize, registerDerived: registerDerivedResult, registerEffect: registerEffectResult, registerKeyedBlock: registerKeyedBlockResult, signal }
+  return { compileConditional, compileDerivedEvaluator, compileEffectCallback, compileEvent, compileListConditional, compileListValue, compileReactiveBinding, finalize, registerDerived: registerDerivedResult, registerEffect: registerEffectResult, registerKeyedBlock: registerKeyedBlockResult, signal }
 }
 
 function bindingIdentifier(name, names) {

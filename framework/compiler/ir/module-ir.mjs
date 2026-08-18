@@ -86,17 +86,32 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
     for (const [index, signal] of (binding.signals ?? []).entries()) slot(moduleIR.signals, signal, `BindingIR ${binding.slot} signal ${index}`, "SignalIR")
     for (const [index, imported] of (binding.imports ?? []).entries()) slot(moduleIR.imports, imported, `BindingIR ${binding.slot} import ${index}`, "ImportIR")
     for (const [index, capture] of (binding.captures ?? []).entries()) if (capture.symbol !== undefined) slot(moduleIR.symbols, capture.symbol, `BindingIR ${binding.slot} capture ${index}`, "SymbolRef")
+    if (binding.derived) {
+      const derived = slot(moduleIR.derived, binding.derived.derived, `BindingIR ${binding.slot} derived value`, "DerivedIR")
+      if (derived.kind !== "calculation" || !Array.isArray(binding.derived.fields) || !binding.derived.fields.length || binding.derived.fields.some(field => !derived.calculation.fields.includes(field))) throw new Error(`BindingIR ${binding.slot} has invalid calculation fields`)
+    }
     if (binding.keyedBlock !== undefined) slot(moduleIR.keyedBlocks, binding.keyedBlock, `BindingIR ${binding.slot} keyed block`, "KeyedBlockIR")
   }
-  for (const derived of moduleIR.derived) for (const [index, signal] of (derived.signals ?? []).entries()) slot(moduleIR.signals, signal, `DerivedIR ${derived.slot} signal ${index}`, "SignalIR")
+  for (const derived of moduleIR.derived) {
+    for (const [index, signal] of (derived.signals ?? []).entries()) slot(moduleIR.signals, signal, `DerivedIR ${derived.slot} signal ${index}`, "SignalIR")
+    if (derived.kind === "calculation") {
+      const binding = slot(moduleIR.bindings, derived.calculation?.binding, `DerivedIR ${derived.slot} calculation`, "BindingIR")
+      if (binding.kind !== "module-export") throw new Error(`DerivedIR ${derived.slot} calculation must use a module-export BindingIR`)
+      if (!Array.isArray(derived.calculation?.fields) || !derived.calculation.fields.length || derived.calculation.fields.some(field => typeof field !== "string" || !field || ["__proto__", "constructor", "prototype"].includes(field))) throw new Error(`DerivedIR ${derived.slot} calculation has invalid fields`)
+    }
+  }
   for (const effect of moduleIR.effects) {
     const handler = slot(moduleIR.handlers, effect.setup?.handler, `EffectIR ${effect.slot} setup`, "HandlerIR")
     if (handler.kind !== "module-export" || handler.role !== "effect") throw new Error(`EffectIR ${effect.slot} setup HandlerIR ${handler.slot} must have role "effect"`)
     for (const [index, dependency] of (effect.dependencies ?? []).entries()) {
       if (dependency.kind === "signal") slot(moduleIR.signals, dependency.signal, `EffectIR ${effect.slot} dependency ${index}`, "SignalIR")
       else if (dependency.kind === "derived") {
-        slot(moduleIR.derived, dependency.derived, `EffectIR ${effect.slot} dependency ${index}`, "DerivedIR")
+        const derived = slot(moduleIR.derived, dependency.derived, `EffectIR ${effect.slot} dependency ${index}`, "DerivedIR")
         for (const [sourceIndex, signal] of (dependency.sources ?? []).entries()) slot(moduleIR.signals, signal, `EffectIR ${effect.slot} dependency ${index} source ${sourceIndex}`, "SignalIR")
+        if (dependency.evaluator !== undefined || dependency.field !== undefined) {
+          if (derived.kind !== "calculation" || dependency.evaluator !== derived.calculation.binding) throw new Error(`EffectIR ${effect.slot} dependency ${index} must use its calculation evaluator`)
+          if (!derived.calculation.fields.includes(dependency.field)) throw new Error(`EffectIR ${effect.slot} dependency ${index} references unknown calculation field ${JSON.stringify(dependency.field)}`)
+        }
       } else throw new Error(`EffectIR ${effect.slot} dependency ${index} has invalid kind ${JSON.stringify(dependency.kind)}`)
     }
     for (const [index, signal] of (effect.subscriptions ?? []).entries()) slot(moduleIR.signals, signal, `EffectIR ${effect.slot} subscription ${index}`, "SignalIR")

@@ -170,7 +170,7 @@ function createInternalState(initialValue) {
   return signal
 }
 
-export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup, itemDependencies = [], dependencyExpressions = [], dependencyStates = []) {
+export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup, itemDependencies = [], dependencyExpressions = [], dependencyStates = [], dependencyEvaluators = []) {
   if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
   if (typeof callback !== "function" || !Array.isArray(dependencies) || !module || !handler) throw new Error("useEffect() must be compiled with a literal dependency array")
   if (itemDependencies.length && !renderContext.listDepth) throw new Error(`${source} useEffect() item-property dependencies are only supported in direct keyed row components`)
@@ -183,6 +183,12 @@ export function useEffect(callback, dependencies, module, handler, states, scope
     if (!dependency?.[signalMarker]) throw new Error(`${source} useEffect() derived dependency state ${JSON.stringify(name)} must be Kudzu state`)
     return [name, dependency.id]
   }))
+  const evaluators = dependencyEvaluators.map(evaluator => {
+    if (!evaluator || typeof evaluator.field !== "string" || ["__proto__", "constructor", "prototype"].includes(evaluator.field)) throw new Error(`${source} useEffect() calculation dependency requires a static safe field`)
+    const descriptor = reactiveDescriptor(evaluator.module, evaluator.handler, evaluator.states, evaluator.scope)
+    retainHandlerReference(descriptor.module, descriptor.handler)
+    return { ...descriptor, field: evaluator.field }
+  })
   let owner
   let list = false
   if (renderContext.listDepth) {
@@ -209,7 +215,7 @@ export function useEffect(callback, dependencies, module, handler, states, scope
     owners.push(owner)
   }
   if (!renderContext.listDepth || list) {
-    renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(dependencyExpressions.length ? { dependencyExpressions, dependencyStates: dependencyStateIds } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
+    renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(dependencyExpressions.length ? { dependencyExpressions, dependencyStates: dependencyStateIds } : {}), ...(evaluators.length ? { dependencyEvaluators: evaluators } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
     retainHandlerReference(module, handler)
   }
   renderContext.hasBehaviors = true
@@ -471,6 +477,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
           handler: effect.handler,
           ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
           ...(effect.dependencyExpressions ? { dependencyExpressions: effect.dependencyExpressions, dependencyStates: effect.dependencyStates } : {}),
+          ...(effect.dependencyEvaluators ? { dependencyEvaluators: effect.dependencyEvaluators } : {}),
           ...(effect.itemDependencies ? { itemDependencies: effect.itemDependencies, listState: effect.listState } : {}),
           ...(effect.cleanup ? { cleanup: true } : {}),
           ...(effect.owner ? { owner: effect.owner } : {}),
