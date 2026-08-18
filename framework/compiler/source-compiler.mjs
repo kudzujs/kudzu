@@ -13,6 +13,7 @@ import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "
 import { createHandlerCodegen } from "./handler-codegen.mjs"
 import { createHandlerLowering } from "./handler-lowering.mjs"
 import { registerSharedAction, registerSharedState } from "./ir/module-ir.mjs"
+import { analyzeOutsideClickHook, normalizeOutsideClickHooks } from "./outside-click-pass.mjs"
 import { createCommandSpecializer } from "./optimize/command-specialization.mjs"
 import { applyNormalizationPasses } from "./normalization-pipeline.mjs"
 import { assetPath, relativeModulePath, withBase } from "./path-helpers.mjs"
@@ -305,6 +306,7 @@ function normalizeCompilerSource(sourceFile, { base, context, file, importedColl
     source => normalizeReactMigrationSyntax(source, factory, context, importedCollections ?? importedSerializableCollectionNames(source, file, sourceFiles, sourceIndex)),
     source => normalizeNavigatorCapabilityConditions(source, factory, context),
     source => normalizeParameterizedDebounceHooks(source, factory, context),
+    source => normalizeOutsideClickHooks(source, factory, context),
     source => normalizeEffectPrivateRefs(source, factory, context),
     source => {
       const result = normalizeCustomHookTimerRefs(source, factory, context)
@@ -422,6 +424,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const customHooks = new Map()
     const parameterizedDebounceCalls = new WeakSet()
     const resolvedParameterizedDebounceHooks = new Map()
+    const outsideClickCalls = new WeakMap()
+    const resolvedOutsideClickHooks = new Map()
     const jsxLocalDeclarations = new Map()
     const jsxLocalsByFunction = new Map()
     const listLocalDeclarations = []
@@ -616,6 +620,15 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       resolvedParameterizedDebounceHooks.set(key, analysis)
       return analysis
     }
+    const resolveOutsideClickHook = binding => {
+      const exportName = binding.kind === "default" ? "default" : binding.imported
+      const key = `${binding.target}:${exportName}`
+      if (resolvedOutsideClickHooks.has(key)) return resolvedOutsideClickHooks.get(key)
+      const hook = resolveComponentExport(binding.target, exportName, importedSource, sourceFiles)
+      const analysis = analyzeOutsideClickHook(hook)
+      resolvedOutsideClickHooks.set(key, analysis)
+      return analysis
+    }
 
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
@@ -786,6 +799,17 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               localStateSettersByFunction.set(owner, localSetters)
             }
           }
+        }
+      }
+      if (ts.isCallExpression(node) && ts.isExpressionStatement(node.parent) && ts.isIdentifier(node.expression) && /^use[A-Z]/.test(node.expression.text) && importBindings.has(node.expression.text) && importBindings.get(node.expression.text).kind !== "namespace") {
+        const hook = resolveOutsideClickHook(importBindings.get(node.expression.text))
+        if (hook) {
+          const owner = nearestFunction(node)
+          const ref = node.arguments[0] && unwrapExpression(node.arguments[0])
+          const callback = directSetterLiteralCallback(node.arguments[1], owner ? settersByFunction.get(owner) ?? new Map() : new Map())
+          if (!owner || node.arguments.length !== 2 || !ts.isIdentifier(ref) || !componentHasDirectObjectRef(owner, ref.text)) throw sourceNodeError(node, sourceFile, "Outside-click hooks require one direct component DOM ref as their first argument")
+          if (!callback) throw sourceNodeError(node.arguments[1] ?? node, sourceFile, "Outside-click hooks require one inline direct literal setter callback")
+          outsideClickCalls.set(node, callback)
         }
       }
       if (ts.isFunctionDeclaration(node) && node.name) {
@@ -1747,6 +1771,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       return factory.updateJsxExpression(node, factory.createCallExpression(factory.createIdentifier("__kList"), undefined, arguments_))
     }
     const visitor = node => {
+      const outsideClick = ts.isCallExpression(node) && outsideClickCalls.get(node)
+      if (outsideClick) return factory.updateCallExpression(node, node.expression, node.typeArguments, [node.arguments[0], factory.createIdentifier(outsideClick.setter), cloneAst(outsideClick.value, factory, context)])
       if (ts.isJsxAttribute(node) && contextProviderPrivateSetters.has(node)) {
         const expression = unwrapExpression(node.initializer.expression)
         const value = factory.updateObjectLiteralExpression(expression, [...expression.properties, ...contextProviderPrivateSetters.get(node).map(name => factory.createShorthandPropertyAssignment(name))])
@@ -2240,6 +2266,32 @@ function componentHasDirectPropStateInitializer(component) {
 
 function componentHasDirectPrimitiveState(component, state) {
   return Boolean(component && ts.isBlock(component.body) && component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isArrayBindingPattern(declaration.name) && ts.isIdentifier(declaration.name.elements[0]?.name) && declaration.name.elements[0].name.text === state && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && isPrimitiveDefaultLiteral(unwrapExpression(declaration.initializer.arguments[0])))))
+}
+
+function componentHasDirectObjectRef(component, ref) {
+  if (!component || !ts.isBlock(component.body)) return false
+  const declaration = component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(entry => ts.isIdentifier(entry.name) && entry.name.text === ref && entry.initializer && ts.isCallExpression(entry.initializer) && ts.isIdentifier(entry.initializer.expression) && entry.initializer.expression.text === "useRef" && entry.initializer.arguments.length === 1 && entry.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword))
+  let attachments = 0
+  let intrinsic = 0
+  const visit = node => {
+    if (ts.isJsxAttribute(node) && node.name.text === "ref" && node.initializer && ts.isJsxExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === ref) {
+      attachments++
+      const element = node.parent?.parent
+      const tag = ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element) ? element.tagName : undefined
+      if (ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toLowerCase()) intrinsic++
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(component.body)
+  return declaration && attachments === 1 && intrinsic === 1
+}
+
+function directSetterLiteralCallback(node, setters) {
+  node = node && unwrapExpression(node)
+  if ((!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) || node.parameters.length || node.asteriskToken || node.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) return undefined
+  const expression = ts.isBlock(node.body) ? node.body.statements.length === 1 && ts.isExpressionStatement(node.body.statements[0]) ? node.body.statements[0].expression : undefined : node.body
+  if (!expression || !ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || !setters.has(expression.expression.text) || expression.arguments.length !== 1 || !isPrimitiveDefaultLiteral(unwrapExpression(expression.arguments[0]))) return undefined
+  return { setter: expression.expression.text, value: unwrapExpression(expression.arguments[0]) }
 }
 
 function componentHasDirectArrayState(component, state) {

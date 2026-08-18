@@ -5,7 +5,7 @@ import { analyzeCollectionPipeline, isArrayFromCall } from "./collection-analysi
 export function createReactMigrationPass({ cloneAst, jsxTagName }) {
   function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections = new Set()) {
     const supported = new Set(["createContext", "useContext", "useEffect", "useId", "useReducer", "useRef", "useState"])
-    const erased = new Set(["forwardRef", "memo", "useCallback", "useMemo"])
+    const erased = new Set(["createRef", "forwardRef", "memo", "useCallback", "useMemo"])
     const aliases = new Map()
     const reactObjects = new Set()
     for (const statement of sourceFile.statements) {
@@ -110,6 +110,15 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
       }
       if (ts.isCallExpression(node)) {
         const name = migrationCallName(node)
+        if (name === "createRef") {
+          const declaration = node.parent
+          const owner = ts.isVariableDeclaration(declaration) && nearestFunction(declaration)
+          if (!ts.isVariableDeclaration(declaration) || declaration.initializer !== node || !ts.isIdentifier(declaration.name) || !isLocalConst(declaration) || !owner) throw sourceNodeError(node, sourceFile, "React createRef() must initialize one top-level const identifier in a component")
+          if (node.arguments.length) throw sourceNodeError(node, sourceFile, "React createRef() does not accept runtime arguments")
+          if (!hasOneIntrinsicRef(owner, declaration.name.text)) throw sourceNodeError(declaration, sourceFile, "React createRef() must be attached exactly once to an intrinsic element")
+          required.add("useRef")
+          return factory.createCallExpression(factory.createIdentifier("useRef"), node.typeArguments, [factory.createNull()])
+        }
         if (name === "forwardRef") return ts.visitNode(lowerReactForwardRef(node, sourceFile, factory), visitor)
         if (name === "memo") {
           if (node.arguments.length !== 1 || !(ts.isArrowFunction(node.arguments[0]) || ts.isFunctionExpression(node.arguments[0]) || ts.isIdentifier(node.arguments[0]))) throw sourceNodeError(node, sourceFile, "React memo() requires exactly one function component or component identifier")
@@ -249,6 +258,23 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
     return ts.isArrowFunction(callback)
       ? factory.updateArrowFunction(callback, callback.modifiers, callback.typeParameters, [parameter], callback.type, callback.equalsGreaterThanToken, callback.body)
       : factory.updateFunctionExpression(callback, callback.modifiers, undefined, callback.name, callback.typeParameters, [parameter], callback.type, callback.body)
+  }
+
+  function hasOneIntrinsicRef(owner, name) {
+    let attachments = 0
+    let intrinsic = 0
+    const visit = node => {
+      if (node !== owner && isFunctionLike(node)) return
+      if (ts.isJsxAttribute(node) && node.name.text === "ref" && node.initializer && ts.isJsxExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && node.initializer.expression.text === name) {
+        attachments++
+        const element = node.parent?.parent
+        const tag = ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element) ? element.tagName : undefined
+        if (ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toLowerCase()) intrinsic++
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(owner.body)
+    return attachments === 1 && intrinsic === 1
   }
 
   function validateUseIdSyntax(sourceFile) {

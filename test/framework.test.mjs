@@ -2285,6 +2285,50 @@ test("rejects dynamic parameterized debounce delays", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Parameterized debounce hook delays must be numeric literals/)
 })
 
+test("specializes a parameterized outside-click hook", async t => {
+  const fixture = new URL("./fixtures/outside-click-hook", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/outside-click-hook/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/outside-click-hook/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/outside-click-hook/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/outside-click-hook/dist/static/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/outside-click-hook/.kudzu/Dropdown.mjs", import.meta.url), "utf8")
+  const hook = await readFile(new URL("./fixtures/outside-click-hook/.kudzu/useOutsideClickAlerter.mjs", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/outside-click-hook/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /id="outside".*id="wrapper"[^>]*data-k-ref=.*id="results"/s)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.match(component, /const wrapperRef = useRef\(null\)/)
+  assert.match(component, /useOutsideClickAlerter\(wrapperRef, setShowResults, false\)/)
+  assert.doesNotMatch(`${component}\n${hook}`, /\bcreateRef\b|from ["']react["']/)
+  assert.equal(route.effects.length, 1)
+  assert.equal(route.effects[0].cleanup, true)
+  assert.ok(route.effects[0].owner)
+  assert.deepEqual(route.effects[0].scope.__kOutsideClickValue, false)
+  assert.equal(route.effects[0].scope.ref.type, "ref")
+  assert.equal(route.effects[0].scope.callback.type, "setter")
+  const deployFiles = await readdir(new URL("./fixtures/outside-click-hook/dist/assets/", import.meta.url), { recursive: true })
+  assert.ok(!deployFiles.some(file => /kudzu-(?:outside|listener)/.test(file)))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runOutsideClickBrowserTest(fixture, chrome)
+})
+
+test("rejects mismatched outside-click cleanup", () => {
+  const fixture = new URL("./fixtures/outside-click-hook-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/useOutsideClickAlerter\.ts:\d+:\d+ useEffect\(\) dependencies must be primitive or array Kudzu state or runtime parameter identifiers/)
+})
+
+test("rejects unattached React createRef values", () => {
+  const fixture = new URL("./fixtures/react-create-ref-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React createRef\(\) must be attached exactly once to an intrinsic element/)
+})
+
 test("rejects dynamic React Router Link destinations", () => {
   const fixture = new URL("./fixtures/react-router-link-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
@@ -3797,6 +3841,71 @@ try {
   type("xy")
   await wait(100)
   if (document.querySelector("#debounced").textContent !== "xy") throw new Error("latest-value")
+  document.body.dataset.browserTest = "pass"
+} catch (error) {
+  document.body.dataset.browserTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const file = path.join(root, request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runOutsideClickBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  let html = await readFile(htmlUrl, "utf8")
+  const instrumentation = `<script>
+window.__outsideAdds = 0
+window.__outsideRemoves = 0
+const add = document.addEventListener.bind(document)
+const remove = document.removeEventListener.bind(document)
+document.addEventListener = (type, listener, options) => { if (type === "mousedown") window.__outsideAdds++; return add(type, listener, options) }
+document.removeEventListener = (type, listener, options) => { if (type === "mousedown") window.__outsideRemoves++; return remove(type, listener, options) }
+</script>`
+  html = html.replace("</head>", `${instrumentation}</head>`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>')
+  await writeFile(htmlUrl, html)
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 50))
+const mousedown = node => node.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+try {
+  await wait()
+  if (window.__outsideAdds !== 1 || window.__outsideRemoves !== 0 || !document.querySelector("#results")) throw new Error("mount")
+  mousedown(document.querySelector("#inside"))
+  await wait()
+  if (!document.querySelector("#results")) throw new Error("inside")
+  mousedown(document.querySelector("#outside"))
+  await wait()
+  if (document.querySelector("#results")) throw new Error("outside")
+  document.querySelector("#inside").click()
+  await wait()
+  if (!document.querySelector("#results")) throw new Error("reopen")
+  const wrapper = document.querySelector("#wrapper")
+  document.querySelector("#mount-toggle").click()
+  await wait()
+  if (wrapper.isConnected || window.__outsideRemoves !== 1) throw new Error("cleanup")
+  document.querySelector("#mount-toggle").click()
+  await wait()
+  if (window.__outsideAdds !== 2 || !document.querySelector("#results")) throw new Error("remount")
+  mousedown(document.querySelector("#outside"))
+  await wait()
+  if (document.querySelector("#results")) throw new Error("remounted-outside")
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

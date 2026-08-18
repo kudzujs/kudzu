@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The executable post-`0.8.61` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
+The executable post-`0.8.62` compiler and large-application sequence is maintained in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md). Follow its PR dependencies for implementation work; this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -97,6 +97,7 @@ This queue orders the next investigations by general migration value. Start only
 
 - Relative zero-argument custom hooks expose direct shorthand state/setter pairs and state-capturing callbacks to one top-level caller destructuring.
 - In `0.8.61`, a ClimateCompatibleGrowth-shaped relative `useDebounce(value, delay)` hook may accept one direct primitive state and numeric literal delay, initialize one returned state from the source build value, and own one exact timeout dependency effect with cleanup. Dynamic delays, non-primitive state, aliases, additional effects, intervals, and missing cleanup remain diagnosed.
+- In `0.8.62`, a ClimateCompatibleGrowth dropdown may retain one direct `createRef()` DOM ref and pass it with an inline direct literal setter callback to its relative outside-click hook. The exact document `mousedown` listener and matching cleanup reuse existing ref serialization, setter capture, and conditional effect ownership. Aliases, dynamic event names, additional listeners, and mismatched cleanup remain diagnosed.
 - Writable React Router search parameters use native inline `URLSearchParams` updaters, push/replace history, signal recommits, and `popstate` synchronization.
 - Guarded `localStorage` restoration and persistence compose through existing mount/dependency effects, preserving deterministic static fallbacks without a storage runtime.
 - Reachable source compilation excludes unused React/Vite modules while preserving source diagnostics for every reachable module.

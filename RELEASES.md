@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.8.62 - Outside-click hook ownership
+
+Kudzu 0.8.62 compiles the ClimateCompatibleGrowth `createRef()` and parameterized outside-click custom-hook shape through existing DOM-ref, effect-capture, and cleanup ownership.
+
+### Changed in 0.8.62
+
+- A direct component `const ref = createRef<T>()` React migration input lowers to Kudzu's existing `useRef(null)` DOM ownership.
+- A relative outside-click hook may accept that direct ref and one inline direct literal setter callback.
+- The compiler specializes the callback into a serializable setter plus literal and retains only the ref, setter, and literal in existing effect scope.
+
+### Boundaries
+
+- The hook must own one static `document` `mousedown` listener, test `ref.current.contains(event.target)`, and remove the same listener in cleanup.
+- Ref aliases, callback aliases or captures, dynamic event names, multiple refs/listeners, and mismatched cleanup remain rejected.
+- No outside-click, listener, ref, or callback runtime is added.
+
+### Validation
+
+- A fixture reduced from ClimateCompatibleGrowth's MIT-licensed `useOutsideClickAlerter.ts` preserves its parameterized source shape.
+- Browser coverage proves inside-click retention, outside-click closure, exact listener cleanup on conditional removal, and fresh remount ownership.
+- A static sibling remains zero JavaScript and mismatched cleanup remains fail-closed.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 233 tests and 174 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.62
+```
+
 ## 0.8.61 - Parameterized debounce hooks
 
 Kudzu 0.8.61 compiles the common relative `useDebounce(state, literalDelay)` custom-hook shape through existing state and effect ownership.

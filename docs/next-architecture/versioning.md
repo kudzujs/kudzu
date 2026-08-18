@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.61` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.62` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -52,6 +52,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.59` | Initialize specialized child draft state from one direct parent array-state prop and accept a direct matching `set*` setter prop. | A ClimateCompatibleGrowth-derived dropdown preserves independent array drafts, explicit parent commit, source naming, nearby diagnostics, and a static zero-JavaScript sibling without runtime changes. |
 | `0.8.60` | Synchronize direct prop-derived array draft state through its matching parent setter in a dependency effect. | The ClimateCompatibleGrowth-derived dropdown preserves its exact direct effect/dependency shape, stable setter erasure, array identity comparison, independent parent replacement, nearby diagnostics, and a static zero-JavaScript sibling without runtime changes. |
 | `0.8.61` | Specialize one parameterized relative primitive debounce hook through existing state and dependency-effect ownership. | The ClimateCompatibleGrowth-derived hook preserves direct state initialization, literal delay scope, timeout replacement/cleanup, conditional release, latest-value commit, nearby diagnostics, and a static zero-JavaScript sibling without runtime changes. |
+| `0.8.62` | Lower direct React `createRef()` and one parameterized outside-click hook through existing DOM-ref and effect ownership. | The ClimateCompatibleGrowth-derived hook preserves inside/outside behavior, serializable setter scope, exact listener cleanup, conditional release/remount, nearby diagnostics, and a static zero-JavaScript sibling without runtime changes. |
 
 ## Sequence Rules
 
