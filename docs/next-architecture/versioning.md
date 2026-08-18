@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.56` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.57` are completed scopes represented by package/release records.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -47,6 +47,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 | `0.8.54` | Project per-route capability requirements and post-bundle handler/Worker chunk closure into an inspectable artifact contract. | Deterministic signatures, exact retained entries, transitive chunks, reverse shared ownership, static-route exclusion, and `afterBuild()` access pass. |
 | `0.8.55` | Emit deduplicated signature-keyed runtime families while preserving navigation-group singleton ownership. | Equal standalone signatures share files, different signatures isolate output, grouped routes share one union family, and static routes emit no runtime. |
 | `0.8.56` | Recompile and rerender only source-affected routes during development. | A route-owned helper edit recompiles two of four modules, rerenders one of two pages, and emits byte-identical deploy output to a fresh full build. |
+| `0.8.57` | Initialize specialized child draft state from one direct parent plain-object state prop. | A FIRE-derived editor preserves independent child draft state and parent commit behavior; arrays, aliases, property paths, and composed expressions remain rejected without runtime changes. |
 
 ## Sequence Rules
 

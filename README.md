@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.8.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.8.56 - Incremental affected-route development builds.** Source edits now recompile and rerender only intersecting page graphs while preserving full-build output, navigation-group identity, and rollback-safe staging. Read the [release notes](./RELEASES.md#0856---incremental-affected-route-development-builds), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.56), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.8.57 - Plain-object prop draft state.** Specialized setter-callback children can initialize independent local draft state from one direct parent state prop authored with a JSON-safe plain-object literal, without new IR or runtime code. Read the [release notes](./RELEASES.md#0857---plain-object-prop-draft-state), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.8.57), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

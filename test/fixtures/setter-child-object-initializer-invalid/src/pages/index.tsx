@@ -3,5 +3,8 @@ import { ObjectInput } from "../ObjectInput"
 
 export default function Page() {
   const [value, setValue] = useState({ text: "initial" })
-  return <ObjectInput value={value} onValueChange={setValue} />
+  return <main>
+    <span id="parent">{value.text}</span>
+    <ObjectInput value={value} onValueChange={setValue} />
+  </main>
 }

@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.8.57 - Plain-object prop draft state
+
+Kudzu 0.8.57 lets a specialized setter-callback child initialize independent local draft state directly from one parent state prop authored with a JSON-safe plain-object literal.
+
+### Changed in 0.8.57
+
+- `const [draft, setDraft] = useState(value)` compiles when `value` is one direct prop backed by a parent `useState({ ... })` literal.
+- The existing parent SignalIR remains structural input while the child receives its own state slot and setter ownership.
+- Direct primitive prop initialization and primitive-only zero-argument `.toString()` retain their existing behavior.
+- The source compiler reuses its serializable literal proof; ModuleIR, RouteIR, runtime modules, and browser ABI are unchanged.
+
+### Boundaries
+
+- Parent arrays, aliases, property paths, composed expressions, lazy values, and object `.toString()` remain rejected.
+- The callback must still follow the existing direct setter-callback specialization and three-boundary limit.
+- This is an object-editor migration slice, not automatic prop-to-state synchronization or a general clone runtime.
+- Static siblings remain complete HTML with zero JavaScript.
+
+### Validation
+
+- A FIRE-derived editor proves that changing the child object draft leaves the parent unchanged until the authored save callback commits it.
+- Focused RouteIR coverage records separate, equal JSON-safe initial objects for parent and child ownership.
+- A dedicated array-prop fixture remains fail-closed with a source diagnostic.
+- `npm run check`, `npm test`, and `npm run test:package` pass with all 223 tests and 172 generated pages.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.8.57
+```
+
 ## 0.8.56 - Incremental affected-route development builds
 
 Kudzu 0.8.56 keeps one project session alive during development so source edits recompile and rerender only the routes whose runtime graphs changed.

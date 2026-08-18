@@ -2496,8 +2496,9 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         const substitutedProp = propReceiver ? substitutions.get(propReceiver.text) : undefined
         const substitutedState = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) ? unwrapExpression(substitutedProp).text : undefined
         const directProp = ts.isIdentifier(initialArgument)
-        const propInitializer = substitutedState && ordinaryStateNames.has(substitutedState) && (!directProp || hasPrimitiveStateInitializer(call, substitutedState))
-        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct primitive state prop, optionally followed by .toString()" : ""}; other dynamic initializers are not supported`)
+        const parentInitializer = substitutedState ? directStateInitializer(call, substitutedState) : undefined
+        const propInitializer = substitutedState && ordinaryStateNames.has(substitutedState) && parentInitializer && (isPrimitiveDefaultLiteral(parentInitializer) || directProp && ts.isObjectLiteralExpression(parentInitializer))
+        if (declaration.initializer.arguments.length !== 1 || !isSerializableStateLiteral(initialArgument) && !propInitializer) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useState() must use one directly serializable primitive, plain object, or array initial value${ordinaryHooks ? " or direct state prop initialized with a primitive or plain object; .toString() requires a primitive prop" : ""}; other dynamic initializers are not supported`)
         if (!ts.isArrayBindingPattern(declaration.name) || declaration.name.elements.length !== 2 || declaration.name.elements.some(element => !element || !ts.isBindingElement(element) || !ts.isIdentifier(element.name) || element.initializer || element.dotDotDotToken)) throw sourceNodeError(declaration.name, component.getSourceFile(), `${hookLabel} useState() must use [state, setter] identifier destructuring`)
         const suffix = `${Math.max(0, call.pos)}_${ordinaryHooks ? ordinaryStates.length : rowStates.length}`
         const state = ordinaryHooks ? `__kComponentState${suffix}` : `__kRowState${suffix}`
@@ -2595,18 +2596,18 @@ function isSerializableStateLiteral(node) {
   return value.properties.every(property => ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && property.name.text !== "__proto__" && isSerializableStateLiteral(property.initializer))
 }
 
-function hasPrimitiveStateInitializer(call, name) {
+function directStateInitializer(call, name) {
   const owner = nearestFunction(call)
-  if (!owner || !ts.isBlock(owner.body)) return false
+  if (!owner || !ts.isBlock(owner.body)) return
   for (const statement of owner.body.statements) {
     if (!ts.isVariableStatement(statement)) continue
     for (const declaration of statement.declarationList.declarations) {
       if (!ts.isArrayBindingPattern(declaration.name) || !declaration.initializer || !ts.isCallExpression(declaration.initializer) || !ts.isIdentifier(declaration.initializer.expression) || declaration.initializer.expression.text !== "useState") continue
       const state = declaration.name.elements[0]
-      if (state && ts.isBindingElement(state) && ts.isIdentifier(state.name) && state.name.text === name) return declaration.initializer.arguments.length === 1 && isPrimitiveDefaultLiteral(unwrapExpression(declaration.initializer.arguments[0]))
+      const initialValue = declaration.initializer.arguments[0]
+      if (state && ts.isBindingElement(state) && ts.isIdentifier(state.name) && state.name.text === name && declaration.initializer.arguments.length === 1 && isSerializableStateLiteral(initialValue)) return unwrapExpression(initialValue)
     }
   }
-  return false
 }
 
 function synthesizeSerializableStateLiteral(node, factory) {
