@@ -330,8 +330,8 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     }
     if (family) {
       html = html.replaceAll(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/${routeRuntimeName}`)))
-      html = html.replaceAll(bindingPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-binding.js`)))
-      html = html.replaceAll(listPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-list.js`)))
+      if (record.capabilities.hasBindings) html = html.replaceAll(bindingPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-binding.js`)))
+      if (record.capabilities.hasLists) html = html.replaceAll(listPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-list.js`)))
     }
     if (navigationGroup) html = html.replaceAll(escapeAttribute(navigationAssets.get(record.route)), escapeAttribute(navigationGroup.assetPath))
     const finalRecord = createRouteBuildRecord({
@@ -452,9 +452,9 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     await rm(join(assetsDirectory, "modules"), { recursive: true, force: true })
   }
   const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
-  await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
+  await writePrettyJson(join(workDirectory, "kudzu-plan.json"), { routes: plans, rewrites: sortedRewrites })
   const artifacts = createRouteArtifactReport(routeRecords, { base, handlerMetafile, outputDirectory, navigationAssets, runtimeFamilies: runtimePlan.families, runtimeFamilyByRecord, workerReferences: renderedWorkerReferences, workerOutputs })
-  await writeFile(join(workDirectory, "kudzu-artifacts.json"), JSON.stringify(artifacts, null, 2))
+  await writePrettyJson(join(workDirectory, "kudzu-artifacts.json"), artifacts)
   const emittedCssFiles = new Set()
   for (const file of cssFiles.filter(file => renderedStyleUrls.has(assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)))) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
@@ -702,6 +702,31 @@ function runtimeEffects(effects, lifetimes = false) {
 async function writeJavaScript(file, source, minify, define) {
   const code = minify || define ? (await transform(source, { define, format: "esm", legalComments: "none", minify, target: "es2022" })).code : source
   await writeFile(file, code)
+}
+
+async function writePrettyJson(file, value) {
+  const output = await open(file, "w")
+  try {
+    const entries = Object.entries(value)
+    await output.write("{\n")
+    for (let index = 0; index < entries.length; index++) {
+      const [key, entry] = entries[index]
+      await output.write(`  ${JSON.stringify(key)}: `)
+      if (!Array.isArray(entry) || !entry.length) {
+        await output.write(JSON.stringify(entry, null, 2).replaceAll("\n", "\n  "))
+      } else {
+        await output.write("[\n")
+        for (let item = 0; item < entry.length; item++) {
+          await output.write(`    ${JSON.stringify(entry[item], null, 2).replaceAll("\n", "\n    ")}${item + 1 < entry.length ? "," : ""}\n`)
+        }
+        await output.write("  ]")
+      }
+      await output.write(index + 1 < entries.length ? ",\n" : "\n")
+    }
+    await output.write("}")
+  } finally {
+    await output.close()
+  }
 }
 
 export async function writeRouteEntry(file, source, minify, transforms, transformSource = transform, write = writeFile) {

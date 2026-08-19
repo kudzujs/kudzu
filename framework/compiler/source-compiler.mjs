@@ -29,6 +29,7 @@ const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, mo
 const buildDirectory = project.buildDirectory ?? workDirectory
 const { ordinaryRuntimeDependencies, resolveSourceImport, runtimeModuleReference } = project.graph
 const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
+const importFreeModules = new Map()
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
 
 function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
@@ -36,8 +37,8 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
   const source = sourceIndex.get(file)
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
-  const plain = plainTypeScriptModule(file, source, sourceFiles)
-  const importFreePlain = plain && !parseSourceFile(file, source).statements.some(statement => (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) && statement.moduleSpecifier)
+  const importFreePlain = importFreeTypeScriptModule(file, source)
+  const plain = importFreePlain || plainTypeScriptModule(file, source, sourceFiles)
   if (plain && counters) counters.plainModules = (counters.plainModules ?? 0) + 1
   const result = importFreePlain ? { outputText: transformSync(source, { loader: "ts", format: "esm", target: "es2022", sourcefile: file }).code } : ts.transpileModule(source, {
     fileName: file,
@@ -89,6 +90,15 @@ function plainTypeScriptModule(file, source, sourceFiles) {
   return true
 }
 
+function importFreeTypeScriptModule(file, source) {
+  if (!file.endsWith(".ts")) return false
+  const cached = importFreeModules.get(file)
+  if (cached?.source === source) return cached.result
+  const result = !source.includes(".worker.ts") && ts.preProcessFile(source, true, true).importedFiles.length === 0
+  importFreeModules.set(file, { source, result })
+  return result
+}
+
 function createPlainModuleTransformer(file, sourceFiles) {
   return context => sourceFile => context.factory.updateSourceFile(sourceFile, sourceFile.statements.map(statement => {
     if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) return statement
@@ -128,7 +138,9 @@ function reachableSourceFiles(entries, sourceFiles, sourceIndex) {
     if (visited.has(file)) continue
     visited.add(file)
     reachable.add(file)
-    const sourceFile = parseSourceFile(file, sourceIndex.get(file))
+    const source = sourceIndex.get(file)
+    if (importFreeTypeScriptModule(file, source)) continue
+    const sourceFile = parseSourceFile(file, source)
     if (owner === "ordinary") for (const target of ordinaryRuntimeDependencies(file, sourceFile, sourceFiles, isStaticImport)) queue.push({ file: target, owner: target.endsWith(".worker.ts") ? "worker" : owner })
     const visit = node => {
       if (owner === "worker") {
@@ -334,7 +346,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
   const { moduleIR } = semantic
   return context => sourceFile => {
     const hasLinkElements = /<link/i.test(sourceFile.text)
-    const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex)
+    const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex, true)
     const importedCollections = new Set(importedStaticCollections.keys())
     const normalized = normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedStaticCollections, sourceFiles, sourceIndex })
     sourceFile = normalized.sourceFile
@@ -398,8 +410,15 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const importedCollectionTransforms = new Map()
     const importedCalculationFunctions = new Map()
     const validatedEffectCalculations = new WeakSet()
+    const transformImports = new Set()
+    const collectTransformImports = node => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) transformImports.add(node.expression.text)
+      if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && ts.isIdentifier(node.tagName)) transformImports.add(node.tagName.text)
+      ts.forEachChild(node, collectTransformImports)
+    }
+    collectTransformImports(sourceFile)
     for (const [name, binding] of importBindings) {
-      if (binding.kind === "namespace") continue
+      if (binding.kind === "namespace" || !transformImports.has(name)) continue
       try {
         importedCollectionTransforms.set(name, resolveComponentExport(binding.target, binding.kind === "default" ? "default" : binding.imported, target => parseSourceFile(target, sourceIndex.get(target)), sourceFiles))
       } catch {}
@@ -3368,10 +3387,34 @@ function importedSerializableCollectionNames(sourceFile, file, sourceFiles, sour
   return new Set(importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex).keys())
 }
 
-function importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex) {
+function importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex, onlyMapped = false) {
   const collections = new Map()
+  const mapped = new Set()
+  const memoNames = new Set(["useMemo"])
+  for (const statement of sourceFile.statements) if (ts.isImportDeclaration(statement) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)) {
+    for (const entry of statement.importClause.namedBindings.elements) if ((entry.propertyName ?? entry.name).text === "useMemo") memoNames.add(entry.name.text)
+  }
+  const collectRoot = node => {
+    if (ts.isPropertyAccessExpression(node) && ["filter", "flatMap", "slice", "toSorted", "map"].includes(node.name.text)) {
+      let expression = node.expression
+      while (ts.isCallExpression(expression) || ts.isPropertyAccessExpression(expression)) expression = expression.expression
+      if (ts.isIdentifier(expression)) mapped.add(expression.text)
+    }
+    ts.forEachChild(node, collectRoot)
+  }
+  const visit = node => {
+    if (ts.isPropertyAccessExpression(node) && node.name.text === "map") {
+      collectRoot(node)
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && memoNames.has(node.expression.text) && node.arguments[0]) collectRoot(node.arguments[0])
+    ts.forEachChild(node, visit)
+  }
+  if (onlyMapped) {
+    visit(sourceFile)
+    if (!mapped.size) return collections
+  }
   for (const [name, binding] of clientImportBindings(sourceFile, file, sourceFiles)) {
-    if (binding.kind !== "named") continue
+    if (binding.kind !== "named" || onlyMapped && !mapped.has(name)) continue
     const imported = parseSourceFile(binding.target, sourceIndex.get(binding.target))
     for (const statement of imported.statements) {
       if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const) || !statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue
@@ -3509,7 +3552,9 @@ function orderSourceStyles(entryFiles, sourceFiles, sourceIndex, staticFiles) {
   const visit = file => {
     if (seenSources.has(file)) return
     seenSources.add(file)
-    const sourceFile = parseSourceFile(file, sourceIndex.get(file))
+    const source = sourceIndex.get(file)
+    if (importFreeTypeScriptModule(file, source)) return
+    const sourceFile = parseSourceFile(file, source)
     for (const statement of sourceFile.statements) {
       if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) continue
       const specifier = statement.moduleSpecifier.text

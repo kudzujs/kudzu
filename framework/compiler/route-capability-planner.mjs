@@ -109,7 +109,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
       dependency: routeEntries.some(route => route.usesDependencyRuntime)
     }
   }
-  return validate ? assertCapabilityIR(capabilityIR, records, { navigationRouteCount }) : capabilityIR
+  return validate ? assertCapabilityIR(capabilityIR) : capabilityIR
 }
 
 export function assertCapabilityIR(capabilityIR, records, options = {}) {

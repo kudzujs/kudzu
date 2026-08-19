@@ -160,6 +160,10 @@ export default function Page() {
   assert.deepEqual(second.sourceResults.map(result => result.file), ["src/label.ts", "src/pages/index.tsx"])
   assert.match(await readFile(join(roots[0], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
   assert.match(await readFile(join(roots[1], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
+  for (const root of roots) for (const name of ["kudzu-plan.json", "kudzu-artifacts.json"]) {
+    const json = await readFile(join(root, ".kudzu", name), "utf8")
+    assert.equal(json, JSON.stringify(JSON.parse(json), null, 2))
+  }
   const firstWorker = (await readdir(join(roots[0], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
   const secondWorker = (await readdir(join(roots[1], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
   assert.match(await readFile(join(roots[0], "dist", "assets", "workers", firstWorker), "utf8"), /First project worker/)
