@@ -2054,6 +2054,17 @@ test("initializes setter-child state from a direct plain-object state prop", asy
   assert.deepEqual(plan.routes[0].states.map(state => state.initialValue), [{ text: "initial" }, { text: "initial" }])
 })
 
+test("records the WorkLedger object-property component boundary", t => {
+  const fixture = new URL("./fixtures/object-prop-workledger-conversation", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/object-prop-workledger-conversation/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/object-prop-workledger-conversation/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/ConversationView\.tsx:\d+:\d+ useEffect\(\) item-property dependencies are only supported in direct keyed row components/)
+})
+
 test("initializes setter-child state from a direct array state prop", async t => {
   const fixture = new URL("./fixtures/array-prop-draft", import.meta.url)
   t.after(async () => {
