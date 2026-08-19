@@ -37,6 +37,14 @@ Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. Th
 
 Required Chrome proves three repeated/conditional owners, selected array `Object.is` effect suppression, keyed identity, exact replacement cleanup/setup, conditional release/remount, and idempotent disposal. The maintained Worker/effect graph remains 907 raw / 477 gzip B for Worker and 13,786 raw / 5,931 gzip B for window output. One warm-up and seven same-target completion builds measured `[1162.6,1505.3,1140.8,938.0,758.9,753.8,717.3]`, median 938.0 ms; no comparative timing claim is made.
 
+## 0.9 Semantic Compression
+
+Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. The first 06B deletion replaces duplicated object-property and setter-callback compiler helper materialization with one internal function. Core semantic source falls from 5,296 to 5,271 lines. It adds no pass, IR kind, runtime concept, accepted source, or browser bytes.
+
+The WorkLedger deploy remains 13 files with digest `31886797161a33150afb3bcbf697545afd9d2041a4968decd33146e68d4b7595` and 37,302 raw / 14,083 aggregate gzip JavaScript bytes. The array-prop effect-sync deploy remains 10 files with digest `5e3bd8413e3d42c54e5c50d7098aa5c383e73846f7ad80201c663eae92393ec5` and 21,172 raw / 8,251 aggregate gzip JavaScript bytes.
+
+The maintained Worker/effect graph remains 907 raw / 477 gzip B for Worker and 13,786 raw / 5,931 gzip B for window output. One warm-up and seven same-target completion builds measured `[439.4,438.7,438.6,464.9,491.6,479.7,444.7]`, median 444.7 ms. No comparative timing claim is made.
+
 ## Current 0.8.59 Release Snapshot
 
 Kudzu 0.8.59 broadens existing compile-time setter-child specialization to one direct parent array-state prop and one direct `set*` setter prop in that prop-derived state shape. It adds no browser runtime code and makes no timing claim.

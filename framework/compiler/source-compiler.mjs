@@ -1230,12 +1230,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       merged.parent = root.parent
       return merged
     }
-    const attachStateBackedEffects = (call, specialization, componentSource, imported) => {
-      if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, call, specialization.effects))
-      if (!specialization.effects.length) return
-      if (specialization.hookDeclarations.length) fail(call, "State-backed object property components cannot declare state, refs, or IDs")
+    const materializeComponentHelper = (call, specialization, prefix, prepend) => {
       const owner = nearestFunction(call)
-      const name = `KPropertyEffect${Math.max(0, call.pos)}`
+      const name = `${prefix}${Math.max(0, call.pos)}`
       const effectStatements = specialization.effects.map(entry => {
         const effectCall = factory.updateCallExpression(entry.call, factory.createIdentifier("__kComponentUseEffect"), entry.call.typeArguments, entry.call.arguments)
         synthesizeTree(effectCall)
@@ -1243,18 +1240,33 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         specializedEffectStateOwners.set(effectCall, { owner: { kind: "specialization", slot: specialization.analysis.slot }, references: specialization.propStateOwners })
         return factory.createExpressionStatement(effectCall)
       })
-      const helper = factory.createFunctionDeclaration(undefined, undefined, name, undefined, [], undefined, factory.createBlock([...effectStatements, factory.createReturnStatement(factory.createNull())], true))
+      const rendered = prepend ? factory.createNull() : specialization.root
+      const helper = factory.createFunctionDeclaration(undefined, undefined, name, undefined, [], undefined, factory.createBlock([...specialization.hookDeclarations, ...effectStatements, factory.createReturnStatement(rendered)], true))
       ts.setParentRecursive(helper, false)
       helper.parent = owner.body
       const helpers = setterHookHelpers.get(owner.body) ?? []
       helpers.push(helper)
       setterHookHelpers.set(owner.body, helpers)
-      settersByFunction.set(helper, new Map(settersForNode(call, settersByFunction)))
-      stateOwnersByFunction.set(helper, new Map([...stateOwnersForNode(call), ...specialization.propStateOwners]))
-      usesComponentEffects = true
-      specialization.root = prependJsxChild(specialization.root, factory.createJsxSelfClosingElement(factory.createIdentifier(name), undefined, factory.createJsxAttributes([])), factory)
+      const setters = new Map(settersForNode(call, settersByFunction))
+      for (const state of specialization.ordinaryStates) setters.set(state.setter, state.state)
+      settersByFunction.set(helper, setters)
+      const stateOwners = new Map([...stateOwnersForNode(call), ...specialization.propStateOwners])
+      for (const state of specialization.ordinaryStates) stateOwners.set(state.state, state.analysisReference)
+      stateOwnersByFunction.set(helper, stateOwners)
+      usesComponentState ||= specialization.ordinaryStates.length > 0
+      usesComponentId ||= specialization.usesComponentId
+      usesComponentRef ||= specialization.ordinaryRefs.length > 0
+      usesComponentEffects ||= specialization.effects.length > 0
+      const invocation = factory.createJsxSelfClosingElement(factory.createIdentifier(name), undefined, factory.createJsxAttributes([]))
+      specialization.root = prepend ? prependJsxChild(specialization.root, invocation, factory) : invocation
       ts.setParentRecursive(specialization.root, false)
       specialization.root.parent = call.parent
+    }
+    const attachStateBackedEffects = (call, specialization, componentSource, imported) => {
+      if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, call, specialization.effects))
+      if (!specialization.effects.length) return
+      if (specialization.hookDeclarations.length) fail(call, "State-backed object property components cannot declare state, refs, or IDs")
+      materializeComponentHelper(call, specialization, "KPropertyEffect", true)
     }
     const expandReducerCallbacks = (root, componentSource, call, ownership) => {
       const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
@@ -1501,44 +1513,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       specialization.root = expandSetterComponents(specialization.root, component.getSourceFile(), [component], specialization, settersForNode(call, settersByFunction), stateOwnersForNode(call))
       if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), call, specialization.effects))
-      if (specialization.hookDeclarations.length || specialization.effects.length) {
-        const owner = nearestFunction(call)
-        const name = `KSetterComponent${Math.max(0, call.pos)}`
-        const effectStatements = specialization.effects.map(entry => {
-          const effectCall = factory.updateCallExpression(entry.call, factory.createIdentifier("__kComponentUseEffect"), entry.call.typeArguments, entry.call.arguments)
-          synthesizeTree(effectCall)
-          ts.setOriginalNode(effectCall, entry.source)
-          specializedEffectStateOwners.set(effectCall, { owner: { kind: "specialization", slot: specialization.analysis.slot }, references: specialization.propStateOwners })
-          return factory.createExpressionStatement(effectCall)
-        })
-        const helper = factory.createFunctionDeclaration(
-          undefined,
-          undefined,
-          name,
-          undefined,
-          [],
-          undefined,
-          factory.createBlock([...specialization.hookDeclarations, ...effectStatements, factory.createReturnStatement(specialization.root)], true)
-        )
-        ts.setParentRecursive(helper, false)
-        helper.parent = owner.body
-        const helpers = setterHookHelpers.get(owner.body) ?? []
-        helpers.push(helper)
-        setterHookHelpers.set(owner.body, helpers)
-        const setters = new Map(settersForNode(call, settersByFunction))
-        for (const state of specialization.ordinaryStates) setters.set(state.setter, state.state)
-        settersByFunction.set(helper, setters)
-        const stateOwners = new Map([...stateOwnersForNode(call), ...specialization.propStateOwners])
-        for (const state of specialization.ordinaryStates) stateOwners.set(state.state, state.analysisReference)
-        stateOwnersByFunction.set(helper, stateOwners)
-        usesComponentState ||= specialization.ordinaryStates.length > 0
-        usesComponentId ||= specialization.usesComponentId
-        usesComponentRef ||= specialization.ordinaryRefs.length > 0
-        usesComponentEffects ||= specialization.effects.length > 0
-        specialization.root = factory.createJsxSelfClosingElement(factory.createIdentifier(name), undefined, factory.createJsxAttributes([]))
-        ts.setParentRecursive(specialization.root, false)
-        specialization.root.parent = call.parent
-      }
+      if (specialization.hookDeclarations.length || specialization.effects.length) materializeComponentHelper(call, specialization, "KSetterComponent", false)
       componentSpecializations.set(call, specialization)
     }
     for (const [name, component] of components) {
