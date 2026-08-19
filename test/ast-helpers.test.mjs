@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import ts from "typescript"
-import { bindingNames, effectReturns, isUnshadowedGlobal, nearestFunction, nearestFunctionLike, referenceIdentifiers, sourceLocation, sourceNodeError, unwrapExpression } from "../framework/compiler/ast-helpers.mjs"
+import { bindingNames, effectReturns, isNodeWithin, isUnshadowedGlobal, nearestFunction, nearestFunctionLike, referenceIdentifiers, sourceLocation, sourceNodeError, unwrapExpression } from "../framework/compiler/ast-helpers.mjs"
 
 test("shares AST traversal, scope, return, and source-location helpers", () => {
   const source = ts.createSourceFile("original.tsx", `
@@ -22,6 +22,9 @@ const effect = () => { const nested = () => { return 1 }; return () => cleanup()
   assert.equal(isUnshadowedGlobal(shadowed, source), false)
 
   const target = source.statements.find(ts.isClassDeclaration).members[0].body.statements[0].expression.expression
+  assert.equal(isNodeWithin(target, source.statements.find(ts.isClassDeclaration)), true)
+  assert.equal(isNodeWithin(target, target), true)
+  assert.equal(isNodeWithin(source.statements.find(ts.isClassDeclaration), target), false)
   assert.equal(nearestFunction(target), undefined)
   assert.equal(nearestFunctionLike(target), source.statements.find(ts.isClassDeclaration).members[0])
   assert.equal(unwrapExpression(declarations.find(declaration => declaration.name.getText(source) === "wrapped").initializer).text, "value")

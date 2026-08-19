@@ -17,6 +17,20 @@ Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. Ba
 
 The maintained Worker/effect graph also remains byte-identical at 907 raw / 477 gzip B for the Worker and 13,786 raw / 5,931 gzip B for the window graph. One warm-up and seven clean builds measured `[651.6,643.9,596.7,631.5,613.3,634.0,555.0]` for the baseline and `[456.6,441.3,450.2,461.8,445.7,466.8,457.5]` for the final candidate, with medians 631.5 and 456.6 ms. Targets ran sequentially at different times rather than interleaved, so this is only an artifact-size and build-completion diagnostic, not a timing comparison or claim. Required Chrome proves same-turn updates, dependency cleanup, navigation persistence, and exact layout disposal for both source models; static siblings remain zero JavaScript.
 
+## 0.9 Resource Lifecycle Evidence
+
+Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. Required-Chrome journeys execute terminal async acquisition/discard/late resolution, WebSocket dependency replacement/navigation release/stale callbacks, and package-backed effect cleanup. These are correctness journeys, not browser timing benchmarks.
+
+| Fixture graph | JavaScript raw / aggregate gzip | Static sibling |
+|---|---:|---:|
+| E2B-shaped terminal | 2,634 / 1,495 B | 0 B |
+| Route WebSocket with navigation | 15,872 / 7,163 B | 0 B |
+| Package-owned effect | 3,562,795 / 1,025,300 B | 0 B |
+
+No resource runtime, registry, or shared capability bytes were added. The package graph intentionally bundles TypeScript as isolation evidence; it is not a recommended payload and creates no package resource handle.
+
+The maintained Worker/effect benchmark remains 907 raw / 477 gzip B for the Worker graph and 13,786 raw / 5,931 gzip B for the window graph. One warm-up and seven final-candidate builds measured `[686.6,606.6,707.7,615.3,512.8,504.2,536.7]`, median 606.6 ms. This is a same-target completion diagnostic, not a revision comparison or timing claim.
+
 ## Current 0.8.59 Release Snapshot
 
 Kudzu 0.8.59 broadens existing compile-time setter-child specialization to one direct parent array-state prop and one direct `set*` setter prop in that prop-derived state shape. It adds no browser runtime code and makes no timing claim.

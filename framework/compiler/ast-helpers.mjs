@@ -160,6 +160,11 @@ export function sourceLocation(node, fallbackSource) {
   return `${sourceFile.fileName}:${position.line + 1}:${position.character + 1}`
 }
 
+export function isNodeWithin(node, root) {
+  for (let current = node; current; current = current.parent) if (current === root) return true
+  return false
+}
+
 export function effectReturns(callback) {
   let cleanup = false
   let invalid

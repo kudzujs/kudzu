@@ -1,5 +1,5 @@
 import ts from "typescript"
-import { bindingNames, containsJsx, functionVarDeclaresName, importDeclarationNames, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
+import { bindingNames, containsJsx, functionVarDeclaresName, importDeclarationNames, isNodeWithin, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 
 export function normalizeMediaQueryExternalStores(sourceFile, factory, context) {
     const imports = sourceFile.statements.filter(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react" && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings))
@@ -58,7 +58,7 @@ export function normalizeMediaQueryExternalStores(sourceFile, factory, context) 
     }
     inspect(sourceFile)
     const references = referenceIdentifiers(sourceFile, "useSyncExternalStore")
-    if (references.length !== candidates.size) throw sourceNodeError(references.find(reference => ![...candidates.values()].some(candidate => insideNode(reference, candidate.declaration.initializer))) ?? externalStoreImport.entry, sourceFile, "useSyncExternalStore is supported only for direct static media query declarations")
+    if (references.length !== candidates.size) throw sourceNodeError(references.find(reference => ![...candidates.values()].some(candidate => isNodeWithin(reference, candidate.declaration.initializer))) ?? externalStoreImport.entry, sourceFile, "useSyncExternalStore is supported only for direct static media query declarations")
     const directHooks = new Set(imports.flatMap(statement => statement.importClause.namedBindings.elements.filter(entry => !entry.propertyName).map(entry => entry.name.text)))
     const missingHooks = ["useEffect", "useState"].filter(name => !directHooks.has(name))
     for (const name of missingHooks) {
@@ -103,11 +103,6 @@ export function normalizeMediaQueryExternalStores(sourceFile, factory, context) 
       return ts.visitEachChild(node, visitor, context)
     }
     return ts.visitNode(sourceFile, visitor)
-  }
-
-  function insideNode(node, root) {
-    for (let current = node; current; current = current.parent) if (current === root) return true
-    return false
   }
 
 export function normalizeNavigatorCapabilityConditions(sourceFile, factory, context) {

@@ -1,5 +1,5 @@
 import ts from "typescript"
-import { nearestFunction, referencesIdentifier, unwrapExpression } from "./ast-helpers.mjs"
+import { isNodeWithin, nearestFunction, referencesIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { collectionExpression } from "./collection-analysis.mjs"
 import { referencedStateNames } from "./descriptor-session.mjs"
 
@@ -80,10 +80,7 @@ export function validateEffectOwnedBrowserResources(callback, returns, fail, bin
   const frameAssignments = []
   const cancellations = new Set()
   const disconnected = new Set()
-  const insideCleanup = node => returns.cleanups.some(cleanup => {
-    for (let current = node; current; current = current.parent) if (current === cleanup) return true
-    return false
-  })
+  const insideCleanup = node => returns.cleanups.some(cleanup => isNodeWithin(node, cleanup))
   const isGlobal = (identifier, name) => identifier.text === name && (!bindingIndex || bindingIndex.resolveReference(identifier, callback)?.kind === "global")
   const resource = identifier => bindingIndex?.resolveReference(identifier, callback)?.declaration ?? identifier.text
   const visit = node => {

@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react"
+import { Shell } from "../Shell"
+
+export const layout = Shell
 
 export default function SocketPage() {
   const [room, setRoom] = useState("general")
@@ -33,7 +36,7 @@ export default function SocketPage() {
 
   return <main>
     <h1>Room socket</h1>
-    <p>{room}: {status}</p>
-    <button onClick={() => setRoom(room === "general" ? "support" : "general")}>Change room</button>
+    <p data-socket-status>{room}: {status}</p>
+    <button data-change-room onClick={() => setRoom(room === "general" ? "support" : "general")}>Change room</button>
   </main>
 }

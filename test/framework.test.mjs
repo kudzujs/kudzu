@@ -1765,6 +1765,8 @@ test("lowers an effect-private E2B terminal handle without a resource runtime", 
   assert.match(handler, /\.resume\(\)/)
   assert.deepEqual(plan.effects[0].scope, {})
   assert.doesNotMatch(staticHtml, /<script/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runTerminalResourceBrowserTest(fixture, chrome)
 })
 
 test("owns effect-private WebSocket refs across replacement and cleanup", async t => {
@@ -1824,6 +1826,8 @@ test("owns effect-private WebSocket refs across replacement and cleanup", async 
   assert.notEqual(first, second)
   secondCleanup()
   assert.equal(second.closeCount, 1)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runWebSocketResourceBrowserTest(fixture, chrome)
 })
 
 test("rejects mutable refs shared by multiple effects", () => {
@@ -3533,6 +3537,10 @@ test("bundles package imports used directly by owned effects", async t => {
   assert.match(handler, /5\.9\./)
   assert.match(html, /effects\/index\.js/)
   assert.doesNotMatch(staticHtml, /<script|typescript|5\.9\./)
+  assert.ok(Buffer.byteLength(handler) > 0)
+  assert.ok(gzipSync(handler).length > 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runPackageEffectBrowserTest(fixture, chrome)
 })
 
 test("rejects package imports hidden behind effect helpers", () => {
@@ -7153,6 +7161,189 @@ http.createServer((request, response) => {
   } finally {
     server.kill()
   }
+}
+
+async function runResourceBrowserScenarios(fixture, chrome, { setup = "", script, scenarios, virtualTime = 5000 }) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  let html = await readFile(htmlUrl, "utf8")
+  if (setup) html = html.replace("</head>", `<script>${setup}</script></head>`)
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), script)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const pathname = new URL(request.url, "http://localhost").pathname
+  const file = path.join(root, pathname === "/" ? "index.html" : path.extname(pathname) ? pathname.slice(1) : pathname.slice(1) + "/index.html")
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    for (const scenario of scenarios) {
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--virtual-time-budget=${virtualTime}`, "--dump-dom", `http://127.0.0.1:${port}${scenario.path}`], { encoding: "utf8", timeout: 15000 })
+      assert.equal(browser.status, 0, browser.stderr)
+      assert.match(browser.stdout, new RegExp(`${scenario.attribute}="${scenario.value}"`), browser.stderr)
+    }
+  } finally {
+    server.kill()
+  }
+}
+
+async function runTerminalResourceBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+globalThis.__terminalResolvers = []
+globalThis.__terminalCounts = { close: 0, resume: 0, remove: 0 }
+globalThis.__kTerminalOpen = () => new Promise(resolve => globalThis.__terminalResolvers.push(resolve))
+globalThis.__terminalHandle = () => ({
+  close() { globalThis.__terminalCounts.close += 1 },
+  resume() { globalThis.__terminalCounts.resume += 1 }
+})
+const remove = window.removeEventListener.bind(window)
+window.removeEventListener = (name, callback, options) => {
+  if (name === "pagehide" || name === "pageshow") globalThis.__terminalCounts.remove += 1
+  return remove(name, callback, options)
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const mode = new URL(location.href).searchParams.get("mode")
+try {
+  await waitFor(() => globalThis.__terminalResolvers.length === 1, "acquire")
+  const resolve = globalThis.__terminalResolvers.shift()
+  if (mode === "normal") {
+    resolve(globalThis.__terminalHandle())
+    await waitFor(() => document.querySelector("p").textContent === "ready", "ready")
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }))
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))
+    await waitFor(() => globalThis.__terminalCounts.resume === 1, "resume")
+    if (globalThis.__terminalCounts.close !== 0) throw new Error("persisted-close")
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await waitFor(() => globalThis.__terminalCounts.close === 1 && globalThis.__terminalCounts.remove === 2, "dispose")
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await new Promise(resolve => setTimeout(resolve, 50))
+    if (globalThis.__terminalCounts.close !== 1 || globalThis.__terminalCounts.remove !== 2) throw new Error("repeat")
+  } else {
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await waitFor(() => globalThis.__terminalCounts.remove === 2, "late-dispose")
+    resolve(globalThis.__terminalHandle())
+    await waitFor(() => globalThis.__terminalCounts.close === 1, "late-close")
+    if (document.querySelector("p").textContent !== "starting") throw new Error("late-status")
+  }
+  document.body.dataset.terminalResourceTest = mode + "-pass"
+} catch (error) {
+  document.body.dataset.terminalResourceTest = mode + "-fail-" + error.message
+}
+`,
+    scenarios: [
+      { path: "/?mode=normal", attribute: "data-terminal-resource-test", value: "normal-pass" },
+      { path: "/?mode=late", attribute: "data-terminal-resource-test", value: "late-pass" },
+    ],
+  })
+}
+
+async function runWebSocketResourceBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+class FakeSocket {
+  static instances = []
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCount = 0
+    FakeSocket.instances.push(this)
+  }
+  addEventListener(name, callback) { this.listeners.set(name, callback) }
+  removeEventListener(name, callback) { if (this.listeners.get(name) === callback) this.listeners.delete(name) }
+  close() { this.closeCount += 1 }
+  fire(name) { this.listeners.get(name)?.() }
+}
+globalThis.WebSocket = FakeSocket
+globalThis.__sockets = FakeSocket.instances
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 150; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__sockets.length === 1, "first")
+  const header = document.querySelector("[data-socket-header]")
+  const first = globalThis.__sockets[0]
+  const staleFirstOpen = first.listeners.get("open")
+  first.fire("open")
+  await waitFor(() => document.querySelector("[data-socket-status]").textContent === "general: connected", "first-open")
+  document.querySelector("[data-change-room]").click()
+  await waitFor(() => globalThis.__sockets.length === 2 && first.closeCount === 1 && first.listeners.size === 0, "replace")
+  const second = globalThis.__sockets[1]
+  if (!second.url.endsWith("/rooms/support")) throw new Error("support-url")
+  staleFirstOpen()
+  if (document.querySelector("[data-socket-status]").textContent !== "support: connecting") throw new Error("stale-replacement")
+  const staleSecondError = second.listeners.get("error")
+  second.fire("open")
+  await waitFor(() => document.querySelector("[data-socket-status]").textContent === "support: connected", "second-open")
+  document.querySelector('a[href="/other"]').click()
+  await waitFor(() => document.querySelector('[data-route="other"]') && second.closeCount === 1 && second.listeners.size === 0, "route-release")
+  if (document.querySelector("[data-socket-header]") !== header) throw new Error("layout")
+  staleSecondError()
+  if (!document.querySelector('[data-route="other"]')) throw new Error("stale-route")
+  history.back()
+  await waitFor(() => document.querySelector("[data-socket-status]") && globalThis.__sockets.length === 3, "remount")
+  const third = globalThis.__sockets[2]
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => third.closeCount === 1 && third.listeners.size === 0, "dispose")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (third.closeCount !== 1) throw new Error("repeat")
+  document.body.dataset.websocketResourceTest = "pass"
+} catch (error) {
+  document.body.dataset.websocketResourceTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-websocket-resource-test", value: "pass" }],
+    virtualTime: 7000,
+  })
+}
+
+async function runPackageEffectBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => document.body.dataset.effectPackage?.startsWith("setup:5.9."), "setup")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.effectPackage?.startsWith("cleanup:5.9."), "cleanup")
+  const cleanup = document.body.dataset.effectPackage
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.effectPackage !== cleanup) throw new Error("repeat")
+  document.body.dataset.packageEffectTest = "pass"
+} catch (error) {
+  document.body.dataset.packageEffectTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-package-effect-test", value: "pass" }],
+  })
 }
 
 async function runNativeBubblingBrowserTest(fixture, chrome) {
