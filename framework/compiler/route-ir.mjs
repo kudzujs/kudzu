@@ -1,5 +1,6 @@
 const markerFields = new Set(["cleanup", "list", "svg", "mount", "static", "indexed", "reducer", "nested", "effects", "conditions", "conditionHandlers", "textRanges", "attributes", "events", "expressions", "expressionAttributes", "fastRelease"])
 const validated = new WeakSet()
+const jsonSafe = new WeakSet()
 
 export function assertRouteIR(plan, { concrete = false } = {}) {
   if (validated.has(plan) && (!concrete || typeof plan.route === "string")) return plan
@@ -172,29 +173,37 @@ function validSeed(seed) {
 }
 
 export function assertJsonSafe(value, label = "Value") {
-  const invalid = invalidJsonPath(value, new Set(), "$")
+  const invalid = invalidJsonPath(value, new Set(), jsonSafe, [])
   if (invalid) throw new Error(`${label} is not JSON-safe at ${invalid}`)
   return value
 }
 
-function invalidJsonPath(value, seen, path) {
+function invalidJsonPath(value, seen, safe, path) {
   if (value === null || typeof value === "string" || typeof value === "boolean") return undefined
-  if (typeof value === "number") return Number.isFinite(value) && !Object.is(value, -0) ? undefined : path
-  if (!value || typeof value !== "object" || seen.has(value) || Object.getOwnPropertySymbols(value).length) return path
+  if (typeof value === "number") return Number.isFinite(value) && !Object.is(value, -0) ? undefined : jsonPath(path)
+  if (!value || typeof value !== "object" || seen.has(value)) return jsonPath(path)
+  if (safe.has(value)) return undefined
   const prototype = Object.getPrototypeOf(value)
-  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return path
-  const descriptors = Object.getOwnPropertyDescriptors(value)
-  if (Array.isArray(value) && (Object.keys(descriptors).some(key => key !== "length" && !/^(0|[1-9]\d*)$/.test(key)) || Object.keys(value).length !== value.length)) return path
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return jsonPath(path)
+  const keys = Reflect.ownKeys(value)
+  if (keys.some(key => typeof key !== "string")) return jsonPath(path)
+  if (Array.isArray(value) && (keys.some(key => key !== "length" && !/^(0|[1-9]\d*)$/.test(key)) || keys.length - 1 !== value.length)) return jsonPath(path)
   seen.add(value)
-  for (const [key, descriptor] of Object.entries(descriptors)) {
+  for (const key of keys) {
     if (Array.isArray(value) && key === "length") continue
-    if (!descriptor.enumerable || !("value" in descriptor)) return `${path}.${key}`
-    const invalid = invalidJsonPath(descriptor.value, seen, `${path}.${key}`)
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    path.push(key)
+    if (!descriptor.enumerable || !("value" in descriptor)) return jsonPath(path)
+    const invalid = invalidJsonPath(descriptor.value, seen, safe, path)
     if (invalid) return invalid
+    path.pop()
   }
   seen.delete(value)
+  safe.add(value)
   return undefined
 }
+
+const jsonPath = path => `$${path.map(key => `.${key}`).join("")}`
 
 const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value)
 const nonempty = value => typeof value === "string" && value.length > 0

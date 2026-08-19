@@ -49,6 +49,16 @@ The second independent deletion removes primitive- and array-specific component-
 
 The maintained Worker/effect graph again remains byte-identical. One warm-up and seven same-target completion builds measured `[584.0,521.7,552.6,496.7,481.4,507.7,494.2]`, median 507.7 ms. Host load differs from the first run, so no timing comparison is made.
 
+### 0.9 Final-Proof Candidate Diagnostics
+
+Measured 2026-08-19 on Linux x64, Node 24.14.0, Chrome 142.0.7444.175, and an Intel Core i5-9500. Local benchmark source and raw files remain ignored; accepted medians, artifact values, environment, candidate revision, and deploy digests are recorded in the final-proof audit.
+
+The five-target content application first exposed an 11,348 B Kudzu state-backed disclosure versus 410 B Astro inline JavaScript. Native `<details>/<summary>` preserves accessibility, disabled-JavaScript, native-navigation, and missing-script acceptance while reducing every target's route/session JavaScript to 0 B. Kudzu emits 8,441 total bytes and no deployed JavaScript; Astro emits 8,680 total bytes and no deployed JavaScript.
+
+Five-target runtime and capability matrices each used one warm-up, seven rotating clean builds, and seven fresh rotating Chrome profiles. Kudzu emits 33,831 raw / 13,236 gzip B JavaScript for the stateful matrix versus 193,685 / 60,035 B React, 64,023 / 24,772 B Vue, 40,726 / 15,659 B Svelte, and 195,371 / 61,352 B Astro+React. Median Kudzu scalar, row update, append, effect, and async operations are 0.9, 2.4, 3.2, 1.2, and 0.6 ms. Worker and navigation medians plus limitations are in the final-proof audit.
+
+The public commerce fixture compared Kudzu and Astro with acceptance before timing and seven rotating cold/warm samples. At 100 products Kudzu cold median is 3,317 ms versus Astro 3,558 ms. At 1,000 products the retained compiler optimization reduces Kudzu from 8,896 to 7,874 ms and median peak RSS from 881,868 to 743,512 KiB while preserving 1,011 pages, 10,164,835 output bytes, and digest `61eb1b7c633a2facabb782bc654a5ad07169aeb82cf47dbccda9b9e7303a716e`. Astro remains faster at 6,178 ms and lower-RSS at 408,060 KiB. This is a release-blocking loss, not a performance claim; 10,000-route measurement is deferred until the 1,000-route gate passes.
+
 The public `kudzu-based-bench` storefront then received one warm-up and seven alternating clean builds at 100, 1,000, and 10,000 generated products against the preceding `bb7fdc5` commit. Baseline and candidate output is byte-identical at every size. Timing distributions overlap and no build improvement or regression is claimed.
 
 | Products | Pages / files | Output bytes | Baseline median | Candidate median |

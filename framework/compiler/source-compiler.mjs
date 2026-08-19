@@ -1,5 +1,6 @@
 import { readFile, realpath, stat } from "node:fs/promises"
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path"
+import { transformSync } from "esbuild"
 import ts from "typescript"
 import { createBindingIndex } from "./analysis/binding-index.mjs"
 import { createComponentAnalysisSession } from "./analysis/component-analysis.mjs"
@@ -36,8 +37,9 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
   const plain = plainTypeScriptModule(file, source, sourceFiles)
+  const importFreePlain = plain && !parseSourceFile(file, source).statements.some(statement => (ts.isImportDeclaration(statement) || ts.isExportDeclaration(statement)) && statement.moduleSpecifier)
   if (plain && counters) counters.plainModules = (counters.plainModules ?? 0) + 1
-  const result = ts.transpileModule(source, {
+  const result = importFreePlain ? { outputText: transformSync(source, { loader: "ts", format: "esm", target: "es2022", sourcefile: file }).code } : ts.transpileModule(source, {
     fileName: file,
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,

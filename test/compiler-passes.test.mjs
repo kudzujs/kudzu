@@ -975,6 +975,12 @@ test("rejects invalid concrete RouteIR references before artifact planning", () 
   assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "l0", state: "missing", key: "id", keys: [] }] }), /list 0 references missing state "missing"/)
   assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "l0", state: "s0", key: "id", keys: [1, 1] }] }), /duplicate key 1/)
   assert.throws(() => assertRouteIR({ ...plan, states: [{ ...state, initialValue: 1n }] }), /RouteIR .* is not JSON-safe/)
+  const accessor = {}
+  Object.defineProperty(accessor, "value", { enumerable: true, get: () => { throw new Error("must not execute") } })
+  assert.throws(() => assertRouteIR({ ...plan, states: [{ ...state, initialValue: accessor }] }), /not JSON-safe at \$\.states\.0\.initialValue\.value/)
+  const symbolic = {}
+  symbolic[Symbol("hidden")] = true
+  assert.throws(() => assertRouteIR({ ...plan, states: [{ ...state, initialValue: symbolic }] }), /not JSON-safe at \$\.states\.0\.initialValue/)
 })
 
 test("rejects broken nested list ownership and malformed captures", () => {
