@@ -141,12 +141,18 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
   }
 
   function compileEvent(expression, { owner = "module", stateOwners = new Map(), setters, reducers, functions, listItem, keyedBlock, importBindings }) {
-    if (ts.isIdentifier(expression)) expression = functions.get(expression.text)
+    const directFunction = ts.isIdentifier(expression) ? functions.get(expression.text) : undefined
+    const directReducer = ts.isIdentifier(expression) ? reducers.get(expression.text) : undefined
+    const directImplementation = directReducer?.sharedAction?.directImplementation
+    const directSource = directFunction && ts.getOriginalNode(directFunction)
+    const actionSource = directImplementation && ts.getOriginalNode(directImplementation)
+    const directAction = directSource?.pos >= 0 && directSource.pos === actionSource?.pos && directSource.end === actionSource.end && directSource.getSourceFile().fileName === actionSource.getSourceFile().fileName ? directReducer.sharedAction : undefined
+    if (ts.isIdentifier(expression)) expression = directFunction
     if (!expression || (!ts.isArrowFunction(expression) && !ts.isFunctionExpression(expression) && !ts.isFunctionDeclaration(expression))) return undefined
-    const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters, stateOwners, owner, keyedBlock)
+    const optimized = referencedReducerDispatches(expression.body, reducers, expression).size ? undefined : compileOptimizedEvent(expression, setters, stateOwners, owner, keyedBlock, directAction ? [directAction.slot] : [])
     if (optimized) return optimized
     rejectWorkerConstructions(expression)
-    const descriptor = compileNativeCallback(expression, { setters, reducers, entries: nativeHandlers, importBindings, prefix: "handler", role: "native", listItem, keyedBlock, stateOwners })
+    const descriptor = compileNativeCallback(expression, { setters, reducers, entries: nativeHandlers, importBindings, prefix: "handler", role: "native", listItem, keyedBlock, stateOwners, actionSlots: directAction ? [directAction.slot] : [] })
     return factory.createCallExpression(factory.createIdentifier("__kNativeBehavior"), undefined, [
       factory.createStringLiteral(handlerUrl), factory.createStringLiteral(descriptor.exportName), descriptor.states, descriptor.scope
     ])
@@ -156,7 +162,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     return compileNativeCallback(expression, { ...options, entries: effectHandlers, prefix: "effect", role: "effect" })
   }
 
-  function compileNativeCallback(expression, { setters, reducers, entries, importBindings, prefix, role, listItem, keyedBlock, stateOwners, deferValues = false, snapshotNested = false, liveStates = new Set() }) {
+  function compileNativeCallback(expression, { setters, reducers, entries, importBindings, prefix, role, listItem, keyedBlock, stateOwners, actionSlots = [], deferValues = false, snapshotNested = false, liveStates = new Set() }) {
     const indexedBindingIndex = indexedReferences(bindingIndex, expression, expression) ? bindingIndex : undefined
     const allCaptures = nativeCaptureNames(expression, setters, indexedBindingIndex)
     const usedReducers = referencedReducerDispatches(expression.body, reducers, expression, indexedBindingIndex)
@@ -167,10 +173,11 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     const usedStates = referencedStateNames(expression.body, setters, expression, indexedBindingIndex)
     for (const name of usedReducers) {
       const reducer = reducers.get(name)
-      if (reducer.contextAction) for (const state of referencedStateNames(reducer.contextAction.body, reducer.states, reducer.contextAction, bindingIndex)) usedStates.add(state)
+      const direct = reducer.directImplementation ?? reducer.sharedAction?.directImplementation
+      if (direct) for (const state of referencedStateNames(direct.body, reducer.states ?? reducer.sharedAction.states, direct, bindingIndex)) usedStates.add(state)
     }
     const exportName = `${prefix}${entries.length}`
-    const entry = { exportName, expression, captures, deferValues, imports, listItem, keyedBlock, liveStates, role, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested, usedStates, signalRefs: new Map([...usedStates].map(name => [name, signal(name, expression, stateOwners, [...setters].filter(([, state]) => state === name).map(([setter]) => setter))])), bindingIndex: indexedBindingIndex }
+    const entry = { actionSlots, exportName, expression, captures, deferValues, imports, listItem, keyedBlock, liveStates, role, setters: new Map([...setters].filter(([, state]) => usedStates.has(state))), reducers: new Map([...reducers].filter(([name]) => usedReducers.has(name))), snapshotNested, usedStates, signalRefs: new Map([...usedStates].map(name => [name, signal(name, expression, stateOwners, [...setters].filter(([, state]) => state === name).map(([setter]) => setter))])), bindingIndex: indexedBindingIndex }
     entries.push(entry)
     const value = name => deferValues
       ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createIdentifier(name))
@@ -188,14 +195,14 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     }
   }
 
-  function compileOptimizedEvent(expression, setters, stateOwners, owner, keyedBlock) {
+  function compileOptimizedEvent(expression, setters, stateOwners, owner, keyedBlock, actions = []) {
     const statements = ts.isBlock(expression.body) ? expression.body.statements : [factory.createExpressionStatement(expression.body)]
     let commands = statements.map(statement => ts.isExpressionStatement(statement) && canSpecializeCommand(statement.expression, expression, setters) ? compileEventCommand(statement.expression, setters) : undefined)
     if ((!commands.length || commands.some(command => !command)) && compileEventCommand.handler) commands = compileEventCommand.handler(expression, setters, bindingIndex)
     if (!commands?.length || commands.some(command => !command)) return undefined
     const original = ts.getOriginalNode(expression)
     const source = original.pos >= 0 && original.end >= 0 ? { file: sourceName(original.getSourceFile()), start: original.getStart(), end: original.end } : undefined
-    const handler = registerCommandHandler(moduleIR, commands.map(command => ({ ...command, reference: stateOwners.get(command.state) ?? stateReferences(expression).get(command.state) })), source)
+    const handler = registerCommandHandler(moduleIR, commands.map(command => ({ ...command, reference: stateOwners.get(command.state) ?? stateReferences(expression).get(command.state) })), source, actions)
     if (keyedBlock !== undefined) handler.keyedBlock = keyedBlock
     return generateCommandBehavior(moduleIR, handler, factory)
   }
@@ -260,7 +267,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
           snapshot: lowered.captureSnapshots.includes(name)
         })),
         imports: entry.imports.map(entry => importSlot(importRecord(entry))),
-        actions: [...entry.reducers.values()].flatMap(reducer => reducer.sharedAction ? [reducer.sharedAction.slot] : []),
+        actions: [...new Set([...entry.actionSlots, ...[...entry.reducers.values()].flatMap(reducer => reducer.sharedAction ? [reducer.sharedAction.slot] : [])])],
         code: lowered.code,
         ...(source(entry.expression) ? { source: source(entry.expression) } : {})
       })

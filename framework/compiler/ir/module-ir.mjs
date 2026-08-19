@@ -187,11 +187,12 @@ export function registerSharedAction(moduleIR, descriptor) {
   return action
 }
 
-export function registerCommandHandler(moduleIR, commands, source) {
+export function registerCommandHandler(moduleIR, commands, source, actions = []) {
   const handler = {
     slot: moduleIR.handlers.length,
     kind: "commands",
     commands: commands.map(({ operation, reference, state, value, syntax }) => ({ operation, signal: registerSignal(moduleIR, reference, state).slot, value, ...(syntax ? { syntax } : {}) })),
+    ...(actions.length ? { actions } : {}),
     ...(source ? { source } : {})
   }
   moduleIR.handlers.push(handler)

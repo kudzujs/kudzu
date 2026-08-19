@@ -2553,6 +2553,7 @@ test("compiles a Zustand-shaped store into shared layout state", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const output = new URL("./fixtures/zustand-migration/dist/", import.meta.url)
+  const staticHtml = await readFile(new URL("static/index.html", output), "utf8")
   const shellSource = inspectSourceResult(fixture, "src/Shell.tsx")
   const productSource = inspectSourceResult(fixture, "src/pages/index.tsx")
   const cartSource = inspectSourceResult(fixture, "src/pages/cart.tsx")
@@ -2567,14 +2568,68 @@ test("compiles a Zustand-shaped store into shared layout state", async t => {
   assert.deepEqual(productSource.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
   assert.deepEqual(cartSource.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
   assert.doesNotMatch(JSON.stringify([shellSource, productSource, cartSource].map(source => ({ sharedStates: source.moduleIR.sharedStates, sharedActions: source.moduleIR.sharedActions }))), /zustand|store-action|__kCreateStore/i)
-  for (const route of plan.routes) assert.deepEqual(route.states, [{ slot: 0, id: "ls0", name: "store.ts#useCart.quantities", initialValue: {}, lifetime: "layout" }])
-  for (const route of plan.routes) {
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  for (const route of plan.routes.filter(route => route.route !== "/static")) assert.deepEqual(route.states, [{ slot: 0, id: "ls0", name: "store.ts#useCart.quantities", initialValue: {}, lifetime: "layout" }])
+  for (const route of plan.routes.filter(route => route.route !== "/static")) {
     assert.deepEqual(route.effects[0].dependencies, ["ls0"])
     assert.deepEqual(route.effects[0].dependencyExpressions, [["binary", "??", ["get", ["state", "quantities"], "oak", false], ["value", 0]]])
     assert.deepEqual(route.effects[0].dependencyStates, { quantities: "ls0" })
   }
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
-  if (chrome) await runZustandMigrationBrowserTest(fixture, chrome)
+  if (chrome) await runSharedCartBrowserTest(fixture, chrome)
+})
+
+test("records the Context and Zustand shared-action boundary", async t => {
+  const contextFixture = new URL("./fixtures/context-shared-actions", import.meta.url)
+  const zustandFixture = new URL("./fixtures/zustand-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/context-shared-actions/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/context-shared-actions/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: contextFixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const contextShell = inspectSourceResult(contextFixture, "src/Shell.tsx")
+  const contextProduct = inspectSourceResult(contextFixture, "src/pages/index.tsx")
+  const contextCart = inspectSourceResult(contextFixture, "src/pages/cart.tsx")
+  const zustandProduct = inspectSourceResult(zustandFixture, "src/pages/index.tsx")
+  const zustandCart = inspectSourceResult(zustandFixture, "src/pages/cart.tsx")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/context-shared-actions/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  const staticHtml = await readFile(new URL("./fixtures/context-shared-actions/dist/static/index.html", import.meta.url), "utf8")
+  const emitted = (await Promise.all((await readdir(new URL("./fixtures/context-shared-actions/dist/", import.meta.url), { recursive: true })).filter(file => /\.(?:html|js)$/.test(file)).map(file => readFile(new URL(file, new URL("./fixtures/context-shared-actions/dist/", import.meta.url)), "utf8")))).join("\n")
+
+  for (const source of [contextShell, contextProduct, contextCart]) {
+    assert.deepEqual(source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })), [{ slot: 0, field: "quantities" }])
+    assert.deepEqual(source.moduleIR.signals.map(signal => signal.reference.kind), ["shared-state"])
+  }
+  assert.deepEqual(contextShell.moduleIR.sharedActions, [])
+  assert.deepEqual(contextProduct.moduleIR.sharedActions, [{ slot: 0, state: 0, name: "add" }])
+  assert.deepEqual(contextCart.moduleIR.sharedActions, [{ slot: 0, state: 0, name: "remove" }])
+  assert.deepEqual(contextProduct.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
+  assert.deepEqual(contextCart.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
+  for (const route of plan.routes.filter(route => route.route !== "/static")) {
+    assert.deepEqual(route.states, [{ slot: 0, id: "ls0", name: "quantities", initialValue: {}, lifetime: "layout" }])
+    assert.deepEqual(route.effects[0].dependencies, ["ls0"])
+    assert.deepEqual(route.effects[0].dependencyExpressions, [["binary", "??", ["get", ["state", "quantities"], "oak", false], ["value", 0]]])
+    assert.deepEqual(route.effects[0].dependencyStates, { quantities: "ls0" })
+  }
+  assert.doesNotMatch(emitted, /(?:from\s*|import\s*\()["'](?:react|zustand)["']|createContext|useContext/)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSharedCartBrowserTest(contextFixture, chrome)
+
+  const sharedBoundary = source => ({
+    states: source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })),
+    actions: source.moduleIR.sharedActions.map(({ slot, state, name }) => ({ slot, state, name })),
+    handlerActions: source.moduleIR.handlers.flatMap(handler => handler.actions ?? []),
+    signalKinds: source.moduleIR.signals.map(signal => signal.reference.kind),
+  })
+  assert.deepEqual(
+    [sharedBoundary(contextProduct), sharedBoundary(contextCart)],
+    [sharedBoundary(zustandProduct), sharedBoundary(zustandCart)],
+    "Context actions must lower to the same package-neutral shared-state/action boundary as Zustand actions",
+  )
 })
 
 test("compiles actions returned through a relative Context hook", async t => {
@@ -2590,6 +2645,7 @@ test("compiles actions returned through a relative Context hook", async t => {
   const handlers = await readFile(new URL("./fixtures/context-actions/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/context-actions/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const provider = await readFile(new URL("./fixtures/context-actions/.kudzu/notes.mjs", import.meta.url), "utf8")
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
   const plan = JSON.parse(await readFile(new URL("./fixtures/context-actions/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   assert.match(html, /data-note="1"/)
   assert.match(html, /data-create="true" aria-label="consumer binding"/)
@@ -2598,6 +2654,20 @@ test("compiles actions returned through a relative Context hook", async t => {
   assert.doesNotMatch(handlers, /createContext|useContext|NotesContext/)
   assert.match(component, /setNotes: __kContext_setNotes, setActiveId/)
   assert.match(provider, /value: \{ notes, activeId, createNote, renameNote, deleteNote, selectNote, setNotes, setActiveId \}/)
+  assert.deepEqual(source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })), [
+    { slot: 0, field: "notes" },
+    { slot: 1, field: "activeId" },
+  ])
+  assert.deepEqual(source.moduleIR.sharedActions, [
+    { slot: 0, state: 0, name: "createNote" },
+    { slot: 1, state: 0, name: "renameNote" },
+    { slot: 2, state: 0, name: "deleteNote" },
+    { slot: 3, state: 1, name: "selectNote" },
+  ])
+  assert.deepEqual(source.moduleIR.handlers[0].actions, [0])
+  assert.deepEqual(source.moduleIR.handlers[0].signals.map(signal => signal.name), ["notes", "activeId"])
+  assert.deepEqual(source.moduleIR.signals.map(signal => signal.reference.kind), ["shared-state", "shared-state"])
+  assert.ok(source.componentAnalysis.owners.flatMap(owner => owner.states).every(state => state.owner.kind === "module-symbol"))
   assert.deepEqual(plan.routes[0].states.map(state => state.name), ["notes", "activeId"])
   assert.doesNotMatch(staticHtml, /<script|data-k-/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
@@ -2636,6 +2706,30 @@ test("aliases hidden Context action state around consumer bindings", () => {
   const fixture = new URL("./fixtures/context-actions-collision-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
+  assert.deepEqual(source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })), [{ slot: 0, field: "count" }])
+  assert.deepEqual(source.moduleIR.sharedActions, [{ slot: 0, state: 0, name: "increment" }, { slot: 1, state: 0, name: "toggle" }])
+  assert.equal(source.moduleIR.signals[0].reference.kind, "shared-state")
+  assert.deepEqual(source.moduleIR.handlers[0].commands, [{ operation: "add", signal: 0, value: 1 }])
+  assert.deepEqual(source.moduleIR.handlers[0].actions, [0])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('? 0 : 1')).actions, [1])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('"ping"')).actions, [])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('"ping"')).signals, [])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('"shadow"')).actions, [])
+})
+
+test("rejects dynamic Context Provider values", () => {
+  const fixture = new URL("./fixtures/context-actions-dynamic-provider-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/context\.tsx:\d+:\d+ Context Provider value must be one direct object literal/)
+})
+
+test("rejects multiple Context Providers", () => {
+  const fixture = new URL("./fixtures/context-actions-multiple-providers-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/context\.tsx:\d+:\d+ Relative Context hooks require exactly one Provider value in the Context module/)
 })
 
 test("rejects derived Zustand selectors", async t => {
@@ -2658,6 +2752,20 @@ test("rejects captured Zustand action helpers", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /Zustand action "add" cannot capture "increment"/)
+})
+
+test("rejects dynamic Zustand store fields", () => {
+  const fixture = new URL("./fixtures/zustand-dynamic-field-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Zustand selectors must be direct arrows such as state => state\.quantities/)
+})
+
+test("rejects Zustand store initialization in keyed ownership", () => {
+  const fixture = new URL("./fixtures/zustand-keyed-owner-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Derived keyed list item expressions cannot call arbitrary functions/)
 })
 
 test("rejects side-effect React imports", async t => {
@@ -6457,7 +6565,7 @@ http.createServer((request, response) => {
   }
 }
 
-async function runZustandMigrationBrowserTest(fixture, chrome) {
+async function runSharedCartBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
@@ -6474,18 +6582,23 @@ try {
   const header = document.querySelector("[data-cart-header]")
   await waitFor(() => document.body.dataset.quantityLog === "|0")
   document.querySelector("[data-add]").click()
-  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "2" && document.body.dataset.quantityLog === "|0|2")
+  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "2" && document.body.dataset.quantityLog === "|0|2" && document.body.dataset.quantityCleanup === "|0")
   document.querySelector('a[href="/cart"]').click()
   await waitFor(() => document.querySelector('[data-route="cart"]') && document.querySelector("[data-oak-quantity]").textContent === "2")
-  if (document.querySelector("[data-cart-header]") !== header || document.body.dataset.quantityLog !== "|0|2") throw new Error("shared-state")
+  if (document.querySelector("[data-cart-header]") !== header || document.body.dataset.quantityLog !== "|0|2" || document.body.dataset.quantityCleanup !== "|0") throw new Error("shared-state")
   document.querySelector("[data-remove]").click()
-  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "0" && document.querySelector("[data-oak-quantity]").textContent === "0" && document.body.dataset.quantityLog === "|0|2|0")
+  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "0" && document.querySelector("[data-oak-quantity]").textContent === "0" && document.body.dataset.quantityLog === "|0|2|0" && document.body.dataset.quantityCleanup === "|0|2")
   document.querySelector('a[href="/"]').click()
   await waitFor(() => document.querySelector('[data-route="product"]'))
   if (document.querySelector("[data-cart-header]") !== header || document.querySelector("[data-cart-count]").textContent !== "0") throw new Error("layout-lifetime")
-  document.body.dataset.zustandMigrationTest = "pass"
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.quantityCleanup === "|0|2|0")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.quantityCleanup !== "|0|2|0") throw new Error("layout-cleanup")
+  document.body.dataset.sharedCartTest = "pass"
 } catch (error) {
-  document.body.dataset.zustandMigrationTest = "fail-" + error.message
+  document.body.dataset.sharedCartTest = "fail-" + error.message
 }
 `)
   const port = nextBrowserPort()
@@ -6504,7 +6617,7 @@ http.createServer((request, response) => {
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
-    assert.match(browser.stdout, /data-zustand-migration-test="pass"/, browser.stdout.match(/<div class="error-code">([^<]+)/)?.[1] ?? browser.stderr)
+    assert.match(browser.stdout, /data-shared-cart-test="pass"/, browser.stdout.match(/<div class="error-code">([^<]+)/)?.[1] ?? browser.stderr)
   } finally {
     server.kill()
   }

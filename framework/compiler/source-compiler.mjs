@@ -671,6 +671,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             }
           }
           const contextSubstitutions = new Map()
+          const contextSharedStates = new Map()
           for (const [setter, state] of hook.states) {
             if (hook.context) {
               if (names.has(setter) && !names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative Context setter ${JSON.stringify(setter)} requires state ${JSON.stringify(state)} to be destructured`)
@@ -690,6 +691,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               const localSetter = localName(setter)
               setters.set(localSetter, localState)
               registerState(owner, localState, localSetter, "context", node, { owner: hook.stateOwner, state: hook.stateSymbols.get(state) })
+              const sharedState = registerSharedState(moduleIR, { identity: hook.stateOwner.symbol.id, field: state })
+              contextSharedStates.set(state, sharedState)
+              stateOwnersByFunction.get(owner).set(localState, { kind: "shared-state", sharedState: sharedState.slot })
               if (requiredContextStates.has(state)) {
                 for (const [field, local] of [[state, localState], [setter, localSetter]]) {
                   if (names.has(field) || privateFields.some(entry => (typeof entry === "string" ? entry : entry.property) === field)) continue
@@ -724,7 +728,16 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               if (hook.context) {
                 const reducers = reducersByFunction.get(owner) ?? new Map()
                 const states = new Map([...hook.states].map(([setter, state]) => [contextSubstitutions.get(setter)?.text ?? setter, contextSubstitutions.get(state)?.text ?? state]))
-                reducers.set(name, { contextAction: callback, states })
+                const referenced = referencedStateNames(hook.callbacks.get(name).body, hook.states, hook.callbacks.get(name))
+                const anchor = [...hook.states.values()].find(state => referenced.has(state))
+                const sharedState = contextSharedStates.get(anchor)
+                if (!sharedState) {
+                  reducers.set(name, { sourceKind: "Context", directImplementation: callback, states })
+                  reducersByFunction.set(owner, reducers)
+                  continue
+                }
+                const action = registerSharedAction(moduleIR, { state: sharedState.slot, name })
+                reducers.set(name, { state: contextSubstitutions.get(anchor)?.text ?? anchor, sourceKind: "Context", sharedAction: { ...action, directImplementation: callback, states } })
                 reducersByFunction.set(owner, reducers)
               }
             }

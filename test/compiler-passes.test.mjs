@@ -467,6 +467,9 @@ test("registers package-neutral shared state and action IR", () => {
   const broken = JSON.parse(JSON.stringify(moduleIR))
   broken.sharedActions[0].state = 1
   assert.throws(() => assertModuleIRReferences(broken), /SharedActionIR 0 references missing SharedStateIR slot 1/)
+  const brokenHandler = JSON.parse(JSON.stringify(moduleIR))
+  brokenHandler.handlers[0].actions[0] = 1
+  assert.throws(() => assertModuleIRReferences(brokenHandler), /HandlerIR 0 action 0 references missing SharedActionIR slot 1/)
 })
 
 test("validates ModuleIR v2 structural references after JSON round-tripping", () => {
