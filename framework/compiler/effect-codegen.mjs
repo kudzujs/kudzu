@@ -566,7 +566,7 @@ function printDerivedDependencyRead(state, hasExpressions, hasEvaluators) {
     })
 ` : ""}${hasExpressions ? `    if (record.effect.dependencyExpressions) return record.effect.dependencyExpressions.map(expression => {
       const value = __kEvaluateDependency(expression, undefined, undefined, name => ${state}.get(record.effect.dependencyStates[name]))
-      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() derived dependency must remain a JSON-safe primitive")
+      if (value !== null && !Array.isArray(value) && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() derived dependency must remain a JSON-safe primitive or array")
       return value
     })` : ""}`
 }

@@ -40,7 +40,13 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
       indexed(`Component specialization ${specialization.slot} ref`, specialization.refs)
       indexed(`Component specialization ${specialization.slot} ID`, specialization.ids)
       if (specialization.owner !== undefined) ownerRef(specialization.owner, `Component specialization ${specialization.slot} owner`)
-      for (const prop of specialization.props ?? []) for (const signal of prop.signals ?? []) slot(moduleIR.signals, signal, `Component specialization ${specialization.slot} prop ${JSON.stringify(prop.name)}`, "SignalIR")
+      for (const prop of specialization.props ?? []) {
+        for (const signal of prop.signals ?? []) slot(moduleIR.signals, signal, `Component specialization ${specialization.slot} prop ${JSON.stringify(prop.name)}`, "SignalIR")
+        for (const property of prop.properties ?? []) {
+          slot(moduleIR.signals, property.signal, `Component specialization ${specialization.slot} prop ${JSON.stringify(prop.name)} property`, "SignalIR")
+          if (!(prop.signals ?? []).includes(property.signal) || !Array.isArray(property.path) || property.path.length !== 1 || property.path.some(segment => typeof segment !== "string" || !segment || ["__proto__", "constructor", "prototype"].includes(segment)) || !Array.isArray(property.consumers) || !property.consumers.length || property.consumers.some(consumer => !["binding", "effect", "list"].includes(consumer)) || property.equality !== "object-is") throw new Error(`Component specialization ${specialization.slot} prop ${JSON.stringify(prop.name)} has an invalid property link`)
+        }
+      }
     }
   }
   function moduleSymbol(symbol, label) {

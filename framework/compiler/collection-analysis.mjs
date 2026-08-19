@@ -45,6 +45,10 @@ export function analyzeCollectionPipeline(expression, options) {
   if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression)) {
     const calculation = calculatedCollection?.(value)
     if (calculation) return { calculation, selector: [], selectorStates: new Set() }
+    if (stateNames.has(value.expression.text)) {
+      if (["__proto__", "constructor", "prototype"].includes(value.name.text)) fail(value, `Rendered collection property "${value.name.text}" is not supported`)
+      return { state: value.expression, calculation: value, selector: [], selectorStates: new Set() }
+    }
     return { state: undefined, ownerField: value.name.text, selector: [], parentItem: value.expression.text }
   }
   if (ts.isCallExpression(value) && ts.isIdentifier(value.expression) && importedCollectionTransforms.has(value.expression.text)) {

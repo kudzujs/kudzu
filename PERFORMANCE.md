@@ -31,6 +31,12 @@ No resource runtime, registry, or shared capability bytes were added. The packag
 
 The maintained Worker/effect benchmark remains 907 raw / 477 gzip B for the Worker graph and 13,786 raw / 5,931 gzip B for the window graph. One warm-up and seven final-candidate builds measured `[686.6,606.6,707.7,615.3,512.8,504.2,536.7]`, median 606.6 ms. This is a same-target completion diagnostic, not a revision comparison or timing claim.
 
+## 0.9 Component Object Properties
+
+Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. The WorkLedger-derived route emits 11 JavaScript files totaling 37,302 raw / 14,083 aggregate gzip B; its static sibling emits zero JavaScript. The route composes existing binding, list, native-handler, and effect families. No runtime family, browser component function, field state, or shared browser bytes were added.
+
+Required Chrome proves three repeated/conditional owners, selected array `Object.is` effect suppression, keyed identity, exact replacement cleanup/setup, conditional release/remount, and idempotent disposal. The maintained Worker/effect graph remains 907 raw / 477 gzip B for Worker and 13,786 raw / 5,931 gzip B for window output. One warm-up and seven same-target completion builds measured `[1162.6,1505.3,1140.8,938.0,758.9,753.8,717.3]`, median 938.0 ms; no comparative timing claim is made.
+
 ## Current 0.8.59 Release Snapshot
 
 Kudzu 0.8.59 broadens existing compile-time setter-child specialization to one direct parent array-state prop and one direct `set*` setter prop in that prop-derived state shape. It adds no browser runtime code and makes no timing claim.

@@ -2054,15 +2054,57 @@ test("initializes setter-child state from a direct plain-object state prop", asy
   assert.deepEqual(plan.routes[0].states.map(state => state.initialValue), [{ text: "initial" }, { text: "initial" }])
 })
 
-test("records the WorkLedger object-property component boundary", t => {
+test("propagates WorkLedger object properties through component consumers", async t => {
   const fixture = new URL("./fixtures/object-prop-workledger-conversation", import.meta.url)
   t.after(async () => {
     await rm(new URL("./fixtures/object-prop-workledger-conversation/.kudzu", import.meta.url), { recursive: true, force: true })
     await rm(new URL("./fixtures/object-prop-workledger-conversation/dist", import.meta.url), { recursive: true, force: true })
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const sourceResult = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const html = await readFile(new URL("./fixtures/object-prop-workledger-conversation/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/object-prop-workledger-conversation/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/object-prop-workledger-conversation/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  const emitted = (await Promise.all((await readdir(new URL("./fixtures/object-prop-workledger-conversation/dist/", import.meta.url), { recursive: true })).filter(file => file.endsWith(".js")).map(file => readFile(new URL(file, new URL("./fixtures/object-prop-workledger-conversation/dist/", import.meta.url)), "utf8")))).join("\n")
+  assert.equal((html.match(/data-instance=/g) ?? []).length, 4)
+  assert.equal((html.match(/data-message="message-1"/g) ?? []).length, 4)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.doesNotMatch(emitted, /function ConversationView\b|["']react["']/)
+  assert.deepEqual(route.states.filter(state => !state.internal).map(state => state.name), ["conversation", "showConditional"])
+  assert.equal(route.effects.length, 3)
+  assert.ok(route.effects.every(effect => effect.dependencies[0] === "s0" && effect.dependencyExpressions[0][0] === "get" && effect.dependencyExpressions[0][2] === "messages"))
+  assert.equal(route.lists.length, 3)
+  assert.ok(route.lists.every(list => Object.values(list.source.states).join() === "s0"))
+  const links = sourceResult.componentAnalysis.specializations.map(specialization => specialization.props.find(prop => prop.name === "conversation").properties)
+  assert.equal(links.length, 3)
+  assert.ok(links.every(properties => JSON.stringify(properties) === JSON.stringify([
+    { signal: 0, path: ["messages"], consumers: ["effect", "list"], equality: "object-is" },
+    { signal: 0, path: ["label"], consumers: ["binding"], equality: "object-is" },
+  ])))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runObjectPropComponentBrowserTest(fixture, chrome)
+})
+
+test("rejects dynamic object-property component dependencies", () => {
+  const fixture = new URL("./fixtures/object-prop-component-dynamic-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/ConversationView\.tsx:\d+:\d+ useEffect\(\) item-property dependencies are only supported in direct keyed row components/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/DynamicView\.tsx:\d+:\d+ useEffect\(\) object property dependencies require a direct static property path/)
+})
+
+test("rejects object-property component aliases", () => {
+  const fixture = new URL("./fixtures/object-prop-component-alias-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/AliasView\.tsx:\d+:\d+ Object-property component property aliases are not supported/)
+})
+
+test("rejects object-property component mutation", () => {
+  const fixture = new URL("./fixtures/object-prop-component-mutation-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/MutationView\.tsx:\d+:\d+ Object-property component props must remain immutable/)
 })
 
 test("initializes setter-child state from a direct array state prop", async t => {
@@ -6342,6 +6384,47 @@ http.createServer((request, response) => {
   } finally {
     server.kill()
   }
+}
+
+async function runObjectPropComponentBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => document.body.dataset.messageRuns === "3", "initial-effects")
+  const sections = [...document.querySelectorAll("[data-instance]")]
+  const messages = sections.map(section => section.querySelector('[data-message="message-1"]'))
+  document.querySelector("#rename").click()
+  await waitFor(() => [...document.querySelectorAll("[data-label]")].every(node => node.dataset.label === "Support" && node.querySelector("h2").textContent === "Support"), "rename")
+  if (document.body.dataset.messageRuns !== "3" || document.body.dataset.messageCleanups) throw new Error("rename-effects")
+  if (sections.some((section, index) => !section.isConnected || section.querySelector('[data-message="message-1"]') !== messages[index])) throw new Error("rename-identity")
+  document.querySelector("#add-message").click()
+  await waitFor(() => document.querySelectorAll('[data-message="message-2"]').length === 3 && document.body.dataset.messageRuns === "6" && document.body.dataset.messageCleanups === "3", "message-update")
+  if (sections.some((section, index) => section.querySelector('[data-message="message-1"]') !== messages[index])) throw new Error("message-identity")
+  document.querySelector("#toggle").click()
+  await waitFor(() => !document.querySelector('[data-instance="conditional"]') && document.body.dataset.messageCleanups === "4", "conditional-cleanup")
+  if (document.querySelector('[data-instance="first"]') !== sections[0] || document.querySelector('[data-instance="second"]') !== sections[1]) throw new Error("retained-sections")
+  document.querySelector("#toggle").click()
+  await waitFor(() => document.querySelector('[data-instance="conditional"]') && document.body.dataset.messageRuns === "7", "conditional-remount")
+  if (document.querySelector('[data-instance="conditional"]') === sections[2]) throw new Error("stale-conditional")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.messageCleanups === "7", "dispose")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.messageCleanups !== "7") throw new Error("repeat-dispose")
+  document.body.dataset.objectPropComponentTest = "pass"
+} catch (error) {
+  document.body.dataset.objectPropComponentTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-object-prop-component-test", value: "pass" }],
+  })
 }
 
 async function runReactShapedIntegrationBrowserTest(fixture, chrome) {

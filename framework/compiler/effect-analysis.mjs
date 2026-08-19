@@ -9,6 +9,7 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
   let dependencyItem = listEffect ? keyedItem : undefined
   for (const dependency of dependencies.elements) {
     const value = unwrapExpression(dependency)
+    if (ts.isElementAccessExpression(value) && ts.isIdentifier(unwrapExpression(value.expression)) && isDestructuredParameter(unwrapExpression(value.expression), nearestFunction(node)) && !ts.isStringLiteral(value.argumentExpression) && !ts.isNumericLiteral(value.argumentExpression)) fail(dependency, "useEffect() object property dependencies require a direct static property path")
     if (!dependencyItem && ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression) && isDestructuredParameter(value.expression, nearestFunction(node))) dependencyItem = value.expression.text
     const field = dependencyItem && directProperty(dependency, dependencyItem)
     if (field) {
@@ -41,6 +42,7 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
       continue
     }
     const direct = ts.isIdentifier(dependency)
+    if (!direct && dynamicStatePropertyDependency(dependency, stateNames)) fail(dependency, "useEffect() object property dependencies require a direct static property path")
     if (!direct && !statePropertyDependency(dependency, stateNames)) fail(dependency, "useEffect() dependencies must be direct state or runtime parameter identifiers or property reads")
     const declarations = direct ? localDeclarations?.get(dependency.text) : undefined
     const initializer = declarations?.length === 1 ? declarations[0].initializer : undefined
@@ -53,7 +55,7 @@ export function analyzeEffectDependencies({ dependencies, node, listEffect, keye
       const usedStates = new Set()
       const expression = collectionExpression(expressionSource, { fail, stateNames, selectorStates: usedStates })
       if (!usedStates.size) fail(dependency, `useEffect() derived dependency must read direct state`)
-      entries.push({ kind: "derived", name: direct ? dependency.text : dependency.getText(), expression, states: usedStates, source: expressionSource })
+      entries.push({ kind: "derived", name: direct ? dependency.text : "derived", expression, states: usedStates, source: expressionSource })
       for (const name of usedStates) {
         subscriptions.push(factory.createIdentifier(name))
         dependencyStates.set(name, factory.createIdentifier(name))
@@ -116,4 +118,14 @@ function statePropertyDependency(expression, stateNames) {
     value = unwrapExpression(value.expression)
   }
   return property && ts.isIdentifier(value) && stateNames.has(value.text)
+}
+
+function dynamicStatePropertyDependency(expression, stateNames) {
+  let value = unwrapExpression(expression)
+  let dynamic = false
+  while (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) {
+    if (ts.isElementAccessExpression(value) && !ts.isStringLiteral(value.argumentExpression) && !ts.isNumericLiteral(value.argumentExpression)) dynamic = true
+    value = unwrapExpression(value.expression)
+  }
+  return dynamic && ts.isIdentifier(value) && stateNames.has(value.text)
 }

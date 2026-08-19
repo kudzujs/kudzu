@@ -478,7 +478,7 @@ test("validates ModuleIR v2 structural references after JSON round-tripping", ()
   const page = {}
   components.registerOwner(page, { name: "Page" })
   components.registerState(page, { name: "count", setter: "setCount", kind: "state" })
-  components.registerSpecialization({ kind: "Keyed list", owner: { kind: "component", slot: 0 }, refs: [{ name: "button", kind: "row" }] })
+  components.registerSpecialization({ kind: "Keyed list", owner: { kind: "component", slot: 0 }, props: [{ name: "value", local: "value", provided: true, signals: [0], properties: [{ signal: 0, path: ["items"], consumers: ["effect", "list"], equality: "object-is" }] }], refs: [{ name: "button", kind: "row" }] })
   const valid = () => ({
     version: 2,
     file: "src/pages/valid.tsx",
@@ -500,6 +500,12 @@ test("validates ModuleIR v2 structural references after JSON round-tripping", ()
 
   assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(valid())), analysis), valid())
   assert.throws(() => assertModuleIRReferences({ ...valid(), version: 1 }, analysis), /Unsupported ModuleIR version/)
+  const invalidPropertySignal = JSON.parse(JSON.stringify(analysis))
+  invalidPropertySignal.specializations[0].props[0].properties[0].signal = 1
+  assert.throws(() => assertModuleIRReferences(valid(), invalidPropertySignal), /property references missing SignalIR slot 1/)
+  const invalidPropertyPath = JSON.parse(JSON.stringify(analysis))
+  invalidPropertyPath.specializations[0].props[0].properties[0].path = ["__proto__"]
+  assert.throws(() => assertModuleIRReferences(valid(), invalidPropertyPath), /invalid property link/)
   const missingSignal = valid()
   missingSignal.bindings[0].signals[0] = 4
   assert.throws(() => assertModuleIRReferences(missingSignal, analysis), /BindingIR 0 signal 0 references missing SignalIR slot 4/)

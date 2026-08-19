@@ -1150,7 +1150,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         props: result.props.map(prop => {
           const expression = result.propExpressions.get(prop.name)
           const signals = expression ? propSignals(expression) : []
-          return { ...prop, ...(signals.length ? { signals } : {}) }
+          const uses = result.propertyUses.get(prop.local) ?? []
+          const properties = signals.length === 1 ? uses.map(use => ({ signal: signals[0], path: use.path, consumers: use.consumers, equality: "object-is" })) : []
+          return { ...prop, ...(signals.length ? { signals } : {}), ...(properties.length ? { properties } : {}) }
         }),
         states: [
           ...result.rowStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "row", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })),
@@ -1227,6 +1229,32 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       ts.setParentRecursive(merged, false)
       merged.parent = root.parent
       return merged
+    }
+    const attachStateBackedEffects = (call, specialization, componentSource, imported) => {
+      if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, call, specialization.effects))
+      if (!specialization.effects.length) return
+      if (specialization.hookDeclarations.length) fail(call, "State-backed object property components cannot declare state, refs, or IDs")
+      const owner = nearestFunction(call)
+      const name = `KPropertyEffect${Math.max(0, call.pos)}`
+      const effectStatements = specialization.effects.map(entry => {
+        const effectCall = factory.updateCallExpression(entry.call, factory.createIdentifier("__kComponentUseEffect"), entry.call.typeArguments, entry.call.arguments)
+        synthesizeTree(effectCall)
+        ts.setOriginalNode(effectCall, entry.source)
+        specializedEffectStateOwners.set(effectCall, { owner: { kind: "specialization", slot: specialization.analysis.slot }, references: specialization.propStateOwners })
+        return factory.createExpressionStatement(effectCall)
+      })
+      const helper = factory.createFunctionDeclaration(undefined, undefined, name, undefined, [], undefined, factory.createBlock([...effectStatements, factory.createReturnStatement(factory.createNull())], true))
+      ts.setParentRecursive(helper, false)
+      helper.parent = owner.body
+      const helpers = setterHookHelpers.get(owner.body) ?? []
+      helpers.push(helper)
+      setterHookHelpers.set(owner.body, helpers)
+      settersByFunction.set(helper, new Map(settersForNode(call, settersByFunction)))
+      stateOwnersByFunction.set(helper, new Map([...stateOwnersForNode(call), ...specialization.propStateOwners]))
+      usesComponentEffects = true
+      specialization.root = prependJsxChild(specialization.root, factory.createJsxSelfClosingElement(factory.createIdentifier(name), undefined, factory.createJsxAttributes([])), factory)
+      ts.setParentRecursive(specialization.root, false)
+      specialization.root.parent = call.parent
     }
     const expandReducerCallbacks = (root, componentSource, call, ownership) => {
       const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
@@ -1411,8 +1439,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `State-backed list component ${name} may only be referenced as JSX`)
       if (stateBackedCalls.length !== calls.length) fail(component.declaration, `State-backed list component ${name} must receive its mapped prop from local state at every call`)
       for (const call of stateBackedCalls) {
-        const specialization = specialize(call, component.function)
-        if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
+        const objectProperty = isStateBackedListComponentCall(call, component.function, settersByFunction.get(nearestFunction(call)) ?? new Map(), true)
+        const specialization = specialize(call, component.function, objectProperty ? "Object-property component" : "Keyed list")
+        if (specialization.effects.length && !objectProperty) fail(call, "State-backed list components cannot declare effects")
+        if (objectProperty) attachStateBackedEffects(call, specialization, component.function.getSourceFile(), false)
         componentSpecializations.set(call, specialization)
         stateBackedComponentRoots.push(specialization.root)
       }
@@ -1433,8 +1463,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component, settersByFunction.get(nearestFunction(call)) ?? new Map()))
       for (const call of stateBackedCalls) {
-        const specialization = specialize(call, component)
-        if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
+        const objectProperty = isStateBackedListComponentCall(call, component, settersByFunction.get(nearestFunction(call)) ?? new Map(), true)
+        const specialization = specialize(call, component, objectProperty ? "Object-property component" : "Keyed list")
+        if (specialization.effects.length && !objectProperty) fail(call, "State-backed list components cannot declare effects")
+        if (objectProperty) attachStateBackedEffects(call, specialization, component.getSourceFile(), true)
         componentSpecializations.set(call, specialization)
         stateBackedComponentRoots.push(specialization.root)
       }
@@ -2356,7 +2388,7 @@ function jsonExpression(value, factory) {
   return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("JSON"), "parse"), undefined, [factory.createStringLiteral(JSON.stringify(value))])
 }
 
-function isStateBackedListComponentCall(call, component, setters) {
+function isStateBackedListComponentCall(call, component, setters, propertyOnly = false) {
   if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) return false
   const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
   const stateNames = new Set(setters.values())
@@ -2376,7 +2408,9 @@ function isStateBackedListComponentCall(call, component, setters) {
   let found = false
   const visit = node => {
     if (found || node !== returned && isFunctionLike(node)) return
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && ts.isIdentifier(node.expression.expression) && mappedProps.has(node.expression.expression.text)) {
+    const collection = ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" ? unwrapExpression(node.expression.expression) : undefined
+    const root = collection && ts.isPropertyAccessExpression(collection) ? unwrapExpression(collection.expression) : collection
+    if (root && ts.isIdentifier(root) && mappedProps.has(root.text) && (!propertyOnly || ts.isPropertyAccessExpression(collection))) {
       found = true
       return
     }
@@ -2384,6 +2418,75 @@ function isStateBackedListComponentCall(call, component, setters) {
   }
   visit(returned)
   return found
+}
+
+function referencesComponentProperty(expression, locals) {
+  let found = false
+  const visit = node => {
+    if (found) return
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(unwrapExpression(node.expression)) && locals.has(unwrapExpression(node.expression).text)) {
+      found = true
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(expression)
+  return found
+}
+
+function componentPropertyMutation(component, locals) {
+  let invalid
+  const root = expression => {
+    let value = unwrapExpression(expression)
+    while (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) value = unwrapExpression(value.expression)
+    return ts.isIdentifier(value) ? value.text : undefined
+  }
+  const visit = node => {
+    if (invalid) return
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment && locals.has(root(node.left))) invalid = node
+    else if ((ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) && locals.has(root(node.operand))) invalid = node
+    else if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && mutatingListMethods.has(node.expression.name.text) && locals.has(root(node.expression.expression))) invalid = node
+    if (!invalid) ts.forEachChild(node, visit)
+  }
+  visit(component)
+  return invalid
+}
+
+function prependJsxChild(root, child, factory) {
+  if (ts.isJsxElement(root)) return factory.updateJsxElement(root, root.openingElement, [child, ...root.children], root.closingElement)
+  const opening = factory.createJsxOpeningElement(root.tagName, root.typeArguments, root.attributes)
+  const closing = factory.createJsxClosingElement(root.tagName)
+  return factory.createJsxElement(opening, [child], closing)
+}
+
+function componentPropertyUses(component, returned, effectCalls) {
+  const locals = new Set(component.parameters[0].name.elements.filter(element => !element.dotDotDotToken && ts.isIdentifier(element.name)).map(element => element.name.text))
+  const uses = new Map()
+  const add = (local, field, consumer) => {
+    if (["__proto__", "constructor", "prototype"].includes(field)) return
+    const fields = uses.get(local) ?? new Map()
+    const consumers = fields.get(field) ?? new Set()
+    consumers.add(consumer)
+    fields.set(field, consumers)
+    uses.set(local, fields)
+  }
+  for (const call of effectCalls) {
+    const dependencies = call.arguments[1]
+    if (!ts.isArrayLiteralExpression(dependencies)) continue
+    for (const dependency of dependencies.elements) {
+      const value = unwrapExpression(dependency)
+      if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(unwrapExpression(value.expression)) && locals.has(unwrapExpression(value.expression).text)) add(unwrapExpression(value.expression).text, value.name.text, "effect")
+    }
+  }
+  const visit = node => {
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(unwrapExpression(node.expression)) && locals.has(unwrapExpression(node.expression).text)) {
+      const map = ts.isPropertyAccessExpression(node.parent) && node.parent.expression === node && node.parent.name.text === "map" && ts.isCallExpression(node.parent.parent)
+      add(unwrapExpression(node.expression).text, node.name.text, map ? "list" : "binding")
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(returned)
+  return new Map([...uses].map(([local, fields]) => [local, [...fields].map(([field, consumers]) => ({ path: [field], consumers: ["binding", "effect", "list"].filter(consumer => consumers.has(consumer)) }))]))
 }
 
 function jsxCallHasDirectStateProp(call, setters) {
@@ -2798,6 +2901,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   }
   const substitutions = new Map()
   const acceptedProps = new Set()
+  const propLocals = new Set()
   let rest
   const elements = component.parameters[0].name.elements
   for (const [index, element] of elements.entries()) {
@@ -2810,10 +2914,15 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     if (element.initializer && !isSerializableStateLiteral(element.initializer)) fail(element.initializer, `${label} component prop defaults must be directly serializable primitive, plain-object, or array literals`)
     const prop = (element.propertyName ?? element.name).text
     acceptedProps.add(prop)
+    propLocals.add(element.name.text)
     substitutions.set(element.name.text, props.has(prop) ? props.get(prop) : element.initializer ?? factory.createIdentifier("undefined"))
   }
   const restEntries = [...props].filter(([prop]) => !acceptedProps.has(prop))
   if (!rest) for (const [prop] of restEntries) fail(call, `Unknown ${label.toLowerCase()} component prop "${prop}"`)
+  if (label === "Object-property component") {
+    const mutation = componentPropertyMutation(component, propLocals)
+    if (mutation) fail(mutation, "Object-property component props must remain immutable")
+  }
   const propAnalysis = elements.map(element => ({
     name: (element.propertyName ?? element.name).getText(),
     local: element.name.getText(),
@@ -2903,6 +3012,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         continue
       }
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
+      if (label === "Object-property component" && referencesComponentProperty(declaration.initializer, propLocals)) fail(declaration.initializer, "Object-property component property aliases are not supported; read the static prop.field path directly at each consumer")
       const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
       calculations.push({ name: declaration.name.text, expression: calculation })
       substitutions.set(declaration.name.text, calculation)
@@ -2941,6 +3051,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     ordinaryStates,
     ordinaryRefs,
     ordinaryIds,
+    propertyUses: componentPropertyUses(component, returned, effectCalls),
     propExpressions: props,
     props: propAnalysis,
     usesComponentId: ordinaryIds.length > 0

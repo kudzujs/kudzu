@@ -27,7 +27,7 @@ keyed collection, and a scalar field binding. Repeated and conditional
 instances, cleanup counters, a static sibling, and controls for same-messages
 versus replaced-messages updates provide the Session 05A ownership journey.
 
-The current compiler fails before output at the child property dependency:
+Before Session 05C, the compiler failed before output at the child property dependency:
 
 ```text
 src/ConversationView.tsx:11:3 useEffect() item-property dependencies are only supported in direct keyed row components
@@ -35,10 +35,10 @@ src/ConversationView.tsx:11:3 useEffect() item-property dependencies are only su
 
 Flattening `ConversationView` into the page or decomposing `conversation` into
 primitive and array props avoids this failure, but both are artificial migration
-workarounds. Session 05B must preserve the authored object and static property
-path instead.
+workarounds. The implemented specialization now preserves the authored object
+and direct static property paths instead.
 
-## Browser Acceptance After 05B
+## Browser Acceptance
 
 1. Initial render owns three independent views and three message effects.
 2. Rename replaces the parent object while retaining `messages`; every label
@@ -49,3 +49,7 @@ path instead.
    DOM/effect ownership without changing the two retained views.
 5. Document disposal cleans every remaining effect exactly once.
 6. `/static` emits no JavaScript.
+
+All six checks pass in required Chrome. The interactive graph contains 11
+JavaScript files totaling 37,302 raw / 14,083 aggregate gzip bytes; no new
+runtime family or browser component function is emitted.
