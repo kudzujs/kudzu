@@ -45,6 +45,27 @@ The WorkLedger deploy remains 13 files with digest `31886797161a33150afb3bcbf697
 
 The maintained Worker/effect graph remains 907 raw / 477 gzip B for Worker and 13,786 raw / 5,931 gzip B for window output. One warm-up and seven same-target completion builds measured `[439.4,438.7,438.6,464.9,491.6,479.7,444.7]`, median 444.7 ms. No comparative timing claim is made.
 
+The second independent deletion removes primitive- and array-specific component-body scans in favor of the existing direct serializable state initializer lookup. Core semantic source falls another 7 lines to 5,264, for 32 lines removed in Session 06B. Parameterized-debounce output remains 13 files, 16,053 raw / 7,735 aggregate gzip JavaScript bytes, and deploy SHA-256 `b7106651c6a619b01a3e98101df4ac68f9262803e6729451ef03ed3971b36dc7`. Array-prop effect-sync output remains unchanged at the values above.
+
+The maintained Worker/effect graph again remains byte-identical. One warm-up and seven same-target completion builds measured `[584.0,521.7,552.6,496.7,481.4,507.7,494.2]`, median 507.7 ms. Host load differs from the first run, so no timing comparison is made.
+
+The public `kudzu-based-bench` storefront then received one warm-up and seven alternating clean builds at 100, 1,000, and 10,000 generated products against the preceding `bb7fdc5` commit. Baseline and candidate output is byte-identical at every size. Timing distributions overlap and no build improvement or regression is claimed.
+
+| Products | Pages / files | Output bytes | Baseline median | Candidate median |
+|---:|---:|---:|---:|---:|
+| 100 | 111 / 148 | 1,368,823 | 2,767.3 ms | 2,755.4 ms |
+| 1,000 | 1,011 / 1,048 | 10,164,835 | 8,407.7 ms | 8,190.3 ms |
+| 10,000 | 10,011 / 10,048 | 97,521,905 | 63,966.5 ms | 64,217.4 ms |
+
+```text
+100 baseline: [2671.0,2768.9,2881.5,2845.5,2767.3,2561.2,2705.8]
+100 candidate: [2746.4,2796.4,2755.4,2812.7,2590.6,2494.1,2767.2]
+1000 baseline: [8733.3,8059.4,8444.8,7923.9,7947.1,8407.7,8666.0]
+1000 candidate: [8048.9,7927.7,8711.0,8640.6,8190.3,8171.3,8746.9]
+10000 baseline: [65514.0,62738.0,64195.7,63610.6,63966.5,66885.2,63434.2]
+10000 candidate: [62222.9,63710.3,64217.4,64236.1,63288.2,65652.3,64977.8]
+```
+
 ## Current 0.8.59 Release Snapshot
 
 Kudzu 0.8.59 broadens existing compile-time setter-child specialization to one direct parent array-state prop and one direct `set*` setter prop in that prop-derived state shape. It adds no browser runtime code and makes no timing claim.

@@ -643,7 +643,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const delay = node.initializer.arguments[1] && unwrapExpression(node.initializer.arguments[1])
           const setters = owner ? settersByFunction.get(owner) ?? new Map() : new Map()
           if (!owner) throw sourceNodeError(node, sourceFile, "Parameterized debounce hooks cannot be used outside a Kudzu component")
-          if (node.initializer.arguments.length !== 2 || !ts.isIdentifier(value) || !new Set(setters.values()).has(value.text) || !componentHasDirectPrimitiveState(owner, value.text)) throw sourceNodeError(node.initializer, sourceFile, "Parameterized debounce hooks require one direct primitive state argument")
+          const stateInitializer = ts.isIdentifier(value) ? directStateInitializer(owner, value.text) : undefined
+          if (node.initializer.arguments.length !== 2 || !ts.isIdentifier(value) || !new Set(setters.values()).has(value.text) || !stateInitializer || !isPrimitiveDefaultLiteral(stateInitializer)) throw sourceNodeError(node.initializer, sourceFile, "Parameterized debounce hooks require one direct primitive state argument")
           if (!ts.isNumericLiteral(delay)) throw sourceNodeError(node.initializer.arguments[1] ?? node.initializer, sourceFile, "Parameterized debounce hook delays must be numeric literals")
           const syntheticSetter = `__kSetDebounced_${Math.max(0, node.pos)}`
           setters.set(syntheticSetter, node.name.text)
@@ -1495,7 +1496,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const setterAttribute = attributes.properties.find(entry => ts.isJsxAttribute(entry) && entry.name.text === prop)
         const stateValue = stateAttribute?.initializer && ts.isJsxExpression(stateAttribute.initializer) ? unwrapExpression(stateAttribute.initializer.expression) : undefined
         const setterValue = setterAttribute?.initializer && ts.isJsxExpression(setterAttribute.initializer) ? unwrapExpression(setterAttribute.initializer.expression) : undefined
-        if (!ts.isIdentifier(stateValue) || !ts.isIdentifier(setterValue) || setters.get(setterValue.text) !== stateValue.text || !componentHasDirectArrayState(nearestFunction(call), stateValue.text)) fail(setterAttribute ?? call, `Setter-callback effect prop ${JSON.stringify(prop)} must target the same direct array state passed through ${JSON.stringify(effect.stateProp)}`)
+        const stateInitializer = ts.isIdentifier(stateValue) ? directStateInitializer(nearestFunction(call), stateValue.text) : undefined
+        if (!ts.isIdentifier(stateValue) || !ts.isIdentifier(setterValue) || setters.get(setterValue.text) !== stateValue.text || !stateInitializer || !ts.isArrayLiteralExpression(stateInitializer)) fail(setterAttribute ?? call, `Setter-callback effect prop ${JSON.stringify(prop)} must target the same direct array state passed through ${JSON.stringify(effect.stateProp)}`)
       }
       const specialization = specialize(call, component, "Setter-callback", true, true, new Set(settersForNode(call, settersByFunction).values()))
       if (specialization.hookDeclarations.length || specialization.effects.length) {
@@ -2491,10 +2493,6 @@ function componentHasDirectPropStateInitializer(component) {
   return component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isIdentifier(declaration.initializer.arguments[0]) && props.has(declaration.initializer.arguments[0].text)))
 }
 
-function componentHasDirectPrimitiveState(component, state) {
-  return Boolean(component && ts.isBlock(component.body) && component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isArrayBindingPattern(declaration.name) && ts.isIdentifier(declaration.name.elements[0]?.name) && declaration.name.elements[0].name.text === state && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && isPrimitiveDefaultLiteral(unwrapExpression(declaration.initializer.arguments[0])))))
-}
-
 function componentHasDirectObjectRef(component, ref) {
   if (!component || !ts.isBlock(component.body)) return false
   const declaration = component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(entry => ts.isIdentifier(entry.name) && entry.name.text === ref && entry.initializer && ts.isCallExpression(entry.initializer) && ts.isIdentifier(entry.initializer.expression) && entry.initializer.expression.text === "useRef" && entry.initializer.arguments.length === 1 && entry.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword))
@@ -2519,10 +2517,6 @@ function directSetterLiteralCallback(node, setters) {
   const expression = ts.isBlock(node.body) ? node.body.statements.length === 1 && ts.isExpressionStatement(node.body.statements[0]) ? node.body.statements[0].expression : undefined : node.body
   if (!expression || !ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || !setters.has(expression.expression.text) || expression.arguments.length !== 1 || !isPrimitiveDefaultLiteral(unwrapExpression(expression.arguments[0]))) return undefined
   return { setter: expression.expression.text, value: unwrapExpression(expression.arguments[0]) }
-}
-
-function componentHasDirectArrayState(component, state) {
-  return Boolean(component && ts.isBlock(component.body) && component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isArrayBindingPattern(declaration.name) && ts.isIdentifier(declaration.name.elements[0]?.name) && declaration.name.elements[0].name.text === state && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isArrayLiteralExpression(unwrapExpression(declaration.initializer.arguments[0])))))
 }
 
 function directSetterPropEffect(component, setterProp) {
@@ -2935,7 +2929,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         const substitutedProp = propReceiver ? substitutions.get(propReceiver.text) : undefined
         const substitutedState = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) ? unwrapExpression(substitutedProp).text : undefined
         const directProp = ts.isIdentifier(initialArgument)
-        const parentInitializer = substitutedState ? directStateInitializer(call, substitutedState) : undefined
+        const parentInitializer = substitutedState ? directStateInitializer(nearestFunction(call), substitutedState) : undefined
         const propInitializer = ordinaryHooks && substitutedState && ordinaryStateNames.has(substitutedState) && parentInitializer && (isPrimitiveDefaultLiteral(parentInitializer) || directProp && (ts.isObjectLiteralExpression(parentInitializer) || ts.isArrayLiteralExpression(parentInitializer)))
         const rowItemProp = propReceiver && elements.find(element => !element.dotDotDotToken && ts.isIdentifier(element.name) && element.name.text === propReceiver.text)
         const rowItemInitializer = !ordinaryHooks && directProp && substitutedState && rowItemProp && directProps.has((rowItemProp.propertyName ?? rowItemProp.name).text)
@@ -3041,8 +3035,7 @@ function isSerializableStateLiteral(node) {
   return value.properties.every(property => ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && property.name.text !== "__proto__" && isSerializableStateLiteral(property.initializer))
 }
 
-function directStateInitializer(call, name) {
-  const owner = nearestFunction(call)
+function directStateInitializer(owner, name) {
   if (!owner || !ts.isBlock(owner.body)) return
   for (const statement of owner.body.statements) {
     if (!ts.isVariableStatement(statement)) continue
