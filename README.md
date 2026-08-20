@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.9.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.9.0 - Semantic compression.** Ordinary React-shaped state, derived data, shared actions, effects, component ownership, and keyed collections compile through a bounded package-neutral semantic core while static pages remain zero JavaScript. Read the [release notes](./RELEASES.md#090---semantic-compression), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.9.0), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.9.1 - Positional primitive lists.** JSON-safe primitive values now render in position-keyed collections while property-keyed rows retain their plain-object boundary. Read the [release notes](./RELEASES.md#091---positional-primitive-lists), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.9.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

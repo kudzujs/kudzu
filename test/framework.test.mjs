@@ -125,7 +125,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readRuntime(new URL("../", import.meta.url), "kudzu.js")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.9.0/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.9.1/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -142,12 +142,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.9\.0"/)
-  assert.match(release, /Kudzu 0\.9\.0.*Keep the React shape.*Ship only the capability/s)
-  assert.match(release, /COMPRESS · SPECIALIZE · SHIP.*SEMANTIC COMPRESSION.*npm install @kudzujs\/core@\^0\.9\.0/s)
-  assert.match(release, /<title>Kudzu 0\.9\.0 - Semantic compression<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.9\.0"/)
-  assert.match(release, /Calculate without a runtime.*Erase provider machinery/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.9\.1"/)
+  assert.match(release, /Kudzu 0\.9\.1.*Render primitive rows.*Keep keyed data strict/s)
+  assert.match(release, /POSITION · VALIDATE · SHIP.*POSITIONAL COLLECTIONS.*npm install @kudzujs\/core@\^0\.9\.1/s)
+  assert.match(release, /<title>Kudzu 0\.9\.1 - Positional primitive lists<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.9\.1"/)
+  assert.match(release, /Render direct values.*Keep object keys strict/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -708,6 +708,15 @@ test("rejects non-serializable keyed list data", async () => {
     const [items] = useState([{ id: 1, nested: Object.assign(Object.create(null), { name: "Oak" }) }])
     return list(items, "id", entry => jsx("p", { children: entry.id }))
   }, { styles: false }), /ordinary plain objects/)
+})
+
+test("renders JSON-safe primitive positional list data", async () => {
+  const result = await renderPage(() => {
+    const [items] = useState(["Oak", 7])
+    return list(items, null, () => jsx("p", { children: "row" }))
+  }, { styles: false })
+  assert.match(result.html, /data-k-state='\[\["s0",\["Oak",7\]\]\]'/)
+  assert.equal((result.html.match(/<p[^>]*>row<\/p>/g) ?? []).length, 3)
 })
 
 test("seeds text state used only by an empty keyed list template", async () => {
@@ -1831,6 +1840,134 @@ test("owns effect-private WebSocket refs across replacement and cleanup", async 
   assert.equal(second.closeCount, 1)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runWebSocketResourceBrowserTest(fixture, chrome)
+})
+
+test("composes a Lupin-shaped realtime room without a client runtime", async t => {
+  const fixture = new URL("./fixtures/lupin-realtime-room", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lupin-realtime-room/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lupin-realtime-room/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/lupin-realtime-room/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/lupin-realtime-room/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/lupin-realtime-room/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /<h1>.*office.*<\/h1>.*data-participant="player-1".*Lupin.*<canvas data-k-ref="r0"/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.deepEqual(route.states.filter(state => !state.internal).map(state => state.name), ["connection", "snapshot"])
+  assert.equal(route.events.length, 1)
+  assert.equal(route.effects.length, 2)
+  assert.equal(route.lists.length, 1)
+  assert.deepEqual(route.effects[1].dependencyExpressions[0], ["get", ["state", "snapshot"], "participants", false])
+  assert.equal(Object.values(route.lists[0].source.states).join(), "s1")
+  const chrome = chromePaths.find(existsSync)
+  if (chrome) await runLupinRealtimeRoomBrowserTest(fixture, chrome)
+})
+
+test("builds the Lupin lobby create and join flow from ordinary TSX", async t => {
+  const fixture = new URL("./fixtures/lupin-lobby-room-flow", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lupin-lobby-room-flow/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lupin-lobby-room-flow/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/lupin-lobby-room-flow/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/lupin-lobby-room-flow/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/lupin-lobby-room-flow/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /<h1>월급루팡연구소<\/h1>.*아직 열린 방이 없습니다/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.deepEqual(route.events.map(event => event.event), ["input", "submit", "click"])
+  assert.equal(route.effects.length, 1)
+  assert.equal(route.lists.length, 1)
+  assert.equal(route.lists[0].key, "id")
+  assert.equal(route.lists[0].events, true)
+  const chrome = chromePaths.find(existsSync)
+  if (chrome) await runLupinLobbyBrowserTest(fixture, chrome)
+})
+
+test("builds the Lupin stopwatch room and owned local timer", async t => {
+  const fixture = new URL("./fixtures/lupin-stopwatch-room", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lupin-stopwatch-room/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lupin-stopwatch-room/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/lupin-stopwatch-room/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/lupin-stopwatch-room/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/lupin-stopwatch-room/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /<output aria-live="off">.*0\.00.*<\/output>.*data-user="루팡"/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(route.effects.length, 2)
+  assert.deepEqual(route.effects[1].dependencies, ["s1", "s2"])
+  assert.equal(route.lists.length, 2)
+  assert.equal(route.lists[0].key, "name")
+  assert.equal(route.lists[1].indexed, true)
+  const chrome = chromePaths.find(existsSync)
+  if (chrome) await runLupinStopwatchBrowserTest(fixture, chrome)
+})
+
+test("builds Lupin room chat and player-spectator replacement", async t => {
+  const fixture = new URL("./fixtures/lupin-room-social", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lupin-room-social/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lupin-room-social/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const staticHtml = await readFile(new URL("./fixtures/lupin-room-social/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/lupin-room-social/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(route.effects.length, 1)
+  assert.deepEqual(route.effects[0].dependencies, ["s0"])
+  assert.equal(route.lists.length, 2)
+  assert.ok(route.lists.every(list => list.indexed))
+  const chrome = chromePaths.find(existsSync)
+  if (chrome) await runLupinRoomSocialBrowserTest(fixture, chrome)
+})
+
+test("builds Lupin private player and spectator entry", async t => {
+  const fixture = new URL("./fixtures/lupin-private-room", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lupin-private-room/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lupin-private-room/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/lupin-private-room/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/lupin-private-room/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/lupin-private-room/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /data-room="secret".*플레이.*관전/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(route.lists.length, 0)
+  assert.equal(route.conditions.length, 2)
+  assert.ok(route.events.some(event => event.event === "submit"))
+  const chrome = chromePaths.find(existsSync)
+  if (chrome) await runLupinPrivateRoomBrowserTest(fixture, chrome)
+})
+
+test("composes the remaining Lupin game capabilities in Kudzu", async t => {
+  const fixture = new URL("./fixtures/lupin-game-capability-matrix", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/lupin-game-capability-matrix/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/lupin-game-capability-matrix/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/lupin-game-capability-matrix/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/lupin-game-capability-matrix/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/lupin-game-capability-matrix/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /<canvas data-k-ref="r0"[^>]+aria-label="실시간 게임 보드"/)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(route.effects.length, 2)
+  assert.deepEqual(route.effects[1].dependencies, ["s4"])
+  assert.deepEqual(route.events.map(event => event.event), ["submit", "input", "compositionstart", "compositionend", "paste", "drop", "click", "click", "pointerdown", "pointermove", "keydown", "pointerup"])
+  assert.equal(route.lists.length, 1)
+  assert.equal(route.lists[0].key, "id")
+  const chrome = chromePaths.find(existsSync)
+  if (chrome) await runLupinGameCapabilityBrowserTest(fixture, chrome)
 })
 
 test("rejects mutable refs shared by multiple effects", () => {
@@ -7413,6 +7550,570 @@ try {
 `,
     scenarios: [{ path: "/", attribute: "data-websocket-resource-test", value: "pass" }],
     virtualTime: 7000,
+  })
+}
+
+async function runLupinRealtimeRoomBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+globalThis.__realtime = { draws: [], cancels: 0, fetches: [] }
+class FakeSocket {
+  static instances = []
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCount = 0
+    FakeSocket.instances.push(this)
+  }
+  addEventListener(name, callback) { this.listeners.set(name, callback) }
+  removeEventListener(name, callback) { if (this.listeners.get(name) === callback) this.listeners.delete(name) }
+  close() { this.closeCount += 1 }
+  fire(name, event = {}) { this.listeners.get(name)?.(event) }
+}
+globalThis.WebSocket = FakeSocket
+globalThis.__sockets = FakeSocket.instances
+HTMLCanvasElement.prototype.getContext = () => ({
+  clearRect() {},
+  fillText(value) { globalThis.__realtime.draws.push(String(value)) },
+})
+let nextFrame = 1
+const pendingFrames = new Map()
+globalThis.requestAnimationFrame = callback => {
+  const frame = nextFrame++
+  pendingFrames.set(frame, callback)
+  return frame
+}
+globalThis.cancelAnimationFrame = frame => {
+  globalThis.__realtime.cancels += 1
+  pendingFrames.delete(frame)
+}
+globalThis.__flushFrames = () => {
+  const callbacks = [...pendingFrames.values()]
+  pendingFrames.clear()
+  for (const callback of callbacks) callback(performance.now())
+}
+globalThis.fetch = async (url, options) => {
+  globalThis.__realtime.fetches.push({ url, options })
+  return { ok: true }
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__sockets.length === 1, "first-socket")
+  const first = globalThis.__sockets[0]
+  if (!first.url.endsWith("/rooms/office")) throw new Error("socket-url")
+  first.fire("open")
+  await waitFor(() => document.querySelector("[data-connection]").dataset.connection === "connected", "connected")
+  const retained = document.querySelector('[data-participant="player-1"]')
+  first.fire("message", { data: JSON.stringify({
+    room: "office",
+    phase: "playing",
+    participants: [
+      { id: "player-1", name: "Lupin", score: 1 },
+      { id: "player-2", name: "Sloth", score: 2 },
+    ],
+  }) })
+  await waitFor(() => document.querySelectorAll("[data-participant]").length === 2 && document.querySelector("[data-connection]").textContent.includes("playing"), "snapshot")
+  if (document.querySelector('[data-participant="player-1"]') !== retained) throw new Error("row-identity")
+  globalThis.__flushFrames()
+  await waitFor(() => globalThis.__realtime.draws.includes("2") && globalThis.__realtime.cancels >= 1, "canvas-update")
+  document.querySelector("button").click()
+  await waitFor(() => document.body.dataset.command === "sent" && globalThis.__realtime.fetches.length === 1, "command")
+  const command = globalThis.__realtime.fetches[0]
+  if (command.url !== "/commands/ready" || JSON.parse(command.options.body).room !== "office") throw new Error("command-payload")
+  const staleMessage = first.listeners.get("message")
+  first.fire("close")
+  await waitFor(() => globalThis.__sockets.length === 2 && first.listeners.size === 0, "reconnect")
+  staleMessage({ data: JSON.stringify({ room: "stale", phase: "stale", participants: [] }) })
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.querySelector("h1").textContent !== "office") throw new Error("stale-message")
+  const second = globalThis.__sockets[1]
+  second.fire("open")
+  await waitFor(() => document.querySelector("[data-connection]").dataset.connection === "connected", "reconnected")
+  const cancels = globalThis.__realtime.cancels
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => second.closeCount === 1 && second.listeners.size === 0 && globalThis.__realtime.cancels > cancels, "dispose")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (second.closeCount !== 1) throw new Error("repeat-dispose")
+  document.body.dataset.lupinRealtimeTest = "pass"
+} catch (error) {
+  document.body.dataset.lupinRealtimeTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-lupin-realtime-test", value: "pass" }],
+    virtualTime: 8000,
+  })
+}
+
+async function runLupinLobbyBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+const mode = new URL(location.href).searchParams.get("mode")
+if (mode) {
+  localStorage.setItem("lupin-mode", mode)
+  localStorage.removeItem("lupin-calls")
+}
+class FakeSocket {
+  static instances = []
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCount = 0
+    FakeSocket.instances.push(this)
+  }
+  addEventListener(name, callback) { this.listeners.set(name, callback) }
+  removeEventListener(name, callback) { if (this.listeners.get(name) === callback) this.listeners.delete(name) }
+  close() { this.closeCount += 1 }
+  fire(name, event = {}) { this.listeners.get(name)?.(event) }
+}
+globalThis.WebSocket = FakeSocket
+globalThis.__sockets = FakeSocket.instances
+globalThis.fetch = async (url, options) => {
+  const calls = JSON.parse(localStorage.getItem("lupin-calls") ?? "[]")
+  calls.push({ url, body: JSON.parse(options.body) })
+  localStorage.setItem("lupin-calls", JSON.stringify(calls))
+  const currentMode = localStorage.getItem("lupin-mode")
+  const value = url === "/createRoom" ? { ok: true, id: "new-room" }
+    : url === "/join" && currentMode === "fail" ? { ok: false, error: "이미 사용 중인 이름입니다." }
+    : url === "/join" ? { ok: true, token: "new-token" }
+    : { ok: true }
+  return { json: async () => value }
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  const query = new URL(location.href).searchParams
+  const mode = localStorage.getItem("lupin-mode")
+  const room = query.get("room")
+  if (room) {
+    const calls = JSON.parse(localStorage.getItem("lupin-calls") ?? "[]")
+    const expectedRoom = mode === "create" ? "new-room" : "oak"
+    const expectedUrls = mode === "create" ? ["/createRoom", "/join"] : ["/enter", "/join"]
+    if (room !== expectedRoom || calls.map(call => call.url).join() !== expectedUrls.join()) throw new Error("navigation-sequence")
+    if (calls.at(-1).body.name !== "루팡" || calls.at(-1).body.roomId !== expectedRoom) throw new Error("join-payload")
+    if (mode === "create" && (calls[0].body.roomName !== "점심방" || calls[0].body.type !== "stopwatch")) throw new Error("create-payload")
+    if (localStorage.getItem("sw-tok-" + expectedRoom) !== "new-token") throw new Error("token")
+    document.body.dataset.lupinLobbyTest = "pass"
+  } else {
+    await waitFor(() => globalThis.__sockets.length === 1, "socket")
+    const socket = globalThis.__sockets[0]
+    if (!socket.url.endsWith("/lobby")) throw new Error("socket-url")
+    socket.fire("message", { data: JSON.stringify({ rooms: [
+      { id: "oak", name: "점심 내기", type: "stopwatch", locked: false, players: 1, spectators: 0, playing: false },
+      { id: "pine", name: "비밀 회의", type: "race", locked: true, players: 2, spectators: 1, playing: true },
+    ] }) })
+    await waitFor(() => document.querySelectorAll("[data-room]").length === 2 && !document.body.textContent.includes("아직 열린 방이 없습니다."), "rooms")
+    const retained = document.querySelector('[data-room="oak"]')
+    socket.fire("message", { data: JSON.stringify({ rooms: [
+      { id: "oak", name: "점심 내기", type: "stopwatch", locked: false, players: 3, spectators: 0, playing: true },
+      { id: "pine", name: "비밀 회의", type: "race", locked: true, players: 2, spectators: 1, playing: true },
+    ] }) })
+    await waitFor(() => retained.textContent.includes("3명") && retained.textContent.includes("진행 중"), "room-update")
+    if (document.querySelector('[data-room="oak"]') !== retained) throw new Error("room-identity")
+    if (!document.querySelector('[data-room="pine"] button').disabled) throw new Error("locked-room")
+    const name = document.querySelector("#player-name")
+    name.value = "루팡"
+    name.dispatchEvent(new Event("input", { bubbles: true }))
+    if (mode === "create") {
+      document.querySelector("#room-name").value = "점심방"
+      document.querySelector("form").requestSubmit()
+    } else {
+      retained.querySelector("button").click()
+    }
+    if (mode === "fail") {
+      await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "이미 사용 중인 이름입니다.", "join-error")
+      const calls = JSON.parse(localStorage.getItem("lupin-calls") ?? "[]")
+      if (calls.map(call => call.url).join() !== "/enter,/join" || location.search.includes("room=")) throw new Error("failed-join-sequence")
+      window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+      await waitFor(() => socket.closeCount === 1 && socket.listeners.size === 0, "cleanup")
+      window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+      await new Promise(resolve => setTimeout(resolve, 30))
+      if (socket.closeCount !== 1) throw new Error("repeat-cleanup")
+      document.body.dataset.lupinLobbyTest = "pass"
+    }
+  }
+} catch (error) {
+  document.body.dataset.lupinLobbyTest = "fail-" + error.message
+}
+`,
+    scenarios: [
+      { path: "/?mode=create", attribute: "data-lupin-lobby-test", value: "pass" },
+      { path: "/?mode=join", attribute: "data-lupin-lobby-test", value: "pass" },
+      { path: "/?mode=fail", attribute: "data-lupin-lobby-test", value: "pass" },
+    ],
+    virtualTime: 8000,
+  })
+}
+
+async function runLupinStopwatchBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+globalThis.__stopwatch = { calls: [], cancels: 0 }
+class FakeSocket {
+  static instances = []
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCount = 0
+    FakeSocket.instances.push(this)
+  }
+  addEventListener(name, callback) { this.listeners.set(name, callback) }
+  removeEventListener(name, callback) { if (this.listeners.get(name) === callback) this.listeners.delete(name) }
+  close() { this.closeCount += 1 }
+  fire(name, event = {}) { this.listeners.get(name)?.(event) }
+}
+globalThis.WebSocket = FakeSocket
+globalThis.__sockets = FakeSocket.instances
+let nextFrame = 1
+const pendingFrames = new Map()
+globalThis.requestAnimationFrame = callback => {
+  const frame = nextFrame++
+  pendingFrames.set(frame, callback)
+  return frame
+}
+globalThis.cancelAnimationFrame = frame => {
+  globalThis.__stopwatch.cancels += 1
+  pendingFrames.delete(frame)
+}
+globalThis.__pendingFrames = pendingFrames
+globalThis.__flushFrames = () => {
+  const callbacks = [...pendingFrames.values()]
+  pendingFrames.clear()
+  for (const callback of callbacks) callback(performance.now())
+}
+globalThis.fetch = async (url, options) => {
+  globalThis.__stopwatch.calls.push({ url, body: JSON.parse(options.body) })
+  return { ok: true }
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__sockets.length === 1, "socket")
+  const first = globalThis.__sockets[0]
+  if (!first.url.includes("/events?room=office&name=Lupin&role=player")) throw new Error("socket-url")
+  const timerButton = [...document.querySelectorAll("button")].find(button => button.textContent === "시작")
+  const resetButton = [...document.querySelectorAll("button")].find(button => button.textContent === "초기화")
+  timerButton.click()
+  await waitFor(() => timerButton.textContent === "스탑" && globalThis.__pendingFrames.size === 1 && globalThis.__stopwatch.calls.length === 1, "start")
+  if (globalThis.__stopwatch.calls[0].url !== "/running" || globalThis.__stopwatch.calls[0].body.running !== true) throw new Error("running-command")
+  await new Promise(resolve => setTimeout(resolve, 60))
+  globalThis.__flushFrames()
+  await waitFor(() => document.querySelector("output").textContent !== "0.00", "timer-frame")
+  timerButton.click()
+  await waitFor(() => timerButton.textContent === "시작" && globalThis.__stopwatch.calls.length === 2 && globalThis.__stopwatch.cancels >= 1, "record")
+  const record = globalThis.__stopwatch.calls[1]
+  if (record.url !== "/record" || record.body.time !== document.querySelector("output").textContent) throw new Error("record-command")
+  const retained = document.querySelector('[data-user="루팡"]')
+  first.fire("message", { data: JSON.stringify({
+    type: "stopwatch",
+    roomName: "점심 내기",
+    users: [
+      { name: "루팡", records: ["1.23", "2.34"], running: false, score: 12 },
+      { name: "대리", records: ["3.45", "4.56"], running: false, score: 30 },
+    ],
+    done: true,
+    losers: ["루팡"],
+  }) })
+  await waitFor(() => document.querySelectorAll("[data-user]").length === 2 && document.querySelector('[role="status"]')?.textContent.includes("루팡"), "snapshot")
+  if (document.querySelector('[data-user="루팡"]') !== retained || !retained.textContent.includes("1.23") || !retained.textContent.includes("12")) throw new Error("scoreboard")
+  resetButton.click()
+  await waitFor(() => globalThis.__stopwatch.calls.length === 3, "reset")
+  if (globalThis.__stopwatch.calls[2].url !== "/reset") throw new Error("reset-command")
+  first.fire("close")
+  await waitFor(() => globalThis.__sockets.length === 2 && first.listeners.size === 0, "reconnect")
+  const second = globalThis.__sockets[1]
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => second.closeCount === 1 && second.listeners.size === 0, "dispose")
+  document.body.dataset.lupinStopwatchTest = "pass"
+} catch (error) {
+  document.body.dataset.lupinStopwatchTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-lupin-stopwatch-test", value: "pass" }],
+    virtualTime: 8000,
+  })
+}
+
+async function runLupinRoomSocialBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+globalThis.__social = { calls: [] }
+class FakeSocket {
+  static instances = []
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCount = 0
+    FakeSocket.instances.push(this)
+  }
+  addEventListener(name, callback) { this.listeners.set(name, callback) }
+  removeEventListener(name, callback) { if (this.listeners.get(name) === callback) this.listeners.delete(name) }
+  close() { this.closeCount += 1 }
+  fire(name, event = {}) { this.listeners.get(name)?.(event) }
+}
+globalThis.WebSocket = FakeSocket
+globalThis.__sockets = FakeSocket.instances
+globalThis.fetch = async (url, options) => {
+  globalThis.__social.calls.push({ url, body: JSON.parse(options.body) })
+  return { ok: true, json: async () => ({ ok: true, token: "role-token" }) }
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__sockets.length === 1, "player-socket")
+  const first = globalThis.__sockets[0]
+  if (!first.url.endsWith("role=player")) throw new Error("player-url")
+  first.fire("message", { data: JSON.stringify({ roomName: "점심 내기", chat: [{ name: "대리", msg: "시작합니다", time: "12:00" }], spectators: ["과장"] }) })
+  await waitFor(() => document.body.textContent.includes("시작합니다") && document.body.textContent.includes("과장"), "social-snapshot")
+  const input = document.querySelector("#chat-message")
+  input.value = "안녕하세요"
+  input.dispatchEvent(new Event("input", { bubbles: true }))
+  document.querySelector("form").requestSubmit()
+  await waitFor(() => globalThis.__social.calls.length === 1 && input.value === "", "chat")
+  if (globalThis.__social.calls[0].url !== "/chat" || globalThis.__social.calls[0].body.msg !== "안녕하세요") throw new Error("chat-command")
+  const staleMessage = first.listeners.get("message")
+  ;[...document.querySelectorAll("button")].find(button => button.textContent === "관전으로 전환").click()
+  await waitFor(() => globalThis.__sockets.length === 2 && first.closeCount === 1 && first.listeners.size === 0, "spectator-replacement")
+  const second = globalThis.__sockets[1]
+  if (!second.url.endsWith("role=spectator") || globalThis.__social.calls[1].url !== "/leave") throw new Error("spectator-command")
+  second.fire("message", { data: JSON.stringify({ roomName: "관전 화면", chat: [], spectators: ["Lupin"] }) })
+  await waitFor(() => document.querySelector("h1").textContent === "관전 화면", "spectator-snapshot")
+  staleMessage({ data: JSON.stringify({ roomName: "stale", chat: [], spectators: [] }) })
+  await new Promise(resolve => setTimeout(resolve, 30))
+  if (document.querySelector("h1").textContent !== "관전 화면") throw new Error("stale-player-message")
+  ;[...document.querySelectorAll("button")].find(button => button.textContent === "플레이어로 참여").click()
+  await waitFor(() => globalThis.__sockets.length === 3 && second.closeCount === 1 && second.listeners.size === 0, "player-replacement")
+  const third = globalThis.__sockets[2]
+  if (!third.url.endsWith("role=player") || globalThis.__social.calls[2].url !== "/join") throw new Error("join-command")
+  if (localStorage.getItem("sw-tok-office") !== "role-token") throw new Error("join-token")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => third.closeCount === 1 && third.listeners.size === 0, "dispose")
+  document.body.dataset.lupinSocialTest = "pass"
+} catch (error) {
+  document.body.dataset.lupinSocialTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-lupin-social-test", value: "pass" }],
+    virtualTime: 8000,
+  })
+}
+
+async function runLupinPrivateRoomBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+const mode = new URL(location.href).searchParams.get("mode")
+if (mode) {
+  localStorage.setItem("private-mode", mode)
+  localStorage.removeItem("private-calls")
+}
+globalThis.fetch = async (url, options) => {
+  const calls = JSON.parse(localStorage.getItem("private-calls") ?? "[]")
+  const body = JSON.parse(options.body)
+  calls.push({ url, body })
+  localStorage.setItem("private-calls", JSON.stringify(calls))
+  const retry = localStorage.getItem("private-mode") === "player" && url === "/enter" && calls.filter(call => call.url === "/enter").length === 1
+  return { json: async () => retry ? { ok: false, error: "비밀번호가 일치하지 않습니다." } : url === "/join" ? { ok: true, token: "private-token" } : { ok: true } }
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  const query = new URL(location.href).searchParams
+  const room = query.get("room")
+  const mode = localStorage.getItem("private-mode")
+  if (room) {
+    const calls = JSON.parse(localStorage.getItem("private-calls") ?? "[]")
+    const expected = mode === "player" ? "/enter,/enter,/join" : "/enter"
+    if (room !== "secret" || query.get("role") !== mode || calls.map(call => call.url).join() !== expected) throw new Error("private-sequence")
+    if (!calls.every(call => call.body.roomId === "secret") || calls[0].body.password !== "wrong") throw new Error("private-payload")
+    if (mode === "player" && localStorage.getItem("sw-tok-secret") !== "private-token") throw new Error("private-token")
+    if (mode === "spectator" && localStorage.getItem("sw-tok-secret")) throw new Error("spectator-token")
+    document.body.dataset.lupinPrivateTest = "pass"
+  } else {
+    const name = document.querySelector("#private-name")
+    name.value = "루팡"
+    name.dispatchEvent(new Event("input", { bubbles: true }))
+    const action = [...document.querySelectorAll('[data-room="secret"] button')].find(button => button.textContent === (mode === "player" ? "플레이" : "관전"))
+    action.click()
+    await waitFor(() => document.querySelector('[role="dialog"]'), "dialog")
+    const password = document.querySelector("#room-password")
+    password.value = "wrong"
+    password.dispatchEvent(new Event("input", { bubbles: true }))
+    document.querySelector('[role="dialog"] form').requestSubmit()
+    if (mode === "player") {
+      await waitFor(() => document.querySelector('[role="alert"]')?.textContent.includes("일치하지"), "password-error")
+      password.value = "secret-value"
+      password.dispatchEvent(new Event("input", { bubbles: true }))
+      document.querySelector('[role="dialog"] form').requestSubmit()
+    }
+  }
+} catch (error) {
+  document.body.dataset.lupinPrivateTest = "fail-" + error.message
+}
+`,
+    scenarios: [
+      { path: "/?mode=player", attribute: "data-lupin-private-test", value: "pass" },
+      { path: "/?mode=spectator", attribute: "data-lupin-private-test", value: "pass" },
+    ],
+    virtualTime: 8000,
+  })
+}
+
+async function runLupinGameCapabilityBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+globalThis.__game = { calls: [], draws: [], cancels: 0 }
+class FakeSocket {
+  static instances = []
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCount = 0
+    FakeSocket.instances.push(this)
+  }
+  addEventListener(name, callback) { this.listeners.set(name, callback) }
+  removeEventListener(name, callback) { if (this.listeners.get(name) === callback) this.listeners.delete(name) }
+  close() { this.closeCount += 1 }
+  fire(name, event = {}) { this.listeners.get(name)?.(event) }
+}
+globalThis.WebSocket = FakeSocket
+globalThis.__sockets = FakeSocket.instances
+let nextFrame = 1
+const pendingFrames = new Map()
+globalThis.requestAnimationFrame = callback => {
+  const frame = nextFrame++
+  pendingFrames.set(frame, callback)
+  return frame
+}
+globalThis.cancelAnimationFrame = frame => {
+  globalThis.__game.cancels += 1
+  pendingFrames.delete(frame)
+}
+globalThis.__flushFrames = () => {
+  const callbacks = [...pendingFrames.values()]
+  pendingFrames.clear()
+  for (const callback of callbacks) callback(performance.now())
+}
+HTMLCanvasElement.prototype.getContext = () => ({
+  fillStyle: "#000",
+  fillRect(x, y, width, height) { globalThis.__game.draws.push([x, y, width, height, this.fillStyle]) },
+})
+HTMLCanvasElement.prototype.getBoundingClientRect = () => ({ left: 10, top: 20 })
+HTMLCanvasElement.prototype.setPointerCapture = pointerId => { globalThis.__game.captured = pointerId }
+HTMLCanvasElement.prototype.releasePointerCapture = pointerId => { globalThis.__game.released = pointerId }
+Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async value => { globalThis.__game.copied = value } } })
+globalThis.prompt = (label, value) => { globalThis.__game.prompted = [label, value]; return value }
+globalThis.fetch = async (url, options) => {
+  globalThis.__game.calls.push({ url, body: JSON.parse(options.body) })
+  return { ok: true, json: async () => ({ word: "회의" }) }
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__sockets.length === 1 && document.querySelector('[role="status"]')?.textContent.includes("회의"), "mount")
+  const first = globalThis.__sockets[0]
+  if (globalThis.__game.calls[0].url !== "/drawInfo") throw new Error("private-api")
+  first.fire("message", { data: JSON.stringify({ phase: "playing", players: [{ id: "p1", name: "루팡", x: 30, y: 40, score: 7 }] }) })
+  await waitFor(() => document.querySelector('[data-player="p1"]')?.textContent.includes("7") && document.querySelector("[data-phase]").dataset.phase === "playing", "snapshot")
+  globalThis.__flushFrames()
+  if (!globalThis.__game.draws.some(draw => draw[0] === 30 && draw[1] === 40 && draw[2] === 4)) throw new Error("frame-draw")
+  first.fire("message", { data: JSON.stringify({ e: "draw", seg: { x: 11, y: 12, color: "#f00" } }) })
+  if (!globalThis.__game.draws.some(draw => draw[0] === 11 && draw[1] === 12 && draw[4] === "#f00")) throw new Error("delta-draw")
+  const answer = document.querySelector("#game-answer")
+  answer.focus()
+  answer.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }))
+  answer.value = "ㅎ"
+  answer.dispatchEvent(new Event("input", { bubbles: true }))
+  document.querySelector("form").requestSubmit()
+  await new Promise(resolve => setTimeout(resolve, 30))
+  if (globalThis.__game.calls.length !== 1) throw new Error("ime-premature-submit")
+  answer.value = "회의"
+  answer.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }))
+  await new Promise(resolve => setTimeout(resolve, 30))
+  document.querySelector("form").requestSubmit()
+  await waitFor(() => globalThis.__game.calls.length === 2 && answer.value === "", "ime-submit")
+  if (globalThis.__game.calls[1].url !== "/answer" || globalThis.__game.calls[1].body.answer !== "회의") throw new Error("ime-payload")
+  if (answer.dispatchEvent(new ClipboardEvent("paste", { bubbles: true, cancelable: true }))) throw new Error("paste-guard")
+  if (answer.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true }))) throw new Error("drop-guard")
+  document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: String.fromCharCode(96) }))
+  await waitFor(() => document.querySelector('[aria-label="화면 숨기기"]') && document.title === "회의록", "panic-shortcut")
+  document.querySelector('[aria-label="화면 숨기기"] button').click()
+  await waitFor(() => !document.querySelector('[aria-label="화면 숨기기"]') && document.title === "Kudzu", "panic-restore")
+  const copy = [...document.querySelectorAll("button")].find(button => button.textContent === "초대 링크 복사")
+  copy.click()
+  await waitFor(() => globalThis.__game.copied === location.href && [...document.querySelectorAll('[role="status"]')].some(node => node.textContent === "링크 복사됨"), "clipboard")
+  navigator.clipboard.writeText = async () => { throw new Error("denied") }
+  copy.click()
+  await waitFor(() => globalThis.__game.prompted?.[0] === "링크 복사" && [...document.querySelectorAll('[role="status"]')].some(node => node.textContent === "직접 복사"), "clipboard-fallback")
+  const canvas = document.querySelector("canvas")
+  canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerId: 7 }))
+  canvas.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, buttons: 1, clientX: 25, clientY: 38 }))
+  canvas.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowLeft" }))
+  canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 7 }))
+  await waitFor(() => globalThis.__game.calls.length === 4, "input-commands")
+  const draw = globalThis.__game.calls[2]
+  const key = globalThis.__game.calls[3]
+  if (draw.url !== "/draw" || draw.body.seg.x !== 15 || draw.body.seg.y !== 18) throw new Error("pointer-command")
+  if (key.url !== "/input" || key.body.key !== "ArrowLeft") throw new Error("keyboard-command")
+  if (globalThis.__game.captured !== 7 || globalThis.__game.released !== 7) throw new Error("pointer-capture")
+  const staleMessage = first.listeners.get("message")
+  first.fire("close")
+  await waitFor(() => globalThis.__sockets.length === 2 && first.listeners.size === 0, "reconnect")
+  staleMessage({ data: JSON.stringify({ phase: "stale", players: [] }) })
+  await new Promise(resolve => setTimeout(resolve, 30))
+  if (document.querySelector("[data-phase]").dataset.phase !== "playing") throw new Error("stale-message")
+  const second = globalThis.__sockets[1]
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => second.closeCount === 1 && second.listeners.size === 0 && globalThis.__game.cancels === 1, "dispose")
+  document.body.dataset.lupinGameCapabilityTest = "pass"
+} catch (error) {
+  document.body.dataset.lupinGameCapabilityTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-lupin-game-capability-test", value: "pass" }],
+    virtualTime: 8000,
   })
 }
 

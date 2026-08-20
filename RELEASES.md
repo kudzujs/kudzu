@@ -1,5 +1,30 @@
 # Kudzu Releases
 
+## 0.9.1 - Positional primitive lists
+
+Kudzu 0.9.1 allows JSON-safe primitive values in lists keyed by their authored
+position while retaining the plain-object requirement for property-keyed rows.
+
+### Changed in 0.9.1
+
+- Build and browser list validation now accept primitive positional rows.
+- Compact object-row serialization ignores primitive arrays instead of treating
+  their values as object records.
+- Lupin-derived fixtures prove realtime rooms, lobby and private-room entry,
+  stopwatch ownership, chat and spectator replacement, Canvas/RAF input,
+  IME handling, panic shortcuts, and exact cleanup without a game runtime.
+
+### Validation
+
+- Static sibling routes remain complete HTML with zero JavaScript.
+- `npm run check`, `npm test`, and `npm run test:package` pass with 253 tests.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.9.1
+```
+
 ## 0.9.0 - Semantic compression
 
 Kudzu 0.9.0 consolidates evidence-backed React migration shapes onto the existing signal, handler, effect, component-ownership, and keyed-list semantics without adding React, hydration, a VDOM, or a retained browser component tree.

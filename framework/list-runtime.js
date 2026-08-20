@@ -170,7 +170,7 @@ function updateList(list) {
   for (const [index, item] of items.entries()) {
     const key = list.descriptor.key === null ? index : item?.[list.descriptor.key]
     if (!validListKey(key)) throw new Error(`Keyed list key "${list.descriptor.key}" must be a string or finite number`)
-    assertListItem(item)
+    assertListItem(item, list.descriptor.key === null)
     const seededValue = __KUDZU_LIST_SEEDS__ ? list.seedFields && seededListValue(item, list.seedFields, list.valueSeed, !referenceOnly) : undefined
     if (seededValue === undefined) assertListValue(item, seen, true)
     const token = keyToken(key)
@@ -1155,7 +1155,8 @@ function validListKey(key) {
   return typeof key === "string" || typeof key === "number" && Number.isFinite(key)
 }
 
-function assertListItem(item) {
+function assertListItem(item, allowPrimitive = false) {
+  if (allowPrimitive && (item === null || typeof item !== "object")) return
   const prototype = item && typeof item === "object" ? Object.getPrototypeOf(item) : undefined
   if (!item || Array.isArray(item) || prototype !== Object.prototype) throw new Error("Keyed list items must be ordinary plain objects")
 }

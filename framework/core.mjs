@@ -319,7 +319,7 @@ export function list(items, keyField, render, ownerField, selector = [], indexed
   for (const [index, item] of values.entries()) {
     const key = keyField === null ? index : item?.[keyField]
     if (!validListKey(key)) throw new Error(`Keyed list key "${keyField}" must be a string or finite number`)
-    assertListItem(item)
+    assertListItem(item, keyField === null)
     assertListValue(item, new Set())
     const token = `${typeof key}:${key}`
     if (keys.has(token)) throw new Error(`Duplicate keyed list key: ${String(key)}`)
@@ -360,7 +360,8 @@ function validListKey(key) {
   return typeof key === "string" || typeof key === "number" && Number.isFinite(key)
 }
 
-function assertListItem(item) {
+function assertListItem(item, allowPrimitive = false) {
+  if (allowPrimitive && (item === null || typeof item !== "object")) return
   const prototype = item && typeof item === "object" ? Object.getPrototypeOf(item) : undefined
   if (!item || Array.isArray(item) || prototype !== Object.prototype) throw new Error("Keyed list items must be ordinary plain objects")
 }
@@ -1103,6 +1104,7 @@ function escapeJsonAttribute(value) {
 
 function compactListState(value) {
   if (!Array.isArray(value) || !value.length) return undefined
+  if (!value[0] || typeof value[0] !== "object" || Array.isArray(value[0]) || Object.getPrototypeOf(value[0]) !== Object.prototype) return undefined
   const fields = Object.keys(value[0])
   if (!fields.length || !value.every(item => Object.keys(item).length === fields.length && fields.every(field => Object.hasOwn(item, field)))) return undefined
   return [fields, value.map(item => fields.map(field => item[field]))]
