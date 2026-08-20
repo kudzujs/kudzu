@@ -1,5 +1,5 @@
 import ts from "typescript"
-import { effectReturns, importDeclarationNames, isShadowedIdentifier, nearestFunction, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
+import { effectReturns, importDeclarationNames, isNodeWithin, isShadowedIdentifier, nearestFunction, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 
 export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
     const frameCall = (node, name) => ts.isCallExpression(node) && (
@@ -11,10 +11,6 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       return name && !isShadowedIdentifier(name, owner) && !sourceFile.statements.some(statement => statementDeclaresName(statement, name.text) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name.text))
     }
     const currentAccess = (node, name) => ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name && node.name.text === "current"
-    const inside = (node, root) => {
-      for (let current = node; current; current = current.parent) if (current === root) return true
-      return false
-    }
     const directOrGuarded = (statement, body, name, negated) => {
       if (statement.parent === body) return true
       let branch = statement
@@ -58,13 +54,13 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       const effectCalls = owner.body.statements.flatMap(statement => hasUseEffectImport && ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && ts.isIdentifier(statement.expression.expression) && statement.expression.expression.text === "useEffect" && !isShadowedIdentifier(statement.expression.expression, sourceFile) ? [statement.expression] : [])
       const effects = effectCalls.filter(effect => {
         const callback = effect.arguments[0]
-        return callback && accesses.every(access => inside(access, callback))
+        return callback && accesses.every(access => isNodeWithin(access, callback))
       })
       if (!frameAssignments.length) {
         const callback = effects.length === 1 ? effects[0].arguments[0] : undefined
         if (callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) && ts.isBlock(callback.body)) {
           const cleanups = effectReturns(callback).cleanups
-          const cleanupWrites = cleanups.length === 1 && accesses.some(access => inside(access, cleanups[0]) && ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && access.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment)
+          const cleanupWrites = cleanups.length === 1 && accesses.some(access => isNodeWithin(access, cleanups[0]) && ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && access.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment)
           if (!cleanupWrites) throw sourceNodeError(node, sourceFile, "Effect-private refs require one cleanup that directly resets or invalidates ref.current")
           registerPrivateRef(node, callback)
         }
@@ -77,7 +73,7 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       const effect = effects[0]
       const callback = effect.arguments[0]
       if (!(ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) || !ts.isBlock(callback.body)) throw sourceNodeError(callback, sourceFile, "Animation frame refs require one inline block-bodied effect")
-      if (accesses.some(access => !inside(access, callback))) throw sourceNodeError(node, sourceFile, "Animation frame refs may only be used inside their owning effect")
+      if (accesses.some(access => !isNodeWithin(access, callback))) throw sourceNodeError(node, sourceFile, "Animation frame refs may only be used inside their owning effect")
       const callbacks = new Map()
       for (const statement of callback.body.statements) {
         if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) {

@@ -18,7 +18,7 @@ import { createCommandSpecializer } from "../framework/compiler/optimize/command
 import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
-import { createRouteBuildRecord, planRouteArtifacts } from "../framework/compiler/route-build-record.mjs"
+import { assertRouteBuildRecord, createRouteBuildRecord, planRouteArtifacts, releaseRouteBuildRecordPlan } from "../framework/compiler/route-build-record.mjs"
 import { createRouteArtifactReport } from "../framework/compiler/route-artifact-report.mjs"
 import { assertCapabilityIR, planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { planRuntimeFamilies } from "../framework/compiler/runtime-family-planner.mjs"
@@ -319,6 +319,8 @@ test("specializes exact command forms to plain data", () => {
   assert.deepEqual(command("setCount(-0)"), { operation: "set", state: "count", value: 0, syntax: "negative" })
   assert.deepEqual(command("setCount(count - 0)"), { operation: "add", state: "count", value: 0, syntax: "negative" })
   assert.deepEqual(command("setCount(value => value - 0)"), { operation: "add", state: "count", value: 0, syntax: "negative" })
+  assert.deepEqual(command("setCount(!count)"), { operation: "toggle", state: "count", value: false })
+  assert.deepEqual(command("setCount(value => !value)"), { operation: "toggle", state: "count", value: false })
   assert.deepEqual(command("setCount(\"ready\")"), { operation: "set", state: "count", value: "ready" })
   assert.deepEqual(command("console.log(\"count\", count)"), { operation: "log", state: "count", value: "count" })
   assert.equal(command("setCount(count * 2)"), undefined)
@@ -467,6 +469,9 @@ test("registers package-neutral shared state and action IR", () => {
   const broken = JSON.parse(JSON.stringify(moduleIR))
   broken.sharedActions[0].state = 1
   assert.throws(() => assertModuleIRReferences(broken), /SharedActionIR 0 references missing SharedStateIR slot 1/)
+  const brokenHandler = JSON.parse(JSON.stringify(moduleIR))
+  brokenHandler.handlers[0].actions[0] = 1
+  assert.throws(() => assertModuleIRReferences(brokenHandler), /HandlerIR 0 action 0 references missing SharedActionIR slot 1/)
 })
 
 test("validates ModuleIR v2 structural references after JSON round-tripping", () => {
@@ -475,7 +480,7 @@ test("validates ModuleIR v2 structural references after JSON round-tripping", ()
   const page = {}
   components.registerOwner(page, { name: "Page" })
   components.registerState(page, { name: "count", setter: "setCount", kind: "state" })
-  components.registerSpecialization({ kind: "Keyed list", owner: { kind: "component", slot: 0 }, refs: [{ name: "button", kind: "row" }] })
+  components.registerSpecialization({ kind: "Keyed list", owner: { kind: "component", slot: 0 }, props: [{ name: "value", local: "value", provided: true, signals: [0], properties: [{ signal: 0, path: ["items"], consumers: ["effect", "list"], equality: "object-is" }] }], refs: [{ name: "button", kind: "row" }] })
   const valid = () => ({
     version: 2,
     file: "src/pages/valid.tsx",
@@ -497,12 +502,28 @@ test("validates ModuleIR v2 structural references after JSON round-tripping", ()
 
   assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(valid())), analysis), valid())
   assert.throws(() => assertModuleIRReferences({ ...valid(), version: 1 }, analysis), /Unsupported ModuleIR version/)
+  const invalidPropertySignal = JSON.parse(JSON.stringify(analysis))
+  invalidPropertySignal.specializations[0].props[0].properties[0].signal = 1
+  assert.throws(() => assertModuleIRReferences(valid(), invalidPropertySignal), /property references missing SignalIR slot 1/)
+  const invalidPropertyPath = JSON.parse(JSON.stringify(analysis))
+  invalidPropertyPath.specializations[0].props[0].properties[0].path = ["__proto__"]
+  assert.throws(() => assertModuleIRReferences(valid(), invalidPropertyPath), /invalid property link/)
   const missingSignal = valid()
   missingSignal.bindings[0].signals[0] = 4
   assert.throws(() => assertModuleIRReferences(missingSignal, analysis), /BindingIR 0 signal 0 references missing SignalIR slot 4/)
   const duplicateExport = valid()
   duplicateExport.bindings[0].exportName = "effect0"
   assert.throws(() => assertModuleIRReferences(duplicateExport, analysis), /export "effect0" is declared by both/)
+  const calculation = valid()
+  calculation.derived[0] = { slot: 0, kind: "calculation", calculation: { binding: 0, fields: ["id"] }, signals: [0] }
+  calculation.effects[0].dependencies[0] = { kind: "derived", derived: 0, sources: [0], field: "id", evaluator: 0 }
+  assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(calculation)), analysis), calculation)
+  const brokenEvaluator = JSON.parse(JSON.stringify(calculation))
+  brokenEvaluator.effects[0].dependencies[0].evaluator = 1
+  assert.throws(() => assertModuleIRReferences(brokenEvaluator, analysis), /must use its calculation evaluator/)
+  const brokenField = JSON.parse(JSON.stringify(calculation))
+  brokenField.effects[0].dependencies[0].field = "price"
+  assert.throws(() => assertModuleIRReferences(brokenField, analysis), /unknown calculation field "price"/)
   const brokenParent = valid()
   brokenParent.keyedBlocks[0].children = []
   assert.throws(() => assertModuleIRReferences(brokenParent, analysis), /does not reciprocally list child 1/)
@@ -570,6 +591,52 @@ test("rejects mixed whole-object and property effect dependencies", () => {
     factory: ts.factory,
     fail(node, message) { throw new Error(message) }
   }), /cannot mix whole-object and property dependencies for state "profile"/)
+})
+
+test("rejects unsafe selected imported calculation effect dependencies", () => {
+  const page = resolve("test/fixtures/derived-effect-boundary/src/pages/index.tsx")
+  const derive = resolve("test/fixtures/derived-effect-boundary/src/derive.ts")
+  const catalog = resolve("test/fixtures/derived-effect-boundary/src/catalog.ts")
+  const baseHelper = `
+import { variants } from "./catalog"
+export function derive(color: string, size: string) {
+  const selected = variants.find(variant => variant.color === color && variant.size === size)
+  return { id: selected?.id ?? "", price: selected?.price ?? "", available: selected?.available ?? false }
+}`
+  const baseCatalog = `export const variants = [{ id: "black-m", color: "Black", size: "M", price: "20", available: true }] as const`
+  const failure = ({ helper = baseHelper, dependency = "selected.id", call = "derive(color, size)", catalogSource = baseCatalog }) => {
+    const pageSource = `
+import { useEffect, useState } from "react"
+import { derive } from "../derive"
+export default function Page() {
+  const [color, setColor] = useState("Black")
+  const [size, setSize] = useState("M")
+  const selected = ${call}
+  const field = "id"
+  useEffect(() => { document.body.dataset.selected = selected.id }, [${dependency}])
+  return <button onClick={() => { setColor("Black"); setSize("M") }}>{selected.price}</button>
+    }`
+    const sourceIndex = new Map([[page, pageSource], [derive, helper], [catalog, catalogSource]])
+    try {
+      compileSource(page, new Set(sourceIndex.keys()), sourceIndex, new Set(), new Map(), "")
+    } catch (error) {
+      assert.match(error.message, /src\/(?:pages\/index\.tsx|derive\.ts)/)
+      return error.message
+    }
+    assert.fail("Expected selected calculation compilation to fail")
+  }
+
+  assert.match(failure({ dependency: "selected[field]" }), /computed result properties are not supported/)
+  assert.match(failure({ dependency: "selected" }), /cannot depend on the whole imported calculation result "selected"/)
+  assert.match(failure({ call: "derive(color.toLowerCase(), size)" }), /arguments must be direct primitive state identifiers/)
+  assert.match(failure({ helper: baseHelper.replace("const selected =", "variants.sort(); const selected =") }), /mutating method "sort" is not supported/)
+  assert.match(failure({ helper: baseHelper.replace("const selected =", "const first = second; const second = first; const selected =") }), /derived-local cycle: first -> second -> first/)
+  assert.match(failure({ helper: baseHelper.replace('selected?.id ?? ""', 'String(Math.random())') }), /must be deterministic; call "Math.random" is not supported/)
+  assert.match(failure({ helper: baseHelper.replace('import { variants } from "./catalog"', 'import { variants, metadata } from "./catalog"').replace('selected?.id ?? ""', "metadata.id"), catalogSource: `${baseCatalog}\nexport const metadata = { id: "opaque" } as const` }), /capture "metadata" is opaque or nonserializable/)
+  assert.match(failure({ helper: `import { pick } from "example-package"\nexport function derive(color: string, size: string) { return { id: pick(color), price: size, available: true } }` }), /cannot reference package import "pick" from "example-package"/)
+  assert.match(failure({ helper: `export function derive(color: string, size: string) { if (color) return { id: color, price: size, available: true }; return { id: size, available: false } }` }), /same direct plain-object fields on every path/)
+  assert.match(failure({ helper: `export function derive(color: string, size: string) { if (color) return { id: color, price: size, available: true } }` }), /must end with an unconditional return/)
+  assert.match(failure({ helper: `export async function derive(color: string, size: string) { return { id: color, price: size, available: true } }` }), /must be synchronous functions/)
 })
 
 test("generates the existing command behavior AST from HandlerIR", () => {
@@ -910,6 +977,12 @@ test("rejects invalid concrete RouteIR references before artifact planning", () 
   assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "l0", state: "missing", key: "id", keys: [] }] }), /list 0 references missing state "missing"/)
   assert.throws(() => assertRouteIR({ ...plan, lists: [{ id: "l0", state: "s0", key: "id", keys: [1, 1] }] }), /duplicate key 1/)
   assert.throws(() => assertRouteIR({ ...plan, states: [{ ...state, initialValue: 1n }] }), /RouteIR .* is not JSON-safe/)
+  const accessor = {}
+  Object.defineProperty(accessor, "value", { enumerable: true, get: () => { throw new Error("must not execute") } })
+  assert.throws(() => assertRouteIR({ ...plan, states: [{ ...state, initialValue: accessor }] }), /not JSON-safe at \$\.states\.0\.initialValue\.value/)
+  const symbolic = {}
+  symbolic[Symbol("hidden")] = true
+  assert.throws(() => assertRouteIR({ ...plan, states: [{ ...state, initialValue: symbolic }] }), /not JSON-safe at \$\.states\.0\.initialValue/)
 })
 
 test("rejects broken nested list ownership and malformed captures", () => {
@@ -955,6 +1028,14 @@ test("plans route artifacts from structural handler and effect edges", () => {
   assert.deepEqual(artifacts.styles, ["/assets/style.css"])
   assertJsonData(record)
   assert.deepEqual(JSON.parse(JSON.stringify(record)), record)
+})
+
+test("marks serialized route plans as explicitly released", () => {
+  const record = routeRecord(routePlan())
+  releaseRouteBuildRecordPlan(record)
+  assert.equal(assertRouteBuildRecord(record), record)
+  record.plan = routePlan()
+  assert.throws(() => assertRouteBuildRecord(record), /Released RouteBuildRecord plan was restored/)
 })
 
 test("reports exact route capability and bundled chunk closure", () => {
@@ -1049,9 +1130,11 @@ test("plans binding and list runtime specializations", () => {
   assert.equal(manifest.lists.generalRowHooks, true)
   assert.equal(manifest.lists.svg, true)
   assert.equal(manifest.runtime.shared, true)
-  const runtime = generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest).source
-  assert.match(runtime, /addedNodes\?\.length > 32 && addedNodes\.length \* 2 > next\.length && addedNodes\.length \* 2 > parent\.children\.length && !list\.descriptor\.children && !list\.descriptor\.ownerField\) mountDom\(parent\)/)
-  assert.match(runtime, /else if \(addedNodes\) for \(const node of addedNodes\) mountDom\(node\)/)
+  const generated = generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest)
+  const runtime = generated.source
+  assert.equal(generated.define.__KUDZU_LIST_EFFECTS__, "false")
+  assert.match(runtime, /addedNodes\?\.length > 32 && addedNodes\.length \* 2 > next\.length && addedNodes\.length \* 2 > parent\.children\.length && !list\.descriptor\.children && !list\.descriptor\.ownerField\) mountDom\(parent, list\.lifecycle\)/)
+  assert.match(runtime, /else if \(addedNodes\) for \(const node of addedNodes\) mountDom\(node, list\.lifecycle\)/)
 })
 
 test("plans native, effect, capture, and dependency runtime capabilities", () => {
@@ -1063,6 +1146,7 @@ test("plans native, effect, capture, and dependency runtime capabilities", () =>
   assert.deepEqual(manifest.events.native, ["submit"])
   assert.equal(manifest.events.hasNativeHandlers, true)
   assert.deepEqual(manifest.effects, { any: true, derivedDependencies: true, itemDependencies: true, captures: true, navigable: true, navigableOwners: true })
+  assert.equal(generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest).define.__KUDZU_LIST_EFFECTS__, "true")
   assert.deepEqual(manifest.captures, { nestedState: true, setter: true })
   assert.equal(manifest.runtime.shared, true)
   assert.equal(usesRouteDependencyRuntime({ plan: routePlan({ states: [{ slot: 0, id: "count", name: "count", initialValue: 0 }], effects: [{ module: "/handler.js", handler: "effect1", states: {}, scope: {}, dependencies: ["count"] }] }), navigable: false, hasBindings: false, hasLists: false }), true)

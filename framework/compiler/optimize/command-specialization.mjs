@@ -1,5 +1,5 @@
 import ts from "typescript"
-import { sourceNodeError } from "../ast-helpers.mjs"
+import { isNodeWithin, sourceNodeError } from "../ast-helpers.mjs"
 
 export function createCommandSpecializer({ isPrimitiveLiteral }) {
   const specialize = (expression, setters) => {
@@ -12,6 +12,8 @@ export function createCommandSpecializer({ isPrimitiveLiteral }) {
     const value = expression.arguments[0]
     if (ts.isBinaryExpression(value) && ts.isIdentifier(value.left) && value.left.text === state) return addCommand(state, value)
     if (ts.isArrowFunction(value) && value.parameters.length === 1 && ts.isIdentifier(value.parameters[0].name) && ts.isBinaryExpression(value.body) && ts.isIdentifier(value.body.left) && value.body.left.text === value.parameters[0].name.text) return addCommand(state, value.body)
+    if (ts.isPrefixUnaryExpression(value) && value.operator === ts.SyntaxKind.ExclamationToken && ts.isIdentifier(value.operand) && value.operand.text === state) return { operation: "toggle", state, value: false }
+    if (ts.isArrowFunction(value) && value.parameters.length === 1 && ts.isIdentifier(value.parameters[0].name) && ts.isPrefixUnaryExpression(value.body) && value.body.operator === ts.SyntaxKind.ExclamationToken && ts.isIdentifier(value.body.operand) && value.body.operand.text === value.parameters[0].name.text) return { operation: "toggle", state, value: false }
     if (isPrimitiveLiteral(value)) {
       const literal = primitiveValue(value)
       return literal ? { operation: "set", state, ...literal } : undefined
@@ -95,7 +97,7 @@ function rejectUnsafe(statements, boundary, setters, bindingIndex) {
     const helper = helperDeclaration(statement, boundary, setters, bindingIndex)
     if (!helper) continue
     const uses = refs(boundary, helper.name, boundary, bindingIndex)
-    if (uses.some(reference => inside(reference, helper.body))) fail(helper.name, "Semantic state helpers cannot be recursive")
+    if (uses.some(reference => isNodeWithin(reference, helper.body))) fail(helper.name, "Semantic state helpers cannot be recursive")
     if (helper.mutable || uses.some(mutated)) fail(helper.name, "Semantic state helpers must remain immutable")
     if (uses.some(dynamic)) fail(uses.find(dynamic), "Semantic state helpers do not support dynamic dispatch")
     if (uses.length !== 1 || !directIdentifierCall(uses[0])) fail(uses.find(reference => !directIdentifierCall(reference)) ?? helper.name, "Semantic state helpers must be called exactly once and cannot escape")
@@ -189,11 +191,6 @@ function dynamic(identifier) {
 function mutated(identifier) {
   const parent = identifier.parent
   return ts.isPrefixUnaryExpression(parent) && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(parent.operator) || ts.isPostfixUnaryExpression(parent) || ts.isBinaryExpression(parent) && parent.left === identifier && parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment
-}
-
-function inside(node, root) {
-  for (let current = node; current; current = current.parent) if (current === root) return true
-  return false
 }
 
 function fail(node, message) {

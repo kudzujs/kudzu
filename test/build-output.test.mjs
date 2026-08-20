@@ -160,6 +160,10 @@ export default function Page() {
   assert.deepEqual(second.sourceResults.map(result => result.file), ["src/label.ts", "src/pages/index.tsx"])
   assert.match(await readFile(join(roots[0], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
   assert.match(await readFile(join(roots[1], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
+  for (const root of roots) for (const name of ["kudzu-plan.json", "kudzu-artifacts.json"]) {
+    const json = await readFile(join(root, ".kudzu", name), "utf8")
+    assert.equal(json, JSON.stringify(JSON.parse(json), null, 2))
+  }
   const firstWorker = (await readdir(join(roots[0], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
   const secondWorker = (await readdir(join(roots[1], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
   assert.match(await readFile(join(roots[0], "dist", "assets", "workers", firstWorker), "utf8"), /First project worker/)
@@ -190,6 +194,13 @@ test("incremental builds compile and render only affected routes", async t => {
   assert.match(await readFile(join(fixture, "dist", "beta", "index.html"), "utf8"), /Beta/)
   assert.doesNotMatch(await readFile(join(fixture, "dist", "index.html"), "utf8"), /<script type="module"/)
   const expected = await fileManifest(join(fixture, "dist"))
+
+  const oneShot = await buildWithSession(project, { quiet: true, minify: false, retainCache: false })
+  assert.deepEqual(oneShot.incremental, { compiledModules: 4, renderedPages: 2 })
+  assert.equal(project.buildCache, undefined)
+  const afterOneShot = await buildWithSession(project, { changedFiles: [], quiet: true, minify: false })
+  assert.deepEqual(afterOneShot.incremental, { compiledModules: 4, renderedPages: 2 })
+  assert.deepEqual(await fileManifest(join(fixture, "dist")), expected)
 
   const cleanBuild = `const { build } = await import(${JSON.stringify(new URL("../framework/build.mjs", import.meta.url).href)}); await build({ root: process.cwd(), quiet: true, minify: false })`
   const clean = spawnSync(process.execPath, ["--input-type=module", "--eval", cleanBuild], { cwd: fixture, encoding: "utf8" })

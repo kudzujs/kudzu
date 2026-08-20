@@ -18,7 +18,8 @@ export function createRouteArtifactReport(records, {
   if (!runtimeFamilies || !runtimeFamilyByRecord) ({ families: runtimeFamilies, familyByRecord: runtimeFamilyByRecord } = planRuntimeFamilies(records))
   const handlerGraph = handlerMetafile ? outputGraph(handlerMetafile, outputDirectory, base) : new Map()
   const routes = records.map(record => {
-    const capability = planRouteCapabilities([record], { navigationRouteCount: Number(record.capabilities.navigable) })
+    const family = runtimeFamilyByRecord.get(record)
+    const capability = family && !family.navigation ? family.capability : planRouteCapabilities([record], { navigationRouteCount: Number(record.capabilities.navigable) })
     const handlerEntries = [...new Set(record.artifacts.handlers.map(reference => reference.module))].sort()
     const handlerOutputs = closure(handlerEntries, handlerGraph, Boolean(handlerMetafile))
     const workers = workerReferences
@@ -35,7 +36,7 @@ export function createRouteArtifactReport(records, {
         signature: capabilitySignature(capability),
         manifest: capability
       },
-      runtime: routeRuntimeEdges(record, capability, runtimeFamilyByRecord.get(record), base, navigationAssets.get(record.route)),
+      runtime: routeRuntimeEdges(record, capability, family, base, navigationAssets.get(record.route)),
       handlers: {
         entries: handlerEntries,
         chunks: handlerOutputs.filter(output => !handlerEntries.includes(output))
@@ -58,7 +59,7 @@ export function createRouteArtifactReport(records, {
       id: family.id,
       signature: family.signature,
       navigation: family.navigation,
-      routes: records.filter(record => runtimeFamilyByRecord.get(record)?.id === family.id).map(record => record.route).sort(),
+      routes: family.records.map(record => record.route).sort(),
       manifest: family.capability,
       requirements: familyRuntimeRequirements(family, base)
     })),

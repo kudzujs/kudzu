@@ -43,7 +43,8 @@ export function generateListRuntime(source, capabilityIR) {
     ["if (__KUDZU_LIST_ROW_HOOKS__) initializeRowStates(list.descriptor, key, node, list.owner, item)", "if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) initializeRowStates(list.descriptor, key, node)", "flat row add", true],
     ["for (const node of registration.list.roots.values()) deleteRowStates(registration.list.descriptor, ownershipPaths.get(node))", "for (const token of registration.list.roots.keys()) deleteFlatRowStates(registration.list.descriptor, token)", "flat registration cleanup"],
     ["deleteRowStates(list.descriptor, ownershipPaths.get(node))", "deleteFlatRowStates(list.descriptor, token)", "flat row cleanup", true],
-    ["  if (__KUDZU_LIST_ROW_HOOKS__) replaceRowIds(root, rowReplacements.get(root))\n", "", "row ID replacement"],
+    ["const directRowReplacements = __KUDZU_LIST_ROW_HOOKS__ ? new WeakSet() : undefined\n", "", "direct row replacement storage"],
+    ["  if (__KUDZU_LIST_ROW_HOOKS__) replaceOwnedRowIds(root)\n", "", "row ID replacement"],
     ["  if (!replacements) return\n", "", "row replacement guard"]
   ])
   if (!effects.itemDependencies) runtime = replaceRequired(runtime, ", notifyListItem", "", "item notification import")
@@ -67,11 +68,12 @@ export function generateListRuntime(source, capabilityIR) {
       __KUDZU_LIST_EXPRESSIONS__: String(lists.expressions),
       __KUDZU_LIST_EXPRESSION_ATTRIBUTES__: String(lists.expressionAttributes),
       __KUDZU_LIST_SEEDS__: String(lists.seeds),
-      __KUDZU_LIST_EFFECTS__: String(lists.effects),
+      __KUDZU_LIST_EFFECTS__: String(effects.itemDependencies),
       __KUDZU_LIST_ASYNC_PARTS__: String(lists.asyncParts),
       __KUDZU_LIST_MOUNTS__: String(lists.mounts),
       __KUDZU_LIST_ITEM_HOOKS__: String(effects.itemDependencies),
       __KUDZU_LIST_ROW_HOOKS__: String(lists.rowHooks),
+      __KUDZU_GENERAL_ROW_HOOKS__: String(lists.generalRowHooks),
       __KUDZU_LIST_ROW_REFS__: String(lists.rowRefs),
       __KUDZU_COMPLEX_LIST_ROW_STATE__: String(lists.complexRowState),
       __KUDZU_NESTED_LISTS__: String(lists.nested),

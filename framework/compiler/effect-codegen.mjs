@@ -6,6 +6,7 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, runt
   const hasDependencies = effects.some(effect => effect.dependencies?.length || effect.itemDependencies?.length)
   const hasOwners = effects.some(effect => effect.owner)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -34,7 +35,7 @@ const dispose = root => {
   for (const record of records) invokeCleanup(record)
 }
 
-if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose)
+if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose, "effects")
 addEventListener("pagehide", event => {
   if (event.persisted) return
   if (__kRuntime.unmountDom) __kRuntime.unmountDom(document)
@@ -101,7 +102,7 @@ async function flush() {
   }
 }
 function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
   return (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
     if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
@@ -170,7 +171,7 @@ const dispose = root => {
   }
   cleanups.length = 0
 }
-if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose)
+if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose, "effects")
 addEventListener("pagehide", event => {
   if (event.persisted) return
   if (__kRuntime.unmountDom) __kRuntime.unmountDom(document)
@@ -180,6 +181,7 @@ addEventListener("pagehide", event => {
 
 function printNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base) {
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -257,7 +259,7 @@ function mount(lifetime) {
     }
   }
   function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("__kRuntime.browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
     return (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
       if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
@@ -303,6 +305,7 @@ ${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState
 function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
   const moduleUrls = [...new Set(effects.map(effect => effect.module))]
   const modules = moduleUrls.map(url => {
     const module = handlerModules.find(entry => assetPath(base, `assets/${entry.path}`) === url)
@@ -346,8 +349,8 @@ function mount(lifetime) {
     for (const record of dependencies.get(id) ?? []) if (record.mounted) pending.add(record)
     schedule()
   }) : undefined
-  const unsubscribeMount = __kRuntime.registerMountHook(mountOwned)
-  const unsubscribeUnmount = __kRuntime.registerUnmountHook(unmountOwned)
+  const unsubscribeMount = __kRuntime.registerMountHook(mountOwned, "effects")
+  const unsubscribeUnmount = __kRuntime.registerUnmountHook(unmountOwned, "effects")
   ${hasItemDependencies ? `const unsubscribeItems = [...new Set(selectedEffects.filter(({ effect }) => effect.itemDependencies?.length).map(({ effect }) => effect.listState))].map(listState => __kRuntime.registerListItemHook(listState, root => {
     if (!active) return
     for (const record of registrations.get(root) ?? []) if (record.mounted && record.effect.itemDependencies) pending.add(record)
@@ -481,7 +484,7 @@ function mount(lifetime) {
     }
   }
   function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("__kRuntime.browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
     const values = (record.effect.dependencies ?? []).map(id => {
       const value = __kRuntime.browserState.get(id)
       if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
@@ -554,19 +557,28 @@ ${hasDependencyExpressions ? printDerivedDependencyRead("__kRuntime.browserState
 }`
 }
 
-function printDerivedDependencyRead(state) {
-  return `    if (record.effect.dependencyExpressions) return record.effect.dependencyExpressions.map(expression => {
-      const value = __kEvaluateDependency(expression, undefined, undefined, name => ${state}.get(record.effect.dependencyStates[name]))
-      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() derived dependency must remain a JSON-safe primitive")
+function printDerivedDependencyRead(state, hasExpressions, hasEvaluators) {
+  return `${hasEvaluators ? `    if (record.effect.dependencyEvaluators) return record.effect.dependencyEvaluators.map(evaluator => {
+      const result = modules.get(evaluator.module)[evaluator.handler](createEffectContext(${state}, evaluator.states, () => {}, evaluator.scope))
+      const value = result[evaluator.field]
+      if (value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() calculated dependency must remain a JSON-safe primitive")
       return value
-    })`
+    })
+` : ""}${hasExpressions ? `    if (record.effect.dependencyExpressions) return record.effect.dependencyExpressions.map(expression => {
+      const value = __kEvaluateDependency(expression, undefined, undefined, name => ${state}.get(record.effect.dependencyStates[name]))
+      if (value !== null && !Array.isArray(value) && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() derived dependency must remain a JSON-safe primitive or array")
+      return value
+    })` : ""}`
 }
 
 function printOwnedEffectEntry(imports, effects, entries) {
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasOrdinaryDependencies = effects.some(effect => effect.dependencies?.length)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
-  const hasRowState = effects.some(effect => JSON.stringify([effect.dependencies, effect.dependencyStates, effect.states, effect.scope]).includes("$k"))
+  const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
+  const hasRowState = effects.some(effect => JSON.stringify([effect.dependencies, effect.dependencyStates, effect.states]).includes("$k") || Object.values(effect.scope).some(hasRowStateCapture))
+  const hasRowRef = effects.some(effect => Object.values(effect.scope).some(hasRowRefCapture))
+  const initialDependencyCheck = [hasOrdinaryDependencies && "record.effect.dependencies?.length", hasItemDependencies && "record.effect.itemDependencies?.length", hasDependencyExpressions && "record.effect.dependencyExpressions?.length", hasDependencyEvaluators && "record.effect.dependencyEvaluators?.length"].filter(Boolean).join(" || ")
   return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
@@ -574,6 +586,7 @@ ${hasItemDependencies ? "let order = 0\n" : ""}const records = effects.map((effe
 const listTemplates = new Map(effects.map((effect, index) => effect.list ? [effect.owner, { effect, index }] : undefined).filter(Boolean))
 const owners = new Map(records.filter(record => record.effect.owner).map(record => [record.effect.owner, record]))
 const listRegistrations = new WeakMap()
+const listOwnerSets = new Map()
 const mountedRecords = new Set(records.filter(record => record.mounted))
 const dependencies = new Map()
 const pending = new Set()
@@ -585,7 +598,7 @@ function createRecord(effect, index${hasRowState ? ", marker" : ""}) {
   return { effect: ${hasRowState ? "marker ? specializeRowEffect(effect, marker) : effect" : "effect"}, index, ${hasItemDependencies ? "order: order++, " : ""}mounted: !effect.owner, marker: undefined, version: 0, values: undefined, cleanup: undefined, disposal: undefined, token: undefined }
 }
 ${hasRowState ? `function specializeRowEffect(effect, marker) {
-  const path = marker.dataset.kRowPath
+  const path = __kRuntime.listRowPaths.get(marker)
   const id = value => typeof value === "string" ? value.replace("$k", path) : value
   const capture = value => value?.type === "state" || value?.type === "setter" || value?.type === "ref" ? { ...value, id: id(value.id) } : value?.type === "array" ? { ...value, value: value.value.map(capture) } : value?.type === "object" ? { ...value, value: value.value.map(([key, entry]) => [key, capture(entry)]) } : value
   return { ...effect, dependencies: effect.dependencies?.map(id), dependencyStates: effect.dependencyStates && Object.fromEntries(Object.entries(effect.dependencyStates).map(([name, value]) => [name, id(value)])), states: Object.fromEntries(Object.entries(effect.states).map(([name, value]) => [name, id(value)])), scope: Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, capture(value)])) }
@@ -620,12 +633,18 @@ ${hasItemDependencies ? `for (const listState of new Set(effects.filter(effect =
   for (const marker of matching(root)) {
     if (marker.dataset.kEffects) {
       if (listRegistrations.has(marker)) continue
-      const rowRecords = JSON.parse(marker.dataset.kEffects).map(owner => {
+       const encoded = marker.dataset.kEffects
+       let effectOwners = listOwnerSets.get(encoded)
+       if (!effectOwners) {
+         effectOwners = JSON.parse(encoded)
+         listOwnerSets.set(encoded, effectOwners)
+       }
+       const rowRecords = effectOwners.map(owner => {
         const template = listTemplates.get(owner)
         if (!template) throw new Error("Keyed row effect template was not emitted")
         const record = createRecord(template.effect, template.index${hasRowState ? ", marker" : ""})
-        registerDependencies(record)
-        mount(record, marker)
+        if (record.effect.dependencies?.length) registerDependencies(record)
+        mount(record, marker, true)
         return record
       })
       listRegistrations.set(marker, rowRecords)
@@ -634,7 +653,7 @@ ${hasItemDependencies ? `for (const listState of new Set(effects.filter(effect =
     const record = owners.get(marker.dataset.kEffect)
     if (!record?.mounted) mount(record, marker)
   }
-})
+}, "effects")
 __kRuntime.registerUnmountHook(root => {
   if (root === document) {
     if (!active) return
@@ -653,7 +672,7 @@ __kRuntime.registerUnmountHook(root => {
     const record = owners.get(marker.dataset.kEffect)
     if (record?.marker === marker) unmount(record)
   }
-})
+}, "effects")
 for (const record of records) if (record.mounted) start(record)
 __kRuntime.mountDom(document)
 addEventListener("pagehide", event => {
@@ -663,17 +682,16 @@ function matching(root) {
   const selector = "template[data-k-effect],[data-k-effects]"
   return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
 }
-function mount(record, marker) {
+function mount(record, marker, fresh = false) {
   record.mounted = true
   record.marker = marker
   mountedRecords.add(record)
   const version = ++record.version
-  const begin = () => {
+  if (record.disposal) record.disposal.then(() => {
     if (!active || !record.mounted || record.version !== version || !marker.isConnected) return
     start(record)
-  }
-  if (record.disposal) record.disposal.then(begin)
-  else begin()
+  })
+  else if (fresh || active && marker.isConnected) start(record)
 }
 function unmount(record, dynamic = false) {
   if (!record.mounted) return
@@ -687,7 +705,7 @@ function unmount(record, dynamic = false) {
 }
 function start(record) {
   try {
-    record.values = readDependencies(record)
+    ${initialDependencyCheck ? `if (${initialDependencyCheck}) record.values = readDependencies(record)` : ""}
     invoke(record)
   } catch (error) {
     console.error(error)
@@ -730,7 +748,7 @@ async function flush() {
   }
 }
 function readDependencies(record) {
-${hasDependencyExpressions ? printDerivedDependencyRead("browserState") : ""}
+${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRead("browserState", hasDependencyExpressions, hasDependencyEvaluators) : ""}
   const values = (record.effect.dependencies ?? []).map(id => {
     const value = browserState.get(id)
     if (!Array.isArray(value) && value !== null && typeof value !== "string" && typeof value !== "boolean" && !(typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0))) throw new Error("useEffect() dependency state must remain a JSON-safe primitive or array")
@@ -752,9 +770,16 @@ function invoke(record) {
   try {
     const effect = record.effect
     const scope = effect.list
-      ? Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, value?.type === "list-item" ? JSON.parse(record.marker.dataset.kEffectItem) : value]))
+      ? Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, value?.type === "list-item" ? __kRuntime.listItems.get(record.marker) : value]))
       : effect.scope
-    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, scope, () => active && token.active && record.token === token))
+    const marker = record.marker
+    ${hasRowRef ? "const rowPath = effect.list ? __kRuntime.listRowPaths.get(marker) : undefined" : ""}
+    const resolveRef = id => {
+      if (!marker?.isConnected) return null
+      const resolved = ${hasRowRef ? 'id.replace("$k", rowPath)' : "id"}
+      return marker.dataset.kRef === resolved ? marker : [...marker.querySelectorAll("[data-k-ref]")].find(node => node.dataset.kRef === resolved) ?? null
+    }
+    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, scope, () => active && token.active && record.token === token, effect.list ? resolveRef : undefined))
     if (effect.cleanup && typeof result === "function") record.cleanup = result
     else if (result && typeof result.then === "function") result.catch(error => console.error(error))
   } catch (error) {
@@ -767,20 +792,38 @@ function invokeCleanup(record) {
   if (record.disposal) return record.disposal
   const cleanup = record.cleanup
   record.cleanup = undefined
-  if (!cleanup) return Promise.resolve()
-  const disposal = (async () => {
-    try {
-      await cleanup()
-    } catch (error) {
-      console.error(error)
-    }
-  })()
+  if (!cleanup) return
+  let result
+  try {
+    result = cleanup()
+  } catch (error) {
+    console.error(error)
+    return
+  }
+  if (!result || typeof result.then !== "function") return
+  const disposal = Promise.resolve(result).catch(error => console.error(error))
   record.disposal = disposal
   disposal.finally(() => {
     if (record.disposal === disposal) record.disposal = undefined
   })
   return disposal
 }`
+}
+
+function hasRowStateCapture(value) {
+  if (!value || typeof value !== "object") return false
+  if ((value.type === "state" || value.type === "setter") && value.id.includes("$k")) return true
+  if (value.type === "array") return value.value.some(hasRowStateCapture)
+  if (value.type === "object") return value.value.some(([, entry]) => hasRowStateCapture(entry))
+  return false
+}
+
+function hasRowRefCapture(value) {
+  if (!value || typeof value !== "object") return false
+  if (value.type === "ref" && value.id.includes("$k")) return true
+  if (value.type === "array") return value.value.some(hasRowRefCapture)
+  if (value.type === "object") return value.value.some(([, entry]) => hasRowRefCapture(entry))
+  return false
 }
 
 function printSingleDependencyEffect(imports, effect, hasCleanup) {
@@ -791,7 +834,7 @@ const dispose = root => {
   pending = false
   invokeCleanup()
 }
-if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose)
+if (__kRuntime.registerUnmountHook) __kRuntime.registerUnmountHook(dispose, "effects")
 addEventListener("pagehide", event => {
   if (event.persisted) return
   if (__kRuntime.unmountDom) __kRuntime.unmountDom(document)

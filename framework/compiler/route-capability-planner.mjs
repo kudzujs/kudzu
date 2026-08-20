@@ -1,8 +1,8 @@
 import { assertRouteBuildRecord } from "./route-build-record.mjs"
 import { assertJsonSafe, assertRouteIR } from "./route-ir.mjs"
 
-export function usesRouteDependencyRuntime({ plan, navigable, hasBindings, hasLists }) {
-  assertRouteIR(plan)
+export function usesRouteDependencyRuntime({ plan, navigable, hasBindings, hasLists }, validate = true) {
+  if (validate) assertRouteIR(plan)
   const hasDependencies = plan.effects.some(effect => effect.dependencies?.length)
   return !navigable && hasDependencies && !plan.effects.some(effect => effect.owner) && !hasBindings && !hasLists && !plan.events.some(event => event.native)
 }
@@ -109,7 +109,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
       dependency: routeEntries.some(route => route.usesDependencyRuntime)
     }
   }
-  return validate ? assertCapabilityIR(capabilityIR, records, { navigationRouteCount }) : capabilityIR
+  return validate ? assertCapabilityIR(capabilityIR) : capabilityIR
 }
 
 export function assertCapabilityIR(capabilityIR, records, options = {}) {

@@ -56,10 +56,10 @@ function commitBindings(id) {
 }
 
 registerCommitter(commitBindings)
-registerMountHook(mountBindings)
-registerMountHook(mountConditions)
-registerUnmountHook(unmountBindings)
-registerUnmountHook(unmountConditions)
+registerMountHook(mountBindings, "bindings")
+registerMountHook(mountConditions, "conditions")
+registerUnmountHook(unmountBindings, "bindings")
+registerUnmountHook(unmountConditions, "conditions")
 registerStateReleaseHook(releaseBindings)
 
 if (typeof document !== "undefined") mountDom(document)

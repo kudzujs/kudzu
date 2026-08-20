@@ -55,36 +55,26 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.59 release context</strong><span>The maintained cross-framework matrix below remains the 0.8.41 snapshot. The 0.8.45 source-scale result remains the latest compiler timing comparison; 0.8.59 adds direct array-prop draft initialization and makes no new timing claim.</span></div>
-    <h3>Runtime matrix</h3>
-    <BenchmarkTable columns={["Target", "Build", "JS raw / gzip", "Total raw / gzip", "Initial DOM"]} rows={[
-      ["Kudzu 0.8.41 snapshot", "1,475.480 ms", "33,575 / 12,928 B", "212,963 / 49,936 B", "532.9 ms"],
-      ["React 19.2.8", "856.231 ms", "193,685 / 60,043 B", "193,967 / 60,262 B", "510.6 ms"],
-      ["Vue 3.5.40", "1,053.062 ms", "64,023 / 24,772 B", "64,304 / 24,993 B", "357.6 ms"],
-      ["Svelte 5.56.7", "1,733.637 ms", "40,726 / 15,659 B", "41,007 / 15,878 B", "401.1 ms"]
+    <div className="docs-callout"><strong>Current 0.9.0 release proof</strong><span>Matched C1/C2/C5 browser suites and seven rotating 10,000-product cold/warm builds pass their acceptance, behavior, ownership, build-time, and peak-RSS gates.</span></div>
+    <h3>Stateful browser comparison</h3>
+    <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
+      ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],
+      ["React 19.2.8", "196,089 / 60,661 B", "196,287 B"],
+      ["Vue 3.5.40", "66,620 / 25,624 B", "66,817 B"],
+      ["Svelte 5.56.7", "44,046 / 16,818 B", "44,243 B"],
+      ["Astro 7.1.3 + React", "197,771 / 61,994 B", "198,361 B"]
     ]} />
-    <p>Kudzu serves complete initial HTML; the controls start from client-rendered shells and ship their production client renderers. All targets passed correctness, accessibility, DOM identity, effect-cleanup, and browser-error gates. Raw arrays, quartiles, source hash, and environment metadata are checked in under <code>benchmarks/runtime-matrix/results</code>.</p>
-    <h3>Large keyed restoration</h3>
-    <BenchmarkTable columns={["Rows", "Build", "Append 33", "Filter", "Restore 1,999", "Reverse", "JS raw / gzip"]} rows={[
-      ["2,000", "901.4 ms", "14.7 ms", "25.4 ms", "126.2 ms", "25.1 ms", "28,450 / 11,036 B"]
+    <p>Across 21 fresh rotating profiles every target passes all 19 C2 operations and ownership checks. Kudzu row filter is 12.0 ms versus Vue's 13.3 ms; row restore is 62.6 ms versus the nearest 60.5 ms comparator; search restore is 51.6 ms versus the nearest 50.7 ms comparator.</p>
+    <h3>10,000-product commerce build</h3>
+    <BenchmarkTable columns={["Target", "Pages", "Cold / warm median", "Peak RSS", "Output"]} rows={[
+      ["Kudzu 0.9.0", "10,011", "22,614.0 / 22,150.6 ms", "542,484 KiB", "96,379,876 B"],
+      ["Astro 7.1.3", "10,011", "23,198.1 / 23,438.2 ms", "612,412 KiB", "142,543,510 B"]
     ]} />
-    <p>Seven fresh profiles checked retained identity and local state, released identity, fresh restored state, restored handlers, and reversal identity. The requested 21-profile run exceeded the ten-minute execution limit, so no 21-run result is claimed.</p>
-    <CodeBlock language="shell" code={`RUNS=7 npm run benchmark:keyed
-node benchmarks/runtime-matrix/run.mjs`} />
-    <h3>Six-route commerce builds</h3>
-    <BenchmarkTable columns={["Target", "Build", "Files", "Total raw / gzip"]} rows={[
-      ["Kudzu", "867.188 ms", "17", "37,434 / 14,689 B"],
-      ["React SSR + Vite hydration", "859.125 ms", "10", "209,270 / 66,741 B"],
-      ["Next.js static export", "7,290.533 ms", "74", "814,186 / 247,596 B"],
-      ["Nuxt generation", "7,334.287 ms", "26", "215,851 / 82,067 B"],
-      ["SvelteKit static export", "4,725.279 ms", "19", "102,659 / 41,047 B"]
-    ]} />
-    <p>Seven rotating clean builds used the tracked matched-content commerce sources. The browser suite timed out in Kudzu's existing in-flight rejection-navigation wait before cross-target sampling, so no commerce browser timing is published.</p>
-    <h3>Large static catalogs and query carry</h3>
-    <p>On the maintained external 1,000-product fixture, sharing byte-identical route entries reduced cold build time from 13,866 ms to 13,203 ms, warm build time from 13,560 ms to 13,087 ms, and output from 10.48 MB to 9.53 MB across the three-run candidate check. A five-session Slow 4G form check reduced hidden query carry readiness from 783 ms to 348 ms. These focused samples establish the optimization direction but are not a claim that Kudzu is the fastest framework overall.</p>
-    <p>A three-session Slow 4G static-catalog navigation experiment was rejected: native navigation reached product detail in 314 ms versus 575 ms, returned in 107 ms versus 297 ms, transferred 322.2 KB versus 511 KB, and preserved 15/18 degraded capabilities versus 12/18. Kudzu therefore keeps native document navigation as the catalog default.</p>
+    <p>Both targets pass sampled-product acceptance. Kudzu is 2.5% faster cold, 5.5% faster warm, and uses 11.4% less peak RSS. The Kudzu deploy digest is <code>811234693329ebd61eeceb6cd05e5d52473e5c81972a820253bf1aea664a0910</code>.</p>
+    <h3>Static and resource ownership</h3>
+    <p>The five-target C1 content application ships 0 B route/session JavaScript for every target by using native disclosure. The C5 Worker matrix records 32 balanced starts, invalidations, listener removals, terminations, and ignored stale callbacks plus 30 mount/dispose cycles, with zero stale mutations and zero final active handles.</p>
     <h3>Tracked Worker fixture</h3>
-    <p>The maintained Worker build median is 1,823.2 ms. Its Worker graph is 907 B raw / 477 B gzip and its aggregate window graph is 12,148 B raw / 5,411 B gzip. The focused Chrome test verifies throughput, cadence, bounded history, stale writes, and 30-cycle termination and listener ownership.</p>
+    <p>The maintained Worker build median is 535.9 ms. Its Worker graph is 907 B raw / 477 B gzip and its aggregate window graph is 14,093 B raw / 6,037 B gzip. The focused Chrome test verifies throughput, cadence, bounded history, stale writes, and 30-cycle termination and listener ownership.</p>
     <div className="docs-callout"><strong>Historical records retained</strong><span>Paired release measurements, optimization wins, raw arrays, limitations, and the dated 0.7.12 framework snapshot remain in PERFORMANCE.md for provenance. They are not current rankings.</span></div>
     <p>The <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">full performance record</a> separates current maintained runs from historical and external-workspace evidence.</p>
   </section>
@@ -94,6 +84,7 @@ export function LimitsSection() {
   return <section className="docs-section" id="limits">
     <div className="docs-heading"><span>13</span><div><p>REFERENCE</p><h2>Current limits</h2></div></div>
     <ul className="docs-limits">
+      <li>A direct object-state prop may expose one-segment static fields when its child directly maps an array field. Scalar bindings and that selected array effect dependency reuse the parent signal and existing ownership. Dynamic paths, aliases, mutation, child state/ref/ID hooks, and opaque call-site values remain unsupported.</li>
       <li>Repeated ordinary same-file and relative-imported child components own independent state IDs and effect records. Direct JSON-safe primitive parent state passed to a destructured child prop remains reactive in child DOM bindings and effect dependencies. A direct setter or inline/simple <code>const</code> callback may cross one boundary and two additional direct forwarding components before one intrinsic handler invokes it. The first boundary may use an <code>on*</code> prop or one direct <code>set*</code> setter prop; additional forwarding remains <code>on*</code>-only. Specialized children may own directly serializable <code>useState()</code>, initialize independent state from one direct primitive, plain-object, or array-state prop, use direct primitive prop <code>.toString()</code> string-state initialization, and own <code>useId()</code>, supported effects, and <code>null</code>-initialized object refs. Nested presentation components recursively specialize, including hooks on unconditional or statically truthy paths, and a parent-owned object ref may follow the same proven tree. Reactive conditional branches drop handlers and refs with removed DOM, delete child state, and clean up effects, then recreate ownership on re-entry. Fourth callback boundaries, additional <code>set*</code> forwarding, intermediate adapters, aliases, spreads, repeated callback uses, dynamic nested hook paths, composed state initializers, derived props, arbitrary callbacks, callback refs, captures, and dynamic calls remain unsupported.</li>
       <li>Reactive JSX text and attributes may reference recursively chained top-level immutable locals derived through supported pure primitive expressions from direct state. Kudzu substitutes the expressions and subscribes each source state. Fixed-locale <code>new Intl.NumberFormat("literal").format(Math.round(expression))</code> display chains are supported; dynamic locales/options, arbitrary calls, mutation, cycles, shadowed or block-local declarations, and structural JSX locals remain unsupported.</li>
       <li><code>forwardRef()</code> must directly initialize one top-level <code>const</code> component with one inline synchronous <code>(props, ref)</code> render function. The object ref must appear exactly once as the direct intrinsic root's <code>ref</code>. Indirect render functions, callback/composed refs, fragments, component roots, nested or repeated forwarding, imperative handles, and <code>memo(forwardRef(...))</code> are not supported.</li>

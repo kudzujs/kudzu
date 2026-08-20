@@ -1,6 +1,6 @@
 import { deserialize } from "./serialization.js"
 
-export function createEffectContext(state, stateIds, commit, serializedScope = {}, active = () => true) {
+export function createEffectContext(state, stateIds, commit, serializedScope = {}, active = () => true, resolveRef) {
   const changed = new Set()
   let scheduled = false
 
@@ -24,7 +24,7 @@ export function createEffectContext(state, stateIds, commit, serializedScope = {
   }
 
   const scope = globalThis.__KUDZU_EFFECT_CAPTURES__
-    ? Object.fromEntries(Object.entries(serializedScope).map(([name, value]) => [name, deserialize(value, id => state.get(id), globalThis.__KUDZU_CAPTURE_SETTER__ ? setId : undefined)]))
+    ? Object.fromEntries(Object.entries(serializedScope).map(([name, value]) => [name, deserialize(value, id => state.get(id), globalThis.__KUDZU_CAPTURE_SETTER__ ? setId : undefined, undefined, resolveRef)]))
     : undefined
 
   return {

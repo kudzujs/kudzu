@@ -7,7 +7,7 @@ import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
 import { createProjectSession } from "./compiler/project-session.mjs"
-import { createRouteBuildRecord, planRouteArtifacts } from "./compiler/route-build-record.mjs"
+import { createRouteBuildRecord, planRouteArtifacts, releaseRouteBuildRecordPlan } from "./compiler/route-build-record.mjs"
 import { createRouteArtifactReport } from "./compiler/route-artifact-report.mjs"
 import { planRuntimeFamilies } from "./compiler/runtime-family-planner.mjs"
 import { createSourceCompiler } from "./compiler/source-compiler.mjs"
@@ -33,10 +33,10 @@ async function loadConfig(root) {
 
 export async function build({ quiet = false, minify = true, root: projectRoot = process.cwd() } = {}) {
   const project = createProjectSession(projectRoot)
-  return buildWithSession(project, { quiet, minify })
+  return buildWithSession(project, { quiet, minify, retainCache: false })
 }
 
-export async function buildWithSession(project, { changedFiles, quiet = false, minify = true } = {}) {
+export async function buildWithSession(project, { changedFiles, quiet = false, minify = true, retainCache = true } = {}) {
   const { root, outputDirectory } = project
   const stagedOutput = join(root, ".kudzu-dist-staging")
   const backupOutput = join(root, ".kudzu-dist-backup")
@@ -45,9 +45,9 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount, cache } = await buildInto(project, stagedOutput, { changedFiles, minify })
+    const { result, pageCount, behaviorCount, cache } = await buildInto(project, stagedOutput, { changedFiles, minify, retainCache })
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
-    project.buildCache = cache
+    project.buildCache = retainCache ? cache : undefined
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
     return result
   } finally {
@@ -63,12 +63,12 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   }
 }
 
-async function buildInto(project, outputDirectory, { changedFiles, minify }) {
+async function buildInto(project, outputDirectory, { changedFiles, minify, retainCache }) {
   const { root, sourceDirectory, pagesDirectory, workDirectory } = project
-  const previous = project.buildCache
+  const previous = retainCache ? project.buildCache : undefined
   project.buildGeneration = (project.buildGeneration ?? 0) + 1
   project.buildDirectory = project.buildGeneration > 1 ? join(workDirectory, "build", String(project.buildGeneration)) : workDirectory
-  const { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
+  const { collectClientModules, compileClientModule, compiledPath, compileSourceAsync, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
   const config = await loadConfig(root)
   const base = normalizeBase(config.base)
   const configuredStyles = normalizeStyles(config.styles, base, project)
@@ -122,7 +122,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     if (file.endsWith(".worker.ts")) continue
     let result = !affectedSources.has(file) ? previous?.sourceResults.get(file) : undefined
     if (!result) {
-      result = compileSource(file, sourceFileSet, sourceIndex, staticFiles, cssModules, base)
+      result = await compileSourceAsync(file, sourceFileSet, sourceIndex, staticFiles, cssModules, base)
       compiledModules++
     }
     result = { ...result, buildModule: { ...result.buildModule, path: relative(root, compiledPath(file)).replaceAll(sep, "/") } }
@@ -139,12 +139,14 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     if (!handler || handler.kind !== "module-export" || handler.role !== "effect") throw new Error(`EffectIR ${effect.slot} has no effect HandlerIR`)
     return effect.workers.map(worker => ({ ...worker, module: assetPath(base, `assets/${result.handlerModule.path}`), handler: handler.exportName }))
   }))
+  globalThis.gc?.()
 
   let routeRecords = []
   const routeDrafts = []
   const routeEntryTransforms = new Map()
   const routeEntrySources = new Map()
   const routeEntryPaths = new Map()
+  const routePlanPools = Object.fromEntries(["states", "params", "searchParams", "effects", "conditions", "lists", "commands", "nativeStates", "nativeScope", "bindingStates", "bindingScope", "scopeStates", "scopeBindings"].map(name => [name, new Map()]))
   const rewrites = []
   const emittedRoutes = new Set()
   const emittedApplicationRoutes = new Set()
@@ -249,8 +251,8 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
         navigationGroup.hasEffects ||= result.hasEffects
         navigationGroup.hasParams ||= result.hasParams
       }
-      const usesDependencyRuntime = usesRouteDependencyRuntime({ plan: result.plan, navigable, hasBindings: result.hasBindings, hasLists: result.hasLists })
-      const plan = { route: routePath, ...result.plan }
+      const plan = internRoutePlan({ route: routePath, ...result.plan }, routePlanPools)
+      const usesDependencyRuntime = usesRouteDependencyRuntime({ plan, navigable, hasBindings: result.hasBindings, hasLists: result.hasLists }, false)
       const entries = {
         ...(result.hasParams ? { param: paramPath } : {}),
         ...(result.hasEffects ? { effect: effectPath } : {}),
@@ -279,7 +281,13 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
       })
       routeRecords.push(record)
       if (navigationGroup) navigationGroup.buildRecords.push(record)
-      routeDrafts.push({ record, result, runtimeSchema, navigationGroup, applicationRoute, effectPath, nativePath, paramPath })
+      routeDrafts.push({ record, runtimeSchema, navigationGroup, applicationRoute, effectPath, nativePath, paramPath })
+      if (!retainCache && config.afterBuild === undefined) {
+        const routeDirectory = join(outputDirectory, record.output)
+        await mkdir(routeDirectory, { recursive: true })
+        await writeFile(join(routeDirectory, "index.html"), record.html)
+        record.html = ""
+      }
     }
     pageRenders.set(pageFile, {
       drafts: routeDrafts.slice(draftOffset).map(({ navigationGroup: _, ...draft }) => draft),
@@ -303,14 +311,16 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     group.assetPath = assetPath(base, `assets/runtime/${group.runtimeFamily.id}/${group.assetName}`)
   }
   const runtimeFamilyByRecord = new Map()
-  routeRecords = routeDrafts.map(draft => {
-    const { record, result, runtimeSchema, navigationGroup, effectPath, nativePath, paramPath } = draft
+  const finalizedRecords = []
+  for (const draft of routeDrafts) {
+    const { record, runtimeSchema, navigationGroup, effectPath, nativePath, paramPath } = draft
     const family = runtimePlan.familyByRecord.get(record)
     if (record.capabilities.hasBehaviors && !family) throw new Error(`Interactive route has no runtime family: ${record.route}`)
     const runtimeDirectory = family ? join(outputDirectory, "assets", "runtime", family.id) : undefined
     const routeRuntimeName = record.capabilities.usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js"
     const entries = {}
-    let html = record.html
+    const routeFile = join(outputDirectory, record.output, "index.html")
+    let html = retainCache || config.afterBuild !== undefined ? record.html : await readFile(routeFile, "utf8")
     if (record.capabilities.hasParams) {
       const entry = retainRouteEntry(paramPath, output => printParamEntry(runtimeSchema, record.plan.params, record.plan.searchParams, record.plan.searchParamsWritable, output, runtimeDirectory, base, routeRuntimeName, record.capabilities.navigable), routeEntrySources, routeEntryPaths, outputDirectory)
       entries.param = entry.path
@@ -330,25 +340,31 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     }
     if (family) {
       html = html.replaceAll(runtimePlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/${routeRuntimeName}`)))
-      html = html.replaceAll(bindingPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-binding.js`)))
-      html = html.replaceAll(listPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-list.js`)))
+      if (record.capabilities.hasBindings) html = html.replaceAll(bindingPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-binding.js`)))
+      if (record.capabilities.hasLists) html = html.replaceAll(listPlaceholder, escapeAttribute(assetPath(base, `assets/runtime/${family.id}/kudzu-list.js`)))
     }
     if (navigationGroup) html = html.replaceAll(escapeAttribute(navigationAssets.get(record.route)), escapeAttribute(navigationGroup.assetPath))
-    const finalRecord = createRouteBuildRecord({
+    const finalRecord = retainCache ? createRouteBuildRecord({
       route: record.route,
       output: record.output,
       html,
       plan: record.plan,
-      handlerReferences: result.handlerReferences,
+      handlerReferences: record.artifacts.handlers,
       styles: record.artifacts.styles,
       capabilities: record.capabilities,
       entries,
       runtimeSchema
-    })
+    }) : Object.assign(record, { html: "", entries })
+    if (!retainCache) {
+      if ([runtimePlaceholder, bindingPlaceholder, listPlaceholder].some(placeholder => html.includes(placeholder))) throw new Error(`Runtime family placeholder survived in ${record.route}`)
+      await mkdir(dirname(routeFile), { recursive: true })
+      await writeFile(routeFile, preloadModules(html))
+    }
     if (family) runtimeFamilyByRecord.set(finalRecord, family)
     if (navigationGroup) navigationAssets.set(finalRecord.route, navigationGroup.assetPath)
-    return finalRecord
-  })
+    finalizedRecords.push(finalRecord)
+  }
+  routeRecords = finalizedRecords
 
   const assetsDirectory = join(outputDirectory, "assets")
   await mkdir(assetsDirectory, { recursive: true })
@@ -364,9 +380,15 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     }
     if (module.code.includes("/__kudzu_worker_")) throw new Error(`Worker URL placeholder survived in ${module.path}`)
   }
-  const plans = routeRecords.map(record => record.plan)
+  const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
+  const releaseRoutePlans = !retainCache && config.afterBuild === undefined
+  const plans = releaseRoutePlans ? undefined : routeRecords.map(record => record.plan)
+  if (releaseRoutePlans) {
+    await writeRoutePlans(join(workDirectory, "kudzu-plan.json"), routeRecords, sortedRewrites, runtimeFamilyByRecord, routeDrafts)
+    globalThis.gc?.()
+  }
   const behaviorCount = routeRecords.filter(record => record.capabilities.hasBehaviors).length
-  for (let offset = 0; offset < routeRecords.length; offset += 64) {
+  for (let offset = 0; retainCache && offset < routeRecords.length; offset += 64) {
     await Promise.all(routeRecords.slice(offset, offset + 64).map(async record => {
       const routeDirectory = join(outputDirectory, record.output)
       await mkdir(routeDirectory, { recursive: true })
@@ -451,10 +473,9 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     handlerMetafile = result.metafile
     await rm(join(assetsDirectory, "modules"), { recursive: true, force: true })
   }
-  const sortedRewrites = rewrites.sort((left, right) => runtimeSpecificity(right) - runtimeSpecificity(left) || left.pattern.localeCompare(right.pattern))
-  await writeFile(join(workDirectory, "kudzu-plan.json"), JSON.stringify({ routes: plans, rewrites: sortedRewrites }, null, 2))
+  if (!releaseRoutePlans) await writePrettyJson(join(workDirectory, "kudzu-plan.json"), { routes: plans, rewrites: sortedRewrites })
   const artifacts = createRouteArtifactReport(routeRecords, { base, handlerMetafile, outputDirectory, navigationAssets, runtimeFamilies: runtimePlan.families, runtimeFamilyByRecord, workerReferences: renderedWorkerReferences, workerOutputs })
-  await writeFile(join(workDirectory, "kudzu-artifacts.json"), JSON.stringify(artifacts, null, 2))
+  await writePrettyJson(join(workDirectory, "kudzu-artifacts.json"), artifacts)
   const emittedCssFiles = new Set()
   for (const file of cssFiles.filter(file => renderedStyleUrls.has(assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)))) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
@@ -492,7 +513,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
   const incremental = { compiledModules, renderedPages }
   return {
     result: { sourceResults, incremental },
-    pageCount: plans.length,
+    pageCount: routeRecords.length,
     behaviorCount,
     cache: { pageRenders, pageSources, placeholders, sourceResults: sourceResultsByFile }
   }
@@ -555,8 +576,8 @@ function replayPageRender(cached, state) {
     if (navigationGroup) {
       state.navigationAssets.set(draft.record.route, navigationGroup.assetPath)
       navigationGroup.buildRecords.push(draft.record)
-      navigationGroup.hasEffects ||= draft.result.hasEffects
-      navigationGroup.hasParams ||= draft.result.hasParams
+      navigationGroup.hasEffects ||= draft.record.capabilities.hasEffects
+      navigationGroup.hasParams ||= draft.record.capabilities.hasParams
     }
     state.routeRecords.push(draft.record)
     state.routeDrafts.push({ ...draft, navigationGroup })
@@ -688,6 +709,7 @@ function runtimeEffects(effects, lifetimes = false) {
     handler: effect.handler,
     ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
     ...(effect.dependencyExpressions ? { dependencyExpressions: effect.dependencyExpressions, dependencyStates: effect.dependencyStates } : {}),
+    ...(effect.dependencyEvaluators ? { dependencyEvaluators: effect.dependencyEvaluators } : {}),
     ...(effect.itemDependencies ? { itemDependencies: effect.itemDependencies, listState: effect.listState } : {}),
     ...(effect.cleanup ? { cleanup: true } : {}),
     ...(effect.owner ? { owner: effect.owner } : {}),
@@ -698,9 +720,92 @@ function runtimeEffects(effects, lifetimes = false) {
   }))
 }
 
+function internRoutePlan(plan, pools) {
+  for (const field of ["states", "params", "searchParams", "effects", "conditions", "lists"]) plan[field] = internJson(plan[field], pools[field])
+  for (const event of plan.events) {
+    if (event.commands) event.commands = internJson(event.commands, pools.commands)
+    if (event.native) {
+      event.native.states = internJson(event.native.states, pools.nativeStates)
+      event.native.scope = internJson(event.native.scope, pools.nativeScope)
+    }
+  }
+  for (const binding of plan.bindings) {
+    if (binding.states) binding.states = internJson(binding.states, pools.bindingStates)
+    if (binding.scope) binding.scope = internJson(binding.scope, pools.bindingScope)
+    if (binding.scopeStates) binding.scopeStates = internJson(binding.scopeStates, pools.scopeStates)
+    if (binding.scopeBindings) binding.scopeBindings = internJson(binding.scopeBindings, pools.scopeBindings)
+  }
+  return plan
+}
+
+function internJson(value, pool) {
+  const encoded = JSON.stringify(value)
+  const existing = pool.get(encoded)
+  if (existing !== undefined) return existing
+  pool.set(encoded, value)
+  return value
+}
+
 async function writeJavaScript(file, source, minify, define) {
   const code = minify || define ? (await transform(source, { define, format: "esm", legalComments: "none", minify, target: "es2022" })).code : source
   await writeFile(file, code)
+}
+
+async function writePrettyJson(file, value) {
+  const entries = Object.entries(value)
+  if (!entries.some(([, entry]) => Array.isArray(entry) && entry.length > 2048)) {
+    await writeFile(file, JSON.stringify(value, null, 2))
+    return
+  }
+  const output = await open(file, "w")
+  try {
+    await output.write("{\n")
+    for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
+      const [key, entry] = entries[entryIndex]
+      const comma = entryIndex === entries.length - 1 ? "" : ","
+      if (!Array.isArray(entry) || entry.length <= 2048) {
+        await output.write(`  ${JSON.stringify(key)}: ${JSON.stringify(entry, null, 2).replaceAll("\n", "\n  ")}${comma}\n`)
+        continue
+      }
+      await output.write(`  ${JSON.stringify(key)}: [\n`)
+      for (let offset = 0; offset < entry.length; offset += 64) {
+        const batch = entry.slice(offset, offset + 64).map((item, index) => {
+          const separator = offset + index === entry.length - 1 ? "" : ","
+          return `    ${JSON.stringify(item, null, 2).replaceAll("\n", "\n    ")}${separator}\n`
+        }).join("")
+        await output.write(batch)
+      }
+      await output.write(`  ]${comma}\n`)
+    }
+    await output.write("}")
+  } finally {
+    await output.close()
+  }
+}
+
+async function writeRoutePlans(file, records, rewrites, familyByRecord, drafts) {
+  const output = await open(file, "w")
+  try {
+    await output.write(records.length ? '{\n  "routes": [\n' : '{\n  "routes": []')
+    for (let offset = 0; offset < records.length; offset += 64) {
+      const batch = records.slice(offset, offset + 64).map((record, index) => {
+        const recordIndex = offset + index
+        const separator = recordIndex === records.length - 1 ? "" : ","
+        const encoded = `    ${JSON.stringify(record.plan, null, 2).replaceAll("\n", "\n    ")}${separator}\n`
+        const family = familyByRecord.get(record)
+        if (family && !family.navigation) {
+          releaseRouteBuildRecordPlan(record)
+          if (drafts[recordIndex].record !== record) releaseRouteBuildRecordPlan(drafts[recordIndex].record)
+        }
+        return encoded
+      }).join("")
+      await output.write(batch)
+      if ((offset + 64) % 512 === 0) globalThis.gc?.()
+    }
+    await output.write(`${records.length ? "  ]" : ""},\n  "rewrites": ${JSON.stringify(rewrites, null, 2).replaceAll("\n", "\n  ")}\n}`)
+  } finally {
+    await output.close()
+  }
 }
 
 export async function writeRouteEntry(file, source, minify, transforms, transformSource = transform, write = writeFile) {

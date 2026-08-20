@@ -1,6 +1,7 @@
 import { assertJsonSafe, assertRouteIR } from "./route-ir.mjs"
 
 const validated = new WeakSet()
+const releasedPlans = new WeakSet()
 
 export function createRouteBuildRecord(input) {
   const record = {
@@ -22,6 +23,10 @@ export function createRouteBuildRecord(input) {
 }
 
 export function assertRouteBuildRecord(record) {
+  if (releasedPlans.has(record)) {
+    if (record.plan !== undefined) throw new Error("Released RouteBuildRecord plan was restored")
+    return record
+  }
   if (validated.has(record)) return record
   if (record?.version !== 1) throw new Error(`Unsupported RouteBuildRecord version: ${JSON.stringify(record?.version)}`)
   if (typeof record.route !== "string" || typeof record.output !== "string" || typeof record.html !== "string" || !isRecord(record.plan)) throw new Error("Invalid RouteBuildRecord v1 structure")
@@ -57,6 +62,13 @@ export function assertRouteBuildRecord(record) {
   if (record.capabilities.hasBehaviors !== Boolean(record.plan.events.length || record.plan.effects.length || record.plan.bindings.length || record.plan.conditions.length || record.plan.lists.length || record.capabilities.hasParams)) throw new Error(`RouteBuildRecord ${JSON.stringify(record.route)} has inconsistent behavior capability`)
   assertJsonSafe(record, "RouteBuildRecord")
   validated.add(record)
+  return record
+}
+
+export function releaseRouteBuildRecordPlan(record) {
+  assertRouteBuildRecord(record)
+  record.plan = undefined
+  releasedPlans.add(record)
   return record
 }
 

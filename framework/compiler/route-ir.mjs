@@ -1,5 +1,6 @@
 const markerFields = new Set(["cleanup", "list", "svg", "mount", "static", "indexed", "reducer", "nested", "effects", "conditions", "conditionHandlers", "textRanges", "attributes", "events", "expressions", "expressionAttributes", "fastRelease"])
 const validated = new WeakSet()
+const jsonSafe = new WeakSet()
 
 export function assertRouteIR(plan, { concrete = false } = {}) {
   if (validated.has(plan) && (!concrete || typeof plan.route === "string")) return plan
@@ -62,7 +63,7 @@ export function assertRouteIR(plan, { concrete = false } = {}) {
 function assertEvent(event, index, ids) {
   if (!isRecord(event) || !nonempty(event.event) || event.commands === undefined && event.native === undefined) throw new Error(`Invalid RouteIR v1 event at index ${index}`)
   for (const command of event.commands ?? []) {
-    if (!Array.isArray(command) || command.length !== 3 || !["set", "add", "log"].includes(command[0])) throw new Error(`RouteIR event ${index} command has unsupported operation ${JSON.stringify(command?.[0])}`)
+    if (!Array.isArray(command) || command.length !== 3 || !["set", "add", "toggle", "log"].includes(command[0])) throw new Error(`RouteIR event ${index} command has unsupported operation ${JSON.stringify(command?.[0])}`)
     if (!ids.has(command[1]) && !rowTemplate(command[1])) throw new Error(`RouteIR event ${index} command references missing state ${JSON.stringify(command[1])}`)
     if (command[0] === "add" && (typeof command[2] !== "number" || !Number.isFinite(command[2]))) throw new Error(`RouteIR event ${index} add command requires a finite number`)
   }
@@ -76,6 +77,13 @@ function assertEffect(effect, index, ids, lists) {
   if (new Set(effect.dependencies ?? []).size !== (effect.dependencies ?? []).length) throw new Error(`${label} has duplicate dependencies`)
   for (const state of Object.values(effect.dependencyStates ?? {})) if (!ids.has(state) && !rowTemplate(state)) throw new Error(`${label} derived dependency references missing state ${JSON.stringify(state)}`)
   if (effect.dependencyExpressions !== undefined && !Array.isArray(effect.dependencyExpressions) || effect.itemDependencies !== undefined && (!Array.isArray(effect.itemDependencies) || effect.itemDependencies.some(field => !nonempty(field)))) throw new Error(`${label} has invalid dependencies`)
+  if (effect.dependencyEvaluators !== undefined) {
+    if (!Array.isArray(effect.dependencyEvaluators) || !effect.dependencyEvaluators.length) throw new Error(`${label} has invalid calculation dependency evaluators`)
+    for (const [dependencyIndex, evaluator] of effect.dependencyEvaluators.entries()) {
+      assertReactiveDescriptor(evaluator, `${label} calculation dependency ${dependencyIndex}`, ids)
+      if (!nonempty(evaluator.field) || ["__proto__", "constructor", "prototype"].includes(evaluator.field)) throw new Error(`${label} calculation dependency ${dependencyIndex} has invalid field`)
+    }
+  }
   if (effect.itemDependencies?.length) {
     if (!nonempty(effect.listState) || !lists.some(list => list.state === effect.listState) || !effect.owner) throw new Error(`${label} item dependencies require a matching owned list`)
   }
@@ -165,29 +173,37 @@ function validSeed(seed) {
 }
 
 export function assertJsonSafe(value, label = "Value") {
-  const invalid = invalidJsonPath(value, new Set(), "$")
+  const invalid = invalidJsonPath(value, new Set(), jsonSafe, [])
   if (invalid) throw new Error(`${label} is not JSON-safe at ${invalid}`)
   return value
 }
 
-function invalidJsonPath(value, seen, path) {
+function invalidJsonPath(value, seen, safe, path) {
   if (value === null || typeof value === "string" || typeof value === "boolean") return undefined
-  if (typeof value === "number") return Number.isFinite(value) && !Object.is(value, -0) ? undefined : path
-  if (!value || typeof value !== "object" || seen.has(value) || Object.getOwnPropertySymbols(value).length) return path
+  if (typeof value === "number") return Number.isFinite(value) && !Object.is(value, -0) ? undefined : jsonPath(path)
+  if (!value || typeof value !== "object" || seen.has(value)) return jsonPath(path)
+  if (safe.has(value)) return undefined
   const prototype = Object.getPrototypeOf(value)
-  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return path
-  const descriptors = Object.getOwnPropertyDescriptors(value)
-  if (Array.isArray(value) && (Object.keys(descriptors).some(key => key !== "length" && !/^(0|[1-9]\d*)$/.test(key)) || Object.keys(value).length !== value.length)) return path
+  if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) return jsonPath(path)
+  const keys = Reflect.ownKeys(value)
+  if (keys.some(key => typeof key !== "string")) return jsonPath(path)
+  if (Array.isArray(value) && (keys.some(key => key !== "length" && !/^(0|[1-9]\d*)$/.test(key)) || keys.length - 1 !== value.length)) return jsonPath(path)
   seen.add(value)
-  for (const [key, descriptor] of Object.entries(descriptors)) {
+  for (const key of keys) {
     if (Array.isArray(value) && key === "length") continue
-    if (!descriptor.enumerable || !("value" in descriptor)) return `${path}.${key}`
-    const invalid = invalidJsonPath(descriptor.value, seen, `${path}.${key}`)
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    path.push(key)
+    if (!descriptor.enumerable || !("value" in descriptor)) return jsonPath(path)
+    const invalid = invalidJsonPath(descriptor.value, seen, safe, path)
     if (invalid) return invalid
+    path.pop()
   }
   seen.delete(value)
+  safe.add(value)
   return undefined
 }
+
+const jsonPath = path => `$${path.map(key => `.${key}`).join("")}`
 
 const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value)
 const nonempty = value => typeof value === "string" && value.length > 0

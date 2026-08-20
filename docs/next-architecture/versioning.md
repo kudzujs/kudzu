@@ -65,7 +65,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.102` adds an explicit install step to the generated README and clearer completion output. Its `@kudzujs/core` range `^0.8.15` accepts every current `0.8.x` patch; a future `0.9.0` template must use `^0.9.0`.
+`create-kudzu@0.1.103` retains the explicit install instructions and generates projects with `@kudzujs/core@^0.9.0`.
 
 ## Release Boundary
 

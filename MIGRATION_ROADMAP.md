@@ -101,6 +101,7 @@ The following are available building blocks, not future vertical roadmaps:
 - Mount and dependency effects with cleanup, route/layout lifetimes, conditional/keyed ownership, stale-write isolation, and relative TypeScript Workers.
 - Direct browser-only package references in inline effect setup/cleanup callbacks bundle into route-owned effect ESM without entering build-time component execution or static sibling output.
 - Keyed local-state and imported static collections, pure selectors, nested direct-property lists, recursive and directly exported row specialization, static/keyed component reuse, analyzable specialized prop spreads, serializable literal defaults, direct intrinsic rest forwarding, forwarded JSX children, latest-item handlers, row state/effects/refs, and stable keyed identity.
+- Direct object-state props with one-segment binding/effect/list consumers when the child directly maps an array field; ComponentAnalysis links every consumer to the parent SignalIR without authored field state or a browser component.
 - Complete-document native fallback and optional shared-layout navigation groups with parameter initialization, finite prefetch caching, focus, history, cleanup, and independent capability output.
 - React-shaped SVG presentation attributes, direct `clsx` lowering, fixed-locale reactive `Intl.NumberFormat` display formatting, relative TypeScript handler helpers, and source-located diagnostics.
 

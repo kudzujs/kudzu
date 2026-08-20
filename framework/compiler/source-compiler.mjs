@@ -1,5 +1,6 @@
 import { readFile, realpath, stat } from "node:fs/promises"
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path"
+import { transform, transformSync } from "esbuild"
 import ts from "typescript"
 import { createBindingIndex } from "./analysis/binding-index.mjs"
 import { createComponentAnalysisSession } from "./analysis/component-analysis.mjs"
@@ -28,16 +29,24 @@ const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, mo
 const buildDirectory = project.buildDirectory ?? workDirectory
 const { ordinaryRuntimeDependencies, resolveSourceImport, runtimeModuleReference } = project.graph
 const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
+const importFreeModules = new Map()
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
 
-function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
+async function compileSourceAsync(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
+  const source = sourceIndex.get(file)
+  const output = importFreeTypeScriptModule(file, source) ? (await transform(source, { loader: "ts", format: "esm", target: "es2022", sourcefile: file })).code : undefined
+  return compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base, output)
+}
+
+function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base, importFreeOutput) {
   const importedAssets = new Set()
   const source = sourceIndex.get(file)
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
   const handlerPath = `handlers/${relative(sourceDirectory, file).replaceAll(sep, "/").replace(/\.(?:ts|tsx)$/, ".js")}`
-  const plain = plainTypeScriptModule(file, source, sourceFiles)
+  const importFreePlain = importFreeTypeScriptModule(file, source)
+  const plain = importFreePlain || plainTypeScriptModule(file, source, sourceFiles)
   if (plain && counters) counters.plainModules = (counters.plainModules ?? 0) + 1
-  const result = ts.transpileModule(source, {
+  const result = importFreePlain ? { outputText: importFreeOutput ?? transformSync(source, { loader: "ts", format: "esm", target: "es2022", sourcefile: file }).code } : ts.transpileModule(source, {
     fileName: file,
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -87,6 +96,15 @@ function plainTypeScriptModule(file, source, sourceFiles) {
   return true
 }
 
+function importFreeTypeScriptModule(file, source) {
+  if (!file.endsWith(".ts")) return false
+  const cached = importFreeModules.get(file)
+  if (cached?.source === source) return cached.result
+  const result = !source.includes(".worker.ts") && ts.preProcessFile(source, true, true).importedFiles.length === 0
+  importFreeModules.set(file, { source, result })
+  return result
+}
+
 function createPlainModuleTransformer(file, sourceFiles) {
   return context => sourceFile => context.factory.updateSourceFile(sourceFile, sourceFile.statements.map(statement => {
     if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) return statement
@@ -126,7 +144,9 @@ function reachableSourceFiles(entries, sourceFiles, sourceIndex) {
     if (visited.has(file)) continue
     visited.add(file)
     reachable.add(file)
-    const sourceFile = parseSourceFile(file, sourceIndex.get(file))
+    const source = sourceIndex.get(file)
+    if (importFreeTypeScriptModule(file, source)) continue
+    const sourceFile = parseSourceFile(file, source)
     if (owner === "ordinary") for (const target of ordinaryRuntimeDependencies(file, sourceFile, sourceFiles, isStaticImport)) queue.push({ file: target, owner: target.endsWith(".worker.ts") ? "worker" : owner })
     const visit = node => {
       if (owner === "worker") {
@@ -332,7 +352,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
   const { moduleIR } = semantic
   return context => sourceFile => {
     const hasLinkElements = /<link/i.test(sourceFile.text)
-    const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex)
+    const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex, true)
     const importedCollections = new Set(importedStaticCollections.keys())
     const normalized = normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedStaticCollections, sourceFiles, sourceIndex })
     sourceFile = normalized.sourceFile
@@ -395,8 +415,16 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
     const importedCollectionTransforms = new Map()
     const importedCalculationFunctions = new Map()
+    const validatedEffectCalculations = new WeakSet()
+    const transformImports = new Set()
+    const collectTransformImports = node => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) transformImports.add(node.expression.text)
+      if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && ts.isIdentifier(node.tagName)) transformImports.add(node.tagName.text)
+      ts.forEachChild(node, collectTransformImports)
+    }
+    collectTransformImports(sourceFile)
     for (const [name, binding] of importBindings) {
-      if (binding.kind === "namespace") continue
+      if (binding.kind === "namespace" || !transformImports.has(name)) continue
       try {
         importedCollectionTransforms.set(name, resolveComponentExport(binding.target, binding.kind === "default" ? "default" : binding.imported, target => parseSourceFile(target, sourceIndex.get(target)), sourceFiles))
       } catch {}
@@ -642,7 +670,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const delay = node.initializer.arguments[1] && unwrapExpression(node.initializer.arguments[1])
           const setters = owner ? settersByFunction.get(owner) ?? new Map() : new Map()
           if (!owner) throw sourceNodeError(node, sourceFile, "Parameterized debounce hooks cannot be used outside a Kudzu component")
-          if (node.initializer.arguments.length !== 2 || !ts.isIdentifier(value) || !new Set(setters.values()).has(value.text) || !componentHasDirectPrimitiveState(owner, value.text)) throw sourceNodeError(node.initializer, sourceFile, "Parameterized debounce hooks require one direct primitive state argument")
+          const stateInitializer = ts.isIdentifier(value) ? directStateInitializer(owner, value.text) : undefined
+          if (node.initializer.arguments.length !== 2 || !ts.isIdentifier(value) || !new Set(setters.values()).has(value.text) || !stateInitializer || !isPrimitiveDefaultLiteral(stateInitializer)) throw sourceNodeError(node.initializer, sourceFile, "Parameterized debounce hooks require one direct primitive state argument")
           if (!ts.isNumericLiteral(delay)) throw sourceNodeError(node.initializer.arguments[1] ?? node.initializer, sourceFile, "Parameterized debounce hook delays must be numeric literals")
           const syntheticSetter = `__kSetDebounced_${Math.max(0, node.pos)}`
           setters.set(syntheticSetter, node.name.text)
@@ -670,6 +699,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             }
           }
           const contextSubstitutions = new Map()
+          const contextSharedStates = new Map()
           for (const [setter, state] of hook.states) {
             if (hook.context) {
               if (names.has(setter) && !names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative Context setter ${JSON.stringify(setter)} requires state ${JSON.stringify(state)} to be destructured`)
@@ -689,6 +719,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               const localSetter = localName(setter)
               setters.set(localSetter, localState)
               registerState(owner, localState, localSetter, "context", node, { owner: hook.stateOwner, state: hook.stateSymbols.get(state) })
+              const sharedState = registerSharedState(moduleIR, { identity: hook.stateOwner.symbol.id, field: state })
+              contextSharedStates.set(state, sharedState)
+              stateOwnersByFunction.get(owner).set(localState, { kind: "shared-state", sharedState: sharedState.slot })
               if (requiredContextStates.has(state)) {
                 for (const [field, local] of [[state, localState], [setter, localSetter]]) {
                   if (names.has(field) || privateFields.some(entry => (typeof entry === "string" ? entry : entry.property) === field)) continue
@@ -723,7 +756,16 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               if (hook.context) {
                 const reducers = reducersByFunction.get(owner) ?? new Map()
                 const states = new Map([...hook.states].map(([setter, state]) => [contextSubstitutions.get(setter)?.text ?? setter, contextSubstitutions.get(state)?.text ?? state]))
-                reducers.set(name, { contextAction: callback, states })
+                const referenced = referencedStateNames(hook.callbacks.get(name).body, hook.states, hook.callbacks.get(name))
+                const anchor = [...hook.states.values()].find(state => referenced.has(state))
+                const sharedState = contextSharedStates.get(anchor)
+                if (!sharedState) {
+                  reducers.set(name, { sourceKind: "Context", directImplementation: callback, states })
+                  reducersByFunction.set(owner, reducers)
+                  continue
+                }
+                const action = registerSharedAction(moduleIR, { state: sharedState.slot, name })
+                reducers.set(name, { state: contextSubstitutions.get(anchor)?.text ?? anchor, sourceKind: "Context", sharedAction: { ...action, directImplementation: callback, states } })
                 reducersByFunction.set(owner, reducers)
               }
             }
@@ -960,6 +1002,78 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (!returns.length || returns.some(returned => !returned || !ts.isObjectLiteralExpression(returned))) fail(call.expression, "Reactive imported calculations must return a plain object")
       const fieldExists = returns.every(returned => returned.properties.some(property => ts.isSpreadAssignment(property) || !ts.isComputedPropertyName(property.name) && property.name.text === field))
       if (!fieldExists) fail(call.parent, `Reactive imported calculation does not return field ${JSON.stringify(field)}`)
+      return { calculation, returns }
+    }
+    const validateSelectedEffectCalculation = (call, field) => {
+      const { calculation, returns } = validateImportedCalculation(call, field)
+      const calculationSource = calculation.getSourceFile()
+      const reject = (target, message) => { throw sourceNodeError(target, calculationSource, message) }
+      if (calculation.asteriskToken || calculation.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) reject(calculation, "Imported calculations used by useEffect() must be synchronous; move async work into the owned effect")
+      if (calculation.parameters.some(parameter => !ts.isIdentifier(parameter.name) || parameter.dotDotDotToken || parameter.initializer || parameter.questionToken)) reject(calculation, "Imported calculations used by useEffect() require ordinary identifier parameters without defaults or rest")
+      if (call.arguments.some(argument => !ts.isIdentifier(unwrapExpression(argument)))) fail(call, "useEffect() selected calculation arguments must be direct primitive state identifiers; aliases, property paths, and composed arguments are not supported")
+      const shapes = returns.map(returned => returned.properties.map(property => {
+        if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property) || ts.isComputedPropertyName(property.name) || ["__proto__", "constructor", "prototype"].includes(property.name.text)) reject(property, "Imported calculations used by useEffect() must return direct safe plain-object fields without spreads, methods, or computed names")
+        return property.name.text
+      }).sort())
+      const expected = JSON.stringify(shapes[0])
+      if (shapes.some(shape => JSON.stringify(shape) !== expected)) reject(calculation, `Imported calculations used by useEffect() must return the same direct plain-object fields on every path; expected ${expected}`)
+      if (validatedEffectCalculations.has(calculation)) return
+      const staticImports = importedSerializableCollections(calculationSource, calculationSource.fileName, sourceFiles, sourceIndex)
+      const imported = new Map()
+      for (const statement of calculationSource.statements) if (ts.isImportDeclaration(statement) && statement.importClause && !statement.importClause.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier)) {
+        const names = []
+        if (statement.importClause.name) names.push(statement.importClause.name.text)
+        const bindings = statement.importClause.namedBindings
+        if (bindings && ts.isNamespaceImport(bindings)) names.push(bindings.name.text)
+        if (bindings && ts.isNamedImports(bindings)) names.push(...bindings.elements.filter(entry => !entry.isTypeOnly).map(entry => entry.name.text))
+        for (const name of names) imported.set(name, statement.moduleSpecifier.text)
+      }
+      for (const [name, target] of imported) if (!target.startsWith(".") && referencesIdentifier(calculation.body, name)) reject(calculation.body, `Imported calculations used by useEffect() cannot reference package import ${JSON.stringify(name)} from ${JSON.stringify(target)}`)
+      const localNames = new Set(calculation.parameters.flatMap(parameter => bindingNames(parameter.name)))
+      if (ts.isBlock(calculation.body)) for (const statement of calculation.body.statements) {
+        if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) for (const name of bindingNames(declaration.name)) localNames.add(name)
+        if (ts.isFunctionDeclaration(statement) && statement.name) localNames.add(statement.name.text)
+      }
+      const localDeclarations = new Map()
+      if (ts.isBlock(calculation.body)) for (const statement of calculation.body.statements) if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) if (ts.isIdentifier(declaration.name) && declaration.initializer) localDeclarations.set(declaration.name.text, declaration.initializer)
+      const visiting = []
+      const visited = new Set()
+      const visitLocal = name => {
+        if (visited.has(name)) return
+        const cycle = visiting.indexOf(name)
+        if (cycle >= 0) reject(localDeclarations.get(name), `Imported calculation derived-local cycle: ${[...visiting.slice(cycle), name].join(" -> ")}`)
+        visiting.push(name)
+        const initializer = localDeclarations.get(name)
+        if (initializer) for (const candidate of localDeclarations.keys()) if (referencesIdentifier(initializer, candidate)) visitLocal(candidate)
+        visiting.pop()
+        visited.add(name)
+      }
+      for (const name of localDeclarations.keys()) visitLocal(name)
+      const visit = node => {
+        if (ts.isTypeNode(node)) return
+        if (ts.isBinaryExpression(node) && assignmentOperators.has(node.operatorToken.kind) || ts.isPostfixUnaryExpression(node) || ts.isPrefixUnaryExpression(node) && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator) || ts.isDeleteExpression(node)) reject(node, "Imported calculations used by useEffect() must be pure; assignments, updates, delete, and mutation are not supported")
+        if (ts.isAwaitExpression(node) || ts.isYieldExpression(node) || ts.isNewExpression(node)) reject(node, "Imported calculations used by useEffect() must be deterministic and synchronous; await, yield, and construction are not supported")
+        if (ts.isCallExpression(node)) {
+          if (ts.isIdentifier(node.expression) && ["Boolean", "Number", "String"].includes(node.expression.text)) {
+            // Primitive conversions are deterministic.
+          } else if (ts.isPropertyAccessExpression(node.expression)) {
+            const method = node.expression.name.text
+            const receiver = unwrapExpression(node.expression.expression)
+            if (mutatingListMethods.has(method)) reject(node, `Imported calculations used by useEffect() must be pure; mutating method ${JSON.stringify(method)} is not supported`)
+            const math = ts.isIdentifier(receiver) && receiver.text === "Math"
+            const find = method === "find" && node.arguments.length === 1 && ts.isArrowFunction(node.arguments[0]) && !ts.isBlock(node.arguments[0].body) && !node.arguments[0].modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)
+            if (!find && !(math && pureMathMethods.has(method)) && !pureListMethods.has(method)) reject(node, `Imported calculations used by useEffect() must be deterministic; call ${JSON.stringify(node.expression.getText(calculationSource))} is not supported`)
+          } else reject(node, "Imported calculations used by useEffect() cannot call arbitrary functions")
+        }
+        if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
+          const target = imported.get(node.text)
+          if (target && !target.startsWith(".")) reject(node, `Imported calculations used by useEffect() cannot reference package import ${JSON.stringify(node.text)} from ${JSON.stringify(target)}`)
+          if (target?.startsWith(".") && !staticImports.has(node.text)) reject(node, `Imported calculations used by useEffect() may capture only relative exported JSON-safe const arrays; capture ${JSON.stringify(node.text)} is opaque or nonserializable`)
+        }
+        ts.forEachChild(node, visit)
+      }
+      visit(calculation.body)
+      validatedEffectCalculations.add(calculation)
     }
     const validateReactiveJsxExpression = (expression, allowedNames) => {
       const value = unwrapExpression(expression)
@@ -1033,6 +1147,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
     const componentSpecializations = new WeakMap()
     const specializedEffectStateOwners = new WeakMap()
+    const calculationDerivedByOwner = new WeakMap()
     const setterHookHelpers = new WeakMap()
     const expandedRowSpecializations = new WeakMap()
     const nestedRowSpecializations = new Map()
@@ -1063,7 +1178,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         props: result.props.map(prop => {
           const expression = result.propExpressions.get(prop.name)
           const signals = expression ? propSignals(expression) : []
-          return { ...prop, ...(signals.length ? { signals } : {}) }
+          const uses = result.propertyUses.get(prop.local) ?? []
+          const properties = signals.length === 1 ? uses.map(use => ({ signal: signals[0], path: use.path, consumers: use.consumers, equality: "object-is" })) : []
+          return { ...prop, ...(signals.length ? { signals } : {}), ...(properties.length ? { properties } : {}) }
         }),
         states: [
           ...result.rowStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "row", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })),
@@ -1140,6 +1257,44 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       ts.setParentRecursive(merged, false)
       merged.parent = root.parent
       return merged
+    }
+    const materializeComponentHelper = (call, specialization, prefix, prepend) => {
+      const owner = nearestFunction(call)
+      const name = `${prefix}${Math.max(0, call.pos)}`
+      const effectStatements = specialization.effects.map(entry => {
+        const effectCall = factory.updateCallExpression(entry.call, factory.createIdentifier("__kComponentUseEffect"), entry.call.typeArguments, entry.call.arguments)
+        synthesizeTree(effectCall)
+        ts.setOriginalNode(effectCall, entry.source)
+        specializedEffectStateOwners.set(effectCall, { owner: { kind: "specialization", slot: specialization.analysis.slot }, references: specialization.propStateOwners })
+        return factory.createExpressionStatement(effectCall)
+      })
+      const rendered = prepend ? factory.createNull() : specialization.root
+      const helper = factory.createFunctionDeclaration(undefined, undefined, name, undefined, [], undefined, factory.createBlock([...specialization.hookDeclarations, ...effectStatements, factory.createReturnStatement(rendered)], true))
+      ts.setParentRecursive(helper, false)
+      helper.parent = owner.body
+      const helpers = setterHookHelpers.get(owner.body) ?? []
+      helpers.push(helper)
+      setterHookHelpers.set(owner.body, helpers)
+      const setters = new Map(settersForNode(call, settersByFunction))
+      for (const state of specialization.ordinaryStates) setters.set(state.setter, state.state)
+      settersByFunction.set(helper, setters)
+      const stateOwners = new Map([...stateOwnersForNode(call), ...specialization.propStateOwners])
+      for (const state of specialization.ordinaryStates) stateOwners.set(state.state, state.analysisReference)
+      stateOwnersByFunction.set(helper, stateOwners)
+      usesComponentState ||= specialization.ordinaryStates.length > 0
+      usesComponentId ||= specialization.usesComponentId
+      usesComponentRef ||= specialization.ordinaryRefs.length > 0
+      usesComponentEffects ||= specialization.effects.length > 0
+      const invocation = factory.createJsxSelfClosingElement(factory.createIdentifier(name), undefined, factory.createJsxAttributes([]))
+      specialization.root = prepend ? prependJsxChild(specialization.root, invocation, factory) : invocation
+      ts.setParentRecursive(specialization.root, false)
+      specialization.root.parent = call.parent
+    }
+    const attachStateBackedEffects = (call, specialization, componentSource, imported) => {
+      if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, call, specialization.effects))
+      if (!specialization.effects.length) return
+      if (specialization.hookDeclarations.length) fail(call, "State-backed object property components cannot declare state, refs, or IDs")
+      materializeComponentHelper(call, specialization, "KPropertyEffect", true)
     }
     const expandReducerCallbacks = (root, componentSource, call, ownership) => {
       const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
@@ -1324,8 +1479,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (identifierReferenceCount(sourceFile, name) !== calls.length) fail(component.declaration, `State-backed list component ${name} may only be referenced as JSX`)
       if (stateBackedCalls.length !== calls.length) fail(component.declaration, `State-backed list component ${name} must receive its mapped prop from local state at every call`)
       for (const call of stateBackedCalls) {
-        const specialization = specialize(call, component.function)
-        if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
+        const objectProperty = isStateBackedListComponentCall(call, component.function, settersByFunction.get(nearestFunction(call)) ?? new Map(), true)
+        const specialization = specialize(call, component.function, objectProperty ? "Object-property component" : "Keyed list")
+        if (specialization.effects.length && !objectProperty) fail(call, "State-backed list components cannot declare effects")
+        if (objectProperty) attachStateBackedEffects(call, specialization, component.function.getSourceFile(), false)
         componentSpecializations.set(call, specialization)
         stateBackedComponentRoots.push(specialization.root)
       }
@@ -1346,8 +1503,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       const stateBackedCalls = calls.filter(call => isStateBackedListComponentCall(call, component, settersByFunction.get(nearestFunction(call)) ?? new Map()))
       for (const call of stateBackedCalls) {
-        const specialization = specialize(call, component)
-        if (specialization.effects.length) fail(call, "State-backed list components cannot declare effects")
+        const objectProperty = isStateBackedListComponentCall(call, component, settersByFunction.get(nearestFunction(call)) ?? new Map(), true)
+        const specialization = specialize(call, component, objectProperty ? "Object-property component" : "Keyed list")
+        if (specialization.effects.length && !objectProperty) fail(call, "State-backed list components cannot declare effects")
+        if (objectProperty) attachStateBackedEffects(call, specialization, component.getSourceFile(), true)
         componentSpecializations.set(call, specialization)
         stateBackedComponentRoots.push(specialization.root)
       }
@@ -1364,7 +1523,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const setterAttribute = attributes.properties.find(entry => ts.isJsxAttribute(entry) && entry.name.text === prop)
         const stateValue = stateAttribute?.initializer && ts.isJsxExpression(stateAttribute.initializer) ? unwrapExpression(stateAttribute.initializer.expression) : undefined
         const setterValue = setterAttribute?.initializer && ts.isJsxExpression(setterAttribute.initializer) ? unwrapExpression(setterAttribute.initializer.expression) : undefined
-        if (!ts.isIdentifier(stateValue) || !ts.isIdentifier(setterValue) || setters.get(setterValue.text) !== stateValue.text || !componentHasDirectArrayState(nearestFunction(call), stateValue.text)) fail(setterAttribute ?? call, `Setter-callback effect prop ${JSON.stringify(prop)} must target the same direct array state passed through ${JSON.stringify(effect.stateProp)}`)
+        const stateInitializer = ts.isIdentifier(stateValue) ? directStateInitializer(nearestFunction(call), stateValue.text) : undefined
+        if (!ts.isIdentifier(stateValue) || !ts.isIdentifier(setterValue) || setters.get(setterValue.text) !== stateValue.text || !stateInitializer || !ts.isArrayLiteralExpression(stateInitializer)) fail(setterAttribute ?? call, `Setter-callback effect prop ${JSON.stringify(prop)} must target the same direct array state passed through ${JSON.stringify(effect.stateProp)}`)
       }
       const specialization = specialize(call, component, "Setter-callback", true, true, new Set(settersForNode(call, settersByFunction).values()))
       if (specialization.hookDeclarations.length || specialization.effects.length) {
@@ -1382,44 +1542,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
       specialization.root = expandSetterComponents(specialization.root, component.getSourceFile(), [component], specialization, settersForNode(call, settersByFunction), stateOwnersForNode(call))
       if (imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, component.getSourceFile(), call, specialization.effects))
-      if (specialization.hookDeclarations.length || specialization.effects.length) {
-        const owner = nearestFunction(call)
-        const name = `KSetterComponent${Math.max(0, call.pos)}`
-        const effectStatements = specialization.effects.map(entry => {
-          const effectCall = factory.updateCallExpression(entry.call, factory.createIdentifier("__kComponentUseEffect"), entry.call.typeArguments, entry.call.arguments)
-          synthesizeTree(effectCall)
-          ts.setOriginalNode(effectCall, entry.source)
-          specializedEffectStateOwners.set(effectCall, { owner: { kind: "specialization", slot: specialization.analysis.slot }, references: specialization.propStateOwners })
-          return factory.createExpressionStatement(effectCall)
-        })
-        const helper = factory.createFunctionDeclaration(
-          undefined,
-          undefined,
-          name,
-          undefined,
-          [],
-          undefined,
-          factory.createBlock([...specialization.hookDeclarations, ...effectStatements, factory.createReturnStatement(specialization.root)], true)
-        )
-        ts.setParentRecursive(helper, false)
-        helper.parent = owner.body
-        const helpers = setterHookHelpers.get(owner.body) ?? []
-        helpers.push(helper)
-        setterHookHelpers.set(owner.body, helpers)
-        const setters = new Map(settersForNode(call, settersByFunction))
-        for (const state of specialization.ordinaryStates) setters.set(state.setter, state.state)
-        settersByFunction.set(helper, setters)
-        const stateOwners = new Map([...stateOwnersForNode(call), ...specialization.propStateOwners])
-        for (const state of specialization.ordinaryStates) stateOwners.set(state.state, state.analysisReference)
-        stateOwnersByFunction.set(helper, stateOwners)
-        usesComponentState ||= specialization.ordinaryStates.length > 0
-        usesComponentId ||= specialization.usesComponentId
-        usesComponentRef ||= specialization.ordinaryRefs.length > 0
-        usesComponentEffects ||= specialization.effects.length > 0
-        specialization.root = factory.createJsxSelfClosingElement(factory.createIdentifier(name), undefined, factory.createJsxAttributes([]))
-        ts.setParentRecursive(specialization.root, false)
-        specialization.root.parent = call.parent
-      }
+      if (specialization.hookDeclarations.length || specialization.effects.length) materializeComponentHelper(call, specialization, "KSetterComponent", false)
       componentSpecializations.set(call, specialization)
     }
     for (const [name, component] of components) {
@@ -1726,7 +1849,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         : collectionSymbol !== undefined ? { kind: "symbol", symbol: collectionSymbol } : { kind: "static" }
       if (listParts.calculation) {
         usesBinding = true
-        const compiled = descriptors.compileReactiveBinding(listParts.calculation, { setters: settersForNode(node, settersByFunction), importBindings, keyedBlock: blockSlot })
+        const compiled = descriptors.compileReactiveBinding(listParts.calculation, { setters: settersForNode(node, settersByFunction), importBindings, keyedBlock: blockSlot, derived: calculationBinding(node, nearestFunction(node)) })
         listSource = compiled.node
         collection = { kind: "binding", binding: compiled.binding }
       }
@@ -1851,6 +1974,26 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (callback.parameters.length) effectFail(callback, "useEffect() callback cannot declare parameters")
         if (!ts.isArrayLiteralExpression(dependencies)) effectFail(dependencies, "useEffect() dependencies must be a literal array")
         const setters = settersForNode(node, settersByFunction)
+        const resolveCalculation = dependency => {
+          if (specializedEffect) return undefined
+          const value = unwrapExpression(dependency)
+          const result = ts.isIdentifier(value) ? value : ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value) ? unwrapExpression(value.expression) : undefined
+          if (!result || !ts.isIdentifier(result)) return undefined
+          const entries = jsxLocalDeclarations.get(effectOwner)?.get(result.text)
+          const initializer = entries?.length === 1 && entries[0].node.parent?.parent?.parent === effectOwner?.body ? unwrapExpression(entries[0].initializer) : undefined
+          if (!initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || !importBindings.has(initializer.expression.text)) return undefined
+          if (ts.isIdentifier(value)) effectFail(value, `useEffect() cannot depend on the whole imported calculation result ${JSON.stringify(value.text)}; select one JSON-safe primitive field such as ${value.text}.id`)
+          if (ts.isElementAccessExpression(value)) effectFail(value, `useEffect() imported calculation dependencies require one direct static result field such as ${result.text}.id; computed result properties are not supported`)
+          if (!ts.isPropertyAccessExpression(value) || ["__proto__", "constructor", "prototype"].includes(value.name.text)) effectFail(value, "useEffect() imported calculation dependency field must not be __proto__, prototype, or constructor")
+          validateSelectedEffectCalculation(initializer, value.name.text)
+          const expanded = unwrapExpression(resolveReactiveJsxExpression(dependency, effectOwner, setters))
+          if (!ts.isPropertyAccessExpression(expanded) || expanded.name.text !== value.name.text) return undefined
+          const call = unwrapExpression(expanded.expression)
+          if (!ts.isCallExpression(call) || !ts.isIdentifier(call.expression) || !importBindings.has(call.expression.text)) return undefined
+          const states = referencedStateNames(call, setters, call, bindingIndex)
+          if (states.size < 2 || call.arguments.some(argument => !ts.isIdentifier(unwrapExpression(argument)) || !states.has(unwrapExpression(argument).text))) effectFail(call, "useEffect() selected calculations require at least two direct primitive state arguments")
+          return { name: value.expression.text, field: value.name.text, call, states, source: dependency }
+        }
         const dependencyAnalysis = analyzeEffectDependencies({
           dependencies,
           node,
@@ -1860,9 +2003,12 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           localDeclarations: jsxLocalDeclarations.get(nearestFunction(node)),
           factory,
           fail: effectFail,
-          bindingIndex
+          bindingIndex,
+          resolveCalculation
         })
         const { dependencyItem, itemDependencies, ordinaryDependencies, entries: dependencyEntries, dependencyStates, substitutions: dependencySubstitutions, subscriptions: subscriptionDependencies, hasDerived: hasDerivedDependency } = dependencyAnalysis
+        const calculationEntries = dependencyEntries.filter(entry => entry.kind === "calculation")
+        if (calculationEntries.length && (calculationEntries.length !== 1 || dependencyEntries.length !== 1)) effectFail(dependencies, "useEffect() selected calculation fields must be the only dependency")
         if (!effectOwner) fail(node, "useEffect() cannot be used outside a Kudzu component")
         if (!ts.isBlock(callback.body)) effectFail(callback, "useEffect() callback must use a block body")
         const cleanupSubstitutions = new Map()
@@ -1886,6 +2032,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (invalidCleanup) effectFail(invalidCleanup, "useEffect() cleanup functions cannot declare parameters or be generators")
         if (returns.cleanup && callback.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) effectFail(callback, "useEffect() async callbacks cannot return cleanup functions")
         validateEffectOwnedBrowserResources(callback, returns, effectFail, bindingIndex)
+        const calculationEvaluators = dependencyEntries.map(entry => entry.kind === "calculation" ? descriptors.compileDerivedEvaluator(entry.call, { setters, importBindings }) : undefined)
         const callbackSource = specializedEffect?.sourceFile ?? sourceFile
         const callbackFile = callbackSource.fileName
         let compiledCallback = dependencySubstitutions.size ? substituteClone(callback, dependencySubstitutions, factory, context) : callback
@@ -1915,7 +2062,16 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         })
         usesListItem ||= Boolean(itemDependencies.length && !listEffect)
         usesBehavior = true
-        const derivedDependencies = hasDerivedDependency ? dependencyEntries.map(entry => entry.kind === "derived" ? descriptors.registerDerived("expression", entry.expression, entry.states, entry.source) : undefined) : []
+        const derivedDependencies = hasDerivedDependency ? dependencyEntries.map((entry, index) => entry.kind === "derived"
+          ? descriptors.registerDerived("expression", entry.expression, entry.states, entry.source)
+          : entry.kind === "calculation" ? descriptors.registerDerived("calculation", { binding: calculationEvaluators[index].binding, fields: [entry.field] }, entry.states, entry.source) : undefined) : []
+        if (calculationEntries.length) {
+          const calculations = calculationDerivedByOwner.get(effectOwner) ?? new Map()
+          dependencyEntries.forEach((entry, index) => {
+            if (entry.kind === "calculation") calculations.set(entry.name, derivedDependencies[index])
+          })
+          calculationDerivedByOwner.set(effectOwner, calculations)
+        }
         const effectSource = specializedEffect?.source ?? node
         const lexicalOwner = nearestFunction(effectSource)
         const effectStateOwners = new Map([...stateOwnersForNode(callbackArgument), ...stateOwnersForNode(node), ...(specializedEffectStateOwners.get(node)?.references ?? []), ...(activeStateOwners ?? [])])
@@ -1924,7 +2080,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const dependencyStateNames = [...dependencyStates.keys()]
         const effect = descriptors.registerEffect(descriptor, {
           cleanup: returns.cleanup,
-          dependencies: hasDerivedDependency ? dependencyEntries.map((entry, index) => entry.kind === "derived" ? { kind: "derived", derived: derivedDependencies[index].slot, sources: [...entry.states].map(signalFor) } : { kind: "signal", signal: signalFor(entry.name) }) : ordinaryDependencies.map(dependency => ({ kind: "signal", signal: signalFor(dependency.text) })),
+          dependencies: hasDerivedDependency ? dependencyEntries.map((entry, index) => entry.kind === "derived"
+            ? { kind: "derived", derived: derivedDependencies[index].slot, sources: [...entry.states].map(signalFor) }
+            : entry.kind === "calculation" ? { kind: "derived", derived: derivedDependencies[index].slot, sources: [...entry.states].map(signalFor), field: entry.field, evaluator: calculationEvaluators[index].binding } : { kind: "signal", signal: signalFor(entry.name) }) : ordinaryDependencies.map(dependency => ({ kind: "signal", signal: signalFor(dependency.text) })),
           subscriptions: subscriptionNames.map(signalFor),
           dependencySignals: dependencyStateNames.map(signalFor),
           itemDependencies,
@@ -1938,7 +2096,12 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           ...(analysisSite(effectSource, "hook") ? { site: analysisSite(effectSource, "hook") } : {}),
           ...(analysisSource(effectSource) ? { source: analysisSource(effectSource) } : {})
         })
-        const dependencyExpressions = effect.dependencies.map((dependency, index) => dependency.kind === "derived" ? moduleIR.derived[dependency.derived].expression : ["state", dependencyEntries[index]?.name ?? ordinaryDependencies[index].text])
+        const hasExpressionDependency = dependencyEntries.some(entry => entry.kind === "derived")
+        const dependencyExpressions = hasExpressionDependency ? effect.dependencies.map((dependency, index) => dependency.kind === "derived" ? moduleIR.derived[dependency.derived].expression : ["state", dependencyEntries[index]?.name ?? ordinaryDependencies[index].text]) : []
+        const dependencyEvaluators = calculationEntries.length ? calculationEvaluators.map((evaluator, index) => evaluator ? factory.createObjectLiteralExpression([
+          factory.createSpreadAssignment(evaluator.descriptor),
+          factory.createPropertyAssignment("field", factory.createStringLiteral(dependencyEntries[index].field))
+        ]) : factory.createNull()) : []
         const buildCallback = [...packageBindings].some(([name]) => referenceIdentifiers(callback, name).length)
           ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createBlock([], false))
           : callback
@@ -1952,8 +2115,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           factory.createStringLiteral(specializedEffect ? sourceLocation(specializedEffect.source, specializedEffect.sourceFile) : sourceLocation(node, sourceFile)),
           effect.cleanup ? factory.createTrue() : factory.createFalse(),
           factory.createArrayLiteralExpression(effect.itemDependencies.map(field => factory.createStringLiteral(field))),
-          hasDerivedDependency ? jsonExpression(dependencyExpressions, factory) : factory.createArrayLiteralExpression(),
-          factory.createArrayLiteralExpression(dependencyStateNames.map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)])))
+          dependencyExpressions.length ? jsonExpression(dependencyExpressions, factory) : factory.createArrayLiteralExpression(),
+          factory.createArrayLiteralExpression(dependencyStateNames.map(name => factory.createArrayLiteralExpression([factory.createStringLiteral(name), factory.createIdentifier(name)]))),
+          factory.createArrayLiteralExpression(dependencyEvaluators)
         ])
       }
 
@@ -2030,7 +2194,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression) && !containsJsx(expression)) {
           usesBehavior = true
           usesBinding = true
-          return factory.updateJsxExpression(node, descriptors.compileReactiveBinding(expression, { setters, importBindings }).node)
+          return factory.updateJsxExpression(node, descriptors.compileReactiveBinding(expression, { setters, importBindings, derived: calculationBinding(node.expression, nearestFunction(node)) }).node)
         }
       }
 
@@ -2043,7 +2207,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if ((usedStates.size || captures.size) && !ts.isIdentifier(expression)) {
           usesBehavior = true
           usesBinding = true
-          const compiled = descriptors.compileReactiveBinding(expression, { setters, importBindings })
+          const compiled = descriptors.compileReactiveBinding(expression, { setters, importBindings, derived: calculationBinding(sourceExpression, nearestFunction(node)) })
           return factory.updateJsxAttribute(node, node.name, factory.createJsxExpression(undefined, compiled.node))
         }
       }
@@ -2070,6 +2234,27 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       }
 
       return ts.visitEachChild(node, visitor, context)
+    }
+
+    function calculationBinding(expression, owner) {
+      const calculations = calculationDerivedByOwner.get(owner)
+      if (!calculations?.size) return undefined
+      const fields = new Map()
+      const visit = node => {
+        const value = unwrapExpression(node)
+        if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(value.expression) && calculations.has(value.expression.text)) {
+          const derived = calculations.get(value.expression.text)
+          const entry = fields.get(derived.slot) ?? { derived, fields: new Set() }
+          entry.fields.add(value.name.text)
+          fields.set(derived.slot, entry)
+        }
+        ts.forEachChild(node, visit)
+      }
+      visit(expression)
+      if (fields.size !== 1) return undefined
+      const [{ derived, fields: selected }] = fields.values()
+      for (const field of selected) if (!derived.calculation.fields.includes(field)) derived.calculation.fields.push(field)
+      return { derived: derived.slot, fields: [...selected] }
     }
 
     const transformed = ts.visitNode(sourceFile, visitor)
@@ -2207,7 +2392,7 @@ function jsonExpression(value, factory) {
   return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("JSON"), "parse"), undefined, [factory.createStringLiteral(JSON.stringify(value))])
 }
 
-function isStateBackedListComponentCall(call, component, setters) {
+function isStateBackedListComponentCall(call, component, setters, propertyOnly = false) {
   if (component.parameters.length !== 1 || !ts.isObjectBindingPattern(component.parameters[0].name)) return false
   const attributes = ts.isJsxElement(call) ? call.openingElement.attributes : call.attributes
   const stateNames = new Set(setters.values())
@@ -2227,7 +2412,9 @@ function isStateBackedListComponentCall(call, component, setters) {
   let found = false
   const visit = node => {
     if (found || node !== returned && isFunctionLike(node)) return
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && ts.isIdentifier(node.expression.expression) && mappedProps.has(node.expression.expression.text)) {
+    const collection = ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" ? unwrapExpression(node.expression.expression) : undefined
+    const root = collection && ts.isPropertyAccessExpression(collection) ? unwrapExpression(collection.expression) : collection
+    if (root && ts.isIdentifier(root) && mappedProps.has(root.text) && (!propertyOnly || ts.isPropertyAccessExpression(collection))) {
       found = true
       return
     }
@@ -2235,6 +2422,75 @@ function isStateBackedListComponentCall(call, component, setters) {
   }
   visit(returned)
   return found
+}
+
+function referencesComponentProperty(expression, locals) {
+  let found = false
+  const visit = node => {
+    if (found) return
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(unwrapExpression(node.expression)) && locals.has(unwrapExpression(node.expression).text)) {
+      found = true
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(expression)
+  return found
+}
+
+function componentPropertyMutation(component, locals) {
+  let invalid
+  const root = expression => {
+    let value = unwrapExpression(expression)
+    while (ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value)) value = unwrapExpression(value.expression)
+    return ts.isIdentifier(value) ? value.text : undefined
+  }
+  const visit = node => {
+    if (invalid) return
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && node.operatorToken.kind <= ts.SyntaxKind.LastAssignment && locals.has(root(node.left))) invalid = node
+    else if ((ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) && locals.has(root(node.operand))) invalid = node
+    else if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && mutatingListMethods.has(node.expression.name.text) && locals.has(root(node.expression.expression))) invalid = node
+    if (!invalid) ts.forEachChild(node, visit)
+  }
+  visit(component)
+  return invalid
+}
+
+function prependJsxChild(root, child, factory) {
+  if (ts.isJsxElement(root)) return factory.updateJsxElement(root, root.openingElement, [child, ...root.children], root.closingElement)
+  const opening = factory.createJsxOpeningElement(root.tagName, root.typeArguments, root.attributes)
+  const closing = factory.createJsxClosingElement(root.tagName)
+  return factory.createJsxElement(opening, [child], closing)
+}
+
+function componentPropertyUses(component, returned, effectCalls) {
+  const locals = new Set(component.parameters[0].name.elements.filter(element => !element.dotDotDotToken && ts.isIdentifier(element.name)).map(element => element.name.text))
+  const uses = new Map()
+  const add = (local, field, consumer) => {
+    if (["__proto__", "constructor", "prototype"].includes(field)) return
+    const fields = uses.get(local) ?? new Map()
+    const consumers = fields.get(field) ?? new Set()
+    consumers.add(consumer)
+    fields.set(field, consumers)
+    uses.set(local, fields)
+  }
+  for (const call of effectCalls) {
+    const dependencies = call.arguments[1]
+    if (!ts.isArrayLiteralExpression(dependencies)) continue
+    for (const dependency of dependencies.elements) {
+      const value = unwrapExpression(dependency)
+      if (ts.isPropertyAccessExpression(value) && ts.isIdentifier(unwrapExpression(value.expression)) && locals.has(unwrapExpression(value.expression).text)) add(unwrapExpression(value.expression).text, value.name.text, "effect")
+    }
+  }
+  const visit = node => {
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(unwrapExpression(node.expression)) && locals.has(unwrapExpression(node.expression).text)) {
+      const map = ts.isPropertyAccessExpression(node.parent) && node.parent.expression === node && node.parent.name.text === "map" && ts.isCallExpression(node.parent.parent)
+      add(unwrapExpression(node.expression).text, node.name.text, map ? "list" : "binding")
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(returned)
+  return new Map([...uses].map(([local, fields]) => [local, [...fields].map(([field, consumers]) => ({ path: [field], consumers: ["binding", "effect", "list"].filter(consumer => consumers.has(consumer)) }))]))
 }
 
 function jsxCallHasDirectStateProp(call, setters) {
@@ -2264,10 +2520,6 @@ function componentHasDirectPropStateInitializer(component) {
   return component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isIdentifier(declaration.initializer.arguments[0]) && props.has(declaration.initializer.arguments[0].text)))
 }
 
-function componentHasDirectPrimitiveState(component, state) {
-  return Boolean(component && ts.isBlock(component.body) && component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isArrayBindingPattern(declaration.name) && ts.isIdentifier(declaration.name.elements[0]?.name) && declaration.name.elements[0].name.text === state && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && isPrimitiveDefaultLiteral(unwrapExpression(declaration.initializer.arguments[0])))))
-}
-
 function componentHasDirectObjectRef(component, ref) {
   if (!component || !ts.isBlock(component.body)) return false
   const declaration = component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(entry => ts.isIdentifier(entry.name) && entry.name.text === ref && entry.initializer && ts.isCallExpression(entry.initializer) && ts.isIdentifier(entry.initializer.expression) && entry.initializer.expression.text === "useRef" && entry.initializer.arguments.length === 1 && entry.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword))
@@ -2292,10 +2544,6 @@ function directSetterLiteralCallback(node, setters) {
   const expression = ts.isBlock(node.body) ? node.body.statements.length === 1 && ts.isExpressionStatement(node.body.statements[0]) ? node.body.statements[0].expression : undefined : node.body
   if (!expression || !ts.isCallExpression(expression) || !ts.isIdentifier(expression.expression) || !setters.has(expression.expression.text) || expression.arguments.length !== 1 || !isPrimitiveDefaultLiteral(unwrapExpression(expression.arguments[0]))) return undefined
   return { setter: expression.expression.text, value: unwrapExpression(expression.arguments[0]) }
-}
-
-function componentHasDirectArrayState(component, state) {
-  return Boolean(component && ts.isBlock(component.body) && component.body.statements.some(statement => ts.isVariableStatement(statement) && statement.declarationList.declarations.some(declaration => ts.isArrayBindingPattern(declaration.name) && ts.isIdentifier(declaration.name.elements[0]?.name) && declaration.name.elements[0].name.text === state && declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useState" && declaration.initializer.arguments.length === 1 && ts.isArrayLiteralExpression(unwrapExpression(declaration.initializer.arguments[0])))))
 }
 
 function directSetterPropEffect(component, setterProp) {
@@ -2649,6 +2897,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   }
   const substitutions = new Map()
   const acceptedProps = new Set()
+  const propLocals = new Set()
   let rest
   const elements = component.parameters[0].name.elements
   for (const [index, element] of elements.entries()) {
@@ -2661,10 +2910,15 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     if (element.initializer && !isSerializableStateLiteral(element.initializer)) fail(element.initializer, `${label} component prop defaults must be directly serializable primitive, plain-object, or array literals`)
     const prop = (element.propertyName ?? element.name).text
     acceptedProps.add(prop)
+    propLocals.add(element.name.text)
     substitutions.set(element.name.text, props.has(prop) ? props.get(prop) : element.initializer ?? factory.createIdentifier("undefined"))
   }
   const restEntries = [...props].filter(([prop]) => !acceptedProps.has(prop))
   if (!rest) for (const [prop] of restEntries) fail(call, `Unknown ${label.toLowerCase()} component prop "${prop}"`)
+  if (label === "Object-property component") {
+    const mutation = componentPropertyMutation(component, propLocals)
+    if (mutation) fail(mutation, "Object-property component props must remain immutable")
+  }
   const propAnalysis = elements.map(element => ({
     name: (element.propertyName ?? element.name).getText(),
     local: element.name.getText(),
@@ -2702,7 +2956,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         const substitutedProp = propReceiver ? substitutions.get(propReceiver.text) : undefined
         const substitutedState = substitutedProp && ts.isIdentifier(unwrapExpression(substitutedProp)) ? unwrapExpression(substitutedProp).text : undefined
         const directProp = ts.isIdentifier(initialArgument)
-        const parentInitializer = substitutedState ? directStateInitializer(call, substitutedState) : undefined
+        const parentInitializer = substitutedState ? directStateInitializer(nearestFunction(call), substitutedState) : undefined
         const propInitializer = ordinaryHooks && substitutedState && ordinaryStateNames.has(substitutedState) && parentInitializer && (isPrimitiveDefaultLiteral(parentInitializer) || directProp && (ts.isObjectLiteralExpression(parentInitializer) || ts.isArrayLiteralExpression(parentInitializer)))
         const rowItemProp = propReceiver && elements.find(element => !element.dotDotDotToken && ts.isIdentifier(element.name) && element.name.text === propReceiver.text)
         const rowItemInitializer = !ordinaryHooks && directProp && substitutedState && rowItemProp && directProps.has((rowItemProp.propertyName ?? rowItemProp.name).text)
@@ -2754,6 +3008,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         continue
       }
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
+      if (label === "Object-property component" && referencesComponentProperty(declaration.initializer, propLocals)) fail(declaration.initializer, "Object-property component property aliases are not supported; read the static prop.field path directly at each consumer")
       const calculation = substituteClone(declaration.initializer, substitutions, factory, context)
       calculations.push({ name: declaration.name.text, expression: calculation })
       substitutions.set(declaration.name.text, calculation)
@@ -2792,6 +3047,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     ordinaryStates,
     ordinaryRefs,
     ordinaryIds,
+    propertyUses: componentPropertyUses(component, returned, effectCalls),
     propExpressions: props,
     props: propAnalysis,
     usesComponentId: ordinaryIds.length > 0
@@ -2806,8 +3062,7 @@ function isSerializableStateLiteral(node) {
   return value.properties.every(property => ts.isPropertyAssignment(property) && !ts.isComputedPropertyName(property.name) && property.name.text !== "__proto__" && isSerializableStateLiteral(property.initializer))
 }
 
-function directStateInitializer(call, name) {
-  const owner = nearestFunction(call)
+function directStateInitializer(owner, name) {
   if (!owner || !ts.isBlock(owner.body)) return
   for (const statement of owner.body.statements) {
     if (!ts.isVariableStatement(statement)) continue
@@ -3138,10 +3393,34 @@ function importedSerializableCollectionNames(sourceFile, file, sourceFiles, sour
   return new Set(importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex).keys())
 }
 
-function importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex) {
+function importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex, onlyMapped = false) {
   const collections = new Map()
+  const mapped = new Set()
+  const memoNames = new Set(["useMemo"])
+  for (const statement of sourceFile.statements) if (ts.isImportDeclaration(statement) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)) {
+    for (const entry of statement.importClause.namedBindings.elements) if ((entry.propertyName ?? entry.name).text === "useMemo") memoNames.add(entry.name.text)
+  }
+  const collectRoot = node => {
+    if (ts.isPropertyAccessExpression(node) && ["filter", "flatMap", "slice", "toSorted", "map"].includes(node.name.text)) {
+      let expression = node.expression
+      while (ts.isCallExpression(expression) || ts.isPropertyAccessExpression(expression)) expression = expression.expression
+      if (ts.isIdentifier(expression)) mapped.add(expression.text)
+    }
+    ts.forEachChild(node, collectRoot)
+  }
+  const visit = node => {
+    if (ts.isPropertyAccessExpression(node) && node.name.text === "map") {
+      collectRoot(node)
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && memoNames.has(node.expression.text) && node.arguments[0]) collectRoot(node.arguments[0])
+    ts.forEachChild(node, visit)
+  }
+  if (onlyMapped) {
+    visit(sourceFile)
+    if (!mapped.size) return collections
+  }
   for (const [name, binding] of clientImportBindings(sourceFile, file, sourceFiles)) {
-    if (binding.kind !== "named") continue
+    if (binding.kind !== "named" || onlyMapped && !mapped.has(name)) continue
     const imported = parseSourceFile(binding.target, sourceIndex.get(binding.target))
     for (const statement of imported.statements) {
       if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const) || !statement.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) continue
@@ -3279,7 +3558,9 @@ function orderSourceStyles(entryFiles, sourceFiles, sourceIndex, staticFiles) {
   const visit = file => {
     if (seenSources.has(file)) return
     seenSources.add(file)
-    const sourceFile = parseSourceFile(file, sourceIndex.get(file))
+    const source = sourceIndex.get(file)
+    if (importFreeTypeScriptModule(file, source)) return
+    const sourceFile = parseSourceFile(file, source)
     for (const statement of sourceFile.statements) {
       if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) continue
       const specifier = statement.moduleSpecifier.text
@@ -3390,7 +3671,7 @@ const printHandlerModule = createHandlerCodegen({
 const { normalizeReactMigrationSyntax, validateUseIdSyntax } = createReactMigrationPass({ cloneAst, jsxTagName })
 const normalizeReactRouterSyntax = createRouterPass({ withBase })
 
-return { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles }
+return { collectClientModules, compileClientModule, compiledPath, compileSource, compileSourceAsync, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles }
 }
 
 const currentCompiler = sourceIndex => createSourceCompiler(createProjectSession(process.cwd(), { sourceIndex }))

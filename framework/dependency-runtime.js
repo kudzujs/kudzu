@@ -4,7 +4,7 @@ export function applyCommands(state, commands, commit, log = console.log) {
     const current = state.get(id)
     if (operation === "log") log(operand, current)
     else {
-      state.set(id, operation === "add" ? current + operand : operand)
+      state.set(id, operation === "add" ? current + operand : operation === "toggle" ? !current : operand)
       changed.add(id)
     }
   }

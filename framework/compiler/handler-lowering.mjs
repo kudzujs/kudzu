@@ -15,23 +15,22 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
       const visitor = node => {
         if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && reducers.has(node.expression.text) && matchesExternalReference(node.expression, expression, bindingIndex)) {
           const reducer = reducers.get(node.expression.text)
-          if (reducer.contextAction) {
-            const action = synthesizeTree(cloneAst(reducer.contextAction, factory, context))
-            const call = factory.createCallExpression(action, undefined, node.arguments)
+          if (reducer.directImplementation) {
+            const call = factory.createCallExpression(synthesizeTree(cloneAst(reducer.directImplementation, factory, context)), undefined, node.arguments.map(argument => ts.visitNode(argument, visitor)))
             ts.setParentRecursive(call, false)
             return ts.visitNode(call, visitor)
           }
-          if (reducer.sharedAction) return sharedActionDispatch(factory, reducer, node.arguments.map(argument => ts.visitNode(argument, visitor)))
+          if (reducer.sharedAction) return sharedActionDispatch(factory, reducer, node.arguments.map(argument => ts.visitNode(argument, visitor)), visitor, context)
           if (node.arguments.length !== 1) throw sourceNodeError(node, expression.getSourceFile(), "Reducer dispatches require exactly one action")
           return reducerDispatch(factory, reducer, ts.visitNode(node.arguments[0], visitor))
         }
         if (ts.isShorthandPropertyAssignment(node) && reducers.has(node.name.text) && matchesExternalReference(node.name, expression, bindingIndex)) {
-          if (reducers.get(node.name.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
+          if (reducers.get(node.name.text).directImplementation) throw sourceNodeError(node, expression.getSourceFile(), `${reducers.get(node.name.text).sourceKind} actions must be called directly inside an event handler`)
           if (reducers.get(node.name.text).sharedAction) throw sourceNodeError(node, expression.getSourceFile(), `${reducers.get(node.name.text).sourceKind} actions must be called directly inside an event handler`)
           return factory.createPropertyAssignment(node.name, reducerReference(factory, reducers.get(node.name.text)))
         }
         if (ts.isIdentifier(node) && reducers.has(node.text) && isReferenceIdentifier(node) && matchesExternalReference(node, expression, bindingIndex)) {
-          if (reducers.get(node.text).contextAction) throw sourceNodeError(node, expression.getSourceFile(), "Context actions must be called directly inside an event handler")
+          if (reducers.get(node.text).directImplementation) throw sourceNodeError(node, expression.getSourceFile(), `${reducers.get(node.text).sourceKind} actions must be called directly inside an event handler`)
           if (reducers.get(node.text).sharedAction) throw sourceNodeError(node, expression.getSourceFile(), `${reducers.get(node.text).sourceKind} actions must be called directly inside an event handler`)
           return reducerReference(factory, reducers.get(node.text))
         }
@@ -162,7 +161,13 @@ export function createHandlerLowering({ cloneAst, synthesizeTree }) {
     return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("__k"), "set"), undefined, [factory.createStringLiteral(reducer.state), update])
   }
 
-  function sharedActionDispatch(factory, reducer, args) {
+  function sharedActionDispatch(factory, reducer, args, visitor, context) {
+    const direct = reducer.sharedAction.directImplementation
+    if (direct) {
+      const call = factory.createCallExpression(synthesizeTree(cloneAst(direct, factory, context)), undefined, args)
+      ts.setParentRecursive(call, false)
+      return ts.visitNode(call, visitor)
+    }
     const previous = factory.createUniqueName("__kPrevious")
     const current = factory.createUniqueName("__kStore")
     const updateValue = factory.createUniqueName("__kUpdate")

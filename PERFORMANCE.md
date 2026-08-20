@@ -6,7 +6,85 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
-## Current 0.8.59 Release Snapshot
+## 0.9 Shared State And Actions
+
+Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. Baseline `abe87ceafbf70ed8eb2618976e2d1e18c378126f` and the candidate built identical final Context/Zustand cart source.
+
+| Fixture | Deploy files | Baseline and candidate JS raw / gzip | Baseline and candidate digest |
+|---|---:|---:|---|
+| Context cart | 18 | 29,951 / 13,065 B | `66897dce8fffd9e6bfb8b6a65ffba922a9f19d47dbb12c2a613dfb4b5685ee93` |
+| Zustand cart | 18 | 30,291 / 13,193 B | `9c157adc2ff9afef1c282d50cecf77f6c0d8be2251d996298155ffb396e50211` |
+
+The maintained Worker/effect graph also remains byte-identical at 907 raw / 477 gzip B for the Worker and 13,786 raw / 5,931 gzip B for the window graph. One warm-up and seven clean builds measured `[651.6,643.9,596.7,631.5,613.3,634.0,555.0]` for the baseline and `[456.6,441.3,450.2,461.8,445.7,466.8,457.5]` for the final candidate, with medians 631.5 and 456.6 ms. Targets ran sequentially at different times rather than interleaved, so this is only an artifact-size and build-completion diagnostic, not a timing comparison or claim. Required Chrome proves same-turn updates, dependency cleanup, navigation persistence, and exact layout disposal for both source models; static siblings remain zero JavaScript.
+
+## 0.9 Resource Lifecycle Evidence
+
+Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. Required-Chrome journeys execute terminal async acquisition/discard/late resolution, WebSocket dependency replacement/navigation release/stale callbacks, and package-backed effect cleanup. These are correctness journeys, not browser timing benchmarks.
+
+| Fixture graph | JavaScript raw / aggregate gzip | Static sibling |
+|---|---:|---:|
+| E2B-shaped terminal | 2,634 / 1,495 B | 0 B |
+| Route WebSocket with navigation | 15,872 / 7,163 B | 0 B |
+| Package-owned effect | 3,562,795 / 1,025,300 B | 0 B |
+
+No resource runtime, registry, or shared capability bytes were added. The package graph intentionally bundles TypeScript as isolation evidence; it is not a recommended payload and creates no package resource handle.
+
+The maintained Worker/effect benchmark remains 907 raw / 477 gzip B for the Worker graph and 13,786 raw / 5,931 gzip B for the window graph. One warm-up and seven final-candidate builds measured `[686.6,606.6,707.7,615.3,512.8,504.2,536.7]`, median 606.6 ms. This is a same-target completion diagnostic, not a revision comparison or timing claim.
+
+## 0.9 Component Object Properties
+
+Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. The WorkLedger-derived route emits 11 JavaScript files totaling 37,302 raw / 14,083 aggregate gzip B; its static sibling emits zero JavaScript. The route composes existing binding, list, native-handler, and effect families. No runtime family, browser component function, field state, or shared browser bytes were added.
+
+Required Chrome proves three repeated/conditional owners, selected array `Object.is` effect suppression, keyed identity, exact replacement cleanup/setup, conditional release/remount, and idempotent disposal. The maintained Worker/effect graph remains 907 raw / 477 gzip B for Worker and 13,786 raw / 5,931 gzip B for window output. One warm-up and seven same-target completion builds measured `[1162.6,1505.3,1140.8,938.0,758.9,753.8,717.3]`, median 938.0 ms; no comparative timing claim is made.
+
+## 0.9 Semantic Compression
+
+Measured 2026-08-19 on Linux x64 with Node 24.14.0 and Chrome 142.0.7444.175. The first 06B deletion replaces duplicated object-property and setter-callback compiler helper materialization with one internal function. Core semantic source falls from 5,296 to 5,271 lines. It adds no pass, IR kind, runtime concept, accepted source, or browser bytes.
+
+The WorkLedger deploy remains 13 files with digest `31886797161a33150afb3bcbf697545afd9d2041a4968decd33146e68d4b7595` and 37,302 raw / 14,083 aggregate gzip JavaScript bytes. The array-prop effect-sync deploy remains 10 files with digest `5e3bd8413e3d42c54e5c50d7098aa5c383e73846f7ad80201c663eae92393ec5` and 21,172 raw / 8,251 aggregate gzip JavaScript bytes.
+
+The maintained Worker/effect graph remains 907 raw / 477 gzip B for Worker and 13,786 raw / 5,931 gzip B for window output. One warm-up and seven same-target completion builds measured `[439.4,438.7,438.6,464.9,491.6,479.7,444.7]`, median 444.7 ms. No comparative timing claim is made.
+
+The second independent deletion removes primitive- and array-specific component-body scans in favor of the existing direct serializable state initializer lookup. Core semantic source falls another 7 lines to 5,264, for 32 lines removed in Session 06B. Parameterized-debounce output remains 13 files, 16,053 raw / 7,735 aggregate gzip JavaScript bytes, and deploy SHA-256 `b7106651c6a619b01a3e98101df4ac68f9262803e6729451ef03ed3971b36dc7`. Array-prop effect-sync output remains unchanged at the values above.
+
+The maintained Worker/effect graph again remains byte-identical. One warm-up and seven same-target completion builds measured `[584.0,521.7,552.6,496.7,481.4,507.7,494.2]`, median 507.7 ms. Host load differs from the first run, so no timing comparison is made.
+
+### 0.9 Final-Proof Candidate Diagnostics
+
+Measured 2026-08-19 on Linux x64, Node 24.14.0, Chrome 142.0.7444.175, and an Intel Core i5-9500. Local benchmark source and raw files remain ignored; accepted medians, artifact values, environment, candidate revision, and deploy digests are recorded in the final-proof audit.
+
+The five-target content application first exposed an 11,348 B Kudzu state-backed disclosure versus 410 B Astro inline JavaScript. Native `<details>/<summary>` preserves accessibility, disabled-JavaScript, native-navigation, and missing-script acceptance while reducing every target's route/session JavaScript to 0 B. Kudzu emits 8,441 total bytes and no deployed JavaScript; Astro emits 8,680 total bytes and no deployed JavaScript.
+
+Five-target runtime and capability matrices each used one warm-up, seven rotating clean builds, and seven fresh rotating Chrome profiles. Kudzu emits 33,831 raw / 13,236 gzip B JavaScript for the stateful matrix versus 193,685 / 60,035 B React, 64,023 / 24,772 B Vue, 40,726 / 15,659 B Svelte, and 195,371 / 61,352 B Astro+React. Median Kudzu scalar, row update, append, effect, and async operations are 0.9, 2.4, 3.2, 1.2, and 0.6 ms. Worker and navigation medians plus limitations are in the final-proof audit.
+
+The completed frozen C2 rerun expands that stateful matrix to immutable object replacement, multi-state derived output, keyed row-local state/effect/ref ownership, filter/restore, conditional cleanup/fresh remount, accessible SVG keyboard state, a static sibling, and blocked/delayed/missing-JavaScript acceptance. Across 21 fresh rotating profiles every target passes all 19 operations and ownership checks. Kudzu emits 43,567 raw / 16,408 gzip B deploy JavaScript and transfers 45,721 B in the session versus 196,089 / 60,661 B and 196,287 B React, 66,620 / 25,624 B and 66,817 B Vue, 44,046 / 16,818 B and 44,243 B Svelte, and 197,771 / 61,994 B and 198,361 B Astro+React. Fresh-process build RSS, deterministic digests, preload graphs, script CPU, and load/journey heap are recorded. Row-local ref resolution, synchronous cleanup, per-list lifecycle gating, shared list-item and ownership-path maps, item-dependency transport gating, structural row fill/ID plans, row-state release cleanup, and boolean-toggle specialization reduce Kudzu's row filter, row restore, and search restore medians from 34.6, 208.6, and 77.5 ms to 12.0, 62.6, and 51.6 ms. Row filter is faster than Vue's 13.3 ms; row restore and search restore are within 3.5% and 1.8% of their nearest comparator medians of 60.5 and 50.7 ms. C2 passes.
+
+The completed C5 rerun records 32 balanced Worker starts, invalidations, listener removals, terminations, and ignored late callbacks after replacement plus 30 mount/dispose cycles for every target, with zero stale mutations and zero final active handles. Kudzu emits 17,639 raw / 8,189 gzip B and transfers 19,402 B for that Worker session versus 193,422 / 60,159 B and 193,607 B React and 195,108 / 61,493 B and 195,685 B Astro+React. Uniform build RSS, deterministic digests, preload graphs, script CPU, load/journey/disposal heap, and active balances are recorded. Chrome reports zero `V8CompileDuration` for most targets, so `ScriptDuration` is the maintained uniform execution measure unless a later trace separates parse cost.
+
+The public commerce fixture prepares generated source and identical assets once per size outside the timed framework interval, then compares Kudzu and Astro with acceptance before timing and rotating cold/warm samples. Its Kudzu adapter now emits only the flattened page props and bounded collection rows actually compiled instead of a 37 MiB nested catalog literal. At 1,000 products and seven rotating runs, Kudzu cold/warm medians are 2,948.9 / 2,964.3 ms and peak RSS is 264,600 KiB versus Astro 3,835.3 / 3,845.0 ms and 408,100 KiB. Kudzu is 23.1% / 22.9% faster and uses 35.2% less peak RSS; it emits 1,011 pages, 10,057,806 B, and digest `468800762dd6977644e9d3f2bf018bd951cf08487fe42f99360d3b55db567cc9`.
+
+At 10,000 products, both targets pass sampled-product acceptance and emit 10,011 pages. Kudzu cold/warm medians are 22,614.0 / 22,150.6 ms versus Astro 23,198.1 / 23,438.2 ms, so Kudzu is 2.5% / 5.5% faster. One-shot CLI builds intern repeated RouteIR descriptors, update validated records in place, spool rendered HTML to staging until runtime families are known, stream the unchanged pretty plan in 64-route batches, and release standalone route plans after serialization; dev, incremental, navigation, and `afterBuild` retain their plans. Peak RSS falls 71.0% from 1,870,904 to 542,484 KiB, 11.4% below Astro's 612,412 KiB, while output remains 96,379,876 B with digest `811234693329ebd61eeceb6cd05e5d52473e5c81972a820253bf1aea664a0910`. The 10,000-route build-time and RSS gates pass.
+
+The final 2026-08-20 completion run passes `npm run check`, all 246 required-Chrome tests, fresh-install package smoke, and the maintained Worker benchmark. The Worker graph is 907 raw / 477 gzip B and the window graph is 14,093 raw / 6,037 gzip B; seven clean builds after one warm-up have a 535.9 ms median. This is a same-target completion diagnostic, not a revision timing claim.
+
+The public `kudzu-based-bench` storefront then received one warm-up and seven alternating clean builds at 100, 1,000, and 10,000 generated products against the preceding `bb7fdc5` commit. Baseline and candidate output is byte-identical at every size. Timing distributions overlap and no build improvement or regression is claimed.
+
+| Products | Pages / files | Output bytes | Baseline median | Candidate median |
+|---:|---:|---:|---:|---:|
+| 100 | 111 / 148 | 1,368,823 | 2,767.3 ms | 2,755.4 ms |
+| 1,000 | 1,011 / 1,048 | 10,164,835 | 8,407.7 ms | 8,190.3 ms |
+| 10,000 | 10,011 / 10,048 | 97,521,905 | 63,966.5 ms | 64,217.4 ms |
+
+```text
+100 baseline: [2671.0,2768.9,2881.5,2845.5,2767.3,2561.2,2705.8]
+100 candidate: [2746.4,2796.4,2755.4,2812.7,2590.6,2494.1,2767.2]
+1000 baseline: [8733.3,8059.4,8444.8,7923.9,7947.1,8407.7,8666.0]
+1000 candidate: [8048.9,7927.7,8711.0,8640.6,8190.3,8171.3,8746.9]
+10000 baseline: [65514.0,62738.0,64195.7,63610.6,63966.5,66885.2,63434.2]
+10000 candidate: [62222.9,63710.3,64217.4,64236.1,63288.2,65652.3,64977.8]
+```
+
+## Historical 0.8.59 Release Snapshot
 
 Kudzu 0.8.59 broadens existing compile-time setter-child specialization to one direct parent array-state prop and one direct `set*` setter prop in that prop-derived state shape. It adds no browser runtime code and makes no timing claim.
 

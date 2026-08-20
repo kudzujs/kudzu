@@ -7,8 +7,8 @@ export function generateCoreRuntime(source, capabilityIR) {
   if (!effects.itemDependencies && capabilityIR.runtime.shared) runtime = replaceRequired(runtime, /\/\* list-item-hooks \*\/[\s\S]*?\/\* list-item-hooks-end \*\/\n/, "", "list item hooks", "shared-runtime.js")
   if (effects.navigable) runtime = replaceRequired(runtime, "export function registerCommitter(commit) {\n  committers.push(commit)\n}", "export function registerCommitter(commit) {\n  committers.push(commit)\n  return () => {\n    const index = committers.indexOf(commit)\n    if (index !== -1) committers.splice(index, 1)\n  }\n}", "navigable committer", "shared-runtime.js")
   if (effects.navigableOwners) runtime = replaceSequenceRequired(runtime, [
-    ["export function registerMountHook(mount) {\n  mountHooks.push(mount)\n}", "export function registerMountHook(mount) {\n  mountHooks.push(mount)\n  return () => {\n    const index = mountHooks.indexOf(mount)\n    if (index !== -1) mountHooks.splice(index, 1)\n  }\n}", "navigable mount hook"],
-    ["export function registerUnmountHook(unmount) {\n  unmountHooks.push(unmount)\n}", "export function registerUnmountHook(unmount) {\n  unmountHooks.push(unmount)\n  return () => {\n    const index = unmountHooks.indexOf(unmount)\n    if (index !== -1) unmountHooks.splice(index, 1)\n  }\n}", "navigable unmount hook"]
+    ["export function registerMountHook(mount, capability) {\n  mountHooks.push({ mount, capability })\n}", "export function registerMountHook(mount, capability) {\n  const entry = { mount, capability }\n  mountHooks.push(entry)\n  return () => {\n    const index = mountHooks.indexOf(entry)\n    if (index !== -1) mountHooks.splice(index, 1)\n  }\n}", "navigable mount hook"],
+    ["export function registerUnmountHook(unmount, capability) {\n  unmountHooks.push({ unmount, capability })\n}", "export function registerUnmountHook(unmount, capability) {\n  const entry = { unmount, capability }\n  unmountHooks.push(entry)\n  return () => {\n    const index = unmountHooks.indexOf(entry)\n    if (index !== -1) unmountHooks.splice(index, 1)\n  }\n}", "navigable unmount hook"]
   ], "shared-runtime.js")
   return runtime
 }

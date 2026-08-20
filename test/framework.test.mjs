@@ -125,7 +125,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readRuntime(new URL("../", import.meta.url), "kudzu.js")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.8.59/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.9.0/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -142,12 +142,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.8\.59"/)
-  assert.match(release, /Kudzu 0\.8\.59.*Keep the array local.*Commit when ready/s)
-  assert.match(release, /SEED · EDIT · APPLY.*ARRAY PROP DRAFT STATE.*npm install @kudzujs\/core@\^0\.8\.59/s)
-  assert.match(release, /<title>Kudzu 0\.8\.59 - Array prop draft state<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.8\.59"/)
-  assert.match(release, /Start from the prop.*Keep arrays independent/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.9\.0"/)
+  assert.match(release, /Kudzu 0\.9\.0.*Keep the React shape.*Ship only the capability/s)
+  assert.match(release, /COMPRESS · SPECIALIZE · SHIP.*SEMANTIC COMPRESSION.*npm install @kudzujs\/core@\^0\.9\.0/s)
+  assert.match(release, /<title>Kudzu 0\.9\.0 - Semantic compression<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.9\.0"/)
+  assert.match(release, /Calculate without a runtime.*Erase provider machinery/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -538,7 +538,7 @@ test("removes unused initial state bootstrapping from both runtimes", async () =
 })
 
 test("applies setters immediately in source order and commits once", () => {
-  const state = new Map([["s0", 7]])
+  const state = new Map([["s0", 7], ["s1", false]])
   const commits = []
   const logs = []
 
@@ -547,7 +547,8 @@ test("applies setters immediately in source order and commits once", () => {
     ["log", "s0", "first"],
     ["add", "s0", 1],
     ["log", "s0", "second"],
-    ["add", "s0", -2]
+    ["add", "s0", -2],
+    ["toggle", "s1", false]
   ], (id, value) => {
     commits.push([id, value])
   }, (...values) => {
@@ -555,8 +556,9 @@ test("applies setters immediately in source order and commits once", () => {
   })
 
   assert.equal(state.get("s0"), 9)
+  assert.equal(state.get("s1"), true)
   assert.deepEqual(logs, [["first", 10], ["second", 11]])
-  assert.deepEqual(commits, [["s0", 9]])
+  assert.deepEqual(commits, [["s0", 9], ["s1", true]])
 })
 
 test("does not serialize unused state on static pages", async () => {
@@ -1014,6 +1016,68 @@ test("rejects dynamic reactive Intl locales", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Reactive JSX Intl\.NumberFormat requires exactly one static string locale/)
 })
 
+test("compiles a selected Derived field as an effect dependency", async t => {
+  const fixture = new URL("./fixtures/derived-medusa-product-actions", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/derived-medusa-product-actions/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/derived-medusa-product-actions/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const derived = source.moduleIR.derived.find(entry => entry.kind === "calculation")
+  assert.deepEqual(derived.calculation, { binding: 0, fields: ["id", "price", "available"] })
+  assert.deepEqual(derived.signals, [0, 1])
+  assert.deepEqual(source.moduleIR.bindings[0].signals, [0, 1])
+  assert.deepEqual(source.moduleIR.bindings[1].derived, { derived: derived.slot, fields: ["price"] })
+  assert.deepEqual(source.moduleIR.bindings[2].derived, { derived: derived.slot, fields: ["available"] })
+  assert.deepEqual(source.moduleIR.effects[0].dependencies, [{ kind: "derived", derived: derived.slot, sources: [0, 1], field: "id", evaluator: 0 }])
+  assert.deepEqual(source.moduleIR.effects[0].subscriptions, [0, 1])
+
+  const html = await readFile(new URL("./fixtures/derived-medusa-product-actions/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/derived-medusa-product-actions/dist/static/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/derived-medusa-product-actions/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  const effectEntry = await readFile(new URL("./fixtures/derived-medusa-product-actions/dist/assets/effects/index.js", import.meta.url), "utf8")
+  assert.match(html, /<output>.*20,000.*<button[^>]*>Add to cart/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(plan.effects[0].dependencyEvaluators[0].field, "id")
+  assert.deepEqual(plan.effects[0].dependencyEvaluators[0].states, { color: "s0", size: "s1" })
+  assert.match(effectEntry, /calculated dependency/)
+  assert.doesNotMatch(effectEntry, /evaluateCollectionExpression|kudzu-collection-selector/)
+  assert.equal(await hasRuntime("derived-medusa-product-actions", "kudzu-collection-selector.js"), false)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runDerivedCalculationBrowserTest(fixture, chrome)
+})
+
+test("reuses one Derived identity for an unrelated financial projection", async t => {
+  const fixture = new URL("./fixtures/derived-mercury-profit-sharing", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/derived-mercury-profit-sharing/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/derived-mercury-profit-sharing/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const derived = source.moduleIR.derived.find(entry => entry.kind === "calculation")
+  assert.deepEqual(derived.calculation, { binding: 0, fields: ["totalProfit", "totalRevenue", "rows"] })
+  assert.deepEqual(derived.signals, [0, 1, 2, 3])
+  assert.deepEqual(source.moduleIR.effects[0].dependencies, [{ kind: "derived", derived: derived.slot, sources: [0, 1, 2, 3], field: "totalProfit", evaluator: 0 }])
+  const calculatedBlock = source.moduleIR.keyedBlocks.find(block => block.collection.kind === "binding")
+  assert.ok(calculatedBlock)
+  assert.deepEqual(source.moduleIR.bindings[calculatedBlock.collection.binding].derived, { derived: derived.slot, fields: ["rows"] })
+
+  const html = await readFile(new URL("./fixtures/derived-mercury-profit-sharing/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/derived-mercury-profit-sharing/dist/static/index.html", import.meta.url), "utf8")
+  assert.match(html, /data-revenue[^>]*>.*2310.*data-profit[^>]*>.*462/s)
+  assert.match(html, /data-year="1"[^>]*>.*1100.*220.*data-year="2"[^>]*>.*1210.*242/s)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.equal(await hasRuntime("derived-mercury-profit-sharing", "kudzu-collection-selector.js"), false)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runMercuryDerivedBrowserTest(fixture, chrome)
+})
+
 test("compiles conditional DOM branches with nested behavior", async t => {
   const fixture = new URL("./fixtures/conditionals", import.meta.url)
   t.after(async () => {
@@ -1395,7 +1459,8 @@ test("owns ordinary keyed-row hooks by structural site and ancestor key path", a
   assert.match(component, /__kRowUseState\(\[\]/)
   assert.match(component, /__kRowUseRef/)
   assert.match(runtime, /structuredClone|structuredClone\w*/)
-  assert.match(runtime, /kRowPath/)
+  assert.match(runtime, /listRowPaths/)
+  assert.doesNotMatch(runtime, /kRowPath/)
   assert.equal(plan.lists.filter(list => list.rowStates).length, 3)
   assert.equal(plan.lists.filter(list => list.rowRefs).length, 2)
   assert.ok(plan.lists.some(list => list.selector?.some(operation => operation[0] === "filter") && Object.values(list.selectorStates ?? {}).includes("s1")))
@@ -1703,6 +1768,8 @@ test("lowers an effect-private E2B terminal handle without a resource runtime", 
   assert.match(handler, /\.resume\(\)/)
   assert.deepEqual(plan.effects[0].scope, {})
   assert.doesNotMatch(staticHtml, /<script/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runTerminalResourceBrowserTest(fixture, chrome)
 })
 
 test("owns effect-private WebSocket refs across replacement and cleanup", async t => {
@@ -1762,6 +1829,8 @@ test("owns effect-private WebSocket refs across replacement and cleanup", async 
   assert.notEqual(first, second)
   secondCleanup()
   assert.equal(second.closeCount, 1)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runWebSocketResourceBrowserTest(fixture, chrome)
 })
 
 test("rejects mutable refs shared by multiple effects", () => {
@@ -1986,6 +2055,59 @@ test("initializes setter-child state from a direct plain-object state prop", asy
   assert.match(html, /id="parent"[^>]*>.*initial.*<\/span>/)
   assert.match(html, /id="draft"[^>]*>.*initial.*<\/span>/)
   assert.deepEqual(plan.routes[0].states.map(state => state.initialValue), [{ text: "initial" }, { text: "initial" }])
+})
+
+test("propagates WorkLedger object properties through component consumers", async t => {
+  const fixture = new URL("./fixtures/object-prop-workledger-conversation", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/object-prop-workledger-conversation/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/object-prop-workledger-conversation/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const sourceResult = inspectSourceResult(fixture, "src/pages/index.tsx")
+  const html = await readFile(new URL("./fixtures/object-prop-workledger-conversation/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/object-prop-workledger-conversation/dist/static/index.html", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/object-prop-workledger-conversation/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  const emitted = (await Promise.all((await readdir(new URL("./fixtures/object-prop-workledger-conversation/dist/", import.meta.url), { recursive: true })).filter(file => file.endsWith(".js")).map(file => readFile(new URL(file, new URL("./fixtures/object-prop-workledger-conversation/dist/", import.meta.url)), "utf8")))).join("\n")
+  assert.equal((html.match(/data-instance=/g) ?? []).length, 4)
+  assert.equal((html.match(/data-message="message-1"/g) ?? []).length, 4)
+  assert.doesNotMatch(staticHtml, /<script/)
+  assert.doesNotMatch(emitted, /function ConversationView\b|["']react["']/)
+  assert.deepEqual(route.states.filter(state => !state.internal).map(state => state.name), ["conversation", "showConditional"])
+  assert.equal(route.effects.length, 3)
+  assert.ok(route.effects.every(effect => effect.dependencies[0] === "s0" && effect.dependencyExpressions[0][0] === "get" && effect.dependencyExpressions[0][2] === "messages"))
+  assert.equal(route.lists.length, 3)
+  assert.ok(route.lists.every(list => Object.values(list.source.states).join() === "s0"))
+  const links = sourceResult.componentAnalysis.specializations.map(specialization => specialization.props.find(prop => prop.name === "conversation").properties)
+  assert.equal(links.length, 3)
+  assert.ok(links.every(properties => JSON.stringify(properties) === JSON.stringify([
+    { signal: 0, path: ["messages"], consumers: ["effect", "list"], equality: "object-is" },
+    { signal: 0, path: ["label"], consumers: ["binding"], equality: "object-is" },
+  ])))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runObjectPropComponentBrowserTest(fixture, chrome)
+})
+
+test("rejects dynamic object-property component dependencies", () => {
+  const fixture = new URL("./fixtures/object-prop-component-dynamic-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/DynamicView\.tsx:\d+:\d+ useEffect\(\) object property dependencies require a direct static property path/)
+})
+
+test("rejects object-property component aliases", () => {
+  const fixture = new URL("./fixtures/object-prop-component-alias-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/AliasView\.tsx:\d+:\d+ Object-property component property aliases are not supported/)
+})
+
+test("rejects object-property component mutation", () => {
+  const fixture = new URL("./fixtures/object-prop-component-mutation-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/MutationView\.tsx:\d+:\d+ Object-property component props must remain immutable/)
 })
 
 test("initializes setter-child state from a direct array state prop", async t => {
@@ -2491,6 +2613,7 @@ test("compiles a Zustand-shaped store into shared layout state", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
   const output = new URL("./fixtures/zustand-migration/dist/", import.meta.url)
+  const staticHtml = await readFile(new URL("static/index.html", output), "utf8")
   const shellSource = inspectSourceResult(fixture, "src/Shell.tsx")
   const productSource = inspectSourceResult(fixture, "src/pages/index.tsx")
   const cartSource = inspectSourceResult(fixture, "src/pages/cart.tsx")
@@ -2505,14 +2628,68 @@ test("compiles a Zustand-shaped store into shared layout state", async t => {
   assert.deepEqual(productSource.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
   assert.deepEqual(cartSource.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
   assert.doesNotMatch(JSON.stringify([shellSource, productSource, cartSource].map(source => ({ sharedStates: source.moduleIR.sharedStates, sharedActions: source.moduleIR.sharedActions }))), /zustand|store-action|__kCreateStore/i)
-  for (const route of plan.routes) assert.deepEqual(route.states, [{ slot: 0, id: "ls0", name: "store.ts#useCart.quantities", initialValue: {}, lifetime: "layout" }])
-  for (const route of plan.routes) {
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  for (const route of plan.routes.filter(route => route.route !== "/static")) assert.deepEqual(route.states, [{ slot: 0, id: "ls0", name: "store.ts#useCart.quantities", initialValue: {}, lifetime: "layout" }])
+  for (const route of plan.routes.filter(route => route.route !== "/static")) {
     assert.deepEqual(route.effects[0].dependencies, ["ls0"])
     assert.deepEqual(route.effects[0].dependencyExpressions, [["binary", "??", ["get", ["state", "quantities"], "oak", false], ["value", 0]]])
     assert.deepEqual(route.effects[0].dependencyStates, { quantities: "ls0" })
   }
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
-  if (chrome) await runZustandMigrationBrowserTest(fixture, chrome)
+  if (chrome) await runSharedCartBrowserTest(fixture, chrome)
+})
+
+test("records the Context and Zustand shared-action boundary", async t => {
+  const contextFixture = new URL("./fixtures/context-shared-actions", import.meta.url)
+  const zustandFixture = new URL("./fixtures/zustand-migration", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/context-shared-actions/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/context-shared-actions/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: contextFixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+
+  const contextShell = inspectSourceResult(contextFixture, "src/Shell.tsx")
+  const contextProduct = inspectSourceResult(contextFixture, "src/pages/index.tsx")
+  const contextCart = inspectSourceResult(contextFixture, "src/pages/cart.tsx")
+  const zustandProduct = inspectSourceResult(zustandFixture, "src/pages/index.tsx")
+  const zustandCart = inspectSourceResult(zustandFixture, "src/pages/cart.tsx")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/context-shared-actions/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  const staticHtml = await readFile(new URL("./fixtures/context-shared-actions/dist/static/index.html", import.meta.url), "utf8")
+  const emitted = (await Promise.all((await readdir(new URL("./fixtures/context-shared-actions/dist/", import.meta.url), { recursive: true })).filter(file => /\.(?:html|js)$/.test(file)).map(file => readFile(new URL(file, new URL("./fixtures/context-shared-actions/dist/", import.meta.url)), "utf8")))).join("\n")
+
+  for (const source of [contextShell, contextProduct, contextCart]) {
+    assert.deepEqual(source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })), [{ slot: 0, field: "quantities" }])
+    assert.deepEqual(source.moduleIR.signals.map(signal => signal.reference.kind), ["shared-state"])
+  }
+  assert.deepEqual(contextShell.moduleIR.sharedActions, [])
+  assert.deepEqual(contextProduct.moduleIR.sharedActions, [{ slot: 0, state: 0, name: "add" }])
+  assert.deepEqual(contextCart.moduleIR.sharedActions, [{ slot: 0, state: 0, name: "remove" }])
+  assert.deepEqual(contextProduct.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
+  assert.deepEqual(contextCart.moduleIR.handlers.flatMap(handler => handler.actions ?? []), [0])
+  for (const route of plan.routes.filter(route => route.route !== "/static")) {
+    assert.deepEqual(route.states, [{ slot: 0, id: "ls0", name: "quantities", initialValue: {}, lifetime: "layout" }])
+    assert.deepEqual(route.effects[0].dependencies, ["ls0"])
+    assert.deepEqual(route.effects[0].dependencyExpressions, [["binary", "??", ["get", ["state", "quantities"], "oak", false], ["value", 0]]])
+    assert.deepEqual(route.effects[0].dependencyStates, { quantities: "ls0" })
+  }
+  assert.doesNotMatch(emitted, /(?:from\s*|import\s*\()["'](?:react|zustand)["']|createContext|useContext/)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSharedCartBrowserTest(contextFixture, chrome)
+
+  const sharedBoundary = source => ({
+    states: source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })),
+    actions: source.moduleIR.sharedActions.map(({ slot, state, name }) => ({ slot, state, name })),
+    handlerActions: source.moduleIR.handlers.flatMap(handler => handler.actions ?? []),
+    signalKinds: source.moduleIR.signals.map(signal => signal.reference.kind),
+  })
+  assert.deepEqual(
+    [sharedBoundary(contextProduct), sharedBoundary(contextCart)],
+    [sharedBoundary(zustandProduct), sharedBoundary(zustandCart)],
+    "Context actions must lower to the same package-neutral shared-state/action boundary as Zustand actions",
+  )
 })
 
 test("compiles actions returned through a relative Context hook", async t => {
@@ -2528,6 +2705,7 @@ test("compiles actions returned through a relative Context hook", async t => {
   const handlers = await readFile(new URL("./fixtures/context-actions/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
   const component = await readFile(new URL("./fixtures/context-actions/.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const provider = await readFile(new URL("./fixtures/context-actions/.kudzu/notes.mjs", import.meta.url), "utf8")
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
   const plan = JSON.parse(await readFile(new URL("./fixtures/context-actions/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   assert.match(html, /data-note="1"/)
   assert.match(html, /data-create="true" aria-label="consumer binding"/)
@@ -2536,6 +2714,20 @@ test("compiles actions returned through a relative Context hook", async t => {
   assert.doesNotMatch(handlers, /createContext|useContext|NotesContext/)
   assert.match(component, /setNotes: __kContext_setNotes, setActiveId/)
   assert.match(provider, /value: \{ notes, activeId, createNote, renameNote, deleteNote, selectNote, setNotes, setActiveId \}/)
+  assert.deepEqual(source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })), [
+    { slot: 0, field: "notes" },
+    { slot: 1, field: "activeId" },
+  ])
+  assert.deepEqual(source.moduleIR.sharedActions, [
+    { slot: 0, state: 0, name: "createNote" },
+    { slot: 1, state: 0, name: "renameNote" },
+    { slot: 2, state: 0, name: "deleteNote" },
+    { slot: 3, state: 1, name: "selectNote" },
+  ])
+  assert.deepEqual(source.moduleIR.handlers[0].actions, [0])
+  assert.deepEqual(source.moduleIR.handlers[0].signals.map(signal => signal.name), ["notes", "activeId"])
+  assert.deepEqual(source.moduleIR.signals.map(signal => signal.reference.kind), ["shared-state", "shared-state"])
+  assert.ok(source.componentAnalysis.owners.flatMap(owner => owner.states).every(state => state.owner.kind === "module-symbol"))
   assert.deepEqual(plan.routes[0].states.map(state => state.name), ["notes", "activeId"])
   assert.doesNotMatch(staticHtml, /<script|data-k-/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
@@ -2574,6 +2766,30 @@ test("aliases hidden Context action state around consumer bindings", () => {
   const fixture = new URL("./fixtures/context-actions-collision-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
+  assert.deepEqual(source.moduleIR.sharedStates.map(({ slot, field }) => ({ slot, field })), [{ slot: 0, field: "count" }])
+  assert.deepEqual(source.moduleIR.sharedActions, [{ slot: 0, state: 0, name: "increment" }, { slot: 1, state: 0, name: "toggle" }])
+  assert.equal(source.moduleIR.signals[0].reference.kind, "shared-state")
+  assert.deepEqual(source.moduleIR.handlers[0].commands, [{ operation: "add", signal: 0, value: 1 }])
+  assert.deepEqual(source.moduleIR.handlers[0].actions, [0])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('? 0 : 1')).actions, [1])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('"ping"')).actions, [])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('"ping"')).signals, [])
+  assert.deepEqual(source.moduleIR.handlers.find(handler => handler.code?.includes('"shadow"')).actions, [])
+})
+
+test("rejects dynamic Context Provider values", () => {
+  const fixture = new URL("./fixtures/context-actions-dynamic-provider-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/context\.tsx:\d+:\d+ Context Provider value must be one direct object literal/)
+})
+
+test("rejects multiple Context Providers", () => {
+  const fixture = new URL("./fixtures/context-actions-multiple-providers-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/context\.tsx:\d+:\d+ Relative Context hooks require exactly one Provider value in the Context module/)
 })
 
 test("rejects derived Zustand selectors", async t => {
@@ -2596,6 +2812,20 @@ test("rejects captured Zustand action helpers", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /Zustand action "add" cannot capture "increment"/)
+})
+
+test("rejects dynamic Zustand store fields", () => {
+  const fixture = new URL("./fixtures/zustand-dynamic-field-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Zustand selectors must be direct arrows such as state => state\.quantities/)
+})
+
+test("rejects Zustand store initialization in keyed ownership", () => {
+  const fixture = new URL("./fixtures/zustand-keyed-owner-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Derived keyed list item expressions cannot call arbitrary functions/)
 })
 
 test("rejects side-effect React imports", async t => {
@@ -3363,6 +3593,10 @@ test("bundles package imports used directly by owned effects", async t => {
   assert.match(handler, /5\.9\./)
   assert.match(html, /effects\/index\.js/)
   assert.doesNotMatch(staticHtml, /<script|typescript|5\.9\./)
+  assert.ok(Buffer.byteLength(handler) > 0)
+  assert.ok(gzipSync(handler).length > 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runPackageEffectBrowserTest(fixture, chrome)
 })
 
 test("rejects package imports hidden behind effect helpers", () => {
@@ -4946,7 +5180,7 @@ http.createServer((request, response) => {
           if (!canvas) await new Promise(resolve => setTimeout(resolve, 20))
         }
         if (!canvas) throw new Error("chart did not load")
-        for (let index = 0; index < 300 && Number(canvas.dataset.generated) < 1130 && !canvas.dataset.workerError; index++) await new Promise(resolve => setTimeout(resolve, 20))
+        for (let index = 0; index < 300 && Number(canvas.dataset.generated ?? 0) < 1130 && !canvas.dataset.workerError; index++) await new Promise(resolve => setTimeout(resolve, 20))
         return { ...canvas.dataset }
       })()
     `, port + 1, new URL(".chrome-worker-profile", output))
@@ -6155,6 +6389,47 @@ http.createServer((request, response) => {
   }
 }
 
+async function runObjectPropComponentBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => document.body.dataset.messageRuns === "3", "initial-effects")
+  const sections = [...document.querySelectorAll("[data-instance]")]
+  const messages = sections.map(section => section.querySelector('[data-message="message-1"]'))
+  document.querySelector("#rename").click()
+  await waitFor(() => [...document.querySelectorAll("[data-label]")].every(node => node.dataset.label === "Support" && node.querySelector("h2").textContent === "Support"), "rename")
+  if (document.body.dataset.messageRuns !== "3" || document.body.dataset.messageCleanups) throw new Error("rename-effects")
+  if (sections.some((section, index) => !section.isConnected || section.querySelector('[data-message="message-1"]') !== messages[index])) throw new Error("rename-identity")
+  document.querySelector("#add-message").click()
+  await waitFor(() => document.querySelectorAll('[data-message="message-2"]').length === 3 && document.body.dataset.messageRuns === "6" && document.body.dataset.messageCleanups === "3", "message-update")
+  if (sections.some((section, index) => section.querySelector('[data-message="message-1"]') !== messages[index])) throw new Error("message-identity")
+  document.querySelector("#toggle").click()
+  await waitFor(() => !document.querySelector('[data-instance="conditional"]') && document.body.dataset.messageCleanups === "4", "conditional-cleanup")
+  if (document.querySelector('[data-instance="first"]') !== sections[0] || document.querySelector('[data-instance="second"]') !== sections[1]) throw new Error("retained-sections")
+  document.querySelector("#toggle").click()
+  await waitFor(() => document.querySelector('[data-instance="conditional"]') && document.body.dataset.messageRuns === "7", "conditional-remount")
+  if (document.querySelector('[data-instance="conditional"]') === sections[2]) throw new Error("stale-conditional")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.messageCleanups === "7", "dispose")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.messageCleanups !== "7") throw new Error("repeat-dispose")
+  document.body.dataset.objectPropComponentTest = "pass"
+} catch (error) {
+  document.body.dataset.objectPropComponentTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-object-prop-component-test", value: "pass" }],
+  })
+}
+
 async function runReactShapedIntegrationBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -6395,7 +6670,7 @@ http.createServer((request, response) => {
   }
 }
 
-async function runZustandMigrationBrowserTest(fixture, chrome) {
+async function runSharedCartBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
   const html = await readFile(htmlUrl, "utf8")
@@ -6412,18 +6687,23 @@ try {
   const header = document.querySelector("[data-cart-header]")
   await waitFor(() => document.body.dataset.quantityLog === "|0")
   document.querySelector("[data-add]").click()
-  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "2" && document.body.dataset.quantityLog === "|0|2")
+  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "2" && document.body.dataset.quantityLog === "|0|2" && document.body.dataset.quantityCleanup === "|0")
   document.querySelector('a[href="/cart"]').click()
   await waitFor(() => document.querySelector('[data-route="cart"]') && document.querySelector("[data-oak-quantity]").textContent === "2")
-  if (document.querySelector("[data-cart-header]") !== header || document.body.dataset.quantityLog !== "|0|2") throw new Error("shared-state")
+  if (document.querySelector("[data-cart-header]") !== header || document.body.dataset.quantityLog !== "|0|2" || document.body.dataset.quantityCleanup !== "|0") throw new Error("shared-state")
   document.querySelector("[data-remove]").click()
-  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "0" && document.querySelector("[data-oak-quantity]").textContent === "0" && document.body.dataset.quantityLog === "|0|2|0")
+  await waitFor(() => document.querySelector("[data-cart-count]").textContent === "0" && document.querySelector("[data-oak-quantity]").textContent === "0" && document.body.dataset.quantityLog === "|0|2|0" && document.body.dataset.quantityCleanup === "|0|2")
   document.querySelector('a[href="/"]').click()
   await waitFor(() => document.querySelector('[data-route="product"]'))
   if (document.querySelector("[data-cart-header]") !== header || document.querySelector("[data-cart-count]").textContent !== "0") throw new Error("layout-lifetime")
-  document.body.dataset.zustandMigrationTest = "pass"
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.quantityCleanup === "|0|2|0")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.quantityCleanup !== "|0|2|0") throw new Error("layout-cleanup")
+  document.body.dataset.sharedCartTest = "pass"
 } catch (error) {
-  document.body.dataset.zustandMigrationTest = "fail-" + error.message
+  document.body.dataset.sharedCartTest = "fail-" + error.message
 }
 `)
   const port = nextBrowserPort()
@@ -6442,7 +6722,7 @@ http.createServer((request, response) => {
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
-    assert.match(browser.stdout, /data-zustand-migration-test="pass"/, browser.stdout.match(/<div class="error-code">([^<]+)/)?.[1] ?? browser.stderr)
+    assert.match(browser.stdout, /data-shared-cart-test="pass"/, browser.stdout.match(/<div class="error-code">([^<]+)/)?.[1] ?? browser.stderr)
   } finally {
     server.kill()
   }
@@ -6700,6 +6980,111 @@ http.createServer((request, response) => {
   }
 }
 
+async function runDerivedCalculationBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 100))
+try {
+  await wait()
+  const buttons = [...document.querySelectorAll("main button")]
+  const output = document.querySelector("output")
+  const cart = buttons.at(-1)
+  if (document.body.dataset.variant !== "black-m" || document.body.dataset.variantRuns !== "1" || output.textContent !== "20,000" || cart.disabled) throw new Error("initial")
+  buttons[0].click()
+  await wait()
+  if (document.body.dataset.variantRuns !== "1") throw new Error("object-is")
+  buttons[1].click()
+  await wait()
+  if (document.body.dataset.variant !== "ivory-m" || document.body.dataset.variantRuns !== "2" || output.textContent !== "20,000" || !cart.disabled) throw new Error("ivory-medium")
+  buttons[2].click()
+  await wait()
+  if (document.body.dataset.variant !== "ivory-s" || document.body.dataset.variantRuns !== "3" || output.textContent !== "19,000" || cart.disabled) throw new Error("ivory-small")
+  document.body.dataset.derivedCalculationTest = "pass"
+} catch (error) {
+  document.body.dataset.derivedCalculationTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url === "/" ? "index.html" : request.url.slice(1)
+  const file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-derived-calculation-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runMercuryDerivedBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 100))
+try {
+  await wait()
+  const buttons = [...document.querySelectorAll("main button")]
+  const revenue = document.querySelector("[data-revenue]")
+  const profit = document.querySelector("[data-profit]")
+  const rows = () => [...document.querySelectorAll("[data-year]")]
+  const first = rows()[0]
+  const second = rows()[1]
+  if (document.body.dataset.totalProfit !== "462" || revenue.textContent !== "2310" || profit.textContent !== "462" || rows().length !== 2) throw new Error("initial")
+  buttons[0].click()
+  await wait()
+  if (revenue.textContent !== "4620" || profit.textContent !== "924" || rows()[0] !== first || rows()[1] !== second) throw new Error("inputs")
+  buttons[3].click()
+  await wait()
+  const third = rows()[2]
+  if (rows().length !== 3 || rows()[0] !== first || rows()[1] !== second || !third || revenue.textContent !== "7282" || profit.textContent !== "1456") throw new Error("append")
+  buttons[4].click()
+  await wait()
+  if (rows().length !== 2 || third.isConnected) throw new Error("remove")
+  buttons[3].click()
+  await wait()
+  if (rows().length !== 3 || rows()[2] === third || rows()[0] !== first || rows()[1] !== second) throw new Error("restore")
+  document.body.dataset.mercuryDerivedTest = "pass"
+} catch (error) {
+  document.body.dataset.mercuryDerivedTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const relative = request.url === "/" ? "index.html" : request.url.slice(1)
+  const file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-mercury-derived-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
 async function runConditionalEffectBrowserTest(fixture, chrome) {
   const output = new URL("./dist/", `${fixture.href}/`)
   const htmlUrl = new URL("index.html", output)
@@ -6873,6 +7258,189 @@ http.createServer((request, response) => {
   } finally {
     server.kill()
   }
+}
+
+async function runResourceBrowserScenarios(fixture, chrome, { setup = "", script, scenarios, virtualTime = 5000 }) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  let html = await readFile(htmlUrl, "utf8")
+  if (setup) html = html.replace("</head>", `<script>${setup}</script></head>`)
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), script)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const pathname = new URL(request.url, "http://localhost").pathname
+  const file = path.join(root, pathname === "/" ? "index.html" : path.extname(pathname) ? pathname.slice(1) : pathname.slice(1) + "/index.html")
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    for (const scenario of scenarios) {
+      const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--virtual-time-budget=${virtualTime}`, "--dump-dom", `http://127.0.0.1:${port}${scenario.path}`], { encoding: "utf8", timeout: 15000 })
+      assert.equal(browser.status, 0, browser.stderr)
+      assert.match(browser.stdout, new RegExp(`${scenario.attribute}="${scenario.value}"`), browser.stderr)
+    }
+  } finally {
+    server.kill()
+  }
+}
+
+async function runTerminalResourceBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+globalThis.__terminalResolvers = []
+globalThis.__terminalCounts = { close: 0, resume: 0, remove: 0 }
+globalThis.__kTerminalOpen = () => new Promise(resolve => globalThis.__terminalResolvers.push(resolve))
+globalThis.__terminalHandle = () => ({
+  close() { globalThis.__terminalCounts.close += 1 },
+  resume() { globalThis.__terminalCounts.resume += 1 }
+})
+const remove = window.removeEventListener.bind(window)
+window.removeEventListener = (name, callback, options) => {
+  if (name === "pagehide" || name === "pageshow") globalThis.__terminalCounts.remove += 1
+  return remove(name, callback, options)
+}
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const mode = new URL(location.href).searchParams.get("mode")
+try {
+  await waitFor(() => globalThis.__terminalResolvers.length === 1, "acquire")
+  const resolve = globalThis.__terminalResolvers.shift()
+  if (mode === "normal") {
+    resolve(globalThis.__terminalHandle())
+    await waitFor(() => document.querySelector("p").textContent === "ready", "ready")
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }))
+    window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }))
+    await waitFor(() => globalThis.__terminalCounts.resume === 1, "resume")
+    if (globalThis.__terminalCounts.close !== 0) throw new Error("persisted-close")
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await waitFor(() => globalThis.__terminalCounts.close === 1 && globalThis.__terminalCounts.remove === 2, "dispose")
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await new Promise(resolve => setTimeout(resolve, 50))
+    if (globalThis.__terminalCounts.close !== 1 || globalThis.__terminalCounts.remove !== 2) throw new Error("repeat")
+  } else {
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await waitFor(() => globalThis.__terminalCounts.remove === 2, "late-dispose")
+    resolve(globalThis.__terminalHandle())
+    await waitFor(() => globalThis.__terminalCounts.close === 1, "late-close")
+    if (document.querySelector("p").textContent !== "starting") throw new Error("late-status")
+  }
+  document.body.dataset.terminalResourceTest = mode + "-pass"
+} catch (error) {
+  document.body.dataset.terminalResourceTest = mode + "-fail-" + error.message
+}
+`,
+    scenarios: [
+      { path: "/?mode=normal", attribute: "data-terminal-resource-test", value: "normal-pass" },
+      { path: "/?mode=late", attribute: "data-terminal-resource-test", value: "late-pass" },
+    ],
+  })
+}
+
+async function runWebSocketResourceBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+class FakeSocket {
+  static instances = []
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closeCount = 0
+    FakeSocket.instances.push(this)
+  }
+  addEventListener(name, callback) { this.listeners.set(name, callback) }
+  removeEventListener(name, callback) { if (this.listeners.get(name) === callback) this.listeners.delete(name) }
+  close() { this.closeCount += 1 }
+  fire(name) { this.listeners.get(name)?.() }
+}
+globalThis.WebSocket = FakeSocket
+globalThis.__sockets = FakeSocket.instances
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 150; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => globalThis.__sockets.length === 1, "first")
+  const header = document.querySelector("[data-socket-header]")
+  const first = globalThis.__sockets[0]
+  const staleFirstOpen = first.listeners.get("open")
+  first.fire("open")
+  await waitFor(() => document.querySelector("[data-socket-status]").textContent === "general: connected", "first-open")
+  document.querySelector("[data-change-room]").click()
+  await waitFor(() => globalThis.__sockets.length === 2 && first.closeCount === 1 && first.listeners.size === 0, "replace")
+  const second = globalThis.__sockets[1]
+  if (!second.url.endsWith("/rooms/support")) throw new Error("support-url")
+  staleFirstOpen()
+  if (document.querySelector("[data-socket-status]").textContent !== "support: connecting") throw new Error("stale-replacement")
+  const staleSecondError = second.listeners.get("error")
+  second.fire("open")
+  await waitFor(() => document.querySelector("[data-socket-status]").textContent === "support: connected", "second-open")
+  document.querySelector('a[href="/other"]').click()
+  await waitFor(() => document.querySelector('[data-route="other"]') && second.closeCount === 1 && second.listeners.size === 0, "route-release")
+  if (document.querySelector("[data-socket-header]") !== header) throw new Error("layout")
+  staleSecondError()
+  if (!document.querySelector('[data-route="other"]')) throw new Error("stale-route")
+  history.back()
+  await waitFor(() => document.querySelector("[data-socket-status]") && globalThis.__sockets.length === 3, "remount")
+  const third = globalThis.__sockets[2]
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => third.closeCount === 1 && third.listeners.size === 0, "dispose")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (third.closeCount !== 1) throw new Error("repeat")
+  document.body.dataset.websocketResourceTest = "pass"
+} catch (error) {
+  document.body.dataset.websocketResourceTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-websocket-resource-test", value: "pass" }],
+    virtualTime: 7000,
+  })
+}
+
+async function runPackageEffectBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => document.body.dataset.effectPackage?.startsWith("setup:5.9."), "setup")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.effectPackage?.startsWith("cleanup:5.9."), "cleanup")
+  const cleanup = document.body.dataset.effectPackage
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.effectPackage !== cleanup) throw new Error("repeat")
+  document.body.dataset.packageEffectTest = "pass"
+} catch (error) {
+  document.body.dataset.packageEffectTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-package-effect-test", value: "pass" }],
+  })
 }
 
 async function runNativeBubblingBrowserTest(fixture, chrome) {

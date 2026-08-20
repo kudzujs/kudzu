@@ -9,5 +9,5 @@ export default function Item({ id }: { id: string }) {
   useEffect(() => {
     document.body.dataset.ready = "true"
   }, [])
-  return <main><h1>{id}</h1><button onClick={() => setActive(!active)}>{active ? "Active" : "Idle"}</button></main>
+  return <main><h1>{id}</h1><button onClick={() => setActive(active === false)}>{active ? "Active" : "Idle"}</button></main>
 }

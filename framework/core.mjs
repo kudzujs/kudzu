@@ -170,7 +170,7 @@ function createInternalState(initialValue) {
   return signal
 }
 
-export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup, itemDependencies = [], dependencyExpressions = [], dependencyStates = []) {
+export function useEffect(callback, dependencies, module, handler, states, scope, source, cleanup, itemDependencies = [], dependencyExpressions = [], dependencyStates = [], dependencyEvaluators = []) {
   if (!renderContext) throw new Error("useEffect() can only run while rendering a Kudzu component")
   if (typeof callback !== "function" || !Array.isArray(dependencies) || !module || !handler) throw new Error("useEffect() must be compiled with a literal dependency array")
   if (itemDependencies.length && !renderContext.listDepth) throw new Error(`${source} useEffect() item-property dependencies are only supported in direct keyed row components`)
@@ -183,6 +183,12 @@ export function useEffect(callback, dependencies, module, handler, states, scope
     if (!dependency?.[signalMarker]) throw new Error(`${source} useEffect() derived dependency state ${JSON.stringify(name)} must be Kudzu state`)
     return [name, dependency.id]
   }))
+  const evaluators = dependencyEvaluators.map(evaluator => {
+    if (!evaluator || typeof evaluator.field !== "string" || ["__proto__", "constructor", "prototype"].includes(evaluator.field)) throw new Error(`${source} useEffect() calculation dependency requires a static safe field`)
+    const descriptor = reactiveDescriptor(evaluator.module, evaluator.handler, evaluator.states, evaluator.scope)
+    retainHandlerReference(descriptor.module, descriptor.handler)
+    return { ...descriptor, field: evaluator.field }
+  })
   let owner
   let list = false
   if (renderContext.listDepth) {
@@ -209,7 +215,7 @@ export function useEffect(callback, dependencies, module, handler, states, scope
     owners.push(owner)
   }
   if (!renderContext.listDepth || list) {
-    renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(dependencyExpressions.length ? { dependencyExpressions, dependencyStates: dependencyStateIds } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
+    renderContext.effects.push({ module, handler, states, scope, source, renderScope: renderContext.renderScope, ...(dependencyIds.length ? { dependencies: dependencyIds } : {}), ...(dependencyExpressions.length ? { dependencyExpressions, dependencyStates: dependencyStateIds } : {}), ...(evaluators.length ? { dependencyEvaluators: evaluators } : {}), ...(itemDependencies.length ? { itemDependencies, listState: renderContext.listRoot.state } : {}), ...(cleanup ? { cleanup: true } : {}), ...(owner ? { owner } : {}), ...(list ? { list: true } : {}) })
     retainHandlerReference(module, handler)
   }
   renderContext.hasBehaviors = true
@@ -434,11 +440,15 @@ function serializeCapture(name, value, seen) {
   if (value === undefined) return { type: "undefined" }
   if (typeof value !== "object") throw new Error(`Native capture "${name}" is not serializable: ${typeof value}`)
   if (seen.has(value)) throw new Error(`Native capture "${name}" is not serializable: cycle`)
+  const cached = renderContext?.captureCache.get(value)
+  if (cached) return cached
 
   seen.add(value)
   try {
     if (Array.isArray(value)) {
-      return { type: "array", value: Array.from(value, entry => serializeCapture(name, entry, seen)) }
+      const serialized = { type: "array", value: Array.from(value, entry => serializeCapture(name, entry, seen)) }
+      renderContext?.captureCache.set(value, serialized)
+      return serialized
     }
     const prototype = Object.getPrototypeOf(value)
     if (prototype !== Object.prototype && prototype !== null) {
@@ -451,14 +461,16 @@ function serializeCapture(name, value, seen) {
       if (!("value" in descriptor)) throw new Error(`Native capture "${name}" is not serializable: accessor`)
       entries.push([key, serializeCapture(name, descriptor.value, seen)])
     }
-    return { type: "object", nullPrototype: prototype === null, value: entries }
+    const serialized = { type: "object", nullPrototype: prototype === null, value: entries }
+    renderContext?.captureCache.set(value, serialized)
+    return serialized
   } finally {
     seen.delete(value)
   }
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], captureCache: new WeakMap(), sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -471,6 +483,7 @@ export async function renderPage(component, metadata = {}, props = {}, layout) {
           handler: effect.handler,
           ...(effect.dependencies ? { dependencies: effect.dependencies } : {}),
           ...(effect.dependencyExpressions ? { dependencyExpressions: effect.dependencyExpressions, dependencyStates: effect.dependencyStates } : {}),
+          ...(effect.dependencyEvaluators ? { dependencyEvaluators: effect.dependencyEvaluators } : {}),
           ...(effect.itemDependencies ? { itemDependencies: effect.itemDependencies, listState: effect.listState } : {}),
           ...(effect.cleanup ? { cleanup: true } : {}),
           ...(effect.owner ? { owner: effect.owner } : {}),
