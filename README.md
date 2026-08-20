@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.9.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.9.1 - Positional primitive lists.** JSON-safe primitive values now render in position-keyed collections while property-keyed rows retain their plain-object boundary. Read the [release notes](./RELEASES.md#091---positional-primitive-lists), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.9.1), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.9.2 - Legacy CSS safety.** Projects with source CSS but no explicit style ownership retain their pre-0.8.53 global styles with an actionable migration warning; explicit apps keep route-aware CSS unchanged. Read the [release notes](./RELEASES.md#092---legacy-css-safety), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.9.2), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

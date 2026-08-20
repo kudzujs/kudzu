@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.9.2 - Legacy CSS safety
+
+Kudzu 0.9.2 prevents pre-0.8.53 applications from silently producing an
+unstyled deploy after upgrading to route-aware CSS ownership.
+
+### Changed in 0.9.2
+
+- When no route imports CSS and `kudzu.config styles` is empty, source CSS is
+  linked globally in deterministic path order using the legacy behavior.
+- The build prints an actionable warning directing applications to explicit
+  source imports or global configuration.
+- Projects with any explicit CSS ownership retain unchanged route-aware output;
+  the fallback adds no browser JavaScript or explicit-path build work.
+
+### Validation
+
+- A two-route legacy fixture emits both unimported styles on both routes in path
+  order and keeps both routes JavaScript-free.
+- Configured global styles and explicit source-style tests retain their existing
+  output.
+- `npm run check`, `npm test`, and `npm run test:package` pass with 254 tests.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.9.2
+```
+
 ## 0.9.1 - Positional primitive lists
 
 Kudzu 0.9.1 allows JSON-safe primitive values in lists keyed by their authored

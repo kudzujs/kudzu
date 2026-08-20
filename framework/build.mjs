@@ -45,7 +45,7 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount, cache } = await buildInto(project, stagedOutput, { changedFiles, minify, retainCache })
+    const { result, pageCount, behaviorCount, cache } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache })
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
     project.buildCache = retainCache ? cache : undefined
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
@@ -63,7 +63,7 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   }
 }
 
-async function buildInto(project, outputDirectory, { changedFiles, minify, retainCache }) {
+async function buildInto(project, outputDirectory, { changedFiles, minify, quiet, retainCache }) {
   const { root, sourceDirectory, pagesDirectory, workDirectory } = project
   const previous = retainCache ? project.buildCache : undefined
   project.buildGeneration = (project.buildGeneration ?? 0) + 1
@@ -108,6 +108,14 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, retai
   for (const file of sourceFiles) sourceFileSet.add(file)
   const staticFiles = await safeStaticFiles(projectFiles)
   const stylesByPage = new Map(pageFiles.map(file => [file, orderSourceStyles([file], sourceFiles, sourceIndex, staticFiles).filter(style => !configuredStyleSources.has(style))]))
+  const explicitSourceStyles = new Set([...stylesByPage.values()].flat())
+  const legacyStyles = configuredStyles.sources.length || configuredStyles.urls.length || explicitSourceStyles.size
+    ? []
+    : [...staticFiles].filter(file => file.toLowerCase().endsWith(".css")).sort()
+  if (legacyStyles.length) {
+    for (const file of pageFiles) stylesByPage.set(file, legacyStyles)
+    if (!quiet) console.warn("Kudzu: no route imports CSS and kudzu.config styles is empty; applying the legacy global CSS fallback. Import CSS from reachable source or declare config.styles for route-aware output.")
+  }
   const cssFiles = [...new Set([...stylesByPage.values()].flat())]
   const importedAssets = new Set()
   const { cssModules, cssOutputs } = await prepareSourceStyles(cssFiles, staticFiles, importedAssets, base, project)

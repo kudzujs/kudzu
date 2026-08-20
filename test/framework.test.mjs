@@ -125,7 +125,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readRuntime(new URL("../", import.meta.url), "kudzu.js")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.9.1/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.9.2/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -142,12 +142,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.9\.1"/)
-  assert.match(release, /Kudzu 0\.9\.1.*Render primitive rows.*Keep keyed data strict/s)
-  assert.match(release, /POSITION · VALIDATE · SHIP.*POSITIONAL COLLECTIONS.*npm install @kudzujs\/core@\^0\.9\.1/s)
-  assert.match(release, /<title>Kudzu 0\.9\.1 - Positional primitive lists<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.9\.1"/)
-  assert.match(release, /Render direct values.*Keep object keys strict/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.9\.2"/)
+  assert.match(release, /Kudzu 0\.9\.2.*Keep the styles.*Make ownership explicit/s)
+  assert.match(release, /PRESERVE · WARN · MIGRATE.*CSS MIGRATION SAFETY.*npm install @kudzujs\/core@\^0\.9\.2/s)
+  assert.match(release, /<title>Kudzu 0\.9\.2 - Legacy CSS safety<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.9\.2"/)
+  assert.match(release, /Keep legacy CSS.*Protect explicit apps/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -222,6 +222,24 @@ test("emits configured global styles in every document head", async t => {
     assert.doesNotMatch(html, /<script/)
   }
   assert.equal(await readFile(new URL("./fixtures/global-styles/dist/assets/generated.css", import.meta.url), "utf8"), "main { color: rebeccapurple; }")
+})
+
+test("preserves legacy global CSS when no route declares style ownership", async t => {
+  const fixture = new URL("./fixtures/legacy-global-styles", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/legacy-global-styles/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/legacy-global-styles/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  assert.match(`${result.stdout}\n${result.stderr}`, /applying the legacy global CSS fallback/)
+  for (const route of ["", "about/"]) {
+    const html = await readFile(new URL(`./fixtures/legacy-global-styles/dist/${route}index.html`, import.meta.url), "utf8")
+    assert.match(html, /href="\/assets\/a\.css".*href="\/assets\/z\.css"/)
+    assert.doesNotMatch(html, /<script/)
+  }
+  assert.equal(await readFile(new URL("./fixtures/legacy-global-styles/dist/assets/a.css", import.meta.url), "utf8"), "html { color: navy; }\n")
+  assert.equal(await readFile(new URL("./fixtures/legacy-global-styles/dist/assets/z.css", import.meta.url), "utf8"), "main { display: grid; }\n")
 })
 
 test("builds declarative document metadata, source styles, and public assets", async t => {
