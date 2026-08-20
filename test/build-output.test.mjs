@@ -195,6 +195,13 @@ test("incremental builds compile and render only affected routes", async t => {
   assert.doesNotMatch(await readFile(join(fixture, "dist", "index.html"), "utf8"), /<script type="module"/)
   const expected = await fileManifest(join(fixture, "dist"))
 
+  const oneShot = await buildWithSession(project, { quiet: true, minify: false, retainCache: false })
+  assert.deepEqual(oneShot.incremental, { compiledModules: 4, renderedPages: 2 })
+  assert.equal(project.buildCache, undefined)
+  const afterOneShot = await buildWithSession(project, { changedFiles: [], quiet: true, minify: false })
+  assert.deepEqual(afterOneShot.incremental, { compiledModules: 4, renderedPages: 2 })
+  assert.deepEqual(await fileManifest(join(fixture, "dist")), expected)
+
   const cleanBuild = `const { build } = await import(${JSON.stringify(new URL("../framework/build.mjs", import.meta.url).href)}); await build({ root: process.cwd(), quiet: true, minify: false })`
   const clean = spawnSync(process.execPath, ["--input-type=module", "--eval", cleanBuild], { cwd: fixture, encoding: "utf8" })
   assert.equal(clean.status, 0, `${clean.stdout}\n${clean.stderr}`)

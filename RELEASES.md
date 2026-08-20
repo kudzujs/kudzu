@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.9.0 - Semantic compression
+
+Kudzu 0.9.0 consolidates evidence-backed React migration shapes onto the existing signal, handler, effect, component-ownership, and keyed-list semantics without adding React, hydration, a VDOM, or a retained browser component tree.
+
+### Changed in 0.9.0
+
+- Relative calculated result fields, Context and reduced Zustand actions, object-property component consumers, custom hooks, refs, and multi-boundary callbacks specialize through existing package-neutral IR and ownership.
+- Keyed row state, effects, refs, conditions, nested collections, SVG, and reactive selectors preserve identity and cleanup with route-specific capabilities only.
+- One-shot production builds intern repeated route descriptors, stream plan evidence, release standalone plans, and stage rendered HTML until runtime families are known.
+- `create-kudzu@0.1.103` generates projects on the `@kudzujs/core@^0.9.0` line.
+
+### Performance
+
+- The frozen 21-profile C2 matrix passes all 19 behavior and ownership checks; row filter is faster than Vue, while row restore and search restore are within 3.5% and 1.8% of their nearest comparators.
+- At 10,000 products Kudzu emits 10,011 accepted pages with cold/warm medians of 22,614.0 / 22,150.6 ms and 542,484 KiB peak RSS, versus Astro's 23,198.1 / 23,438.2 ms and 612,412 KiB.
+- Static C1 routes ship zero JavaScript, and C5 Worker replacement/disposal finishes with balanced ownership and zero stale mutations or active handles.
+
+### Validation
+
+- `npm run check` and all 246 required-Chrome tests pass.
+- Fresh-install package smoke and maintained production benchmarks pass.
+- The 10,000-product deploy remains 96,379,876 B with SHA-256 `811234693329ebd61eeceb6cd05e5d52473e5c81972a820253bf1aea664a0910`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.9.0
+```
+
 ## 0.8.62 - Outside-click hook ownership
 
 Kudzu 0.8.62 compiles the ClimateCompatibleGrowth `createRef()` and parameterized outside-click custom-hook shape through existing DOM-ref, effect-capture, and cleanup ownership.

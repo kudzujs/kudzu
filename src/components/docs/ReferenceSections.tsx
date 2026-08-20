@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.8.59 release context</strong><span>The maintained cross-framework matrix below remains the 0.8.41 snapshot. The 0.8.45 source-scale result remains the latest compiler timing comparison; 0.8.59 adds direct array-prop draft initialization and makes no new timing claim.</span></div>
+    <div className="docs-callout"><strong>Current 0.9.0 release context</strong><span>The final proof passes the C1/C2/C5 browser gates and the 10,000-product build-time and peak-RSS gates. The table below remains the historical 0.8.41 runtime snapshot; complete 0.9 evidence is recorded in PERFORMANCE.md.</span></div>
     <h3>Runtime matrix</h3>
     <BenchmarkTable columns={["Target", "Build", "JS raw / gzip", "Total raw / gzip", "Initial DOM"]} rows={[
       ["Kudzu 0.8.41 snapshot", "1,475.480 ms", "33,575 / 12,928 B", "212,963 / 49,936 B", "532.9 ms"],

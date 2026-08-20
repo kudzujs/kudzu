@@ -18,7 +18,7 @@ import { createCommandSpecializer } from "../framework/compiler/optimize/command
 import { createParamCodegen } from "../framework/compiler/param-codegen.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
 import { normalizeRenderControlFlow } from "../framework/compiler/render-control-pass.mjs"
-import { createRouteBuildRecord, planRouteArtifacts } from "../framework/compiler/route-build-record.mjs"
+import { assertRouteBuildRecord, createRouteBuildRecord, planRouteArtifacts, releaseRouteBuildRecordPlan } from "../framework/compiler/route-build-record.mjs"
 import { createRouteArtifactReport } from "../framework/compiler/route-artifact-report.mjs"
 import { assertCapabilityIR, planRouteCapabilities, usesRouteDependencyRuntime } from "../framework/compiler/route-capability-planner.mjs"
 import { planRuntimeFamilies } from "../framework/compiler/runtime-family-planner.mjs"
@@ -1028,6 +1028,14 @@ test("plans route artifacts from structural handler and effect edges", () => {
   assert.deepEqual(artifacts.styles, ["/assets/style.css"])
   assertJsonData(record)
   assert.deepEqual(JSON.parse(JSON.stringify(record)), record)
+})
+
+test("marks serialized route plans as explicitly released", () => {
+  const record = routeRecord(routePlan())
+  releaseRouteBuildRecordPlan(record)
+  assert.equal(assertRouteBuildRecord(record), record)
+  record.plan = routePlan()
+  assert.throws(() => assertRouteBuildRecord(record), /Released RouteBuildRecord plan was restored/)
 })
 
 test("reports exact route capability and bundled chunk closure", () => {
