@@ -63,7 +63,7 @@ export function assertRouteIR(plan, { concrete = false } = {}) {
 function assertEvent(event, index, ids) {
   if (!isRecord(event) || !nonempty(event.event) || event.commands === undefined && event.native === undefined) throw new Error(`Invalid RouteIR v1 event at index ${index}`)
   for (const command of event.commands ?? []) {
-    if (!Array.isArray(command) || command.length !== 3 || !["set", "add", "log"].includes(command[0])) throw new Error(`RouteIR event ${index} command has unsupported operation ${JSON.stringify(command?.[0])}`)
+    if (!Array.isArray(command) || command.length !== 3 || !["set", "add", "toggle", "log"].includes(command[0])) throw new Error(`RouteIR event ${index} command has unsupported operation ${JSON.stringify(command?.[0])}`)
     if (!ids.has(command[1]) && !rowTemplate(command[1])) throw new Error(`RouteIR event ${index} command references missing state ${JSON.stringify(command[1])}`)
     if (command[0] === "add" && (typeof command[2] !== "number" || !Number.isFinite(command[2]))) throw new Error(`RouteIR event ${index} add command requires a finite number`)
   }

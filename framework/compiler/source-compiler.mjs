@@ -1,6 +1,6 @@
 import { readFile, realpath, stat } from "node:fs/promises"
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path"
-import { transformSync } from "esbuild"
+import { transform, transformSync } from "esbuild"
 import ts from "typescript"
 import { createBindingIndex } from "./analysis/binding-index.mjs"
 import { createComponentAnalysisSession } from "./analysis/component-analysis.mjs"
@@ -32,7 +32,13 @@ const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
 const importFreeModules = new Map()
 const staticAssetExtensions = new Set([".avif", ".gif", ".ico", ".jpeg", ".jpg", ".otf", ".png", ".svg", ".ttf", ".webp", ".woff", ".woff2"])
 
-function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
+async function compileSourceAsync(file, sourceFiles, sourceIndex, staticFiles, cssModules, base) {
+  const source = sourceIndex.get(file)
+  const output = importFreeTypeScriptModule(file, source) ? (await transform(source, { loader: "ts", format: "esm", target: "es2022", sourcefile: file })).code : undefined
+  return compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base, output)
+}
+
+function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base, importFreeOutput) {
   const importedAssets = new Set()
   const source = sourceIndex.get(file)
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
@@ -40,7 +46,7 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
   const importFreePlain = importFreeTypeScriptModule(file, source)
   const plain = importFreePlain || plainTypeScriptModule(file, source, sourceFiles)
   if (plain && counters) counters.plainModules = (counters.plainModules ?? 0) + 1
-  const result = importFreePlain ? { outputText: transformSync(source, { loader: "ts", format: "esm", target: "es2022", sourcefile: file }).code } : ts.transpileModule(source, {
+  const result = importFreePlain ? { outputText: importFreeOutput ?? transformSync(source, { loader: "ts", format: "esm", target: "es2022", sourcefile: file }).code } : ts.transpileModule(source, {
     fileName: file,
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -3665,7 +3671,7 @@ const printHandlerModule = createHandlerCodegen({
 const { normalizeReactMigrationSyntax, validateUseIdSyntax } = createReactMigrationPass({ cloneAst, jsxTagName })
 const normalizeReactRouterSyntax = createRouterPass({ withBase })
 
-return { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles }
+return { collectClientModules, compileClientModule, compiledPath, compileSource, compileSourceAsync, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles }
 }
 
 const currentCompiler = sourceIndex => createSourceCompiler(createProjectSession(process.cwd(), { sourceIndex }))

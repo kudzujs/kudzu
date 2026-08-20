@@ -319,6 +319,8 @@ test("specializes exact command forms to plain data", () => {
   assert.deepEqual(command("setCount(-0)"), { operation: "set", state: "count", value: 0, syntax: "negative" })
   assert.deepEqual(command("setCount(count - 0)"), { operation: "add", state: "count", value: 0, syntax: "negative" })
   assert.deepEqual(command("setCount(value => value - 0)"), { operation: "add", state: "count", value: 0, syntax: "negative" })
+  assert.deepEqual(command("setCount(!count)"), { operation: "toggle", state: "count", value: false })
+  assert.deepEqual(command("setCount(value => !value)"), { operation: "toggle", state: "count", value: false })
   assert.deepEqual(command("setCount(\"ready\")"), { operation: "set", state: "count", value: "ready" })
   assert.deepEqual(command("console.log(\"count\", count)"), { operation: "log", state: "count", value: "count" })
   assert.equal(command("setCount(count * 2)"), undefined)
@@ -1120,9 +1122,11 @@ test("plans binding and list runtime specializations", () => {
   assert.equal(manifest.lists.generalRowHooks, true)
   assert.equal(manifest.lists.svg, true)
   assert.equal(manifest.runtime.shared, true)
-  const runtime = generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest).source
-  assert.match(runtime, /addedNodes\?\.length > 32 && addedNodes\.length \* 2 > next\.length && addedNodes\.length \* 2 > parent\.children\.length && !list\.descriptor\.children && !list\.descriptor\.ownerField\) mountDom\(parent\)/)
-  assert.match(runtime, /else if \(addedNodes\) for \(const node of addedNodes\) mountDom\(node\)/)
+  const generated = generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest)
+  const runtime = generated.source
+  assert.equal(generated.define.__KUDZU_LIST_EFFECTS__, "false")
+  assert.match(runtime, /addedNodes\?\.length > 32 && addedNodes\.length \* 2 > next\.length && addedNodes\.length \* 2 > parent\.children\.length && !list\.descriptor\.children && !list\.descriptor\.ownerField\) mountDom\(parent, list\.lifecycle\)/)
+  assert.match(runtime, /else if \(addedNodes\) for \(const node of addedNodes\) mountDom\(node, list\.lifecycle\)/)
 })
 
 test("plans native, effect, capture, and dependency runtime capabilities", () => {
@@ -1134,6 +1138,7 @@ test("plans native, effect, capture, and dependency runtime capabilities", () =>
   assert.deepEqual(manifest.events.native, ["submit"])
   assert.equal(manifest.events.hasNativeHandlers, true)
   assert.deepEqual(manifest.effects, { any: true, derivedDependencies: true, itemDependencies: true, captures: true, navigable: true, navigableOwners: true })
+  assert.equal(generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest).define.__KUDZU_LIST_EFFECTS__, "true")
   assert.deepEqual(manifest.captures, { nestedState: true, setter: true })
   assert.equal(manifest.runtime.shared, true)
   assert.equal(usesRouteDependencyRuntime({ plan: routePlan({ states: [{ slot: 0, id: "count", name: "count", initialValue: 0 }], effects: [{ module: "/handler.js", handler: "effect1", states: {}, scope: {}, dependencies: ["count"] }] }), navigable: false, hasBindings: false, hasLists: false }), true)

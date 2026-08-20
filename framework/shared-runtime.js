@@ -2,7 +2,7 @@ export function applyCommands(state, commands, commit, log = console.log) {
   if (commands.length === 1 && commands[0][0] !== "log") {
     const [operation, id, operand] = commands[0]
     const current = state.get(id)
-    const value = operation === "add" ? current + operand : operand
+    const value = operation === "add" ? current + operand : operation === "toggle" ? !current : operand
     state.set(id, value)
     commit(id, value)
     return
@@ -15,7 +15,7 @@ export function applyCommands(state, commands, commit, log = console.log) {
       log(operand, current)
       continue
     }
-    state.set(id, operation === "add" ? current + operand : operand)
+    state.set(id, operation === "add" ? current + operand : operation === "toggle" ? !current : operand)
     changed.add(id)
   }
 
@@ -23,6 +23,8 @@ export function applyCommands(state, commands, commit, log = console.log) {
 }
 
 export const browserState = new Map()
+export const listItems = new WeakMap()
+export const listRowPaths = new WeakMap()
 const committers = []
 const mountHooks = []
 const unmountHooks = []
@@ -52,12 +54,12 @@ export function registerCommitter(commit) {
   committers.push(commit)
 }
 
-export function registerMountHook(mount) {
-  mountHooks.push(mount)
+export function registerMountHook(mount, capability) {
+  mountHooks.push({ mount, capability })
 }
 
-export function registerUnmountHook(unmount) {
-  unmountHooks.push(unmount)
+export function registerUnmountHook(unmount, capability) {
+  unmountHooks.push({ unmount, capability })
 }
 
 export function registerStateReleaseHook(release) {
@@ -100,14 +102,14 @@ function unmountText(root) {
   }
 }
 
-export function mountDom(root) {
-  mountText(root)
-  for (const mount of mountHooks) mount(root)
+export function mountDom(root, capabilities) {
+  if (!capabilities || capabilities.includes("text")) mountText(root)
+  for (const entry of mountHooks) if (!capabilities || !entry.capability || capabilities.includes(entry.capability)) entry.mount(root)
 }
 
-export function unmountDom(root) {
-  for (const unmount of unmountHooks) unmount(root)
-  unmountText(root)
+export function unmountDom(root, capabilities) {
+  for (const entry of unmountHooks) if (!capabilities || !entry.capability || capabilities.includes(entry.capability)) entry.unmount(root)
+  if (!capabilities || capabilities.includes("text")) unmountText(root)
 }
 
 if (typeof document !== "undefined") {

@@ -538,7 +538,7 @@ test("removes unused initial state bootstrapping from both runtimes", async () =
 })
 
 test("applies setters immediately in source order and commits once", () => {
-  const state = new Map([["s0", 7]])
+  const state = new Map([["s0", 7], ["s1", false]])
   const commits = []
   const logs = []
 
@@ -547,7 +547,8 @@ test("applies setters immediately in source order and commits once", () => {
     ["log", "s0", "first"],
     ["add", "s0", 1],
     ["log", "s0", "second"],
-    ["add", "s0", -2]
+    ["add", "s0", -2],
+    ["toggle", "s1", false]
   ], (id, value) => {
     commits.push([id, value])
   }, (...values) => {
@@ -555,8 +556,9 @@ test("applies setters immediately in source order and commits once", () => {
   })
 
   assert.equal(state.get("s0"), 9)
+  assert.equal(state.get("s1"), true)
   assert.deepEqual(logs, [["first", 10], ["second", 11]])
-  assert.deepEqual(commits, [["s0", 9]])
+  assert.deepEqual(commits, [["s0", 9], ["s1", true]])
 })
 
 test("does not serialize unused state on static pages", async () => {
@@ -1457,7 +1459,8 @@ test("owns ordinary keyed-row hooks by structural site and ancestor key path", a
   assert.match(component, /__kRowUseState\(\[\]/)
   assert.match(component, /__kRowUseRef/)
   assert.match(runtime, /structuredClone|structuredClone\w*/)
-  assert.match(runtime, /kRowPath/)
+  assert.match(runtime, /listRowPaths/)
+  assert.doesNotMatch(runtime, /kRowPath/)
   assert.equal(plan.lists.filter(list => list.rowStates).length, 3)
   assert.equal(plan.lists.filter(list => list.rowRefs).length, 2)
   assert.ok(plan.lists.some(list => list.selector?.some(operation => operation[0] === "filter") && Object.values(list.selectorStates ?? {}).includes("s1")))

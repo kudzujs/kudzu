@@ -1,4 +1,4 @@
-import { browserState, mountDom, notifyListItem, registerCommitter, registerMountHook, registerUnmountHook, releaseState, unmountDom } from "./shared-runtime.js"
+import { browserState, listItems, listRowPaths, mountDom, notifyListItem, registerCommitter, registerMountHook, registerUnmountHook, releaseState, unmountDom } from "./shared-runtime.js"
 import { selectCollection } from "./collection-selector.js"
 const loadListEvaluator = descriptor => import("./binding-runtime.js").then(module => module.loadEvaluator(descriptor))
 
@@ -9,10 +9,10 @@ const mountedLists = new WeakSet()
 const imports = __KUDZU_LIST_ASYNC_PARTS__ ? new Map() : undefined
 const revisions = __KUDZU_LIST_ASYNC_PARTS__ ? new WeakMap() : undefined
 const itemParts = new WeakMap()
-const listItems = new WeakMap()
 const listIndexes = __KUDZU_LIST_INDEXES__ ? new WeakMap() : undefined
 const ownershipPaths = __KUDZU_LIST_ROW_HOOKS__ ? new WeakMap() : undefined
 const rowReplacements = __KUDZU_LIST_ROW_HOOKS__ ? new WeakMap() : undefined
+const directRowReplacements = __KUDZU_LIST_ROW_HOOKS__ ? new WeakSet() : undefined
 const ownedLists = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
 const conditionOwners = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const conditionTemplates = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
@@ -33,8 +33,8 @@ function commitLists(id) {
 }
 
 registerCommitter(commitLists)
-registerMountHook(mountLists)
-registerUnmountHook(unmountLists)
+registerMountHook(mountLists, "lists")
+registerUnmountHook(unmountLists, "lists")
 
 if (typeof document !== "undefined") mountDom(document)
 
@@ -50,8 +50,9 @@ function mountLists(root) {
     const roots = listRoots(start, end)
     const nested = __KUDZU_NESTED_LISTS__ ? mountNestedPrototype(start, descriptor, roots) : undefined
     const templateRoot = __KUDZU_NESTED_LISTS__ ? nested.templateRoot : listTemplateRoot(start, descriptor)
+    const lifecycle = listLifecycle(descriptor, templateRoot)
     if (__KUDZU_LIST_ROW_HOOKS__) for (let index = 0; index < roots.length; index++) initializeGeneralRowHooks(descriptor, descriptor.keys[index], roots[index], nested?.owner)
-    const parts = listItemPartPlan(templateRoot, descriptor.nested)
+    const parts = listItemPartPlan(templateRoot, descriptor.nested, descriptor)
     const staticRows = __KUDZU_STATIC_COLLECTIONS__ && descriptor.static && parts.directFill ? new Map() : undefined
     for (const root of roots) {
       if (__KUDZU_LIST_CONDITIONS__ && descriptor.conditions) {
@@ -68,6 +69,8 @@ function mountLists(root) {
     const list = {
       start,
       descriptor,
+      lifecycle,
+      unmountLifecycle: descriptor.rowStates?.length ? lifecycle.filter(capability => capability !== "bindings") : lifecycle,
       templateRoot,
       ...(__KUDZU_NESTED_LISTS__ && nested.childPrototypes?.size ? { childPrototypes: nested.childPrototypes } : {}),
       parts,
@@ -237,7 +240,7 @@ function updateList(list) {
       if (!node) throw new Error("Keyed list template has no root element")
       node.removeAttribute("data-k-list-root")
       if (__KUDZU_NESTED_LISTS__ && list.childPrototypes) childPrototypes.set(node, list.childPrototypes)
-      if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner, item)
+      if (__KUDZU_LIST_ROW_HOOKS__ && hasRowHooks(list.descriptor)) initializeGeneralRowHooks(list.descriptor, key, node, list.owner, item)
       if (staticRoot) listItems.set(node, item)
       else if (list.parts.directFill) {
         listItems.set(node, item)
@@ -256,7 +259,7 @@ function updateList(list) {
     if (keys.has(token)) continue
     if (list.descriptor.fastRelease) node.remove()
     else if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) {
-      unmountDom(node)
+      unmountDom(node, list.unmountLifecycle)
       node.remove()
     } else node.remove()
     if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) deleteRowStates(list.descriptor, ownershipPaths.get(node))
@@ -282,8 +285,8 @@ function updateList(list) {
       if (run.firstChild) parent.insertBefore(run, list.boundary)
       ordered = true
     } else parent.insertBefore(additions, list.boundary)
-    if (addedNodes?.length > 32 && addedNodes.length * 2 > next.length && addedNodes.length * 2 > parent.children.length && !list.descriptor.children && !list.descriptor.ownerField) mountDom(parent)
-    else if (addedNodes) for (const node of addedNodes) mountDom(node)
+    if (addedNodes?.length > 32 && addedNodes.length * 2 > next.length && addedNodes.length * 2 > parent.children.length && !list.descriptor.children && !list.descriptor.ownerField) mountDom(parent, list.lifecycle)
+    else if (addedNodes) for (const node of addedNodes) mountDom(node, list.lifecycle)
     list.container ??= parent
   }
   let anchor = list.boundary
@@ -433,7 +436,7 @@ function updateStableList(list, items) {
     const firstAdded = fragment.firstChild
     parent.insertBefore(fragment, list.boundary)
     if (referenceOnly) list.values.clear()
-    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) for (let node = firstAdded; node !== list.boundary; node = node.nextSibling) mountDom(node)
+    if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) for (let node = firstAdded; node !== list.boundary; node = node.nextSibling) mountDom(node, list.lifecycle)
     list.container ??= parent
     list.items = items
     return true
@@ -578,12 +581,12 @@ function addListRoot(list, { item, index = list.roots.size, key, token, value })
   if (!node) throw new Error("Keyed list template has no root element")
   node.removeAttribute("data-k-list-root")
   if (__KUDZU_NESTED_LISTS__ && list.childPrototypes) childPrototypes.set(node, list.childPrototypes)
-  if (__KUDZU_LIST_ROW_HOOKS__) initializeGeneralRowHooks(list.descriptor, key, node, list.owner, item)
+  if (__KUDZU_LIST_ROW_HOOKS__ && hasRowHooks(list.descriptor)) initializeGeneralRowHooks(list.descriptor, key, node, list.owner, item)
   mapListItemParts(list.parts, node, list.descriptor.nested)
   fillListItem(node, item, list.descriptor.nested, index)
   const parent = list.container ?? list.start.parentNode
   parent.insertBefore(node, list.boundary)
-  if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) mountDom(node)
+  if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount) mountDom(node, list.lifecycle)
   list.roots.set(token, node)
   if (__KUDZU_LIST_STABLE_FAST_PATHS__) list.orderedRoots.push(node)
   if (!usesItemReferences(list)) list.values.set(token, value)
@@ -592,7 +595,7 @@ function addListRoot(list, { item, index = list.roots.size, key, token, value })
 
 function removeListRoot(list, token) {
   const node = list.roots.get(token)
-  if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount && !list.descriptor.fastRelease) unmountDom(node)
+  if (__KUDZU_LIST_MOUNTS__ && list.descriptor.mount && !list.descriptor.fastRelease) unmountDom(node, list.unmountLifecycle)
   node.remove()
   if (__KUDZU_LIST_ROW_HOOKS__ && list.descriptor.rowStates) deleteRowStates(list.descriptor, ownershipPaths.get(node))
   list.roots.delete(token)
@@ -610,7 +613,7 @@ function fillListItem(root, item, nested = false, index = 0, parts = listItemPar
     const children = ownedLists.get(root)
     if (children) for (const child of children.values()) updateList(child)
   }
-  if (__KUDZU_LIST_ROW_HOOKS__) replaceRowIds(root, rowReplacements.get(root))
+  if (__KUDZU_LIST_ROW_HOOKS__) replaceOwnedRowIds(root)
 }
 
 function fillListParts(root, parts, item, revision, index = 0, previous) {
@@ -720,7 +723,7 @@ function hydrateListItemPartValues(planned, initial, missing) {
   if (index !== planned.length) throw new Error("Keyed list item markers do not match its template")
 }
 
-function listItemPartPlan(template, nested = false) {
+function listItemPartPlan(template, nested = false, descriptor) {
   const source = nested ? ownedElements(template) : [template, ...template.querySelectorAll("*")]
   const indexes = new Map(source.map((node, index) => [node, index]))
   const parts = listItemParts(template, nested)
@@ -728,7 +731,7 @@ function listItemPartPlan(template, nested = false) {
   const location = structural ? node => elementPath(template, node) : node => indexes.get(node)
   return {
     structural,
-    directFill: structural && !parts.events.length && !__KUDZU_LIST_ASYNC_PARTS__ && !__KUDZU_NESTED_LISTS__ && !__KUDZU_LIST_INDEXES__ && !__KUDZU_LIST_ROW_HOOKS__,
+    directFill: structural && !parts.events.length && !__KUDZU_LIST_ASYNC_PARTS__ && !__KUDZU_NESTED_LISTS__ && !__KUDZU_LIST_INDEXES__,
     directTexts: parts.directTexts.map(([node, field]) => [location(node), field]),
     texts: __KUDZU_LIST_TEXT_RANGES__ ? parts.texts.map(([node, field]) => [location(node), field]) : [],
     attributes: __KUDZU_LIST_ATTRIBUTES__ ? parts.attributes.map(([node, attributes]) => [location(node), attributes]) : [],
@@ -736,7 +739,11 @@ function listItemPartPlan(template, nested = false) {
     expressions: __KUDZU_LIST_EXPRESSIONS__ ? parts.expressions.map(([node, descriptor]) => [location(node), descriptor]) : [],
     expressionAttributes: __KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? parts.expressionAttributes.map(([node, attributes]) => [location(node), attributes]) : [],
     conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [location(node), descriptor, node]) : [],
-    effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(location) : []
+    effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(location) : [],
+    rowIds: structural && __KUDZU_GENERAL_ROW_HOOKS__ && hasRowHooks(descriptor) ? source.flatMap(node => {
+      const attributes = [...node.attributes].filter(attribute => attribute.name.startsWith("data-k-") && attribute.value.includes("$k")).map(attribute => attribute.name)
+      return attributes.length ? [[location(node), attributes]] : []
+    }) : []
   }
 }
 
@@ -794,6 +801,14 @@ function fillStructuralListParts(parts, root, item) {
     for (let pathIndex = 0; pathIndex < path.length; pathIndex++) node = node.children[path[pathIndex]]
     const attributes = part[1]
     for (let index = 0; index < attributes.length; index++) patchBinding(node, attributes[index][0], item[attributes[index][1]])
+  }
+  if (__KUDZU_GENERAL_ROW_HOOKS__ && directRowReplacements.delete(root)) {
+    const replacement = listRowPaths.get(root)
+    for (const [path, attributes] of parts.rowIds) {
+      let node = root
+      for (let index = 0; index < path.length; index++) node = node.children[path[index]]
+      for (const attribute of attributes) node.setAttribute(attribute, node.getAttribute(attribute).replaceAll("$k", replacement))
+    }
   }
 }
 
@@ -1051,19 +1066,47 @@ function initializeGeneralRowHooks(descriptor, key, root, owner, item) {
   const path = [...(ownershipPaths.get(owner) ?? []), `${descriptor.id}=${token}`]
   ownershipPaths.set(root, path)
   const statePath = descriptor.ownerField ? path : [token]
-  root.dataset.kRowPath = encodeURIComponent(statePath.join("/"))
-  const replacements = new Map()
+  listRowPaths.set(root, encodeURIComponent(statePath.join("/")))
+  const direct = !descriptor.nested && !descriptor.children && !descriptor.ownerField
+  if (direct) directRowReplacements.add(root)
+  const replacements = direct ? undefined : new Map()
   for (const state of descriptor.rowStates ?? []) {
     const id = rowStateId(state.id, statePath)
     if (!browserState.has(id)) browserState.set(id, state.initializer === "list-item" ? structuredClone(item) : __KUDZU_COMPLEX_LIST_ROW_STATE__ && state.initialValue !== null && typeof state.initialValue === "object" ? structuredClone(state.initialValue) : state.initialValue)
-    replacements.set(state.id, id)
+    replacements?.set(state.id, id)
   }
-  if (__KUDZU_LIST_ROW_REFS__) for (const ref of descriptor.rowRefs ?? []) replacements.set(ref, rowStateId(ref, statePath))
-  for (const marker of descriptor.rowConditions ?? []) replacements.set(marker, rowStateId(marker, statePath))
-  rowReplacements.set(root, replacements)
-  replaceRowIds(root, replacements)
+  if (__KUDZU_LIST_ROW_REFS__) for (const ref of descriptor.rowRefs ?? []) replacements?.set(ref, rowStateId(ref, statePath))
+  for (const marker of descriptor.rowConditions ?? []) replacements?.set(marker, rowStateId(marker, statePath))
+  if (replacements) rowReplacements.set(root, replacements)
+  if (descriptor.conditions || descriptor.expressions || descriptor.expressionAttributes) replaceOwnedRowIds(root)
+}
+
+function replaceOwnedRowIds(root) {
+  if (!directRowReplacements.delete(root)) return replaceRowIds(root, rowReplacements.get(root))
+  const path = listRowPaths.get(root)
+  const replace = node => {
+    for (const attribute of [...node.attributes]) if (attribute.name.startsWith("data-k-") && attribute.value.includes("$k")) attribute.value = attribute.value.replaceAll("$k", path)
+    for (const child of node.children) replace(child)
+    for (const child of node.content?.children ?? []) replace(child)
+  }
+  replace(root)
 }
 /* general-row-hooks-end */
+
+function hasRowHooks(descriptor) {
+  return Boolean(descriptor.rowStates?.length || descriptor.rowRefs?.length || descriptor.rowConditions?.length)
+}
+
+function listLifecycle(descriptor, template) {
+  const capabilities = []
+  if (template.matches?.("[data-k-text]") || template.querySelector?.("[data-k-text]")) capabilities.push("text")
+  if (descriptor.attributes || descriptor.expressions || descriptor.expressionAttributes || descriptor.rowStates?.length) capabilities.push("bindings")
+  if (descriptor.conditions || template.querySelector?.("[data-k-if]")) capabilities.push("conditions")
+  if (descriptor.nested || descriptor.children || template.querySelector?.("template[data-k-list]")) capabilities.push("lists")
+  if (descriptor.events || template.querySelector?.("[data-k-native-click],[data-k-native-input],[data-k-native-change],[data-k-native-submit],[data-k-native-keydown],[data-k-native-keyup]")) capabilities.push("native")
+  if (descriptor.effects) capabilities.push("effects")
+  return capabilities
+}
 
 function initializeRowStates(descriptor, key, root) {
   const token = keyToken(key)

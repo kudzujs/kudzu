@@ -12,6 +12,8 @@ export function createCommandSpecializer({ isPrimitiveLiteral }) {
     const value = expression.arguments[0]
     if (ts.isBinaryExpression(value) && ts.isIdentifier(value.left) && value.left.text === state) return addCommand(state, value)
     if (ts.isArrowFunction(value) && value.parameters.length === 1 && ts.isIdentifier(value.parameters[0].name) && ts.isBinaryExpression(value.body) && ts.isIdentifier(value.body.left) && value.body.left.text === value.parameters[0].name.text) return addCommand(state, value.body)
+    if (ts.isPrefixUnaryExpression(value) && value.operator === ts.SyntaxKind.ExclamationToken && ts.isIdentifier(value.operand) && value.operand.text === state) return { operation: "toggle", state, value: false }
+    if (ts.isArrowFunction(value) && value.parameters.length === 1 && ts.isIdentifier(value.parameters[0].name) && ts.isPrefixUnaryExpression(value.body) && value.body.operator === ts.SyntaxKind.ExclamationToken && ts.isIdentifier(value.body.operand) && value.body.operand.text === value.parameters[0].name.text) return { operation: "toggle", state, value: false }
     if (isPrimitiveLiteral(value)) {
       const literal = primitiveValue(value)
       return literal ? { operation: "set", state, ...literal } : undefined

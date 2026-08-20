@@ -68,7 +68,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
   const previous = project.buildCache
   project.buildGeneration = (project.buildGeneration ?? 0) + 1
   project.buildDirectory = project.buildGeneration > 1 ? join(workDirectory, "build", String(project.buildGeneration)) : workDirectory
-  const { collectClientModules, compileClientModule, compiledPath, compileSource, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
+  const { collectClientModules, compileClientModule, compiledPath, compileSourceAsync, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
   const config = await loadConfig(root)
   const base = normalizeBase(config.base)
   const configuredStyles = normalizeStyles(config.styles, base, project)
@@ -122,7 +122,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     if (file.endsWith(".worker.ts")) continue
     let result = !affectedSources.has(file) ? previous?.sourceResults.get(file) : undefined
     if (!result) {
-      result = compileSource(file, sourceFileSet, sourceIndex, staticFiles, cssModules, base)
+      result = await compileSourceAsync(file, sourceFileSet, sourceIndex, staticFiles, cssModules, base)
       compiledModules++
     }
     result = { ...result, buildModule: { ...result.buildModule, path: relative(root, compiledPath(file)).replaceAll(sep, "/") } }
@@ -139,6 +139,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
     if (!handler || handler.kind !== "module-export" || handler.role !== "effect") throw new Error(`EffectIR ${effect.slot} has no effect HandlerIR`)
     return effect.workers.map(worker => ({ ...worker, module: assetPath(base, `assets/${result.handlerModule.path}`), handler: handler.exportName }))
   }))
+  globalThis.gc?.()
 
   let routeRecords = []
   const routeDrafts = []
@@ -249,8 +250,8 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
         navigationGroup.hasEffects ||= result.hasEffects
         navigationGroup.hasParams ||= result.hasParams
       }
-      const usesDependencyRuntime = usesRouteDependencyRuntime({ plan: result.plan, navigable, hasBindings: result.hasBindings, hasLists: result.hasLists })
       const plan = { route: routePath, ...result.plan }
+      const usesDependencyRuntime = usesRouteDependencyRuntime({ plan, navigable, hasBindings: result.hasBindings, hasLists: result.hasLists }, false)
       const entries = {
         ...(result.hasParams ? { param: paramPath } : {}),
         ...(result.hasEffects ? { effect: effectPath } : {}),
@@ -279,7 +280,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
       })
       routeRecords.push(record)
       if (navigationGroup) navigationGroup.buildRecords.push(record)
-      routeDrafts.push({ record, result, runtimeSchema, navigationGroup, applicationRoute, effectPath, nativePath, paramPath })
+      routeDrafts.push({ record, runtimeSchema, navigationGroup, applicationRoute, effectPath, nativePath, paramPath })
     }
     pageRenders.set(pageFile, {
       drafts: routeDrafts.slice(draftOffset).map(({ navigationGroup: _, ...draft }) => draft),
@@ -304,7 +305,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
   }
   const runtimeFamilyByRecord = new Map()
   routeRecords = routeDrafts.map(draft => {
-    const { record, result, runtimeSchema, navigationGroup, effectPath, nativePath, paramPath } = draft
+    const { record, runtimeSchema, navigationGroup, effectPath, nativePath, paramPath } = draft
     const family = runtimePlan.familyByRecord.get(record)
     if (record.capabilities.hasBehaviors && !family) throw new Error(`Interactive route has no runtime family: ${record.route}`)
     const runtimeDirectory = family ? join(outputDirectory, "assets", "runtime", family.id) : undefined
@@ -339,7 +340,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify }) {
       output: record.output,
       html,
       plan: record.plan,
-      handlerReferences: result.handlerReferences,
+      handlerReferences: record.artifacts.handlers,
       styles: record.artifacts.styles,
       capabilities: record.capabilities,
       entries,
@@ -555,8 +556,8 @@ function replayPageRender(cached, state) {
     if (navigationGroup) {
       state.navigationAssets.set(draft.record.route, navigationGroup.assetPath)
       navigationGroup.buildRecords.push(draft.record)
-      navigationGroup.hasEffects ||= draft.result.hasEffects
-      navigationGroup.hasParams ||= draft.result.hasParams
+      navigationGroup.hasEffects ||= draft.record.capabilities.hasEffects
+      navigationGroup.hasParams ||= draft.record.capabilities.hasParams
     }
     state.routeRecords.push(draft.record)
     state.routeDrafts.push({ ...draft, navigationGroup })
@@ -705,28 +706,7 @@ async function writeJavaScript(file, source, minify, define) {
 }
 
 async function writePrettyJson(file, value) {
-  const output = await open(file, "w")
-  try {
-    const entries = Object.entries(value)
-    await output.write("{\n")
-    for (let index = 0; index < entries.length; index++) {
-      const [key, entry] = entries[index]
-      await output.write(`  ${JSON.stringify(key)}: `)
-      if (!Array.isArray(entry) || !entry.length) {
-        await output.write(JSON.stringify(entry, null, 2).replaceAll("\n", "\n  "))
-      } else {
-        await output.write("[\n")
-        for (let item = 0; item < entry.length; item++) {
-          await output.write(`    ${JSON.stringify(entry[item], null, 2).replaceAll("\n", "\n    ")}${item + 1 < entry.length ? "," : ""}\n`)
-        }
-        await output.write("  ]")
-      }
-      await output.write(index + 1 < entries.length ? ",\n" : "\n")
-    }
-    await output.write("}")
-  } finally {
-    await output.close()
-  }
+  await writeFile(file, JSON.stringify(value, null, 2))
 }
 
 export async function writeRouteEntry(file, source, minify, transforms, transformSource = transform, write = writeFile) {

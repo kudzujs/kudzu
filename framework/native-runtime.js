@@ -60,18 +60,21 @@ export function createNativeContext(state, stateIds, commit, serializedScope = {
 
 if (typeof document !== "undefined") {
   const eventNames = ["click", "input", "change", "submit", "keydown", "keyup"]
-  const mount = root => mountNative(root, eventNames, modules)
-  registerMountHook(mount)
-  registerUnmountHook(unmountNative)
+  const selector = eventNames.map(eventName => `[data-k-native-${eventName}]`).join(",")
+  const mount = root => mountNative(root, eventNames, selector, modules)
+  const unmount = root => unmountNative(root, selector)
+  registerMountHook(mount, "native")
+  registerUnmountHook(unmount, "native")
   mount(document)
   addEventListener("pagehide", event => {
-    if (!event.persisted) unmountNative(document)
+    if (!event.persisted) unmount(document)
   })
 }
 
-function mountNative(root, eventNames, modules) {
-  for (const eventName of eventNames) {
-    for (const node of matching(root, `[data-k-native-${eventName}]`)) {
+function mountNative(root, eventNames, selector, modules) {
+  for (const node of matching(root, selector)) {
+    for (const eventName of eventNames) {
+      if (!node.hasAttribute(`data-k-native-${eventName}`)) continue
       const listeners = registrations.get(node) ?? new Map()
       if (listeners.has(eventName)) continue
       let encoded = node.dataset[`kNative${capitalize(eventName)}`]
@@ -104,8 +107,8 @@ function mountNative(root, eventNames, modules) {
   }
 }
 
-function unmountNative(root) {
-  for (const node of matching(root, "*")) {
+function unmountNative(root, selector) {
+  for (const node of matching(root, selector)) {
     for (const [eventName, registration] of registrations.get(node) ?? []) {
       registration.active = false
       node.removeEventListener(eventName, registration.listener)

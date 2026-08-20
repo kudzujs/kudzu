@@ -440,11 +440,15 @@ function serializeCapture(name, value, seen) {
   if (value === undefined) return { type: "undefined" }
   if (typeof value !== "object") throw new Error(`Native capture "${name}" is not serializable: ${typeof value}`)
   if (seen.has(value)) throw new Error(`Native capture "${name}" is not serializable: cycle`)
+  const cached = renderContext?.captureCache.get(value)
+  if (cached) return cached
 
   seen.add(value)
   try {
     if (Array.isArray(value)) {
-      return { type: "array", value: Array.from(value, entry => serializeCapture(name, entry, seen)) }
+      const serialized = { type: "array", value: Array.from(value, entry => serializeCapture(name, entry, seen)) }
+      renderContext?.captureCache.set(value, serialized)
+      return serialized
     }
     const prototype = Object.getPrototypeOf(value)
     if (prototype !== Object.prototype && prototype !== null) {
@@ -457,14 +461,16 @@ function serializeCapture(name, value, seen) {
       if (!("value" in descriptor)) throw new Error(`Native capture "${name}" is not serializable: accessor`)
       entries.push([key, serializeCapture(name, descriptor.value, seen)])
     }
-    return { type: "object", nullPrototype: prototype === null, value: entries }
+    const serialized = { type: "object", nullPrototype: prototype === null, value: entries }
+    renderContext?.captureCache.set(value, serialized)
+    return serialized
   } finally {
     seen.delete(value)
   }
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], captureCache: new WeakMap(), sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
