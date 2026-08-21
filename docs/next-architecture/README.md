@@ -13,6 +13,8 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 
 The completed `0.9.0` milestone is recorded in [`0.9-semantic-compression.md`](./0.9-semantic-compression.md) and [`0.9-implementation-plan.md`](./0.9-implementation-plan.md). It freezes the `0.8.62` baseline, then closes evidence-backed work on Derived, shared state/actions, resource ownership, component ownership, pass reduction, and final cross-framework proof. [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md) remains the completed foundation and longer-term plan. Model-driven delivery is separately gated for 1.0. ResourceIR remains unapproved; range ownership, virtualization, optimistic transactions, public adapters, and generic runtimes still require independent evidence and architecture review.
 
+[`1.0-large-application-compatibility-audit.md`](./1.0-large-application-compatibility-audit.md) records the first post-0.9 probes against Memos, Apache Answer, and Actual Budget. The audit finds that reduced slices build but whole-application source retention and behavior parity do not yet pass.
+
 ## Required Invariants
 
 - Every route remains a complete static HTML document.
@@ -29,19 +31,20 @@ The completed `0.9.0` milestone is recorded in [`0.9-semantic-compression.md`](.
 2. [`0.9-implementation-plan.md`](./0.9-implementation-plan.md): detailed session packets, benchmark plan, reports, and release procedure.
 3. [`0.9-baseline.md`](./0.9-baseline.md): dated architecture, pass, IR, runtime-concept, LOC, and test baseline.
 4. [`0.9-benchmark-contracts.md`](./0.9-benchmark-contracts.md): frozen matched-content, stateful, commerce, scale, resource, and anti-gaming contracts.
-5. [`compiler-current-architecture.md`](./compiler-current-architecture.md): exact current responsibilities and data flow.
-6. [`performance-gates.md`](./performance-gates.md): output, build, and browser gates.
-7. [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md): completed foundation, longer-term direction, and completion evidence.
-8. [`goal-a-compiler-foundation.md`](./goal-a-compiler-foundation.md): completed extraction and generator foundation.
-9. [`versioning.md`](./versioning.md): completed patch sequence and future sequencing rules.
-10. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): active measurements, retained optimizations, and continuation rules.
-11. [`goal-c-state-resource-research.md`](./goal-c-state-resource-research.md): research boundary only.
-12. [`goal-d-routing-compatibility-decisions.md`](./goal-d-routing-compatibility-decisions.md): routing and islands decisions.
+5. [`1.0-large-application-compatibility-audit.md`](./1.0-large-application-compatibility-audit.md): local large-application migration probes, retention caveats, blockers, and authorized-protocol handoff.
+6. [`compiler-current-architecture.md`](./compiler-current-architecture.md): exact current responsibilities and data flow.
+7. [`performance-gates.md`](./performance-gates.md): output, build, and browser gates.
+8. [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md): completed foundation, longer-term direction, and completion evidence.
+9. [`goal-a-compiler-foundation.md`](./goal-a-compiler-foundation.md): completed extraction and generator foundation.
+10. [`versioning.md`](./versioning.md): completed patch sequence and future sequencing rules.
+11. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): active measurements, retained optimizations, and continuation rules.
+12. [`goal-c-state-resource-research.md`](./goal-c-state-resource-research.md): research boundary only.
+13. [`goal-d-routing-compatibility-decisions.md`](./goal-d-routing-compatibility-decisions.md): routing and islands decisions.
 
 ## Resume Checklist
 
 - [ ] Read [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md), [`0.9-semantic-compression.md`](./0.9-semantic-compression.md), and [`0.9-implementation-plan.md`](./0.9-implementation-plan.md) before planning migration work.
-- [ ] Follow the first evidence-ready incomplete item in the 0.9 ordered queue; update it before broadening or reordering a patch.
+- [ ] Follow the authorized 1.0 AI delivery protocol; treat post-0.9 compatibility audits as candidate-selection input, not replacement work queues.
 - [ ] Confirm `package.json` still reports the actual current version; never infer release status from this plan.
 - [ ] Inspect the worktree and preserve unrelated or uncommitted changes.
 - [ ] Start later architecture work only by an explicit decision from the completed Goal A baseline.

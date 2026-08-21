@@ -2,9 +2,10 @@ import ts from "typescript"
 import { bindingNames, functionVarDeclaresName, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedIdentifier, loopDeclaresName, nearestFunction, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 
 export function createRouterPass({ withBase }) {
-  return function normalizeReactRouterSyntax(sourceFile, factory, context, base) {
+  return function normalizeReactRouterSyntax(sourceFile, factory, context, base, importedCollections = new Map()) {
     const links = new Set()
     const params = new Set()
+    const matchHooks = new Set()
     const searchHooks = new Set()
     const navigateHooks = new Set()
     for (const statement of sourceFile.statements) {
@@ -13,22 +14,62 @@ export function createRouterPass({ withBase }) {
         const clause = statement.importClause
         if (clause?.isTypeOnly) continue
         if (!clause) throw sourceNodeError(statement, sourceFile, "Side-effect React Router imports are not supported")
-        if (clause.name) throw sourceNodeError(clause.name, sourceFile, "React Router default imports are not supported; use named Link, useParams, useSearchParams, or useNavigate imports")
+        if (clause.name) throw sourceNodeError(clause.name, sourceFile, "React Router default imports are not supported; use named Link, useParams, useMatch, useSearchParams, or useNavigate imports")
         const bindings = clause.namedBindings
-        if (!bindings || ts.isNamespaceImport(bindings)) throw sourceNodeError(bindings ?? statement, sourceFile, "React Router namespace imports are not supported; use named Link, useParams, useSearchParams, or useNavigate imports")
+        if (!bindings || ts.isNamespaceImport(bindings)) throw sourceNodeError(bindings ?? statement, sourceFile, "React Router namespace imports are not supported; use named Link, useParams, useMatch, useSearchParams, or useNavigate imports")
         for (const entry of bindings.elements) {
           if (entry.isTypeOnly) continue
           const imported = (entry.propertyName ?? entry.name).text
           if (imported === "NavLink") throw sourceNodeError(entry, sourceFile, "React Router NavLink active-route semantics cannot be erased to a native anchor")
           if (imported === "Link") links.add(entry.name.text)
           else if (imported === "useParams") params.add(entry.name.text)
+          else if (imported === "useMatch") matchHooks.add(entry.name.text)
           else if (imported === "useSearchParams") searchHooks.add(entry.name.text)
           else if (imported === "useNavigate") navigateHooks.add(entry.name.text)
-          else throw sourceNodeError(entry, sourceFile, `React Router ${imported} is not supported; only named Link, useParams, useSearchParams, and useNavigate imports can be lowered`)
+          else throw sourceNodeError(entry, sourceFile, `React Router ${imported} is not supported; only named Link, useParams, useMatch, useSearchParams, and useNavigate imports can be lowered`)
         }
       }
     }
-    if (!links.size && !params.size && !searchHooks.size && !navigateHooks.size) return sourceFile
+    if (!links.size && !params.size && !matchHooks.size && !searchHooks.size && !navigateHooks.size) return sourceFile
+
+    let matchHelper = "__kUseRouteMatch"
+    while (sourceFile.text.includes(matchHelper)) matchHelper += "_"
+    const matchCalls = new Map()
+    const topLevelFunction = owner => owner.parent === sourceFile || ts.isExportAssignment(owner.parent) && owner.parent.parent === sourceFile || (ts.isArrowFunction(owner) || ts.isFunctionExpression(owner)) && ts.isVariableDeclaration(owner.parent) && owner.parent.parent?.parent?.parent === sourceFile
+    const componentFunction = owner => {
+      if (!topLevelFunction(owner)) return false
+      if (ts.isExportAssignment(owner.parent)) return true
+      if (ts.isFunctionDeclaration(owner) && owner.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)) return true
+      const name = ts.isFunctionDeclaration(owner) ? owner.name?.text : ts.isVariableDeclaration(owner.parent) && ts.isIdentifier(owner.parent.name) ? owner.parent.name.text : undefined
+      if (!name || !/^[A-Z]/.test(name)) return false
+      let eventHandlerUse = false
+      const inspect = node => {
+        if (eventHandlerUse) return
+        if (ts.isIdentifier(node) && node.text === name && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) {
+          for (let current = node.parent; current && current !== sourceFile; current = current.parent) {
+            if (ts.isJsxAttribute(current) && /^on[A-Z]/.test(current.name.text)) eventHandlerUse = true
+          }
+        }
+        ts.forEachChild(node, inspect)
+      }
+      inspect(sourceFile)
+      return !eventHandlerUse
+    }
+    const collectMatchHooks = node => {
+      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && matchHooks.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
+        const declaration = node.parent
+        const statement = declaration?.parent?.parent
+        const owner = nearestFunction(node)
+        if (node.questionDotToken || node.typeArguments?.length || node.arguments.length !== 1 || !ts.isStringLiteral(node.arguments[0]) || !ts.isVariableDeclaration(declaration) || declaration.initializer !== node || !ts.isIdentifier(declaration.name) || !isLocalConst(declaration) || !owner || !componentFunction(owner) || statement?.parent !== owner.body) {
+          throw sourceNodeError(node, sourceFile, 'React Router useMatch must directly initialize one top-level const from one static root-relative pattern such as useMatch("/")')
+        }
+        const pattern = node.arguments[0].text
+        if (!pattern.startsWith("/") || pattern.startsWith("//") || pattern !== "/" && pattern.endsWith("/") || /[:*?#\\\0]/.test(pattern)) throw sourceNodeError(node.arguments[0], sourceFile, 'React Router useMatch only supports an exact static root-relative pattern without params, wildcards, query, hash, or a trailing slash')
+        matchCalls.set(node, pattern)
+      }
+      ts.forEachChild(node, collectMatchHooks)
+    }
+    collectMatchHooks(sourceFile)
 
     let searchHelper = "__kUseSearchParam"
     while (sourceFile.text.includes(searchHelper)) searchHelper += "_"
@@ -36,8 +77,18 @@ export function createRouterPass({ withBase }) {
     while (sourceFile.text.includes(searchWriterHelper)) searchWriterHelper += "_"
     const searchDeclarations = new Set()
     const searchReads = new Map()
+    const searchFallbackValues = new Map()
+    const composedSearchDeclarations = new Map()
+    const composedSearchCalls = new Map()
     const searchWrites = new Map()
     const searchObjects = []
+    let composedSearchIndex = 0
+    const composedSearchName = () => {
+      let name
+      do name = `__kRouterSearchParam${composedSearchIndex++ || ""}`
+      while (sourceFile.text.includes(name) || [...composedSearchCalls.values()].includes(name))
+      return name
+    }
     const collectSearchHooks = node => {
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && searchHooks.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) {
         const declaration = node.parent
@@ -71,15 +122,38 @@ export function createRouterPass({ withBase }) {
           if (entry.setter && ts.isCallExpression(node.parent) && node.parent.arguments.includes(node) && ts.isIdentifier(node.parent.expression) && node.parent.expression.text === entry.setter) return
           const property = node.parent
           const call = property?.parent
-          const declaration = call?.parent
+          const directDeclaration = call?.parent
+          const numberCall = directDeclaration && ts.isCallExpression(directDeclaration) && ts.isIdentifier(directDeclaration.expression) && directDeclaration.expression.text === "Number" && !isShadowedIdentifier(directDeclaration.expression, sourceFile) && directDeclaration.arguments.length === 1 && directDeclaration.arguments[0] === call && !directDeclaration.questionDotToken && !directDeclaration.typeArguments?.length ? directDeclaration : undefined
+          const binary = numberCall?.parent ?? directDeclaration
+          const numericRight = binary?.right
+          const numericValue = numericRight && ts.isNumericLiteral(numericRight) ? Number(numericRight.text) : numericRight && ts.isPrefixUnaryExpression(numericRight) && [ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken].includes(numericRight.operator) && ts.isNumericLiteral(numericRight.operand) ? Number(numericRight.getText(sourceFile)) : NaN
+          const numericFallback = numberCall && ts.isBinaryExpression(binary) && binary.left === numberCall && binary.operatorToken.kind === ts.SyntaxKind.BarBarToken && Number.isFinite(numericValue) ? binary : undefined
+          const importedValue = !numberCall && ts.isBinaryExpression(binary) && binary.left === call && binary.operatorToken.kind === ts.SyntaxKind.BarBarToken ? binary.right : undefined
+          const importedCollection = importedValue && ts.isElementAccessExpression(importedValue) && !importedValue.questionDotToken && ts.isIdentifier(importedValue.expression) && ts.isNumericLiteral(importedValue.argumentExpression) ? importedCollections.get(importedValue.expression.text) : undefined
+          const importedIndex = importedValue && ts.isElementAccessExpression(importedValue) && ts.isNumericLiteral(importedValue.argumentExpression) ? Number(importedValue.argumentExpression.text) : undefined
+          const importedElement = importedCollection && Number.isSafeInteger(importedIndex) ? importedCollection.elements[importedIndex] : undefined
+          const importedString = importedElement && unwrapExpression(importedElement)
+          const importedFallback = importedString && (ts.isStringLiteral(importedString) || ts.isNoSubstitutionTemplateLiteral(importedString)) ? binary : undefined
+          const fallback = numericFallback ?? importedFallback
+          let composedInitializer = fallback
+          while (composedInitializer?.parent && (ts.isParenthesizedExpression(composedInitializer.parent) || ts.isAsExpression(composedInitializer.parent) || ts.isTypeAssertionExpression(composedInitializer.parent) || ts.isSatisfiesExpression(composedInitializer.parent) || ts.isNonNullExpression(composedInitializer.parent)) && composedInitializer.parent.expression === composedInitializer) composedInitializer = composedInitializer.parent
+          const composedDeclaration = composedInitializer?.parent
+          const declaration = directDeclaration && ts.isVariableDeclaration(directDeclaration) ? directDeclaration : composedDeclaration && ts.isVariableDeclaration(composedDeclaration) ? composedDeclaration : undefined
           const statement = declaration?.parent?.parent
           if (!ts.isPropertyAccessExpression(property) || property.expression !== node || property.name.text !== "get" || !ts.isCallExpression(call) || call.expression !== property || call.questionDotToken || call.typeArguments?.length || call.arguments.length !== 1 || !ts.isStringLiteral(call.arguments[0])) {
             throw sourceNodeError(node, sourceFile, 'React Router search parameters only support direct get("static-name") reads')
           }
-          if (!ts.isVariableDeclaration(declaration) || declaration.initializer !== call || !ts.isIdentifier(declaration.name) || !isLocalConst(declaration) || statement?.parent !== entry.owner.body) {
-            throw sourceNodeError(call, sourceFile, "React Router search parameter get() must directly initialize one top-level const identifier")
+          if (!declaration || declaration.initializer !== call && declaration.initializer !== composedInitializer || !ts.isIdentifier(declaration.name) || !isLocalConst(declaration) || statement?.parent !== entry.owner.body) {
+            throw sourceNodeError(call, sourceFile, 'React Router search parameter get() must directly initialize one top-level const, appear as Number(params.get("name")) || finiteNumber, or use params.get("name") || importedArray[staticIndex]')
           }
+          if (fallback && declaration.parent.declarations.length !== 1) throw sourceNodeError(declaration, sourceFile, "React Router composed search parameter reads require their own top-level const statement")
           searchReads.set(call, call.arguments[0])
+          if (importedValue && importedFallback) searchFallbackValues.set(importedValue, importedString.text)
+          if (fallback) {
+            const name = composedSearchName()
+            composedSearchDeclarations.set(declaration, { call, name })
+            composedSearchCalls.set(call, name)
+          }
           return
         }
         ts.forEachChild(node, collectReads)
@@ -185,6 +259,17 @@ export function createRouterPass({ withBase }) {
     }
     const importedLink = tag => ts.isIdentifier(tag) && links.has(tag.text) && !isShadowedIdentifier(tag, sourceFile)
     const visitor = node => {
+      if (searchFallbackValues.has(node)) return factory.createStringLiteral(searchFallbackValues.get(node))
+      if (ts.isVariableStatement(node) && node.declarationList.declarations.length === 1) {
+        const declaration = node.declarationList.declarations[0]
+        const composed = composedSearchDeclarations.get(declaration)
+        if (composed) {
+          const raw = factory.createVariableStatement(undefined, factory.createVariableDeclarationList([
+            factory.createVariableDeclaration(composed.name, undefined, undefined, factory.createCallExpression(factory.createIdentifier(searchHelper), undefined, [searchReads.get(composed.call)]))
+          ], ts.NodeFlags.Const))
+          return [raw, ts.visitEachChild(node, visitor, context)]
+        }
+      }
       if (ts.isVariableStatement(node) && node.declarationList.declarations.some(declaration => searchDeclarations.has(declaration) || navigateDeclarations.has(declaration))) {
         const declarations = node.declarationList.declarations.flatMap(declaration => {
           if (navigateDeclarations.has(declaration)) return []
@@ -196,7 +281,7 @@ export function createRouterPass({ withBase }) {
         if (!declarations.length) return undefined
         return factory.updateVariableStatement(node, node.modifiers, factory.updateVariableDeclarationList(node.declarationList, declarations))
       }
-      if (ts.isCallExpression(node) && searchReads.has(node)) return factory.createCallExpression(factory.createIdentifier(searchHelper), undefined, [searchReads.get(node)])
+      if (ts.isCallExpression(node) && searchReads.has(node)) return composedSearchCalls.has(node) ? factory.createIdentifier(composedSearchCalls.get(node)) : factory.createCallExpression(factory.createIdentifier(searchHelper), undefined, [searchReads.get(node)])
       if (ts.isCallExpression(node) && searchWrites.has(node)) {
         const { updater, replace } = searchWrites.get(node)
         return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createIdentifier("globalThis"), "__kSetSearchParams"), undefined, [ts.visitNode(updater, visitor), replace ? factory.createTrue() : factory.createFalse()])
@@ -205,6 +290,7 @@ export function createRouterPass({ withBase }) {
         const { method, destination } = navigateCalls.get(node)
         return factory.createCallExpression(factory.createPropertyAccessExpression(factory.createPropertyAccessExpression(factory.createIdentifier("globalThis"), "location"), method), undefined, [factory.createStringLiteral(destination)])
       }
+      if (ts.isCallExpression(node) && matchCalls.has(node)) return factory.createCallExpression(factory.createIdentifier(matchHelper), undefined, [factory.createStringLiteral(matchCalls.get(node))])
       if (ts.isJsxElement(node) && importedLink(node.openingElement.tagName)) {
         const opening = factory.updateJsxOpeningElement(node.openingElement, factory.createIdentifier("a"), node.openingElement.typeArguments, attributes(node.openingElement.attributes))
         const closing = factory.updateJsxClosingElement(node.closingElement, factory.createIdentifier("a"))
@@ -217,6 +303,7 @@ export function createRouterPass({ withBase }) {
       }
       if (ts.isIdentifier(node) && links.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router Link imports may only be used as direct JSX elements")
       if (ts.isIdentifier(node) && params.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useParams imports may only be called directly")
+      if (ts.isIdentifier(node) && matchHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useMatch imports may only initialize the supported top-level const binding")
       if (ts.isIdentifier(node) && searchHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useSearchParams imports may only initialize the supported top-level tuple binding")
       if (ts.isIdentifier(node) && navigateHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useNavigate imports may only initialize the supported top-level navigate binding")
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-router-dom") {
@@ -224,16 +311,17 @@ export function createRouterPass({ withBase }) {
         if (!clause || clause.isTypeOnly) return node
         const bindings = clause.namedBindings
         if (!bindings || !ts.isNamedImports(bindings)) return node
-        const elements = bindings.elements.filter(entry => entry.isTypeOnly || !["Link", "useParams", "useSearchParams", "useNavigate"].includes((entry.propertyName ?? entry.name).text))
+        const elements = bindings.elements.filter(entry => entry.isTypeOnly || !["Link", "useParams", "useMatch", "useSearchParams", "useNavigate"].includes((entry.propertyName ?? entry.name).text))
         if (!elements.length) return undefined
         return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, clause.isTypeOnly, undefined, factory.updateNamedImports(bindings, elements)), node.moduleSpecifier, node.attributes)
       }
       return ts.visitEachChild(node, visitor, context)
     }
     const normalized = ts.visitNode(sourceFile, visitor)
-    if (!params.size && !searchHooks.size) return normalized
+    if (!params.size && !matchHooks.size && !searchHooks.size) return normalized
     const imports = [
       ...[...params].map(name => factory.createImportSpecifier(false, name === "useParams" ? undefined : factory.createIdentifier("useParams"), factory.createIdentifier(name))),
+      ...(matchHooks.size ? [factory.createImportSpecifier(false, matchHelper === "__kUseRouteMatch" ? undefined : factory.createIdentifier("__kUseRouteMatch"), factory.createIdentifier(matchHelper))] : []),
       ...(searchReads.size ? [factory.createImportSpecifier(false, factory.createIdentifier("useSearchParam"), factory.createIdentifier(searchHelper))] : []),
       ...(searchObjects.some(entry => entry.setter) ? [factory.createImportSpecifier(false, factory.createIdentifier("useSearchParamsWriter"), factory.createIdentifier(searchWriterHelper))] : [])
     ]

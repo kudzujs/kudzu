@@ -5,6 +5,7 @@ declare module "react" {
     key: string | null
   }
   export type ReactNode = ReactElement | string | number | bigint | boolean | null | undefined | Iterable<ReactNode>
+  export type FC<P = Record<string, never>> = (props: P) => unknown
   export function Fragment(props: { children?: unknown }): unknown
   export type Dispatch<T> = (value: T | ((previous: T) => T)) => void
   export type RefObject<T> = { current: T | null }
@@ -53,6 +54,16 @@ declare module "react-router-dom" {
   export function useParams<Params extends Record<string, string> = Record<string, string>>(): Readonly<Params>
   export function useSearchParams(): [URLSearchParams, (update: (previous: URLSearchParams) => URLSearchParams, options?: { replace?: boolean }) => void]
   export function useNavigate(): (to: string, options?: { replace?: boolean }) => void
+  export function useMatch(pattern: string): { pathname: string; pathnameBase: string; params: Record<string, string>; pattern: { path: string; caseSensitive: boolean; end: boolean } } | null
+}
+
+declare module "react-bootstrap" {
+  export function Row(props: { children?: unknown; className?: string }): unknown
+  export function Col(props: { children?: unknown; className?: string; xs?: number; sm?: number; md?: number; lg?: number; xl?: number; xxl?: number }): unknown
+}
+
+declare module "react-i18next" {
+  export function useTranslation(namespace?: string, options?: { keyPrefix?: string }): { t(key: string, options?: Record<string, unknown>): string }
 }
 
 declare module "*.png" {

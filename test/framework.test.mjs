@@ -6,7 +6,7 @@ import { gzipSync } from "node:zlib"
 import { createConnection } from "node:net"
 import test from "node:test"
 import { build, normalizeNavigation, specializeRuntime, writeRouteEntry } from "../framework/build.mjs"
-import { behavior, conditional, createContext, list, listConditional, nativeBehavior, renderPage, useContext, useEffect, useId, useParams, useRef, useState } from "../framework/core.mjs"
+import { __kUseRouteMatch, behavior, conditional, createContext, list, listConditional, nativeBehavior, renderPage, useContext, useEffect, useId, useParams, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
 import { applyCommands } from "../framework/runtime.js"
 import { patchBinding } from "../framework/binding-runtime.js"
@@ -125,7 +125,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const html = await readFile(new URL("../dist/index.html", import.meta.url), "utf8")
   const runtime = await readRuntime(new URL("../", import.meta.url), "kudzu.js")
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.9.2/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.9.3/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -142,12 +142,12 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.9\.2"/)
-  assert.match(release, /Kudzu 0\.9\.2.*Keep the styles.*Make ownership explicit/s)
-  assert.match(release, /PRESERVE · WARN · MIGRATE.*CSS MIGRATION SAFETY.*npm install @kudzujs\/core@\^0\.9\.2/s)
-  assert.match(release, /<title>Kudzu 0\.9\.2 - Legacy CSS safety<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.9\.2"/)
-  assert.match(release, /Keep legacy CSS.*Protect explicit apps/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.9\.3"/)
+  assert.match(release, /Kudzu 0\.9\.3.*Keep familiar source.*Ship only the capability/s)
+  assert.match(release, /REDUCE · OWN · VERIFY.*LARGE-APP MIGRATION.*npm install @kudzujs\/core@\^0\.9\.3/s)
+  assert.match(release, /<title>Kudzu 0\.9\.3 - Large-app migration slices<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.9\.3"/)
+  assert.match(release, /Fold exact matches.*Fail honestly/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -2627,6 +2627,59 @@ test("rejects React Router Link traversal outside base", () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router Link requires a safe static root-relative to="\/path"/)
 })
 
+test("folds exact React Router route matches at build time", async t => {
+  const fixture = new URL("./fixtures/react-router-match", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-router-match/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-router-match/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const index = await readFile(new URL("./fixtures/react-router-match/dist/index.html", import.meta.url), "utf8")
+  const questions = await readFile(new URL("./fixtures/react-router-match/dist/questions/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-router-match/.kudzu/Questions.mjs", import.meta.url), "utf8")
+  assert.match(index, /<h1>Answer<\/h1><p>Questions and answers<\/p>/)
+  assert.match(questions, /<h1>Questions<\/h1><p><\/p>/)
+  assert.doesNotMatch(index, /<script|data-k-/)
+  assert.doesNotMatch(questions, /<script|data-k-/)
+  assert.match(component, /__kUseRouteMatch\("\/"\)/)
+  assert.doesNotMatch(component, /react-router-dom|\buseMatch\(/)
+})
+
+test("keeps build-time route matches route-owned and case-insensitive", async () => {
+  const result = await renderPage(() => jsx("p", { children: __kUseRouteMatch("/QUESTIONS")?.pathname }), { styles: false, applicationRoute: "/questions" })
+  assert.match(result.html, /<p>\/questions<\/p>/)
+  const encoded = await renderPage(() => jsx("p", { children: __kUseRouteMatch("/about")?.pathname }), { styles: false, applicationRoute: "/%61bout" })
+  assert.match(encoded.html, /<p>\/about<\/p>/)
+  const encodedPattern = await renderPage(() => jsx("p", { children: __kUseRouteMatch("/%61bout") ? "match" : "miss" }), { styles: false, applicationRoute: "/%61bout" })
+  assert.match(encodedPattern.html, /<p>miss<\/p>/)
+  const unicodeFold = await renderPage(() => jsx("p", { children: __kUseRouteMatch("/k") ? "match" : "miss" }), { styles: false, applicationRoute: "/K" })
+  assert.match(unicodeFold.html, /<p>miss<\/p>/)
+  await assert.rejects(renderPage(() => null, { styles: false, applicationRoute: "/questions" }, {}, () => __kUseRouteMatch("/questions")), /useMatch is only supported in route scope/)
+  await assert.rejects(renderPage(() => __kUseRouteMatch("/items/new"), { styles: false, applicationRoute: "/items/\[id\]", runtimeParams: ["id"] }), /useMatch requires a build-known route/)
+})
+
+test("rejects indirect React Router route matches", () => {
+  const fixture = new URL("./fixtures/react-router-match-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /React Router useMatch must directly initialize one top-level const from one static root-relative pattern/)
+})
+
+test("rejects parameterized React Router route matches", () => {
+  const fixture = new URL("./fixtures/react-router-match-pattern-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /React Router useMatch only supports an exact static root-relative pattern without params, wildcards, query, hash, or a trailing slash/)
+})
+
+test("rejects React Router route matches inside browser callbacks", () => {
+  const fixture = new URL("./fixtures/react-router-match-callback-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /React Router useMatch must directly initialize one top-level const from one static root-relative pattern/)
+})
+
 test("lowers React Router imperative navigation to native document navigation", async t => {
   const fixture = new URL("./fixtures/react-router-navigate", import.meta.url)
   t.after(async () => {
@@ -2709,6 +2762,212 @@ test("rejects dynamic React Router search parameter names", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router search parameters only support direct get\("static-name"\) reads/)
+})
+
+test("lowers Apache Answer numeric search-page fallbacks to reactive bindings", async t => {
+  const fixture = new URL("./fixtures/react-router-search-coercion", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-router-search-coercion/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-router-search-coercion/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-router-search-coercion/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-router-search-coercion/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/react-router-search-coercion/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const negativeHtml = await readFile(new URL("./fixtures/react-router-search-coercion/dist/negative/index.html", import.meta.url), "utf8")
+  const negativeHandler = await readFile(new URL("./fixtures/react-router-search-coercion/dist/assets/handlers/pages/negative.js", import.meta.url), "utf8")
+  const routes = JSON.parse(await readFile(new URL("./fixtures/react-router-search-coercion/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  const plan = routes.find(route => route.route === "/")
+  assert.match(html, /<main data-page="1"/)
+  assert.match(component, /const __kRouterSearchParam = __kUseSearchParam\("page"\)/)
+  assert.match(handler, /Number\(.+\)\|\|1/)
+  assert.match(negativeHtml, /data-offset="-1"/)
+  assert.match(negativeHtml, /<!--k-text:0-->-1<!--k-text-end-->/)
+  assert.match(negativeHandler, /Number\(.+\)\|\|-1/)
+  assert.deepEqual(plan.searchParams, [{ name: "page", id: "p0" }])
+  assert.deepEqual(routes.find(route => route.route === "/negative").searchParams, [{ name: "offset", id: "p0" }])
+  assert.equal(plan.bindings.length, 2)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSearchCoercionBrowserTest(fixture, chrome)
+})
+
+test("rejects broader React Router search-page coercion expressions", () => {
+  const fixture = new URL("./fixtures/react-router-search-coercion-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router search parameter get\(\) must directly initialize one top-level const, appear as Number\(params\.get\("name"\)\) \|\| finiteNumber/)
+})
+
+test("lowers Apache Answer imported search-order fallbacks to reactive bindings", async t => {
+  const fixture = new URL("./fixtures/react-router-search-imported-fallback", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-router-search-imported-fallback/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-router-search-imported-fallback/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-router-search-imported-fallback/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-router-search-imported-fallback/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/react-router-search-imported-fallback/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/react-router-search-imported-fallback/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /<main data-order="newest"/)
+  assert.match(component, /const __kRouterSearchParam = __kUseSearchParam\("order"\)/)
+  assert.match(handler, /\|\|"newest"/)
+  assert.doesNotMatch(handler, /"active"|"recommend"/)
+  assert.deepEqual(plan.searchParams, [{ name: "order", id: "p0" }])
+  assert.equal(plan.bindings.length, 2)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSearchCoercionBrowserTest(fixture, chrome, { attribute: "order", fallback: "newest", marker: "searchImportedFallbackTest", name: "order", query: "active" })
+})
+
+test("rejects dynamic indexes in React Router imported search fallbacks", () => {
+  const fixture = new URL("./fixtures/react-router-search-imported-fallback-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Router search parameter get\(\) must directly initialize one top-level const, appear as Number\(params\.get\("name"\)\) \|\| finiteNumber, or use params\.get\("name"\) \|\| importedArray\[staticIndex\]/)
+})
+
+test("lowers Apache Answer React Bootstrap Row and Col to static native layout", async t => {
+  const fixture = new URL("./fixtures/react-bootstrap-layout", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-bootstrap-layout/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-bootstrap-layout/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-bootstrap-layout/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-bootstrap-layout/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/react-bootstrap-layout/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
+  assert.match(html, /<div class="row pt-4 mb-5"><div class="col page-main flex-auto overflow-x-hidden"><h1>Questions<\/h1><\/div><div class="col page-right-side mt-4 mt-xl-0"><aside>Welcome<\/aside><\/div><\/div>/)
+  assert.doesNotMatch(html, /<script|data-k-/)
+  assert.doesNotMatch(component, /react-bootstrap|\b(?:Row|Col)\b/)
+  assert.deepEqual(plan.bindings, [])
+})
+
+test("rejects React Bootstrap grid props outside the proven layout shape", () => {
+  const fixture = new URL("./fixtures/react-bootstrap-layout-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Bootstrap Col breakpoint "md" must be an integer literal from 1 through 12/)
+})
+
+test("rejects duplicate React Bootstrap className attributes", () => {
+  const fixture = new URL("./fixtures/react-bootstrap-layout-duplicate-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React Bootstrap Row and Col accept className only once/)
+})
+
+test("lowers Apache Answer static React Bootstrap Col breakpoints", async t => {
+  const fixture = new URL("./fixtures/react-bootstrap-grid", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-bootstrap-grid/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-bootstrap-grid/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-bootstrap-grid/dist/index.html", import.meta.url), "utf8")
+  const component = await readFile(new URL("./fixtures/react-bootstrap-grid/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  assert.match(html, /<div class="row"><div class="col-md-6">Questions<\/div><\/div>/)
+  assert.match(html, /<div class="row"><div class="col-xl-3 col-lg-4 col-md-6 mx-auto">Login<\/div><\/div>/)
+  assert.match(html, /<div class="row"><div class="col-xl-3 col-lg-4 col-md-4 col-sm-6 col-12 mb-4">Tag<\/div><\/div>/)
+  assert.doesNotMatch(`${html}\n${component}`, /<script|data-k-|react-bootstrap|\b(?:Row|Col)\b/)
+})
+
+test("directs runtime react-i18next hooks to explicit locale ownership", () => {
+  const fixture = new URL("./fixtures/react-i18next-runtime-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React i18next useTranslation\(\) depends on runtime locale resources; migrate build-known locales through getStaticPaths\(\) and props, or browser-only locale reads through an owned effect/)
+})
+
+test("owns Apache Answer question data across query dependency replacement", async t => {
+  const fixture = new URL("./fixtures/apache-answer-browser-questions", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/apache-answer-browser-questions/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/apache-answer-browser-questions/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/apache-answer-browser-questions/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/apache-answer-browser-questions/dist/static/index.html", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/apache-answer-browser-questions/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/apache-answer-browser-questions/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  assert.match(html, /data-page="1" data-order="newest".*role="status">Loading questions/s)
+  assert.match(handler, /fetch\(`\/answer\/api\/v1\/question\/\$\{.+\}\?page_size=20&page=\$\{Number\(.+\)\|\|1\}&order=\$\{.+\|\|"newest"\}`\)/)
+  assert.doesNotMatch(`${html}\n${staticHtml}\n${handler}`, /\bswr\b|axios|\bqs\b|react-i18next|react-bootstrap|["']react["']/i)
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  assert.deepEqual(plan.searchParams.map(entry => entry.name), ["page", "order"])
+  assert.deepEqual(plan.effects[0].dependencies, ["p0", "p1"])
+  assert.equal(plan.effects[0].dependencyExpressions[1][3][1], "newest")
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runApacheAnswerQuestionsBrowserTest(fixture, chrome)
+})
+
+test("owns Apache Answer authentication in shared layout state", async t => {
+  const fixture = new URL("./fixtures/apache-answer-auth-ownership", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/apache-answer-auth-ownership/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/apache-answer-auth-ownership/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const publicHtml = await readFile(new URL("./fixtures/apache-answer-auth-ownership/dist/public/index.html", import.meta.url), "utf8")
+  const shell = await readFile(new URL("./fixtures/apache-answer-auth-ownership/dist/assets/handlers/Shell.js", import.meta.url), "utf8")
+  const login = await readFile(new URL("./fixtures/apache-answer-auth-ownership/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const settings = await readFile(new URL("./fixtures/apache-answer-auth-ownership/dist/assets/handlers/pages/settings.js", import.meta.url), "utf8")
+  const plans = JSON.parse(await readFile(new URL("./fixtures/apache-answer-auth-ownership/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes
+  assert.match(shell, /localStorage\.getItem\("answer-token"\)/)
+  assert.match(shell, /\/answer\/api\/v1\/user\/me/)
+  assert.match(login, /FormData|answer-token|\/answer\/api\/v1\/user\/login/)
+  assert.match(settings, /status!==401|answer-token|location\.replace\("\/"\)/)
+  assert.doesNotMatch(`${shell}\n${login}\n${settings}`, /zustand|axios|react-router|["']react["']/)
+  assert.doesNotMatch(publicHtml, /<script|data-k-/)
+  assert.equal(plans.find(route => route.route === "/").states[0].lifetime, "layout")
+  assert.deepEqual(plans.find(route => route.route === "/public").states, [])
+})
+
+test("builds Apache Answer route shell without a browser router", async t => {
+  const fixture = new URL("./fixtures/apache-answer-route-shell", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/apache-answer-route-shell/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/apache-answer-route-shell/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const questions = await readFile(new URL("./fixtures/apache-answer-route-shell/dist/questions/index.html", import.meta.url), "utf8")
+  const dashboard = await readFile(new URL("./fixtures/apache-answer-route-shell/dist/admin/dashboard/index.html", import.meta.url), "utf8")
+  const legal = await readFile(new URL("./fixtures/apache-answer-route-shell/dist/legal/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/apache-answer-route-shell/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.match(questions, /aria-label="Primary".*aria-label="Sections".*<h1>Questions<\/h1>.*Powered by Answer/s)
+  assert.match(dashboard, /<h1>Admin dashboard<\/h1>/)
+  assert.doesNotMatch(`${questions}\n${dashboard}\n${legal}`, /react-router|RouterProvider|data-k-nav/)
+  assert.doesNotMatch(legal, /<script|data-k-/)
+  assert.equal(plan.routes.length, 7)
+  assert.deepEqual(plan.rewrites.map(entry => entry.pattern), ["/questions/[qid]/[slugPermalink]", "/tags/[tagName]"])
+  assert.deepEqual(plan.routes.filter(route => route.params.length).map(route => route.params.map(entry => entry.name)), [["qid", "slugPermalink"], ["tagName"]])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runApacheAnswerRouteShellBrowserTest(fixture, chrome)
+})
+
+test("builds Apache Answer authoring and admin mutations with native controls", async t => {
+  const fixture = new URL("./fixtures/apache-answer-authoring-admin", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/apache-answer-authoring-admin/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/apache-answer-authoring-admin/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const ask = await readFile(new URL("./fixtures/apache-answer-authoring-admin/dist/questions/add/index.html", import.meta.url), "utf8")
+  const legal = await readFile(new URL("./fixtures/apache-answer-authoring-admin/dist/legal/index.html", import.meta.url), "utf8")
+  const askHandler = await readFile(new URL("./fixtures/apache-answer-authoring-admin/dist/assets/handlers/pages/questions/add.js", import.meta.url), "utf8")
+  const adminHandler = await readFile(new URL("./fixtures/apache-answer-authoring-admin/dist/assets/handlers/pages/admin/questions.js", import.meta.url), "utf8")
+  assert.match(ask, /<form.*<textarea name="body" required.*type="file" accept="\.md,text\/markdown,text\/plain".*aria-label="Preview"/s)
+  assert.match(askHandler, /FormData|answer-questions|\.text\(\)/)
+  assert.match(adminHandler, /answer-questions|\.filter\(/)
+  assert.doesNotMatch(`${ask}\n${askHandler}\n${adminHandler}`, /react-hook-form|CodeMirror|axios|zustand|["']react["']/)
+  assert.doesNotMatch(legal, /<script|data-k-/)
 })
 
 test("filters imported static collections with memoized state selectors", async t => {
@@ -4588,6 +4847,128 @@ http.createServer((request, response) => {
     assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runApacheAnswerQuestionsBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const navigate = search => {
+  history.pushState(null, "", search)
+  dispatchEvent(new PopStateEvent("popstate"))
+}
+const titles = () => [...document.querySelectorAll("#questions > li > h2")].map(node => node.textContent).join(",")
+try {
+  const main = document.querySelector("main")
+  await waitFor(() => main.dataset.page === "2" && main.dataset.order === "active", "initial-query")
+  navigate("/?page=3&order=recommend")
+  await waitFor(() => titles() === "Recommended pine", "recommend-response")
+  if ([...document.querySelectorAll("#questions > li li")].map(node => node.textContent).join(",") !== "compiler,static") throw new Error("nested-tags")
+  await wait(200)
+  if (titles() !== "Recommended pine" || main.dataset.page !== "3" || main.dataset.order !== "recommend") throw new Error("stale-response")
+  navigate("/?page=4&order=recommend")
+  await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 500", "error-response")
+  navigate("/?page=5&order=active")
+  await waitFor(() => titles() === "Recovered cedar", "recovery-response")
+  if (document.querySelector('[role="alert"]')) throw new Error("stale-error")
+  document.body.dataset.answerQuestionsTest = "pass"
+} catch (error) {
+  document.body.dataset.answerQuestionsTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  if (url.pathname.startsWith("/answer/api/v1/question/")) {
+    const page = Number(url.searchParams.get("page")), recommend = url.pathname.includes("recommend")
+    return setTimeout(() => {
+      if (page === 4) { response.statusCode = 500; return response.end("failed") }
+      const data = page === 2
+        ? [{ id: 1, title: "Stale oak", tags: [{ slug: "old", name: "old" }] }]
+        : recommend
+          ? [{ id: 2, title: "Recommended pine", tags: [{ slug: "compiler", name: "compiler" }, { slug: "static", name: "static" }] }]
+          : [{ id: 3, title: "Recovered cedar", tags: [{ slug: "native", name: "native" }] }]
+      response.setHeader("content-type", "application/json")
+      response.end(JSON.stringify({ data }))
+    }, page === 2 ? 180 : 20)
+  }
+  const relative = url.pathname === "/" ? "index.html" : url.pathname.slice(1)
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/?page=2&order=active`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-answer-questions-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runApacheAnswerRouteShellBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const script = '<script type="module" src="/browser-test.js"></script>'
+  for (const path of ["questions/[qid]/[slugPermalink]/index.html", "tags/[tagName]/index.html"]) {
+    const url = new URL(path, output)
+    await writeFile(url, (await readFile(url, "utf8")).replace("</body>", `${script}</body>`))
+  }
+  await writeFile(new URL("browser-test.js", output), `
+try {
+  if (location.pathname.startsWith("/questions/")) {
+    if (document.querySelector("[data-question-id]").textContent !== "42" || document.querySelector("h1").textContent !== "example-question" || !document.querySelector('[aria-label="Primary"]') || !document.querySelector('[aria-label="Sections"]')) throw new Error("question")
+    location.assign("/tags/kudzu")
+  } else {
+    if (location.pathname !== "/tags/kudzu" || document.querySelector("[data-tag-name]").textContent !== "kudzu" || document.querySelector("h1").textContent !== "Tag") throw new Error("tag")
+    document.body.dataset.answerRouteShellTest = "pass"
+  }
+} catch (error) {
+  document.body.dataset.answerRouteShellTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  const relative = new RegExp("^/questions/[^/]+/[^/]+/?$").test(url.pathname)
+    ? "questions/[qid]/[slugPermalink]/index.html"
+    : new RegExp("^/tags/[^/]+/?$").test(url.pathname)
+      ? "tags/[tagName]/index.html"
+      : url.pathname === "/" ? "index.html" : url.pathname.slice(1)
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/questions/42/example-question`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-answer-route-shell-test="pass"/)
   } finally {
     server.kill()
   }
@@ -8317,6 +8698,49 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/${query}`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-search-param-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runSearchCoercionBrowserTest(fixture, chrome, { attribute = "page", fallback = "1", marker = "searchCoercionTest", name = "page", query = "4" } = {}) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", `<script type="module">
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => document.querySelector("main").dataset[${JSON.stringify(attribute)}] === ${JSON.stringify(query)} && document.querySelector("output").textContent === ${JSON.stringify(query)}, "query")
+  history.pushState(null, "", "/")
+  dispatchEvent(new PopStateEvent("popstate"))
+  await waitFor(() => document.querySelector("main").dataset[${JSON.stringify(attribute)}] === ${JSON.stringify(fallback)} && document.querySelector("output").textContent === ${JSON.stringify(fallback)}, "fallback")
+  document.body.dataset[${JSON.stringify(marker)}] = "pass"
+} catch (error) {
+  document.body.dataset[${JSON.stringify(marker)}] = "fail-" + error.message
+}
+</script></body>`))
+  const port = nextBrowserPort()
+  const server = spawn(process.execPath, ["-e", `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  const file = path.join(root, url.pathname === "/" ? "index.html" : url.pathname.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/?${encodeURIComponent(name)}=${encodeURIComponent(query)}`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, new RegExp(`data-${marker.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}="pass"`))
   } finally {
     server.kill()
   }

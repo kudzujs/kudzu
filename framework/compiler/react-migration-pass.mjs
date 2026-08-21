@@ -3,6 +3,68 @@ import { bindingNames, importDeclarationNames, isFunctionLike, isLocalConst, isR
 import { analyzeCollectionPipeline, isArrayFromCall } from "./collection-analysis.mjs"
 
 export function createReactMigrationPass({ cloneAst, jsxTagName }) {
+  function normalizeReactBootstrapLayout(sourceFile, factory, context) {
+    const layouts = new Map()
+    for (const statement of sourceFile.statements) {
+      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "react-bootstrap") continue
+      const clause = statement.importClause
+      if (!clause || clause.name || !clause.namedBindings || ts.isNamespaceImport(clause.namedBindings)) throw sourceNodeError(statement, sourceFile, "React Bootstrap layout migration requires named Row or Col imports")
+      for (const entry of clause.namedBindings.elements) {
+        const imported = (entry.propertyName ?? entry.name).text
+        if (!entry.isTypeOnly && ["Row", "Col"].includes(imported)) layouts.set(entry.name.text, imported.toLowerCase())
+      }
+    }
+    if (!layouts.size) return sourceFile
+
+    const layout = tag => ts.isIdentifier(tag) && layouts.has(tag.text) && !isShadowedIdentifier(tag, sourceFile) ? layouts.get(tag.text) : undefined
+    const attributes = node => {
+      let authored
+      const spans = new Map()
+      const kind = layout(node.parent.tagName)
+      const breakpoints = ["xxl", "xl", "lg", "md", "sm", "xs"]
+      for (const property of node.properties) {
+        if (ts.isJsxSpreadAttribute(property)) throw sourceNodeError(property, sourceFile, "React Bootstrap Row and Col do not support spread props during native layout lowering")
+        const name = property.name.text
+        const initializer = property.initializer
+        const value = ts.isStringLiteral(initializer) ? initializer : initializer && ts.isJsxExpression(initializer) ? unwrapExpression(initializer.expression) : undefined
+        if (name === "className") {
+          if (authored !== undefined) throw sourceNodeError(property, sourceFile, "React Bootstrap Row and Col accept className only once")
+          if (!value || !ts.isStringLiteral(value) && !ts.isNoSubstitutionTemplateLiteral(value)) throw sourceNodeError(property, sourceFile, "React Bootstrap Row and Col className must be a static string")
+          authored = value.text
+          continue
+        }
+        if (kind === "col" && breakpoints.includes(name)) {
+          const span = value && ts.isNumericLiteral(value) ? Number(value.text) : NaN
+          if (!Number.isInteger(span) || span < 1 || span > 12) throw sourceNodeError(property, sourceFile, `React Bootstrap Col breakpoint ${JSON.stringify(name)} must be an integer literal from 1 through 12`)
+          spans.set(name, span)
+          continue
+        }
+        throw sourceNodeError(property, sourceFile, `React Bootstrap Row and Col only support a static className or numeric Col breakpoint prop; found ${JSON.stringify(name)}`)
+      }
+      const generated = kind === "row" ? ["row"] : spans.size ? breakpoints.filter(name => spans.has(name)).map(name => name === "xs" ? `col-${spans.get(name)}` : `col-${name}-${spans.get(name)}`) : ["col"]
+      return factory.createJsxAttributes([factory.createJsxAttribute(factory.createIdentifier("className"), factory.createStringLiteral([...generated, authored].filter(Boolean).join(" ")))])
+    }
+    const visitor = node => {
+      if (ts.isJsxElement(node) && layout(node.openingElement.tagName)) {
+        const opening = factory.updateJsxOpeningElement(node.openingElement, factory.createIdentifier("div"), node.openingElement.typeArguments, attributes(node.openingElement.attributes))
+        const closing = factory.updateJsxClosingElement(node.closingElement, factory.createIdentifier("div"))
+        return factory.updateJsxElement(node, opening, ts.visitNodes(node.children, visitor), closing)
+      }
+      if (ts.isJsxSelfClosingElement(node) && layout(node.tagName)) return factory.updateJsxSelfClosingElement(node, factory.createIdentifier("div"), node.typeArguments, attributes(node.attributes))
+      if (ts.isIdentifier(node) && layouts.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Bootstrap Row and Col imports may only be used as direct JSX elements")
+      if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-bootstrap") {
+        const clause = node.importClause
+        const bindings = clause?.namedBindings
+        if (!clause || !bindings || !ts.isNamedImports(bindings)) return node
+        const elements = bindings.elements.filter(entry => entry.isTypeOnly || !["Row", "Col"].includes((entry.propertyName ?? entry.name).text))
+        if (!elements.length) return undefined
+        return factory.updateImportDeclaration(node, node.modifiers, factory.updateImportClause(clause, clause.isTypeOnly, undefined, factory.updateNamedImports(bindings, elements)), node.moduleSpecifier, node.attributes)
+      }
+      return ts.visitEachChild(node, visitor, context)
+    }
+    return ts.visitNode(sourceFile, visitor)
+  }
+
   function normalizeReactMigrationSyntax(sourceFile, factory, context, importedCollections = new Set()) {
     const supported = new Set(["createContext", "useContext", "useEffect", "useId", "useReducer", "useRef", "useState"])
     const erased = new Set(["createRef", "forwardRef", "memo", "useCallback", "useMemo"])
@@ -19,7 +81,7 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
         else if (!entry.isTypeOnly && /^use[A-Z]/.test(imported)) throw sourceNodeError(entry, sourceFile, `React ${imported} is not supported by Kudzu migration input`)
       }
     }
-    if (!aliases.size && !reactObjects.size) return sourceFile
+    if (!aliases.size && !reactObjects.size) return normalizeReactBootstrapLayout(sourceFile, factory, context)
 
     const migrationCallName = call => {
       if (ts.isIdentifier(call.expression) && aliases.has(call.expression.text) && !isShadowedIdentifier(call.expression, sourceFile)) return aliases.get(call.expression.text)
@@ -193,7 +255,7 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
     }
     let normalized = ts.visitNode(sourceFile, visitor)
     const missing = [...required].filter(name => !imported.has(name)).sort()
-    if (!missing.length) return normalized
+    if (!missing.length) return normalizeReactBootstrapLayout(normalized, factory, context)
     for (const name of missing) {
       const collision = sourceFile.statements.some(statement => statementDeclaresName(statement, name) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name) && statement.moduleSpecifier.text !== "react")
       if (collision) throw sourceNodeError(sourceFile, sourceFile, `React.${name} cannot be normalized because ${JSON.stringify(name)} is already declared`)
@@ -203,7 +265,7 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
     const lastImport = statements.findLastIndex(statement => ts.isImportDeclaration(statement))
     statements.splice(lastImport + 1, 0, declaration)
     normalized = factory.updateSourceFile(normalized, statements)
-    return normalized
+    return normalizeReactBootstrapLayout(normalized, factory, context)
   }
 
   function lowerReactForwardRef(call, sourceFile, factory) {

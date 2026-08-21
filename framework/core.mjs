@@ -123,6 +123,19 @@ export function useParams() {
   return renderContext.params
 }
 
+export function __kUseRouteMatch(pattern) {
+  if (!renderContext) throw new Error("React Router useMatch can only run while rendering a Kudzu component")
+  if (renderContext.renderScope === "layout") throw new Error("React Router useMatch is only supported in route scope")
+  if (renderContext.runtimeParamNames?.length) throw new Error("React Router useMatch requires a build-known route and cannot run on a runtimeParams bracket page")
+  const pathname = renderContext.applicationRoute
+  let decodedPathname = pathname
+  try {
+    decodedPathname = pathname.split("/").map(segment => decodeURIComponent(segment).replaceAll("/", "%2F")).join("/")
+  } catch {}
+  const matches = new RegExp(`^${pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i").test(decodedPathname)
+  return matches ? { params: {}, pathname: decodedPathname, pathnameBase: decodedPathname, pattern: { path: pattern, caseSensitive: false, end: true } } : null
+}
+
 export function useSearchParam(name) {
   if (!renderContext) throw new Error("useSearchParam() can only run while rendering a Kudzu component")
   if (renderContext?.renderScope === "layout") throw new Error("useSearchParam() is only supported in route scope")
@@ -471,7 +484,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], captureCache: new WeakMap(), sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", applicationRoute: metadata.applicationRoute, counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], captureCache: new WeakMap(), sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }

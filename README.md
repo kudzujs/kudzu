@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.9.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.9.2 - Legacy CSS safety.** Projects with source CSS but no explicit style ownership retain their pre-0.8.53 global styles with an actionable migration warning; explicit apps keep route-aware CSS unchanged. Read the [release notes](./RELEASES.md#092---legacy-css-safety), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.9.2), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.9.3 - Large-app migration slices.** Apache Answer-derived fixtures add exact route matching, composed query reads, native React Bootstrap layout, owned browser data, authentication build intake, route-shell, and authoring/admin migration evidence without React or package runtimes. Read the [release notes](./RELEASES.md#093---large-app-migration-slices), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.9.3), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -103,7 +103,10 @@ ordinary React-shaped TSX
 - Native document navigation is the default; static routes do not load a client runtime.
 - A named or aliased React Router `Link` with a static root-relative `to` erases to a base-aware native anchor; no router package or runtime is emitted.
 - A direct named or aliased React Router `useParams()` call on a `runtimeParams` bracket route reuses Kudzu's route-specific pathname reader.
-- React Router `useSearchParams()` supports direct static `get("name")` locals and inline setter updaters, lowering reads and history writes to one route-specific query capability.
+- A direct top-level React Router `useMatch("/exact-path")` route binding folds case-insensitively from the build-known application route without browser JavaScript.
+- React Router `useSearchParams()` supports direct static `get("name")` locals, the exact numeric pagination fallback `Number(params.get("page")) || 1`, a static imported-array string fallback, and inline setter updaters, lowering reads and history writes to one route-specific query capability.
+- React Bootstrap `Row` and `Col` with children, static classes, and numeric literal `Col` breakpoints erase to native Bootstrap grid markup; applications retain ownership of Bootstrap CSS.
+- Browser-only query data uses owned effects with application loading/error/data state; URL-derived dependencies, stale-response isolation, keyed results, and recovery require no query package runtime.
 - Only TypeScript modules reachable from pages are compiled. Imported immutable direct maps can fold to static HTML, while direct fields from relative structured calculations reevaluate through route binding ESM.
 - Package imports used directly inside JSX event callbacks are removed from build modules and retained only in bundled route handler ESM.
 - A named or aliased React Router `useNavigate()` top-level binding lowers direct nested-callback calls with safe static root-relative destinations to native `location.assign()` or `location.replace()` navigation.

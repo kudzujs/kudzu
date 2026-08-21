@@ -246,6 +246,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
         styles: styleUrls.length ? styleUrls : false,
         managedStyles: navigable ? sourceStyleUrls : [],
         base,
+        applicationRoute,
         runtimeAsset: runtimePlaceholder,
         bindingAsset: bindingPlaceholder,
         listAsset: listPlaceholder,

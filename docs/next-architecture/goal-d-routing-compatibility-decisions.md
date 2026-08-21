@@ -12,6 +12,7 @@ Supported React Router-shaped migration remains narrow:
 
 - static root-relative `Link` lowers to a base-prefixed native `<a>`;
 - bracket runtime routes may lower direct `useParams()` to the pathname reader;
+- route-owned exact static root-relative `useMatch()` bindings fold case-insensitively from the build-known application route;
 - top-level direct `useSearchParams()` reads/writes lower to URL signals and native history;
 - direct nested `useNavigate()` calls lower to native `location.assign()` or `location.replace()`;
 - no React Router package executes in build output or the browser.

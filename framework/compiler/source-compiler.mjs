@@ -315,12 +315,12 @@ function normalizeParameterizedDebounceHooks(sourceFile, factory, context) {
   return ts.visitNode(sourceFile, visitor)
 }
 
-function normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedStaticCollections, sourceFiles, sourceIndex }) {
+function normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedFallbackCollections, importedStaticCollections, sourceFiles, sourceIndex }) {
   const factory = context.factory
   let customHookTimerStates = new Set()
   sourceFile = applyNormalizationPasses(sourceFile, [
     ...(importedStaticCollections ? [source => normalizeImportedStaticCollections(source, importedStaticCollections, factory, context)] : []),
-    source => normalizeReactRouterSyntax(source, factory, context, base),
+    source => normalizeReactRouterSyntax(source, factory, context, base, importedFallbackCollections),
     source => normalizeClsxSyntax(source, factory, context),
     source => normalizeMediaQueryExternalStores(source, factory, context),
     source => normalizeReactMigrationSyntax(source, factory, context, importedCollections ?? importedSerializableCollectionNames(source, file, sourceFiles, sourceIndex)),
@@ -354,7 +354,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const hasLinkElements = /<link/i.test(sourceFile.text)
     const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex, true)
     const importedCollections = new Set(importedStaticCollections.keys())
-    const normalized = normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedStaticCollections, sourceFiles, sourceIndex })
+    const importedFallbackCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex)
+    const normalized = normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedFallbackCollections, importedStaticCollections, sourceFiles, sourceIndex })
     sourceFile = normalized.sourceFile
     const { customHookTimerStates } = normalized
     const bindingIndex = createBindingIndex(sourceFile)
@@ -398,9 +399,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     })
     const importBindings = clientImportBindings(sourceFile, file, sourceFiles)
     const packageBindings = packageImportBindings(sourceFile)
-    for (const [name] of packageBindings) {
+    for (const [name, binding] of packageBindings) {
       const references = referenceIdentifiers(sourceFile, name)
       const invalid = references.find(reference => !insideJsxEventHandler(reference, sourceFile) && !insideOwnedEffectCallback(reference, sourceFile))
+      if (invalid && binding.target === "react-i18next" && binding.imported === "useTranslation") throw sourceNodeError(invalid, sourceFile, "React i18next useTranslation() depends on runtime locale resources; migrate build-known locales through getStaticPaths() and props, or browser-only locale reads through an owned effect")
       if (invalid) throw sourceNodeError(invalid, sourceFile, `Package import ${JSON.stringify(name)} may only be referenced directly inside JSX event handlers or owned effect setup/cleanup callbacks`)
     }
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
@@ -661,6 +663,15 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const collect = node => {
       if (ts.isVariableDeclaration(node) && node.initializer && ts.isCallExpression(node.initializer)) {
         const callName = ts.isIdentifier(node.initializer.expression) ? node.initializer.expression.text : ""
+        if (ts.isIdentifier(node.name) && /^__kRouterSearchParam\d*$/.test(node.name.text) && /^__kUseSearchParam_*$/.test(callName)) {
+          const owner = nearestFunction(node)
+          if (!owner || !isLocalConst(node) || node.parent?.parent?.parent !== owner.body) throw sourceNodeError(node, sourceFile, "Compiler-owned search parameter signals must be top-level component const declarations")
+          const setters = settersByFunction.get(owner) ?? new Map()
+          const setter = `__kSet${node.name.text}`
+          setters.set(setter, node.name.text)
+          registerState(owner, node.name.text, setter, "search-param", node)
+          settersByFunction.set(owner, setters)
+        }
         const customHookImport = callName && /^use[A-Z]/.test(callName) && importBindings.has(callName) && importBindings.get(callName).kind !== "namespace" && !resolvedSharedState(importBindings.get(callName))
         const debounce = customHookImport && ts.isIdentifier(node.name) ? resolveParameterizedDebounceHook(importBindings.get(callName)) : undefined
         if (debounce) {
@@ -1110,6 +1121,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const declarations = jsxLocalDeclarations.get(owner)
       if (!declarations) return expression
       const substitutions = new Map()
+      const stateNames = new Set(setters.values())
       const resolving = []
       const resolve = (name, reference) => {
         if (substitutions.has(name)) return
@@ -1122,7 +1134,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         resolving.push(name)
         const initializer = entries[0].initializer
         const visit = node => {
-          if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isShadowedByParameter(node, initializer) && declarations.has(node.text)) resolve(node.text, node)
+          if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isShadowedByParameter(node, initializer) && declarations.has(node.text) && !stateNames.has(node.text)) resolve(node.text, node)
           ts.forEachChild(node, visit)
         }
         visit(initializer)
@@ -1130,7 +1142,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         resolving.pop()
       }
       const visit = node => {
-        if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression) && declarations.has(node.text)) resolve(node.text, node)
+        if (ts.isIdentifier(node) && isReferenceIdentifier(node) && !isShadowedByParameter(node, expression) && declarations.has(node.text) && !stateNames.has(node.text)) resolve(node.text, node)
         ts.forEachChild(node, visit)
       }
       visit(expression)
@@ -1632,7 +1644,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const entries = jsxLocalDeclarations.get(nearestFunction(node))?.get(value.expression.text)
           if (!entries?.length) return undefined
           const initializer = entries.length === 1 ? unwrapExpression(entries[0].initializer) : undefined
-          if (!initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || !importBindings.has(initializer.expression.text)) return undefined
+          if (!initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || !importBindings.has(initializer.expression.text) || resolvedSharedState(importBindings.get(initializer.expression.text))) return undefined
           if (entries[0].node.parent?.parent?.parent !== nearestFunction(entries[0].node)?.body) fail(value.expression, `Calculated collection result "${value.expression.text}" must be one top-level immutable local`)
           validateImportedCalculation(initializer, value.name.text)
           const expanded = resolveReactiveJsxExpression(value, nearestFunction(node), setters)
@@ -1974,11 +1986,13 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (callback.parameters.length) effectFail(callback, "useEffect() callback cannot declare parameters")
         if (!ts.isArrayLiteralExpression(dependencies)) effectFail(dependencies, "useEffect() dependencies must be a literal array")
         const setters = settersForNode(node, settersByFunction)
+        const effectStateNames = new Set(setters.values())
         const resolveCalculation = dependency => {
           if (specializedEffect) return undefined
           const value = unwrapExpression(dependency)
           const result = ts.isIdentifier(value) ? value : ts.isPropertyAccessExpression(value) || ts.isElementAccessExpression(value) ? unwrapExpression(value.expression) : undefined
           if (!result || !ts.isIdentifier(result)) return undefined
+          if (effectStateNames.has(result.text)) return undefined
           const entries = jsxLocalDeclarations.get(effectOwner)?.get(result.text)
           const initializer = entries?.length === 1 && entries[0].node.parent?.parent?.parent === effectOwner?.body ? unwrapExpression(entries[0].initializer) : undefined
           if (!initializer || !ts.isCallExpression(initializer) || !ts.isIdentifier(initializer.expression) || !importBindings.has(initializer.expression.text)) return undefined

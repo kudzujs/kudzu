@@ -1,5 +1,46 @@
 # Kudzu Releases
 
+## 0.9.3 - Large-app migration slices
+
+Kudzu 0.9.3 adds evidence-backed compiler and source-migration paths derived
+from Apache Answer while preserving static-first output and fail-closed package
+boundaries.
+
+### Changed in 0.9.3
+
+- Exact static React Router `useMatch()` folds from the build-known route with
+  zero browser JavaScript.
+- React Router query reads support numeric pagination and static imported-string
+  fallbacks, including reactive effect dependencies and read-only `popstate`.
+- React Bootstrap `Row` and `Col` lower to native grid markup, including numeric
+  literal breakpoint spans from 1 through 12.
+- Owned native fetch effects compose URL dependencies, stale-response isolation,
+  loading/error/data state, and nested keyed results without SWR or axios.
+- Reduced shared-authentication build intake and route-shell, authoring, and
+  admin fixtures prove package-neutral paths with static sibling exclusion.
+- Runtime-resource `react-i18next` receives an actionable locale-ownership
+  diagnostic rather than silently folding English or shipping i18next.
+
+### Validation
+
+- Apache Answer-derived positive and negative fixtures cover router, query,
+  layout, data, authentication, route-shell, authoring, and admin boundaries.
+- Static layout/legal/public siblings remain JavaScript-free.
+- `npm run check`, `npm test`, and `npm run test:package` pass on the release
+  worktree.
+
+### Limits
+
+This release does not claim a complete Apache Answer migration. Runtime i18n,
+rich CodeMirror ownership, upload progress, broader React Bootstrap compounds,
+plugins, AI screens, and all-route acceptance remain separate evidence gates.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.9.3
+```
+
 ## 0.9.2 - Legacy CSS safety
 
 Kudzu 0.9.2 prevents pre-0.8.53 applications from silently producing an

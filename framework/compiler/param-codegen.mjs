@@ -39,7 +39,7 @@ function decodeSegment(raw, param) {
   return value
 }
 ` : ""
-    const searchInitializer = searchParamsWritable && searchParams.length ? `function initializeSearch(search) {
+    const searchInitializer = searchParams.length ? `function initializeSearch(search) {
 const query = new URLSearchParams(search)
 for (const param of ${inlineJson(searchParams)}) {
   const value = query.get(param.name)
@@ -48,13 +48,7 @@ for (const param of ${inlineJson(searchParams)}) {
 }
 }
 ` : ""
-    const query = searchParams.length ? searchParamsWritable ? "initializeSearch(search)\n" : `const query = new URLSearchParams(search)
-for (const param of ${inlineJson(searchParams)}) {
-  const value = query.get(param.name)
-  browserState.set(param.id, value)
-  commitDom(param.id, value)
-}
-` : ""
+    const query = searchParams.length ? "initializeSearch(search)\n" : ""
     const writer = searchParamsWritable ? `
 function setSearchParams(update, replace) {
   const next = update(new URLSearchParams(location.search))
@@ -66,7 +60,8 @@ function setSearchParams(update, replace) {
 }
 ${navigable ? "" : `globalThis.__kSetSearchParams = setSearchParams
 addEventListener("popstate", () => ${searchParams.length ? "initializeSearch(location.search)" : "undefined"})`}` : ""
+    const reader = !navigable && !searchParamsWritable && searchParams.length ? '\naddEventListener("popstate", () => initializeSearch(location.search))' : ""
     return `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, runtimeName)))}
-${searchInitializer}${prefix}${pathname}${query}${suffix}${writer}`
+${searchInitializer}${prefix}${pathname}${query}${suffix}${writer}${reader}`
   }
 }
