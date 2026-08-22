@@ -224,6 +224,11 @@ The list/detail session uses 10 unique JavaScript files totaling 46,418 raw /
 17,045 aggregate gzip bytes. Seven fresh Chrome profiles record list-to-detail
 completion at `[2.3, 6.5, 1.4, 1.3, 5.1, 1.3, 4.0]` ms, median 2.3 ms.
 
+Release commit `76a45c4`, tag `v0.10.2`, both CI jobs, the GitHub release,
+`@kudzujs/core@0.10.2`, `create-kudzu@0.1.106`, registry metadata, and a fresh
+registry-backed scaffold install/check passed on 2026-08-22. Publish workflow
+`32566976581` completed every version, package, publication, and registry gate.
+
 ### `0.10.3`: Persistence Recipe And State Release
 
 - **Purpose:** prove URL, storage, and server-backed persistence without adding a
@@ -882,5 +887,6 @@ release transaction where possible or document and publish a forward-fix patch.
 |---|---|---|---|
 | `0.10.0` | Released | Preserve the published application baseline and release evidence. | None |
 | `0.10.1` | Released | Preserve the published state-scale evidence and explicit object-field limit. | None |
-| `0.10.2` | Active | Add the shared workspace and route-owned draft journey to the greenfield application. | None |
-| `0.10.3` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
+| `0.10.2` | Released | Preserve the published shared-layout navigation and exact route-release evidence. | None |
+| `0.10.3` | Active | Add the guarded application-owned persistence and state-release journey. | None |
+| `0.11.0` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
