@@ -270,6 +270,11 @@ timing ranges overlap with no material loss; the 7,144 raw / 3,278 gzip byte
 increase is the explicit cost of route-owned effect/native entries, not a
 compiler or shared-runtime change.
 
+Release commit `4420ccc`, tag `v0.10.3`, both CI jobs, the GitHub release,
+`@kudzujs/core@0.10.3`, `create-kudzu@0.1.107`, registry metadata, and a fresh
+registry-backed scaffold install/check passed on 2026-08-22. Publish workflow
+`32568752477` completed every version, package, publication, and registry gate.
+
 ## `0.11.x`: Async And Server Data
 
 ### `0.11.0`: Owned Fetch Lifecycle
@@ -917,5 +922,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.10.0` | Released | Preserve the published application baseline and release evidence. | None |
 | `0.10.1` | Released | Preserve the published state-scale evidence and explicit object-field limit. | None |
 | `0.10.2` | Released | Preserve the published shared-layout navigation and exact route-release evidence. | None |
-| `0.10.3` | Active | Add the guarded application-owned persistence and state-release journey. | None |
-| `0.11.0` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
+| `0.10.3` | Released | Preserve the published guarded persistence recipe and zero-runtime exclusion. | None |
+| `0.11.0` | Active | Add the owned loading/error/data/refetch and stale-response journey. | None |
+| `0.11.1` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
