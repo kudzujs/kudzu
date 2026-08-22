@@ -317,6 +317,11 @@ Clean-worktree `npm run check`, 273/273 standard tests, the required project
 Chrome journey, the focused required-Chrome retry for the one full-suite browser
 timeout, and packed-package smoke pass on 2026-08-22.
 
+Release commit `8065d86`, tag `v0.11.0`, both CI jobs, the GitHub release,
+`@kudzujs/core@0.11.0`, `create-kudzu@0.1.108`, registry metadata, and a fresh
+registry-backed scaffold install/check passed on 2026-08-22. Publish workflow
+`32571667242` completed every version, package, publication, and registry gate.
+
 ### `0.11.1`: List And Detail Data Consistency Evidence
 
 - **Purpose:** expose the first real multi-consumer coordination limit.
@@ -953,5 +958,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.10.1` | Released | Preserve the published state-scale evidence and explicit object-field limit. | None |
 | `0.10.2` | Released | Preserve the published shared-layout navigation and exact route-release evidence. | None |
 | `0.10.3` | Released | Preserve the published guarded persistence recipe and zero-runtime exclusion. | None |
-| `0.11.0` | Active | Add the owned loading/error/data/refetch and stale-response journey. | None |
-| `0.11.1` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
+| `0.11.0` | Released | Preserve the published owned-fetch lifecycle and zero-query-runtime exclusion. | None |
+| `0.11.1` | Active | Measure list/detail mutation consistency, duplicate requests, route changes, and refresh limits. | None |
+| `0.11.2` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
