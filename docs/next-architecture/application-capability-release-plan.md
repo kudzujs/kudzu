@@ -429,6 +429,30 @@ package, publication, and registry gate.
 - **Done condition:** data integrity survives success, failure, navigation, and
   retry.
 
+**Completion evidence:** one layout-owned async rename handler snapshots the
+current project name/revision, writes an immediate optimistic value, disables its
+button after the synchronous-turn commit, and sends one native POST. The
+deterministic server rejects the first attempt. The handler restores the exact
+snapshot, exposes `HTTP 500` through an accessible alert, and leaves the retained
+keyed row identity unchanged. A retry from detail writes the optimistic value,
+clears the alert, commits the confirmed revision, survives list/detail
+navigation, and restores from server truth after full document reload. Counts
+record two attempts, one accepted mutation, and no mutation-triggered GET.
+
+Existing immediate setters, native async handlers, shared layout signals, and
+owner authority are sufficient. This packet adds zero semantic primitives,
+ModuleIR kinds, compiler passes, production compiler lines, runtime concepts,
+normalization rules, adapter rules, public APIs, transaction primitives, caches,
+or schedulers. One positive application fixture gains optimistic success,
+failure, rollback, disabled duplicate submission, navigation, retry, and reload
+cases. It emits 19 files totaling 73,202 raw / 25,057 aggregate gzip bytes with
+deploy SHA-256
+`40c68fef4eeba5ea4c1a92e9a8003b74e6a45b7a10671ee2f3e4952010117b26`.
+The two-route session uses 15 JavaScript files totaling 56,318 raw / 21,211
+aggregate gzip bytes, an authored application increase of 582 raw / 3 gzip bytes
+over `0.11.2`. Twenty-one fresh Chrome profiles record a 0.8 ms median with a
+0.7/1.0 ms range; no latency change is claimed.
+
 ### `0.11.4`: Pagination, Refresh, And Polling Policy
 
 - **Purpose:** complete bounded server-data loading before infinite data work.

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.11.2",
+  "milestone": "0.11.3",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -35,6 +35,12 @@
     "list-detail-mutation-consistency",
     "counted-domain-requests",
     "refresh-server-restoration",
+    "optimistic-project-mutation",
+    "exact-mutation-rollback",
+    "duplicate-submit-prevention",
+    "accessible-mutation-error",
+    "mutation-retry",
+    "optimistic-keyed-row-identity",
     "native-navigation-fallback",
     "static-route-zero-javascript"
   ],
@@ -69,19 +75,19 @@
   },
   "baseline": {
     "deploy": {
-      "files": 20,
-      "rawBytes": 69501,
-      "aggregateGzipBytes": 24649,
-      "sha256": "bc6335131b7867da2857621211919fad43ebfb9414aac711c45f0c8ed3803022"
+      "files": 19,
+      "rawBytes": 73202,
+      "aggregateGzipBytes": 25057,
+      "sha256": "40c68fef4eeba5ea4c1a92e9a8003b74e6a45b7a10671ee2f3e4952010117b26"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 52603,
-        "javascriptAggregateGzipBytes": 19693
+        "javascriptRawBytes": 53532,
+        "javascriptAggregateGzipBytes": 19921
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 17566,
-        "javascriptAggregateGzipBytes": 7901
+        "javascriptRawBytes": 25993,
+        "javascriptAggregateGzipBytes": 11210
       },
       "/help": {
         "javascriptRawBytes": 0,
