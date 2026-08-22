@@ -163,6 +163,29 @@ is made because compiler and runtime sources are unchanged.
 - **Done condition:** the recorded scale remains within the material regression
   threshold and nearby unsupported dynamic paths fail at authored locations.
 
+**Completion evidence:** the project journey composes five ordinary route
+states: one object, two arrays, and two primitives. Six existing reactive
+bindings, one conditional owner, three keyed lists, one nested issue list, and
+one keyed row-local state cover summary replacement, filtering, derived issue
+counts, saved-filter append, conditional release/remount, keyed identity, and
+row-state release/reset. An unrelated control records zero DOM mutations. The
+route adds no semantic primitive, pass, browser runtime concept, normalized
+state, or generic rerender path; the only supported source adjustment is the
+application's use of a separate project array state at the existing keyed-list
+boundary. Direct object-field nested-list replacement remains outside this
+packet after its isolated experiment failed browser replacement, while the
+existing dynamic object-property diagnostic remains source-located.
+
+The application deploy contains 12 files, 47,546 raw / 16,285 aggregate gzip
+bytes, with SHA-256
+`d50c9ff6dccba338559dd9e9141c4607ec62da30385658e617a86f7af3f52e0f`.
+`/app/projects` uses 39,178 raw / 14,143 aggregate gzip JavaScript bytes;
+`/help` remains 0 B. The generated 1/8/32-state scale benchmark emits identical
+deploy output under `v0.10.0` and the candidate. Seven fresh Chrome processes
+record commit medians of 0.5/0.6/0.9 ms as the derived binding dependency edges
+increase from 0 to 8 to 32. Runtime JavaScript is 768/10,935/11,341 raw bytes
+and 441/4,789/4,841 aggregate gzip bytes. No material regression is present.
+
 ### `0.10.2`: Shared Layout And Cross-Route State
 
 - **Purpose:** keep workspace/session state across an explicit application
@@ -834,5 +857,5 @@ release transaction where possible or document and publish a forward-fix patch.
 | Patch | Status | Next exact action | Blocker |
 |---|---|---|---|
 | `0.10.0` | Released | Preserve the published application baseline and release evidence. | None |
-| `0.10.1` | Active | Extend the greenfield fixture with local, object, array, and derived state scale evidence. | None |
+| `0.10.1` | Active | Run the full release gate and publish the accepted state-scale evidence. | None |
 | `0.10.2` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |

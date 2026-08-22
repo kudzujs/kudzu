@@ -1,5 +1,54 @@
 # Kudzu Releases
 
+## 0.10.1 - Application state scale
+
+Kudzu 0.10.1 extends the tracked project-management journey across ordinary
+primitive, object, array, derived, conditional, nested keyed, and row-local
+state while retaining static-first output and existing browser capabilities.
+
+### Changed in 0.10.1
+
+- Added deterministic workspace summary replacement, project filtering, saved
+  filters, nested issue updates, conditional summary ownership, and keyed row
+  state release/remount to the greenfield application contract.
+- Added a maintained 1/8/32-state Chrome commit benchmark with exact `v0.10.0`
+  deploy comparison and runtime metadata.
+- Kept direct object-field nested-list replacement outside the accepted boundary
+  after the isolated experiment failed browser replacement.
+- Updated `create-kudzu@0.1.105` to generate projects on
+  `@kudzujs/core@^0.10.1`.
+
+### Output Evidence
+
+- The application fixture emits 12 files, 47,546 raw / 16,285 aggregate gzip
+  bytes, and deploy digest
+  `d50c9ff6dccba338559dd9e9141c4607ec62da30385658e617a86f7af3f52e0f`.
+- `/app/projects` emits 39,178 raw / 14,143 aggregate gzip JavaScript bytes;
+  `/help` remains 0 B JavaScript.
+- The generated scale deploy is byte-identical to `v0.10.0`; 1/8/32-state
+  commit medians are 0.5/0.6/0.9 ms across seven fresh Chrome processes.
+- No semantic primitive, compiler pass, browser runtime concept, normalized
+  state, or generic rerender path was added.
+
+### Validation
+
+- Required Chrome verifies derived updates, nested keyed identity, conditional
+  release/remount, keyed row state reset, and zero unrelated DOM mutations.
+- `npm run check`, the complete test suite, required-Chrome application test,
+  package smoke, registry metadata, and fresh installation are release gates.
+
+### Limits
+
+This release does not support direct object-field nested-list replacement,
+arbitrary object mutation, normalized state, shared layout state, persistence,
+authentication, or server data.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.10.1
+```
+
 ## 0.10.0 - Application capability baseline
 
 Kudzu 0.10.0 begins the application capability release train with a durable

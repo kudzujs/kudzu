@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.10.0",
+  "milestone": "0.10.1",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -10,8 +10,12 @@
   "accepted": [
     "complete-static-html",
     "local-primitive-state",
-    "direct-state-command",
-    "state-text-output",
+    "local-object-state",
+    "local-array-state",
+    "derived-state-output",
+    "conditional-ownership",
+    "nested-keyed-ownership",
+    "keyed-row-state-release",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -22,15 +26,15 @@
   ],
   "baseline": {
     "deploy": {
-      "files": 4,
-      "rawBytes": 1970,
-      "aggregateGzipBytes": 1265,
-      "sha256": "94ce7d01cac2e80823a36279294015d2f22328acaed571abb9996f8ca6171121"
+      "files": 12,
+      "rawBytes": 47546,
+      "aggregateGzipBytes": 16285,
+      "sha256": "d50c9ff6dccba338559dd9e9141c4607ec62da30385658e617a86f7af3f52e0f"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 768,
-        "javascriptAggregateGzipBytes": 441
+        "javascriptRawBytes": 39178,
+        "javascriptAggregateGzipBytes": 14143
       },
       "/help": {
         "javascriptRawBytes": 0,

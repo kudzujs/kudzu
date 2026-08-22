@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.10.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.10.0 - Application capability baseline.** A tracked greenfield project application now fixes the state, browser, output, and static zero-JavaScript contract used by the capability release train. Read the [release notes](./RELEASES.md#0100---application-capability-baseline), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.0), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.10.1 - Application state scale.** The tracked project application now proves primitive, object, array, derived, conditional, and nested keyed state ownership with measured commit scaling and a zero-JavaScript static control. Read the [release notes](./RELEASES.md#0101---application-state-scale), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
