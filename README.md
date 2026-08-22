@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.10.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.10.2 - Shared-layout navigation.** The tracked project application now preserves workspace state across explicit list/detail navigation while route drafts reset, direct loads start fresh, and static routes remain outside the runtime group. Read the [release notes](./RELEASES.md#0102---shared-layout-navigation), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.2), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.10.3 - Application-owned persistence.** The tracked project application now restores and writes a versioned workspace record, falls back safely from invalid storage, clears state on logout, and keeps static routes free of persistence code. Read the [release notes](./RELEASES.md#0103---application-owned-persistence), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.3), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

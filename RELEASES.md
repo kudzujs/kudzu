@@ -1,5 +1,53 @@
 # Kudzu Releases
 
+## 0.10.3 - Application-Owned Persistence
+
+Kudzu 0.10.3 proves guarded browser persistence as application code composed
+from ordinary state, effects, and native Web Storage.
+
+### Changed in 0.10.3
+
+- Added a versioned workspace restore recipe with deterministic static fallback
+  and exact value/schema/version validation.
+- Added a readiness guard so dependency persistence cannot overwrite storage
+  before mount restoration completes.
+- Added application-owned logout clearing and visible state reset in one native
+  handler.
+- Added required-Chrome cases for valid, absent, malformed, wrong-schema, and
+  wrong-version records, persistence writes, and logout removal.
+- Updated `create-kudzu@0.1.107` to generate projects on
+  `@kudzujs/core@^0.10.3`.
+
+### Output Evidence
+
+- The application fixture emits 19 files, 65,376 raw / 23,471 aggregate gzip
+  bytes, and deploy digest
+  `bb58826876bdf090a85d2c1f8a1edcbbc9abd35d5335eb3d1e7fb1fafe6bed72`.
+- The list/detail session uses 15 unique JavaScript files totaling 53,562 raw /
+  20,323 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- Matched 21-profile navigation medians are 1.9 ms for 0.10.2 and 1.5 ms for
+  0.10.3 with overlapping ranges, so no latency change is claimed.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, persistence API, store, or storage runtime was added.
+
+### Validation
+
+- Required Chrome proves restore, fallback, write, clear, conditional/keyed
+  release and fresh remount, route draft reset, and fresh direct documents.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+Schema migration chains, expiry, encryption, cross-tab storage events, and
+server synchronization remain application concerns or later evidence packets.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.10.3
+```
+
 ## 0.10.2 - Shared-layout navigation
 
 Kudzu 0.10.2 extends the tracked project-management application with explicit
