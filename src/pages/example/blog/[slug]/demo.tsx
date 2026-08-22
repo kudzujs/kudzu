@@ -10,7 +10,7 @@ import {
 
 export const metadata = {
   title: "Kudzu Blog Demo",
-  description: "A static blog design built with Kudzu TSX.",
+  description: "A static blog design compiled with Kudzu 0.11.3 TSX.",
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu Examples",

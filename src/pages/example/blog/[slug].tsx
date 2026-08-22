@@ -14,7 +14,7 @@ import {
 export const metadata = {
   title: "Kudzu Blog Example — Live preview and source",
   description:
-    "Explore a complete static blog example, its project structure, and the Kudzu TSX source behind it.",
+    "Explore a complete static blog example, its project structure, and the Kudzu 0.11.3 TSX source behind it.",
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu",
@@ -73,13 +73,14 @@ export default async function BlogShowcase({ blog }: { blog: BlogExample }) {
         </a>
         <nav aria-label="Example navigation">
           <a href="/example">All examples</a>
+          <a href="/releases/0.11.3">Kudzu 0.11.3</a>
           <a href={`/example/blog/${blog.slug}/demo`}>Open demo ↗</a>
         </nav>
       </header>
 
       <main className="showcase-main">
         <section className="showcase-intro">
-          <p className="eyebrow">BLOG EXAMPLE / {blog.label}</p>
+          <p className="eyebrow"><span>v0.11.3</span> BLOG EXAMPLE / {blog.label}</p>
           <h1>
             {blog.name}
             <br />
@@ -87,7 +88,7 @@ export default async function BlogShowcase({ blog }: { blog: BlogExample }) {
           </h1>
           <p>
             {blog.description} Preview the finished page, then inspect the exact
-            source that produces it.
+            source compiled by the current Kudzu release.
           </p>
         </section>
 

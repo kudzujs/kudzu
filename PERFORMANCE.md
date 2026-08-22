@@ -23,6 +23,11 @@ UI, and async handler add 582 raw / 3 aggregate gzip session bytes. The prior
 0.9 ms median and 0.7/1.2 ms range overlap, so no latency change is claimed. No
 compiler or browser-runtime source changed, and `/help` remains 0 B JavaScript.
 
+A clean homepage verification rerun on the same environment recorded
+`[0.9, 0.7, 0.8, 0.9, 0.9, 0.7, 0.8, 0.9, 0.7, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.8, 0.8, 0.9, 0.8, 0.9]`
+ms, with a 0.9 ms median and 0.7/0.9 ms range. It reproduces the release result's
+overlapping range and does not change the no-regression conclusion.
+
 ## 0.11.1 Project List/Detail Consistency
 
 Measured 2026-08-22 on macOS arm64 with Node 25.6.1 and Chrome

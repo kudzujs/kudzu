@@ -55,8 +55,15 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.9.0 release proof</strong><span>Matched C1/C2/C5 browser suites and seven rotating 10,000-product cold/warm builds pass their acceptance, behavior, ownership, build-time, and peak-RSS gates.</span></div>
-    <h3>Stateful browser comparison</h3>
+    <div className="docs-callout"><strong>Current 0.11.3 application proof</strong><span>The required-Chrome suite passes 273 tests; its maintained project journey proves optimistic failure, exact rollback, retry, retained identity, navigation, reload, and zero-JavaScript static exclusion.</span></div>
+    <h3>Project application</h3>
+    <BenchmarkTable columns={["Measurement", "0.11.3 result", "Protocol"]} rows={[
+      ["List-to-detail navigation", "0.8 ms release median", "21 fresh Chrome profiles"],
+      ["Two-route JavaScript", "56,318 / 21,211 B", "raw / aggregate gzip"],
+      ["Static help JavaScript", "0 B", "route and session"]
+    ]} />
+    <p>The release navigation range is 0.7–1.0 ms. A clean homepage verification rerun measured a 0.9 ms median and 0.7–0.9 ms range. Both overlap the 0.11.2 range, so this is a no-regression result, not a latency improvement claim. The optimistic mutation adds 582 raw / 3 aggregate gzip session bytes and no compiler or browser-runtime source.</p>
+    <h3>0.9 cross-framework proof</h3>
     <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
       ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],
       ["React 19.2.8", "196,089 / 60,661 B", "196,287 B"],

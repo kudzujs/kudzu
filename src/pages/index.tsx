@@ -37,6 +37,7 @@ export default function HomePage() {
         <nav>
           <a href="#quick-start">Start</a>
           <a href="#model">Model</a>
+          <a href="#benchmarks">Benchmarks</a>
           <a href="/docs">Docs</a>
           <a href="/example">Examples</a>
           <a href="https://www.npmjs.com/package/@kudzujs/core">npm</a>
@@ -110,6 +111,22 @@ export default function Counter() {
             <article><span>01</span><h3>Normalize</h3><p>Ordered AST passes lower supported React, Router, hook, and control-flow shapes.</p><code>source → canonical TSX</code></article>
             <article><span>02</span><h3>Analyze</h3><p>The transformer records state, effects, handlers, bindings, lists, and ownership.</p><code>semantics → descriptors</code></article>
             <article><span>03</span><h3>Generate</h3><p>Complete HTML ships with only the route-specific capability ESM it references.</p><code>descriptors → HTML + ESM</code></article>
+          </div>
+        </section>
+
+        <section className="model" id="benchmarks">
+          <div className="section-title">
+            <p className="eyebrow">MEASURED IN 0.11.3</p>
+            <h2>Application behavior.<br />Measured output.</h2>
+          </div>
+          <div className="pipeline">
+            <article><span>NAVIGATION</span><h3>0.8 ms release median</h3><p>Published list-to-detail completion across 21 fresh Chrome profiles, with a 0.7–1.0 ms range.</p><code>npm run benchmark:project-navigation</code></article>
+            <article><span>SESSION</span><h3>21,211 B gzip</h3><p>The complete two-route list/detail JavaScript session, including optimistic failure, rollback, and retry.</p><code>15 unique JavaScript files</code></article>
+            <article><span>STATIC</span><h3>0 B JavaScript</h3><p>The sibling help route remains complete HTML and receives no browser capability code.</p><code>unused capability → no output</code></article>
+          </div>
+          <div className="actions">
+            <a className="primary-action" href="/docs#benchmarks">Read benchmark notes</a>
+            <a className="secondary-action" href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">Inspect raw records ↗</a>
           </div>
         </section>
 
