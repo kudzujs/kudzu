@@ -1,9 +1,10 @@
 {
   "version": 1,
-  "milestone": "0.10.1",
+  "milestone": "0.10.2",
   "application": "project-management",
   "routes": [
     "/app/projects",
+    "/app/projects/alpha",
     "/help",
     "/login"
   ],
@@ -16,25 +17,33 @@
     "conditional-ownership",
     "nested-keyed-ownership",
     "keyed-row-state-release",
+    "shared-layout-state",
+    "route-state-release",
+    "enhanced-navigation",
+    "document-reload-reset",
+    "native-navigation-fallback",
     "static-route-zero-javascript"
   ],
   "deferred": [
     "authentication",
     "server-data",
-    "shared-layout-state",
     "project-crud"
   ],
   "baseline": {
     "deploy": {
-      "files": 12,
-      "rawBytes": 47546,
-      "aggregateGzipBytes": 16285,
-      "sha256": "d50c9ff6dccba338559dd9e9141c4607ec62da30385658e617a86f7af3f52e0f"
+      "files": 14,
+      "rawBytes": 57293,
+      "aggregateGzipBytes": 19985,
+      "sha256": "1c867ee7119f7eb23b935c4506c2a46639acb75c13f0916b29c255421b0d123d"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 39178,
-        "javascriptAggregateGzipBytes": 14143
+        "javascriptRawBytes": 46418,
+        "javascriptAggregateGzipBytes": 17045
+      },
+      "/app/projects/alpha": {
+        "javascriptRawBytes": 9567,
+        "javascriptAggregateGzipBytes": 3941
       },
       "/help": {
         "javascriptRawBytes": 0,

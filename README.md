@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.10.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.10.1 - Application state scale.** The tracked project application now proves primitive, object, array, derived, conditional, and nested keyed state ownership with measured commit scaling and a zero-JavaScript static control. Read the [release notes](./RELEASES.md#0101---application-state-scale), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.1), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.10.2 - Shared-layout navigation.** The tracked project application now preserves workspace state across explicit list/detail navigation while route drafts reset, direct loads start fresh, and static routes remain outside the runtime group. Read the [release notes](./RELEASES.md#0102---shared-layout-navigation), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.2), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

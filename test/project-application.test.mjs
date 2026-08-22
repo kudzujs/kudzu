@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.10.1 application state contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.10.2 shared-layout contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -25,12 +25,17 @@ test("establishes the 0.10.1 application state contract", { timeout: 120_000 }, 
   const plan = JSON.parse(await readFile(new URL(".kudzu/kudzu-plan.json", fixture), "utf8"))
   const artifacts = JSON.parse(await readFile(new URL(".kudzu/kudzu-artifacts.json", fixture), "utf8"))
   const routes = plan.routes.map(route => route.route).sort()
+  assert.equal(routes.includes("/app/projects/alpha"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.10.1")
+  assert.equal(contract.milestone, "0.10.2")
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
+  const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
   const projectArtifacts = artifacts.routes.find(route => route.route === "/app/projects")
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "projects", "filter", "showSummary", "savedFilters"])
+  const detailArtifacts = artifacts.routes.find(route => route.route === "/app/projects/alpha")
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "summary", "projects", "filter", "showSummary", "savedFilters"])
+  assert.deepEqual(projects.states.slice(0, 6).map(state => state.lifetime), ["layout", "route", "route", "route", "route", "route"])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["draft", "route", "Clean draft"]])
   assert.equal(projects.bindings.length, 6)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
@@ -43,8 +48,11 @@ test("establishes the 0.10.1 application state contract", { timeout: 120_000 }, 
   assert.equal(projectArtifacts.capability.manifest.lists.rowHooks, true)
   assert.equal(projectArtifacts.capability.manifest.lists.selectors, true)
   assert.equal(projectArtifacts.handlers.entries.length, 1)
-  assert.equal(projectArtifacts.runtime.entries.length, 1)
+  assert.equal(projectArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
   assert.equal(projectArtifacts.runtime.requirements.some(path => path.endsWith("/kudzu-list.js")), true)
+  assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
+  assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
+  assert.deepEqual(detailArtifacts.handlers, { entries: [], chunks: [] })
 
   const helpHtml = await readFile(new URL("dist/help/index.html", fixture), "utf8")
   const helpArtifacts = artifacts.routes.find(route => route.route === "/help")
@@ -59,10 +67,13 @@ test("establishes the 0.10.1 application state contract", { timeout: 120_000 }, 
   delete stableBaseline.deploy.aggregateGzipBytes
   delete stableOutput.routes["/app/projects"].javascriptAggregateGzipBytes
   delete stableBaseline.routes["/app/projects"].javascriptAggregateGzipBytes
+  delete stableOutput.routes["/app/projects/alpha"].javascriptAggregateGzipBytes
+  delete stableBaseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes
   assert.deepEqual(stableOutput, stableBaseline)
   // gzip output varies slightly across zlib versions; raw bytes and hashes stay exact.
   assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 32)
   assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 24)
+  assert.ok(Math.abs(output.routes["/app/projects/alpha"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes) <= 24)
 
   const chrome = process.env.KUDZU_SKIP_BROWSER ? undefined : chromePaths.find(existsSync)
   if (process.env.KUDZU_REQUIRE_CHROME && !chrome) throw new Error("Chrome is required for the project application test; set CHROME_BIN to an executable Chrome or Chromium binary")
@@ -71,9 +82,11 @@ test("establishes the 0.10.1 application state contract", { timeout: 120_000 }, 
 
 async function runBrowserJourney(chrome) {
   const output = new URL("dist/", fixture)
-  const htmlUrl = new URL("app/projects/index.html", output)
-  const html = await readFile(htmlUrl, "utf8")
-  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  for (const path of ["app/projects/index.html", "app/projects/alpha/index.html"]) {
+    const htmlUrl = new URL(path, output)
+    const html = await readFile(htmlUrl, "utf8")
+    await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  }
   await writeFile(new URL("browser-test.js", output), `
 const waitFor = async (predicate, label) => {
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -91,8 +104,14 @@ console.error = (...values) => {
   originalConsoleError(...values)
 }
 try {
+  if (new URLSearchParams(location.search).has("direct")) {
+    await waitFor(() => document.querySelector("[data-project-detail]"), "direct-detail")
+    if (document.querySelector("[data-workspace]").textContent !== "Primary" || document.querySelector("[data-route-workspace]").textContent !== "Primary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("direct-load-reset")
+    document.body.dataset.directLoadTest = "pass"
+  } else {
   await waitFor(() => document.querySelector('[data-project="alpha"]'), "initial-projects")
   await new Promise(resolve => setTimeout(resolve, 100))
+  const layout = document.querySelector("[data-app-layout]")
   const output = document.querySelector("#project-filter")
   if (output.textContent !== "All projects") throw new Error("initial-state")
   if (document.querySelector("#project-count").textContent !== "2") throw new Error("initial-summary")
@@ -140,7 +159,22 @@ try {
   if (restored === alpha || restored.querySelector('[data-expand="alpha"]').getAttribute("aria-expanded") !== "false") throw new Error("row-state-reset")
   if (document.querySelector("#unrelated-control") !== unrelated || unrelatedMutations) throw new Error("unrelated-dom")
   if (browserErrors.length) throw new Error("browser-errors-" + browserErrors.join("-"))
+  document.querySelector("[data-switch-workspace]").click()
+  await waitFor(() => document.querySelector("[data-workspace]").textContent === "Secondary" && document.querySelector("[data-route-workspace]").textContent === "Secondary", "workspace-switch")
+  document.querySelector('a[href="/app/projects/alpha"]').click()
+  await waitFor(() => document.querySelector("[data-project-detail]"), "detail-navigation")
+  const firstDetail = document.querySelector("[data-project-detail]")
+  if (document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("layout-persistence")
+  document.querySelector("[data-edit-draft]").click()
+  await waitFor(() => document.querySelector("[data-project-draft]").textContent === "Dirty draft", "draft-edit")
+  document.querySelector('a[href="/app/projects"]').click()
+  await waitFor(() => document.querySelector("[data-project-list-page]"), "list-navigation")
+  if (firstDetail.isConnected || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-route-workspace]").textContent !== "Secondary") throw new Error("route-release")
+  document.querySelector('a[href="/app/projects/alpha"]').click()
+  await waitFor(() => document.querySelector("[data-project-detail]"), "detail-revisit")
+  if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary") throw new Error("route-reset")
   document.body.dataset.browserTest = "pass"
+  }
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message + (browserErrors.length ? "-" + browserErrors.join("-") : "")
 }
@@ -153,7 +187,7 @@ const root = process.argv[1], port = Number(process.argv[2])
 http.createServer((request, response) => {
   const pathname = new URL(request.url, "http://localhost").pathname
   const relative = pathname === "/" ? "index.html" : pathname.slice(1)
-  const file = path.join(root, relative.endsWith("/") ? relative + "index.html" : relative)
+  const file = path.join(root, relative.endsWith("/") || !path.extname(relative) ? relative + (relative.endsWith("/") ? "" : "/") + "index.html" : relative)
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1")
@@ -164,6 +198,9 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=10000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/`], { encoding: "utf8", timeout: 30_000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/, browser.stderr)
+    const direct = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/alpha/?direct=1`], { encoding: "utf8", timeout: 15_000 })
+    assert.equal(direct.status, 0, direct.stderr)
+    assert.match(direct.stdout, /data-direct-load-test="pass"/, direct.stderr)
   } finally {
     server.kill()
   }
@@ -210,6 +247,7 @@ async function outputBaseline(artifacts) {
     },
     routes: {
       "/app/projects": routeBytes("/app/projects"),
+      "/app/projects/alpha": routeBytes("/app/projects/alpha"),
       "/help": routeBytes("/help")
     }
   }

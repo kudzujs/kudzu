@@ -1,10 +1,28 @@
 # Performance Records
 
-Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
 `npm run benchmark:source-scale` generates its fixture outside the repository so 50,000 lines of synthetic source are not tracked. The default topology is 50 pages plus 450 route-owned imported modules. Generation is excluded from timing; fresh-process samples separately report source reads, reachable-graph discovery, source compilation, clean production build, compiler-result and deploy digests, output files/bytes, cache counters, and peak RSS. `ROUTES`, `MODULES_PER_ROUTE`, `FILLER_LINES`, `WARMUPS`, and `RUNS` may reduce or expand the fixture without changing the default acceptance floor. `TARGET_ROOT` measures another checkout; `BASELINE_ROOT` alternates that checkout with the current tree and requires identical deploy output.
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
+
+## 0.10.2 Project Shared-Layout Navigation
+
+Measured 2026-08-22 on macOS arm64 with Node 25.6.1 and Chrome
+151.0.7922.172. `npm run benchmark:project-navigation` builds the tracked
+project application, updates the layout-owned workspace state, and measures
+list-to-detail completion across seven fresh Chrome profiles. Every accepted
+sample verifies retained layout identity and the shared workspace value before
+reporting timing.
+
+The two-route session uses 10 unique JavaScript files totaling 46,418 raw /
+17,045 aggregate gzip bytes. Navigation samples are
+`[2.3, 6.5, 1.4, 1.3, 5.1, 1.3, 4.0]` ms, with a 2.3 ms median and 1.3/6.5 ms
+minimum/maximum. Both routes use the existing shared runtime family;
+`workspace` has layout lifetime while summary, collection, filter, conditional,
+saved-filter, row, and detail-draft states retain route lifetime. No compiler or
+browser runtime source changed, so no revision-to-revision performance claim is
+made.
 
 ## 0.10.1 Project State Scale
 

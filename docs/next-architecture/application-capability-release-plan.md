@@ -203,6 +203,27 @@ scaffold install/check are verified.
 - **Done condition:** state lifetime and disposal are exact in browser tests and
   static routes receive no shared-state runtime.
 
+**Completion evidence:** the greenfield application adds one exact Alpha detail
+route and one explicit navigation group around list/detail routes. A relative
+Context hook lowers through the existing `SharedStateIR`: both routes own the
+same `workspace` layout state while list state and the detail `draft` remain
+route-owned. Required Chrome proves retained layout DOM identity, workspace
+persistence in both directions, detail DOM release, fresh draft state on
+re-entry, and initial layout/draft values in a fresh document. `/help` remains
+outside the group, retains its native anchor path, and emits complete HTML with
+0 B JavaScript.
+
+This packet adds no semantic primitive, ModuleIR kind, compiler pass, production
+compiler LOC, runtime concept, normalization rule, adapter rule, store, or SPA
+router. It adds one application layout/context module, one route, one config,
+and one positive browser journey; existing navigation-group diagnostics retain
+the nearby rejected configuration boundary. The fixture emits 14 files, 57,293
+raw / 19,985 aggregate gzip bytes, with deploy SHA-256
+`1c867ee7119f7eb23b935c4506c2a46639acb75c13f0916b29c255421b0d123d`.
+The list/detail session uses 10 unique JavaScript files totaling 46,418 raw /
+17,045 aggregate gzip bytes. Seven fresh Chrome profiles record list-to-detail
+completion at `[2.3, 6.5, 1.4, 1.3, 5.1, 1.3, 4.0]` ms, median 2.3 ms.
+
 ### `0.10.3`: Persistence Recipe And State Release
 
 - **Purpose:** prove URL, storage, and server-backed persistence without adding a

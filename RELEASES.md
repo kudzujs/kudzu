@@ -1,5 +1,55 @@
 # Kudzu Releases
 
+## 0.10.2 - Shared-layout navigation
+
+Kudzu 0.10.2 extends the tracked project-management application with explicit
+list/detail navigation, layout-owned workspace state, and route-owned drafts
+using the existing navigation and shared-state semantics.
+
+### Changed in 0.10.2
+
+- Added one Context-backed application layout that lowers through existing
+  `SharedStateIR` and persists workspace selection across list/detail routes.
+- Added an exact Alpha detail route whose draft state releases on navigation and
+  initializes fresh on revisit and direct document load.
+- Added a maintained seven-profile list-to-detail navigation benchmark with
+  session JavaScript and lifetime metadata.
+- Kept `/help` and `/login` outside the navigation group; `/help` remains a
+  complete zero-JavaScript native-navigation target.
+- Updated `create-kudzu@0.1.106` to generate projects on
+  `@kudzujs/core@^0.10.2`.
+
+### Output Evidence
+
+- The application fixture emits 14 files, 57,293 raw / 19,985 aggregate gzip
+  bytes, and deploy digest
+  `1c867ee7119f7eb23b935c4506c2a46639acb75c13f0916b29c255421b0d123d`.
+- The list/detail session uses 10 unique JavaScript files totaling 46,418 raw /
+  17,045 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- Seven fresh Chrome profiles record list-to-detail completion at a 2.3 ms
+  median, with 1.3/6.5 ms minimum/maximum.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, store, or SPA router was added.
+
+### Validation
+
+- Required Chrome proves layout identity and workspace persistence in both
+  directions, route DOM release, fresh draft state, and direct-load reset.
+- The full suite, required-Chrome application journey, package smoke, registry
+  metadata, and fresh installation are release gates.
+
+### Limits
+
+Navigation remains explicit and group-scoped with complete-document fallback.
+This release does not add a universal SPA router, persistence, authentication,
+server data, or cross-group shared state.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.10.2
+```
+
 ## 0.10.1 - Application state scale
 
 Kudzu 0.10.1 extends the tracked project-management journey across ordinary
