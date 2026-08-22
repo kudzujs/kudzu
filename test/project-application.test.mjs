@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.11.0 owned fetch contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.11.1 list and detail consistency contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -27,17 +27,17 @@ test("establishes the 0.11.0 owned fetch contract", { timeout: 120_000 }, async 
   const routes = plan.routes.map(route => route.route).sort()
   assert.equal(routes.includes("/app/projects/alpha"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.11.0")
+  assert.equal(contract.milestone, "0.11.1")
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
   const projectArtifacts = artifacts.routes.find(route => route.route === "/app/projects")
   const detailArtifacts = artifacts.routes.find(route => route.route === "/app/projects/alpha")
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error"])
-  assert.deepEqual(projects.states.slice(0, 10).map(state => state.lifetime), ["layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["draft", "route", "Clean draft"]])
-  assert.equal(projects.effects.length, 3)
-  assert.equal(detail.effects.length, 2)
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "projectName", "projectRevision", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error"])
+  assert.deepEqual(projects.states.slice(0, 12).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["draft", "route", "Clean draft"]])
+  assert.equal(projects.effects.length, 4)
+  assert.equal(detail.effects.length, 3)
   assert.equal(projects.bindings.length, 6)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
@@ -54,7 +54,7 @@ test("establishes the 0.11.0 owned fetch contract", { timeout: 120_000 }, async 
   assert.equal(projectArtifacts.runtime.requirements.some(path => path.endsWith("/kudzu-list.js")), true)
   assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
   assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
-  assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js"], chunks: [] })
+  assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js", "/assets/handlers/pages/app/projects/alpha.js"], chunks: [] })
 
   const helpHtml = await readFile(new URL("dist/help/index.html", fixture), "utf8")
   const helpArtifacts = artifacts.routes.find(route => route.route === "/help")
@@ -112,6 +112,10 @@ console.error = (...values) => {
   browserErrors.push(values.map(String).join(" "))
   originalConsoleError(...values)
 }
+const projectCounts = async () => {
+  const response = await fetch("/api/project-counts")
+  return response.json()
+}
 try {
   const search = new URLSearchParams(location.search)
   const storageMode = search.get("storage")
@@ -120,12 +124,23 @@ try {
     await waitFor(() => document.querySelector("[data-workspace]")?.textContent === expected && document.querySelector("[data-route-workspace]")?.textContent === expected, "storage-restore")
     await waitFor(() => localStorage.getItem("kudzu-project-workspace") === JSON.stringify({ version: 1, workspace: expected }), "storage-fallback-write")
     document.body.dataset.storageTest = storageMode
+  } else if (sessionStorage.getItem("kudzu-project-refresh") === "pending") {
+    sessionStorage.removeItem("kudzu-project-refresh")
+    await waitFor(() => document.querySelector("[data-shared-project-name]")?.textContent === "Alpha renamed" && document.querySelector("[data-shared-project-revision]")?.textContent === "1", "refresh-server-restore")
+    const counts = await projectCounts()
+    if (counts.reads !== 2 || counts.mutations !== 1 || performance.getEntriesByType("navigation")[0]?.type !== "reload" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("refresh-contract")
+    document.querySelector("[data-logout]").click()
+    await waitFor(() => document.querySelector("[data-workspace]").textContent === "Primary" && localStorage.getItem("kudzu-project-workspace") === null, "logout-clear")
+    document.body.dataset.browserTest = "pass"
   } else if (search.has("direct")) {
     await waitFor(() => document.querySelector("[data-project-detail]"), "direct-detail")
     if (document.querySelector("[data-workspace]").textContent !== "Primary" || document.querySelector("[data-route-workspace]").textContent !== "Primary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("direct-load-reset")
     document.body.dataset.directLoadTest = "pass"
   } else {
   if (!document.querySelector('[role="status"]') || document.querySelector('[data-project="alpha"] [data-project-name]')?.textContent !== "Alpha") throw new Error("initial-loading")
+  await waitFor(() => document.querySelector("[data-shared-project-revision]")?.textContent === "0", "shared-project-load")
+  let counts = await projectCounts()
+  if (counts.reads !== 1 || counts.mutations !== 0) throw new Error("initial-project-requests")
   await waitFor(() => document.body.dataset.projectFetchPending === "true", "stale-request-pending")
   document.querySelector("#refetch-projects").click()
   await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Projects loaded" && document.querySelector('[data-project="alpha"]')?.querySelector("[data-project-name]")?.textContent === "Alpha", "refetch-success")
@@ -189,21 +204,27 @@ try {
   document.querySelector('a[href="/app/projects/alpha"]').click()
   await waitFor(() => document.querySelector("[data-project-detail]"), "detail-navigation")
   const firstDetail = document.querySelector("[data-project-detail]")
-  if (document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("layout-persistence")
+  counts = await projectCounts()
+  if (document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-shared-project-revision]").textContent !== "0" || counts.reads !== 1 || counts.mutations !== 0) throw new Error("layout-persistence")
+  document.querySelector("[data-rename-project]").click()
+  await waitFor(() => document.querySelector("[data-shared-project-name]").textContent === "Alpha renamed" && document.querySelector("[data-shared-project-revision]").textContent === "1", "shared-project-mutation")
+  counts = await projectCounts()
+  if (counts.reads !== 1 || counts.mutations !== 1) throw new Error("mutation-requests")
   document.querySelector("[data-edit-draft]").click()
   await waitFor(() => document.querySelector("[data-project-draft]").textContent === "Dirty draft", "draft-edit")
   document.querySelector('a[href="/app/projects"]').click()
   await waitFor(() => document.querySelector("[data-project-list-page]"), "list-navigation")
-  if (firstDetail.isConnected || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-route-workspace]").textContent !== "Secondary") throw new Error("route-release")
+  counts = await projectCounts()
+  if (firstDetail.isConnected || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || document.querySelector("[data-shared-project-revision]").textContent !== "1" || counts.reads !== 1 || counts.mutations !== 1) throw new Error("route-release")
   const cleanupBeforeRemoval = document.body.dataset.projectFetchCleanup
   document.querySelector('a[href="/app/projects/alpha"]').click()
   await waitFor(() => document.querySelector("[data-project-detail]"), "detail-revisit")
   await new Promise(resolve => setTimeout(resolve, 300))
   if (document.body.dataset.projectFetchCleanup === cleanupBeforeRemoval || document.querySelector("[data-project-list-page]") || browserErrors.length) throw new Error("fetch-route-release")
-  if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary") throw new Error("route-reset")
-  document.querySelector("[data-logout]").click()
-  await waitFor(() => document.querySelector("[data-workspace]").textContent === "Primary" && localStorage.getItem("kudzu-project-workspace") === null, "logout-clear")
-  document.body.dataset.browserTest = "pass"
+  counts = await projectCounts()
+  if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || counts.reads !== 1 || counts.mutations !== 1) throw new Error("route-reset")
+  sessionStorage.setItem("kudzu-project-refresh", "pending")
+  location.reload()
   }
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message + (browserErrors.length ? "-" + browserErrors.join("-") : "")
@@ -214,8 +235,23 @@ try {
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
+let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0
 http.createServer((request, response) => {
   const url = new URL(request.url, "http://localhost"), pathname = url.pathname
+  if (pathname === "/api/project/alpha") {
+    response.setHeader("content-type", "application/json")
+    if (request.method === "POST") {
+      projectMutations++
+      project = { id: "alpha", name: "Alpha renamed", revision: project.revision + 1 }
+    } else projectReads++
+    response.end(JSON.stringify(project))
+    return
+  }
+  if (pathname === "/api/project-counts") {
+    response.setHeader("content-type", "application/json")
+    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations }))
+    return
+  }
   if (pathname === "/api/projects") {
     const requestNumber = Number(url.searchParams.get("request"))
     response.setHeader("content-type", "application/json")

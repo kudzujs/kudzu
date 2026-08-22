@@ -334,6 +334,35 @@ registry-backed scaffold install/check passed on 2026-08-22. Publish workflow
 - **Done condition:** existing composition is accepted or the smallest repeated
   missing coordination contract is isolated.
 
+**Completion evidence:** one layout-owned project record composes from two
+primitive shared signals and one existing mount effect. The list and detail
+routes observe the same server-confirmed rename without another read. The
+deterministic journey records one initial GET, zero additional GETs across two
+enhanced route changes, one mutation POST, and exactly one new GET after full
+document reload. The refreshed document reconstructs revision 1 from server
+truth while route-owned detail draft state resets. `/help` remains complete HTML
+with 0 B JavaScript.
+
+Current composition is accepted. Shared data lasts for one document and retained
+layout owner; independently authored fetch owners are not deduplicated, and no
+request registry, invalidation graph, subscriber set, or retained query cache
+exists. This one fixture does not authorize `0.11.2`: it needs no coordination
+primitive after ownership is placed correctly, while the packet requires two
+additional independent fixtures to demonstrate the same missing contract.
+
+This packet adds zero semantic primitives, ModuleIR kinds, compiler passes,
+production compiler lines, runtime concepts, normalization rules, adapter rules,
+public APIs, caches, Providers, or query runtimes. One existing positive fixture
+gains list/detail consistency, counted domain requests, mutation, navigation,
+and reload cases. It emits 20 files totaling 69,501 raw / 24,649 aggregate gzip
+bytes with deploy SHA-256
+`bc6335131b7867da2857621211919fad43ebfb9414aac711c45f0c8ed3803022`.
+The two-route session uses 16 JavaScript files totaling 55,736 raw / 21,208
+aggregate gzip bytes, an authored application increase of 966 raw / 445 gzip
+bytes over `0.11.0`. Twenty-one fresh Chrome profiles record a 0.9 ms median
+list-to-detail completion with a 0.7/1.2 ms range, overlapping the prior
+0.6/1.3 ms range; no latency change is claimed.
+
 ### `0.11.2`: Shared Request Coordination
 
 - **Purpose:** implement only the deduplication, subscriber, and invalidation

@@ -3,6 +3,10 @@ import { createContext, useContext, useEffect, useState } from "@kudzujs/core"
 type WorkspaceValue = {
   workspace: string
   setWorkspace: (workspace: string) => void
+  projectName: string
+  setProjectName: (name: string) => void
+  projectRevision: number
+  setProjectRevision: (revision: number) => void
 }
 
 const WorkspaceContext = createContext<WorkspaceValue>({} as WorkspaceValue)
@@ -14,6 +18,8 @@ export function useWorkspace() {
 export function AppLayout({ children }: { children?: unknown }) {
   const [workspace, setWorkspace] = useState("Primary")
   const [storageReady, setStorageReady] = useState(false)
+  const [projectName, setProjectName] = useState("Alpha")
+  const [projectRevision, setProjectRevision] = useState(-1)
 
   useEffect(() => {
     try {
@@ -35,7 +41,24 @@ export function AppLayout({ children }: { children?: unknown }) {
     } catch {}
   }, [storageReady, workspace])
 
-  return <WorkspaceContext.Provider value={{ workspace, setWorkspace }}>
+  useEffect(() => {
+    const controller = new globalThis.AbortController()
+    void fetch("/api/project/alpha", { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return response.json()
+      })
+      .then(project => {
+        setProjectName(project.name)
+        setProjectRevision(project.revision)
+      })
+      .catch(cause => {
+        if (!controller.signal.aborted) throw cause
+      })
+    return () => controller.abort()
+  }, [])
+
+  return <WorkspaceContext.Provider value={{ workspace, setWorkspace, projectName, setProjectName, projectRevision, setProjectRevision }}>
     <header data-app-layout>
       <output data-workspace>{workspace}</output>
       <button data-switch-workspace onClick={() => setWorkspace("Secondary")}>Switch workspace</button>

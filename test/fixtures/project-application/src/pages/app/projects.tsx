@@ -33,7 +33,7 @@ function ProjectRow({ project }: { project: Project }) {
 }
 
 export default function ProjectsPage() {
-  const { workspace } = useWorkspace()
+  const { workspace, projectName, projectRevision } = useWorkspace()
   const [summary, setSummary] = useState({ projectCount: 2, issueCount: 3 })
   const [projects, setProjects] = useState([alpha, beta])
   const [filter, setFilter] = useState<"all" | "active">("all")
@@ -78,6 +78,8 @@ export default function ProjectsPage() {
   return <main data-project-list-page>
     <h1>Projects</h1>
     <output data-route-workspace>{workspace}</output>
+    <output data-shared-project-name>{projectName}</output>
+    <output data-shared-project-revision>{projectRevision}</output>
     <p id="unrelated-control">Workspace projects are the first greenfield application surface.</p>
     <button id="refetch-projects" onClick={() => setRequest(request + 1)}>Refetch projects</button>
     <button id="show-active" onClick={() => setFilter("active")}>Show active</button>
