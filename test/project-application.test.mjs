@@ -44,7 +44,17 @@ test("establishes the 0.10.0 greenfield application contract", { timeout: 120_00
   assert.doesNotMatch(helpHtml, /<script|data-k-/)
   assert.deepEqual(helpArtifacts.runtime, { family: null, entries: [], requirements: [] })
   assert.deepEqual(helpArtifacts.handlers, { entries: [], chunks: [] })
-  assert.deepEqual(await outputBaseline(artifacts), contract.baseline)
+  const output = await outputBaseline(artifacts)
+  const stableOutput = structuredClone(output)
+  const stableBaseline = structuredClone(contract.baseline)
+  delete stableOutput.deploy.aggregateGzipBytes
+  delete stableBaseline.deploy.aggregateGzipBytes
+  delete stableOutput.routes["/app/projects"].javascriptAggregateGzipBytes
+  delete stableBaseline.routes["/app/projects"].javascriptAggregateGzipBytes
+  assert.deepEqual(stableOutput, stableBaseline)
+  // gzip output varies slightly across zlib versions; raw bytes and hashes stay exact.
+  assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 8)
+  assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 2)
 
   const chrome = process.env.KUDZU_SKIP_BROWSER ? undefined : chromePaths.find(existsSync)
   if (process.env.KUDZU_REQUIRE_CHROME && !chrome) throw new Error("Chrome is required for the project application test; set CHROME_BIN to an executable Chrome or Chromium binary")
