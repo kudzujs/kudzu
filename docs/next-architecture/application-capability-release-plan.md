@@ -185,6 +185,9 @@ deploy output under `v0.10.0` and the candidate. Seven fresh Chrome processes
 record commit medians of 0.5/0.6/0.9 ms as the derived binding dependency edges
 increase from 0 to 8 to 32. Runtime JavaScript is 768/10,935/11,341 raw bytes
 and 441/4,789/4,841 aggregate gzip bytes. No material regression is present.
+Release commit `f04041b`, tag `v0.10.1`, both CI jobs, the GitHub release,
+`@kudzujs/core@0.10.1`, `create-kudzu@0.1.105`, registry metadata, and a fresh
+scaffold install/check are verified.
 
 ### `0.10.2`: Shared Layout And Cross-Route State
 
@@ -857,5 +860,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | Patch | Status | Next exact action | Blocker |
 |---|---|---|---|
 | `0.10.0` | Released | Preserve the published application baseline and release evidence. | None |
-| `0.10.1` | Active | Run the full release gate and publish the accepted state-scale evidence. | None |
-| `0.10.2` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
+| `0.10.1` | Released | Preserve the published state-scale evidence and explicit object-field limit. | None |
+| `0.10.2` | Active | Add the shared workspace and route-owned draft journey to the greenfield application. | None |
+| `0.10.3` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
