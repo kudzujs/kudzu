@@ -409,6 +409,13 @@ application retains its 20-file, 69,501 raw / 24,649 aggregate gzip deploy and
 not applicable because no cache exists; cleanup remains existing effect and
 route/layout owner release.
 
+Clean-worktree `npm run check`, 273/273 required-Chrome tests, and packed-package
+smoke passed on 2026-08-22. Release commit `0ae4d5d`, tag `v0.11.2`, CI
+`32575316981`, the GitHub release, `@kudzujs/core@0.11.2`,
+`create-kudzu@0.1.110`, registry metadata, and a fresh registry-backed scaffold
+install/check passed. Publish workflow `32575541567` completed every version,
+package, publication, and registry gate.
+
 ### `0.11.3`: Mutation, Optimistic Update, And Rollback
 
 - **Purpose:** complete issue create/edit/delete behavior under failure.
@@ -1021,5 +1028,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.10.3` | Released | Preserve the published guarded persistence recipe and zero-runtime exclusion. | None |
 | `0.11.0` | Released | Preserve the published owned-fetch lifecycle and zero-query-runtime exclusion. | None |
 | `0.11.1` | Released | Preserve the published single-owner consistency and exact request-count evidence. | None |
-| `0.11.2` | Active | Review two independent fixtures for the same missing coordination contract before adding semantics. | None |
-| `0.11.3` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
+| `0.11.2` | Released | Preserve the published no-new-primitive architecture decision and zero-byte result. | None |
+| `0.11.3` | Active | Prove optimistic mutation, exact rollback, duplicate-submit prevention, navigation, and retry. | None |
+| `0.11.4` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
