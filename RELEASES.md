@@ -1,5 +1,52 @@
 # Kudzu Releases
 
+## 0.11.3 - Optimistic Mutation And Rollback
+
+Kudzu 0.11.3 proves optimistic server mutation with ordinary shared state and
+one owned async handler rather than a transaction runtime.
+
+### Changed in 0.11.3
+
+- Added immediate optimistic project name/revision updates visible from list and
+  detail routes.
+- Disabled duplicate submission after the synchronous-turn optimistic commit.
+- Restored the exact prior state after an HTTP 500 and exposed an accessible
+  error.
+- Proved retry success, retained keyed row identity, enhanced navigation, and
+  server restoration after document reload.
+- Updated `create-kudzu@0.1.111` to generate projects on
+  `@kudzujs/core@^0.11.3`.
+
+### Output Evidence
+
+- The application emits 19 files, 73,202 raw / 25,057 aggregate gzip bytes, and
+  deploy digest
+  `40c68fef4eeba5ea4c1a92e9a8003b74e6a45b7a10671ee2f3e4952010117b26`.
+- The list/detail session uses 15 unique JavaScript files totaling 56,318 raw /
+  21,211 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- Twenty-one fresh Chrome profiles record a 0.8 ms navigation median and
+  0.7/1.0 ms range.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, transaction primitive, cache, or scheduler was added.
+
+### Validation
+
+- Required Chrome proves optimistic state, one accepted attempt after failure,
+  exact rollback, retry, identity, navigation, and reload.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+The authored handler owns one mutation and snapshot. Generic transactions and
+same-turn programmatic reentrancy are not application semantics.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.11.3
+```
+
 ## 0.11.2 - Request Coordination Evidence
 
 Kudzu 0.11.2 reviews three unrelated server-data fixtures and closes shared
