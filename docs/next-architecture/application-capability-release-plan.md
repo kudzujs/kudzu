@@ -453,6 +453,13 @@ aggregate gzip bytes, an authored application increase of 582 raw / 3 gzip bytes
 over `0.11.2`. Twenty-one fresh Chrome profiles record a 0.8 ms median with a
 0.7/1.0 ms range; no latency change is claimed.
 
+Clean-worktree `npm run check`, 273/273 required-Chrome tests, and packed-package
+smoke passed on 2026-08-22. Release commit `ba6f97a`, tag `v0.11.3`, CI
+`32576861865`, the GitHub release, `@kudzujs/core@0.11.3`,
+`create-kudzu@0.1.111`, registry metadata, and a fresh registry-backed scaffold
+install/check passed. Publish workflow `32577090955` completed every version,
+package, publication, and registry gate.
+
 ### `0.11.4`: Pagination, Refresh, And Polling Policy
 
 - **Purpose:** complete bounded server-data loading before infinite data work.
@@ -1053,5 +1060,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.11.0` | Released | Preserve the published owned-fetch lifecycle and zero-query-runtime exclusion. | None |
 | `0.11.1` | Released | Preserve the published single-owner consistency and exact request-count evidence. | None |
 | `0.11.2` | Released | Preserve the published no-new-primitive architecture decision and zero-byte result. | None |
-| `0.11.3` | Active | Prove optimistic mutation, exact rollback, duplicate-submit prevention, navigation, and retry. | None |
-| `0.11.4` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
+| `0.11.3` | Released | Preserve the published optimistic rollback, duplicate prevention, navigation, and retry evidence. | None |
+| `0.11.4` | Active | Prove bounded page/filter synchronization, history, refresh, optional polling cleanup, and exact request behavior. | None |
+| `0.12.0` onward | Blocked | Wait for explicit approval after the patch-only release sequence. | User-directed minor-version boundary |
