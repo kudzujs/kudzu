@@ -46,7 +46,7 @@ export default function HomePage() {
 
       <a className="release-banner" href="/releases/0.10.1">
         <span>v0.10.1</span>
-        <strong>Application capability baseline</strong>
+        <strong>Application state scale</strong>
         <span>Read release notes →</span>
       </a>
 
