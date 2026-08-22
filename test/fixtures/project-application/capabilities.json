@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.11.1",
+  "milestone": "0.11.2",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -49,6 +49,24 @@
     "independent fetch owners are not deduplicated",
     "there is no request registry, invalidation graph, or retained query cache"
   ],
+  "architectureDecision": {
+    "patch": "0.11.2",
+    "status": "closed-no-new-primitive",
+    "primitive": null,
+    "fixtures": [
+      "project-application",
+      "tanstack-query-migration",
+      "apache-answer-browser-questions"
+    ],
+    "repeatedMissingContracts": [],
+    "reusedSemantics": [
+      "ordinary-state",
+      "owned-effect",
+      "dependency-invalidation",
+      "owner-release",
+      "static-exclusion"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 20,

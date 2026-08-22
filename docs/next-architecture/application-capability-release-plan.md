@@ -384,6 +384,31 @@ package, publication, and registry gate.
 - **Done condition:** architecture review records the reused or new primitive,
   runtime bytes, cache bound, and cleanup behavior.
 
+**Completion evidence:** architecture review covers three unrelated executable
+fixtures: the project application, TanStack Query-shaped product loading, and
+Apache Answer/SWR-shaped question loading. Every fixture has one explicit data
+owner, ordinary loading/error/data state, one native fetch effect, dependency or
+owner invalidation, exact cleanup, and static exclusion. None has two independent
+owners requesting one key, independently releasable subscribers, mutation-key
+invalidation, retained results after owner release, or a cache bound.
+
+The stop condition is met and this packet closes with no new primitive. The
+project application records `closed-no-new-primitive`, the three reviewed
+fixtures, an empty repeated-missing-contract list, and the reused semantics in
+its machine-readable capability contract. Existing fixture journeys remain the
+executable behavioral evidence. Absence of generic deduplication is not itself
+fixture pressure.
+
+This packet adds zero semantic primitives, ModuleIR kinds, compiler passes,
+production compiler lines, runtime concepts, normalization rules, adapter rules,
+public APIs, request registries, subscriber sets, invalidation graphs, caches, or
+browser bytes. One existing machine-readable contract and assertion change;
+all three existing positive fixtures remain behaviorally unchanged. The project
+application retains its 20-file, 69,501 raw / 24,649 aggregate gzip deploy and
+55,736 raw / 21,208 aggregate gzip two-route JavaScript session. Cache bound is
+not applicable because no cache exists; cleanup remains existing effect and
+route/layout owner release.
+
 ### `0.11.3`: Mutation, Optimistic Update, And Rollback
 
 - **Purpose:** complete issue create/edit/delete behavior under failure.

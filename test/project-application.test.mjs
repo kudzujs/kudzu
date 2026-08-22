@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.11.1 list and detail consistency contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.11.2 request coordination decision", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -27,7 +27,15 @@ test("establishes the 0.11.1 list and detail consistency contract", { timeout: 1
   const routes = plan.routes.map(route => route.route).sort()
   assert.equal(routes.includes("/app/projects/alpha"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.11.1")
+  assert.equal(contract.milestone, "0.11.2")
+  assert.deepEqual(contract.architectureDecision, {
+    patch: "0.11.2",
+    status: "closed-no-new-primitive",
+    primitive: null,
+    fixtures: ["project-application", "tanstack-query-migration", "apache-answer-browser-questions"],
+    repeatedMissingContracts: [],
+    reusedSemantics: ["ordinary-state", "owned-effect", "dependency-invalidation", "owner-release", "static-exclusion"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
