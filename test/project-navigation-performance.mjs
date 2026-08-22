@@ -83,10 +83,11 @@ async function browserRun(port) {
     const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" })
     const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true })
     await cdp.send("Runtime.enable", {}, sessionId)
-    await cdp.send("Page.navigate", { url: `http://127.0.0.1:${port}/app/projects/` }, sessionId)
+    await cdp.send("Page.navigate", { url: `http://127.0.0.1:${port}/app/projects` }, sessionId)
     await waitUntil(cdp, sessionId, 'document.readyState === "complete" && document.querySelector("[data-project=alpha]")')
     await evaluate(cdp, sessionId, 'window.__layout = document.querySelector("[data-app-layout]"); document.querySelector("[data-switch-workspace]").click(); true')
     await waitUntil(cdp, sessionId, 'document.querySelector("[data-workspace]").textContent === "Secondary"')
+    await waitUntil(cdp, sessionId, 'localStorage.getItem("kudzu-project-workspace") === JSON.stringify({ version: 1, workspace: "Secondary" })')
     const elapsed = await evaluate(cdp, sessionId, `new Promise((resolve, reject) => {
       let settled = false
       const timeout = setTimeout(() => { if (!settled) { settled = true; observer.disconnect(); reject(new Error("navigation timed out")) } }, 30000)

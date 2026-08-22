@@ -241,6 +241,35 @@ registry-backed scaffold install/check passed on 2026-08-22. Publish workflow
 - **Done condition:** deterministic static fallback and browser recovery pass
   with no storage runtime in unused routes.
 
+**Completion evidence:** the greenfield application layout now owns one guarded
+`localStorage` recipe composed entirely from ordinary state and two existing
+effects. Static HTML starts with `Primary`; a mount effect accepts only version
+1 records whose workspace is `Primary` or `Secondary`, while absent, malformed,
+wrong-schema, and wrong-version records fall back safely. A readiness state
+prevents the dependency effect from overwriting storage before restore.
+Workspace changes write the versioned record, and logout disables persistence,
+removes the record, and resets visible state in one synchronous handler.
+
+Required Chrome proves valid restore, every fallback, post-commit persistence,
+logout removal, conditional and keyed release/fresh remount, route draft
+release/fresh revisit, and a fresh direct document. `/help` remains outside the
+navigation group with complete HTML and 0 B JavaScript. The fixture emits 19
+files, 65,376 raw / 23,471 aggregate gzip bytes, with deploy SHA-256
+`bb58826876bdf090a85d2c1f8a1edcbbc9abd35d5335eb3d1e7fb1fafe6bed72`.
+The two-route session uses 15 unique JavaScript files totaling 53,562 raw /
+20,323 aggregate gzip bytes.
+
+This packet adds zero semantic primitives, ModuleIR kinds, compiler passes,
+production compiler lines, runtime concepts, normalization rules, adapter
+rules, public APIs, stores, or persistence runtimes. One existing positive
+application fixture gains valid, absent, malformed, wrong-schema, wrong-version,
+write, and clear browser cases. A matched 21-profile measurement records the
+authored capability cost: the 0.10.2 list/detail median of 1.9 ms and 46,418 raw /
+17,045 gzip session JavaScript becomes 1.5 ms and 53,562 / 20,323 bytes. The
+timing ranges overlap with no material loss; the 7,144 raw / 3,278 gzip byte
+increase is the explicit cost of route-owned effect/native entries, not a
+compiler or shared-runtime change.
+
 ## `0.11.x`: Async And Server Data
 
 ### `0.11.0`: Owned Fetch Lifecycle

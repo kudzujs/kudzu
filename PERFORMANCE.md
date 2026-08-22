@@ -6,6 +6,36 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
+## 0.10.3 Project Persistence Recipe
+
+Measured 2026-08-22 on macOS arm64 with Node 25.6.1 and Chrome
+151.0.7922.172. `RUNS=21 npm run benchmark:project-navigation` uses fresh Chrome
+profiles and exact extensionless application routes. Every accepted sample
+updates workspace state, verifies layout identity and persisted state, then
+measures list-to-detail completion.
+
+The 0.10.2 release baseline and 0.10.3 candidate were measured with the same
+21-profile timing protocol and host; the candidate additionally verifies its
+persistence write before timing:
+
+| Revision | Session JS raw/gzip | Navigation median | Min/max |
+|---|---:|---:|---:|
+| `0.10.2` | 46,418 / 17,045 B | 1.9 ms | 1.3 / 5.5 ms |
+| `0.10.3` candidate | 53,562 / 20,323 B | 1.5 ms | 1.3 / 5.6 ms |
+
+Baseline samples:
+`[1.3, 1.8, 1.6, 1.9, 1.3, 1.3, 1.9, 5.1, 1.7, 1.4, 1.9, 5.0, 4.7, 1.9, 1.7, 5.5, 2.2, 1.7, 1.5, 2.0, 5.2]`.
+
+Candidate samples:
+`[2.6, 1.5, 1.8, 1.3, 1.5, 1.4, 1.7, 1.3, 1.5, 1.5, 1.9, 1.7, 1.6, 5.6, 1.5, 1.6, 1.5, 1.5, 1.5, 1.5, 1.6]`.
+
+The +7,144 raw / +3,278 aggregate gzip bytes are the measured cost of two
+authored layout effects, their route-owned entries, and one native clear
+handler. The median changes from 1.9 to 1.5 ms with overlapping ranges, so no
+latency improvement or regression is claimed. No compiler or browser-runtime
+source changed. `/help` remains 0 B JavaScript, so unused routes pay no
+persistence cost.
+
 ## 0.10.2 Project Shared-Layout Navigation
 
 Measured 2026-08-22 on macOS arm64 with Node 25.6.1 and Chrome

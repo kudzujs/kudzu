@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.10.2 shared-layout contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.10.3 persistence contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -27,15 +27,17 @@ test("establishes the 0.10.2 shared-layout contract", { timeout: 120_000 }, asyn
   const routes = plan.routes.map(route => route.route).sort()
   assert.equal(routes.includes("/app/projects/alpha"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.10.2")
+  assert.equal(contract.milestone, "0.10.3")
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
   const projectArtifacts = artifacts.routes.find(route => route.route === "/app/projects")
   const detailArtifacts = artifacts.routes.find(route => route.route === "/app/projects/alpha")
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "summary", "projects", "filter", "showSummary", "savedFilters"])
-  assert.deepEqual(projects.states.slice(0, 6).map(state => state.lifetime), ["layout", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["draft", "route", "Clean draft"]])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "summary", "projects", "filter", "showSummary", "savedFilters"])
+  assert.deepEqual(projects.states.slice(0, 7).map(state => state.lifetime), ["layout", "layout", "route", "route", "route", "route", "route"])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["draft", "route", "Clean draft"]])
+  assert.equal(projects.effects.length, 2)
+  assert.equal(detail.effects.length, 2)
   assert.equal(projects.bindings.length, 6)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
@@ -47,12 +49,12 @@ test("establishes the 0.10.2 shared-layout contract", { timeout: 120_000 }, asyn
   assert.equal(projectArtifacts.capability.manifest.lists.nested, true)
   assert.equal(projectArtifacts.capability.manifest.lists.rowHooks, true)
   assert.equal(projectArtifacts.capability.manifest.lists.selectors, true)
-  assert.equal(projectArtifacts.handlers.entries.length, 1)
+  assert.equal(projectArtifacts.handlers.entries.length, 2)
   assert.equal(projectArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
   assert.equal(projectArtifacts.runtime.requirements.some(path => path.endsWith("/kudzu-list.js")), true)
   assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
   assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
-  assert.deepEqual(detailArtifacts.handlers, { entries: [], chunks: [] })
+  assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js"], chunks: [] })
 
   const helpHtml = await readFile(new URL("dist/help/index.html", fixture), "utf8")
   const helpArtifacts = artifacts.routes.find(route => route.route === "/help")
@@ -85,7 +87,14 @@ async function runBrowserJourney(chrome) {
   for (const path of ["app/projects/index.html", "app/projects/alpha/index.html"]) {
     const htmlUrl = new URL(path, output)
     const html = await readFile(htmlUrl, "utf8")
-    await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+    await writeFile(htmlUrl, html.replace("</head>", `<script>
+const storageMode = new URLSearchParams(location.search).get("storage")
+if (storageMode === "valid") localStorage.setItem("kudzu-project-workspace", JSON.stringify({ version: 1, workspace: "Secondary" }))
+else if (storageMode === "malformed") localStorage.setItem("kudzu-project-workspace", "{")
+else if (storageMode === "invalid-schema") localStorage.setItem("kudzu-project-workspace", JSON.stringify({ version: 1, workspace: "Unknown" }))
+else if (storageMode === "wrong-version") localStorage.setItem("kudzu-project-workspace", JSON.stringify({ version: 2, workspace: "Secondary" }))
+else if (storageMode === "empty") localStorage.removeItem("kudzu-project-workspace")
+</script></head>`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   }
   await writeFile(new URL("browser-test.js", output), `
 const waitFor = async (predicate, label) => {
@@ -104,7 +113,14 @@ console.error = (...values) => {
   originalConsoleError(...values)
 }
 try {
-  if (new URLSearchParams(location.search).has("direct")) {
+  const search = new URLSearchParams(location.search)
+  const storageMode = search.get("storage")
+  if (storageMode) {
+    const expected = storageMode === "valid" ? "Secondary" : "Primary"
+    await waitFor(() => document.querySelector("[data-workspace]")?.textContent === expected && document.querySelector("[data-route-workspace]")?.textContent === expected, "storage-restore")
+    await waitFor(() => localStorage.getItem("kudzu-project-workspace") === JSON.stringify({ version: 1, workspace: expected }), "storage-fallback-write")
+    document.body.dataset.storageTest = storageMode
+  } else if (search.has("direct")) {
     await waitFor(() => document.querySelector("[data-project-detail]"), "direct-detail")
     if (document.querySelector("[data-workspace]").textContent !== "Primary" || document.querySelector("[data-route-workspace]").textContent !== "Primary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("direct-load-reset")
     document.body.dataset.directLoadTest = "pass"
@@ -161,6 +177,7 @@ try {
   if (browserErrors.length) throw new Error("browser-errors-" + browserErrors.join("-"))
   document.querySelector("[data-switch-workspace]").click()
   await waitFor(() => document.querySelector("[data-workspace]").textContent === "Secondary" && document.querySelector("[data-route-workspace]").textContent === "Secondary", "workspace-switch")
+  await waitFor(() => localStorage.getItem("kudzu-project-workspace") === JSON.stringify({ version: 1, workspace: "Secondary" }), "workspace-persist")
   document.querySelector('a[href="/app/projects/alpha"]').click()
   await waitFor(() => document.querySelector("[data-project-detail]"), "detail-navigation")
   const firstDetail = document.querySelector("[data-project-detail]")
@@ -173,6 +190,8 @@ try {
   document.querySelector('a[href="/app/projects/alpha"]').click()
   await waitFor(() => document.querySelector("[data-project-detail]"), "detail-revisit")
   if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary") throw new Error("route-reset")
+  document.querySelector("[data-logout]").click()
+  await waitFor(() => document.querySelector("[data-workspace]").textContent === "Primary" && localStorage.getItem("kudzu-project-workspace") === null, "logout-clear")
   document.body.dataset.browserTest = "pass"
   }
 } catch (error) {
@@ -195,12 +214,17 @@ http.createServer((request, response) => {
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
   await waitForServer(port)
   try {
-    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=10000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/`], { encoding: "utf8", timeout: 30_000 })
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=10000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/, browser.stderr)
-    const direct = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/alpha/?direct=1`], { encoding: "utf8", timeout: 15_000 })
+    const direct = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/alpha?direct=1`], { encoding: "utf8", timeout: 15_000 })
     assert.equal(direct.status, 0, direct.stderr)
     assert.match(direct.stdout, /data-direct-load-test="pass"/, direct.stderr)
+    for (const mode of ["valid", "malformed", "invalid-schema", "wrong-version", "empty"]) {
+      const storage = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?storage=${mode}`], { encoding: "utf8", timeout: 15_000 })
+      assert.equal(storage.status, 0, storage.stderr)
+      assert.match(storage.stdout, new RegExp(`data-storage-test="${mode}"`), storage.stderr)
+    }
   } finally {
     server.kill()
   }
