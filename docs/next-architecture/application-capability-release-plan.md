@@ -363,6 +363,13 @@ bytes over `0.11.0`. Twenty-one fresh Chrome profiles record a 0.9 ms median
 list-to-detail completion with a 0.7/1.2 ms range, overlapping the prior
 0.6/1.3 ms range; no latency change is claimed.
 
+Clean-worktree `npm run check`, 273/273 required-Chrome tests, and packed-package
+smoke passed on 2026-08-22. Release commit `5bab3fe`, tag `v0.11.1`, feature CI
+`32573961250`, the GitHub release, `@kudzujs/core@0.11.1`,
+`create-kudzu@0.1.109`, registry metadata, and a fresh registry-backed scaffold
+install/check passed. Publish workflow `32574182988` completed every version,
+package, publication, and registry gate.
+
 ### `0.11.2`: Shared Request Coordination
 
 - **Purpose:** implement only the deduplication, subscriber, and invalidation
@@ -988,5 +995,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.10.2` | Released | Preserve the published shared-layout navigation and exact route-release evidence. | None |
 | `0.10.3` | Released | Preserve the published guarded persistence recipe and zero-runtime exclusion. | None |
 | `0.11.0` | Released | Preserve the published owned-fetch lifecycle and zero-query-runtime exclusion. | None |
-| `0.11.1` | Active | Measure list/detail mutation consistency, duplicate requests, route changes, and refresh limits. | None |
-| `0.11.2` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
+| `0.11.1` | Released | Preserve the published single-owner consistency and exact request-count evidence. | None |
+| `0.11.2` | Active | Review two independent fixtures for the same missing coordination contract before adding semantics. | None |
+| `0.11.3` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
