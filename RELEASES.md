@@ -1,5 +1,51 @@
 # Kudzu Releases
 
+## 0.11.0 - Owned Fetch Lifecycle
+
+Kudzu 0.11.0 proves browser-only server data as application-owned state, one
+native fetch effect, and exact route lifetime rather than a query framework.
+
+### Changed in 0.11.0
+
+- Added accessible loading, success, and HTTP error states to the maintained
+  project application.
+- Added explicit refetch and recovery through one primitive request dependency.
+- Proved that a delayed prior continuation cannot overwrite newer keyed data.
+- Added authored `AbortController` cleanup for dependency replacement and route
+  removal, with late route work denied state authority.
+- Updated `create-kudzu@0.1.108` to generate projects on
+  `@kudzujs/core@^0.11.0`.
+
+### Output Evidence
+
+- The application fixture emits 19 files, 67,886 raw / 24,077 aggregate gzip
+  bytes, and deploy digest
+  `9c06d2a5d47b4ea2ae54cebbc0448bf161907691ee37a02a5dae0e7c37779ae4`.
+- The list/detail session uses 15 unique JavaScript files totaling 54,770 raw /
+  20,763 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- Twenty-one fresh Chrome profiles record a 0.8 ms navigation median and
+  0.6/1.3 ms range after fetch completion and persisted workspace setup.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, cache, Provider, retry scheduler, or query runtime was added.
+
+### Validation
+
+- Required Chrome proves loading, stale completion rejection, accessible HTTP
+  failure, recovery, cancellation, and route-removal authority loss.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+Shared request deduplication, invalidation, optimistic mutation, retries,
+polling, and retained caches remain later evidence packets.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.11.0
+```
+
 ## 0.10.3 - Application-Owned Persistence
 
 Kudzu 0.10.3 proves guarded browser persistence as application code composed

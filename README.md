@@ -12,9 +12,9 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 *Watch: React-shaped TSX to static HTML and route-specific ESM in 22 seconds.*
 
-> Experimental `0.10.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.11.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.10.3 - Application-owned persistence.** The tracked project application now restores and writes a versioned workspace record, falls back safely from invalid storage, clears state on logout, and keeps static routes free of persistence code. Read the [release notes](./RELEASES.md#0103---application-owned-persistence), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.3), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.11.0 - Owned fetch lifecycle.** The tracked project application now owns loading, accessible HTTP errors, explicit refetch, stale completion rejection, cancellation, and route-release behavior without a query runtime. Read the [release notes](./RELEASES.md#0110---owned-fetch-lifecycle), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.11.0), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
