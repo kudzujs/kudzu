@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.11.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.11.0 - Owned fetch lifecycle.** The tracked project application now owns loading, accessible HTTP errors, explicit refetch, stale completion rejection, cancellation, and route-release behavior without a query runtime. Read the [release notes](./RELEASES.md#0110---owned-fetch-lifecycle), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.11.0), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.11.1 - List/detail data consistency.** One layout-owned project record now remains consistent across list/detail navigation, one server mutation, and document reload with exact request counts and no query runtime. Read the [release notes](./RELEASES.md#0111---listdetail-data-consistency), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.11.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

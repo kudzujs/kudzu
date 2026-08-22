@@ -1,5 +1,54 @@
 # Kudzu Releases
 
+## 0.11.1 - List/Detail Data Consistency
+
+Kudzu 0.11.1 proves that ordinary layout-owned state and one native fetch effect
+keep list and detail routes consistent without a query framework.
+
+### Changed in 0.11.1
+
+- Added one server-backed project record owned by the retained application
+  layout and consumed by both project routes.
+- Added a detail mutation whose confirmed result is immediately observed by the
+  list without another read.
+- Counted exactly one initial GET, one mutation POST, no navigation GETs, and one
+  document-reload GET.
+- Recorded document-lifetime retention and the absence of automatic
+  deduplication, invalidation, subscribers, and retained query caches.
+- Updated `create-kudzu@0.1.109` to generate projects on
+  `@kudzujs/core@^0.11.1`.
+
+### Output Evidence
+
+- The application fixture emits 20 files, 69,501 raw / 24,649 aggregate gzip
+  bytes, and deploy digest
+  `bc6335131b7867da2857621211919fad43ebfb9414aac711c45f0c8ed3803022`.
+- The list/detail session uses 16 unique JavaScript files totaling 55,736 raw /
+  21,208 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- Twenty-one fresh Chrome profiles record a 0.9 ms navigation median and
+  0.7/1.2 ms range after both initial fetches complete.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, request registry, or query runtime was added.
+
+### Validation
+
+- Required Chrome proves mutation visibility, exact request counts, retained
+  layout identity, route release, and server restoration after reload.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+Shared data lasts for one document and retained layout owner. Independently
+authored fetch owners are not deduplicated; coordinated requests remain blocked
+until unrelated fixtures require the same missing contract.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.11.1
+```
+
 ## 0.11.0 - Owned Fetch Lifecycle
 
 Kudzu 0.11.0 proves browser-only server data as application-owned state, one
