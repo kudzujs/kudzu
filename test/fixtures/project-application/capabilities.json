@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.10.3",
+  "milestone": "0.11.0",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -25,25 +25,30 @@
     "versioned-schema-fallback",
     "dependency-persistence",
     "logout-storage-clear",
+    "owned-browser-fetch",
+    "accessible-loading-and-http-error",
+    "explicit-refetch-recovery",
+    "stale-response-rejection",
+    "authored-fetch-cancellation",
+    "route-removal-late-write-rejection",
     "native-navigation-fallback",
     "static-route-zero-javascript"
   ],
   "deferred": [
     "authentication",
-    "server-data",
     "project-crud"
   ],
   "baseline": {
     "deploy": {
       "files": 19,
-      "rawBytes": 65376,
-      "aggregateGzipBytes": 23471,
-      "sha256": "bb58826876bdf090a85d2c1f8a1edcbbc9abd35d5335eb3d1e7fb1fafe6bed72"
+      "rawBytes": 67886,
+      "aggregateGzipBytes": 24077,
+      "sha256": "9c06d2a5d47b4ea2ae54cebbc0448bf161907691ee37a02a5dae0e7c37779ae4"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 50922,
-        "javascriptAggregateGzipBytes": 19062
+        "javascriptRawBytes": 52130,
+        "javascriptAggregateGzipBytes": 19502
       },
       "/app/projects/alpha": {
         "javascriptRawBytes": 16746,

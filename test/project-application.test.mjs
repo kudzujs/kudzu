@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.10.3 persistence contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.11.0 owned fetch contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -27,16 +27,16 @@ test("establishes the 0.10.3 persistence contract", { timeout: 120_000 }, async 
   const routes = plan.routes.map(route => route.route).sort()
   assert.equal(routes.includes("/app/projects/alpha"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.10.3")
+  assert.equal(contract.milestone, "0.11.0")
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
   const projectArtifacts = artifacts.routes.find(route => route.route === "/app/projects")
   const detailArtifacts = artifacts.routes.find(route => route.route === "/app/projects/alpha")
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "summary", "projects", "filter", "showSummary", "savedFilters"])
-  assert.deepEqual(projects.states.slice(0, 7).map(state => state.lifetime), ["layout", "layout", "route", "route", "route", "route", "route"])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error"])
+  assert.deepEqual(projects.states.slice(0, 10).map(state => state.lifetime), ["layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route"])
   assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["draft", "route", "Clean draft"]])
-  assert.equal(projects.effects.length, 2)
+  assert.equal(projects.effects.length, 3)
   assert.equal(detail.effects.length, 2)
   assert.equal(projects.bindings.length, 6)
   assert.equal(projects.lists.length, 3)
@@ -125,8 +125,16 @@ try {
     if (document.querySelector("[data-workspace]").textContent !== "Primary" || document.querySelector("[data-route-workspace]").textContent !== "Primary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("direct-load-reset")
     document.body.dataset.directLoadTest = "pass"
   } else {
-  await waitFor(() => document.querySelector('[data-project="alpha"]'), "initial-projects")
-  await new Promise(resolve => setTimeout(resolve, 100))
+  if (!document.querySelector('[role="status"]') || document.querySelector('[data-project="alpha"] [data-project-name]')?.textContent !== "Alpha") throw new Error("initial-loading")
+  await waitFor(() => document.body.dataset.projectFetchPending === "true", "stale-request-pending")
+  document.querySelector("#refetch-projects").click()
+  await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Projects loaded" && document.querySelector('[data-project="alpha"]')?.querySelector("[data-project-name]")?.textContent === "Alpha", "refetch-success")
+  await new Promise(resolve => setTimeout(resolve, 300))
+  if (document.querySelector('[data-project="alpha"] [data-project-name]').textContent !== "Alpha" || !document.body.dataset.projectFetchCleanup?.includes("|0")) throw new Error("stale-response")
+  document.querySelector("#refetch-projects").click()
+  await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 500", "http-error")
+  document.querySelector("#refetch-projects").click()
+  await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Projects loaded" && !document.querySelector('[role="alert"]') && document.querySelector('[data-project="alpha"]'), "http-recovery")
   const layout = document.querySelector("[data-app-layout]")
   const output = document.querySelector("#project-filter")
   if (output.textContent !== "All projects") throw new Error("initial-state")
@@ -187,8 +195,11 @@ try {
   document.querySelector('a[href="/app/projects"]').click()
   await waitFor(() => document.querySelector("[data-project-list-page]"), "list-navigation")
   if (firstDetail.isConnected || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-route-workspace]").textContent !== "Secondary") throw new Error("route-release")
+  const cleanupBeforeRemoval = document.body.dataset.projectFetchCleanup
   document.querySelector('a[href="/app/projects/alpha"]').click()
   await waitFor(() => document.querySelector("[data-project-detail]"), "detail-revisit")
+  await new Promise(resolve => setTimeout(resolve, 300))
+  if (document.body.dataset.projectFetchCleanup === cleanupBeforeRemoval || document.querySelector("[data-project-list-page]") || browserErrors.length) throw new Error("fetch-route-release")
   if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary") throw new Error("route-reset")
   document.querySelector("[data-logout]").click()
   await waitFor(() => document.querySelector("[data-workspace]").textContent === "Primary" && localStorage.getItem("kudzu-project-workspace") === null, "logout-clear")
@@ -204,7 +215,18 @@ try {
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
 http.createServer((request, response) => {
-  const pathname = new URL(request.url, "http://localhost").pathname
+  const url = new URL(request.url, "http://localhost"), pathname = url.pathname
+  if (pathname === "/api/projects") {
+    const requestNumber = Number(url.searchParams.get("request"))
+    response.setHeader("content-type", "application/json")
+    if (requestNumber === 2) { response.statusCode = 500; response.end(JSON.stringify({ error: "failed" })); return }
+    const alphaName = requestNumber === 0 ? "Stale Alpha" : "Alpha"
+    response.end(JSON.stringify([
+      { id: "alpha", name: alphaName, status: "active", issues: [{ id: "a1", title: "Design schema" }, { id: "a2", title: "Ship dashboard" }] },
+      { id: "beta", name: "Beta", status: "archived", issues: [{ id: "b1", title: "Archive notes" }] }
+    ]))
+    return
+  }
   const relative = pathname === "/" ? "index.html" : pathname.slice(1)
   const file = path.join(root, relative.endsWith("/") || !path.extname(relative) ? relative + (relative.endsWith("/") ? "" : "/") + "index.html" : relative)
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")

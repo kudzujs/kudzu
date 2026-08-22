@@ -32,7 +32,7 @@ async function main() {
     console.log(JSON.stringify({
       fixture: "project application shared-layout navigation",
       environment: { node: process.version, platform: process.platform, arch: process.arch, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
-      methodology: `${runs} fresh Chrome profiles; workspace update precedes measured list-to-detail completion`,
+      methodology: `${runs} fresh Chrome profiles; initial project fetch and workspace update precede measured list-to-detail completion`,
       states: Object.fromEntries(plan.routes.filter(route => route.route.startsWith("/app/projects")).map(route => [route.route, route.states.map(state => ({ name: state.name, lifetime: state.lifetime }))])),
       sessionJavascript: { files: paths.size, rawBytes: javascript.reduce((total, bytes) => total + bytes.length, 0), aggregateGzipBytes: javascript.reduce((total, bytes) => total + gzipSync(bytes).length, 0) },
       navigationMs: summarize(navigationMs)
@@ -84,7 +84,7 @@ async function browserRun(port) {
     const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true })
     await cdp.send("Runtime.enable", {}, sessionId)
     await cdp.send("Page.navigate", { url: `http://127.0.0.1:${port}/app/projects` }, sessionId)
-    await waitUntil(cdp, sessionId, 'document.readyState === "complete" && document.querySelector("[data-project=alpha]")')
+    await waitUntil(cdp, sessionId, 'document.readyState === "complete" && document.querySelector("[data-project=alpha]") && document.querySelector("[role=status]")?.textContent === "Projects loaded"')
     await evaluate(cdp, sessionId, 'window.__layout = document.querySelector("[data-app-layout]"); document.querySelector("[data-switch-workspace]").click(); true')
     await waitUntil(cdp, sessionId, 'document.querySelector("[data-workspace]").textContent === "Secondary"')
     await waitUntil(cdp, sessionId, 'localStorage.getItem("kudzu-project-workspace") === JSON.stringify({ version: 1, workspace: "Secondary" })')
@@ -139,7 +139,7 @@ async function waitUntil(cdp, sessionId, expression) {
 }
 
 async function serve() {
-  const source = `const http=require("node:http"),fs=require("node:fs"),path=require("node:path"),root=process.argv[1];http.createServer((request,response)=>{const pathname=new URL(request.url,"http://localhost").pathname,relative=pathname==="/"?"index.html":pathname.slice(1),file=path.join(root,relative.endsWith("/")||!path.extname(relative)?relative+(relative.endsWith("/")?"":"/")+"index.html":relative);response.setHeader("content-type",file.endsWith(".js")?"text/javascript":"text/html");fs.createReadStream(file).on("error",()=>response.writeHead(404).end()).pipe(response)}).listen(0,"127.0.0.1",function(){console.log(this.address().port)})`
+  const source = `const http=require("node:http"),fs=require("node:fs"),path=require("node:path"),root=process.argv[1];http.createServer((request,response)=>{const pathname=new URL(request.url,"http://localhost").pathname;if(pathname==="/api/projects"){response.setHeader("content-type","application/json");response.end(JSON.stringify([{id:"alpha",name:"Alpha",status:"active",issues:[{id:"a1",title:"Design schema"},{id:"a2",title:"Ship dashboard"}]},{id:"beta",name:"Beta",status:"archived",issues:[{id:"b1",title:"Archive notes"}]}]));return}const relative=pathname==="/"?"index.html":pathname.slice(1),file=path.join(root,relative.endsWith("/")||!path.extname(relative)?relative+(relative.endsWith("/")?"":"/")+"index.html":relative);response.setHeader("content-type",file.endsWith(".js")?"text/javascript":"text/html");fs.createReadStream(file).on("error",()=>response.writeHead(404).end()).pipe(response)}).listen(0,"127.0.0.1",function(){console.log(this.address().port)})`
   server = spawn(process.execPath, ["-e", source, join(fixture, "dist")], { stdio: ["ignore", "pipe", "inherit"] })
   return new Promise((resolvePort, reject) => {
     const timeout = setTimeout(() => reject(new Error("Benchmark server did not start")), 5000)

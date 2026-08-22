@@ -287,6 +287,36 @@ registry-backed scaffold install/check passed on 2026-08-22. Publish workflow
 - **Stop condition:** a query cache is added to implement one request.
 - **Done condition:** the project list journey passes and `/help` stays zero-JS.
 
+**Completion evidence:** the project list now composes one route-owned native
+`fetch` effect with ordinary request, status, error, project, and summary state.
+The deterministic server drives initial loading, a fast explicit refetch, an
+HTTP 500 alert, and recovery. A delayed prior continuation attempts its writes
+after dependency replacement and cannot replace the newer keyed project data.
+The effect owns an `AbortController`; dependency replacement and route removal
+invoke authored abort cleanup, and late route work cannot mutate the detail
+route or recreated list ownership. Existing project filtering, nested keyed
+identity, row state, shared layout state, persistence, and logout journeys still
+pass. `/help` remains complete HTML with 0 B JavaScript.
+
+This packet adds zero semantic primitives, ModuleIR kinds, compiler passes,
+production compiler lines, runtime concepts, normalization rules, adapter
+rules, public APIs, caches, Providers, retry schedulers, or query runtimes. One
+existing positive application fixture gains loading, success, stale completion,
+HTTP failure, recovery, cancellation, and route-release cases. The fixture
+still emits 19 files and now totals 67,886 raw / 24,077 aggregate gzip bytes,
+with deploy SHA-256
+`9c06d2a5d47b4ea2ae54cebbc0448bf161907691ee37a02a5dae0e7c37779ae4`.
+The project route uses 52,130 raw / 19,502 aggregate gzip JavaScript bytes; the
+two-route session uses 54,770 / 20,763 bytes, an authored capability increase of
+1,208 raw / 440 gzip bytes over `0.10.3`. Twenty-one fresh Chrome profiles record
+0.8 ms median list-to-detail completion with a 0.6/1.3 ms range. The changed
+fetch-completion prerequisite permits no latency improvement claim; no material
+regression is present.
+
+Clean-worktree `npm run check`, 273/273 standard tests, the required project
+Chrome journey, the focused required-Chrome retry for the one full-suite browser
+timeout, and packed-package smoke pass on 2026-08-22.
+
 ### `0.11.1`: List And Detail Data Consistency Evidence
 
 - **Purpose:** expose the first real multi-consumer coordination limit.

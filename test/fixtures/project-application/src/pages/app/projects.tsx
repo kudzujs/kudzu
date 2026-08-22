@@ -1,4 +1,4 @@
-import { useState } from "@kudzujs/core"
+import { useEffect, useState } from "@kudzujs/core"
 import { AppLayout, useWorkspace } from "../../AppLayout"
 
 export const layout = AppLayout
@@ -39,12 +39,47 @@ export default function ProjectsPage() {
   const [filter, setFilter] = useState<"all" | "active">("all")
   const [showSummary, setShowSummary] = useState(true)
   const [savedFilters, setSavedFilters] = useState([{ id: "all", label: "All" }])
+  const [request, setRequest] = useState(0)
+  const [status, setStatus] = useState("loading")
+  const [error, setError] = useState("")
   const filterLabel = filter === "all" ? "All projects" : "Active projects"
+
+  useEffect(() => {
+    const controller = new globalThis.AbortController()
+    setStatus("loading")
+    setError("")
+
+    void fetch(`/api/projects?request=${request}`, { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return response.json()
+      })
+      .then(async nextProjects => {
+        if (request === 0) {
+          document.body.dataset.projectFetchPending = "true"
+          await new Promise(resolve => setTimeout(resolve, 250))
+        }
+        setProjects(nextProjects)
+        setSummary({ projectCount: 2, issueCount: 3 })
+        setStatus("success")
+      })
+      .catch(cause => {
+        if (controller.signal.aborted) return
+        setError(cause instanceof Error ? cause.message : String(cause))
+        setStatus("error")
+      })
+
+    return () => {
+      controller.abort()
+      document.body.dataset.projectFetchCleanup = `${document.body.dataset.projectFetchCleanup ?? ""}|${request}`
+    }
+  }, [request])
 
   return <main data-project-list-page>
     <h1>Projects</h1>
     <output data-route-workspace>{workspace}</output>
     <p id="unrelated-control">Workspace projects are the first greenfield application surface.</p>
+    <button id="refetch-projects" onClick={() => setRequest(request + 1)}>Refetch projects</button>
     <button id="show-active" onClick={() => setFilter("active")}>Show active</button>
     <button id="show-all" onClick={() => setFilter("all")}>Show all</button>
     <button id="toggle-summary" onClick={() => setShowSummary(!showSummary)}>Toggle summary</button>
@@ -61,6 +96,9 @@ export default function ProjectsPage() {
       setProjects([alpha, beta])
     }}>Restore Alpha</button>
     <button id="save-active" onClick={() => setSavedFilters([...savedFilters, { id: "active", label: "Active" }])}>Save active</button>
+    {status === "loading" && <p role="status">Loading projects</p>}
+    {status === "success" && <p role="status">Projects loaded</p>}
+    {status === "error" && <p role="alert">{error}</p>}
     <output id="project-filter" aria-live="polite">{filterLabel}</output>
     {showSummary && <section id="project-summary">
       <span id="project-count">{summary.projectCount}</span>

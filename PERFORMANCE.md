@@ -6,6 +6,24 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
+## 0.11.0 Project Owned Fetch Lifecycle
+
+Measured 2026-08-22 on macOS arm64 with Node 25.6.1 and Chrome
+151.0.7922.172. `RUNS=21 npm run benchmark:project-navigation` uses fresh Chrome
+profiles, waits for the initial project fetch and persisted workspace update,
+then measures list-to-detail completion including route-effect cancellation.
+
+The two-route session uses 15 unique JavaScript files totaling 54,770 raw /
+20,763 aggregate gzip bytes. Navigation samples are
+`[1.1, 0.8, 0.7, 0.8, 0.7, 0.8, 0.8, 0.7, 0.7, 0.9, 0.9, 0.9, 0.7, 0.8, 0.7, 1.3, 0.8, 0.8, 0.6, 0.9, 0.9]`
+ms, with a 0.8 ms median and 0.6/1.3 ms minimum/maximum.
+
+Compared with the `0.10.3` release, the authored fetch effect, loading/error
+conditions, and refetch state add 1,208 raw / 440 aggregate gzip session bytes.
+`/help` remains 0 B JavaScript. The measured interval is unchanged, but the new
+fetch-completion prerequisite makes this an acceptance-safe no-regression check,
+not a latency improvement claim. No compiler or browser-runtime source changed.
+
 ## 0.10.3 Project Persistence Recipe
 
 Measured 2026-08-22 on macOS arm64 with Node 25.6.1 and Chrome
