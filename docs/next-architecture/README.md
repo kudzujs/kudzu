@@ -15,6 +15,8 @@ The completed `0.9.0` milestone is recorded in [`0.9-semantic-compression.md`](.
 
 [`1.0-large-application-compatibility-audit.md`](./1.0-large-application-compatibility-audit.md) records the first post-0.9 probes against Memos, Apache Answer, and Actual Budget. The audit finds that reduced slices build but whole-application source retention and behavior parity do not yet pass.
 
+[`application-capability-release-plan.md`](./application-capability-release-plan.md) is the authoritative post-0.9 execution queue. It assigns one application-capability section to each minor release and one independently accepted evidence packet to each patch release from `0.10.0` through the `1.0.0` gate. It supersedes the provisional 0.10/0.11/0.12 tool-first ordering in the completed 0.9 handoff without rewriting that historical record.
+
 ## Required Invariants
 
 - Every route remains a complete static HTML document.
@@ -27,24 +29,25 @@ The completed `0.9.0` milestone is recorded in [`0.9-semantic-compression.md`](.
 
 ## Reading Order
 
-1. [`0.9-semantic-compression.md`](./0.9-semantic-compression.md): completed scope, evidence, and release gates.
-2. [`0.9-implementation-plan.md`](./0.9-implementation-plan.md): detailed session packets, benchmark plan, reports, and release procedure.
-3. [`0.9-baseline.md`](./0.9-baseline.md): dated architecture, pass, IR, runtime-concept, LOC, and test baseline.
-4. [`0.9-benchmark-contracts.md`](./0.9-benchmark-contracts.md): frozen matched-content, stateful, commerce, scale, resource, and anti-gaming contracts.
-5. [`1.0-large-application-compatibility-audit.md`](./1.0-large-application-compatibility-audit.md): local large-application migration probes, retention caveats, blockers, and authorized-protocol handoff.
-6. [`compiler-current-architecture.md`](./compiler-current-architecture.md): exact current responsibilities and data flow.
-7. [`performance-gates.md`](./performance-gates.md): output, build, and browser gates.
-8. [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md): completed foundation, longer-term direction, and completion evidence.
-9. [`goal-a-compiler-foundation.md`](./goal-a-compiler-foundation.md): completed extraction and generator foundation.
-10. [`versioning.md`](./versioning.md): completed patch sequence and future sequencing rules.
-11. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): active measurements, retained optimizations, and continuation rules.
-12. [`goal-c-state-resource-research.md`](./goal-c-state-resource-research.md): research boundary only.
-13. [`goal-d-routing-compatibility-decisions.md`](./goal-d-routing-compatibility-decisions.md): routing and islands decisions.
+1. [`application-capability-release-plan.md`](./application-capability-release-plan.md): active minor/patch execution queue through `1.0.0`.
+2. [`0.9-semantic-compression.md`](./0.9-semantic-compression.md): completed scope, evidence, and release gates.
+3. [`0.9-implementation-plan.md`](./0.9-implementation-plan.md): detailed historical session packets, benchmark plan, reports, and release procedure.
+4. [`0.9-baseline.md`](./0.9-baseline.md): dated architecture, pass, IR, runtime-concept, LOC, and test baseline.
+5. [`0.9-benchmark-contracts.md`](./0.9-benchmark-contracts.md): frozen matched-content, stateful, commerce, scale, resource, and anti-gaming contracts.
+6. [`1.0-large-application-compatibility-audit.md`](./1.0-large-application-compatibility-audit.md): local large-application migration probes, retention caveats, blockers, and authorized-protocol handoff.
+7. [`compiler-current-architecture.md`](./compiler-current-architecture.md): exact current responsibilities and data flow.
+8. [`performance-gates.md`](./performance-gates.md): output, build, and browser gates.
+9. [`large-application-ai-native-roadmap.md`](./large-application-ai-native-roadmap.md): completed foundation, longer-term direction, and completion evidence.
+10. [`goal-a-compiler-foundation.md`](./goal-a-compiler-foundation.md): completed extraction and generator foundation.
+11. [`versioning.md`](./versioning.md): completed patch sequence and future sequencing rules.
+12. [`goal-b-optimization-benchmarks.md`](./goal-b-optimization-benchmarks.md): active measurements, retained optimizations, and continuation rules.
+13. [`goal-c-state-resource-research.md`](./goal-c-state-resource-research.md): research boundary only.
+14. [`goal-d-routing-compatibility-decisions.md`](./goal-d-routing-compatibility-decisions.md): routing and islands decisions.
 
 ## Resume Checklist
 
 - [ ] Read [`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md), [`0.9-semantic-compression.md`](./0.9-semantic-compression.md), and [`0.9-implementation-plan.md`](./0.9-implementation-plan.md) before planning migration work.
-- [ ] Follow the authorized 1.0 AI delivery protocol; treat post-0.9 compatibility audits as candidate-selection input, not replacement work queues.
+- [ ] Follow the active patch in [`application-capability-release-plan.md`](./application-capability-release-plan.md); treat compatibility audits as candidate-selection input, not replacement work queues.
 - [ ] Confirm `package.json` still reports the actual current version; never infer release status from this plan.
 - [ ] Inspect the worktree and preserve unrelated or uncommitted changes.
 - [ ] Start later architecture work only by an explicit decision from the completed Goal A baseline.

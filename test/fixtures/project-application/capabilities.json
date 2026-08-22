@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "milestone": "0.10.0",
+  "application": "project-management",
+  "routes": [
+    "/app/projects",
+    "/help",
+    "/login"
+  ],
+  "accepted": [
+    "complete-static-html",
+    "local-primitive-state",
+    "direct-state-command",
+    "state-text-output",
+    "static-route-zero-javascript"
+  ],
+  "deferred": [
+    "authentication",
+    "server-data",
+    "shared-layout-state",
+    "project-crud"
+  ],
+  "baseline": {
+    "deploy": {
+      "files": 4,
+      "rawBytes": 1970,
+      "aggregateGzipBytes": 1265,
+      "sha256": "94ce7d01cac2e80823a36279294015d2f22328acaed571abb9996f8ca6171121"
+    },
+    "routes": {
+      "/app/projects": {
+        "javascriptRawBytes": 768,
+        "javascriptAggregateGzipBytes": 441
+      },
+      "/help": {
+        "javascriptRawBytes": 0,
+        "javascriptAggregateGzipBytes": 0
+      }
+    }
+  }
+}

@@ -2,11 +2,11 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The completed `0.9.0` execution sequence is maintained in [`docs/next-architecture/0.9-semantic-compression.md`](./docs/next-architecture/0.9-semantic-compression.md), with session-level implementation records in [`docs/next-architecture/0.9-implementation-plan.md`](./docs/next-architecture/0.9-implementation-plan.md). The next authorized milestone is the 1.0 AI delivery protocol recorded there. The completed compiler foundation and longer-term sequence remain in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md); this document remains authoritative when selecting or accepting a migration capability.
+The completed `0.9.0` execution sequence is maintained in [`docs/next-architecture/0.9-semantic-compression.md`](./docs/next-architecture/0.9-semantic-compression.md), with session-level implementation records in [`docs/next-architecture/0.9-implementation-plan.md`](./docs/next-architecture/0.9-implementation-plan.md). The next authorized execution train is [`docs/next-architecture/application-capability-release-plan.md`](./docs/next-architecture/application-capability-release-plan.md): each application-capability section owns one minor release, each independently accepted work packet owns one patch release, and the train closes with the separately gated 1.0 AI delivery proof. The completed compiler foundation and longer-term research remain in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md); this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
-The post-0.9 local discovery audit of Memos, Apache Answer, and Actual Budget is recorded in [`docs/next-architecture/1.0-large-application-compatibility-audit.md`](./docs/next-architecture/1.0-large-application-compatibility-audit.md). Its passing reduced builds are not whole-application migrations. Each package-component, browser-data, router/layout, provider, and localization shape requires a separate executable evidence packet under the authorized 1.0 protocol before implementation.
+The post-0.9 local discovery audit of Memos, Apache Answer, and Actual Budget is recorded in [`docs/next-architecture/1.0-large-application-compatibility-audit.md`](./docs/next-architecture/1.0-large-application-compatibility-audit.md). Its passing reduced builds are not whole-application migrations. Each package-component, browser-data, router/layout, provider, and localization shape requires a separate executable evidence packet under the authorized application-capability release plan before implementation.
 
 The first Apache Answer reduction is complete: one direct top-level `const match = useMatch("/exact-path")` over a named or aliased React Router import folds case-insensitively against the build-known application route. Reused relative components produce route-specific static HTML with zero browser bytes. Layout use, runtime-parameter pages, params, wildcards, query/hash patterns, trailing slashes, dynamic values, indirect calls, and pattern objects remain diagnosed.
 
@@ -52,6 +52,16 @@ Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts th
 - no remaining material large-route build-scaling weakness.
 
 The active 0.9 plan defines the exact comparison and release gate. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
+
+### 0.10.0 Through 0.21.x: Application Capability Release Train
+
+The post-0.9 train proves Kudzu as an application framework before freezing
+1.0. Local/shared state, async/server data, routing/lifetime, forms, large
+lists, overlays, external UI, long-lived resources, lazy loading, React
+migration, AI tooling, and production-scale proof each own one minor release.
+Each independently reviewable evidence packet owns one patch release. The exact
+sequence, stop conditions, completion gates, and active status are maintained in
+[`docs/next-architecture/application-capability-release-plan.md`](./docs/next-architecture/application-capability-release-plan.md).
 
 ### 1.0.0: Best Framework For AI-Assisted Delivery
 

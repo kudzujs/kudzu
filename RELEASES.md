@@ -1,5 +1,57 @@
 # Kudzu Releases
 
+## 0.10.0 - Application capability baseline
+
+Kudzu 0.10.0 begins the application capability release train with a durable
+greenfield project-management contract. Later state, data, routing, form, list,
+overlay, external UI, lifecycle, lazy-loading, migration, and AI work must extend
+this application or another explicit evidence packet rather than claim success
+from isolated build output.
+
+### Changed in 0.10.0
+
+- Added tracked `/login`, `/app/projects`, and `/help` greenfield application
+  routes with a machine-readable capability contract.
+- Reused the existing primitive state command and direct text output without a
+  compiler pass, Handler ESM, new semantic primitive, or new runtime concept.
+- Added a dedicated browser journey for the project-state interaction and a
+  static help control that emits no JavaScript.
+- Established the capability-by-minor and evidence-packet-by-patch release plan
+  through the `1.0.0` application and AI delivery gate.
+- Updated `create-kudzu@0.1.104` to generate projects on
+  `@kudzujs/core@^0.10.0`.
+
+### Output Evidence
+
+- The greenfield fixture emits 4 deploy files, 1,970 raw bytes, 1,265 aggregate
+  gzip bytes, and deploy digest
+  `94ce7d01cac2e80823a36279294015d2f22328acaed571abb9996f8ca6171121`.
+- `/app/projects` uses the existing 768 raw / 441 aggregate gzip byte command
+  runtime graph.
+- `/help` emits complete HTML and 0 B JavaScript.
+- Production semantic primitives, compiler passes, compiler LOC, and runtime
+  concepts are unchanged.
+
+### Validation
+
+- The focused greenfield browser contract passes in Chrome.
+- `npm run check`, all 273 non-browser tests, all 273 required-Chrome tests, and
+  `npm run test:package` pass on the release worktree.
+- No performance comparison is claimed because production compiler and runtime
+  sources are unchanged; the exact fixture output baseline is executable.
+
+### Limits
+
+This release does not claim project CRUD, authentication, server data, shared
+layout state, or a complete large application. Those remain ordered capability
+packets beginning with `0.10.1`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.10.0
+```
+
 ## 0.9.3 - Large-app migration slices
 
 Kudzu 0.9.3 adds evidence-backed compiler and source-migration paths derived

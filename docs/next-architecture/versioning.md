@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.62` are completed scopes represented by package/release records.
+This is an execution sequence, not release history. `0.8.16` through `0.8.62` are completed scopes represented by package/release records. The active `0.10.0` through `1.0.0` minor/patch sequence is maintained in [`application-capability-release-plan.md`](./application-capability-release-plan.md); that plan supersedes the provisional tool-first 0.10/0.11/0.12 ordering in the completed 0.9 handoff.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 
@@ -62,14 +62,23 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 - A planned patch may ship under a different actual version only if this table and release-facing documentation are updated before release.
 - Release notes describe completed facts; this file continues to describe future work.
 - Internal decomposition alone does not require `0.9.0`; use a minor only for a public compiler/tooling or compatibility boundary.
+- From `0.10.0` onward, each application-capability section owns one minor and each independently accepted evidence packet owns one patch as defined by the active application-capability release plan.
 
 ## Generator Versions
 
-`create-kudzu@0.1.103` retains the explicit install instructions and generates projects with `@kudzujs/core@^0.9.0`.
+`create-kudzu@0.1.104` retains the explicit install instructions and generates projects with `@kudzujs/core@^0.10.0`.
 
 ## Release Boundary
 
 Every patch is independently revertible before publication. After npm publication, never repoint its tag; forward-fix with the next patch. Require the exact commit to pass CI, package smoke installation, registry verification, and the performance gates before starting the next ownership seam.
+
+From `0.10.0` onward every completed patch packet is a full release transaction:
+version and lockfile updates, release records, an accepted `Release Kudzu X.Y.Z`
+commit, commit push and CI, an immutable `vX.Y.Z` tag push, a published GitHub
+release, npm publication through `.github/workflows/publish.yml`, registry
+verification, and fresh-install verification. Incomplete work sessions retain
+the same target version and do not create commits, tags, or npm releases merely
+because the session ended.
 
 ## Per-Patch Continuation Checklist
 

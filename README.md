@@ -12,9 +12,9 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 *Watch: React-shaped TSX to static HTML and route-specific ESM in 22 seconds.*
 
-> Experimental `0.9.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.10.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.9.3 - Large-app migration slices.** Apache Answer-derived fixtures add exact route matching, composed query reads, native React Bootstrap layout, owned browser data, authentication build intake, route-shell, and authoring/admin migration evidence without React or package runtimes. Read the [release notes](./RELEASES.md#093---large-app-migration-slices), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.9.3), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.10.0 - Application capability baseline.** A tracked greenfield project application now fixes the state, browser, output, and static zero-JavaScript contract used by the capability release train. Read the [release notes](./RELEASES.md#0100---application-capability-baseline), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.10.0), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
