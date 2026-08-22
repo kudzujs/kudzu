@@ -1,5 +1,51 @@
 # Kudzu Releases
 
+## 0.11.2 - Request Coordination Evidence
+
+Kudzu 0.11.2 reviews three unrelated server-data fixtures and closes shared
+request coordination without adding a new semantic primitive.
+
+### Changed in 0.11.2
+
+- Reviewed the project application, TanStack Query-shaped product loading, and
+  Apache Answer/SWR-shaped question loading.
+- Machine-recorded that all three use one explicit owner, ordinary state, one
+  owned fetch effect, dependency invalidation, cleanup, and static exclusion.
+- Recorded no repeated same-key independent owners, subscriber lifetime,
+  mutation invalidation, retained query result, or cache-bound requirement.
+- Updated `create-kudzu@0.1.110` to generate projects on
+  `@kudzujs/core@^0.11.2`.
+
+### Output Evidence
+
+- The project application remains byte-identical at 20 files, 69,501 raw /
+  24,649 aggregate gzip bytes, and deploy digest
+  `bc6335131b7867da2857621211919fad43ebfb9414aac711c45f0c8ed3803022`.
+- The list/detail session remains 55,736 raw / 21,208 aggregate gzip JavaScript
+  bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, request registry, subscriber set, invalidation graph, cache, or
+  browser byte was added.
+
+### Validation
+
+- Existing required-Chrome journeys remain the executable evidence for all
+  three reviewed fixtures.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+Automatic same-key deduplication and retained query data remain unsupported.
+They require repeated executable pressure from independent owners before a
+shared primitive can be reconsidered.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.11.2
+```
+
 ## 0.11.1 - List/Detail Data Consistency
 
 Kudzu 0.11.1 proves that ordinary layout-owned state and one native fetch effect
