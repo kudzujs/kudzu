@@ -833,6 +833,6 @@ release transaction where possible or document and publish a forward-fix patch.
 
 | Patch | Status | Next exact action | Blocker |
 |---|---|---|---|
-| `0.10.0` | Release candidate | Complete commit, push, tag, GitHub release, npm publication, registry, and fresh-install verification. | Release transaction |
-| `0.10.1` | Blocked | Extend the greenfield fixture with local, object, array, and derived state scale evidence after 0.10.0 publication. | 0.10.0 release |
+| `0.10.0` | Released | Preserve the published application baseline and release evidence. | None |
+| `0.10.1` | Active | Extend the greenfield fixture with local, object, array, and derived state scale evidence. | None |
 | `0.10.2` onward | Blocked | Wait for the preceding patch acceptance and release record. | Ordered dependency |
