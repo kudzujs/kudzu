@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.11.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.11.3 - Optimistic mutation and rollback.** One layout-owned handler now proves optimistic list/detail state, disabled duplicate submission, exact HTTP-failure rollback, accessible error, retry, navigation, and reload without a transaction runtime. Read the [release notes](./RELEASES.md#0113---optimistic-mutation-and-rollback), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.11.3), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.11.4 - Pagination, refresh, and polling policy.** URL-owned page/filter state, exact refresh, bounded results, back/forward, and visibility-aware polling now compose from existing query signals and owned effects without a scheduler or cache. Read the [release notes](./RELEASES.md#0114---pagination-refresh-and-polling-policy), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.11.4), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

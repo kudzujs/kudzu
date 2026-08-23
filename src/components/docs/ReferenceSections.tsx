@@ -55,14 +55,14 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.11.3 application proof</strong><span>The required-Chrome suite passes 273 tests; its maintained project journey proves optimistic failure, exact rollback, retry, retained identity, navigation, reload, and zero-JavaScript static exclusion.</span></div>
+    <div className="docs-callout"><strong>Current 0.11.4 application proof</strong><span>The required-Chrome suite passes 273 tests; its maintained project journey proves URL-owned pagination, history, bounded results, refresh, visibility-aware polling cleanup, and zero-JavaScript static exclusion.</span></div>
     <h3>Project application</h3>
-    <BenchmarkTable columns={["Measurement", "0.11.3 result", "Protocol"]} rows={[
-      ["List-to-detail navigation", "0.8 ms release median", "21 fresh Chrome profiles"],
-      ["Two-route JavaScript", "56,318 / 21,211 B", "raw / aggregate gzip"],
+    <BenchmarkTable columns={["Measurement", "0.11.4 result", "Protocol"]} rows={[
+      ["List-to-detail navigation", "1.3 ms release median", "21 fresh Chrome profiles"],
+      ["Two-route JavaScript", "58,970 / 22,124 B", "raw / aggregate gzip"],
       ["Static help JavaScript", "0 B", "route and session"]
     ]} />
-    <p>The release navigation range is 0.7–1.0 ms. A clean homepage verification rerun measured a 0.9 ms median and 0.7–0.9 ms range. Both overlap the 0.11.2 range, so this is a no-regression result, not a latency improvement claim. The optimistic mutation adds 582 raw / 3 aggregate gzip session bytes and no compiler or browser-runtime source.</p>
+    <p>The release navigation range is 1.2–1.6 ms. Compared with 0.11.3, URL controls and polling policy add 2,652 raw / 913 aggregate gzip session bytes and a disclosed 0.5 ms median increase. No compiler or browser-runtime source changed.</p>
     <h3>0.9 cross-framework proof</h3>
     <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
       ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],

@@ -1,5 +1,50 @@
 # Kudzu Releases
 
+## 0.11.4 - Pagination, Refresh, And Polling Policy
+
+Kudzu 0.11.4 completes the `0.11.x` server-data train with bounded URL-owned
+pagination and application-owned refresh policy.
+
+### Changed in 0.11.4
+
+- Synchronized project page/filter values with URL query signals and browser
+  back navigation.
+- Proved explicit refresh and exact list request counts without a query cache.
+- Added optional visibility-aware polling with interval/listener cleanup.
+- Bounded every server response to two retained rows.
+- Updated `create-kudzu@0.1.112` to generate projects on
+  `@kudzujs/core@^0.11.4`.
+
+### Output Evidence
+
+- The application emits 20 files, 77,263 raw / 26,156 aggregate gzip bytes, and
+  deploy digest
+  `a3864a5155d658e86378fce80de94e082ef0894c5db5f5793d91b4de7f359b46`.
+- The list/detail session uses 16 JavaScript files totaling 58,970 raw / 22,124
+  aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- Twenty-one fresh Chrome profiles record a 1.3 ms navigation median and
+  1.2/1.6 ms range.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, cache, retained result store, or scheduler was added.
+
+### Validation
+
+- Required Chrome proves query push/back, bounded results, exact requests,
+  refresh, hidden polling suppression, visible refresh, and cleanup.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+Polling remains authored route policy. Kudzu does not ship a universal
+scheduler, request registry, invalidation graph, or retained query cache.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.11.4
+```
+
 ## 0.11.3 - Optimistic Mutation And Rollback
 
 Kudzu 0.11.3 proves optimistic server mutation with ordinary shared state and
