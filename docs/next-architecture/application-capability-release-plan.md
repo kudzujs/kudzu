@@ -1089,5 +1089,5 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.11.1` | Released | Preserve the published single-owner consistency and exact request-count evidence. | None |
 | `0.11.2` | Released | Preserve the published no-new-primitive architecture decision and zero-byte result. | None |
 | `0.11.3` | Released | Preserve the published optimistic rollback, duplicate prevention, navigation, and retry evidence. | None |
-| `0.11.4` | Active | Prove bounded page/filter synchronization, history, refresh, optional polling cleanup, and exact request behavior. | None |
+| `0.11.4` | Released | Preserve the published bounded pagination, history, refresh, polling cleanup, and exact request-count evidence. | None |
 | `0.12.0` onward | Blocked | Wait for explicit approval after the patch-only release sequence. | User-directed minor-version boundary |
