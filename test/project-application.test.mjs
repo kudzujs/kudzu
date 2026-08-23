@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.12.1 shared-layout navigation contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.12.2 authentication and permission contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.12.1 shared-layout navigation contract", { timeout: 120_
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.12.1")
+  assert.equal(contract.milestone, "0.12.2")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -47,11 +47,14 @@ test("establishes the 0.12.1 shared-layout navigation contract", { timeout: 120_
   const detailArtifacts = artifacts.routes.find(route => route.route === "/app/projects/alpha")
   const runtimeProjectArtifacts = artifacts.routes.find(route => route.route === "/app/projects/[projectId]")
   const runtimeIssueArtifacts = artifacts.routes.find(route => route.route === "/app/projects/[projectId]/issues/[issueId]")
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
-  assert.deepEqual(projects.states.slice(0, 15).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"]])
-  assert.equal(projects.effects.length, 5)
-  assert.equal(detail.effects.length, 3)
+  const login = plan.routes.find(route => route.route === "/login")
+  assert.deepEqual(projects.states.slice(0, 4).map(state => state.name), ["token", "username", "isAdmin", "authStatus"])
+  assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
+  assert.deepEqual(projects.states.slice(0, 19).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"]])
+  assert.equal(projects.effects.length, 6)
+  assert.equal(detail.effects.length, 4)
   assert.equal(projects.bindings.length, 11)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
@@ -89,11 +92,13 @@ test("establishes the 0.12.1 shared-layout navigation contract", { timeout: 120_
   assert.notEqual(invalidParam.status, 0)
 
   const helpHtml = await readFile(new URL("dist/help/index.html", fixture), "utf8")
+  const loginHtml = await readFile(new URL("dist/login/index.html", fixture), "utf8")
   const helpArtifacts = artifacts.routes.find(route => route.route === "/help")
   assert.match(helpHtml, /<h1>Project help<\/h1>/)
   assert.doesNotMatch(helpHtml, /<script|data-k-/)
   assert.deepEqual(helpArtifacts.runtime, { family: null, entries: [], requirements: [] })
   assert.deepEqual(helpArtifacts.handlers, { entries: [], chunks: [] })
+  assert.match(loginHtml, /<form.*type="email".*type="password".*Log in/s)
   const output = await outputBaseline(artifacts)
   const stableOutput = structuredClone(output)
   const stableBaseline = structuredClone(contract.baseline)
@@ -107,6 +112,8 @@ test("establishes the 0.12.1 shared-layout navigation contract", { timeout: 120_
   delete stableBaseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes
   delete stableOutput.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes
   delete stableBaseline.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes
+  delete stableOutput.routes["/login"].javascriptAggregateGzipBytes
+  delete stableBaseline.routes["/login"].javascriptAggregateGzipBytes
   assert.deepEqual(stableOutput, stableBaseline)
   // gzip output varies slightly across zlib versions; raw bytes and hashes stay exact.
   assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 32)
@@ -114,6 +121,7 @@ test("establishes the 0.12.1 shared-layout navigation contract", { timeout: 120_
   assert.ok(Math.abs(output.routes["/app/projects/alpha"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes) <= 24)
   assert.ok(Math.abs(output.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes) <= 24)
   assert.ok(Math.abs(output.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes) <= 24)
+  assert.ok(Math.abs(output.routes["/login"].javascriptAggregateGzipBytes - contract.baseline.routes["/login"].javascriptAggregateGzipBytes) <= 24)
 
   const chrome = process.env.KUDZU_SKIP_BROWSER ? undefined : chromePaths.find(existsSync)
   if (process.env.KUDZU_REQUIRE_CHROME && !chrome) throw new Error("Chrome is required for the project application test; set CHROME_BIN to an executable Chrome or Chromium binary")
@@ -132,8 +140,19 @@ else if (storageMode === "malformed") localStorage.setItem("kudzu-project-worksp
 else if (storageMode === "invalid-schema") localStorage.setItem("kudzu-project-workspace", JSON.stringify({ version: 1, workspace: "Unknown" }))
 else if (storageMode === "wrong-version") localStorage.setItem("kudzu-project-workspace", JSON.stringify({ version: 2, workspace: "Secondary" }))
 else if (storageMode === "empty") localStorage.removeItem("kudzu-project-workspace")
+const authMode = new URLSearchParams(location.search).get("auth")
+if (authMode === "anonymous") {
+  localStorage.removeItem("kudzu-project-token")
+  sessionStorage.setItem("kudzu-auth-direct", "anonymous")
+} else if (authMode === "rejected") {
+  localStorage.setItem("kudzu-project-token", "expired-token")
+  sessionStorage.setItem("kudzu-auth-direct", "rejected")
+} else if (authMode === "member") localStorage.setItem("kudzu-project-token", "member-token")
+else if (!localStorage.getItem("kudzu-project-token")) localStorage.setItem("kudzu-project-token", "admin-token")
 </script></head>`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   }
+  const loginUrl = new URL("login/index.html", output)
+  await writeFile(loginUrl, (await readFile(loginUrl, "utf8")).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const waitFor = async (predicate, label) => {
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -166,7 +185,41 @@ try {
   const search = new URLSearchParams(location.search)
   const storageMode = search.get("storage")
   const runtimeRoute = sessionStorage.getItem("kudzu-runtime-route")
-  if (runtimeRoute === "reload") {
+  const authFlow = sessionStorage.getItem("kudzu-auth-flow")
+  const directAuth = sessionStorage.getItem("kudzu-auth-direct")
+  if (location.pathname === "/login" && directAuth) {
+    sessionStorage.removeItem("kudzu-auth-direct")
+    if (localStorage.getItem("kudzu-project-token") !== null) throw new Error("direct-auth-token-clear")
+    document.body.dataset.authDirectTest = directAuth
+  } else if (location.pathname === "/login" && authFlow === "logout") {
+    sessionStorage.removeItem("kudzu-auth-flow")
+    if (localStorage.getItem("kudzu-project-token") !== null) throw new Error("logout-token-clear")
+    document.body.dataset.authTest = "pass"
+  } else if (authFlow === "reload") {
+    await waitFor(() => document.querySelector("[data-session-status]")?.textContent === "authenticated" && document.querySelector("[data-session-user]")?.textContent === "Ada", "auth-reload-restore")
+    sessionStorage.setItem("kudzu-auth-flow", "logout")
+    document.querySelector("[data-logout]").click()
+  } else if (authFlow === "pending") {
+    await waitFor(() => document.querySelector("[data-session-status]")?.textContent === "authenticated" && document.querySelector("[data-session-user]")?.textContent === "Ada" && document.querySelector("[data-rename-project]"), "auth-valid-login")
+    sessionStorage.setItem("kudzu-auth-flow", "reload")
+    location.reload()
+  } else if (search.has("auth-login")) {
+    const form = document.querySelector("form")
+    form.elements.email.value = "invalid@example.com"
+    form.elements.password.value = "wrong"
+    form.requestSubmit()
+    await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 401", "auth-invalid-login")
+    form.elements.email.value = "admin@example.com"
+    form.elements.password.value = "admin-password"
+    sessionStorage.setItem("kudzu-auth-flow", "pending")
+    form.requestSubmit()
+  } else if (search.get("auth") === "member") {
+    await waitFor(() => document.querySelector("[data-session-user]")?.textContent === "Mina" && document.querySelector('[role="status"]')?.textContent === "Projects loaded", "member-session")
+    if (document.querySelector("[data-rename-project]")) throw new Error("member-admin-control")
+    const response = await fetch("/api/project/alpha", { method: "POST", headers: { Authorization: "Bearer member-token" } })
+    if (response.status !== 403) throw new Error("member-server-permission-" + response.status)
+    document.body.dataset.memberTest = "pass"
+  } else if (runtimeRoute === "reload") {
     sessionStorage.removeItem("kudzu-runtime-route")
     await waitFor(() => document.querySelector("[data-runtime-issue]")?.dataset.projectId === "gamma" && document.querySelector("[data-runtime-issue]")?.dataset.issueId === "second", "runtime-issue-reload")
     if (performance.getEntriesByType("navigation")[0]?.type !== "reload") throw new Error("runtime-issue-reload-type")
@@ -222,8 +275,6 @@ try {
     await waitFor(() => document.querySelector("[data-shared-project-name]")?.textContent === "Alpha renamed" && document.querySelector("[data-shared-project-revision]")?.textContent === "1", "refresh-server-restore")
     const counts = await projectCounts()
     if (counts.reads !== 2 || counts.mutations !== 1 || counts.attempts !== 2 || performance.getEntriesByType("navigation")[0]?.type !== "reload" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("refresh-contract")
-    document.querySelector("[data-logout]").click()
-    await waitFor(() => document.querySelector("[data-workspace]").textContent === "Primary" && localStorage.getItem("kudzu-project-workspace") === null, "logout-clear")
     document.body.dataset.browserTest = "pass"
   } else if (search.has("direct")) {
     await waitFor(() => document.querySelector("[data-project-detail]"), "direct-detail")
@@ -380,11 +431,42 @@ const http = require("node:http"), fs = require("node:fs"), path = require("node
 const root = process.argv[1], port = Number(process.argv[2])
 const rewrites = JSON.parse(fs.readFileSync(path.join(root, "rewrites.json")))
 let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, listRequests = 0
+const users = { "admin-token": { username: "Ada", isAdmin: true }, "login-admin-token": { username: "Ada", isAdmin: true }, "member-token": { username: "Mina", isAdmin: false } }, revoked = new Set()
 http.createServer((request, response) => {
   const url = new URL(request.url, "http://localhost"), pathname = url.pathname
+  const token = request.headers.authorization?.replace("Bearer ", "") || "", user = revoked.has(token) ? undefined : users[token]
+  if (pathname === "/api/login") {
+    let body = ""
+    request.on("data", chunk => { body += chunk })
+    request.on("end", () => {
+      response.setHeader("content-type", "application/json")
+      if (!body.includes("admin%40example.com") && !body.includes("admin@example.com") || !body.includes("admin-password")) {
+        response.statusCode = 401
+        response.end(JSON.stringify({ error: "invalid credentials" }))
+        return
+      }
+      response.end(JSON.stringify({ token: "login-admin-token" }))
+    })
+    return
+  }
+  if (pathname === "/api/session") {
+    response.setHeader("content-type", "application/json")
+    if (!user) { response.statusCode = 401; response.end(JSON.stringify({ error: "unauthorized" })); return }
+    response.end(JSON.stringify(user))
+    return
+  }
+  if (pathname === "/api/logout") {
+    if (!user) { response.statusCode = 401; response.end(); return }
+    revoked.add(token)
+    response.statusCode = 204
+    response.end()
+    return
+  }
   if (pathname === "/api/project/alpha") {
     response.setHeader("content-type", "application/json")
+    if (!user) { response.statusCode = 401; response.end(JSON.stringify({ error: "unauthorized" })); return }
     if (request.method === "POST") {
+      if (!user.isAdmin) { response.statusCode = 403; response.end(JSON.stringify({ error: "forbidden" })); return }
       projectMutationAttempts++
       if (projectMutationAttempts === 1) {
         setTimeout(() => { response.statusCode = 500; response.end(JSON.stringify({ error: "failed" })) }, 1000)
@@ -407,6 +489,7 @@ http.createServer((request, response) => {
     const filter = url.searchParams.get("filter") || "all"
     listRequests++
     response.setHeader("content-type", "application/json")
+    if (!user) { response.statusCode = 401; response.end(JSON.stringify({ error: "unauthorized" })); return }
     if (requestNumber === 2) { response.statusCode = 500; response.end(JSON.stringify({ error: "failed" })); return }
     if (page === 2) {
       response.end(JSON.stringify([
@@ -453,6 +536,17 @@ http.createServer((request, response) => {
     const reloadIssue = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/gamma/issues/second?reload-issue=1`], { encoding: "utf8", timeout: 15_000 })
     assert.equal(reloadIssue.status, 0, reloadIssue.stderr)
     assert.match(reloadIssue.stdout, /data-runtime-reload-test="pass"/, reloadIssue.stderr)
+    const login = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/login?auth-login=1`], { encoding: "utf8", timeout: 20_000 })
+    assert.equal(login.status, 0, login.stderr)
+    assert.match(login.stdout, /data-auth-test="pass"/, login.stderr)
+    const member = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?auth=member`], { encoding: "utf8", timeout: 15_000 })
+    assert.equal(member.status, 0, member.stderr)
+    assert.match(member.stdout, /data-member-test="pass"/, member.stderr)
+    for (const mode of ["anonymous", "rejected"]) {
+      const auth = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?auth=${mode}`], { encoding: "utf8", timeout: 15_000 })
+      assert.equal(auth.status, 0, auth.stderr)
+      assert.match(auth.stdout, new RegExp(`data-auth-direct-test="${mode}"`), auth.stderr)
+    }
     for (const mode of ["valid", "malformed", "invalid-schema", "wrong-version", "empty"]) {
       const storage = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?storage=${mode}`], { encoding: "utf8", timeout: 15_000 })
       assert.equal(storage.status, 0, storage.stderr)
@@ -507,6 +601,7 @@ async function outputBaseline(artifacts) {
       "/app/projects/alpha": routeBytes("/app/projects/alpha"),
       "/app/projects/[projectId]": routeBytes("/app/projects/[projectId]"),
       "/app/projects/[projectId]/issues/[issueId]": routeBytes("/app/projects/[projectId]/issues/[issueId]"),
+      "/login": routeBytes("/login"),
       "/help": routeBytes("/help")
     }
   }

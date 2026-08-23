@@ -1,6 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "@kudzujs/core"
 
 type WorkspaceValue = {
+  token: string
+  username: string
+  isAdmin: boolean
+  authStatus: string
   workspace: string
   setWorkspace: (workspace: string) => void
   projectName: string
@@ -16,12 +20,44 @@ export function useWorkspace() {
 }
 
 export function AppLayout({ children }: { children?: unknown }) {
+  const [token, setToken] = useState("")
+  const [username, setUsername] = useState("")
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [authStatus, setAuthStatus] = useState("restoring")
   const [workspace, setWorkspace] = useState("Primary")
   const [storageReady, setStorageReady] = useState(false)
   const [projectName, setProjectName] = useState("Alpha")
   const [projectRevision, setProjectRevision] = useState(-1)
   const [mutationStatus, setMutationStatus] = useState("idle")
   const [mutationError, setMutationError] = useState("")
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem("kudzu-project-token") || ""
+    if (!storedToken) {
+      setAuthStatus("anonymous")
+      location.replace("/login")
+      return
+    }
+    void fetch("/api/session", { headers: { Authorization: `Bearer ${storedToken}` } })
+      .then(async response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return response.json()
+      })
+      .then(session => {
+        setToken(storedToken)
+        setUsername(session.username)
+        setIsAdmin(session.isAdmin)
+        setAuthStatus("authenticated")
+      })
+      .catch(() => {
+        localStorage.removeItem("kudzu-project-token")
+        setToken("")
+        setUsername("")
+        setIsAdmin(false)
+        setAuthStatus("anonymous")
+        location.replace("/login")
+      })
+  }, [])
 
   useEffect(() => {
     try {
@@ -44,9 +80,14 @@ export function AppLayout({ children }: { children?: unknown }) {
   }, [storageReady, workspace])
 
   useEffect(() => {
+    if (authStatus !== "authenticated") return
     const controller = new globalThis.AbortController()
-    void fetch("/api/project/alpha", { signal: controller.signal })
+    void fetch("/api/project/alpha", { signal: controller.signal, headers: { Authorization: `Bearer ${token}` } })
       .then(async response => {
+        if (response.status === 401) {
+          localStorage.removeItem("kudzu-project-token")
+          location.replace("/login")
+        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         return response.json()
       })
@@ -55,15 +96,17 @@ export function AppLayout({ children }: { children?: unknown }) {
         setProjectRevision(project.revision)
       })
       .catch(cause => {
-        if (!controller.signal.aborted) throw cause
+        if (!controller.signal.aborted && (!(cause instanceof Error) || cause.message !== "HTTP 401")) throw cause
       })
     return () => controller.abort()
-  }, [])
+  }, [authStatus, token])
 
-  return <WorkspaceContext.Provider value={{ workspace, setWorkspace, projectName, setProjectName, projectRevision, setProjectRevision }}>
+  return <WorkspaceContext.Provider value={{ token, username, isAdmin, authStatus, workspace, setWorkspace, projectName, setProjectName, projectRevision, setProjectRevision }}>
     <header data-app-layout>
+      <output data-session-status>{authStatus}</output>
+      <strong data-session-user>{username}</strong>
       <output data-workspace>{workspace}</output>
-      <button data-rename-project disabled={mutationStatus === "pending"} onClick={async () => {
+      {isAdmin && <button data-rename-project disabled={mutationStatus === "pending"} onClick={async () => {
         if (mutationStatus === "pending") return
         const previousName = projectName
         const previousRevision = projectRevision
@@ -72,7 +115,7 @@ export function AppLayout({ children }: { children?: unknown }) {
         setProjectName("Alpha optimistic")
         setProjectRevision(previousRevision + 1)
         try {
-          const response = await fetch("/api/project/alpha", { method: "POST" })
+          const response = await fetch("/api/project/alpha", { method: "POST", headers: { Authorization: `Bearer ${token}` } })
           if (!response.ok) throw new Error(`HTTP ${response.status}`)
           const project = await response.json()
           setProjectName(project.name)
@@ -84,17 +127,25 @@ export function AppLayout({ children }: { children?: unknown }) {
           setMutationError(cause instanceof Error ? cause.message : String(cause))
           setMutationStatus("error")
         }
-      }}>Rename project</button>
+      }}>Rename project</button>}
       {mutationStatus === "pending" && <p role="status">Saving project</p>}
       {mutationStatus === "success" && <p role="status">Project saved</p>}
       {mutationStatus === "error" && <p role="alert">{mutationError}</p>}
       <button data-switch-workspace onClick={() => setWorkspace("Secondary")}>Switch workspace</button>
-      <button data-logout onClick={() => {
-        setStorageReady(false)
+      <button data-logout onClick={async () => {
         try {
+          await fetch("/api/logout", { method: "POST", headers: { Authorization: `Bearer ${token}` } })
+        } finally {
+          localStorage.removeItem("kudzu-project-token")
+          setToken("")
+          setUsername("")
+          setIsAdmin(false)
+          setAuthStatus("anonymous")
+          setStorageReady(false)
           globalThis.localStorage.removeItem("kudzu-project-workspace")
-        } catch {}
-        setWorkspace("Primary")
+          setWorkspace("Primary")
+          location.replace("/login")
+        }
       }}>Log out</button>
       <nav>
         <a href="/app/projects">Projects</a>

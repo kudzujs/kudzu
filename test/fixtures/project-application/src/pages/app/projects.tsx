@@ -36,7 +36,7 @@ function ProjectRow({ project }: { project: Project }) {
 }
 
 export default function ProjectsPage() {
-  const { workspace, projectName, projectRevision } = useWorkspace()
+  const { token, workspace, projectName, projectRevision } = useWorkspace()
   const [searchParams, setSearchParams] = useSearchParams()
   const page = Number(searchParams.get("page")) || 1
   const serverFilter = searchParams.get("filter") || projectFilters[0]
@@ -52,12 +52,17 @@ export default function ProjectsPage() {
   const filterLabel = filter === "all" ? "All projects" : "Active projects"
 
   useEffect(() => {
+    if (!token) return
     const controller = new globalThis.AbortController()
     setStatus("loading")
     setError("")
 
-    void fetch(`/api/projects?page=${page}&filter=${serverFilter}&request=${request}`, { signal: controller.signal })
+    void fetch(`/api/projects?page=${page}&filter=${serverFilter}&request=${request}`, { signal: controller.signal, headers: { Authorization: `Bearer ${token}` } })
       .then(async response => {
+        if (response.status === 401) {
+          localStorage.removeItem("kudzu-project-token")
+          location.replace("/login")
+        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         return response.json()
       })
@@ -80,7 +85,7 @@ export default function ProjectsPage() {
       controller.abort()
       document.body.dataset.projectFetchCleanup = `${document.body.dataset.projectFetchCleanup ?? ""}|${request}`
     }
-  }, [page, serverFilter, request])
+  }, [page, serverFilter, request, token])
 
   useEffect(() => {
     if (!polling) return
