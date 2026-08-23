@@ -12,6 +12,7 @@ test("generates canonical SEO output for Cloudflare static assets", async () => 
   routes.push("/releases/0.8.59")
   routes.push("/releases/0.11.3")
   routes.push("/releases/0.11.4")
+  routes.push("/releases/0.12.0")
   try {
     for (const route of routes) {
       const directory = route === "/" ? outDir : join(outDir, route.slice(1))
@@ -62,6 +63,7 @@ test("generates canonical SEO output for Cloudflare static assets", async () => 
     assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.8\.59\/<\/loc>/)
     assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.11\.3\/<\/loc>/)
     assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.11\.4\/<\/loc>/)
+    assert.match(sitemap, /https:\/\/kudzujs\.cloud\/releases\/0\.12\.0\/<\/loc>/)
     assert.doesNotMatch(sitemap, /\/demo/)
 
     const showcase = await readFile(join(outDir, "example/blog/personal/index.html"), "utf8")

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.11.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.11.4 - Pagination, refresh, and polling policy.** URL-owned page/filter state, exact refresh, bounded results, back/forward, and visibility-aware polling now compose from existing query signals and owned effects without a scheduler or cache. Read the [release notes](./RELEASES.md#0114---pagination-refresh-and-polling-policy), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.11.4), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.12.0 - Project route shell and runtime parameters.** Directly addressable project and issue routes now reuse bracket file routes, pathname parameters, complete fallback HTML, generated host rewrites, and native anchors without an SPA router. Read the [release notes](./RELEASES.md#0120---project-route-shell-and-runtime-parameters), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.0), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

@@ -1,5 +1,50 @@
 # Kudzu Releases
 
+## 0.12.0 - Project Route Shell And Runtime Parameters
+
+Kudzu 0.12.0 opens the routing and application-lifetime train with directly
+addressable project and issue routes.
+
+### Changed in 0.12.0
+
+- Added bracket project and nested issue pages using supported React Router
+  `useParams()` migration syntax.
+- Emitted complete fallback HTML and pathname parameter ESM for both routes.
+- Preserved native project-to-issue links without an SPA route registry.
+- Emitted ordered host rewrite records while retaining exact-file precedence.
+- Updated `create-kudzu@0.1.113` to generate projects on
+  `@kudzujs/core@^0.12.0`.
+
+### Output Evidence
+
+- The application emits 36 files, 105,577 raw / 38,067 aggregate gzip bytes,
+  and deploy digest
+  `6a6c5985cf2a7e9649b0bbd70506357051dac995a74225b0022c5f1ecedaf2b8`.
+- The standalone project route uses 17,905 raw / 8,455 aggregate gzip
+  JavaScript bytes; the issue route uses 18,002 raw / 8,474 aggregate gzip.
+- The maintained enhanced session remains byte-identical at 58,970 raw /
+  22,124 aggregate gzip bytes, and `/help` remains 0 B JavaScript.
+- No semantic primitive, compiler pass, production compiler line, runtime
+  concept, server, or browser route registry was added.
+
+### Validation
+
+- Required Chrome proves direct project and issue entry plus issue reload.
+- The parameter module rejects invalid encoded path segments before mounting.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+The deployment host must install the generated runtime rewrites. Exact emitted
+files must be checked before those fallbacks.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.12.0
+```
+
 ## 0.11.4 - Pagination, Refresh, And Polling Policy
 
 Kudzu 0.11.4 completes the `0.11.x` server-data train with bounded URL-owned
