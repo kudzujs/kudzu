@@ -472,6 +472,34 @@ package, publication, and registry gate.
 - **Done condition:** the exact owner and network behavior are measured and
   documented.
 
+**Completion evidence:** the project list reads page and filter from two
+existing React Router query signals and restarts its existing abortable fetch
+effect when either changes. Static updater handlers push page 2/all and page
+1/active URLs. Two browser back operations restore the prior URL, signal values,
+and bounded server results. An explicit refresh increments the same route-owned
+request signal. Optional polling owns one native interval and one
+`visibilitychange` listener; hidden events perform no work, one visible event
+performs one refresh, and disabling polling clears both owners before a later
+event. The deterministic journey records 11 total list requests across initial
+stale replacement, HTTP recovery, page/filter history, refresh, polling, and
+route remount. Every response retains at most two rows.
+
+Existing query signals, primitive state, dependency effects, abort invalidation,
+native timers/listeners, and route cleanup are sufficient. This packet adds zero
+semantic primitives, ModuleIR kinds, compiler passes, production compiler lines,
+runtime concepts, normalization rules, adapter rules, public APIs, caches,
+schedulers, or retained result stores. One positive application fixture gains
+page/filter URL ownership, history, refresh, visibility-aware polling, exact
+cleanup, request counts, and bounded-result cases. It emits 20 files totaling
+77,263 raw / 26,156 aggregate gzip bytes with deploy SHA-256
+`a3864a5155d658e86378fce80de94e082ef0894c5db5f5793d91b4de7f359b46`.
+The two-route session uses 16 JavaScript files totaling 58,970 raw / 22,124
+aggregate gzip bytes, an authored application increase of 2,652 raw / 913 gzip
+bytes over `0.11.3`. Twenty-one fresh Chrome profiles record a 1.3 ms median
+with a 1.2/1.6 ms range. The prior range does not overlap, so the 0.5 ms median
+increase is disclosed rather than presented as a no-regression result. `/help`
+remains 0 B JavaScript.
+
 ## `0.12.x`: Routing And Application Lifetime
 
 ### `0.12.0`: Project Route Shell And Runtime Parameters

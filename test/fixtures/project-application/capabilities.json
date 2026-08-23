@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.11.3",
+  "milestone": "0.11.4",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -41,19 +41,27 @@
     "accessible-mutation-error",
     "mutation-retry",
     "optimistic-keyed-row-identity",
+    "url-owned-project-page-and-filter",
+    "bounded-server-page-results",
+    "history-synchronized-project-results",
+    "explicit-project-refresh",
+    "visibility-aware-optional-polling",
+    "polling-listener-and-timer-cleanup",
+    "exact-list-request-counts",
     "native-navigation-fallback",
     "static-route-zero-javascript"
   ],
   "deferred": [
     "authentication",
     "project-crud",
-    "shared-request-coordination"
+    "shared-request-coordination",
+    "unbounded-project-results"
   ],
   "limitations": [
     "shared data lasts for one document and retained layout owner",
     "document refresh performs one new server read",
     "independent fetch owners are not deduplicated",
-    "there is no request registry, invalidation graph, or retained query cache"
+    "there is no request registry, invalidation graph, retained query cache, or universal polling scheduler"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -75,15 +83,15 @@
   },
   "baseline": {
     "deploy": {
-      "files": 19,
-      "rawBytes": 73202,
-      "aggregateGzipBytes": 25057,
-      "sha256": "40c68fef4eeba5ea4c1a92e9a8003b74e6a45b7a10671ee2f3e4952010117b26"
+      "files": 20,
+      "rawBytes": 77263,
+      "aggregateGzipBytes": 26156,
+      "sha256": "a3864a5155d658e86378fce80de94e082ef0894c5db5f5793d91b4de7f359b46"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 53532,
-        "javascriptAggregateGzipBytes": 19921
+        "javascriptRawBytes": 56184,
+        "javascriptAggregateGzipBytes": 20830
       },
       "/app/projects/alpha": {
         "javascriptRawBytes": 25993,

@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.11.3 optimistic mutation contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.11.4 bounded server-data contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -27,7 +27,7 @@ test("establishes the 0.11.3 optimistic mutation contract", { timeout: 120_000 }
   const routes = plan.routes.map(route => route.route).sort()
   assert.equal(routes.includes("/app/projects/alpha"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.11.3")
+  assert.equal(contract.milestone, "0.11.4")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -41,12 +41,12 @@ test("establishes the 0.11.3 optimistic mutation contract", { timeout: 120_000 }
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
   const projectArtifacts = artifacts.routes.find(route => route.route === "/app/projects")
   const detailArtifacts = artifacts.routes.find(route => route.route === "/app/projects/alpha")
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error"])
-  assert.deepEqual(projects.states.slice(0, 14).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
+  assert.deepEqual(projects.states.slice(0, 15).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
   assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"]])
-  assert.equal(projects.effects.length, 4)
+  assert.equal(projects.effects.length, 5)
   assert.equal(detail.effects.length, 3)
-  assert.equal(projects.bindings.length, 7)
+  assert.equal(projects.bindings.length, 11)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
   assert.equal(projects.lists.some(list => Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "filter").id) && list.rowStates?.length === 1), true)
@@ -124,6 +124,14 @@ const projectCounts = async () => {
   const response = await fetch("/api/project-counts")
   return response.json()
 }
+const waitForListRequests = async expected => {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const counts = await projectCounts()
+    if (counts.listRequests === expected) return counts
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  throw new Error("list-request-count-" + expected)
+}
 try {
   const search = new URLSearchParams(location.search)
   const storageMode = search.get("storage")
@@ -158,6 +166,46 @@ try {
   await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 500", "http-error")
   document.querySelector("#refetch-projects").click()
   await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Projects loaded" && !document.querySelector('[role="alert"]') && document.querySelector('[data-project="alpha"]'), "http-recovery")
+  if (document.querySelector("[data-server-page]").textContent !== "1" || document.querySelector("[data-server-filter]").textContent !== "all" || document.querySelectorAll("[data-project]").length > 2) throw new Error("initial-bounded-page")
+  counts = await projectCounts()
+  if (counts.listRequests !== 4) throw new Error("initial-list-request-count")
+  document.querySelector("#next-project-page").click()
+  await waitFor(() => document.querySelector("[data-server-page]")?.textContent === "2" && document.querySelector('[data-project="gamma"]') && document.querySelector('[role="status"]')?.textContent === "Projects loaded", "next-server-page")
+  if (location.search !== "?page=2&filter=all" || document.querySelectorAll("[data-project]").length !== 2) throw new Error("next-page-url-bound")
+  counts = await projectCounts()
+  if (counts.listRequests !== 5) throw new Error("next-page-request-count")
+  history.back()
+  await waitFor(() => location.search === "" && document.querySelector("[data-server-page]")?.textContent === "1" && document.querySelector('[data-project="alpha"]') && document.querySelector('[data-project="beta"]'), "page-history-back")
+  counts = await projectCounts()
+  if (counts.listRequests !== 6) throw new Error("page-history-request-count")
+  document.querySelector("#active-project-page").click()
+  await waitFor(() => document.querySelector("[data-server-filter]")?.textContent === "active" && document.querySelector('[data-project="alpha"]') && !document.querySelector('[data-project="beta"]'), "server-filter")
+  if (location.search !== "?page=1&filter=active" || document.querySelectorAll("[data-project]").length !== 1) throw new Error("server-filter-url-bound")
+  counts = await projectCounts()
+  if (counts.listRequests !== 7) throw new Error("server-filter-request-count")
+  history.back()
+  await waitFor(() => location.search === "" && document.querySelector("[data-server-filter]")?.textContent === "all" && document.querySelector('[data-project="beta"]'), "filter-history-back")
+  counts = await projectCounts()
+  if (counts.listRequests !== 8) throw new Error("filter-history-request-count")
+  document.querySelector("#refetch-projects").click()
+  await waitForListRequests(9)
+  let visibility = "hidden"
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => visibility })
+  document.querySelector("#enable-project-polling").click()
+  await waitFor(() => document.body.dataset.projectPolling === "active", "polling-active")
+  document.dispatchEvent(new Event("visibilitychange"))
+  await new Promise(resolve => setTimeout(resolve, 30))
+  counts = await projectCounts()
+  if (counts.listRequests !== 9) throw new Error("hidden-polling-request")
+  visibility = "visible"
+  document.dispatchEvent(new Event("visibilitychange"))
+  await waitForListRequests(10)
+  document.querySelector("#disable-project-polling").click()
+  await waitFor(() => document.body.dataset.projectPolling === "stopped", "polling-cleanup")
+  document.dispatchEvent(new Event("visibilitychange"))
+  await new Promise(resolve => setTimeout(resolve, 30))
+  counts = await projectCounts()
+  if (counts.listRequests !== 10) throw new Error("released-polling-request")
   const layout = document.querySelector("[data-app-layout]")
   const output = document.querySelector("#project-filter")
   if (output.textContent !== "All projects") throw new Error("initial-state")
@@ -240,7 +288,7 @@ try {
   await new Promise(resolve => setTimeout(resolve, 300))
   if (document.body.dataset.projectFetchCleanup === cleanupBeforeRemoval || document.querySelector("[data-project-list-page]") || browserErrors.length) throw new Error("fetch-route-release")
   counts = await projectCounts()
-  if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || counts.reads !== 1 || counts.mutations !== 1 || counts.attempts !== 2) throw new Error("route-reset")
+  if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || counts.reads !== 1 || counts.mutations !== 1 || counts.attempts !== 2 || counts.listRequests !== 11) throw new Error("route-reset")
   sessionStorage.setItem("kudzu-project-refresh", "pending")
   location.reload()
   }
@@ -253,7 +301,7 @@ try {
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
-let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0
+let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, listRequests = 0
 http.createServer((request, response) => {
   const url = new URL(request.url, "http://localhost"), pathname = url.pathname
   if (pathname === "/api/project/alpha") {
@@ -272,18 +320,29 @@ http.createServer((request, response) => {
   }
   if (pathname === "/api/project-counts") {
     response.setHeader("content-type", "application/json")
-    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts }))
+    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, listRequests }))
     return
   }
   if (pathname === "/api/projects") {
     const requestNumber = Number(url.searchParams.get("request"))
+    const page = Number(url.searchParams.get("page")) || 1
+    const filter = url.searchParams.get("filter") || "all"
+    listRequests++
     response.setHeader("content-type", "application/json")
     if (requestNumber === 2) { response.statusCode = 500; response.end(JSON.stringify({ error: "failed" })); return }
+    if (page === 2) {
+      response.end(JSON.stringify([
+        { id: "gamma", name: "Gamma", status: "active", issues: [{ id: "g1", title: "Bound result" }] },
+        { id: "delta", name: "Delta", status: "archived", issues: [] }
+      ]))
+      return
+    }
     const alphaName = requestNumber === 0 ? "Stale Alpha" : "Alpha"
-    response.end(JSON.stringify([
+    const projects = [
       { id: "alpha", name: alphaName, status: "active", issues: [{ id: "a1", title: "Design schema" }, { id: "a2", title: "Ship dashboard" }] },
       { id: "beta", name: "Beta", status: "archived", issues: [{ id: "b1", title: "Archive notes" }] }
-    ]))
+    ]
+    response.end(JSON.stringify(filter === "active" ? projects.slice(0, 1) : projects))
     return
   }
   const relative = pathname === "/" ? "index.html" : pathname.slice(1)
