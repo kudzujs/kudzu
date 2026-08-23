@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.11.4 bounded server-data contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.12.0 runtime route contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -26,8 +26,10 @@ test("establishes the 0.11.4 bounded server-data contract", { timeout: 120_000 }
   const artifacts = JSON.parse(await readFile(new URL(".kudzu/kudzu-artifacts.json", fixture), "utf8"))
   const routes = plan.routes.map(route => route.route).sort()
   assert.equal(routes.includes("/app/projects/alpha"), true)
+  assert.equal(routes.includes("/app/projects/[projectId]"), true)
+  assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.11.4")
+  assert.equal(contract.milestone, "0.12.0")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -39,8 +41,12 @@ test("establishes the 0.11.4 bounded server-data contract", { timeout: 120_000 }
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
+  const runtimeProject = plan.routes.find(route => route.route === "/app/projects/[projectId]")
+  const runtimeIssue = plan.routes.find(route => route.route === "/app/projects/[projectId]/issues/[issueId]")
   const projectArtifacts = artifacts.routes.find(route => route.route === "/app/projects")
   const detailArtifacts = artifacts.routes.find(route => route.route === "/app/projects/alpha")
+  const runtimeProjectArtifacts = artifacts.routes.find(route => route.route === "/app/projects/[projectId]")
+  const runtimeIssueArtifacts = artifacts.routes.find(route => route.route === "/app/projects/[projectId]/issues/[issueId]")
   assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
   assert.deepEqual(projects.states.slice(0, 15).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
   assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"]])
@@ -63,6 +69,24 @@ test("establishes the 0.11.4 bounded server-data contract", { timeout: 120_000 }
   assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
   assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
   assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js"], chunks: [] })
+  assert.deepEqual(runtimeProject.params, [{ name: "projectId", id: "rp0" }])
+  assert.deepEqual(runtimeIssue.params, [{ name: "projectId", id: "rp0" }, { name: "issueId", id: "rp1" }])
+  assert.equal(runtimeProjectArtifacts.runtime.entries.some(path => path.endsWith("/params/app/projects/[projectId]/index.js")), true)
+  assert.equal(runtimeIssueArtifacts.runtime.entries.some(path => path.endsWith("/params/app/projects/[projectId]/issues/[issueId]/index.js")), true)
+  assert.equal([...runtimeProjectArtifacts.runtime.entries, ...runtimeIssueArtifacts.runtime.entries].some(path => path.endsWith("/kudzu-navigation.js")), false)
+  assert.equal(runtimeProjectArtifacts.runtime.family, runtimeIssueArtifacts.runtime.family)
+  assert.deepEqual(JSON.parse(await readFile(new URL("dist/rewrites.json", fixture), "utf8")).map(rewrite => [rewrite.pattern, rewrite.file]), [
+    ["/app/projects/[projectId]/issues/[issueId]", "app/projects/[projectId]/issues/[issueId]/index.html"],
+    ["/app/projects/[projectId]", "app/projects/[projectId]/index.html"]
+  ])
+
+  const runtimeProjectHtml = await readFile(new URL("dist/app/projects/[projectId]/index.html", fixture), "utf8")
+  const runtimeIssueHtml = await readFile(new URL("dist/app/projects/[projectId]/issues/[issueId]/index.html", fixture), "utf8")
+  assert.match(runtimeProjectHtml, /data-runtime-project.*data-project-id.*<h1>Project .*data-k-text="rp0".*This project route is directly addressable.*data-first-issue/s)
+  assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
+  const paramModule = new URL("dist/assets/params/app/projects/[projectId]/index.js", fixture).href
+  const invalidParam = spawnSync(process.execPath, ["--input-type=module", "-e", `globalThis.location={pathname:"/app/projects/%2F"};globalThis.document={body:{dataset:{}},querySelectorAll:()=>[]};await import(${JSON.stringify(paramModule)})`], { encoding: "utf8" })
+  assert.notEqual(invalidParam.status, 0)
 
   const helpHtml = await readFile(new URL("dist/help/index.html", fixture), "utf8")
   const helpArtifacts = artifacts.routes.find(route => route.route === "/help")
@@ -79,11 +103,17 @@ test("establishes the 0.11.4 bounded server-data contract", { timeout: 120_000 }
   delete stableBaseline.routes["/app/projects"].javascriptAggregateGzipBytes
   delete stableOutput.routes["/app/projects/alpha"].javascriptAggregateGzipBytes
   delete stableBaseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes
+  delete stableOutput.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes
+  delete stableBaseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes
+  delete stableOutput.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes
+  delete stableBaseline.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes
   assert.deepEqual(stableOutput, stableBaseline)
   // gzip output varies slightly across zlib versions; raw bytes and hashes stay exact.
   assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 32)
   assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 24)
   assert.ok(Math.abs(output.routes["/app/projects/alpha"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes) <= 24)
+  assert.ok(Math.abs(output.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes) <= 24)
+  assert.ok(Math.abs(output.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes) <= 24)
 
   const chrome = process.env.KUDZU_SKIP_BROWSER ? undefined : chromePaths.find(existsSync)
   if (process.env.KUDZU_REQUIRE_CHROME && !chrome) throw new Error("Chrome is required for the project application test; set CHROME_BIN to an executable Chrome or Chromium binary")
@@ -92,7 +122,7 @@ test("establishes the 0.11.4 bounded server-data contract", { timeout: 120_000 }
 
 async function runBrowserJourney(chrome) {
   const output = new URL("dist/", fixture)
-  for (const path of ["app/projects/index.html", "app/projects/alpha/index.html"]) {
+  for (const path of ["app/projects/index.html", "app/projects/alpha/index.html", "app/projects/[projectId]/index.html", "app/projects/[projectId]/issues/[issueId]/index.html"]) {
     const htmlUrl = new URL(path, output)
     const html = await readFile(htmlUrl, "utf8")
     await writeFile(htmlUrl, html.replace("</head>", `<script>
@@ -135,7 +165,23 @@ const waitForListRequests = async expected => {
 try {
   const search = new URLSearchParams(location.search)
   const storageMode = search.get("storage")
-  if (storageMode) {
+  const runtimeRoute = sessionStorage.getItem("kudzu-runtime-route")
+  if (runtimeRoute === "reload") {
+    sessionStorage.removeItem("kudzu-runtime-route")
+    await waitFor(() => document.querySelector("[data-runtime-issue]")?.dataset.projectId === "gamma" && document.querySelector("[data-runtime-issue]")?.dataset.issueId === "second", "runtime-issue-reload")
+    if (performance.getEntriesByType("navigation")[0]?.type !== "reload") throw new Error("runtime-issue-reload-type")
+    document.body.dataset.runtimeReloadTest = "pass"
+  } else if (search.has("runtime-project")) {
+    await waitFor(() => document.querySelector("[data-runtime-project]")?.dataset.projectId === "beta" && document.querySelector("[data-first-issue]")?.getAttribute("href") === "/app/projects/beta/issues/first", "runtime-project-entry")
+    document.body.dataset.runtimeProjectTest = "pass"
+  } else if (search.has("reload-issue")) {
+    await waitFor(() => document.querySelector("[data-runtime-issue]")?.dataset.projectId === "gamma" && document.querySelector("[data-runtime-issue]")?.dataset.issueId === "second", "runtime-issue-before-reload")
+    sessionStorage.setItem("kudzu-runtime-route", "reload")
+    location.reload()
+  } else if (search.has("direct-issue")) {
+    await waitFor(() => document.querySelector("[data-runtime-issue]")?.dataset.projectId === "gamma" && document.querySelector("[data-runtime-issue]")?.dataset.issueId === "second", "runtime-issue-direct")
+    document.body.dataset.directIssueTest = "pass"
+  } else if (storageMode) {
     const expected = storageMode === "valid" ? "Secondary" : "Primary"
     await waitFor(() => document.querySelector("[data-workspace]")?.textContent === expected && document.querySelector("[data-route-workspace]")?.textContent === expected, "storage-restore")
     await waitFor(() => localStorage.getItem("kudzu-project-workspace") === JSON.stringify({ version: 1, workspace: expected }), "storage-fallback-write")
@@ -301,6 +347,7 @@ try {
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
+const rewrites = JSON.parse(fs.readFileSync(path.join(root, "rewrites.json")))
 let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, listRequests = 0
 http.createServer((request, response) => {
   const url = new URL(request.url, "http://localhost"), pathname = url.pathname
@@ -345,8 +392,11 @@ http.createServer((request, response) => {
     response.end(JSON.stringify(filter === "active" ? projects.slice(0, 1) : projects))
     return
   }
+  const segments = pathname.split("/").filter(Boolean)
+  const rewrite = rewrites.find(entry => entry.segments.length === segments.length && entry.segments.every((segment, index) => segment.literal === undefined || segment.literal === segments[index]))
   const relative = pathname === "/" ? "index.html" : pathname.slice(1)
-  const file = path.join(root, relative.endsWith("/") || !path.extname(relative) ? relative + (relative.endsWith("/") ? "" : "/") + "index.html" : relative)
+  const direct = path.join(root, relative.endsWith("/") || !path.extname(relative) ? relative + (relative.endsWith("/") ? "" : "/") + "index.html" : relative)
+  const file = fs.existsSync(direct) || !rewrite ? direct : path.join(root, rewrite.file)
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1")
@@ -360,6 +410,15 @@ http.createServer((request, response) => {
     const direct = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/alpha?direct=1`], { encoding: "utf8", timeout: 15_000 })
     assert.equal(direct.status, 0, direct.stderr)
     assert.match(direct.stdout, /data-direct-load-test="pass"/, direct.stderr)
+    const runtime = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/beta?runtime-project=1`], { encoding: "utf8", timeout: 20_000 })
+    assert.equal(runtime.status, 0, runtime.stderr)
+    assert.match(runtime.stdout, /data-runtime-project-test="pass"/, runtime.stderr)
+    const directIssue = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/gamma/issues/second?direct-issue=1`], { encoding: "utf8", timeout: 15_000 })
+    assert.equal(directIssue.status, 0, directIssue.stderr)
+    assert.match(directIssue.stdout, /data-direct-issue-test="pass"/, directIssue.stderr)
+    const reloadIssue = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/gamma/issues/second?reload-issue=1`], { encoding: "utf8", timeout: 15_000 })
+    assert.equal(reloadIssue.status, 0, reloadIssue.stderr)
+    assert.match(reloadIssue.stdout, /data-runtime-reload-test="pass"/, reloadIssue.stderr)
     for (const mode of ["valid", "malformed", "invalid-schema", "wrong-version", "empty"]) {
       const storage = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?storage=${mode}`], { encoding: "utf8", timeout: 15_000 })
       assert.equal(storage.status, 0, storage.stderr)
@@ -412,6 +471,8 @@ async function outputBaseline(artifacts) {
     routes: {
       "/app/projects": routeBytes("/app/projects"),
       "/app/projects/alpha": routeBytes("/app/projects/alpha"),
+      "/app/projects/[projectId]": routeBytes("/app/projects/[projectId]"),
+      "/app/projects/[projectId]/issues/[issueId]": routeBytes("/app/projects/[projectId]/issues/[issueId]"),
       "/help": routeBytes("/help")
     }
   }

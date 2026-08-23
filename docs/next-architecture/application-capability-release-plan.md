@@ -512,6 +512,40 @@ remains 0 B JavaScript.
 - **Stop condition:** an SPA route registry is introduced.
 - **Done condition:** all target routes are addressable without a browser router.
 
+**Completion evidence:** the maintained project application adds one bracket
+project page and one nested bracket issue page, both using the existing aliased
+React Router `useParams()` migration path and the existing shared application
+layout. Each fallback emits complete document structure plus only pathname
+parameter, binding, native-handler, and owned-layout capability ESM. The project
+page owns a native parameterized anchor to its first issue. The issue page owns a
+native parameterized project return. Neither standalone artifact includes the
+enhanced-navigation entry.
+
+The fixture emits the compiler-provided ordered rewrite records through its
+existing `afterBuild` host boundary. A deterministic static server checks exact
+files first, then applies those records for direct project and issue entry.
+Required Chrome proves project entry,
+issue entry, and issue reload; the generated parameter module rejects an encoded
+slash before mounting. Static HTML and artifact assertions prove the project to
+issue anchor remains native, both routes share one signature-keyed standalone
+runtime family, and `/help` remains 0 B JavaScript. Deployment still must install
+the generated rewrites; Kudzu does not add a server or browser route registry.
+
+Existing file routes, runtime pathname parameters, layout ownership, route
+bindings, native anchors, host rewrites, and browser reload are sufficient. This
+packet adds zero semantic primitives, ModuleIR kinds, compiler passes,
+production compiler lines, runtime concepts, normalization rules, adapter rules,
+or public APIs. One positive application fixture gains two route files, direct
+entry, reload, invalid-parameter rejection, native project-to-issue linkage, and
+host fallback cases. It emits 36 files totaling 105,577 raw / 38,067 aggregate
+gzip bytes with deploy SHA-256
+`6a6c5985cf2a7e9649b0bbd70506357051dac995a74225b0022c5f1ecedaf2b8`.
+The runtime project route uses 17,905 raw / 8,455 gzip JavaScript bytes and the
+issue route uses 18,002 raw / 8,474 gzip bytes. The existing two-route enhanced
+session remains byte-identical at 58,970 raw / 22,124 gzip bytes. Twenty-one
+fresh Chrome profiles record a 1.3 ms median with a 1.1/1.6 ms range; the range
+overlaps `0.11.4`, so no latency change is claimed.
+
 ### `0.12.1`: Shared Layout, History, Focus, And Scroll
 
 - **Purpose:** complete the accepted same-document application group behavior.
@@ -1090,4 +1124,5 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.11.2` | Released | Preserve the published no-new-primitive architecture decision and zero-byte result. | None |
 | `0.11.3` | Released | Preserve the published optimistic rollback, duplicate prevention, navigation, and retry evidence. | None |
 | `0.11.4` | Released | Preserve the published bounded pagination, history, refresh, polling cleanup, and exact request-count evidence. | None |
-| `0.12.0` onward | Blocked | Wait for explicit approval after the patch-only release sequence. | User-directed minor-version boundary |
+| `0.12.0` | Active | Release the completed runtime project/issue route-shell evidence. | None |
+| `0.12.1` onward | Blocked | Wait for explicit approval after the minor-version entry release. | User-directed minor-version boundary |

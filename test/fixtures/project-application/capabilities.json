@@ -1,9 +1,11 @@
 {
   "version": 1,
-  "milestone": "0.11.4",
+  "milestone": "0.12.0",
   "application": "project-management",
   "routes": [
     "/app/projects",
+    "/app/projects/[projectId]",
+    "/app/projects/[projectId]/issues/[issueId]",
     "/app/projects/alpha",
     "/help",
     "/login"
@@ -48,6 +50,14 @@
     "visibility-aware-optional-polling",
     "polling-listener-and-timer-cleanup",
     "exact-list-request-counts",
+    "runtime-project-route",
+    "runtime-issue-route",
+    "direct-runtime-entry",
+    "runtime-route-reload",
+    "invalid-runtime-parameter-rejection",
+    "project-to-issue-native-navigation",
+    "generated-host-rewrites",
+    "standalone-runtime-fallback",
     "native-navigation-fallback",
     "static-route-zero-javascript"
   ],
@@ -61,7 +71,9 @@
     "shared data lasts for one document and retained layout owner",
     "document refresh performs one new server read",
     "independent fetch owners are not deduplicated",
-    "there is no request registry, invalidation graph, retained query cache, or universal polling scheduler"
+    "there is no request registry, invalidation graph, retained query cache, or universal polling scheduler",
+    "runtime routes require the deployment host to apply the generated rewrites",
+    "runtime project and issue navigation uses native document navigation"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -83,10 +95,10 @@
   },
   "baseline": {
     "deploy": {
-      "files": 20,
-      "rawBytes": 77263,
-      "aggregateGzipBytes": 26156,
-      "sha256": "a3864a5155d658e86378fce80de94e082ef0894c5db5f5793d91b4de7f359b46"
+      "files": 36,
+      "rawBytes": 105577,
+      "aggregateGzipBytes": 38067,
+      "sha256": "6a6c5985cf2a7e9649b0bbd70506357051dac995a74225b0022c5f1ecedaf2b8"
     },
     "routes": {
       "/app/projects": {
@@ -96,6 +108,14 @@
       "/app/projects/alpha": {
         "javascriptRawBytes": 25993,
         "javascriptAggregateGzipBytes": 11210
+      },
+      "/app/projects/[projectId]": {
+        "javascriptRawBytes": 17905,
+        "javascriptAggregateGzipBytes": 8455
+      },
+      "/app/projects/[projectId]/issues/[issueId]": {
+        "javascriptRawBytes": 18002,
+        "javascriptAggregateGzipBytes": 8474
       },
       "/help": {
         "javascriptRawBytes": 0,
