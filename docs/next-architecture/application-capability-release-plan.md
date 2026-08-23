@@ -578,7 +578,7 @@ with deploy SHA-256
 `4f1ce541af0794fcb17458ad37db7b32beb434f3a83cb7f949f13b3e4536fe1c`.
 The two-route session uses 16 JavaScript files totaling 58,974 raw / 22,129
 aggregate gzip bytes, 4 raw / 5 gzip bytes above `0.12.0`. Seven fresh Chrome
-profiles record a 1.4 ms navigation median with a 1.2/2.1 ms range. The range
+profiles record a 1.3 ms navigation median with a 1.3/1.5 ms range. The range
 overlaps `0.12.0`, so no latency change is claimed. This correctness packet has
 no measured AI-delivery cost effect.
 

@@ -17,7 +17,7 @@ layout state, fresh route state, and native navigation outside the route group.
 The two-route session uses 16 JavaScript files totaling 58,974 raw / 22,129
 aggregate gzip bytes, an increase of 4 raw / 5 gzip bytes from `0.12.0` for the
 correct non-hash focus fallback. Navigation samples are
-`[1.7, 2.1, 1.4, 1.8, 1.2, 1.2, 1.4]` ms, with a 1.4 ms median and 1.2/2.1 ms
+`[1.5, 1.4, 1.3, 1.3, 1.3, 1.3, 1.4]` ms, with a 1.3 ms median and 1.3/1.5 ms
 minimum/maximum. The range overlaps `0.12.0`, so no latency change is claimed.
 
 The application emits 36 files totaling 106,096 raw / 38,201 aggregate gzip

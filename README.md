@@ -12,9 +12,9 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 *Watch: React-shaped TSX to static HTML and route-specific ESM in 22 seconds.*
 
-> Experimental `0.11.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.12.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.12.0 - Project route shell and runtime parameters.** Directly addressable project and issue routes now reuse bracket file routes, pathname parameters, complete fallback HTML, generated host rewrites, and native anchors without an SPA router. Read the [release notes](./RELEASES.md#0120---project-route-shell-and-runtime-parameters), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.0), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.12.1 - Shared layout, history, focus, and scroll.** Enhanced route groups now prove retained layout state, route cleanup, back/forward history, titles, live announcements, hash and heading focus, explicit scroll policy, and native navigation outside the group. Read the [release notes](./RELEASES.md#0121---shared-layout-history-focus-and-scroll), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

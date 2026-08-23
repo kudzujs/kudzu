@@ -1,5 +1,55 @@
 # Kudzu Releases
 
+## 0.12.1 - Shared Layout, History, Focus, And Scroll
+
+Kudzu 0.12.1 completes the accepted same-document project route group with
+explicit history, focus, announcement, and scroll behavior.
+
+### Changed in 0.12.1
+
+- Fixed non-hash enhanced navigation so the existing heading/main focus
+  fallback runs instead of treating an empty hash as a target.
+- Proved push, back, and forward navigation with retained layout state and
+  freshly recreated route state.
+- Added route titles, a native hash anchor, and an intrinsic hash destination to
+  the maintained project application.
+- Proved polite navigation announcements, hash scrolling, top scrolling, and
+  browser-native links outside the configured route group.
+- Updated `create-kudzu@0.1.114` to generate projects on
+  `@kudzujs/core@^0.12.1`.
+
+### Output Evidence
+
+- The application emits 36 files, 106,096 raw / 38,201 aggregate gzip bytes,
+  and deploy digest
+  `4f1ce541af0794fcb17458ad37db7b32beb434f3a83cb7f949f13b3e4536fe1c`.
+- The maintained enhanced session uses 16 JavaScript files totaling 58,974 raw
+  / 22,129 aggregate gzip bytes, 4 raw / 5 gzip bytes above `0.12.0`.
+- `/help` remains complete HTML with 0 B JavaScript.
+- No semantic primitive, compiler pass, core compiler line, runtime concept,
+  public API, or browser route registry was added.
+
+### Validation
+
+- Required Chrome proves focused anchor activation, back/forward, layout
+  retention, route cleanup/reset, title/live updates, hash/heading focus, and
+  hash/top scroll behavior.
+- Seven fresh Chrome profiles record a 1.3 ms navigation median with a 1.3-1.5
+  ms range. The range overlaps `0.12.0`, so no latency change is claimed.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+Enhanced navigation remains explicit and route-group scoped. Routes outside the
+group use browser-native document navigation.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.12.1
+```
+
 ## 0.12.0 - Project Route Shell And Runtime Parameters
 
 Kudzu 0.12.0 opens the routing and application-lifetime train with directly
