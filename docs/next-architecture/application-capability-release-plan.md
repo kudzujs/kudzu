@@ -594,6 +594,29 @@ no measured AI-delivery cost effect.
 - **Done condition:** server authorization and client UX responsibilities are
   executable and explicit.
 
+**Completion evidence:** the project application replaces its placeholder login
+route with a native constrained form and one async handler. The shared layout
+restores a stored token, validates the current user, exposes authenticated
+identity and role state, and clears local state before replacement navigation on
+rejection or logout. Required Chrome proves invalid and valid login, reload
+restoration, anonymous and rejected direct protected entry, member/admin control
+visibility, server 401/403 enforcement, token clearing, and logout. Client
+conditions are recorded as presentation only; the deterministic API server
+authorizes every protected read and mutation.
+
+Existing native forms, state, layout ownership, effects, storage, fetch, and
+native navigation are sufficient. This packet adds zero semantic primitives,
+ModuleIR kinds, compiler passes, production compiler/runtime lines, runtime
+concepts, normalization rules, adapter rules, public APIs, auth runtimes, or
+servers. The fixture emits 43 files totaling 123,476 raw / 45,305 aggregate gzip
+bytes with deploy SHA-256
+`81d0b3c5e0d1d1f72f29d219647601463f5317f215274e14a45fe5ba92eb033e`.
+The login route uses 12,093 raw / 5,795 gzip JavaScript bytes. The two-route
+session uses 16 JavaScript files totaling 60,767 raw / 22,561 aggregate gzip
+bytes. Seven fresh Chrome profiles record a 1.4 ms navigation median with a
+1.2/1.5 ms range; the range overlaps `0.12.1`, so no latency change is claimed.
+`/help` remains 0 B JavaScript.
+
 ### `0.12.3`: Route Failure And Restoration Policy
 
 - **Purpose:** decide application-visible handling of navigation/data failures.
@@ -1150,5 +1173,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.11.3` | Released | Preserve the published optimistic rollback, duplicate prevention, navigation, and retry evidence. | None |
 | `0.11.4` | Released | Preserve the published bounded pagination, history, refresh, polling cleanup, and exact request-count evidence. | None |
 | `0.12.0` | Released | Preserve direct runtime entry, reload, rewrite, and native fallback evidence. | None |
-| `0.12.1` | Active | Release the completed layout/history/focus/scroll evidence. | None |
-| `0.12.2` onward | Blocked | Complete the `0.12.1` release transaction first. | Ordered patch boundary |
+| `0.12.1` | Released | Preserve the published layout/history/focus/scroll evidence. | None |
+| `0.12.2` | Active | Release the completed authentication and permission evidence. | None |
+| `0.12.3` onward | Blocked | Complete the `0.12.2` release transaction first. | Ordered patch boundary |

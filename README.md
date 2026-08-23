@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.12.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.12.1 - Shared layout, history, focus, and scroll.** Enhanced route groups now prove retained layout state, route cleanup, back/forward history, titles, live announcements, hash and heading focus, explicit scroll policy, and native navigation outside the group. Read the [release notes](./RELEASES.md#0121---shared-layout-history-focus-and-scroll), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.1), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.12.2 - Authentication and permission boundary.** Native login, token restoration, role-aware controls, server-enforced 401/403 responses, token clearing, and logout now compose from existing application primitives without an auth runtime. Read the [release notes](./RELEASES.md#0122---authentication-and-permission-boundary), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.2), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

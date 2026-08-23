@@ -1,5 +1,57 @@
 # Kudzu Releases
 
+## 0.12.2 - Authentication And Permission Boundary
+
+Kudzu 0.12.2 completes the project application's login, restoration,
+permission-aware UI, server rejection, and logout journey using existing
+application primitives.
+
+### Changed in 0.12.2
+
+- Replaced the placeholder login route with a native constrained form and one
+  application-owned async submit handler.
+- Added layout-owned token restoration, session validation, authenticated user
+  state, role-aware admin controls, and explicit logout.
+- Added bearer authorization to project reads and mutations; the deterministic
+  server rejects missing tokens with 401 and member mutations with 403.
+- Proved that protected static HTML is a UX shell while server authorization is
+  the security boundary.
+- Updated `create-kudzu@0.1.115` to generate projects on
+  `@kudzujs/core@^0.12.2`.
+
+### Output Evidence
+
+- The application emits 43 files, 123,476 raw / 45,305 aggregate gzip bytes,
+  and deploy digest
+  `81d0b3c5e0d1d1f72f29d219647601463f5317f215274e14a45fe5ba92eb033e`.
+- The maintained enhanced session uses 16 JavaScript files totaling 60,767 raw
+  / 22,561 aggregate gzip bytes, 1,793 raw / 432 gzip bytes above `0.12.1`.
+- The login route uses 12,093 raw / 5,795 aggregate gzip JavaScript bytes, while
+  `/help` remains complete HTML with 0 B JavaScript.
+- No semantic primitive, compiler pass, core compiler line, runtime concept,
+  public API, auth runtime, or server was added to Kudzu.
+
+### Validation
+
+- Required Chrome proves invalid and valid login, reload restoration, direct
+  anonymous and rejected entry, member/admin UI, server 401/403 responses,
+  token clearing, and logout.
+- Seven fresh Chrome profiles record a 1.4 ms navigation median with a 1.2-1.5
+  ms range. The range overlaps `0.12.1`, so no latency change is claimed.
+- The full suite, package smoke, registry metadata, and fresh installation are
+  release gates.
+
+### Limits
+
+Client conditional rendering only controls presentation. Applications and
+deployment hosts remain responsible for authorizing protected data and actions.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.12.2
+```
+
 ## 0.12.1 - Shared Layout, History, Focus, And Scroll
 
 Kudzu 0.12.1 completes the accepted same-document project route group with

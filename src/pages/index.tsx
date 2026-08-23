@@ -45,16 +45,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.12.1">
-        <span>v0.12.1</span>
-        <strong>Shared layout, history, focus, and scroll</strong>
+      <a className="release-banner" href="/releases/0.12.2">
+        <span>v0.12.2</span>
+        <strong>Authentication and permission boundary</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.12.1</span> COMPILER FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.12.2</span> COMPILER FRAMEWORK</p>
             <h1>React-shaped input.<br /><em>Static-first output.</em></h1>
             <p className="intro">Kudzu analyzes TypeScript ASTs and specializes familiar components, hooks, routes, effects, and collections into complete HTML plus only the browser capabilities each route uses.</p>
             <div className="actions">
@@ -116,12 +116,12 @@ export default function Counter() {
 
         <section className="model" id="benchmarks">
           <div className="section-title">
-            <p className="eyebrow">MEASURED IN 0.12.1</p>
+            <p className="eyebrow">MEASURED IN 0.12.2</p>
             <h2>Application behavior.<br />Measured output.</h2>
           </div>
           <div className="pipeline">
-            <article><span>NAVIGATION</span><h3>1.3 ms release median</h3><p>Published list-to-detail completion across seven fresh Chrome profiles, with a 1.3–1.5 ms range.</p><code>npm run benchmark:project-navigation</code></article>
-            <article><span>SESSION</span><h3>22,129 B gzip</h3><p>The two-route session includes corrected non-hash focus at a 5 B gzip cost.</p><code>16 unique JavaScript files</code></article>
+            <article><span>NAVIGATION</span><h3>1.4 ms release median</h3><p>Published authenticated list-to-detail completion across seven fresh Chrome profiles, with a 1.2–1.5 ms range.</p><code>npm run benchmark:project-navigation</code></article>
+            <article><span>SESSION</span><h3>22,561 B gzip</h3><p>The two-route session includes token restoration, identity, permissions, and authorized data access.</p><code>16 unique JavaScript files</code></article>
             <article><span>STATIC</span><h3>0 B JavaScript</h3><p>The sibling help route remains complete HTML and receives no browser capability code.</p><code>unused capability → no output</code></article>
           </div>
           <div className="actions">
