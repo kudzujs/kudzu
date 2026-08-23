@@ -557,6 +557,31 @@ overlaps `0.11.4`, so no latency change is claimed.
 - **Done condition:** keyboard and browser-history journeys pass with native
   recovery.
 
+**Completion evidence:** the project application adds route titles, one native
+hash anchor, and one intrinsic hash destination. Required Chrome activates the
+focused anchor, retains the layout and workspace state through push, back, and
+forward navigation, releases and recreates dirty route state, updates the title
+and polite live status, focuses hash and heading destinations, applies explicit
+hash and top scroll policies, and leaves `/help` browser-native outside the
+approved route group.
+
+The journey exposed one existing JavaScript value bug: an absent hash produced
+the empty string and prevented the nullish heading/main focus fallback. The
+navigation runtime now produces `null` for that case. This packet adds zero
+semantic primitives, ModuleIR kinds, compiler passes, core compiler lines,
+runtime concepts, normalization rules, adapter rules, or public APIs. Runtime
+source remains 351 lines. One positive application fixture gains the complete
+acceptance journey; `/help` remains 0 B JavaScript.
+
+The fixture emits 36 files totaling 106,096 raw / 38,201 aggregate gzip bytes
+with deploy SHA-256
+`4f1ce541af0794fcb17458ad37db7b32beb434f3a83cb7f949f13b3e4536fe1c`.
+The two-route session uses 16 JavaScript files totaling 58,974 raw / 22,129
+aggregate gzip bytes, 4 raw / 5 gzip bytes above `0.12.0`. Seven fresh Chrome
+profiles record a 1.4 ms navigation median with a 1.2/2.1 ms range. The range
+overlaps `0.12.0`, so no latency change is claimed. This correctness packet has
+no measured AI-delivery cost effect.
+
 ### `0.12.2`: Authentication And Permission Boundary
 
 - **Purpose:** complete login, restore, 401, logout, and permission-aware UI.
@@ -1124,5 +1149,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.11.2` | Released | Preserve the published no-new-primitive architecture decision and zero-byte result. | None |
 | `0.11.3` | Released | Preserve the published optimistic rollback, duplicate prevention, navigation, and retry evidence. | None |
 | `0.11.4` | Released | Preserve the published bounded pagination, history, refresh, polling cleanup, and exact request-count evidence. | None |
-| `0.12.0` | Active | Release the completed runtime project/issue route-shell evidence. | None |
-| `0.12.1` onward | Blocked | Wait for explicit approval after the minor-version entry release. | User-directed minor-version boundary |
+| `0.12.0` | Released | Preserve direct runtime entry, reload, rewrite, and native fallback evidence. | None |
+| `0.12.1` | Active | Release the completed layout/history/focus/scroll evidence. | None |
+| `0.12.2` onward | Blocked | Complete the `0.12.1` release transaction first. | Ordered patch boundary |

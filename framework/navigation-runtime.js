@@ -330,7 +330,7 @@ function updateHead(incoming) {
 }
 
 function focusAndScroll(url) {
-  const hashTarget = url.hash && document.getElementById(decodeURIComponent(url.hash.slice(1)))
+  const hashTarget = url.hash ? document.getElementById(decodeURIComponent(url.hash.slice(1))) : null
   const target = hashTarget ?? routeElement("h1") ?? routeElement("main")
   if (target) {
     if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1")

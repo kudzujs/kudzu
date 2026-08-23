@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.12.0",
+  "milestone": "0.12.1",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -59,6 +59,16 @@
     "generated-host-rewrites",
     "standalone-runtime-fallback",
     "native-navigation-fallback",
+    "back-and-forward-navigation",
+    "retained-layout-history-state",
+    "route-cleanup-on-history-navigation",
+    "updated-document-title",
+    "live-navigation-announcement",
+    "destination-focus",
+    "hash-target-scroll",
+    "top-scroll-policy",
+    "keyboard-operable-native-anchor",
+    "outside-group-native-navigation",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -96,18 +106,18 @@
   "baseline": {
     "deploy": {
       "files": 36,
-      "rawBytes": 105577,
-      "aggregateGzipBytes": 38067,
-      "sha256": "6a6c5985cf2a7e9649b0bbd70506357051dac995a74225b0022c5f1ecedaf2b8"
+      "rawBytes": 106096,
+      "aggregateGzipBytes": 38201,
+      "sha256": "4f1ce541af0794fcb17458ad37db7b32beb434f3a83cb7f949f13b3e4536fe1c"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 56184,
-        "javascriptAggregateGzipBytes": 20830
+        "javascriptRawBytes": 56188,
+        "javascriptAggregateGzipBytes": 20835
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 25993,
-        "javascriptAggregateGzipBytes": 11210
+        "javascriptRawBytes": 25997,
+        "javascriptAggregateGzipBytes": 11219
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 17905,

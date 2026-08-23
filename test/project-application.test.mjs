@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.12.0 runtime route contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.12.1 shared-layout navigation contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.12.0 runtime route contract", { timeout: 120_000 }, asyn
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.12.0")
+  assert.equal(contract.milestone, "0.12.1")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -181,6 +181,37 @@ try {
   } else if (search.has("direct-issue")) {
     await waitFor(() => document.querySelector("[data-runtime-issue]")?.dataset.projectId === "gamma" && document.querySelector("[data-runtime-issue]")?.dataset.issueId === "second", "runtime-issue-direct")
     document.body.dataset.directIssueTest = "pass"
+  } else if (search.has("history")) {
+    await waitFor(() => document.querySelector("[data-project-list-page]") && document.querySelector("[data-k-navigation-status]"), "history-list-entry")
+    const layout = document.querySelector("[data-app-layout]")
+    document.querySelector("[data-switch-workspace]").click()
+    await waitFor(() => document.querySelector("[data-workspace]")?.textContent === "Secondary", "history-layout-state")
+    let scroll = ""
+    globalThis.scrollTo = (left, top) => { scroll = "top:" + left + "," + top }
+    Element.prototype.scrollIntoView = function () { scroll = "hash:" + this.id }
+    const historyLink = document.querySelector("[data-history-project]")
+    historyLink.focus()
+    if (document.activeElement !== historyLink) throw new Error("history-link-focus")
+    historyLink.click()
+    await waitFor(() => document.querySelector("[data-project-detail]") && document.activeElement?.id === "project-history", "history-detail-navigation")
+    if (location.pathname !== "/app/projects/alpha" || location.hash !== "#project-history" || document.title !== "Alpha project" || scroll !== "hash:project-history" || document.querySelector("[data-k-navigation-status]").textContent !== "Navigated to Alpha project" || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-workspace]").textContent !== "Secondary") throw new Error("history-detail-contract")
+    document.querySelector("[data-edit-draft]").click()
+    await waitFor(() => document.querySelector("[data-project-draft]")?.textContent === "Dirty draft", "history-draft-edit")
+    history.back()
+    await waitFor(() => document.querySelector("[data-project-list-page]") && document.title === "Projects" && scroll === "top:0,0", "history-back")
+    if (!document.activeElement?.matches("[data-project-list-page] h1")) throw new Error("history-back-focus-" + document.activeElement?.outerHTML)
+    if (location.pathname !== "/app/projects" || location.hash || document.title !== "Projects" || scroll !== "top:0,0" || document.querySelector("[data-k-navigation-status]").textContent !== "Navigated to Projects" || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-workspace]").textContent !== "Secondary") throw new Error("history-back-contract")
+    history.forward()
+    await waitFor(() => document.querySelector("[data-project-detail]") && document.activeElement?.id === "project-history", "history-forward")
+    if (document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-workspace]").textContent !== "Secondary") throw new Error("history-forward-contract")
+    let intercepted
+    document.addEventListener("click", event => {
+      intercepted = event.defaultPrevented
+      event.preventDefault()
+    }, { once: true })
+    document.querySelector('a[href="/help"]').dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }))
+    if (intercepted) throw new Error("history-native-outside-group")
+    document.body.dataset.navigationTest = "pass"
   } else if (storageMode) {
     const expected = storageMode === "valid" ? "Secondary" : "Primary"
     await waitFor(() => document.querySelector("[data-workspace]")?.textContent === expected && document.querySelector("[data-route-workspace]")?.textContent === expected, "storage-restore")
@@ -407,6 +438,9 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=10000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/, browser.stderr)
+    const history = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?history=1`], { encoding: "utf8", timeout: 20_000 })
+    assert.equal(history.status, 0, history.stderr)
+    assert.match(history.stdout, /data-navigation-test="pass"/, history.stderr)
     const direct = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/alpha?direct=1`], { encoding: "utf8", timeout: 15_000 })
     assert.equal(direct.status, 0, direct.stderr)
     assert.match(direct.stdout, /data-direct-load-test="pass"/, direct.stderr)

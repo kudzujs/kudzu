@@ -4,6 +4,7 @@ import { AppLayout, useWorkspace } from "../../AppLayout"
 import { projectFilters } from "../../projectFilters"
 
 export const layout = AppLayout
+export const metadata = { title: "Projects" }
 
 type Issue = { id: string; title: string }
 type Project = { id: string; name: string; status: "active" | "archived"; issues: Issue[] }
@@ -104,6 +105,7 @@ export default function ProjectsPage() {
     <output data-server-page>{page}</output>
     <output data-server-filter>{serverFilter}</output>
     <p id="unrelated-control">Workspace projects are the first greenfield application surface.</p>
+    <a data-history-project href="/app/projects/alpha#project-history">Alpha project history</a>
     <button id="refetch-projects" onClick={() => setRequest(request + 1)}>Refetch projects</button>
     <button id="next-project-page" onClick={() => setSearchParams(previous => {
       const next = new URLSearchParams(previous)
