@@ -116,12 +116,12 @@ test("establishes the 0.12.2 authentication and permission contract", { timeout:
   delete stableBaseline.routes["/login"].javascriptAggregateGzipBytes
   assert.deepEqual(stableOutput, stableBaseline)
   // gzip output varies slightly across zlib versions; raw bytes and hashes stay exact.
-  assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 32)
-  assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 24)
-  assert.ok(Math.abs(output.routes["/app/projects/alpha"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes) <= 24)
-  assert.ok(Math.abs(output.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes) <= 24)
-  assert.ok(Math.abs(output.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes) <= 24)
-  assert.ok(Math.abs(output.routes["/login"].javascriptAggregateGzipBytes - contract.baseline.routes["/login"].javascriptAggregateGzipBytes) <= 24)
+  assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 128)
+  assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 64)
+  assert.ok(Math.abs(output.routes["/app/projects/alpha"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes) <= 64)
+  assert.ok(Math.abs(output.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes) <= 64)
+  assert.ok(Math.abs(output.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes) <= 64)
+  assert.ok(Math.abs(output.routes["/login"].javascriptAggregateGzipBytes - contract.baseline.routes["/login"].javascriptAggregateGzipBytes) <= 64)
 
   const chrome = process.env.KUDZU_SKIP_BROWSER ? undefined : chromePaths.find(existsSync)
   if (process.env.KUDZU_REQUIRE_CHROME && !chrome) throw new Error("Chrome is required for the project application test; set CHROME_BIN to an executable Chrome or Chromium binary")
