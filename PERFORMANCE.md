@@ -6,6 +6,28 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
+## 0.12.4 Nested Layout Evidence Decision
+
+Verified 2026-08-24 on Linux x64 with Node 24.14.0 and Chrome
+142.0.7444.175. Six executable route sets fit the existing ownership model: one
+retained layout owner around one replaceable route owner, followed by existing
+conditional, keyed, effect, and DOM ownership. Zero routes prove an intermediate
+retained layout lifetime, so the packet closes by its stop condition without an
+owner chain.
+
+Generated output is byte-identical to `0.12.3`: 43 deploy files totaling 123,835
+raw / 45,379 aggregate gzip bytes with SHA-256
+`fb9d24cc01791bf80b67b659738ba62beded6ff6ce14a86a278fa4b34d088acf`.
+The two-route session remains 16 JavaScript files totaling 61,126 raw / 22,663
+aggregate gzip bytes, and `/help` remains 0 B JavaScript.
+
+Core semantic LOC remains 5,682 with zero semantic primitives, IR kinds,
+compiler passes, production compiler/runtime lines, runtime concepts, layout
+registries, disposal paths, public APIs, browser files, or browser bytes added.
+No benchmark rerun or latency comparison applies because production and
+generated code are unchanged; the published `0.12.3` 1.8 ms median and 1.5-2.4
+ms range remain provenance rather than a new claim.
+
 ## 0.12.3 Route Failure And Restoration Policy
 
 Measured 2026-08-24 on Linux x64 with Node 24.14.0 and Chrome

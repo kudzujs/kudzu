@@ -665,6 +665,39 @@ against the macOS arm64 Chrome 151 `0.12.2` samples.
 - **Done condition:** either existing layout composition is accepted or a
   minimal layout-owner chain is approved with explicit disposal order.
 
+**Completion evidence:** architecture review covers the project application's
+list, static detail, runtime project, and runtime issue routes; Apache Answer's
+questions, tags, admin, and legal route-shell reduction; its independently
+reduced authentication shell; the Context and Zustand cart reductions; and the
+two disjoint navigation-group shells. All executable evidence fits one retained
+layout owner around one replaceable route owner, followed by existing
+conditional, keyed, effect, and DOM ownership. The project runtime routes use
+native document navigation, the Answer shell is static composition, and the
+independent navigation groups require disjoint top-level owners rather than a
+nested owner chain.
+
+No reviewed route proves an intermediate layout whose DOM, state, or effects
+must survive descendant route replacement and then dispose on subtree exit.
+The qualifying evidence count is zero, below the required three unrelated
+routes. The stop condition is met: current nesting is source organization or
+static composition, so this packet accepts the existing single-layout model and
+does not authorize a layout-owner chain. A future review must first prove the
+same otherwise-inexpressible intermediate lifetime in three unrelated
+executable application routes, including leaf-before-intermediate and
+deepest-first disposal requirements.
+
+The project application records `closed-by-stop-condition`, the reviewed route
+sets, an empty qualifying-route list, and the reused ownership semantics in its
+machine-readable capability contract. This packet adds zero semantic
+primitives, ModuleIR or RouteIR kinds, compiler passes, production compiler or
+runtime lines, runtime concepts, normalization or adapter rules, public APIs,
+layout registries, disposal paths, browser files, or browser bytes. Existing
+fixtures and output remain unchanged: 43 deploy files totaling 123,835 raw /
+45,379 aggregate gzip bytes with the same deploy digest, a 61,126 raw / 22,663
+aggregate gzip two-route JavaScript session, and 0 B JavaScript on `/help`. No
+benchmark rerun or latency claim applies to a machine-readable evidence decision
+with no generated-output change.
+
 ## `0.13.x`: Forms
 
 ### `0.13.0`: Production Form And Server Validation
@@ -1204,5 +1237,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.12.1` | Released | Preserve the published layout/history/focus/scroll evidence. | None |
 | `0.12.2` | Released | Preserve the published authentication and permission evidence. | None |
 | `0.12.3` | Released | Preserve the published route failure, focused retry, native fallback, and precommit retention evidence. | None |
-| `0.12.4` | Active | Complete the nested layout evidence decision. | None |
-| `0.12.5` onward | Blocked | Complete the `0.12.4` release transaction first. | Ordered patch boundary |
+| `0.12.4` | Released | Preserve the published single-layout decision and zero-owner-chain evidence. | None |
+| `0.13.0` | Active | Complete the production form and server-validation packet. | None |
+| `0.13.1` onward | Blocked | Complete the `0.13.0` release transaction first. | Ordered patch boundary |

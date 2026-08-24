@@ -1,5 +1,52 @@
 # Kudzu Releases
 
+## 0.12.4 - Nested Layout Evidence Decision
+
+Kudzu 0.12.4 reviews executable route ownership evidence and keeps the existing
+single-layout model instead of adding a speculative nested owner chain.
+
+### Changed in 0.12.4
+
+- Reviewed the project application's list/detail/runtime routes, Apache Answer
+  route and authentication shells, Context and Zustand carts, and independent
+  navigation groups.
+- Recorded zero routes requiring an intermediate retained layout whose state,
+  effects, or DOM survive descendant replacement and dispose on subtree exit.
+- Accepted one shared layout plus static composition, route ownership, native
+  document navigation, and disjoint navigation groups as the current boundary.
+- Updated `create-kudzu@0.1.117` to generate projects on
+  `@kudzujs/core@^0.12.4`.
+
+### Output Evidence
+
+- The application remains unchanged at 43 files, 123,835 raw / 45,379 aggregate
+  gzip bytes, and deploy digest
+  `fb9d24cc01791bf80b67b659738ba62beded6ff6ce14a86a278fa4b34d088acf`.
+- The maintained enhanced session remains 16 JavaScript files totaling 61,126
+  raw / 22,663 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, production compiler/runtime
+  line, runtime concept, layout registry, disposal path, or browser byte was
+  added.
+
+### Validation
+
+- The machine-readable project contract records six reviewed route sets, zero
+  qualifying routes, no owner chain, and the reused ownership semantics.
+- The full 273-test suite, package smoke, registry metadata, and fresh
+  installation are release gates.
+
+### Limits
+
+Nested retained-layout owners remain unsupported. Reconsideration requires
+three unrelated executable application routes proving the same intermediate
+lifetime and explicit deepest-first disposal order.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.12.4
+```
+
 ## 0.12.3 - Route Failure And Restoration Policy
 
 Kudzu 0.12.3 defines recovery for enhanced route failures without adding an

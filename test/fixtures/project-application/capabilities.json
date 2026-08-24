@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.12.3",
+  "milestone": "0.12.4",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -119,6 +119,28 @@
       "dependency-invalidation",
       "owner-release",
       "static-exclusion"
+    ]
+  },
+  "nestedLayoutDecision": {
+    "patch": "0.12.4",
+    "status": "closed-by-stop-condition",
+    "ownerChain": null,
+    "reviewedRouteSets": [
+      "project-application",
+      "apache-answer-route-shell",
+      "apache-answer-auth-ownership",
+      "context-shared-actions",
+      "zustand-migration",
+      "navigation-groups"
+    ],
+    "qualifyingRoutes": [],
+    "reusedSemantics": [
+      "single-layout-owner",
+      "route-owner",
+      "static-composition",
+      "conditional-and-keyed-ownership",
+      "native-document-navigation",
+      "disjoint-navigation-groups"
     ]
   },
   "baseline": {

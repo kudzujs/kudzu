@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.12.3 route failure and restoration contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.12.4 nested layout evidence decision", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.12.3 route failure and restoration contract", { timeout:
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.12.3")
+  assert.equal(contract.milestone, "0.12.4")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -37,6 +37,14 @@ test("establishes the 0.12.3 route failure and restoration contract", { timeout:
     fixtures: ["project-application", "tanstack-query-migration", "apache-answer-browser-questions"],
     repeatedMissingContracts: [],
     reusedSemantics: ["ordinary-state", "owned-effect", "dependency-invalidation", "owner-release", "static-exclusion"]
+  })
+  assert.deepEqual(contract.nestedLayoutDecision, {
+    patch: "0.12.4",
+    status: "closed-by-stop-condition",
+    ownerChain: null,
+    reviewedRouteSets: ["project-application", "apache-answer-route-shell", "apache-answer-auth-ownership", "context-shared-actions", "zustand-migration", "navigation-groups"],
+    qualifyingRoutes: [],
+    reusedSemantics: ["single-layout-owner", "route-owner", "static-composition", "conditional-and-keyed-ownership", "native-document-navigation", "disjoint-navigation-groups"]
   })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.12.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.12.3 - Route failure and restoration policy.** Fetch and response-body transport failures retain the current document for focused retry, while invalid documents and assets keep native fallback. Read the [release notes](./RELEASES.md#0123---route-failure-and-restoration-policy), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.3), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.12.4 - Nested layout evidence decision.** Six executable route sets fit the existing single-layout model, so Kudzu adds no speculative owner chain or browser runtime. Read the [release notes](./RELEASES.md#0124---nested-layout-evidence-decision), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.4), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
