@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { existsSync } from "node:fs"
-import { readFile, readdir, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { spawn, spawnSync } from "node:child_process"
 import { createServer } from "node:http"
 import { createConnection } from "node:net"
@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.12.4 nested layout evidence decision", { timeout: 120_000 }, async t => {
+test("establishes the 0.13.0 production form and server-validation contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.12.4 nested layout evidence decision", { timeout: 120_00
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.12.4")
+  assert.equal(contract.milestone, "0.13.0")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -60,7 +60,7 @@ test("establishes the 0.12.4 nested layout evidence decision", { timeout: 120_00
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
   assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
   assert.deepEqual(projects.states.slice(0, 19).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"]])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""]])
   assert.equal(projects.effects.length, 6)
   assert.equal(detail.effects.length, 4)
   assert.equal(projects.bindings.length, 11)
@@ -79,7 +79,8 @@ test("establishes the 0.12.4 nested layout evidence decision", { timeout: 120_00
   assert.equal(projectArtifacts.runtime.requirements.some(path => path.endsWith("/kudzu-list.js")), true)
   assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
   assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
-  assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js"], chunks: [] })
+  assert.deepEqual(detailArtifacts.capability.manifest.events.native, ["click", "submit"])
+  assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js", "/assets/handlers/pages/app/projects/alpha.js"], chunks: [] })
   assert.deepEqual(runtimeProject.params, [{ name: "projectId", id: "rp0" }])
   assert.deepEqual(runtimeIssue.params, [{ name: "projectId", id: "rp0" }, { name: "issueId", id: "rp1" }])
   assert.equal(runtimeProjectArtifacts.runtime.entries.some(path => path.endsWith("/params/app/projects/[projectId]/index.js")), true)
@@ -93,8 +94,10 @@ test("establishes the 0.12.4 nested layout evidence decision", { timeout: 120_00
 
   const runtimeProjectHtml = await readFile(new URL("dist/app/projects/[projectId]/index.html", fixture), "utf8")
   const runtimeIssueHtml = await readFile(new URL("dist/app/projects/[projectId]/issues/[issueId]/index.html", fixture), "utf8")
+  const detailHtml = await readFile(new URL("dist/app/projects/alpha/index.html", fixture), "utf8")
   assert.match(runtimeProjectHtml, /data-runtime-project.*data-project-id.*<h1>Project .*data-k-text="rp0".*This project route is directly addressable.*data-first-issue/s)
   assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
+  assert.match(detailHtml, /data-issue-form.*data-k-native-submit.*id="issue-title".*required.*minLength="5".*aria-invalid.*aria-describedby.*id="issue-body".*required.*minLength="20".*id="issue-submit"/s)
   const paramModule = new URL("dist/assets/params/app/projects/[projectId]/index.js", fixture).href
   const invalidParam = spawnSync(process.execPath, ["--input-type=module", "-e", `globalThis.location={pathname:"/app/projects/%2F"};globalThis.document={body:{dataset:{}},querySelectorAll:()=>[]};await import(${JSON.stringify(paramModule)})`], { encoding: "utf8" })
   assert.notEqual(invalidParam.status, 0)
@@ -483,7 +486,7 @@ try {
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
 const rewrites = JSON.parse(fs.readFileSync(path.join(root, "rewrites.json")))
-let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, listRequests = 0
+let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, issueCreateAttempts = 0, issueCreates = 0, listRequests = 0
 const routeFailureAttempts = new Map()
 const users = { "admin-token": { username: "Ada", isAdmin: true }, "login-admin-token": { username: "Ada", isAdmin: true }, "member-token": { username: "Mina", isAdmin: false } }, revoked = new Set()
 http.createServer((request, response) => {
@@ -534,7 +537,26 @@ http.createServer((request, response) => {
   }
   if (pathname === "/api/project-counts") {
     response.setHeader("content-type", "application/json")
-    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, listRequests }))
+    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, issueCreateAttempts, issueCreates, listRequests }))
+    return
+  }
+  if (pathname === "/api/projects/alpha/issues" && request.method === "POST") {
+    response.setHeader("content-type", "application/json")
+    if (!user) { response.statusCode = 401; response.end(JSON.stringify({ error: "unauthorized" })); return }
+    let body = ""
+    request.on("data", chunk => { body += chunk })
+    request.on("end", () => {
+      issueCreateAttempts++
+      const valid = body.includes('name="title"') && body.includes("Release blocker") && body.includes('name="body"') && body.includes("Retain this detailed reproduction")
+      setTimeout(() => {
+        if (!valid) { response.statusCode = 400; response.end(JSON.stringify({ error: "invalid issue" })); return }
+        if (issueCreateAttempts === 1) { response.statusCode = 422; response.end(JSON.stringify({ errors: { title: "Use a more specific title." } })); return }
+        if (issueCreateAttempts === 2) { response.statusCode = 503; response.end(JSON.stringify({ error: "Issue service unavailable." })); return }
+        issueCreates++
+        response.statusCode = 201
+        response.end(JSON.stringify({ id: "a3", title: "Release blocker fixed" }))
+      }, 100)
+    })
     return
   }
   if (pathname === "/api/projects") {
@@ -626,8 +648,98 @@ http.createServer((request, response) => {
       assert.equal(storage.status, 0, storage.stderr)
       assert.match(storage.stdout, new RegExp(`data-storage-test="${mode}"`), storage.stderr)
     }
+    await runIssueFormJourney(chrome, port)
   } finally {
     server.kill()
+  }
+}
+
+async function runIssueFormJourney(chrome, applicationPort) {
+  const profile = await mkdtemp(new URL(".chrome-", fixture))
+  const debuggingPort = await availablePort()
+  const url = `http://127.0.0.1:${applicationPort}/app/projects/alpha?issue-form=1`
+  const browser = spawn(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-background-networking", `--user-data-dir=${profile}`, `--remote-debugging-port=${debuggingPort}`, url], { stdio: "ignore" })
+  let socket
+  try {
+    let target
+    for (let attempt = 0; attempt < 200 && !target; attempt++) {
+      try {
+        const targets = await fetch(`http://127.0.0.1:${debuggingPort}/json/list`).then(response => response.json())
+        target = targets.find(entry => entry.type === "page" && entry.url === url)
+      } catch {}
+      if (!target) await new Promise(resolve => setTimeout(resolve, 25))
+    }
+    if (!target) throw new Error("Issue form Chrome target did not start")
+    socket = new WebSocket(target.webSocketDebuggerUrl)
+    await new Promise((resolve, reject) => {
+      socket.addEventListener("open", resolve, { once: true })
+      socket.addEventListener("error", reject, { once: true })
+    })
+    await new Promise(resolve => setTimeout(resolve, 500))
+    let nextId = 0
+    const pending = new Map()
+    socket.addEventListener("message", event => {
+      const message = JSON.parse(event.data)
+      const request = pending.get(message.id)
+      if (!request) return
+      pending.delete(message.id)
+      if (message.error) request.reject(new Error(JSON.stringify(message.error)))
+      else request.resolve(message.result)
+    })
+    const send = (method, params = {}) => new Promise((resolve, reject) => {
+      const id = ++nextId
+      pending.set(id, { resolve, reject })
+      socket.send(JSON.stringify({ id, method, params }))
+    })
+    const evaluate = async expression => {
+      const result = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })
+      if (result.exceptionDetails) throw new Error(result.exceptionDetails.text)
+      return result.result.value
+    }
+    const enter = async () => {
+      await send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 })
+      await send("Input.dispatchKeyEvent", { type: "char", key: "Enter", code: "Enter", text: "\r", unmodifiedText: "\r", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 })
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 })
+    }
+    const insert = text => send("Input.insertText", { text })
+    const waitFor = expression => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = () => { if (${expression}) resolve(true); else if (Date.now() - started > 5000) reject(new Error(${JSON.stringify(expression)})); else setTimeout(check, 10) }; check() })`)
+
+    await waitFor('document.querySelector("[data-issue-form]") && document.querySelector("[data-session-status]")?.textContent === "authenticated"')
+    await evaluate('document.querySelector("#issue-title").focus()')
+    await enter()
+    await new Promise(resolve => setTimeout(resolve, 50))
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()), title = document.querySelector("#issue-title"); return { attempts: counts.issueCreateAttempts, missing: title.validity.valueMissing, focused: document.activeElement === title } })()`), { attempts: 0, missing: true, focused: true })
+
+    await insert("Bug")
+    await enter()
+    await new Promise(resolve => setTimeout(resolve, 50))
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()), title = document.querySelector("#issue-title"); return { attempts: counts.issueCreateAttempts, short: title.validity.tooShort, focused: document.activeElement === title } })()`), { attempts: 0, short: true, focused: true })
+
+    await evaluate('document.querySelector("#issue-title").select()')
+    await insert("Release blocker")
+    await evaluate('document.querySelector("#issue-body").value = "Retain this detailed reproduction"; document.querySelector("#issue-title").focus()')
+    await enter()
+    assert.deepEqual(await evaluate('({ disabled: document.querySelector("#issue-submit").disabled, label: document.querySelector("#issue-submit").textContent })'), { disabled: true, label: "Creating issue" })
+    await waitFor('document.querySelector("#issue-title-error")')
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()), title = document.querySelector("#issue-title"); return { attempts: counts.issueCreateAttempts, creates: counts.issueCreates, error: document.querySelector("#issue-title-error").textContent, invalid: title.getAttribute("aria-invalid"), describedBy: title.getAttribute("aria-describedby"), focused: document.activeElement === title, title: title.value, body: document.querySelector("#issue-body").value } })()`), { attempts: 1, creates: 0, error: "Use a more specific title.", invalid: "true", describedBy: "issue-title-error", focused: true, title: "Release blocker", body: "Retain this detailed reproduction" })
+
+    await evaluate('document.querySelector("#issue-title").select()')
+    await insert("Release blocker fixed")
+    await enter()
+    await waitFor('document.querySelector("#issue-form-error")')
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()), title = document.querySelector("#issue-title"); return { attempts: counts.issueCreateAttempts, creates: counts.issueCreates, error: document.querySelector("#issue-form-error").textContent, fieldError: Boolean(document.querySelector("#issue-title-error")), invalid: title.getAttribute("aria-invalid"), describedBy: title.getAttribute("aria-describedby"), title: title.value, body: document.querySelector("#issue-body").value } })()`), { attempts: 2, creates: 0, error: "Issue service unavailable.", fieldError: false, invalid: "false", describedBy: null, title: "Release blocker fixed", body: "Retain this detailed reproduction" })
+
+    await enter()
+    await waitFor('document.querySelector("#issue-success")')
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); return { attempts: counts.issueCreateAttempts, creates: counts.issueCreates, success: document.querySelector("#issue-success").textContent, fieldError: Boolean(document.querySelector("#issue-title-error")), formError: Boolean(document.querySelector("#issue-form-error")), title: document.querySelector("#issue-title").value, body: document.querySelector("#issue-body").value } })()`), { attempts: 3, creates: 1, success: "Issue created.", fieldError: false, formError: false, title: "Release blocker fixed", body: "Retain this detailed reproduction" })
+  } finally {
+    socket?.close()
+    browser.kill()
+    if (browser.exitCode === null) await Promise.race([
+      new Promise(resolve => browser.once("exit", resolve)),
+      new Promise(resolve => setTimeout(resolve, 2000))
+    ])
+    await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   }
 }
 

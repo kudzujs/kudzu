@@ -66,7 +66,7 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.117` retains the explicit install instructions and generates projects with `@kudzujs/core@^0.12.4`.
+`create-kudzu@0.1.118` retains the explicit install instructions and generates projects with `@kudzujs/core@^0.13.0`.
 
 ## Release Boundary
 

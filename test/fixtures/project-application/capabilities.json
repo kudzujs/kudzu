@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.12.4",
+  "milestone": "0.13.0",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -86,6 +86,15 @@
     "server-enforced-admin-mutation",
     "server-rejection-token-clear",
     "logout-token-clear",
+    "native-issue-form",
+    "keyboard-form-submit",
+    "native-form-constraints",
+    "issue-form-pending-state",
+    "server-field-validation",
+    "server-form-error",
+    "focused-aria-linked-field-error",
+    "retained-valid-form-input",
+    "issue-creation-retry",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -101,7 +110,8 @@
     "runtime routes require the deployment host to apply the generated rewrites",
     "runtime project and issue navigation uses native document navigation",
     "protected static HTML is a UX shell; API authorization is the security boundary",
-    "push-navigation transport failures retain the current document for explicit retry; invalid documents and asset failures use native document fallback"
+    "push-navigation transport failures retain the current document for explicit retry; invalid documents and asset failures use native document fallback",
+    "forms use native constraints and application-owned state; there is no field registry, proxy metadata graph, or form runtime"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -145,19 +155,19 @@
   },
   "baseline": {
     "deploy": {
-      "files": 43,
-      "rawBytes": 123835,
-      "aggregateGzipBytes": 45379,
-      "sha256": "fb9d24cc01791bf80b67b659738ba62beded6ff6ce14a86a278fa4b34d088acf"
+      "files": 44,
+      "rawBytes": 127343,
+      "aggregateGzipBytes": 46261,
+      "sha256": "183f5a7ca081f99ae38de6974e61fdcb32ca49de699359aac053d0154ae38036"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 58131,
-        "javascriptAggregateGzipBytes": 21320
+        "javascriptRawBytes": 58140,
+        "javascriptAggregateGzipBytes": 21319
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 27717,
-        "javascriptAggregateGzipBytes": 11606
+        "javascriptRawBytes": 28709,
+        "javascriptAggregateGzipBytes": 12046
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,

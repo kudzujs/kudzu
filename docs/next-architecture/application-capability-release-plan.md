@@ -710,6 +710,37 @@ with no generated-output change.
 - **Done condition:** complete accessible create/edit behavior passes without a
   form runtime.
 
+**Completion evidence:** the maintained Alpha project detail now authors one
+ordinary uncontrolled issue form with native `required` and `minLength`
+constraints, `FormData`, three route-owned primitive states, one object ref, and
+one async submit handler. Required Chrome sends real Enter key events through
+the browser input domain and proves empty and short titles make zero requests.
+For valid input, the deterministic server returns a delayed `422` field error,
+then a `503` form error, then a `201` success. The journey verifies pending
+disable/label state, title focus, `aria-invalid` and `aria-describedby` linkage,
+alert/status roles, exact attempt/create counts, retry without re-entry, and
+retention of the valid title and description through every response.
+
+The existing native-form, state, ref, conditional, binding, and handler
+semantics cover the complete packet. Production compiler and runtime source do
+not change. The application route grows from 20 to 70 authored lines and emits
+one additional route handler file; no form package, registration API, proxy
+metadata graph, schema adapter, semantic primitive, IR kind, compiler pass,
+runtime concept, public API, or browser runtime file is added. `/help` remains
+complete HTML with 0 B JavaScript.
+
+The project application emits 44 files totaling 127,343 raw / 46,261 aggregate
+gzip bytes with deploy SHA-256
+`183f5a7ca081f99ae38de6974e61fdcb32ca49de699359aac053d0154ae38036`.
+The two-route session uses 17 JavaScript files totaling 62,118 raw / 23,096
+aggregate gzip bytes, 992 raw / 433 gzip bytes above `0.12.4`; the detail route
+itself adds the same 992 raw bytes and 440 gzip bytes. Seven fresh Linux x64
+Chrome 142 profiles record list-to-detail samples of
+`[3.8, 5.6, 4.3, 2.6, 2.9, 3.6, 3.1]` ms, a 3.6 ms median and 2.6/5.6 ms range.
+The range does not overlap `0.12.4`; this is the measured cost of adding the
+form DOM and route-specific handler to the destination application route, not a
+same-content compiler/runtime comparison or a latency improvement claim.
+
 ### `0.13.1`: Nested Fields, Field Arrays, Dirty, And Touched
 
 - **Purpose:** determine which form metadata needs framework support.
@@ -1238,5 +1269,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.12.2` | Released | Preserve the published authentication and permission evidence. | None |
 | `0.12.3` | Released | Preserve the published route failure, focused retry, native fallback, and precommit retention evidence. | None |
 | `0.12.4` | Released | Preserve the published single-layout decision and zero-owner-chain evidence. | None |
-| `0.13.0` | Active | Complete the production form and server-validation packet. | None |
-| `0.13.1` onward | Blocked | Complete the `0.13.0` release transaction first. | Ordered patch boundary |
+| `0.13.0` | Released | Preserve native constraints, server feedback, focused field errors, retained input, and retry evidence. | None |
+| `0.13.1` | Active | Complete the nested fields, field arrays, dirty, and touched packet. | None |
+| `0.13.2` onward | Blocked | Complete the `0.13.1` release transaction first. | Ordered patch boundary |

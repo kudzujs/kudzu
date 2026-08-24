@@ -55,16 +55,16 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.12.4 application proof</strong><span>The required-Chrome suite passes 273 tests; six reviewed route sets require no intermediate retained-layout owner, while the maintained project journey preserves the complete 0.12.3 behavior proof.</span></div>
+    <div className="docs-callout"><strong>Current 0.13.0 application proof</strong><span>Required Chrome submits a native issue form by keyboard and proves native constraints, pending state, field and form server errors, focused ARIA feedback, retained valid input, and retry without a form runtime.</span></div>
     <h3>Project application</h3>
-    <BenchmarkTable columns={["Measurement", "0.12.4 result", "Protocol"]} rows={[
-      ["List-to-detail navigation", "1.8 ms release median", "7 fresh Chrome profiles"],
-      ["Two-route JavaScript", "61,126 / 22,663 B", "raw / aggregate gzip"],
+    <BenchmarkTable columns={["Measurement", "0.13.0 result", "Protocol"]} rows={[
+      ["List-to-detail navigation", "3.6 ms release median", "7 fresh Chrome profiles"],
+      ["Two-route JavaScript", "62,118 / 23,096 B", "raw / aggregate gzip"],
       ["Login JavaScript", "12,093 / 5,795 B", "raw / aggregate gzip"],
-      ["Deploy output", "123,835 / 45,379 B", "raw / aggregate gzip"],
+      ["Deploy output", "127,343 / 46,261 B", "raw / aggregate gzip"],
       ["Static help JavaScript", "0 B", "route and session"]
     ]} />
-    <p>The unchanged navigation range is 1.5–2.4 ms. No 0.12.4 benchmark or latency claim applies because the decision changes no production or generated code. No semantic primitive, compiler pass, or runtime concept changed.</p>
+    <p>The 2.6–5.6 ms range measures a changed destination containing the issue form and route handler, not a same-content runtime regression. No semantic primitive, compiler pass, production compiler/runtime line, or runtime concept changed.</p>
     <h3>0.9 cross-framework proof</h3>
     <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
       ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],

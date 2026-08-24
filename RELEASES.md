@@ -1,5 +1,54 @@
 # Kudzu Releases
 
+## 0.13.0 - Production Form And Server Validation
+
+Kudzu 0.13.0 compiles an accessible issue-creation form from ordinary TSX
+without adding a form runtime, field registry, or metadata proxy.
+
+### Changed in 0.13.0
+
+- Added a native issue form with `required` and `minLength` constraints,
+  keyboard submission, `FormData`, and application-owned pending state.
+- Preserved field-level and form-level server errors, focused and ARIA-linked
+  field feedback, valid input across failures, and retry without re-entry.
+- Reused existing state, ref, conditional, binding, and async handler semantics;
+  production compiler and runtime source remain unchanged.
+- Updated `create-kudzu@0.1.118` to generate projects on
+  `@kudzujs/core@^0.13.0`.
+
+### Output Evidence
+
+- The application emits 44 files totaling 127,343 raw / 46,261 aggregate gzip
+  bytes with deploy digest
+  `183f5a7ca081f99ae38de6974e61fdcb32ca49de699359aac053d0154ae38036`.
+- The maintained two-route session uses 17 JavaScript files totaling 62,118 raw
+  / 23,096 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, production compiler/runtime
+  line, runtime concept, public API, form registry, schema adapter, or form
+  runtime was added.
+
+### Validation
+
+- Required Chrome sends real Enter key input and proves native empty and
+  minimum-length constraints make zero requests.
+- Deterministic delayed `422`, `503`, and `201` responses prove pending state,
+  exact request counts, field and form feedback, retained input, and retry.
+- Seven fresh Chrome profiles record a 3.6 ms list-to-detail median with a
+  2.6-5.6 ms range. This measures the changed destination form and handler, not
+  a same-content compiler/runtime regression.
+
+### Limits
+
+Nested fields, field arrays, dirty/touched metadata, dynamic schemas, and form
+registries remain unsupported. The `0.13.1` packet must first prove which of
+those behaviors cannot be expressed with native controls and ordinary state.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.13.0
+```
+
 ## 0.12.4 - Nested Layout Evidence Decision
 
 Kudzu 0.12.4 reviews executable route ownership evidence and keeps the existing
