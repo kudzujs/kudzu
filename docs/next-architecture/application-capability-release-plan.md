@@ -622,10 +622,38 @@ bytes. Seven fresh Chrome profiles record a 1.4 ms navigation median with a
 - **Purpose:** decide application-visible handling of navigation/data failures.
 - **Expected boundary:** native fallback and application-owned error UI first.
 - **Acceptance:** invalid document, asset failure, offline/error state, retry,
-  focus restoration, and no half-replaced route.
+  focus restoration, and no half-replaced route for those precommit failures.
 - **Stop condition:** a generic React-style error-boundary renderer is required.
-- **Done condition:** every failure leaves a valid document and recoverable
-  navigation path.
+- **Done condition:** each classified transport, document-validation,
+  capability-loading, or stylesheet-loading failure leaves a valid document
+  and recoverable navigation path.
+
+**Completion evidence:** required Chrome injects deterministic fetch and
+response-body transport rejections through a pending prefetch and click retry,
+then proves the current URL, route DOM, and retained layout remain unchanged.
+The test moves focus away while the request is pending; the existing polite
+navigation status announces the failure and restores the initiating link.
+Activating that link again completes list-to-detail replacement and focuses the
+destination heading.
+Separate invalid-identity, missing-capability-module, and missing-stylesheet
+responses fail before route disposal and recover through the existing native
+document fallback. The maintained HTTP 500 project read still reports an
+application-owned alert and succeeds on explicit retry.
+
+Only `navigation-runtime.js` changes: fetch and response-body transport failures
+receive one private error classification, while document validation and asset
+failures keep their existing fallback. The source grows from 351 to 374 lines and adds no
+semantic primitive, ModuleIR kind, compiler pass, core compiler line, runtime
+concept, public API, error-boundary renderer, route registry, or additional
+browser file. The application emits 43 files totaling 123,835 raw / 45,379
+aggregate gzip bytes with deploy SHA-256
+`fb9d24cc01791bf80b67b659738ba62beded6ff6ce14a86a278fa4b34d088acf`.
+The two-route session remains 16 JavaScript files totaling 61,126 raw / 22,663
+aggregate gzip bytes, 359 raw bytes above `0.12.2`; the unpaired,
+environment-sensitive 102-byte gzip difference is not attributed to the patch.
+`/help` remains 0 B JavaScript. Seven fresh Linux x64 Chrome 142 profiles record
+a 1.8 ms median with a 1.5/2.4 ms range. No latency comparison is claimed
+against the macOS arm64 Chrome 151 `0.12.2` samples.
 
 ### `0.12.4`: Nested Layout Evidence Decision
 
@@ -1174,5 +1202,7 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.11.4` | Released | Preserve the published bounded pagination, history, refresh, polling cleanup, and exact request-count evidence. | None |
 | `0.12.0` | Released | Preserve direct runtime entry, reload, rewrite, and native fallback evidence. | None |
 | `0.12.1` | Released | Preserve the published layout/history/focus/scroll evidence. | None |
-| `0.12.2` | Active | Release the completed authentication and permission evidence. | None |
-| `0.12.3` onward | Blocked | Complete the `0.12.2` release transaction first. | Ordered patch boundary |
+| `0.12.2` | Released | Preserve the published authentication and permission evidence. | None |
+| `0.12.3` | Released | Preserve the published route failure, focused retry, native fallback, and precommit retention evidence. | None |
+| `0.12.4` | Active | Complete the nested layout evidence decision. | None |
+| `0.12.5` onward | Blocked | Complete the `0.12.4` release transaction first. | Ordered patch boundary |

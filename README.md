@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.12.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.12.2 - Authentication and permission boundary.** Native login, token restoration, role-aware controls, server-enforced 401/403 responses, token clearing, and logout now compose from existing application primitives without an auth runtime. Read the [release notes](./RELEASES.md#0122---authentication-and-permission-boundary), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.2), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.12.3 - Route failure and restoration policy.** Fetch and response-body transport failures retain the current document for focused retry, while invalid documents and assets keep native fallback. Read the [release notes](./RELEASES.md#0123---route-failure-and-restoration-policy), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.12.3), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

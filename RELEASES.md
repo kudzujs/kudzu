@@ -1,5 +1,54 @@
 # Kudzu Releases
 
+## 0.12.3 - Route Failure And Restoration Policy
+
+Kudzu 0.12.3 defines recovery for enhanced route failures without adding an
+error-boundary renderer or client router.
+
+### Changed in 0.12.3
+
+- Retained the current document when an enhanced navigation fetch or response
+  body fails in transit.
+- Announced transport failure through the existing polite status and restored
+  focus to the initiating native link for explicit retry.
+- Kept invalid document identity, missing capability modules, and missing
+  stylesheets on the existing native fallback path before route disposal.
+- Proved retry after a failed pending prefetch and subsequent click request.
+- Updated `create-kudzu@0.1.116` to generate projects on
+  `@kudzujs/core@^0.12.3`.
+
+### Output Evidence
+
+- The application emits 43 files, 123,835 raw / 45,379 aggregate gzip bytes,
+  and deploy digest
+  `fb9d24cc01791bf80b67b659738ba62beded6ff6ce14a86a278fa4b34d088acf`.
+- The maintained enhanced session uses 16 JavaScript files totaling 61,126 raw
+  / 22,663 aggregate gzip bytes, 359 raw bytes above `0.12.2`.
+- `/help` remains complete HTML with 0 B JavaScript.
+- No semantic primitive, compiler pass, core compiler line, runtime concept,
+  public API, error-boundary renderer, or browser file was added.
+
+### Validation
+
+- Required Chrome proves retained fetch and body failures, accessible status,
+  restored link focus, retry, and native invalid-document/module/style fallback.
+- Seven fresh Chrome profiles record a 1.8 ms navigation median with a 1.5-2.4
+  ms range. The host differs from `0.12.2`, so no latency change is claimed.
+- The full 273-test suite, package smoke, registry metadata, and fresh
+  installation are release gates.
+
+### Limits
+
+The retained-document policy covers classified transport failures. Invalid
+documents and assets use native navigation; arbitrary corrupted generated mount
+descriptors are outside this packet.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.12.3
+```
+
 ## 0.12.2 - Authentication And Permission Boundary
 
 Kudzu 0.12.2 completes the project application's login, restoration,

@@ -6,6 +6,32 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
+## 0.12.3 Route Failure And Restoration Policy
+
+Measured 2026-08-24 on Linux x64 with Node 24.14.0 and Chrome
+142.0.7444.175. Required Chrome proves current-document retention for fetch and
+response-body transport failures, accessible failure status, restored link
+focus, retry after a failed pending prefetch, invalid-document fallback,
+capability-module fallback, stylesheet fallback, and no pre-commit route
+removal. The maintained application-owned HTTP 500 alert and explicit data
+retry continue to pass.
+
+The two-route session uses 16 JavaScript files totaling 61,126 raw / 22,663
+aggregate gzip bytes, an increase of 359 raw bytes from `0.12.2` for
+transport-error classification, status, and focus restoration. The 102-byte
+gzip difference is unpaired and environment-sensitive, so it is not attributed
+to the patch. Navigation
+samples are `[1.5, 1.6, 2.0, 1.7, 1.8, 2.4, 1.8]` ms, with a 1.8 ms median and
+1.5/2.4 ms minimum/maximum. The environment differs from the macOS arm64 Chrome
+151 `0.12.2` measurement, so no latency comparison is claimed.
+
+The application emits 43 files totaling 123,835 raw / 45,379 aggregate gzip
+bytes with deploy SHA-256
+`fb9d24cc01791bf80b67b659738ba62beded6ff6ce14a86a278fa4b34d088acf`.
+Core semantic LOC remains 5,682 with no semantic primitive, compiler pass, core
+compiler line, runtime concept, or public API. Navigation runtime source grows
+from 351 to 374 lines. `/help` remains 0 B JavaScript.
+
 ## 0.12.2 Authentication And Permission Boundary
 
 Measured 2026-08-23 on macOS arm64 with Node 25.6.1 and Chrome

@@ -55,16 +55,16 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.12.2 application proof</strong><span>The required-Chrome suite passes 273 tests; its maintained project journey proves login, token restoration, direct protected entry UX, role controls, server 401/403 authorization, logout, retained navigation, runtime routes, and zero-JavaScript static exclusion.</span></div>
+    <div className="docs-callout"><strong>Current 0.12.3 application proof</strong><span>The required-Chrome suite passes 273 tests; its maintained project journey proves retained fetch and response-body failures, focused retry, native invalid-document and asset fallback, authentication, runtime routes, and zero-JavaScript static exclusion.</span></div>
     <h3>Project application</h3>
-    <BenchmarkTable columns={["Measurement", "0.12.2 result", "Protocol"]} rows={[
-      ["List-to-detail navigation", "1.4 ms release median", "7 fresh Chrome profiles"],
-      ["Two-route JavaScript", "60,767 / 22,561 B", "raw / aggregate gzip"],
+    <BenchmarkTable columns={["Measurement", "0.12.3 result", "Protocol"]} rows={[
+      ["List-to-detail navigation", "1.8 ms release median", "7 fresh Chrome profiles"],
+      ["Two-route JavaScript", "61,126 / 22,663 B", "raw / aggregate gzip"],
       ["Login JavaScript", "12,093 / 5,795 B", "raw / aggregate gzip"],
-      ["Deploy output", "123,476 / 45,305 B", "raw / aggregate gzip"],
+      ["Deploy output", "123,835 / 45,379 B", "raw / aggregate gzip"],
       ["Static help JavaScript", "0 B", "route and session"]
     ]} />
-    <p>The release navigation range is 1.2–1.5 ms and overlaps 0.12.1, so no latency change is claimed. Authored session ownership adds 1,793 raw / 432 aggregate gzip session bytes. Client role conditions are presentation only; the server authorizes protected data and mutations. No semantic primitive, compiler pass, or runtime concept changed.</p>
+    <p>The release navigation range is 1.5–2.4 ms. It was measured on a different host from 0.12.2, so no latency change is claimed. Transport failures retain the current document for explicit retry; invalid documents and assets use native navigation. No semantic primitive, compiler pass, or runtime concept changed.</p>
     <h3>0.9 cross-framework proof</h3>
     <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
       ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],

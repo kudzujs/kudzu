@@ -28,7 +28,7 @@ document.addEventListener("click", event => {
   if (!eligibleClick(event, anchor)) return
   const url = new URL(anchor.href)
   event.preventDefault()
-  navigate(url, true)
+  navigate(url, true, anchor)
 })
 document.addEventListener("pointerover", event => prefetchAnchor(event.target.closest?.("a[href]")))
 document.addEventListener("focusin", event => prefetchAnchor(event.target.closest?.("a[href]")))
@@ -111,7 +111,7 @@ function prune(anchors) {
   for (const key of documents.keys()) if (!retained.has(key)) documents.delete(key)
 }
 
-async function navigate(url, push) {
+async function navigate(url, push, source) {
   await ready
   const record = matchRoute(url.pathname)
   if (!record) return fallback(url, push)
@@ -158,6 +158,11 @@ async function navigate(url, push) {
     styleUpdate?.rollback()
     if (pendingStyleUpdate === styleUpdate) pendingStyleUpdate = undefined
     if (current !== revision || error.name === "AbortError") return
+    if (push && error.name === "NavigationRequestError") {
+      status.textContent = "Navigation failed. Retry the link."
+      if (source?.isConnected) source.focus({ preventScroll: true })
+      return
+    }
     fallback(url, push)
     if (committed) return
   }
@@ -172,9 +177,20 @@ async function loadCapabilities(parsed) {
 }
 
 async function fetchDocument(url, record, signal) {
-  const response = await fetch(url, { signal, redirect: "manual", headers: { accept: "text/html" } })
+  let response
+  try {
+    response = await fetch(url, { signal, redirect: "manual", headers: { accept: "text/html" } })
+  } catch (cause) {
+    throw requestError(cause)
+  }
   if (!response.ok || response.redirected || response.type === "opaqueredirect" || !response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("Navigation response is not successful nonredirected HTML")
-  const incoming = new DOMParser().parseFromString(await response.text(), "text/html")
+  let html
+  try {
+    html = await response.text()
+  } catch (cause) {
+    throw requestError(cause)
+  }
+  const incoming = new DOMParser().parseFromString(html, "text/html")
   const parsed = validate(incoming, record)
   return { incoming, parsed, capabilities: await loadCapabilities(parsed), record }
 }
@@ -313,6 +329,13 @@ function decodeSegment(raw, param) {
 function fallback(url, push) {
   if (push) location.assign(url.href)
   else location.reload()
+}
+
+function requestError(cause) {
+  if (cause?.name === "AbortError") return cause
+  const error = new Error("Navigation request failed", { cause })
+  error.name = "NavigationRequestError"
+  return error
 }
 
 function between(start, end) {

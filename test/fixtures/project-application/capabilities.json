@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.12.2",
+  "milestone": "0.12.3",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -69,6 +69,14 @@
     "top-scroll-policy",
     "keyboard-operable-native-anchor",
     "outside-group-native-navigation",
+    "retained-document-network-failure",
+    "retained-document-body-failure",
+    "accessible-navigation-error-status",
+    "focused-navigation-retry",
+    "invalid-document-native-fallback",
+    "capability-asset-native-fallback",
+    "stylesheet-asset-native-fallback",
+    "precommit-failure-atomicity",
     "native-login-form",
     "invalid-and-valid-login",
     "token-session-restoration",
@@ -92,7 +100,8 @@
     "there is no request registry, invalidation graph, retained query cache, or universal polling scheduler",
     "runtime routes require the deployment host to apply the generated rewrites",
     "runtime project and issue navigation uses native document navigation",
-    "protected static HTML is a UX shell; API authorization is the security boundary"
+    "protected static HTML is a UX shell; API authorization is the security boundary",
+    "push-navigation transport failures retain the current document for explicit retry; invalid documents and asset failures use native document fallback"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -115,30 +124,30 @@
   "baseline": {
     "deploy": {
       "files": 43,
-      "rawBytes": 123476,
-      "aggregateGzipBytes": 45305,
-      "sha256": "81d0b3c5e0d1d1f72f29d219647601463f5317f215274e14a45fe5ba92eb033e"
+      "rawBytes": 123835,
+      "aggregateGzipBytes": 45379,
+      "sha256": "fb9d24cc01791bf80b67b659738ba62beded6ff6ce14a86a278fa4b34d088acf"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 57772,
-        "javascriptAggregateGzipBytes": 21221
+        "javascriptRawBytes": 58131,
+        "javascriptAggregateGzipBytes": 21320
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 27358,
-        "javascriptAggregateGzipBytes": 11508
+        "javascriptRawBytes": 27717,
+        "javascriptAggregateGzipBytes": 11606
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,
-        "javascriptAggregateGzipBytes": 8743
+        "javascriptAggregateGzipBytes": 8727
       },
       "/app/projects/[projectId]/issues/[issueId]": {
         "javascriptRawBytes": 19345,
-        "javascriptAggregateGzipBytes": 8763
+        "javascriptAggregateGzipBytes": 8746
       },
       "/login": {
         "javascriptRawBytes": 12093,
-        "javascriptAggregateGzipBytes": 5795
+        "javascriptAggregateGzipBytes": 5780
       },
       "/help": {
         "javascriptRawBytes": 0,

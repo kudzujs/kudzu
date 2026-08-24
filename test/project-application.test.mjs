@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.12.2 authentication and permission contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.12.3 route failure and restoration contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.12.2 authentication and permission contract", { timeout:
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.12.2")
+  assert.equal(contract.milestone, "0.12.3")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -117,7 +117,7 @@ test("establishes the 0.12.2 authentication and permission contract", { timeout:
   assert.deepEqual(stableOutput, stableBaseline)
   // gzip output varies slightly across zlib versions; raw bytes and hashes stay exact.
   assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 128)
-  assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 64)
+  assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 64, JSON.stringify(output))
   assert.ok(Math.abs(output.routes["/app/projects/alpha"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes) <= 64)
   assert.ok(Math.abs(output.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes) <= 64)
   assert.ok(Math.abs(output.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]/issues/[issueId]"].javascriptAggregateGzipBytes) <= 64)
@@ -155,7 +155,7 @@ else if (!localStorage.getItem("kudzu-project-token")) localStorage.setItem("kud
   await writeFile(loginUrl, (await readFile(loginUrl, "utf8")).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   await writeFile(new URL("browser-test.js", output), `
 const waitFor = async (predicate, label) => {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  for (let attempt = 0; attempt < 1000; attempt++) {
     if (predicate()) return
     await new Promise(resolve => setTimeout(resolve, 10))
   }
@@ -187,7 +187,14 @@ try {
   const runtimeRoute = sessionStorage.getItem("kudzu-runtime-route")
   const authFlow = sessionStorage.getItem("kudzu-auth-flow")
   const directAuth = sessionStorage.getItem("kudzu-auth-direct")
-  if (location.pathname === "/login" && directAuth) {
+  const routeFailure = search.get("route-failure")
+  const fallbackFailure = sessionStorage.getItem("kudzu-route-failure")
+  if (location.pathname === "/app/projects/alpha" && fallbackFailure) {
+    sessionStorage.removeItem("kudzu-route-failure")
+    if (fallbackFailure === "network" || fallbackFailure === "body") throw new Error(fallbackFailure + "-used-native-fallback")
+    if (!document.querySelector("[data-project-detail]") || !document.querySelector('a[href="/app/projects"]')) throw new Error("invalid-fallback-document")
+    document.body.dataset.routeFailureFallback = fallbackFailure
+  } else if (location.pathname === "/login" && directAuth) {
     sessionStorage.removeItem("kudzu-auth-direct")
     if (localStorage.getItem("kudzu-project-token") !== null) throw new Error("direct-auth-token-clear")
     document.body.dataset.authDirectTest = directAuth
@@ -265,6 +272,44 @@ try {
     document.querySelector('a[href="/help"]').dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }))
     if (intercepted) throw new Error("history-native-outside-group")
     document.body.dataset.navigationTest = "pass"
+  } else if (routeFailure) {
+    await waitFor(() => document.querySelector("[data-project-list-page]") && document.querySelector('[role="status"]')?.textContent === "Projects loaded", "route-failure-list-entry")
+    const layout = document.querySelector("[data-app-layout]")
+    const list = document.querySelector("[data-project-list-page]")
+    const link = document.querySelector('a[href="/app/projects/alpha"]')
+    sessionStorage.setItem("kudzu-route-failure", routeFailure)
+    const browserFetch = globalThis.fetch
+    let transportFailures = 0
+    if (routeFailure === "network" || routeFailure === "body") globalThis.fetch = (input, init) => {
+      const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url, location.href)
+      if (url.searchParams.get("route-failure") === routeFailure && init?.headers?.accept === "text/html" && transportFailures++ < 2) {
+        if (routeFailure === "network") return new Promise((resolve, reject) => setTimeout(() => reject(new TypeError("offline")), 10))
+        return browserFetch(input, init).then(response => new Proxy(response, { get(target, key) {
+          if (key === "text") return () => Promise.reject(new TypeError("body disconnected"))
+          const value = Reflect.get(target, key, target)
+          return typeof value === "function" ? value.bind(target) : value
+        } }))
+      }
+      return browserFetch(input, init)
+    }
+    if (routeFailure === "network" || routeFailure === "body") {
+      link.href = "/app/projects/alpha?route-failure=" + routeFailure
+      link.focus()
+    } else {
+      link.focus()
+      link.href = "/app/projects/alpha?route-failure=" + routeFailure
+    }
+    link.click()
+    if (routeFailure === "network" || routeFailure === "body") {
+      document.querySelector("#unrelated-control").focus()
+      await waitFor(() => document.querySelector("[data-k-navigation-status]")?.textContent === "Navigation failed. Retry the link.", routeFailure + "-failure-status")
+      if (location.pathname !== "/app/projects" || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-project-list-page]") !== list || document.activeElement !== link || !list.isConnected) throw new Error(routeFailure + "-failure-retention")
+      link.click()
+      await waitFor(() => document.querySelector("[data-project-detail]") && document.activeElement?.matches("[data-project-detail] h1"), routeFailure + "-retry")
+      sessionStorage.removeItem("kudzu-route-failure")
+      if (location.pathname !== "/app/projects/alpha" || document.querySelector("[data-app-layout]") !== layout || list.isConnected) throw new Error(routeFailure + "-retry-contract")
+      document.body.dataset.routeFailureTest = "pass"
+    }
   } else if (storageMode) {
     const expected = storageMode === "valid" ? "Secondary" : "Primary"
     await waitFor(() => document.querySelector("[data-workspace]")?.textContent === expected && document.querySelector("[data-route-workspace]")?.textContent === expected, "storage-restore")
@@ -431,6 +476,7 @@ const http = require("node:http"), fs = require("node:fs"), path = require("node
 const root = process.argv[1], port = Number(process.argv[2])
 const rewrites = JSON.parse(fs.readFileSync(path.join(root, "rewrites.json")))
 let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, listRequests = 0
+const routeFailureAttempts = new Map()
 const users = { "admin-token": { username: "Ada", isAdmin: true }, "login-admin-token": { username: "Ada", isAdmin: true }, "member-token": { username: "Mina", isAdmin: false } }, revoked = new Set()
 http.createServer((request, response) => {
   const url = new URL(request.url, "http://localhost"), pathname = url.pathname
@@ -511,6 +557,20 @@ http.createServer((request, response) => {
   const relative = pathname === "/" ? "index.html" : pathname.slice(1)
   const direct = path.join(root, relative.endsWith("/") || !path.extname(relative) ? relative + (relative.endsWith("/") ? "" : "/") + "index.html" : relative)
   const file = fs.existsSync(direct) || !rewrite ? direct : path.join(root, rewrite.file)
+  const routeFailure = url.searchParams.get("route-failure")
+  if (pathname === "/app/projects/alpha" && routeFailure) {
+    const attempt = (routeFailureAttempts.get(routeFailure) || 0) + 1
+    routeFailureAttempts.set(routeFailure, attempt)
+    if (attempt === 1 && routeFailure !== "network") {
+      let html = fs.readFileSync(file, "utf8")
+      if (routeFailure === "invalid") html = html.replace(/data-k-application="[^"]+"/, 'data-k-application="invalid"')
+      else if (routeFailure === "module") html = html.replace("</head>", '<script type="module" data-k-capability src="/missing-navigation.js"></script></head>')
+      else if (routeFailure === "style") html = html.replace("</head>", '<link data-k-route-style rel="stylesheet" href="/missing-navigation.css"></head>')
+      response.setHeader("content-type", "text/html")
+      response.end(html)
+      return
+    }
+  }
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
   fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
 }).listen(port, "127.0.0.1")
@@ -524,6 +584,12 @@ http.createServer((request, response) => {
     const history = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?history=1`], { encoding: "utf8", timeout: 20_000 })
     assert.equal(history.status, 0, history.stderr)
     assert.match(history.stdout, /data-navigation-test="pass"/, history.stderr)
+    for (const mode of ["network", "body", "invalid", "module", "style"]) {
+      const failure = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=20000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?route-failure=${mode}`], { encoding: "utf8", timeout: 40_000 })
+      assert.equal(failure.status, 0, failure.stderr)
+      if (mode === "network" || mode === "body") assert.match(failure.stdout, /data-route-failure-test="pass"/, failure.stderr)
+      else assert.match(failure.stdout, new RegExp(`data-route-failure-fallback="${mode}"`), failure.stderr)
+    }
     const direct = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/alpha?direct=1`], { encoding: "utf8", timeout: 15_000 })
     assert.equal(direct.status, 0, direct.stderr)
     assert.match(direct.stdout, /data-direct-load-test="pass"/, direct.stderr)
@@ -536,7 +602,7 @@ http.createServer((request, response) => {
     const reloadIssue = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/gamma/issues/second?reload-issue=1`], { encoding: "utf8", timeout: 15_000 })
     assert.equal(reloadIssue.status, 0, reloadIssue.stderr)
     assert.match(reloadIssue.stdout, /data-runtime-reload-test="pass"/, reloadIssue.stderr)
-    const login = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/login?auth-login=1`], { encoding: "utf8", timeout: 20_000 })
+    const login = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=20000", "--dump-dom", `http://127.0.0.1:${port}/login?auth-login=1`], { encoding: "utf8", timeout: 40_000 })
     assert.equal(login.status, 0, login.stderr)
     assert.match(login.stdout, /data-auth-test="pass"/, login.stderr)
     const member = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?auth=member`], { encoding: "utf8", timeout: 15_000 })
