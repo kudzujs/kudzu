@@ -1,5 +1,59 @@
 # Kudzu Releases
 
+## 0.13.3 - File Upload Boundary
+
+Kudzu 0.13.3 composes a bounded file-upload lifecycle from native controls,
+ordinary state, owned effects, and keyed rows without an upload runtime.
+
+### Changed in 0.13.3
+
+- Added one native plain-text file input with type and 1 KiB size validation
+  before any request.
+- Added application-owned `FormData` and fetch upload with an owned
+  `AbortController`.
+- Added explicit user cancellation, delayed transport failure, and retry without
+  requiring file reselection.
+- Aborted in-flight upload work when enhanced navigation releases the route.
+- Added successful keyed attachment mutation and an explicit statement that
+  fetch does not expose upload progress.
+- Updated `create-kudzu@0.1.121` to generate projects on
+  `@kudzujs/core@^0.13.3`.
+
+### Output Evidence
+
+- The application emits 44 files totaling 150,023 raw / 50,240 aggregate gzip
+  bytes with deploy digest
+  `a16fd5dbc08086aa6a7c0ec0aba3a38fbe2a63b96005a81e8747a7f4e45e214e`.
+- The maintained two-route session remains 17 JavaScript files and totals
+  71,031 raw / 25,304 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, production compiler/runtime
+  line, normalization rule, adapter, runtime concept, public API, upload
+  scheduler, or transfer runtime was added.
+
+### Validation
+
+- Required Chrome proves pre-request validation, user cancellation, delayed
+  `503` feedback, retry, successful attachment mutation, and route-departure
+  cancellation.
+- The complete suite passes 273 tests, including the preserved draft, nested
+  form, authentication, routing, and server retry journeys.
+- Seven fresh Chrome profiles record a 3.8 ms list-to-detail median with a
+  3.5-5.0 ms range. The destination changed, so no same-content latency change
+  is claimed.
+
+### Limits
+
+Fetch upload progress is unavailable and no fake progress is rendered. Chunking,
+resume, background sync, binary formats, concurrent files, and files above the
+authored 1 KiB in-memory text limit remain unsupported until a real application
+requires a different transport.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.13.3
+```
+
 ## 0.13.2 - Multistep Draft And Autosave
 
 Kudzu 0.13.2 composes a persistent two-step draft and debounced server save

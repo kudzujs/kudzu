@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the post-0.13.2 file upload boundary contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.13.3 file upload boundary contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the post-0.13.2 file upload boundary contract", { timeout: 120
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "post-0.13.2")
+  assert.equal(contract.milestone, "0.13.3")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -61,9 +61,8 @@ test("establishes the post-0.13.2 file upload boundary contract", { timeout: 120
     reusedSemantics: ["ordinary-state", "conditional-ownership", "dependency-effect-cleanup", "owned-fetch", "versioned-storage"]
   })
   assert.deepEqual(contract.fileUploadDecision, {
-    candidate: "0.13.3",
-    release: null,
-    status: "closed-by-application-composition-no-release",
+    patch: "0.13.3",
+    status: "closed-by-application-composition",
     transport: "fetch-formdata",
     progress: null,
     fixture: "project-application",

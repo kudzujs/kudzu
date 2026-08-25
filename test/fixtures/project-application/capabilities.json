@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "post-0.13.2",
+  "milestone": "0.13.3",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -205,9 +205,8 @@
     ]
   },
   "fileUploadDecision": {
-    "candidate": "0.13.3",
-    "release": null,
-    "status": "closed-by-application-composition-no-release",
+    "patch": "0.13.3",
+    "status": "closed-by-application-composition",
     "transport": "fetch-formdata",
     "progress": null,
     "fixture": "project-application",

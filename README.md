@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.13.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.13.2 - Multistep draft and autosave.** Native step validation, debounced versioned saves, stale-write rejection, navigation and reload restoration, conflict retention, and reset compose without a wizard or autosave runtime. Read the [release notes](./RELEASES.md#0132---multistep-draft-and-autosave), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.13.2), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.13.3 - File upload boundary.** Native file validation, multipart upload, cancellation, failure and retry, route cleanup, and keyed attachment mutation compose without an upload runtime. Read the [release notes](./RELEASES.md#0133---file-upload-boundary), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.13.3), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

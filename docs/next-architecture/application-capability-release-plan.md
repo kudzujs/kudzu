@@ -5,13 +5,10 @@ replaces the provisional `0.10` normalize, `0.11` diagnostics, and `0.12`
 adapter ordering recorded in the completed 0.9 packet. Those tools remain in
 scope, but application capability evidence now determines their order.
 
-The plan assigns one application-capability section to each minor target and one
-independently reviewable evidence packet to each patch candidate. A candidate
-consumes a package version only when it changes production source, package
-behavior, the public support boundary, or generated project output. Existing
-semantics proven only through application fixtures close as unversioned evidence.
-`package.json`, release notes, tags, and registry metadata change only after a
-release-eligible packet passes every gate.
+The plan assigns one application-capability section to each minor release and
+one independently releasable evidence packet to each patch release. Planned
+versions are not completed releases. `package.json`, release notes, tags, and
+registry metadata change only after the matching packet passes every gate.
 
 ## Product Outcome
 
@@ -44,18 +41,15 @@ The target is zero unused runtime, not zero runtime.
 ## Execution Rules
 
 1. Work on exactly one patch packet at a time. Start the next packet only after
-   the previous packet is released, closed as unversioned evidence, or this
-   document explicitly replans it.
+   the previous packet is released or this document explicitly replans it.
 2. Begin behavior work with a real failing greenfield or React-derived fixture.
 3. Reduce the failure through native platform behavior, existing Kudzu
    semantics, normalization, or an internal adapter, in that order.
 4. Two unrelated real fixtures register a repeated application limitation.
    Three unrelated real fixtures are required before architecture review may
    authorize a new semantic primitive.
-5. A packet may complete without a new primitive, compiler pass, public API, or
-   runtime when existing composition satisfies its acceptance contract. If it
-   also changes no shipped behavior or support boundary, record the evidence but
-   do not publish an empty package version.
+5. A patch may complete without a new primitive, compiler pass, public API, or
+   runtime when existing composition satisfies its acceptance contract.
 6. Package-specific knowledge ends in compatibility analysis, normalization,
    or an internal adapter. It must not enter generic IR, codegen, or runtime.
 7. Every static sibling remains JavaScript-free. Every interactive route emits
@@ -828,7 +822,7 @@ samples of `[10.7, 7.4, 3.7, 7.9, 6.1, 4.0, 5.4]` ms, a 6.1 ms median and
 3.7/10.7 ms range. The destination content changed and the range is noisy, so
 no same-content latency regression or improvement is claimed.
 
-### `0.13.3` Candidate: File Upload Boundary
+### `0.13.3`: File Upload Boundary
 
 - **Purpose:** move beyond local file reading to a real upload lifecycle.
 - **Expected boundary:** native input, FormData/fetch or a proven browser API.
@@ -871,12 +865,6 @@ JavaScript. Seven fresh Linux x64 Chrome 142 profiles record list-to-detail
 samples of `[3.7, 5.0, 3.5, 3.7, 3.8, 3.8, 4.0]` ms, a 3.8 ms median and
 3.5/5.0 ms range. The destination content changed, so no same-content latency
 regression or improvement is claimed.
-
-**Release decision:** closed as post-`0.13.2` unversioned evidence. The packet
-changes only the maintained application fixture, its executable contract, and
-measurement records. It adds no production source, package behavior, public
-support boundary, generated project output, or registry-facing artifact, so
-`0.13.3` is not published and the next release target is `0.14.0`.
 
 ## `0.14.x`: Lists, Tables, And Virtualization
 
@@ -1316,16 +1304,14 @@ Before release:
    known limits.
 4. Update package version, lockfile, release notes, support documentation, and
    registry-facing records only on the exact accepted release commit.
-5. Complete the release transaction below for a release-eligible packet. For an
-   evidence-only closure, commit and push the evidence without changing package
-   metadata, then advance the active status to the next packet.
+5. Complete the release transaction below, then advance the active status to
+   the next patch.
 
 ## Release Transaction
 
-Every release-eligible patch and every new minor is a real release. A completed
-evidence-only packet does not consume a version. A work session that does not
-complete its packet also does not consume a version; the next session continues
-the same target.
+Every completed patch and every new minor is a real release. A work session that
+does not complete its packet does not consume a version; the next session
+continues the same target version.
 
 1. Confirm the target version is the active packet and is not already present in
    npm or Git tags.
@@ -1378,6 +1364,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.13.0` | Released | Preserve native constraints, server feedback, focused field errors, retained input, and retry evidence. | None |
 | `0.13.1` | Released | Preserve application-owned nested metadata, keyed row identity, release, and reset evidence. | None |
 | `0.13.2` | Released | Preserve multistep validation, versioned persistence, stale-save rejection, conflict retention, and reset evidence. | None |
-| `0.13.3` candidate | Closed without release | Preserve the post-`0.13.2` file-upload evidence; no package version was consumed. | None |
+| `0.13.3` | Released | Preserve the published upload validation, cancellation, retry, route cleanup, and attachment mutation evidence. | None |
 | `0.14.0` | Active | Add the first failing project-table CRUD and retained-identity fixture. | None |
 | `0.14.1` onward | Blocked | Complete or explicitly close `0.14.0` first. | Ordered patch boundary |
