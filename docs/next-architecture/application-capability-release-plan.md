@@ -795,6 +795,33 @@ changed, so no latency regression or improvement is claimed.
 - **Stop condition:** a wizard or autosave scheduler is added for one form.
 - **Done condition:** no data loss occurs across navigation, reload, or failure.
 
+Development evidence is complete. The Alpha application now owns a two-step
+project setup draft with native first-step constraints, parent-owned values,
+versioned local storage, one mount restore effect, and one dependency effect
+whose direct timeout cleanup debounces an owned server write. Required Chrome
+proves step navigation, validation, two overlapping versions, server rejection
+of the older save, ignored stale completion, enhanced-navigation restoration,
+reload restoration, retained conflict input, and reset of state, storage, and
+pending work.
+
+The first failing fixture was the `0.13.2` project-application contract against
+the released `0.13.1` Alpha route. Existing ordinary state, conditional
+ownership, dependency invalidation, effect cleanup, owned fetch, late-write
+rejection, and guarded versioned storage close it without a semantic primitive,
+IR kind, compiler pass, production compiler/runtime line, normalization rule,
+adapter, runtime concept, public API, wizard scheduler, or autosave scheduler.
+The machine-readable decision is `closed-by-application-composition`.
+
+The application emits 44 files totaling 144,633 raw / 49,217 aggregate gzip
+bytes with deploy SHA-256
+`06a35341c5e70bfec48c46ad767ac351326b39ba701f5c1f1d03992a65ec8b9e`.
+The maintained two-route session remains 17 JavaScript files and grows by 3,260
+raw / 848 aggregate gzip bytes to 68,664 / 24,747 bytes; `/help` remains 0 B
+JavaScript. Seven fresh Linux x64 Chrome 142 profiles record list-to-detail
+samples of `[10.7, 7.4, 3.7, 7.9, 6.1, 4.0, 5.4]` ms, a 6.1 ms median and
+3.7/10.7 ms range. The destination content changed and the range is noisy, so
+no same-content latency regression or improvement is claimed.
+
 ### `0.13.3`: File Upload Boundary
 
 - **Purpose:** move beyond local file reading to a real upload lifecycle.
@@ -1304,5 +1331,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.12.4` | Released | Preserve the published single-layout decision and zero-owner-chain evidence. | None |
 | `0.13.0` | Released | Preserve native constraints, server feedback, focused field errors, retained input, and retry evidence. | None |
 | `0.13.1` | Released | Preserve application-owned nested metadata, keyed row identity, release, and reset evidence. | None |
-| `0.13.2` | Active | Complete the multistep draft and autosave packet. | None |
-| `0.13.3` onward | Blocked | Complete the `0.13.2` release transaction first. | Ordered patch boundary |
+| `0.13.2` | Released | Preserve multistep validation, versioned persistence, stale-save rejection, conflict retention, and reset evidence. | None |
+| `0.13.3` | Active | Complete the file upload boundary packet. | None |
+| `0.14.0` onward | Blocked | Complete the `0.13.3` release transaction first. | Ordered patch boundary |

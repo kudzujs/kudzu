@@ -55,16 +55,16 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.13.1 application proof</strong><span>Required Chrome proves conditional assignee fields, dynamic keyed checklist rows, dirty/touched display, reset, retained row identity, released removed rows, and the preserved server journey without a form registry.</span></div>
+    <div className="docs-callout"><strong>Current 0.13.2 application proof</strong><span>Required Chrome proves native step validation, debounced versioned saves, stale-write rejection, navigation and reload restoration, retained conflict input, and reset without a wizard or autosave runtime.</span></div>
     <h3>Project application</h3>
-    <BenchmarkTable columns={["Measurement", "0.13.1 result", "Protocol"]} rows={[
-      ["List-to-detail navigation", "3.3 ms release median", "7 fresh Chrome profiles"],
-      ["Two-route JavaScript", "65,404 / 23,899 B", "raw / aggregate gzip"],
-      ["Login JavaScript", "12,093 / 5,795 B", "raw / aggregate gzip"],
-      ["Deploy output", "138,064 / 47,964 B", "raw / aggregate gzip"],
+    <BenchmarkTable columns={["Measurement", "0.13.2 result", "Protocol"]} rows={[
+      ["List-to-detail navigation", "6.1 ms release median", "7 fresh Chrome profiles"],
+      ["Two-route JavaScript", "68,664 / 24,747 B", "raw / aggregate gzip"],
+      ["Login JavaScript", "12,093 / 5,780 B", "raw / aggregate gzip"],
+      ["Deploy output", "144,633 / 49,217 B", "raw / aggregate gzip"],
       ["Static help JavaScript", "0 B", "route and session"]
     ]} />
-    <p>The 3.2–4.7 ms range overlaps 0.13.0 and measures a changed destination containing dynamic nested form behavior. No semantic primitive, compiler pass, production compiler/runtime line, registration proxy, or runtime concept changed.</p>
+    <p>The 3.7–10.7 ms range measures a changed destination containing multistep draft and autosave behavior and is noisy, so no same-content latency change is claimed. No semantic primitive, compiler pass, production compiler/runtime line, wizard scheduler, autosave scheduler, or runtime concept changed.</p>
     <h3>0.9 cross-framework proof</h3>
     <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
       ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],

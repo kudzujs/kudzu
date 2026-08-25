@@ -6,6 +6,34 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
+## 0.13.2 Multistep Draft And Autosave
+
+Measured 2026-08-25 on Linux x64 with Node 24.14.0 and Chrome
+142.0.7444.175. Required Chrome proves native step validation, debounced save,
+server rejection of an older in-flight version, ignored stale completion,
+enhanced-navigation and reload restoration, retained input on conflict, and
+reset with timer and storage cleanup.
+
+The application emits 44 files totaling 144,633 raw / 49,217 aggregate gzip
+bytes with deploy SHA-256
+`06a35341c5e70bfec48c46ad767ac351326b39ba701f5c1f1d03992a65ec8b9e`.
+The two-route session remains 17 JavaScript files and totals 68,664 raw / 24,747
+aggregate gzip bytes, 3,260 raw / 848 gzip bytes above `0.13.1`. `/help`
+remains 0 B JavaScript. The added bytes are route-specific authored state,
+conditions, handlers, and effects; there is no wizard or autosave runtime.
+
+Navigation samples are `[10.7, 7.4, 3.7, 7.9, 6.1, 4.0, 5.4]` ms, with a 6.1
+ms median and 3.7/10.7 ms minimum/maximum. This changes the destination and the
+range is noisy, so no same-content runtime regression or improvement claim is
+made.
+
+Core semantic LOC remains 5,682 with zero new semantic primitives, IR kinds,
+compiler passes, production compiler/runtime lines, normalization rules,
+adapters, runtime concepts, public APIs, wizard schedulers, or autosave
+schedulers. One real application fixture closes the packet through existing
+state, conditional ownership, dependency-effect cleanup, owned fetch, and
+versioned storage semantics.
+
 ## 0.13.1 Nested Form Metadata
 
 Measured 2026-08-25 on Linux x64 with Node 24.14.0 and Chrome

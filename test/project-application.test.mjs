@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.13.1 nested form metadata contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.13.2 multistep draft and autosave contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.13.1 nested form metadata contract", { timeout: 120_000 
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.13.1")
+  assert.equal(contract.milestone, "0.13.2")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -53,6 +53,13 @@ test("establishes the 0.13.1 nested form metadata contract", { timeout: 120_000 
     fixture: "project-application",
     reusedSemantics: ["native-form-controls", "ordinary-object-and-array-state", "conditional-ownership", "keyed-row-identity", "native-reset"]
   })
+  assert.deepEqual(contract.draftAutosaveDecision, {
+    patch: "0.13.2",
+    status: "closed-by-application-composition",
+    scheduler: null,
+    fixture: "project-application",
+    reusedSemantics: ["ordinary-state", "conditional-ownership", "dependency-effect-cleanup", "owned-fetch", "versioned-storage"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -67,9 +74,9 @@ test("establishes the 0.13.1 nested form metadata contract", { timeout: 120_000 
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
   assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
   assert.deepEqual(projects.states.slice(0, 19).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
   assert.equal(projects.effects.length, 6)
-  assert.equal(detail.effects.length, 4)
+  assert.equal(detail.effects.length, 6)
   assert.equal(projects.bindings.length, 11)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
@@ -107,6 +114,7 @@ test("establishes the 0.13.1 nested form metadata contract", { timeout: 120_000 
   assert.match(runtimeProjectHtml, /data-runtime-project.*data-project-id.*<h1>Project .*data-k-text="rp0".*This project route is directly addressable.*data-first-issue/s)
   assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
   assert.match(detailHtml, /data-issue-form.*data-k-native-reset.*data-form-dirty.*data-title-touched.*id="issue-title".*required.*minLength="5".*aria-invalid.*aria-describedby.*data-body-touched.*id="issue-body".*required.*minLength="20".*data-assignee-enabled.*data-checklist.*data-checklist-row="check-1".*name="checklist".*data-add-checklist.*data-reset-issue.*id="issue-submit"/s)
+  assert.match(detailHtml, /data-setup-draft.*data-setup-step="1".*id="setup-name".*data-setup-next.*data-setup-status.*data-saved-setup-version/s)
   const paramModule = new URL("dist/assets/params/app/projects/[projectId]/index.js", fixture).href
   const invalidParam = spawnSync(process.execPath, ["--input-type=module", "-e", `globalThis.location={pathname:"/app/projects/%2F"};globalThis.document={body:{dataset:{}},querySelectorAll:()=>[]};await import(${JSON.stringify(paramModule)})`], { encoding: "utf8" })
   assert.notEqual(invalidParam.status, 0)
@@ -495,7 +503,7 @@ try {
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
 const rewrites = JSON.parse(fs.readFileSync(path.join(root, "rewrites.json")))
-let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, issueCreateAttempts = 0, issueCreates = 0, listRequests = 0
+let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, issueCreateAttempts = 0, issueCreates = 0, draftSaveAttempts = 0, draftSaves = 0, savedDraftVersion = 0, listRequests = 0
 const routeFailureAttempts = new Map()
 const users = { "admin-token": { username: "Ada", isAdmin: true }, "login-admin-token": { username: "Ada", isAdmin: true }, "member-token": { username: "Mina", isAdmin: false } }, revoked = new Set()
 http.createServer((request, response) => {
@@ -546,7 +554,35 @@ http.createServer((request, response) => {
   }
   if (pathname === "/api/project-counts") {
     response.setHeader("content-type", "application/json")
-    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, issueCreateAttempts, issueCreates, listRequests }))
+    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, issueCreateAttempts, issueCreates, draftSaveAttempts, draftSaves, savedDraftVersion, listRequests }))
+    return
+  }
+  if (pathname === "/api/projects/alpha/setup-draft" && request.method === "PUT") {
+    response.setHeader("content-type", "application/json")
+    if (!user) { response.statusCode = 401; response.end(JSON.stringify({ error: "unauthorized" })); return }
+    let body = ""
+    request.on("data", chunk => { body += chunk })
+    request.on("end", () => {
+      const draft = JSON.parse(body)
+      draftSaveAttempts++
+      if (draftSaveAttempts === 3) {
+        response.statusCode = 409
+        response.end(JSON.stringify({ error: "Draft changed elsewhere." }))
+        return
+      }
+      const finish = () => {
+        if (draft.version <= savedDraftVersion) {
+          response.statusCode = 409
+          response.end(JSON.stringify({ error: "Stale draft save rejected." }))
+          return
+        }
+        savedDraftVersion = draft.version
+        draftSaves++
+        response.end(JSON.stringify({ version: savedDraftVersion }))
+      }
+      if (draftSaveAttempts === 1) setTimeout(finish, 600)
+      else setTimeout(finish, 25)
+    })
     return
   }
   if (pathname === "/api/projects/alpha/issues" && request.method === "POST") {
@@ -713,7 +749,42 @@ async function runIssueFormJourney(chrome, applicationPort) {
     const insert = text => send("Input.insertText", { text })
     const waitFor = expression => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = () => { if (${expression}) resolve(true); else if (Date.now() - started > 5000) reject(new Error(${JSON.stringify(expression)})); else setTimeout(check, 10) }; check() })`)
 
-    await waitFor('document.querySelector("[data-issue-form]") && document.querySelector("[data-session-status]")?.textContent === "authenticated"')
+    await waitFor('document.querySelector("[data-setup-draft]") && document.querySelector("[data-issue-form]") && document.querySelector("[data-session-status]")?.textContent === "authenticated"')
+    assert.deepEqual(await evaluate('({ step: document.querySelector("[data-setup-draft]").dataset.setupStep, name: document.querySelector("#setup-name").value, status: document.querySelector("[data-setup-status]").textContent, savedVersion: document.querySelector("[data-saved-setup-version]").textContent })'), { step: "1", name: "", status: "idle", savedVersion: "0" })
+    await evaluate('document.querySelector("[data-setup-next]").click()')
+    await new Promise(resolve => setTimeout(resolve, 50))
+    assert.deepEqual(await evaluate('({ step: document.querySelector("[data-setup-draft]").dataset.setupStep, missing: document.querySelector("#setup-name").validity.valueMissing, focused: document.activeElement === document.querySelector("#setup-name") })'), { step: "1", missing: true, focused: true })
+    await insert("Migration setup")
+    await evaluate('document.querySelector("[data-setup-next]").click()')
+    await waitFor('document.querySelector("[data-setup-draft]").dataset.setupStep === "2"')
+    await evaluate('document.querySelector("#setup-summary").focus()')
+    await insert("First autosave summary")
+    await waitFor('document.querySelector("[data-setup-status]").textContent === "saving"')
+    await evaluate('document.querySelector("#setup-summary").select()')
+    await insert("Current autosave summary")
+    await waitFor('document.querySelector("[data-setup-status]").textContent === "saved" && document.querySelector("[data-saved-setup-version]").textContent === "3"')
+    await new Promise(resolve => setTimeout(resolve, 700))
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); return { attempts: counts.draftSaveAttempts, saves: counts.draftSaves, serverVersion: counts.savedDraftVersion, status: document.querySelector("[data-setup-status]").textContent, savedVersion: document.querySelector("[data-saved-setup-version]").textContent, error: Boolean(document.querySelector("[data-setup-error]")), summary: document.querySelector("#setup-summary").value } })()`), { attempts: 2, saves: 1, serverVersion: 3, status: "saved", savedVersion: "3", error: false, summary: "Current autosave summary" })
+
+    await evaluate('document.querySelector("#setup-summary").select()')
+    await insert("Navigation-safe summary")
+    await waitFor('JSON.parse(localStorage.getItem("kudzu-alpha-setup-draft")).summary === "Navigation-safe summary"')
+    await evaluate('document.querySelector(`a[href="/app/projects"]`).click()')
+    await waitFor('document.querySelector("[data-project-list-page]")')
+    await evaluate('document.querySelector(`a[href="/app/projects/alpha"]`).click()')
+    await waitFor('document.querySelector("#setup-summary")?.value === "Navigation-safe summary"')
+    assert.equal(await evaluate('document.querySelector("[data-setup-draft]").dataset.setupStep'), "2")
+    await evaluate('location.reload()')
+    await new Promise(resolve => setTimeout(resolve, 500))
+    await waitFor('document.querySelector("#setup-summary")?.value === "Navigation-safe summary" && document.querySelector("[data-session-status]")?.textContent === "authenticated"')
+    await evaluate('document.querySelector("#setup-summary").select()')
+    await insert("Conflict-safe summary")
+    await waitFor('document.querySelector("[data-setup-status]").textContent === "conflict"')
+    assert.deepEqual(await evaluate('({ error: document.querySelector("[data-setup-error]").textContent, summary: document.querySelector("#setup-summary").value, stored: JSON.parse(localStorage.getItem("kudzu-alpha-setup-draft")).summary })'), { error: "Draft changed elsewhere.", summary: "Conflict-safe summary", stored: "Conflict-safe summary" })
+    await evaluate('document.querySelector("[data-reset-setup]").click()')
+    await waitFor('document.querySelector("[data-setup-draft]").dataset.setupStep === "1"')
+    assert.deepEqual(await evaluate('({ name: document.querySelector("#setup-name").value, stored: localStorage.getItem("kudzu-alpha-setup-draft"), status: document.querySelector("[data-setup-status]").textContent, error: Boolean(document.querySelector("[data-setup-error]")), savedVersion: document.querySelector("[data-saved-setup-version]").textContent })'), { name: "", stored: null, status: "idle", error: false, savedVersion: "0" })
+
     assert.deepEqual(await evaluate('({ dirty: document.querySelector("[data-form-dirty]").textContent, titleTouched: document.querySelector("[data-title-touched]").textContent, bodyTouched: document.querySelector("[data-body-touched]").textContent, assignee: Boolean(document.querySelector("[data-assignee-fields]")), rows: document.querySelectorAll("[data-checklist-row]").length, checklistTouched: document.querySelector("[data-checklist-touched]").textContent })'), { dirty: "clean", titleTouched: "untouched", bodyTouched: "untouched", assignee: false, rows: 1, checklistTouched: "untouched" })
 
     await evaluate('document.querySelector("#issue-title").focus()')

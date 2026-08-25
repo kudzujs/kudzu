@@ -1,5 +1,59 @@
 # Kudzu Releases
 
+## 0.13.2 - Multistep Draft And Autosave
+
+Kudzu 0.13.2 composes a persistent two-step draft and debounced server save
+from ordinary route state and owned effects without a wizard or autosave runtime.
+
+### Changed in 0.13.2
+
+- Added native first-step validation and conditional step navigation over
+  parent-owned draft values.
+- Added guarded versioned local-storage restore and immediate draft persistence
+  across enhanced navigation and document reload.
+- Added a direct dependency effect with timeout cleanup for debounced owned
+  server writes.
+- Rejected stale server versions and ignored late stale completions while
+  retaining the current draft through conflict and transport failures.
+- Added reset of step, values, status, version, storage, and pending debounce.
+- Updated `create-kudzu@0.1.120` to generate projects on
+  `@kudzujs/core@^0.13.2`.
+
+### Output Evidence
+
+- The application emits 44 files totaling 144,633 raw / 49,217 aggregate gzip
+  bytes with deploy digest
+  `06a35341c5e70bfec48c46ad767ac351326b39ba701f5c1f1d03992a65ec8b9e`.
+- The maintained two-route session remains 17 JavaScript files and totals
+  68,664 raw / 24,747 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, production compiler/runtime
+  line, normalization rule, adapter, runtime concept, public API, wizard
+  scheduler, or autosave scheduler was added.
+
+### Validation
+
+- Required Chrome proves native validation, debounced save, server rejection of
+  an older in-flight version, ignored stale completion, navigation and reload
+  restoration, retained conflict input, and reset cleanup.
+- The complete serial suite passes 273 tests, including the preserved nested
+  issue-form and server retry journey.
+- Seven fresh Chrome profiles record a 6.1 ms list-to-detail median with a
+  3.7-10.7 ms range. The destination changed and the range is noisy, so no
+  same-content latency change is claimed.
+
+### Limits
+
+Draft persistence remains application-owned and versioned per form. Dynamic
+step schemas, cross-document coordination, background sync, retry scheduling,
+and a general autosave scheduler remain unsupported until independent real
+applications prove a shared framework boundary.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.13.2
+```
+
 ## 0.13.1 - Nested Form Metadata
 
 Kudzu 0.13.1 composes conditional fields, dynamic keyed rows, dirty/touched

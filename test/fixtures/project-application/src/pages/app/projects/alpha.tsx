@@ -1,4 +1,4 @@
-import { useRef, useState } from "@kudzujs/core"
+import { useEffect, useRef, useState } from "@kudzujs/core"
 import { AppLayout, useWorkspace } from "../../../AppLayout"
 
 export const layout = AppLayout
@@ -7,6 +7,15 @@ export const metadata = { title: "Alpha project" }
 export default function AlphaProjectPage() {
   const { token, workspace, projectName, projectRevision } = useWorkspace()
   const [draft, setDraft] = useState("Clean draft")
+  const [setupStep, setSetupStep] = useState(1)
+  const [setupName, setSetupName] = useState("")
+  const [setupSummary, setSetupSummary] = useState("")
+  const [setupVersion, setSetupVersion] = useState(0)
+  const [setupReady, setSetupReady] = useState(false)
+  const [setupDirty, setSetupDirty] = useState(false)
+  const [setupStatus, setSetupStatus] = useState("idle")
+  const [setupError, setSetupError] = useState("")
+  const [savedSetupVersion, setSavedSetupVersion] = useState(0)
   const [formStatus, setFormStatus] = useState("idle")
   const [titleError, setTitleError] = useState("")
   const [formError, setFormError] = useState("")
@@ -17,6 +26,57 @@ export default function AlphaProjectPage() {
   const [dirtySinceReset, setDirtySinceReset] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kudzu-alpha-setup-draft")
+      if (raw !== null) {
+        const stored = JSON.parse(raw)
+        if (typeof stored === "object" && stored !== null && stored.schema === 1 && (stored.step === 1 || stored.step === 2) && typeof stored.name === "string" && typeof stored.summary === "string" && typeof stored.version === "number" && typeof stored.savedVersion === "number") {
+          setSetupStep(stored.step)
+          setSetupName(stored.name)
+          setSetupSummary(stored.summary)
+          setSetupVersion(stored.version)
+          setSavedSetupVersion(stored.savedVersion)
+        }
+      }
+    } catch {
+      localStorage.removeItem("kudzu-alpha-setup-draft")
+    } finally {
+      setSetupReady(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!setupReady || !setupDirty) return
+    localStorage.setItem("kudzu-alpha-setup-draft", JSON.stringify({ schema: 1, step: setupStep, name: setupName, summary: setupSummary, version: setupVersion, savedVersion: savedSetupVersion }))
+    setSetupStatus("waiting")
+    const timer = setTimeout(() => {
+      setSetupStatus("saving")
+      setSetupError("")
+      void fetch("/api/projects/alpha/setup-draft", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: setupName, summary: setupSummary, version: setupVersion })
+      }).then(async response => {
+        const result = await response.json()
+        if (response.status === 409) {
+          setSetupError(result.error)
+          setSetupStatus("conflict")
+          return
+        }
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`)
+        localStorage.setItem("kudzu-alpha-setup-draft", JSON.stringify({ schema: 1, step: setupStep, name: setupName, summary: setupSummary, version: setupVersion, savedVersion: result.version }))
+        setSavedSetupVersion(result.version)
+        setSetupDirty(false)
+        setSetupStatus("saved")
+      }).catch(cause => {
+        setSetupError(cause instanceof Error ? cause.message : String(cause))
+        setSetupStatus("error")
+      })
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [setupReady, setupDirty, setupStep, setupName, setupSummary, setupVersion, savedSetupVersion, token])
+
   return <main data-project-detail>
     <h1>Alpha project</h1>
     <output data-route-workspace>{workspace}</output>
@@ -24,6 +84,46 @@ export default function AlphaProjectPage() {
     <output data-shared-project-revision>{projectRevision}</output>
     <output data-project-draft>{draft}</output>
     <button data-edit-draft onClick={() => setDraft("Dirty draft")}>Edit draft</button>
+    <section data-setup-draft data-setup-step={setupStep} aria-labelledby="setup-draft-title">
+      <h2 id="setup-draft-title">Project setup draft</h2>
+      <form onSubmit={event => {
+        event.preventDefault()
+        if (setupStep === 1) setSetupStep(2)
+      }}>
+        {setupStep === 1 && <div>
+          <label htmlFor="setup-name">Project name</label>
+          <input id="setup-name" required minLength={3} value={setupName} onInput={event => {
+            setSetupName(event.currentTarget.value)
+            setSetupVersion(setupVersion + 1)
+            setSetupDirty(true)
+          }} />
+          <button data-setup-next type="submit">Continue</button>
+        </div>}
+        {setupStep === 2 && <div>
+          <label htmlFor="setup-summary">Project summary</label>
+          <textarea id="setup-summary" required minLength={10} value={setupSummary} onInput={event => {
+            setSetupSummary(event.currentTarget.value)
+            setSetupVersion(setupVersion + 1)
+            setSetupDirty(true)
+          }}></textarea>
+          <button data-setup-back type="button" onClick={() => setSetupStep(1)}>Back</button>
+        </div>}
+        <button data-reset-setup type="button" onClick={() => {
+          localStorage.removeItem("kudzu-alpha-setup-draft")
+          setSetupStep(1)
+          setSetupName("")
+          setSetupSummary("")
+          setSetupVersion(0)
+          setSetupDirty(false)
+          setSetupStatus("idle")
+          setSetupError("")
+          setSavedSetupVersion(0)
+        }}>Reset setup draft</button>
+      </form>
+      <output data-setup-status>{setupStatus}</output>
+      <output data-saved-setup-version>{savedSetupVersion}</output>
+      {setupError && <p data-setup-error role="alert">{setupError}</p>}
+    </section>
     <section aria-labelledby="create-issue-title">
       <h2 id="create-issue-title">Create issue</h2>
       <form data-issue-form onReset={() => {
