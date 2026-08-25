@@ -752,6 +752,39 @@ same-content compiler/runtime comparison or a latency improvement claim.
 - **Done condition:** application composition is accepted or the smallest
   repeated metadata semantic is isolated.
 
+**Completion evidence:** the maintained Alpha issue form now owns nested
+assignee metadata as one ordinary object state and a dynamic checklist as one
+ordinary array state with stable string keys. Native `input`, `blur`, `change`,
+and `reset` events drive explicit dirty/touched display, conditional assignee
+fields, immutable checklist add/reorder/remove operations, and reset to the
+authored baseline. Required Chrome proves retained checklist keys preserve exact
+DOM identity through reorder and reset, removed and reset-added keys disconnect,
+conditional ownership releases the assignee controls, and native reset clears
+uncontrolled title/body values plus application-owned metadata. The existing
+keyboard constraints and delayed `422`, `503`, and `201` server journey continue
+to pass while nested assignee/checklist values survive field and form failures.
+
+The first failing fixture was the `0.13.1` project-application contract against
+the released `0.13.0` Alpha form. Native controls and existing object/array
+state, condition, keyed-list, binding, and handler semantics close it without a
+normalization rule, adapter, semantic primitive, IR kind, compiler pass,
+production compiler/runtime line, runtime concept, public API, registration
+function, proxy metadata graph, schema adapter, or form runtime. The
+machine-readable decision is `closed-by-application-composition`; dynamic field
+names, schema-driven registration, generic watchers, and proxy dirty/touched
+graphs remain unsupported until independent real forms prove a repeated gap.
+
+The application emits 44 files totaling 138,064 raw / 47,964 aggregate gzip
+bytes with deploy SHA-256
+`f0d96cfd5dee2cf3fa67f4ebe25d8b32cbb1bf66e72ed5ca1c29bd06fdcc0a33`.
+The maintained two-route session remains 17 JavaScript files and grows by 3,286
+raw / 803 aggregate gzip bytes to 65,404 / 23,899 bytes. This is authored
+route-specific form behavior, not a shared form runtime; `/help` remains 0 B
+JavaScript. Seven fresh Linux x64 Chrome 142 profiles record list-to-detail
+samples of `[3.5, 3.3, 4.4, 3.3, 3.2, 4.7, 3.3]` ms, a 3.3 ms median and
+3.2/4.7 ms range. The range overlaps `0.13.0` and the destination content
+changed, so no latency regression or improvement is claimed.
+
 ### `0.13.2`: Multistep Draft And Autosave
 
 - **Purpose:** prove draft persistence across steps and failures.
@@ -1270,5 +1303,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.12.3` | Released | Preserve the published route failure, focused retry, native fallback, and precommit retention evidence. | None |
 | `0.12.4` | Released | Preserve the published single-layout decision and zero-owner-chain evidence. | None |
 | `0.13.0` | Released | Preserve native constraints, server feedback, focused field errors, retained input, and retry evidence. | None |
-| `0.13.1` | Active | Complete the nested fields, field arrays, dirty, and touched packet. | None |
-| `0.13.2` onward | Blocked | Complete the `0.13.1` release transaction first. | Ordered patch boundary |
+| `0.13.1` | Released | Preserve application-owned nested metadata, keyed row identity, release, and reset evidence. | None |
+| `0.13.2` | Active | Complete the multistep draft and autosave packet. | None |
+| `0.13.3` onward | Blocked | Complete the `0.13.2` release transaction first. | Ordered patch boundary |

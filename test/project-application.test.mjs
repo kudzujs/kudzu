@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.13.0 production form and server-validation contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.13.1 nested form metadata contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.13.0 production form and server-validation contract", { 
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.13.0")
+  assert.equal(contract.milestone, "0.13.1")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -46,6 +46,13 @@ test("establishes the 0.13.0 production form and server-validation contract", { 
     qualifyingRoutes: [],
     reusedSemantics: ["single-layout-owner", "route-owner", "static-composition", "conditional-and-keyed-ownership", "native-document-navigation", "disjoint-navigation-groups"]
   })
+  assert.deepEqual(contract.formMetadataDecision, {
+    patch: "0.13.1",
+    status: "closed-by-application-composition",
+    registry: null,
+    fixture: "project-application",
+    reusedSemantics: ["native-form-controls", "ordinary-object-and-array-state", "conditional-ownership", "keyed-row-identity", "native-reset"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -60,7 +67,7 @@ test("establishes the 0.13.0 production form and server-validation contract", { 
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
   assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
   assert.deepEqual(projects.states.slice(0, 19).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""]])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
   assert.equal(projects.effects.length, 6)
   assert.equal(detail.effects.length, 4)
   assert.equal(projects.bindings.length, 11)
@@ -79,7 +86,9 @@ test("establishes the 0.13.0 production form and server-validation contract", { 
   assert.equal(projectArtifacts.runtime.requirements.some(path => path.endsWith("/kudzu-list.js")), true)
   assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
   assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
-  assert.deepEqual(detailArtifacts.capability.manifest.events.native, ["click", "submit"])
+  assert.equal(detail.lists.length, 1)
+  assert.equal(detailArtifacts.capability.manifest.lists.stableFastPaths, true)
+  assert.deepEqual(detailArtifacts.capability.manifest.events.native, ["blur", "change", "click", "input", "reset", "submit"])
   assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js", "/assets/handlers/pages/app/projects/alpha.js"], chunks: [] })
   assert.deepEqual(runtimeProject.params, [{ name: "projectId", id: "rp0" }])
   assert.deepEqual(runtimeIssue.params, [{ name: "projectId", id: "rp0" }, { name: "issueId", id: "rp1" }])
@@ -97,7 +106,7 @@ test("establishes the 0.13.0 production form and server-validation contract", { 
   const detailHtml = await readFile(new URL("dist/app/projects/alpha/index.html", fixture), "utf8")
   assert.match(runtimeProjectHtml, /data-runtime-project.*data-project-id.*<h1>Project .*data-k-text="rp0".*This project route is directly addressable.*data-first-issue/s)
   assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
-  assert.match(detailHtml, /data-issue-form.*data-k-native-submit.*id="issue-title".*required.*minLength="5".*aria-invalid.*aria-describedby.*id="issue-body".*required.*minLength="20".*id="issue-submit"/s)
+  assert.match(detailHtml, /data-issue-form.*data-k-native-reset.*data-form-dirty.*data-title-touched.*id="issue-title".*required.*minLength="5".*aria-invalid.*aria-describedby.*data-body-touched.*id="issue-body".*required.*minLength="20".*data-assignee-enabled.*data-checklist.*data-checklist-row="check-1".*name="checklist".*data-add-checklist.*data-reset-issue.*id="issue-submit"/s)
   const paramModule = new URL("dist/assets/params/app/projects/[projectId]/index.js", fixture).href
   const invalidParam = spawnSync(process.execPath, ["--input-type=module", "-e", `globalThis.location={pathname:"/app/projects/%2F"};globalThis.document={body:{dataset:{}},querySelectorAll:()=>[]};await import(${JSON.stringify(paramModule)})`], { encoding: "utf8" })
   assert.notEqual(invalidParam.status, 0)
@@ -547,7 +556,7 @@ http.createServer((request, response) => {
     request.on("data", chunk => { body += chunk })
     request.on("end", () => {
       issueCreateAttempts++
-      const valid = body.includes('name="title"') && body.includes("Release blocker") && body.includes('name="body"') && body.includes("Retain this detailed reproduction")
+      const valid = body.includes('name="title"') && body.includes("Release blocker") && body.includes('name="body"') && body.includes("Retain this detailed reproduction") && body.includes('name="assignee"') && body.includes("Ada") && body.includes('name="checklist"') && body.includes("Verify rollback")
       setTimeout(() => {
         if (!valid) { response.statusCode = 400; response.end(JSON.stringify({ error: "invalid issue" })); return }
         if (issueCreateAttempts === 1) { response.statusCode = 422; response.end(JSON.stringify({ errors: { title: "Use a more specific title." } })); return }
@@ -705,6 +714,33 @@ async function runIssueFormJourney(chrome, applicationPort) {
     const waitFor = expression => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = () => { if (${expression}) resolve(true); else if (Date.now() - started > 5000) reject(new Error(${JSON.stringify(expression)})); else setTimeout(check, 10) }; check() })`)
 
     await waitFor('document.querySelector("[data-issue-form]") && document.querySelector("[data-session-status]")?.textContent === "authenticated"')
+    assert.deepEqual(await evaluate('({ dirty: document.querySelector("[data-form-dirty]").textContent, titleTouched: document.querySelector("[data-title-touched]").textContent, bodyTouched: document.querySelector("[data-body-touched]").textContent, assignee: Boolean(document.querySelector("[data-assignee-fields]")), rows: document.querySelectorAll("[data-checklist-row]").length, checklistTouched: document.querySelector("[data-checklist-touched]").textContent })'), { dirty: "clean", titleTouched: "untouched", bodyTouched: "untouched", assignee: false, rows: 1, checklistTouched: "untouched" })
+
+    await evaluate('document.querySelector("#issue-title").focus()')
+    await insert("Draft issue")
+    await evaluate('document.querySelector("#issue-body").focus()')
+    await insert("Draft issue body long enough")
+    await evaluate('document.querySelector("[data-assignee-enabled]").click()')
+    await waitFor('document.querySelector("[data-assignee-fields]")')
+    await evaluate('document.querySelector("#issue-assignee").focus()')
+    await insert("Ada")
+    await evaluate('document.querySelector("#checklist-check-1").focus()')
+    await insert("First step")
+    await evaluate('document.querySelector("[data-add-checklist]").focus(); document.querySelector("[data-add-checklist]").click(); document.querySelector("[data-add-checklist]").click()')
+    await waitFor('document.querySelectorAll("[data-checklist-row]").length === 3')
+    await evaluate('globalThis.__check1 = document.querySelector("[data-checklist-row=check-1]"); globalThis.__check2 = document.querySelector("[data-checklist-row=check-2]"); globalThis.__check3 = document.querySelector("[data-checklist-row=check-3]")')
+    await evaluate('document.querySelector("#checklist-check-2").focus()')
+    await insert("Second step")
+    await evaluate('document.querySelector("[data-reorder-checklist]").focus(); document.querySelector("[data-reorder-checklist]").click()')
+    await waitFor('document.querySelector("[data-checklist-row]")?.dataset.checklistRow === "check-3"')
+    assert.deepEqual(await evaluate('({ dirty: document.querySelector("[data-form-dirty]").textContent, titleTouched: document.querySelector("[data-title-touched]").textContent, bodyTouched: document.querySelector("[data-body-touched]").textContent, assigneeTouched: document.querySelector("[data-assignee-touched]").textContent, firstTouched: __check1.querySelector("[data-checklist-touched]").textContent, secondTouched: __check2.querySelector("[data-checklist-touched]").textContent, retained: __check1 === document.querySelector("[data-checklist-row=check-1]") && __check2 === document.querySelector("[data-checklist-row=check-2]") && __check3 === document.querySelector("[data-checklist-row=check-3]"), order: [...document.querySelectorAll("[data-checklist-row]")].map(row => row.dataset.checklistRow).join(",") })'), { dirty: "dirty", titleTouched: "touched", bodyTouched: "touched", assigneeTouched: "touched", firstTouched: "touched", secondTouched: "touched", retained: true, order: "check-3,check-2,check-1" })
+    await evaluate('document.querySelector("[data-remove-checklist=check-2]").click()')
+    await waitFor('document.querySelectorAll("[data-checklist-row]").length === 2')
+    assert.equal(await evaluate('!__check2.isConnected && __check1.isConnected && __check3.isConnected'), true)
+    await evaluate('document.querySelector("[data-reset-issue]").click()')
+    await waitFor('document.querySelectorAll("[data-checklist-row]").length === 1 && !document.querySelector("[data-assignee-fields]")')
+    assert.deepEqual(await evaluate('({ dirty: document.querySelector("[data-form-dirty]").textContent, titleTouched: document.querySelector("[data-title-touched]").textContent, bodyTouched: document.querySelector("[data-body-touched]").textContent, title: document.querySelector("#issue-title").value, body: document.querySelector("#issue-body").value, retainedOriginal: __check1 === document.querySelector("[data-checklist-row=check-1]"), releasedAdded: !__check2.isConnected && !__check3.isConnected, checklist: document.querySelector("#checklist-check-1").value, checklistTouched: document.querySelector("[data-checklist-touched]").textContent })'), { dirty: "clean", titleTouched: "untouched", bodyTouched: "untouched", title: "", body: "", retainedOriginal: true, releasedAdded: true, checklist: "", checklistTouched: "untouched" })
+
     await evaluate('document.querySelector("#issue-title").focus()')
     await enter()
     await new Promise(resolve => setTimeout(resolve, 50))
@@ -717,11 +753,17 @@ async function runIssueFormJourney(chrome, applicationPort) {
 
     await evaluate('document.querySelector("#issue-title").select()')
     await insert("Release blocker")
-    await evaluate('document.querySelector("#issue-body").value = "Retain this detailed reproduction"; document.querySelector("#issue-title").focus()')
+    await evaluate('document.querySelector("#issue-body").value = "Retain this detailed reproduction"; document.querySelector("[data-assignee-enabled]").click()')
+    await waitFor('document.querySelector("#issue-assignee")')
+    await evaluate('document.querySelector("#issue-assignee").focus()')
+    await insert("Ada")
+    await evaluate('document.querySelector("#checklist-check-1").focus()')
+    await insert("Verify rollback")
+    await evaluate('document.querySelector("#issue-title").focus()')
     await enter()
     assert.deepEqual(await evaluate('({ disabled: document.querySelector("#issue-submit").disabled, label: document.querySelector("#issue-submit").textContent })'), { disabled: true, label: "Creating issue" })
     await waitFor('document.querySelector("#issue-title-error")')
-    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()), title = document.querySelector("#issue-title"); return { attempts: counts.issueCreateAttempts, creates: counts.issueCreates, error: document.querySelector("#issue-title-error").textContent, invalid: title.getAttribute("aria-invalid"), describedBy: title.getAttribute("aria-describedby"), focused: document.activeElement === title, title: title.value, body: document.querySelector("#issue-body").value } })()`), { attempts: 1, creates: 0, error: "Use a more specific title.", invalid: "true", describedBy: "issue-title-error", focused: true, title: "Release blocker", body: "Retain this detailed reproduction" })
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()), title = document.querySelector("#issue-title"); return { attempts: counts.issueCreateAttempts, creates: counts.issueCreates, error: document.querySelector("#issue-title-error").textContent, invalid: title.getAttribute("aria-invalid"), describedBy: title.getAttribute("aria-describedby"), focused: document.activeElement === title, title: title.value, body: document.querySelector("#issue-body").value, assignee: document.querySelector("#issue-assignee").value, checklist: document.querySelector("#checklist-check-1").value } })()`), { attempts: 1, creates: 0, error: "Use a more specific title.", invalid: "true", describedBy: "issue-title-error", focused: true, title: "Release blocker", body: "Retain this detailed reproduction", assignee: "Ada", checklist: "Verify rollback" })
 
     await evaluate('document.querySelector("#issue-title").select()')
     await insert("Release blocker fixed")

@@ -1,5 +1,54 @@
 # Kudzu Releases
 
+## 0.13.1 - Nested Form Metadata
+
+Kudzu 0.13.1 composes conditional fields, dynamic keyed rows, dirty/touched
+display, and reset from ordinary application state without a form registry.
+
+### Changed in 0.13.1
+
+- Added conditional assignee fields backed by one ordinary object state.
+- Added dynamic checklist rows with immutable add, reorder, remove, input, and
+  touched updates over one ordinary array state.
+- Preserved exact keyed DOM identity through reorder and reset while releasing
+  removed and reset-added rows.
+- Kept native constraints, field/form server errors, retained values, and retry
+  behavior from `0.13.0`.
+- Updated `create-kudzu@0.1.119` to generate projects on
+  `@kudzujs/core@^0.13.1`.
+
+### Output Evidence
+
+- The application emits 44 files totaling 138,064 raw / 47,964 aggregate gzip
+  bytes with deploy digest
+  `f0d96cfd5dee2cf3fa67f4ebe25d8b32cbb1bf66e72ed5ca1c29bd06fdcc0a33`.
+- The maintained two-route session remains 17 JavaScript files and totals
+  65,404 raw / 23,899 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, production compiler/runtime
+  line, normalization rule, adapter, public API, registration function, proxy
+  metadata graph, schema adapter, or form runtime was added.
+
+### Validation
+
+- Required Chrome proves dirty/touched output, conditional ownership, stable-key
+  reorder, removal release, native reset, and exact retained/released identity.
+- The existing keyboard validation and delayed `422`, `503`, and `201` journey
+  passes while nested assignee and checklist values survive failures.
+- Seven fresh Chrome profiles record a 3.3 ms list-to-detail median with a
+  3.2-4.7 ms range. The range overlaps `0.13.0`, so no latency change is claimed.
+
+### Limits
+
+Dynamic field names, schema-driven registration, generic watchers, and proxy
+dirty/touched graphs remain unsupported. Add framework metadata only after
+independent real forms prove the same otherwise-inexpressible graph.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.13.1
+```
+
 ## 0.13.0 - Production Form And Server Validation
 
 Kudzu 0.13.0 compiles an accessible issue-creation form from ordinary TSX

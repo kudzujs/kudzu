@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.13.0",
+  "milestone": "0.13.1",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -95,6 +95,13 @@
     "focused-aria-linked-field-error",
     "retained-valid-form-input",
     "issue-creation-retry",
+    "application-owned-form-metadata",
+    "conditional-assignee-fields",
+    "dynamic-checklist-field-array",
+    "checklist-reorder-and-remove",
+    "dirty-and-touched-display",
+    "native-form-reset",
+    "retained-checklist-row-identity",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -111,7 +118,8 @@
     "runtime project and issue navigation uses native document navigation",
     "protected static HTML is a UX shell; API authorization is the security boundary",
     "push-navigation transport failures retain the current document for explicit retry; invalid documents and asset failures use native document fallback",
-    "forms use native constraints and application-owned state; there is no field registry, proxy metadata graph, or form runtime"
+    "forms use native constraints and application-owned state; there is no field registry, proxy metadata graph, or form runtime",
+    "dirty and touched metadata is explicit object and array state rather than dynamic field registration"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -153,21 +161,34 @@
       "disjoint-navigation-groups"
     ]
   },
+  "formMetadataDecision": {
+    "patch": "0.13.1",
+    "status": "closed-by-application-composition",
+    "registry": null,
+    "fixture": "project-application",
+    "reusedSemantics": [
+      "native-form-controls",
+      "ordinary-object-and-array-state",
+      "conditional-ownership",
+      "keyed-row-identity",
+      "native-reset"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 44,
-      "rawBytes": 127343,
-      "aggregateGzipBytes": 46261,
-      "sha256": "183f5a7ca081f99ae38de6974e61fdcb32ca49de699359aac053d0154ae38036"
+      "rawBytes": 138064,
+      "aggregateGzipBytes": 47964,
+      "sha256": "f0d96cfd5dee2cf3fa67f4ebe25d8b32cbb1bf66e72ed5ca1c29bd06fdcc0a33"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 58140,
-        "javascriptAggregateGzipBytes": 21319
+        "javascriptRawBytes": 59255,
+        "javascriptAggregateGzipBytes": 21636
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 28709,
-        "javascriptAggregateGzipBytes": 12046
+        "javascriptRawBytes": 57367,
+        "javascriptAggregateGzipBytes": 20753
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,

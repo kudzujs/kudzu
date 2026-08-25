@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.13.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.13.0 - Production form and server validation.** Native constraints, application-owned pending and error state, focused field feedback, retained input, and retry ship without a form runtime. Read the [release notes](./RELEASES.md#0130---production-form-and-server-validation), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.13.0), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.13.1 - Nested form metadata.** Conditional fields, dynamic keyed checklist rows, explicit dirty/touched state, reset, and exact DOM identity compose without a field registry or form runtime. Read the [release notes](./RELEASES.md#0131---nested-form-metadata), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.13.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
