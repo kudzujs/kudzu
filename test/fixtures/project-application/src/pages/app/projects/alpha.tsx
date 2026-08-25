@@ -16,6 +16,14 @@ export default function AlphaProjectPage() {
   const [setupStatus, setSetupStatus] = useState("idle")
   const [setupError, setSetupError] = useState("")
   const [savedSetupVersion, setSavedSetupVersion] = useState(0)
+  const [uploadName, setUploadName] = useState("")
+  const [uploadType, setUploadType] = useState("")
+  const [uploadContent, setUploadContent] = useState("")
+  const [uploadSize, setUploadSize] = useState(0)
+  const [uploadRequest, setUploadRequest] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState("idle")
+  const [uploadError, setUploadError] = useState("")
+  const [attachments, setAttachments] = useState<{ id: string; name: string; size: number }[]>([])
   const [formStatus, setFormStatus] = useState("idle")
   const [titleError, setTitleError] = useState("")
   const [formError, setFormError] = useState("")
@@ -77,6 +85,32 @@ export default function AlphaProjectPage() {
     return () => clearTimeout(timer)
   }, [setupReady, setupDirty, setupStep, setupName, setupSummary, setupVersion, savedSetupVersion, token])
 
+  useEffect(() => {
+    if (uploadRequest === 0) return
+    const controller = new globalThis.AbortController()
+    const fields = new globalThis.FormData()
+    fields.append("attachment", new globalThis.Blob([uploadContent], { type: uploadType }), uploadName)
+    setUploadStatus("uploading")
+    setUploadError("")
+    void fetch("/api/projects/alpha/attachments", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fields,
+      signal: controller.signal
+    }).then(async response => {
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`)
+      setAttachments([result.attachment])
+      setUploadStatus("success")
+      setUploadRequest(0)
+    }).catch(cause => {
+      if (controller.signal.aborted) return
+      setUploadError(cause instanceof Error ? cause.message : String(cause))
+      setUploadStatus("error")
+    })
+    return () => controller.abort()
+  }, [uploadRequest, uploadName, uploadType, uploadContent, token])
+
   return <main data-project-detail>
     <h1>Alpha project</h1>
     <output data-route-workspace>{workspace}</output>
@@ -123,6 +157,58 @@ export default function AlphaProjectPage() {
       <output data-setup-status>{setupStatus}</output>
       <output data-saved-setup-version>{savedSetupVersion}</output>
       {setupError && <p data-setup-error role="alert">{setupError}</p>}
+    </section>
+    <section data-attachment-upload aria-labelledby="attachment-upload-title">
+      <h2 id="attachment-upload-title">Project attachments</h2>
+      <label htmlFor="project-attachment">Text attachment</label>
+      <input id="project-attachment" type="file" accept="text/plain" disabled={uploadStatus === "uploading"} onChange={async event => {
+        const file = event.currentTarget.files?.[0]
+        setUploadRequest(0)
+        setUploadError("")
+        if (!file) {
+          setUploadName("")
+          setUploadType("")
+          setUploadContent("")
+          setUploadSize(0)
+          setUploadStatus("idle")
+          return
+        }
+        if (file.type !== "text/plain") {
+          setUploadName("")
+          setUploadType("")
+          setUploadContent("")
+          setUploadSize(0)
+          setUploadError("Choose a plain text file.")
+          setUploadStatus("invalid")
+          return
+        }
+        if (file.size > 1024) {
+          setUploadName("")
+          setUploadType("")
+          setUploadContent("")
+          setUploadSize(0)
+          setUploadError("Attachment must be 1 KiB or smaller.")
+          setUploadStatus("invalid")
+          return
+        }
+        setUploadName(file.name)
+        setUploadType(file.type)
+        setUploadContent(await file.text())
+        setUploadSize(file.size)
+        setUploadStatus("selected")
+      }} />
+      <output data-selected-attachment>{uploadName}</output>
+      <output data-selected-attachment-size>{uploadSize}</output>
+      <button data-upload-attachment disabled={!uploadName || uploadStatus === "uploading"} onClick={() => setUploadRequest(uploadRequest + 1)}>Upload attachment</button>
+      <button data-cancel-upload disabled={uploadStatus !== "uploading"} onClick={() => {
+        setUploadRequest(0)
+        setUploadStatus("cancelled")
+      }}>Cancel upload</button>
+      {uploadStatus === "error" && <button data-retry-upload onClick={() => setUploadRequest(uploadRequest + 1)}>Retry upload</button>}
+      <output data-upload-status>{uploadStatus}</output>
+      {uploadError && <p data-upload-error role="alert">{uploadError}</p>}
+      <p data-upload-progress-boundary>Upload progress is unavailable with fetch.</p>
+      <ul data-attachments>{attachments.map(attachment => <li key={attachment.id} data-attachment={attachment.id}>{attachment.name} ({attachment.size} bytes)</li>)}</ul>
     </section>
     <section aria-labelledby="create-issue-title">
       <h2 id="create-issue-title">Create issue</h2>

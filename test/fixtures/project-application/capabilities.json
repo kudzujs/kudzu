@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.13.2",
+  "milestone": "post-0.13.2",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -109,6 +109,14 @@
     "draft-reload-restore",
     "draft-reset",
     "draft-conflict-state",
+    "native-file-input",
+    "attachment-type-and-size-validation",
+    "fetch-formdata-upload",
+    "upload-cancellation",
+    "upload-failure-retry",
+    "upload-route-departure-cleanup",
+    "successful-attachment-mutation",
+    "explicit-fetch-progress-boundary",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -127,7 +135,8 @@
     "push-navigation transport failures retain the current document for explicit retry; invalid documents and asset failures use native document fallback",
     "forms use native constraints and application-owned state; there is no field registry, proxy metadata graph, or form runtime",
     "dirty and touched metadata is explicit object and array state rather than dynamic field registration",
-    "draft persistence is application-owned versioned storage plus one dependency effect; there is no wizard or autosave scheduler"
+    "draft persistence is application-owned versioned storage plus one dependency effect; there is no wizard or autosave scheduler",
+    "fetch uploads expose no upload progress; chunking, resume, background sync, and an upload runtime remain unsupported"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -195,21 +204,36 @@
       "versioned-storage"
     ]
   },
+  "fileUploadDecision": {
+    "candidate": "0.13.3",
+    "release": null,
+    "status": "closed-by-application-composition-no-release",
+    "transport": "fetch-formdata",
+    "progress": null,
+    "fixture": "project-application",
+    "reusedSemantics": [
+      "native-file-input",
+      "ordinary-state",
+      "dependency-effect-cleanup",
+      "owned-fetch",
+      "keyed-row-identity"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 44,
-      "rawBytes": 144633,
-      "aggregateGzipBytes": 49217,
-      "sha256": "06a35341c5e70bfec48c46ad767ac351326b39ba701f5c1f1d03992a65ec8b9e"
+      "rawBytes": 150023,
+      "aggregateGzipBytes": 50240,
+      "sha256": "a16fd5dbc08086aa6a7c0ec0aba3a38fbe2a63b96005a81e8747a7f4e45e214e"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 59255,
-        "javascriptAggregateGzipBytes": 21636
+        "javascriptRawBytes": 59409,
+        "javascriptAggregateGzipBytes": 21671
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 60627,
-        "javascriptAggregateGzipBytes": 21601
+        "javascriptRawBytes": 62994,
+        "javascriptAggregateGzipBytes": 22158
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,

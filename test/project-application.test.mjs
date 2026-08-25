@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.13.2 multistep draft and autosave contract", { timeout: 120_000 }, async t => {
+test("establishes the post-0.13.2 file upload boundary contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.13.2 multistep draft and autosave contract", { timeout: 
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.13.2")
+  assert.equal(contract.milestone, "post-0.13.2")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -60,6 +60,15 @@ test("establishes the 0.13.2 multistep draft and autosave contract", { timeout: 
     fixture: "project-application",
     reusedSemantics: ["ordinary-state", "conditional-ownership", "dependency-effect-cleanup", "owned-fetch", "versioned-storage"]
   })
+  assert.deepEqual(contract.fileUploadDecision, {
+    candidate: "0.13.3",
+    release: null,
+    status: "closed-by-application-composition-no-release",
+    transport: "fetch-formdata",
+    progress: null,
+    fixture: "project-application",
+    reusedSemantics: ["native-file-input", "ordinary-state", "dependency-effect-cleanup", "owned-fetch", "keyed-row-identity"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -74,9 +83,9 @@ test("establishes the 0.13.2 multistep draft and autosave contract", { timeout: 
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
   assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
   assert.deepEqual(projects.states.slice(0, 19).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
+  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["uploadName", "route", ""], ["uploadType", "route", ""], ["uploadContent", "route", ""], ["uploadSize", "route", 0], ["uploadRequest", "route", 0], ["uploadStatus", "route", "idle"], ["uploadError", "route", ""], ["attachments", "route", []], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
   assert.equal(projects.effects.length, 6)
-  assert.equal(detail.effects.length, 6)
+  assert.equal(detail.effects.length, 7)
   assert.equal(projects.bindings.length, 11)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
@@ -93,7 +102,7 @@ test("establishes the 0.13.2 multistep draft and autosave contract", { timeout: 
   assert.equal(projectArtifacts.runtime.requirements.some(path => path.endsWith("/kudzu-list.js")), true)
   assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
   assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
-  assert.equal(detail.lists.length, 1)
+  assert.equal(detail.lists.length, 2)
   assert.equal(detailArtifacts.capability.manifest.lists.stableFastPaths, true)
   assert.deepEqual(detailArtifacts.capability.manifest.events.native, ["blur", "change", "click", "input", "reset", "submit"])
   assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js", "/assets/handlers/pages/app/projects/alpha.js"], chunks: [] })
@@ -115,6 +124,7 @@ test("establishes the 0.13.2 multistep draft and autosave contract", { timeout: 
   assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
   assert.match(detailHtml, /data-issue-form.*data-k-native-reset.*data-form-dirty.*data-title-touched.*id="issue-title".*required.*minLength="5".*aria-invalid.*aria-describedby.*data-body-touched.*id="issue-body".*required.*minLength="20".*data-assignee-enabled.*data-checklist.*data-checklist-row="check-1".*name="checklist".*data-add-checklist.*data-reset-issue.*id="issue-submit"/s)
   assert.match(detailHtml, /data-setup-draft.*data-setup-step="1".*id="setup-name".*data-setup-next.*data-setup-status.*data-saved-setup-version/s)
+  assert.match(detailHtml, /data-attachment-upload.*id="project-attachment".*type="file".*accept="text\/plain".*data-upload-attachment.*data-cancel-upload.*data-upload-status.*data-attachments/s)
   const paramModule = new URL("dist/assets/params/app/projects/[projectId]/index.js", fixture).href
   const invalidParam = spawnSync(process.execPath, ["--input-type=module", "-e", `globalThis.location={pathname:"/app/projects/%2F"};globalThis.document={body:{dataset:{}},querySelectorAll:()=>[]};await import(${JSON.stringify(paramModule)})`], { encoding: "utf8" })
   assert.notEqual(invalidParam.status, 0)
@@ -503,7 +513,7 @@ try {
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
 const rewrites = JSON.parse(fs.readFileSync(path.join(root, "rewrites.json")))
-let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, issueCreateAttempts = 0, issueCreates = 0, draftSaveAttempts = 0, draftSaves = 0, savedDraftVersion = 0, listRequests = 0
+let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, issueCreateAttempts = 0, issueCreates = 0, draftSaveAttempts = 0, draftSaves = 0, savedDraftVersion = 0, uploadAttempts = 0, uploadCreates = 0, uploadAborts = 0, listRequests = 0
 const routeFailureAttempts = new Map()
 const users = { "admin-token": { username: "Ada", isAdmin: true }, "login-admin-token": { username: "Ada", isAdmin: true }, "member-token": { username: "Mina", isAdmin: false } }, revoked = new Set()
 http.createServer((request, response) => {
@@ -554,7 +564,7 @@ http.createServer((request, response) => {
   }
   if (pathname === "/api/project-counts") {
     response.setHeader("content-type", "application/json")
-    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, issueCreateAttempts, issueCreates, draftSaveAttempts, draftSaves, savedDraftVersion, listRequests }))
+    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, issueCreateAttempts, issueCreates, draftSaveAttempts, draftSaves, savedDraftVersion, uploadAttempts, uploadCreates, uploadAborts, listRequests }))
     return
   }
   if (pathname === "/api/projects/alpha/setup-draft" && request.method === "PUT") {
@@ -582,6 +592,29 @@ http.createServer((request, response) => {
       }
       if (draftSaveAttempts === 1) setTimeout(finish, 600)
       else setTimeout(finish, 25)
+    })
+    return
+  }
+  if (pathname === "/api/projects/alpha/attachments" && request.method === "POST") {
+    response.setHeader("content-type", "application/json")
+    if (!user) { response.statusCode = 401; response.end(JSON.stringify({ error: "unauthorized" })); return }
+    const chunks = []
+    request.on("data", chunk => { chunks.push(chunk) })
+    request.on("end", () => {
+      uploadAttempts++
+      const body = Buffer.concat(chunks).toString("utf8")
+      const valid = body.includes('filename="release.txt"') && body.includes("Content-Type: text/plain") && body.includes("Release attachment")
+      response.on("close", () => { if (!response.writableEnded) uploadAborts++ })
+      const finish = () => {
+        if (response.destroyed) return
+        if (!valid) { response.statusCode = 400; response.end(JSON.stringify({ error: "Invalid attachment." })); return }
+        if (uploadAttempts === 2) { response.statusCode = 503; response.end(JSON.stringify({ error: "Attachment service unavailable." })); return }
+        uploadCreates++
+        response.statusCode = 201
+        response.end(JSON.stringify({ attachment: { id: "attachment-1", name: "release.txt", size: 18 } }))
+      }
+      if (uploadAttempts === 1 || uploadAttempts === 4) setTimeout(finish, 1000)
+      else setTimeout(finish, 100)
     })
     return
   }
@@ -748,6 +781,9 @@ async function runIssueFormJourney(chrome, applicationPort) {
     }
     const insert = text => send("Input.insertText", { text })
     const waitFor = expression => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = () => { if (${expression}) resolve(true); else if (Date.now() - started > 5000) reject(new Error(${JSON.stringify(expression)})); else setTimeout(check, 10) }; check() })`)
+    const chooseFile = (name, type, contents) => evaluate(`(() => { const transfer = new DataTransfer(); transfer.items.add(new File([${JSON.stringify(contents)}], ${JSON.stringify(name)}, { type: ${JSON.stringify(type)} })); const input = document.querySelector("#project-attachment"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })) })()`)
+    const waitForUploadAttempts = attempts => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); if (counts.uploadAttempts === ${attempts}) resolve(true); else if (Date.now() - started > 5000) reject(new Error("upload-attempt-${attempts}")); else setTimeout(check, 10) }; check() })`)
+    const waitForUploadAborts = aborts => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); if (counts.uploadAborts === ${aborts}) resolve(true); else if (Date.now() - started > 5000) reject(new Error("upload-abort-${aborts}")); else setTimeout(check, 10) }; check() })`)
 
     await waitFor('document.querySelector("[data-setup-draft]") && document.querySelector("[data-issue-form]") && document.querySelector("[data-session-status]")?.textContent === "authenticated"')
     assert.deepEqual(await evaluate('({ step: document.querySelector("[data-setup-draft]").dataset.setupStep, name: document.querySelector("#setup-name").value, status: document.querySelector("[data-setup-status]").textContent, savedVersion: document.querySelector("[data-saved-setup-version]").textContent })'), { step: "1", name: "", status: "idle", savedVersion: "0" })
@@ -784,6 +820,36 @@ async function runIssueFormJourney(chrome, applicationPort) {
     await evaluate('document.querySelector("[data-reset-setup]").click()')
     await waitFor('document.querySelector("[data-setup-draft]").dataset.setupStep === "1"')
     assert.deepEqual(await evaluate('({ name: document.querySelector("#setup-name").value, stored: localStorage.getItem("kudzu-alpha-setup-draft"), status: document.querySelector("[data-setup-status]").textContent, error: Boolean(document.querySelector("[data-setup-error]")), savedVersion: document.querySelector("[data-saved-setup-version]").textContent })'), { name: "", stored: null, status: "idle", error: false, savedVersion: "0" })
+
+    assert.deepEqual(await evaluate('({ status: document.querySelector("[data-upload-status]").textContent, boundary: document.querySelector("[data-upload-progress-boundary]").textContent, progress: Boolean(document.querySelector("progress")), attachments: document.querySelectorAll("[data-attachment]").length })'), { status: "idle", boundary: "Upload progress is unavailable with fetch.", progress: false, attachments: 0 })
+    await chooseFile("bad.json", "application/json", "{}")
+    await waitFor('document.querySelector("[data-upload-status]").textContent === "invalid"')
+    assert.deepEqual(await evaluate('({ error: document.querySelector("[data-upload-error]").textContent, disabled: document.querySelector("[data-upload-attachment]").disabled })'), { error: "Choose a plain text file.", disabled: true })
+    await chooseFile("large.txt", "text/plain", "x".repeat(1025))
+    await waitFor('document.querySelector("[data-upload-error]").textContent === "Attachment must be 1 KiB or smaller."')
+    assert.equal(await evaluate('fetch("/api/project-counts").then(response => response.json()).then(counts => counts.uploadAttempts)'), 0)
+    await chooseFile("release.txt", "text/plain", "Release attachment")
+    await waitFor('document.querySelector("[data-upload-status]").textContent === "selected"')
+    assert.deepEqual(await evaluate('({ name: document.querySelector("[data-selected-attachment]").textContent, size: document.querySelector("[data-selected-attachment-size]").textContent })'), { name: "release.txt", size: "18" })
+    await evaluate('document.querySelector("[data-upload-attachment]").click()')
+    await waitForUploadAttempts(1)
+    await evaluate('document.querySelector("[data-cancel-upload]").click()')
+    await waitFor('document.querySelector("[data-upload-status]").textContent === "cancelled"')
+    await waitForUploadAborts(1)
+    await evaluate('document.querySelector("[data-upload-attachment]").click()')
+    await waitFor('document.querySelector("[data-upload-status]").textContent === "error"')
+    assert.deepEqual(await evaluate('({ error: document.querySelector("[data-upload-error]").textContent, name: document.querySelector("[data-selected-attachment]").textContent })'), { error: "Attachment service unavailable.", name: "release.txt" })
+    await evaluate('document.querySelector("[data-retry-upload]").click()')
+    await waitFor('document.querySelector("[data-attachment=attachment-1]")')
+    assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); return { attempts: counts.uploadAttempts, creates: counts.uploadCreates, status: document.querySelector("[data-upload-status]").textContent, attachment: document.querySelector("[data-attachment=attachment-1]").textContent } })()`), { attempts: 3, creates: 1, status: "success", attachment: "release.txt (18 bytes)" })
+    await evaluate('document.querySelector("[data-upload-attachment]").click()')
+    await waitForUploadAttempts(4)
+    await evaluate('document.querySelector(`a[href="/app/projects"]`).click()')
+    await waitFor('document.querySelector("[data-project-list-page]")')
+    await waitForUploadAborts(2)
+    await evaluate('document.querySelector(`a[href="/app/projects/alpha"]`).click()')
+    await waitFor('document.querySelector("[data-attachment-upload]")')
+    assert.deepEqual(await evaluate('({ status: document.querySelector("[data-upload-status]").textContent, attachments: document.querySelectorAll("[data-attachment]").length })'), { status: "idle", attachments: 0 })
 
     assert.deepEqual(await evaluate('({ dirty: document.querySelector("[data-form-dirty]").textContent, titleTouched: document.querySelector("[data-title-touched]").textContent, bodyTouched: document.querySelector("[data-body-touched]").textContent, assignee: Boolean(document.querySelector("[data-assignee-fields]")), rows: document.querySelectorAll("[data-checklist-row]").length, checklistTouched: document.querySelector("[data-checklist-touched]").textContent })'), { dirty: "clean", titleTouched: "untouched", bodyTouched: "untouched", assignee: false, rows: 1, checklistTouched: "untouched" })
 

@@ -2,7 +2,7 @@
 
 This document is the source of truth for Kudzu's product direction, architecture invariants, and future development order. Read it before extending React-shaped syntax or browser capabilities.
 
-The completed `0.9.0` execution sequence is maintained in [`docs/next-architecture/0.9-semantic-compression.md`](./docs/next-architecture/0.9-semantic-compression.md), with session-level implementation records in [`docs/next-architecture/0.9-implementation-plan.md`](./docs/next-architecture/0.9-implementation-plan.md). The next authorized execution train is [`docs/next-architecture/application-capability-release-plan.md`](./docs/next-architecture/application-capability-release-plan.md): each application-capability section owns one minor release, each independently accepted work packet owns one patch release, and the train closes with the separately gated 1.0 AI delivery proof. The completed compiler foundation and longer-term research remain in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md); this document remains authoritative when selecting or accepting a migration capability.
+The completed `0.9.0` execution sequence is maintained in [`docs/next-architecture/0.9-semantic-compression.md`](./docs/next-architecture/0.9-semantic-compression.md), with session-level implementation records in [`docs/next-architecture/0.9-implementation-plan.md`](./docs/next-architecture/0.9-implementation-plan.md). The next authorized execution train is [`docs/next-architecture/application-capability-release-plan.md`](./docs/next-architecture/application-capability-release-plan.md): each application-capability section owns one minor target and each independently accepted work packet owns one patch candidate. A candidate that changes no production source, package behavior, public support boundary, or generator output closes as unversioned evidence instead of publishing an empty package version. The train closes with the separately gated 1.0 AI delivery proof. The completed compiler foundation and longer-term research remain in [`docs/next-architecture/large-application-ai-native-roadmap.md`](./docs/next-architecture/large-application-ai-native-roadmap.md); this document remains authoritative when selecting or accepting a migration capability.
 
 [`GOAL_A.md`](./GOAL_A.md) and [`GOAL_B.md`](./GOAL_B.md) are completed capability-validation records. Their commerce and realtime dashboard fixtures prove general lifecycle, navigation, async-workflow, and Worker capabilities; they are not separate product verticals or future priority lists.
 
@@ -59,8 +59,10 @@ The post-0.9 train proves Kudzu as an application framework before freezing
 1.0. Local/shared state, async/server data, routing/lifetime, forms, large
 lists, overlays, external UI, long-lived resources, lazy loading, React
 migration, AI tooling, and production-scale proof each own one minor release.
-Each independently reviewable evidence packet owns one patch release. The exact
-sequence, stop conditions, completion gates, and active status are maintained in
+Each independently reviewable evidence packet owns one patch candidate. A
+candidate consumes a version only when it changes the shipped framework,
+documented support boundary, or generated project. The exact sequence, stop
+conditions, completion gates, and active status are maintained in
 [`docs/next-architecture/application-capability-release-plan.md`](./docs/next-architecture/application-capability-release-plan.md).
 
 ### 1.0.0: Best Framework For AI-Assisted Delivery
