@@ -959,6 +959,36 @@ projects on `@kudzujs/core@^0.14.1`.
 - **Done condition:** the full journey passes with explicit network and memory
   bounds.
 
+Release candidate evidence complete. The maintained project application adds one
+intrinsic sentinel, an owned native `IntersectionObserver`, cursor and request
+primitive state, an owned fetch with `AbortController`, immutable keyed append,
+duplicate ID suppression, and explicit loading/error/retry/end UI. The authored
+policy permits two successful pages of two records and retains at most six unique
+projects. It adds no infinite-query runtime, observer scheduler, cache, retained
+component tree, or virtualization machinery.
+
+Required Chrome proves duplicate sentinel triggers issue one request, duplicate
+records do not remount retained rows, cursor progression reaches an authored
+`503`, retry reaches terminal state, post-terminal triggers issue no request, and
+enhanced navigation disconnects the observer and aborts the in-flight fetch
+signal. Exact request counts and retained DOM identity pass. `/help` remains
+complete HTML with 0 B JavaScript.
+
+The slice adds zero semantic primitives, IR kinds, compiler passes, production
+compiler/runtime lines, normalization rules, adapters, runtime concepts, or
+public APIs. The application emits 44 files totaling 168,037 raw / 52,955
+aggregate gzip bytes with deploy SHA-256
+`230dea098442275e42a966ca595743a4da9c832327ba52d4d09de663c68f8f1a`.
+The maintained two-route session remains 17 JavaScript files totaling 76,889 raw
+/ 26,750 aggregate gzip bytes.
+
+Seven fresh macOS arm64 Chrome 151 profiles record table update samples of
+`[0.4, 0.5, 0.5, 0.3, 0.5, 0.4, 0.6]` ms, a 0.5 ms median and 0.3/0.6 ms range,
+plus navigation samples of `[2.3, 2.3, 2.2, 2.6, 2.5, 2.5, 2.3]` ms, a 2.3 ms
+median and 2.2/2.6 ms range. The environment differs from `0.14.1`, so no timing
+delta is claimed. `0.14.2` publishes this accepted packet, and
+`create-kudzu@0.1.124` generates projects on `@kudzujs/core@^0.14.2`.
+
 ### `0.14.3`: 10,000-Item Browser Decision
 
 - **Purpose:** measure direct DOM, pagination, and windowing alternatives.
@@ -1427,5 +1457,5 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.13.3` | Released | Preserve the published upload validation, cancellation, retry, route cleanup, and attachment mutation evidence. | None |
 | `0.14.0` | Released | Preserve native table CRUD, retained identity, keyboard access, and measured update evidence. | None |
 | `0.14.1` | Released | Preserve immutable object-state replacement, nested keyed identity, latest handlers, and exact row release. | None |
-| `0.14.2` | Active | Add the first failing infinite-loading composition fixture. | None |
+| `0.14.2` | Release candidate | Complete commit, CI, tag, GitHub release, npm publication, and registry verification. | Release transaction |
 | `0.14.3` onward | Blocked | Complete or explicitly close `0.14.2` first. | Ordered patch boundary |

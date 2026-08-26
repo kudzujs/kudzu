@@ -2,6 +2,32 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.14.2 Infinite Loading Composition
+
+Measured 2026-08-26 on macOS arm64 with Node 24.14.0 and Chrome
+151.0.7922.174.
+
+The project route adds one intrinsic sentinel, an owned `IntersectionObserver`,
+cursor fetch, duplicate suppression, error/retry/end state, and immutable keyed
+append. Required Chrome proves a three-request bound across two successful pages,
+at most six retained projects, retained existing-row identity, observer cleanup,
+and route-owned fetch abort. `/help` remains 0 B JavaScript.
+
+The application emits 44 files totaling 168,037 raw / 52,955 aggregate gzip
+bytes with deploy SHA-256
+`230dea098442275e42a966ca595743a4da9c832327ba52d4d09de663c68f8f1a`.
+The two-route session remains 17 JavaScript files and totals 76,889 raw / 26,750
+aggregate gzip bytes. The authored application composition adds 3,732 raw / 770
+gzip deploy bytes and 2,063 raw / 546 gzip session bytes over `0.14.1`; no
+semantic primitive, IR kind, compiler pass, production compiler/runtime line,
+runtime concept, or public API was added.
+
+Table update samples are `[0.4, 0.5, 0.5, 0.3, 0.5, 0.4, 0.6]` ms, with a 0.5
+ms median and 0.3/0.6 ms minimum/maximum. Navigation samples are
+`[2.3, 2.3, 2.2, 2.6, 2.5, 2.5, 2.3]` ms, with a 2.3 ms median and 2.2/2.6 ms
+minimum/maximum. The environment differs from the `0.14.1` release evidence, so
+no improvement or regression claim is made.
+
 ## 0.14.1 Nested Object-State Collections
 
 Measured 2026-08-26 on Linux x64 with Node 24.14.0 and Chrome

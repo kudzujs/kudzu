@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.14.1",
+  "milestone": "0.14.2",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -129,11 +129,19 @@
     "nested-collection-insert-update-remove-reorder",
     "nested-row-latest-handler",
     "nested-row-state-release",
+    "sentinel-driven-incremental-loading",
+    "incremental-cursor-progression",
+    "incremental-request-duplicate-suppression",
+    "incremental-error-and-retry",
+    "incremental-terminal-state",
+    "incremental-route-abort-cleanup",
+    "incremental-retained-row-identity",
+    "bounded-incremental-network-and-memory",
     "static-route-zero-javascript"
   ],
   "deferred": [
     "shared-request-coordination",
-    "unbounded-project-results"
+    "virtualized-project-results"
   ],
   "limitations": [
     "shared data lasts for one document and retained layout owner",
@@ -148,7 +156,8 @@
     "dirty and touched metadata is explicit object and array state rather than dynamic field registration",
     "draft persistence is application-owned versioned storage plus one dependency effect; there is no wizard or autosave scheduler",
     "fetch uploads expose no upload progress; chunking, resume, background sync, and an upload runtime remain unsupported",
-    "object-state collection roots require one direct static array field and immutable replacement; dynamic paths and mutation remain unsupported"
+    "object-state collection roots require one direct static array field and immutable replacement; dynamic paths and mutation remain unsupported",
+    "incremental loading allows two successful pages of two records and retains at most six unique projects; larger datasets require the separately measured 0.14.3 browser decision"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -256,21 +265,38 @@
       "latest-item-handlers"
     ]
   },
+  "infiniteLoadingDecision": {
+    "patch": "0.14.2",
+    "status": "closed-by-application-composition",
+    "runtime": null,
+    "fixture": "project-application",
+    "pageSize": 2,
+    "maxSuccessfulPages": 2,
+    "maxRetainedProjects": 6,
+    "reusedSemantics": [
+      "intersection-observer",
+      "owned-fetch",
+      "dependency-effect-cleanup",
+      "ordinary-primitive-state",
+      "immutable-keyed-append",
+      "keyed-row-identity"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 44,
-      "rawBytes": 164305,
-      "aggregateGzipBytes": 52185,
-      "sha256": "0a3b7e10b3447a76a9c04ef34ad7c2bfa30400ea53c9d16fc85b1c7cbf2ea203"
+      "rawBytes": 168037,
+      "aggregateGzipBytes": 52955,
+      "sha256": "230dea098442275e42a966ca595743a4da9c832327ba52d4d09de663c68f8f1a"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 63204,
-        "javascriptAggregateGzipBytes": 22570
+        "javascriptRawBytes": 65267,
+        "javascriptAggregateGzipBytes": 23118
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 64231,
-        "javascriptAggregateGzipBytes": 22545
+        "javascriptRawBytes": 64415,
+        "javascriptAggregateGzipBytes": 22650
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,

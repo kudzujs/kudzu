@@ -1,6 +1,6 @@
 /// <reference lib="es2023.array" />
 
-import { useEffect, useState } from "@kudzujs/core"
+import { useEffect, useRef, useState } from "@kudzujs/core"
 import { useSearchParams } from "react-router-dom"
 import { AppLayout, useWorkspace } from "../../AppLayout"
 import { projectFilters } from "../../projectFilters"
@@ -81,6 +81,14 @@ export default function ProjectsPage() {
   const [polling, setPolling] = useState(false)
   const [selectedId, setSelectedId] = useState("")
   const [sortDirection, setSortDirection] = useState<"source" | "ascending">("source")
+  const loadSentinel = useRef<HTMLDivElement>(null)
+  const [loadCursor, setLoadCursor] = useState(0)
+  const [requestedCursor, setRequestedCursor] = useState(-1)
+  const [loadRequest, setLoadRequest] = useState(0)
+  const [loadStatus, setLoadStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [loadError, setLoadError] = useState("")
+  const [loadEnd, setLoadEnd] = useState(false)
+  const [loadObserverGeneration, setLoadObserverGeneration] = useState(0)
   const filterLabel = filter === "all" ? "All projects" : "Active projects"
   const orderedProjects = projectData.projects.toSorted((left, right) => sortDirection === "ascending" ? left.name.localeCompare(right.name) : 0)
 
@@ -135,6 +143,44 @@ export default function ProjectsPage() {
     }
   }, [polling, request])
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting) return
+      observer.disconnect()
+      setRequestedCursor(loadCursor)
+      setLoadStatus("loading")
+      setLoadRequest(loadRequest + 1)
+    })
+    observer.observe(loadSentinel.current!)
+    return () => observer.disconnect()
+  }, [loadObserverGeneration])
+
+  useEffect(() => {
+    if (!loadRequest || requestedCursor < 0) return
+    const controller = new globalThis.AbortController()
+    setLoadError("")
+    void fetch(`/api/projects/incremental?cursor=${requestedCursor}`, { signal: controller.signal, headers: { Authorization: `Bearer ${token}` } })
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return response.json()
+      })
+      .then(page => {
+        setProjectData(current => ({ projects: [...current.projects, ...page.projects.filter((project: Project) => !current.projects.some(existing => existing.id === project.id))].slice(0, 6) }))
+        if (page.nextCursor === null) setLoadEnd(true)
+        else {
+          setLoadCursor(page.nextCursor)
+          setLoadObserverGeneration(loadObserverGeneration + 1)
+        }
+        setLoadStatus("success")
+      })
+      .catch(cause => {
+        if (controller.signal.aborted) return
+        setLoadError(cause instanceof Error ? cause.message : String(cause))
+        setLoadStatus("error")
+      })
+    return () => controller.abort()
+  }, [requestedCursor, loadRequest, token])
+
   return <main data-project-list-page>
     <h1>Projects</h1>
     <output data-route-workspace>{workspace}</output>
@@ -185,6 +231,13 @@ export default function ProjectsPage() {
     {status === "loading" && <p role="status">Loading projects</p>}
     {status === "success" && <p role="status">Projects loaded</p>}
     {status === "error" && <p role="alert">{error}</p>}
+    {loadStatus === "loading" && <p role="status" data-incremental-status>Loading more projects</p>}
+    {loadStatus === "error" && <p role="alert" data-incremental-error>{loadError}</p>}
+    {loadEnd && <p role="status" data-incremental-end>All projects loaded</p>}
+    <button data-retry-incremental hidden={loadStatus !== "error"} onClick={() => {
+      setLoadStatus("loading")
+      setLoadRequest(loadRequest + 1)
+    }}>Retry loading projects</button>
     <output id="project-filter" aria-live="polite">{filterLabel}</output>
     {showSummary && <section id="project-summary">
       <span id="project-count">{summary.projectCount}</span>
@@ -202,5 +255,6 @@ export default function ProjectsPage() {
         onDelete={() => setProjectData({ projects: projectData.projects.filter(entry => entry.id !== project.id) })}
       />)}</tbody>
     </table>
+    <div ref={loadSentinel} data-project-sentinel data-project-page-size="2" data-project-result-limit="6" aria-hidden="true" />
   </main>
 }

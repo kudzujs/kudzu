@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.14.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.14.1 - Nested and object-state collections.** Direct immutable array fields of ordinary object state now compose root and nested keyed ownership with retained identity, latest handlers, and exact row-state release. Read the [release notes](./RELEASES.md#0141---nested-and-object-state-collections), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.14.1), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.14.2 - Infinite loading composition.** Native `IntersectionObserver`, owned fetch, ordinary state, and existing keyed lists now compose bounded cursor loading with duplicate suppression, retry, terminal state, retained identity, and exact cleanup. Read the [release notes](./RELEASES.md#0142---infinite-loading-composition), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.14.2), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

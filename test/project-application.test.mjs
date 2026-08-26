@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.14.1 nested object-state collection contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.14.1 nested object-state collection contract", { timeout
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.14.1")
+  assert.equal(contract.milestone, "0.14.2")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -81,6 +81,16 @@ test("establishes the 0.14.1 nested object-state collection contract", { timeout
     fixture: "project-application",
     reusedSemantics: ["ordinary-object-state", "binding-backed-keyed-collection", "nested-keyed-ownership", "keyed-row-state-release", "latest-item-handlers"]
   })
+  assert.deepEqual(contract.infiniteLoadingDecision, {
+    patch: "0.14.2",
+    status: "closed-by-application-composition",
+    runtime: null,
+    fixture: "project-application",
+    pageSize: 2,
+    maxSuccessfulPages: 2,
+    maxRetainedProjects: 6,
+    reusedSemantics: ["intersection-observer", "owned-fetch", "dependency-effect-cleanup", "ordinary-primitive-state", "immutable-keyed-append", "keyed-row-identity"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -93,12 +103,12 @@ test("establishes the 0.14.1 nested object-state collection contract", { timeout
   const login = plan.routes.find(route => route.route === "/login")
   assert.deepEqual(projects.states.slice(0, 4).map(state => state.name), ["token", "username", "isAdmin", "authStatus"])
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection"])
-  assert.deepEqual(projects.states.slice(0, 21).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection", "loadCursor", "requestedCursor", "loadRequest", "loadStatus", "loadError", "loadEnd", "loadObserverGeneration"])
+  assert.deepEqual(projects.states.slice(0, 28).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
   assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["uploadName", "route", ""], ["uploadType", "route", ""], ["uploadContent", "route", ""], ["uploadSize", "route", 0], ["uploadRequest", "route", 0], ["uploadStatus", "route", "idle"], ["uploadError", "route", ""], ["attachments", "route", []], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
-  assert.equal(projects.effects.length, 6)
+  assert.equal(projects.effects.length, 8)
   assert.equal(detail.effects.length, 7)
-  assert.equal(projects.bindings.length, 17)
+  assert.equal(projects.bindings.length, 18)
   assert.equal(projects.lists.length, 3)
   const projectDataState = projects.states.find(state => state.name === "projectData")
   const projectList = projects.lists.find(list => list.source?.states.projectData === projectDataState.id)
@@ -138,6 +148,8 @@ test("establishes the 0.14.1 nested object-state collection contract", { timeout
   const runtimeIssueHtml = await readFile(new URL("dist/app/projects/[projectId]/issues/[issueId]/index.html", fixture), "utf8")
   const detailHtml = await readFile(new URL("dist/app/projects/alpha/index.html", fixture), "utf8")
   assert.match(projectsHtml, /data-project-table.*<thead>.*<th[^>]*>Project<\/th>.*<tbody>.*data-project="alpha".*data-project="beta".*<\/tbody>.*<\/table>/s)
+  assert.match(projectsHtml, /data-retry-incremental.*data-project-sentinel.*data-project-page-size="2".*data-project-result-limit="6"/s)
+  assert.match(await readFile(new URL("dist/assets/handlers/pages/app/projects.js", fixture), "utf8"), /IntersectionObserver.*incremental\?cursor=/s)
   assert.match(runtimeProjectHtml, /data-runtime-project.*data-project-id.*<h1>Project .*data-k-text="rp0".*This project route is directly addressable.*data-first-issue/s)
   assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
   assert.match(detailHtml, /data-issue-form.*data-k-native-reset.*data-form-dirty.*data-title-touched.*id="issue-title".*required.*minLength="5".*aria-invalid.*aria-describedby.*data-body-touched.*id="issue-body".*required.*minLength="20".*data-assignee-enabled.*data-checklist.*data-checklist-row="check-1".*name="checklist".*data-add-checklist.*data-reset-issue.*id="issue-submit"/s)
@@ -205,6 +217,29 @@ if (authMode === "anonymous") {
   sessionStorage.setItem("kudzu-auth-direct", "rejected")
 } else if (authMode === "member") localStorage.setItem("kudzu-project-token", "member-token")
 else if (!localStorage.getItem("kudzu-project-token")) localStorage.setItem("kudzu-project-token", "admin-token")
+globalThis.projectObserverStats = { instances: [], observes: 0, disconnects: 0, callbacks: 0 }
+globalThis.IntersectionObserver = class {
+  constructor(callback) {
+    this.callback = callback
+    this.active = false
+    projectObserverStats.instances.push(this)
+  }
+  observe(target) {
+    this.target = target
+    this.active = true
+    projectObserverStats.observes++
+  }
+  disconnect() {
+    if (!this.active) return
+    this.active = false
+    projectObserverStats.disconnects++
+  }
+  trigger() {
+    if (!this.active) return
+    projectObserverStats.callbacks++
+    this.callback([{ isIntersecting: true, target: this.target }])
+  }
+}
 </script></head>`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   }
   const loginUrl = new URL("login/index.html", output)
@@ -237,6 +272,15 @@ const waitForListRequests = async expected => {
   }
   throw new Error("list-request-count-" + expected)
 }
+const waitForIncrementalRequests = async expected => {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const counts = await projectCounts()
+    if (counts.incrementalRequests === expected) return counts
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  throw new Error("incremental-request-count-" + expected)
+}
+const activeProjectObserver = () => projectObserverStats.instances.findLast(observer => observer.active && observer.target?.matches("[data-project-sentinel]"))
 try {
   const search = new URLSearchParams(location.search)
   const storageMode = search.get("storage")
@@ -367,6 +411,23 @@ try {
       if (location.pathname !== "/app/projects/alpha" || document.querySelector("[data-app-layout]") !== layout || list.isConnected) throw new Error(routeFailure + "-retry-contract")
       document.body.dataset.routeFailureTest = "pass"
     }
+  } else if (search.has("infinite-cleanup")) {
+    await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Projects loaded" && activeProjectObserver(), "incremental-cleanup-entry")
+    const list = document.querySelector("[data-project-list-page]")
+    const before = await projectCounts()
+    const browserFetch = globalThis.fetch
+    let incrementalSignal
+    globalThis.fetch = (input, init) => {
+      if (new URL(typeof input === "string" || input instanceof URL ? input : input.url, location.href).pathname === "/api/projects/incremental") incrementalSignal = init?.signal
+      return browserFetch(input, init)
+    }
+    activeProjectObserver().trigger()
+    await waitForIncrementalRequests(before.incrementalRequests + 1)
+    document.querySelector('a[href="/app/projects/alpha"]').click()
+    await waitFor(() => document.querySelector("[data-project-detail]"), "incremental-cleanup-navigation")
+    await new Promise(resolve => setTimeout(resolve, 300))
+    if (list.isConnected || !incrementalSignal?.aborted || activeProjectObserver() || projectObserverStats.disconnects < 1) throw new Error("incremental-route-cleanup")
+    document.body.dataset.infiniteCleanupTest = "pass"
   } else if (storageMode) {
     const expected = storageMode === "valid" ? "Secondary" : "Primary"
     await waitFor(() => document.querySelector("[data-workspace]")?.textContent === expected && document.querySelector("[data-route-workspace]")?.textContent === expected, "storage-restore")
@@ -399,8 +460,29 @@ try {
   if (document.querySelector("[data-server-page]").textContent !== "1" || document.querySelector("[data-server-filter]").textContent !== "all" || document.querySelectorAll("[data-project]").length > 2) throw new Error("initial-bounded-page")
   counts = await projectCounts()
   if (counts.listRequests !== 4) throw new Error("initial-list-request-count")
+  await waitFor(() => activeProjectObserver(), "incremental-observer")
+  const incrementalAlpha = document.querySelector('[data-project="alpha"]')
+  const incrementalBeta = document.querySelector('[data-project="beta"]')
+  const firstObserver = activeProjectObserver()
+  firstObserver.trigger()
+  firstObserver.trigger()
+  await waitFor(() => document.querySelector('[data-project="gamma"]') && document.querySelector('[data-incremental-status]')?.textContent !== "Loading more projects", "incremental-first-page")
+  counts = await projectCounts()
+  if (counts.incrementalRequests !== 1 || projectObserverStats.callbacks !== 1 || document.querySelector('[data-project="alpha"]') !== incrementalAlpha || document.querySelector('[data-project="beta"]') !== incrementalBeta || document.querySelectorAll('[data-project="beta"]').length !== 1 || document.querySelectorAll("[data-project]").length !== 3) throw new Error("incremental-first-contract")
+  await waitFor(() => activeProjectObserver() && activeProjectObserver() !== firstObserver, "incremental-next-observer")
+  activeProjectObserver().trigger()
+  await waitFor(() => document.querySelector('[data-incremental-error]')?.textContent === "HTTP 503", "incremental-error")
+  counts = await projectCounts()
+  if (counts.incrementalRequests !== 2 || activeProjectObserver()) throw new Error("incremental-error-contract-" + counts.incrementalRequests + "-" + projectObserverStats.instances.map(observer => Number(observer.active)).join("") + "-" + projectObserverStats.observes + "-" + projectObserverStats.disconnects)
+  document.querySelector("[data-retry-incremental]").click()
+  await waitFor(() => document.querySelector("[data-incremental-end]") && document.querySelector('[data-project="delta"]') && document.querySelector('[data-project="epsilon"]'), "incremental-retry-end")
+  counts = await projectCounts()
+  if (counts.incrementalRequests !== 3 || document.querySelectorAll("[data-project]").length !== 5 || document.querySelectorAll('[data-project="beta"]').length !== 1 || activeProjectObserver()) throw new Error("incremental-bounds")
+  for (const observer of projectObserverStats.instances) if (observer.target?.matches("[data-project-sentinel]")) observer.trigger()
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if ((await projectCounts()).incrementalRequests !== 3) throw new Error("incremental-after-end")
   document.querySelector("#next-project-page").click()
-  await waitFor(() => document.querySelector("[data-server-page]")?.textContent === "2" && document.querySelector('[data-project="gamma"]') && document.querySelector('[role="status"]')?.textContent === "Projects loaded", "next-server-page")
+  await waitFor(() => document.querySelector("[data-server-page]")?.textContent === "2" && document.querySelector('[data-project="gamma"]') && document.querySelectorAll("[data-project]").length === 2 && document.querySelector('[role="status"]')?.textContent === "Projects loaded", "next-server-page")
   if (location.search !== "?page=2&filter=all" || document.querySelectorAll("[data-project]").length !== 2) throw new Error("next-page-url-bound")
   counts = await projectCounts()
   if (counts.listRequests !== 5) throw new Error("next-page-request-count")
@@ -588,7 +670,8 @@ try {
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1], port = Number(process.argv[2])
 const rewrites = JSON.parse(fs.readFileSync(path.join(root, "rewrites.json")))
-let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, issueCreateAttempts = 0, issueCreates = 0, draftSaveAttempts = 0, draftSaves = 0, savedDraftVersion = 0, uploadAttempts = 0, uploadCreates = 0, uploadAborts = 0, listRequests = 0
+let project = { id: "alpha", name: "Alpha", revision: 0 }, projectReads = 0, projectMutations = 0, projectMutationAttempts = 0, issueCreateAttempts = 0, issueCreates = 0, draftSaveAttempts = 0, draftSaves = 0, savedDraftVersion = 0, uploadAttempts = 0, uploadCreates = 0, uploadAborts = 0, listRequests = 0, incrementalRequests = 0, incrementalAborts = 0
+const incrementalAttempts = new Map()
 const routeFailureAttempts = new Map()
 const users = { "admin-token": { username: "Ada", isAdmin: true }, "login-admin-token": { username: "Ada", isAdmin: true }, "member-token": { username: "Mina", isAdmin: false } }, revoked = new Set()
 http.createServer((request, response) => {
@@ -644,7 +727,7 @@ http.createServer((request, response) => {
   }
   if (pathname === "/api/project-counts") {
     response.setHeader("content-type", "application/json")
-    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, issueCreateAttempts, issueCreates, draftSaveAttempts, draftSaves, savedDraftVersion, uploadAttempts, uploadCreates, uploadAborts, listRequests }))
+    response.end(JSON.stringify({ reads: projectReads, mutations: projectMutations, attempts: projectMutationAttempts, issueCreateAttempts, issueCreates, draftSaveAttempts, draftSaves, savedDraftVersion, uploadAttempts, uploadCreates, uploadAborts, listRequests, incrementalRequests, incrementalAborts }))
     return
   }
   if (pathname === "/api/projects/alpha/setup-draft" && request.method === "PUT") {
@@ -740,6 +823,31 @@ http.createServer((request, response) => {
     response.end(JSON.stringify(filter === "active" ? projects.slice(0, 1) : projects))
     return
   }
+  if (pathname === "/api/projects/incremental") {
+    const cursor = Number(url.searchParams.get("cursor"))
+    const attempt = (incrementalAttempts.get(cursor) || 0) + 1
+    incrementalAttempts.set(cursor, attempt)
+    incrementalRequests++
+    response.setHeader("content-type", "application/json")
+    if (!user) { response.statusCode = 401; response.end(JSON.stringify({ error: "unauthorized" })); return }
+    response.on("close", () => { if (!response.writableEnded) incrementalAborts++ })
+    setTimeout(() => {
+      if (response.destroyed) return
+      if (cursor === 1 && attempt === 1) { response.statusCode = 503; response.end(JSON.stringify({ error: "unavailable" })); return }
+      if (cursor === 0) {
+        response.end(JSON.stringify({ projects: [
+          { id: "beta", name: "Beta duplicate", status: "archived", issues: [] },
+          { id: "gamma", name: "Gamma", status: "active", issues: [{ id: "g1", title: "Incremental result" }] }
+        ], nextCursor: 1 }))
+        return
+      }
+      response.end(JSON.stringify({ projects: [
+        { id: "delta", name: "Delta", status: "active", issues: [] },
+        { id: "epsilon", name: "Epsilon", status: "archived", issues: [] }
+      ], nextCursor: null }))
+    }, 250)
+    return
+  }
   const segments = pathname.split("/").filter(Boolean)
   const rewrite = rewrites.find(entry => entry.segments.length === segments.length && entry.segments.every((segment, index) => segment.literal === undefined || segment.literal === segments[index]))
   const relative = pathname === "/" ? "index.html" : pathname.slice(1)
@@ -769,6 +877,9 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=10000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/, browser.stdout.match(/data-browser-test="[^"]+"/)?.[0] ?? browser.stderr)
+    const cleanup = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?infinite-cleanup=1`], { encoding: "utf8", timeout: 20_000 })
+    assert.equal(cleanup.status, 0, cleanup.stderr)
+    assert.match(cleanup.stdout, /data-infinite-cleanup-test="pass"/, cleanup.stderr)
     const history = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?history=1`], { encoding: "utf8", timeout: 20_000 })
     assert.equal(history.status, 0, history.stderr)
     assert.match(history.stdout, /data-navigation-test="pass"/, history.stderr)

@@ -1,5 +1,53 @@
 # Kudzu Releases
 
+## 0.14.2 - Infinite Loading Composition
+
+Kudzu 0.14.2 composes bounded sentinel-driven loading from ordinary state,
+owned effects, native `IntersectionObserver`, fetch, and existing keyed lists.
+
+### Changed in 0.14.2
+
+- Added an intrinsic sentinel with an owned observer and exact disconnect.
+- Added cursor-based incremental fetch with duplicate project suppression.
+- Added accessible loading, error, retry, and terminal states.
+- Aborted in-flight incremental work when enhanced navigation releases the route.
+- Bounded successful incremental pages to two and retained projects to six.
+- Updated `create-kudzu@0.1.124` to generate projects on
+  `@kudzujs/core@^0.14.2`.
+
+### Output Evidence
+
+- The application emits 44 files totaling 168,037 raw / 52,955 aggregate gzip
+  bytes with deploy digest
+  `230dea098442275e42a966ca595743a4da9c832327ba52d4d09de663c68f8f1a`.
+- The maintained two-route session remains 17 JavaScript files and totals
+  76,889 raw / 26,750 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, production compiler/runtime
+  line, normalization rule, adapter, runtime concept, public API, infinite-query
+  runtime, or observer scheduler was added.
+
+### Validation
+
+- Required Chrome proves cursor progression, duplicate trigger and record
+  suppression, HTTP error and retry, terminal state, retained row identity,
+  bounded requests/results, observer disconnect, and route-owned fetch abort.
+- The complete suite passes 274 tests, package smoke, and serialized required-
+  Chrome execution.
+- Seven fresh Chrome 151 profiles record a 0.5 ms table-update median with a
+  0.3-0.6 ms range and a 2.3 ms navigation median with a 2.2-2.6 ms range.
+
+### Limits
+
+Incremental loading is capped at two successful pages of two records and six
+retained projects. Unbounded datasets, automatic query caching, windowing, and
+virtualization remain separate measured decisions.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.14.2
+```
+
 ## 0.14.1 - Nested And Object-State Collections
 
 Kudzu 0.14.1 lets one direct immutable array field of ordinary object state own
