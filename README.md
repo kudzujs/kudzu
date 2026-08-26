@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.14.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.14.0 - Project table CRUD and identity.** Native table structure, ordinary state, collection selectors, and keyed ownership compose complete project CRUD with retained row identity and no data-grid runtime. Read the [release notes](./RELEASES.md#0140---project-table-crud-and-identity), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.14.0), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.14.1 - Nested and object-state collections.** Direct immutable array fields of ordinary object state now compose root and nested keyed ownership with retained identity, latest handlers, and exact row-state release. Read the [release notes](./RELEASES.md#0141---nested-and-object-state-collections), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.14.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

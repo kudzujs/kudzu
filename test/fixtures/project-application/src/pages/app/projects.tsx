@@ -24,6 +24,19 @@ const beta: Project = {
   issues: [{ id: "b1", title: "Archive notes" }]
 }
 
+function IssueRow({ issue }: { issue: Issue }) {
+  const [visits, setVisits] = useState(0)
+
+  return <li data-issue={issue.id}>
+    <span data-issue-title>{issue.title}</span>
+    <output data-issue-visits>{visits}</output>
+    <button data-visit-issue={issue.id} onClick={() => {
+      document.body.dataset.selectedIssue = `${issue.id}:${issue.title}`
+      setVisits(visits + 1)
+    }}>Visit issue</button>
+  </li>
+}
+
 function ProjectRow({ project, selected, onSelect, onSave, onDelete }: { project: Project; selected: boolean; onSelect: () => void; onSave: (name: string) => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -46,7 +59,7 @@ function ProjectRow({ project, selected, onSelect, onSave, onDelete }: { project
       </span>
       <button data-delete-project={project.id} onClick={onDelete}>Delete</button>
       <ul data-issues={project.id}>
-        {project.issues.map(issue => <li key={issue.id} data-issue={issue.id}>{issue.title}</li>)}
+        {project.issues.map(issue => <IssueRow key={issue.id} issue={issue} />)}
       </ul>
     </td>
   </tr>
@@ -58,7 +71,7 @@ export default function ProjectsPage() {
   const page = Number(searchParams.get("page")) || 1
   const serverFilter = searchParams.get("filter") || projectFilters[0]
   const [summary, setSummary] = useState({ projectCount: 2, issueCount: 3 })
-  const [projects, setProjects] = useState([alpha, beta])
+  const [projectData, setProjectData] = useState({ projects: [alpha, beta] })
   const [filter, setFilter] = useState<"all" | "active">("all")
   const [showSummary, setShowSummary] = useState(true)
   const [savedFilters, setSavedFilters] = useState([{ id: "all", label: "All" }])
@@ -69,7 +82,7 @@ export default function ProjectsPage() {
   const [selectedId, setSelectedId] = useState("")
   const [sortDirection, setSortDirection] = useState<"source" | "ascending">("source")
   const filterLabel = filter === "all" ? "All projects" : "Active projects"
-  const orderedProjects = projects.toSorted((left, right) => sortDirection === "ascending" ? left.name.localeCompare(right.name) : 0)
+  const orderedProjects = projectData.projects.toSorted((left, right) => sortDirection === "ascending" ? left.name.localeCompare(right.name) : 0)
 
   useEffect(() => {
     if (!token) return
@@ -91,7 +104,7 @@ export default function ProjectsPage() {
           document.body.dataset.projectFetchPending = "true"
           await new Promise(resolve => setTimeout(resolve, 250))
         }
-        setProjects(nextProjects)
+        setProjectData({ projects: nextProjects })
         setSummary({ projectCount: 2, issueCount: 3 })
         setStatus("success")
       })
@@ -148,21 +161,25 @@ export default function ProjectsPage() {
     <button id="disable-project-polling" disabled={!polling} onClick={() => setPolling(false)}>Disable polling</button>
     <button id="show-active" onClick={() => setFilter("active")}>Show active</button>
     <button id="show-all" onClick={() => setFilter("all")}>Show all</button>
-    <button id="insert-project" onClick={() => setProjects([...projects, { id: "delta", name: "Delta", status: "active", issues: [{ id: "d1", title: "Plan table" }] }])}>Insert project</button>
-    <button id="reverse-projects" onClick={() => setProjects([...projects].reverse())}>Reverse projects</button>
+    <button id="insert-project" onClick={() => setProjectData({ projects: [...projectData.projects, { id: "delta", name: "Delta", status: "active", issues: [{ id: "d1", title: "Plan table" }] }] })}>Insert project</button>
+    <button id="reverse-projects" onClick={() => setProjectData({ projects: [...projectData.projects].reverse() })}>Reverse projects</button>
     <button id="sort-projects" onClick={() => setSortDirection("ascending")}>Sort projects</button>
+    <button id="update-alpha-issue" onClick={() => setProjectData({ projects: projectData.projects.map(project => project.id === "alpha" ? { ...project, issues: project.issues.map(issue => issue.id === "a1" ? { ...issue, title: "Design schema updated" } : issue) } : project) })}>Update Alpha issue</button>
+    <button id="reorder-alpha-issues" onClick={() => setProjectData({ projects: projectData.projects.map(project => project.id === "alpha" ? { ...project, issues: [...project.issues].reverse() } : project) })}>Reorder Alpha issues</button>
+    <button id="remove-alpha-issue" onClick={() => setProjectData({ projects: projectData.projects.map(project => project.id === "alpha" ? { ...project, issues: project.issues.filter(issue => issue.id !== "a1") } : project) })}>Remove Alpha issue</button>
+    <button id="restore-alpha-issue" onClick={() => setProjectData({ projects: projectData.projects.map(project => project.id === "alpha" ? { ...project, issues: [...project.issues, { id: "a1", title: "Design schema restored" }] } : project) })}>Restore Alpha issue</button>
     <button id="toggle-summary" onClick={() => setShowSummary(!showSummary)}>Toggle summary</button>
     <button id="replace-workspace" onClick={() => {
       setSummary({ projectCount: 2, issueCount: 4 })
-      setProjects([{ ...alpha, name: "Alpha updated", issues: [...alpha.issues, { id: "a3", title: "Verify release" }] }, beta])
+      setProjectData({ projects: [{ ...alpha, name: "Alpha updated", issues: [...alpha.issues, { id: "a3", title: "Verify release" }] }, beta] })
     }}>Replace workspace</button>
     <button id="remove-alpha" onClick={() => {
       setSummary({ projectCount: 1, issueCount: 1 })
-      setProjects([beta])
+      setProjectData({ projects: [beta] })
     }}>Remove Alpha</button>
     <button id="restore-alpha" onClick={() => {
       setSummary({ projectCount: 2, issueCount: 3 })
-      setProjects([alpha, beta])
+      setProjectData({ projects: [alpha, beta] })
     }}>Restore Alpha</button>
     <button id="save-active" onClick={() => setSavedFilters([...savedFilters, { id: "active", label: "Active" }])}>Save active</button>
     {status === "loading" && <p role="status">Loading projects</p>}
@@ -181,8 +198,8 @@ export default function ProjectsPage() {
         project={project}
         selected={selectedId === project.id}
         onSelect={() => setSelectedId(project.id)}
-        onSave={name => setProjects(projects.map(entry => entry.id === project.id ? { ...entry, name } : entry))}
-        onDelete={() => setProjects(projects.filter(entry => entry.id !== project.id))}
+        onSave={name => setProjectData({ projects: projectData.projects.map(entry => entry.id === project.id ? { ...entry, name } : entry) })}
+        onDelete={() => setProjectData({ projects: projectData.projects.filter(entry => entry.id !== project.id) })}
       />)}</tbody>
     </table>
   </main>

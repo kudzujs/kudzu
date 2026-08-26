@@ -96,6 +96,7 @@ function mountLists(root) {
       ownedLists.set(list.owner, lists)
       listRegistrations.set(start, { list, owner: list.owner })
     } else if (descriptor.source) {
+      if (descriptor.children) updateList(list)
       const load = {}
       listLoads.set(start, load)
       loadListEvaluator(descriptor.source).then(evaluator => {

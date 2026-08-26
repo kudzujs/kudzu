@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.14.0",
+  "milestone": "0.14.1",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -124,6 +124,11 @@
     "project-row-local-edit-state",
     "project-table-keyboard-controls",
     "retained-project-row-identity",
+    "object-state-root-collection",
+    "nested-object-state-replacement",
+    "nested-collection-insert-update-remove-reorder",
+    "nested-row-latest-handler",
+    "nested-row-state-release",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -142,7 +147,8 @@
     "forms use native constraints and application-owned state; there is no field registry, proxy metadata graph, or form runtime",
     "dirty and touched metadata is explicit object and array state rather than dynamic field registration",
     "draft persistence is application-owned versioned storage plus one dependency effect; there is no wizard or autosave scheduler",
-    "fetch uploads expose no upload progress; chunking, resume, background sync, and an upload runtime remain unsupported"
+    "fetch uploads expose no upload progress; chunking, resume, background sync, and an upload runtime remain unsupported",
+    "object-state collection roots require one direct static array field and immutable replacement; dynamic paths and mutation remain unsupported"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -238,21 +244,33 @@
       "native-keyboard-controls"
     ]
   },
+  "objectStateCollectionsDecision": {
+    "patch": "0.14.1",
+    "status": "closed-by-existing-keyed-ownership",
+    "fixture": "project-application",
+    "reusedSemantics": [
+      "ordinary-object-state",
+      "binding-backed-keyed-collection",
+      "nested-keyed-ownership",
+      "keyed-row-state-release",
+      "latest-item-handlers"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 44,
-      "rawBytes": 159258,
-      "aggregateGzipBytes": 51627,
-      "sha256": "ebb3358e7a03612459e723ae765c39d105498db9d293415b924f1066cddf4793"
+      "rawBytes": 164305,
+      "aggregateGzipBytes": 52185,
+      "sha256": "0a3b7e10b3447a76a9c04ef34ad7c2bfa30400ea53c9d16fc85b1c7cbf2ea203"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 61682,
-        "javascriptAggregateGzipBytes": 22297
+        "javascriptRawBytes": 63204,
+        "javascriptAggregateGzipBytes": 22570
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 64166,
-        "javascriptAggregateGzipBytes": 22514
+        "javascriptRawBytes": 64231,
+        "javascriptAggregateGzipBytes": 22545
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,

@@ -316,7 +316,7 @@ export function list(items, keyField, render, ownerField, selector = [], indexed
   const source = items?.[bindingMarker] ? bindingDescriptor(items) : undefined
   if (source) items = createInternalState(items.value)
   if (Array.isArray(items)) items = createInternalState(items)
-  if (!items?.[signalMarker] || !Array.isArray(items.value)) throw new Error("A keyed list must use local array state or a supported imported static array")
+  if (!items?.[signalMarker] || (!ownerField && !Array.isArray(items.value))) throw new Error("A keyed list must use local array state or a supported imported static array")
   const selectorStateMap = new Map(selectorStates)
   for (const [name, state] of selectorStateMap) if (!state?.[signalMarker]) throw new Error(`Rendered collection selector state ${JSON.stringify(name)} must be framework state`)
   let values = items.value

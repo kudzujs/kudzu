@@ -918,6 +918,37 @@ generates projects on `@kudzujs/core@^0.14.0`.
 - **Done condition:** direct immutable paths cover the application journey and
   nearby dynamic forms fail clearly.
 
+Release evidence complete. The first failure replaced the project route's
+separate array state with one direct `projectData.projects` field and failed at
+build time because nested lists required their source ownership signal itself to
+contain an array. The compiler already emitted a binding-backed root
+`KeyedBlockIR`, its selector states, and the nested issue child block. Build-time
+list validation now allows an object-valued signal only for a compiler-proven
+`ownerField`; root lists still require arrays and nested non-array fields still
+fail. Browser mounting initializes binding-backed roots with children from their
+serialized state before the evaluator module loads, preserving the existing
+parent prototype and ownership path.
+
+Required Chrome proves immutable whole-object replacement, nested issue insert,
+update, reorder, removal, re-addition, retained project/issue identity, latest
+issue handlers, descendant state release, and fresh remount. Existing dynamic
+object-property, alias, mutation, mutating-sort, and non-array diagnostics retain
+the negative boundary, while `/help` remains complete HTML with 0 B JavaScript.
+The slice adds zero semantic primitives, IR kinds, compiler passes,
+normalization rules, adapters, runtime concepts, or public APIs. It changes one
+build-time validation line and adds one production list-runtime line.
+
+The release emits 44 files totaling 164,305 raw / 52,185 aggregate gzip bytes
+with deploy SHA-256
+`0a3b7e10b3447a76a9c04ef34ad7c2bfa30400ea53c9d16fc85b1c7cbf2ea203`.
+The two-route session remains 17 JavaScript files totaling 74,826 raw / 26,204
+aggregate gzip bytes. Seven fresh Chrome 142 profiles record table
+update samples of `[0.8, 0.8, 0.7, 0.8, 0.9, 0.8, 0.8]` ms, a 0.8 ms median and
+0.7/0.9 ms range, plus navigation samples of
+`[3.7, 4.1, 4.5, 3.9, 4.2, 3.9, 4.3]` ms, a 4.1 ms median and 3.7/4.5 ms range.
+`0.14.1` publishes this accepted packet, and `create-kudzu@0.1.123` generates
+projects on `@kudzujs/core@^0.14.1`.
+
 ### `0.14.2`: Infinite Loading Composition
 
 - **Purpose:** prove sentinel-driven incremental loading before virtualization.
@@ -1395,5 +1426,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.13.2` | Released | Preserve multistep validation, versioned persistence, stale-save rejection, conflict retention, and reset evidence. | None |
 | `0.13.3` | Released | Preserve the published upload validation, cancellation, retry, route cleanup, and attachment mutation evidence. | None |
 | `0.14.0` | Released | Preserve native table CRUD, retained identity, keyboard access, and measured update evidence. | None |
-| `0.14.1` | Active | Add the first failing nested/object-state collection fixture. | None |
-| `0.14.2` onward | Blocked | Complete or explicitly close `0.14.1` first. | Ordered patch boundary |
+| `0.14.1` | Released | Preserve immutable object-state replacement, nested keyed identity, latest handlers, and exact row release. | None |
+| `0.14.2` | Active | Add the first failing infinite-loading composition fixture. | None |
+| `0.14.3` onward | Blocked | Complete or explicitly close `0.14.2` first. | Ordered patch boundary |

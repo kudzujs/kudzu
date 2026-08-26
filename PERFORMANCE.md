@@ -2,6 +2,33 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.14.1 Nested Object-State Collections
+
+Measured 2026-08-26 on Linux x64 with Node 24.14.0 and Chrome
+142.0.7444.175.
+
+The project route now roots its selected project table and nested issue rows in
+one direct `projectData.projects` field. Required Chrome proves immutable
+whole-object replacement, nested insert/update/reorder/remove/re-add, retained
+identity, latest handlers, descendant state release, and fresh remount. `/help`
+remains 0 B JavaScript.
+
+The application emits 44 files totaling 164,305 raw / 52,185 aggregate gzip
+bytes with deploy SHA-256
+`0a3b7e10b3447a76a9c04ef34ad7c2bfa30400ea53c9d16fc85b1c7cbf2ea203`.
+The two-route session remains 17 JavaScript files and totals 74,826 raw / 26,204
+aggregate gzip bytes. The delta from `0.14.0` includes the authored nested issue
+controls and handlers plus one build-time validation-line edit and one production
+list-runtime line; no semantic primitive, IR kind, compiler pass, runtime concept,
+or public API was added.
+
+Table update samples are
+`[0.8, 0.8, 0.7, 0.8, 0.9, 0.8, 0.8]` ms, with a 0.8 ms median and 0.7/0.9 ms
+minimum/maximum. Navigation samples are
+`[3.7, 4.1, 4.5, 3.9, 4.2, 3.9, 4.3]` ms, with a 4.1 ms median and 3.7/4.5 ms
+minimum/maximum. The navigation ranges overlap the `0.14.0` release evidence;
+no improvement or regression claim is made.
+
 `npm run benchmark:source-scale` generates its fixture outside the repository so 50,000 lines of synthetic source are not tracked. The default topology is 50 pages plus 450 route-owned imported modules. Generation is excluded from timing; fresh-process samples separately report source reads, reachable-graph discovery, source compilation, clean production build, compiler-result and deploy digests, output files/bytes, cache counters, and peak RSS. `ROUTES`, `MODULES_PER_ROUTE`, `FILLER_LINES`, `WARMUPS`, and `RUNS` may reduce or expand the fixture without changing the default acceptance floor. `TARGET_ROOT` measures another checkout; `BASELINE_ROOT` alternates that checkout with the current tree and requires identical deploy output.
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.

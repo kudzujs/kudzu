@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.14.0/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.14.1/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.14\.0 typescript/)
-  assert.match(docs, /Current 0\.14\.0 application proof/)
-  assert.match(examples, /Release 0\.14\.0.*v0\.14\.0.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.14\.0.*v0\.14\.0.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.14\.0".*Project table CRUD and identity/s)
-  assert.match(release, /Kudzu 0\.14\.0.*Edit the row.*Keep its identity/s)
-  assert.match(release, /TABLES · CRUD · KEYED IDENTITY.*KEYED TABLE OWNERSHIP.*npm install @kudzujs\/core@\^0\.14\.0/s)
-  assert.match(release, /<title>Kudzu 0\.14\.0 - Project table CRUD and identity<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.14\.0"/)
-  assert.match(release, /Use a native table.*Commit in 0\.8 ms/s)
+  assert.match(docs, /@kudzujs\/core@\^0\.14\.1 typescript/)
+  assert.match(docs, /Current 0\.14\.1 application proof/)
+  assert.match(examples, /Release 0\.14\.1.*v0\.14\.1.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.14\.1.*v0\.14\.1.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.14\.1".*Nested and object-state collections/s)
+  assert.match(release, /Kudzu 0\.14\.1.*Replace the object.*Retain the rows/s)
+  assert.match(release, /OBJECT STATE · NESTED LISTS · KEYED IDENTITY.*NESTED KEYED OWNERSHIP.*npm install @kudzujs\/core@\^0\.14\.1/s)
+  assert.match(release, /<title>Kudzu 0\.14\.1 - Nested and object-state collections<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.14\.1"/)
+  assert.match(release, /Own one object.*Fail closed/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -732,6 +732,30 @@ test("rejects non-serializable keyed list data", async () => {
     const [items] = useState([{ id: 1, nested: Object.assign(Object.create(null), { name: "Oak" }) }])
     return list(items, "id", entry => jsx("p", { children: entry.id }))
   }, { styles: false }), /ordinary plain objects/)
+})
+
+test("uses object state as a nested keyed list ownership anchor", async () => {
+  const result = await renderPage(() => {
+    const [parents] = useState([{ id: "parent", children: [{ id: "child" }] }])
+    const [data] = useState({ parents: parents.value })
+    return list(parents, "id", () => jsx("section", {
+      children: list(data, "id", child => jsx("p", { "data-child": child.id }), "children")
+    }))
+  }, { styles: false })
+  assert.match(result.html, /data-child="child"/)
+
+  await assert.rejects(renderPage(() => {
+    const [data] = useState({ items: [{ id: "item" }] })
+    return list(data, "id", () => jsx("p", {}))
+  }, { styles: false }), /A keyed list must use local array state/)
+
+  await assert.rejects(renderPage(() => {
+    const [parents] = useState([{ id: "parent", children: {} }])
+    const [data] = useState({ parents: parents.value })
+    return list(parents, "id", () => jsx("section", {
+      children: list(data, "id", child => jsx("p", { "data-child": child.id }), "children")
+    }))
+  }, { styles: false }), /Nested keyed list property "children" must remain an array/)
 })
 
 test("renders JSON-safe primitive positional list data", async () => {

@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.14.0 project table CRUD and identity contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.14.1 nested object-state collection contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.14.0 project table CRUD and identity contract", { timeou
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.14.0")
+  assert.equal(contract.milestone, "0.14.1")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -75,6 +75,12 @@ test("establishes the 0.14.0 project table CRUD and identity contract", { timeou
     fixture: "project-application",
     reusedSemantics: ["native-table", "ordinary-array-state", "pure-collection-selectors", "keyed-row-state", "keyed-row-identity", "native-keyboard-controls"]
   })
+  assert.deepEqual(contract.objectStateCollectionsDecision, {
+    patch: "0.14.1",
+    status: "closed-by-existing-keyed-ownership",
+    fixture: "project-application",
+    reusedSemantics: ["ordinary-object-state", "binding-backed-keyed-collection", "nested-keyed-ownership", "keyed-row-state-release", "latest-item-handlers"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -87,14 +93,18 @@ test("establishes the 0.14.0 project table CRUD and identity contract", { timeou
   const login = plan.routes.find(route => route.route === "/login")
   assert.deepEqual(projects.states.slice(0, 4).map(state => state.name), ["token", "username", "isAdmin", "authStatus"])
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection"])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection"])
   assert.deepEqual(projects.states.slice(0, 21).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
   assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["uploadName", "route", ""], ["uploadType", "route", ""], ["uploadContent", "route", ""], ["uploadSize", "route", 0], ["uploadRequest", "route", 0], ["uploadStatus", "route", "idle"], ["uploadError", "route", ""], ["attachments", "route", []], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
   assert.equal(projects.effects.length, 6)
   assert.equal(detail.effects.length, 7)
   assert.equal(projects.bindings.length, 17)
   assert.equal(projects.lists.length, 3)
-  assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
+  const projectDataState = projects.states.find(state => state.name === "projectData")
+  const projectList = projects.lists.find(list => list.source?.states.projectData === projectDataState.id)
+  const issueList = projects.lists.find(list => list.ownerField === "issues")
+  assert.equal(issueList.state, projectDataState.id)
+  assert.equal(projectList.children.some(child => child.id === issueList.id && child.field === "issues"), true)
   assert.equal(projects.lists.some(list => Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "filter").id) && Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "sortDirection").id) && list.expressionStates?.includes(projects.states.find(state => state.name === "selectedId").id) && list.rowStates?.length === 3), true)
   assert.equal(projects.conditions.some(condition => condition.state === projects.states.find(state => state.name === "showSummary").id), true)
   assert.deepEqual(projectArtifacts.capability.manifest.events.command, ["click"])
@@ -476,7 +486,31 @@ try {
   await waitFor(() => document.querySelector('[data-project="beta"]')?.getAttribute("aria-selected") === "true", "filter-restore")
   const restoredBeta = document.querySelector('[data-project="beta"]')
   if (restoredBeta === beta || !restoredBeta.querySelector('[data-project-editor="beta"]').hidden) throw new Error("filter-row-state-reset")
-  const issue = document.querySelector('[data-issue="a1"]')
+  let issue = document.querySelector('[data-issue="a1"]')
+  const secondIssue = document.querySelector('[data-issue="a2"]')
+  document.querySelector('[data-visit-issue="a1"]').click()
+  await waitFor(() => issue.querySelector("[data-issue-visits]").textContent === "1", "nested-row-state")
+  if (document.body.dataset.selectedIssue !== "a1:Design schema") throw new Error("nested-handler-initial")
+  document.querySelector("#update-alpha-issue").click()
+  await waitFor(() => issue.querySelector("[data-issue-title]").textContent === "Design schema updated", "nested-update")
+  if (document.querySelector('[data-issue="a1"]') !== issue || issue.querySelector("[data-issue-visits]").textContent !== "1") throw new Error("nested-update-identity")
+  document.querySelector('[data-visit-issue="a1"]').click()
+  await waitFor(() => issue.querySelector("[data-issue-visits]").textContent === "2", "nested-latest-handler")
+  if (document.body.dataset.selectedIssue !== "a1:Design schema updated") throw new Error("nested-handler-latest")
+  document.querySelector("#reorder-alpha-issues").click()
+  await waitFor(() => document.querySelector('[data-issues="alpha"] [data-issue]') === secondIssue, "nested-reorder")
+  if (document.querySelector('[data-issue="a1"]') !== issue || document.querySelector('[data-issue="a2"]') !== secondIssue) throw new Error("nested-reorder-identity")
+  document.querySelector("#remove-alpha-issue").click()
+  await waitFor(() => !document.querySelector('[data-issue="a1"]'), "nested-remove")
+  if (issue.isConnected) throw new Error("nested-cleanup")
+  document.querySelector("#restore-alpha-issue").click()
+  await waitFor(() => document.querySelector('[data-issue="a1"]'), "nested-restore")
+  const restoredIssue = document.querySelector('[data-issue="a1"]')
+  if (restoredIssue === issue || restoredIssue.querySelector("[data-issue-visits]").textContent !== "0") throw new Error("nested-state-reset")
+  issue = restoredIssue
+  document.querySelector('[data-visit-issue="a1"]').click()
+  await waitFor(() => issue.querySelector("[data-issue-visits]").textContent === "1", "nested-restored-handler")
+  if (document.body.dataset.selectedIssue !== "a1:Design schema restored") throw new Error("nested-restored-latest")
   document.querySelector('[data-expand="alpha"]').click()
   await waitFor(() => document.querySelector('[data-expand="alpha"]').getAttribute("aria-expanded") === "true", "expand")
   document.querySelector("#replace-workspace").click()

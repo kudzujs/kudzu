@@ -1,5 +1,55 @@
 # Kudzu Releases
 
+## 0.14.1 - Nested And Object-State Collections
+
+Kudzu 0.14.1 lets one direct immutable array field of ordinary object state own
+a root keyed collection and its nested direct-property lists.
+
+### Changed in 0.14.1
+
+- Allowed compiler-proven object-state collection roots without authored field
+  state.
+- Initialized binding-backed roots before nested row ownership mounts.
+- Preserved project and issue DOM identity through immutable replacement and
+  nested update, reorder, and removal.
+- Preserved latest-item handlers and released descendant row state exactly.
+- Recreated removed and re-added nested rows with fresh local state.
+- Updated `create-kudzu@0.1.123` to generate projects on
+  `@kudzujs/core@^0.14.1`.
+
+### Output Evidence
+
+- The application emits 44 files totaling 164,305 raw / 52,185 aggregate gzip
+  bytes with deploy digest
+  `0a3b7e10b3447a76a9c04ef34ad7c2bfa30400ea53c9d16fc85b1c7cbf2ea203`.
+- The maintained two-route session remains 17 JavaScript files and totals
+  74,826 raw / 26,204 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, runtime concept, or public API
+  was added. One build-time validation line changed and one list-runtime line
+  was added.
+
+### Validation
+
+- Required Chrome proves immutable whole-object replacement, nested issue
+  insert, update, reorder, removal, re-addition, retained identity, latest
+  handlers, descendant state release, and fresh remount.
+- The complete suite passes 274 tests, package smoke, and serialized required-
+  Chrome execution.
+- Seven fresh Chrome profiles record a 0.8 ms table-update median with a
+  0.7-0.9 ms range and a 4.1 ms navigation median with a 3.7-4.5 ms range.
+
+### Limits
+
+Collection roots require one direct static array field and immutable whole-
+object replacement. Dynamic or computed paths, mutation, and non-array fields
+remain unsupported.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.14.1
+```
+
 ## 0.14.0 - Project Table CRUD And Identity
 
 Kudzu 0.14.0 composes a complete native project table from ordinary state,
