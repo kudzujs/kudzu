@@ -6,6 +6,33 @@ Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm ru
 
 The maintained 2026-08-13 comparison used Node 24.14.0 and an Intel Core i5-9500 Linux x64 host, one warm-up, and seven alternating fresh-process samples against clean `v0.8.44`. A narrow fast path skips Kudzu semantic transformation for 450 plain `.ts` modules whose runtime edges are exclusively resolvable relative TypeScript imports or exports; all other modules retain the existing transformer. Compile median fell from 2,323.9 ms to 1,413.2 ms (39.2%) and clean-build median from 3,325.3 ms to 2,382.4 ms (28.4%); every paired sample improved. Compile peak-RSS median fell from 571.2 MiB to 552.6 MiB, while build peak RSS was 570.9 MiB versus 568.8 MiB. Compiler scratch fell from 7,328,390 to 1,971,061 bytes. Both targets emitted the same 50 static HTML files, 10,980 bytes, and deploy SHA-256 `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`. This is a source-scale compiler comparison, not a cross-framework result.
 
+## 0.14.0 Project Table CRUD And Identity
+
+Measured 2026-08-26 on Linux x64 with Node 24.14.0 and Chrome
+142.0.7444.175. Required Chrome proves native table insert, update, delete,
+reorder, sort, filter, selection, keyboard focus, row-local edit state, and
+retained keyed DOM identity.
+
+The application emits 44 files totaling 159,258 raw / 51,627 aggregate gzip
+bytes with deploy SHA-256
+`ebb3358e7a03612459e723ae765c39d105498db9d293415b924f1066cddf4793`.
+The two-route session remains 17 JavaScript files and totals 73,304 raw / 25,930
+aggregate gzip bytes, 2,273 raw / 626 gzip bytes above `0.13.3`. `/help`
+remains 0 B JavaScript. The added bytes are route-specific authored table
+handlers, bindings, selectors, and keyed row state; there is no data-grid
+runtime.
+
+Table update samples are `[0.7, 0.8, 1.0, 0.7, 1.1, 0.7, 0.8]` ms, with a 0.8
+ms median and 0.7/1.1 ms minimum/maximum. Navigation samples are
+`[3.9, 3.9, 5.5, 4.2, 6.1, 3.5, 3.4]` ms, with a 3.9 ms median and 3.4/6.1 ms
+minimum/maximum. Table update is a new measurement, so no same-content latency
+delta is claimed.
+
+Core semantic LOC remains 5,682 with zero new semantic primitives, IR kinds,
+compiler passes, production compiler/runtime lines, normalization rules,
+adapters, runtime concepts, public APIs, or data-grid runtimes. Infinite loading,
+windowing, and the 10,000-row strategy remain later measured decisions.
+
 ## 0.13.3 File Upload Boundary
 
 Measured 2026-08-25 on Linux x64 with Node 24.14.0 and Chrome

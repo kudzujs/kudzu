@@ -20,7 +20,12 @@ async function main() {
     if (build.error || build.signal || build.status !== 0) throw build.error || new Error(build.stderr || build.stdout)
     const port = await serve()
     const navigationMs = []
-    for (let run = 0; run < runs; run++) navigationMs.push(await browserRun(port))
+    const tableUpdateMs = []
+    for (let run = 0; run < runs; run++) {
+      const sample = await browserRun(port)
+      navigationMs.push(sample.navigation)
+      tableUpdateMs.push(sample.tableUpdate)
+    }
     const artifacts = JSON.parse(readFileSync(join(fixture, ".kudzu/kudzu-artifacts.json"), "utf8"))
     const plan = JSON.parse(readFileSync(join(fixture, ".kudzu/kudzu-plan.json"), "utf8"))
     const paths = new Set()
@@ -32,9 +37,10 @@ async function main() {
     console.log(JSON.stringify({
       fixture: "project application shared-layout navigation",
       environment: { node: process.version, platform: process.platform, arch: process.arch, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
-      methodology: `${runs} fresh Chrome profiles; session restoration, initial project fetch, and workspace update precede measured list-to-detail completion`,
+      methodology: `${runs} fresh Chrome profiles; session restoration and initial project fetch precede measured table save, then workspace update precedes measured list-to-detail completion`,
       states: Object.fromEntries(plan.routes.filter(route => route.route.startsWith("/app/projects")).map(route => [route.route, route.states.map(state => ({ name: state.name, lifetime: state.lifetime }))])),
       sessionJavascript: { files: paths.size, rawBytes: javascript.reduce((total, bytes) => total + bytes.length, 0), aggregateGzipBytes: javascript.reduce((total, bytes) => total + gzipSync(bytes).length, 0) },
+      tableUpdateMs: summarize(tableUpdateMs),
       navigationMs: summarize(navigationMs)
     }, null, 2))
   } finally {
@@ -88,6 +94,26 @@ async function browserRun(port) {
     await evaluate(cdp, sessionId, 'localStorage.setItem("kudzu-project-token", "admin-token"); true')
     await cdp.send("Page.navigate", { url: `http://127.0.0.1:${port}/app/projects` }, sessionId)
     await waitUntil(cdp, sessionId, 'document.readyState === "complete" && document.querySelector("[data-session-status]")?.textContent === "authenticated" && document.querySelector("[data-project=alpha]") && document.querySelector("[role=status]")?.textContent === "Projects loaded" && document.querySelector("[data-shared-project-revision]")?.textContent === "0"')
+    await evaluate(cdp, sessionId, `window.__alphaRow = document.querySelector('[data-project="alpha"]'); document.querySelector('[data-edit-project="alpha"]').click(); true`)
+    await waitUntil(cdp, sessionId, '!document.querySelector(\'[data-project-editor="alpha"]\').hidden')
+    await evaluate(cdp, sessionId, `new Promise(resolve => { const input = document.querySelector('[data-project-name-draft="alpha"]'); input.value = "Alpha benchmark"; input.dispatchEvent(new InputEvent("input", { bubbles: true })); setTimeout(resolve, 0) })`)
+    const tableUpdate = await evaluate(cdp, sessionId, `new Promise((resolve, reject) => {
+      let settled = false
+      const timeout = setTimeout(() => { if (!settled) { settled = true; observer.disconnect(); reject(new Error("table update timed out")) } }, 30000)
+      const complete = () => {
+        const row = document.querySelector('[data-project="alpha"]')
+        if (settled || row !== window.__alphaRow || row.querySelector("[data-project-name]").textContent !== "Alpha benchmark" || !row.querySelector('[data-project-editor="alpha"]').hidden) return
+        settled = true
+        observer.disconnect()
+        clearTimeout(timeout)
+        resolve(performance.now() - started)
+      }
+      const observer = new MutationObserver(complete)
+      observer.observe(window.__alphaRow, { subtree: true, childList: true, attributes: true })
+      const started = performance.now()
+      document.querySelector('[data-save-project="alpha"]').click()
+      complete()
+    })`)
     await evaluate(cdp, sessionId, 'window.__layout = document.querySelector("[data-app-layout]"); document.querySelector("[data-switch-workspace]").click(); true')
     await waitUntil(cdp, sessionId, 'document.querySelector("[data-workspace]").textContent === "Secondary"')
     await waitUntil(cdp, sessionId, 'localStorage.getItem("kudzu-project-workspace") === JSON.stringify({ version: 1, workspace: "Secondary" })')
@@ -109,7 +135,7 @@ async function browserRun(port) {
     })`)
     if (cdp.exceptions.length) throw new Error(`browser exceptions: ${cdp.exceptions.join(", ")}`)
     await cdp.send("Browser.close")
-    return Number(elapsed.toFixed(3))
+    return { tableUpdate: Number(tableUpdate.toFixed(3)), navigation: Number(elapsed.toFixed(3)) }
   } finally {
     cdp?.socket.close()
     if (child.exitCode === null) child.kill("SIGKILL")

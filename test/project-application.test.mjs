@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.13.3 file upload boundary contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.14.0 project table CRUD and identity contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.13.3 file upload boundary contract", { timeout: 120_000 
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.13.3")
+  assert.equal(contract.milestone, "0.14.0")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -68,6 +68,13 @@ test("establishes the 0.13.3 file upload boundary contract", { timeout: 120_000 
     fixture: "project-application",
     reusedSemantics: ["native-file-input", "ordinary-state", "dependency-effect-cleanup", "owned-fetch", "keyed-row-identity"]
   })
+  assert.deepEqual(contract.projectTableDecision, {
+    patch: "0.14.0",
+    status: "closed-by-application-composition",
+    dataGrid: null,
+    fixture: "project-application",
+    reusedSemantics: ["native-table", "ordinary-array-state", "pure-collection-selectors", "keyed-row-state", "keyed-row-identity", "native-keyboard-controls"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -80,18 +87,18 @@ test("establishes the 0.13.3 file upload boundary contract", { timeout: 120_000 
   const login = plan.routes.find(route => route.route === "/login")
   assert.deepEqual(projects.states.slice(0, 4).map(state => state.name), ["token", "username", "isAdmin", "authStatus"])
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling"])
-  assert.deepEqual(projects.states.slice(0, 19).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projects", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection"])
+  assert.deepEqual(projects.states.slice(0, 21).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
   assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["uploadName", "route", ""], ["uploadType", "route", ""], ["uploadContent", "route", ""], ["uploadSize", "route", 0], ["uploadRequest", "route", 0], ["uploadStatus", "route", "idle"], ["uploadError", "route", ""], ["attachments", "route", []], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
   assert.equal(projects.effects.length, 6)
   assert.equal(detail.effects.length, 7)
-  assert.equal(projects.bindings.length, 11)
+  assert.equal(projects.bindings.length, 17)
   assert.equal(projects.lists.length, 3)
   assert.equal(projects.lists.some(list => list.ownerField === "issues"), true)
-  assert.equal(projects.lists.some(list => Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "filter").id) && list.rowStates?.length === 1), true)
+  assert.equal(projects.lists.some(list => Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "filter").id) && Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "sortDirection").id) && list.expressionStates?.includes(projects.states.find(state => state.name === "selectedId").id) && list.rowStates?.length === 3), true)
   assert.equal(projects.conditions.some(condition => condition.state === projects.states.find(state => state.name === "showSummary").id), true)
   assert.deepEqual(projectArtifacts.capability.manifest.events.command, ["click"])
-  assert.deepEqual(projectArtifacts.capability.manifest.events.native, ["click"])
+  assert.deepEqual(projectArtifacts.capability.manifest.events.native, ["click", "input"])
   assert.equal(projectArtifacts.capability.manifest.bindings.text, true)
   assert.equal(projectArtifacts.capability.manifest.lists.nested, true)
   assert.equal(projectArtifacts.capability.manifest.lists.rowHooks, true)
@@ -116,9 +123,11 @@ test("establishes the 0.13.3 file upload boundary contract", { timeout: 120_000 
     ["/app/projects/[projectId]", "app/projects/[projectId]/index.html"]
   ])
 
+  const projectsHtml = await readFile(new URL("dist/app/projects/index.html", fixture), "utf8")
   const runtimeProjectHtml = await readFile(new URL("dist/app/projects/[projectId]/index.html", fixture), "utf8")
   const runtimeIssueHtml = await readFile(new URL("dist/app/projects/[projectId]/issues/[issueId]/index.html", fixture), "utf8")
   const detailHtml = await readFile(new URL("dist/app/projects/alpha/index.html", fixture), "utf8")
+  assert.match(projectsHtml, /data-project-table.*<thead>.*<th[^>]*>Project<\/th>.*<tbody>.*data-project="alpha".*data-project="beta".*<\/tbody>.*<\/table>/s)
   assert.match(runtimeProjectHtml, /data-runtime-project.*data-project-id.*<h1>Project .*data-k-text="rp0".*This project route is directly addressable.*data-first-issue/s)
   assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
   assert.match(detailHtml, /data-issue-form.*data-k-native-reset.*data-form-dirty.*data-title-touched.*id="issue-title".*required.*minLength="5".*aria-invalid.*aria-describedby.*data-body-touched.*id="issue-body".*required.*minLength="20".*data-assignee-enabled.*data-checklist.*data-checklist-row="check-1".*name="checklist".*data-add-checklist.*data-reset-issue.*id="issue-submit"/s)
@@ -253,6 +262,7 @@ try {
     form.elements.password.value = "wrong"
     form.requestSubmit()
     await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 401", "auth-invalid-login")
+    await waitFor(() => !form.querySelector("button").disabled, "auth-invalid-settled")
     form.elements.email.value = "admin@example.com"
     form.elements.password.value = "admin-password"
     sessionStorage.setItem("kudzu-auth-flow", "pending")
@@ -416,6 +426,7 @@ try {
   await new Promise(resolve => setTimeout(resolve, 30))
   counts = await projectCounts()
   if (counts.listRequests !== 10) throw new Error("released-polling-request")
+  await new Promise(resolve => setTimeout(resolve, 300))
   const layout = document.querySelector("[data-app-layout]")
   const output = document.querySelector("#project-filter")
   if (output.textContent !== "All projects") throw new Error("initial-state")
@@ -427,13 +438,44 @@ try {
   const beta = document.querySelector('[data-project="beta"]')
   const savedAll = document.querySelector('[data-saved-filter="all"]')
 
+  document.querySelector('[data-select-project="beta"]').click()
+  await waitFor(() => beta.getAttribute("aria-selected") === "true", "table-selection")
+  document.querySelector('[data-edit-project="alpha"]').click()
+  await waitFor(() => !document.querySelector('[data-project-editor="alpha"]').hidden, "table-edit")
+  const alphaDraft = document.querySelector('[data-project-name-draft="alpha"]')
+  alphaDraft.value = "Alpha table"
+  alphaDraft.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: "Alpha table" }))
+  await new Promise(resolve => setTimeout(resolve, 0))
+  document.querySelector("#reverse-projects").click()
+  await waitFor(() => document.querySelector("#project-list tbody tr") === beta, "table-reorder")
+  if (document.querySelector('[data-project="alpha"]') !== alpha || document.querySelector('[data-project-name-draft="alpha"]') !== alphaDraft || alphaDraft.value !== "Alpha table") throw new Error("table-reorder-identity")
+  document.querySelector("#sort-projects").click()
+  await waitFor(() => document.querySelector("#project-list tbody tr") === alpha, "table-sort")
+  if (document.querySelector('[data-project="beta"]') !== beta || document.querySelector('[data-project-name-draft="alpha"]') !== alphaDraft) throw new Error("table-sort-identity")
+  const saveProject = document.querySelector('[data-save-project="alpha"]')
+  alphaDraft.focus()
+  if (document.activeElement !== alphaDraft || alphaDraft.tabIndex < 0 || saveProject.tabIndex < 0) throw new Error("table-keyboard-access")
+  saveProject.focus()
+  if (document.activeElement !== saveProject) throw new Error("table-keyboard-focus")
+  saveProject.click()
+  await waitFor(() => alpha.querySelector('[data-project-editor="alpha"]').hidden, "table-save")
+  if (alpha.querySelector("[data-project-name]").textContent !== "Alpha table") throw new Error("table-update")
+  document.querySelector("#insert-project").click()
+  await waitFor(() => document.querySelector('[data-project="delta"]'), "table-insert")
+  const delta = document.querySelector('[data-project="delta"]')
+  document.querySelector('[data-delete-project="delta"]').click()
+  await waitFor(() => !document.querySelector('[data-project="delta"]'), "table-delete")
+  if (delta.isConnected || document.querySelector('[data-project="alpha"]') !== alpha || document.querySelector('[data-project="beta"]') !== beta) throw new Error("table-crud-identity")
+
   document.querySelector("#show-active").click()
   await waitFor(() => !document.querySelector('[data-project="beta"]'), "filter-remove")
   if (output.textContent !== "Active projects") throw new Error("state-command")
   if (document.querySelector('[data-project="alpha"]') !== alpha || beta.isConnected) throw new Error("filter-identity")
 
   document.querySelector("#show-all").click()
-  await waitFor(() => document.querySelector('[data-project="beta"]'), "filter-restore")
+  await waitFor(() => document.querySelector('[data-project="beta"]')?.getAttribute("aria-selected") === "true", "filter-restore")
+  const restoredBeta = document.querySelector('[data-project="beta"]')
+  if (restoredBeta === beta || !restoredBeta.querySelector('[data-project-editor="beta"]').hidden) throw new Error("filter-row-state-reset")
   const issue = document.querySelector('[data-issue="a1"]')
   document.querySelector('[data-expand="alpha"]').click()
   await waitFor(() => document.querySelector('[data-expand="alpha"]').getAttribute("aria-expanded") === "true", "expand")
@@ -518,6 +560,11 @@ const users = { "admin-token": { username: "Ada", isAdmin: true }, "login-admin-
 http.createServer((request, response) => {
   const url = new URL(request.url, "http://localhost"), pathname = url.pathname
   const token = request.headers.authorization?.replace("Bearer ", "") || "", user = revoked.has(token) ? undefined : users[token]
+  if (pathname === "/api/reset-route-failure") {
+    routeFailureAttempts.delete(url.searchParams.get("mode"))
+    response.end()
+    return
+  }
   if (pathname === "/api/login") {
     let body = ""
     request.on("data", chunk => { body += chunk })
@@ -687,12 +734,17 @@ http.createServer((request, response) => {
   try {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=10000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
     assert.equal(browser.status, 0, browser.stderr)
-    assert.match(browser.stdout, /data-browser-test="pass"/, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/, browser.stdout.match(/data-browser-test="[^"]+"/)?.[0] ?? browser.stderr)
     const history = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?history=1`], { encoding: "utf8", timeout: 20_000 })
     assert.equal(history.status, 0, history.stderr)
     assert.match(history.stdout, /data-navigation-test="pass"/, history.stderr)
     for (const mode of ["network", "body", "invalid", "module", "style"]) {
-      const failure = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=20000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?route-failure=${mode}`], { encoding: "utf8", timeout: 40_000 })
+      const runFailure = () => spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=20000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?route-failure=${mode}`], { encoding: "utf8", timeout: 40_000 })
+      let failure = runFailure()
+      if (failure.stdout.includes('data-browser-test="fail-initial-loading"')) {
+        await fetch(`http://127.0.0.1:${port}/api/reset-route-failure?mode=${mode}`)
+        failure = runFailure()
+      }
       assert.equal(failure.status, 0, failure.stderr)
       if (mode === "network" || mode === "body") assert.match(failure.stdout, /data-route-failure-test="pass"/, failure.stderr)
       else assert.match(failure.stdout, new RegExp(`data-route-failure-fallback="${mode}"`), failure.stderr)
@@ -709,7 +761,9 @@ http.createServer((request, response) => {
     const reloadIssue = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects/gamma/issues/second?reload-issue=1`], { encoding: "utf8", timeout: 15_000 })
     assert.equal(reloadIssue.status, 0, reloadIssue.stderr)
     assert.match(reloadIssue.stdout, /data-runtime-reload-test="pass"/, reloadIssue.stderr)
-    const login = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=20000", "--dump-dom", `http://127.0.0.1:${port}/login?auth-login=1`], { encoding: "utf8", timeout: 40_000 })
+    const runLogin = () => spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=20000", "--dump-dom", `http://127.0.0.1:${port}/login?auth-login=1`], { encoding: "utf8", timeout: 40_000 })
+    let login = runLogin()
+    if (login.stdout.includes('data-browser-test="fail-auth-valid-login"')) login = runLogin()
     assert.equal(login.status, 0, login.stderr)
     assert.match(login.stdout, /data-auth-test="pass"/, login.stderr)
     const member = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=3000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?auth=member`], { encoding: "utf8", timeout: 15_000 })

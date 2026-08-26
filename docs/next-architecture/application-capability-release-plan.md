@@ -877,6 +877,35 @@ regression or improvement is claimed.
 - **Stop condition:** a data-grid runtime is introduced for ordinary tables.
 - **Done condition:** complete CRUD behavior passes with measured update latency.
 
+Evidence complete. The first failing fixture was the
+`0.14.0` project-application contract against the previous article list. It now
+uses a native table, ordinary array/object state, the existing pure collection
+selector, three existing keyed row-state slots, and native button/input keyboard
+behavior for insert, update, delete, reverse, sort, filter, selection, and edit.
+The browser journey proves retained row and draft-input identity through reorder
+and sort, fresh identity/state after filter removal and restoration, and focused
+keyboard reachability. Native `hidden` keeps the editor mounted rather than
+introducing a conditional callback-scope adapter or data-grid runtime.
+
+This slice adds zero semantic primitives, zero compiler passes, zero core LOC,
+and zero runtime concepts. It changes one real fixture, its contract, the
+machine-readable capability record, and the existing project benchmark. The
+application remains 44 files and changes from the `0.13.3` baseline by +9,235
+raw / +1,387 aggregate gzip bytes to 159,258 / 51,627 bytes, with deploy SHA-256
+`ebb3358e7a03612459e723ae765c39d105498db9d293415b924f1066cddf4793`.
+The maintained two-route session remains 17 JavaScript files and grows by 2,273
+raw / 626 aggregate gzip bytes to 73,304 / 25,930 bytes; `/help` remains 0 B
+JavaScript.
+
+Seven fresh Linux x64 Chrome 142 profiles record table Save-click-to-committed-
+DOM samples of `[0.7, 0.8, 1.0, 0.7, 1.1, 0.7, 0.8]` ms, a 0.8 ms median and
+0.7/1.1 ms range. This is the first equivalent table-update measurement, so no
+same-content latency delta is claimed. The same runs record list-to-detail
+samples of `[3.9, 3.9, 5.5, 4.2, 6.1, 3.5, 3.4]` ms, a 3.9 ms median and
+3.4/6.1 ms range. No compiler/runtime production logic changed; `0.14.0`
+publishes the accepted application-capability packet and `create-kudzu@0.1.122`
+generates projects on `@kudzujs/core@^0.14.0`.
+
 ### `0.14.1`: Nested And Object-State Collections
 
 - **Purpose:** prove project/group/issue/checklist nesting from ordinary object
@@ -1365,5 +1394,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.13.1` | Released | Preserve application-owned nested metadata, keyed row identity, release, and reset evidence. | None |
 | `0.13.2` | Released | Preserve multistep validation, versioned persistence, stale-save rejection, conflict retention, and reset evidence. | None |
 | `0.13.3` | Released | Preserve the published upload validation, cancellation, retry, route cleanup, and attachment mutation evidence. | None |
-| `0.14.0` | Active | Add the first failing project-table CRUD and retained-identity fixture. | None |
-| `0.14.1` onward | Blocked | Complete or explicitly close `0.14.0` first. | Ordered patch boundary |
+| `0.14.0` | Released | Preserve native table CRUD, retained identity, keyboard access, and measured update evidence. | None |
+| `0.14.1` | Active | Add the first failing nested/object-state collection fixture. | None |
+| `0.14.2` onward | Blocked | Complete or explicitly close `0.14.1` first. | Ordered patch boundary |

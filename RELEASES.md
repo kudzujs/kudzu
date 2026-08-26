@@ -1,5 +1,51 @@
 # Kudzu Releases
 
+## 0.14.0 - Project Table CRUD And Identity
+
+Kudzu 0.14.0 composes a complete native project table from ordinary state,
+collection selectors, and keyed ownership without a data-grid runtime.
+
+### Changed in 0.14.0
+
+- Replaced the project article list with valid native table structure.
+- Added project insertion, inline name editing, save, and deletion.
+- Added reorder, immutable name sorting, active filtering, and row selection.
+- Preserved keyed row and draft-input identity through reorder and sort.
+- Recreated removed rows with fresh local state after filter restoration.
+- Kept editor controls mounted with native `hidden` and verified keyboard focus.
+- Updated `create-kudzu@0.1.122` to generate projects on
+  `@kudzujs/core@^0.14.0`.
+
+### Output Evidence
+
+- The application emits 44 files totaling 159,258 raw / 51,627 aggregate gzip
+  bytes with deploy digest
+  `ebb3358e7a03612459e723ae765c39d105498db9d293415b924f1066cddf4793`.
+- The maintained two-route session remains 17 JavaScript files and totals
+  73,304 raw / 25,930 aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- No semantic primitive, IR kind, compiler pass, production compiler/runtime
+  line, runtime concept, public API, or data-grid runtime was added.
+
+### Validation
+
+- Required Chrome proves insert, update, delete, reorder, sort, filter,
+  selection, keyboard access, row-local edit state, and retained DOM identity.
+- The complete suite passes 273 tests.
+- Seven fresh Chrome profiles record a 0.8 ms table-update median with a
+  0.7-1.1 ms range and a 3.9 ms navigation median with a 3.4-6.1 ms range.
+
+### Limits
+
+This is an ordinary bounded table, not virtualization. Infinite loading,
+windowing, dynamic row measurement, and 10,000-row strategy selection remain
+separate evidence packets.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.14.0
+```
+
 ## 0.13.3 - File Upload Boundary
 
 Kudzu 0.13.3 composes a bounded file-upload lifecycle from native controls,

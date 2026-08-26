@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.13.3",
+  "milestone": "0.14.0",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -117,10 +117,16 @@
     "upload-route-departure-cleanup",
     "successful-attachment-mutation",
     "explicit-fetch-progress-boundary",
+    "native-project-table",
+    "project-table-insert-update-delete",
+    "project-table-reorder-sort-filter",
+    "project-table-selection",
+    "project-row-local-edit-state",
+    "project-table-keyboard-controls",
+    "retained-project-row-identity",
     "static-route-zero-javascript"
   ],
   "deferred": [
-    "project-crud",
     "shared-request-coordination",
     "unbounded-project-results"
   ],
@@ -218,21 +224,35 @@
       "keyed-row-identity"
     ]
   },
+  "projectTableDecision": {
+    "patch": "0.14.0",
+    "status": "closed-by-application-composition",
+    "dataGrid": null,
+    "fixture": "project-application",
+    "reusedSemantics": [
+      "native-table",
+      "ordinary-array-state",
+      "pure-collection-selectors",
+      "keyed-row-state",
+      "keyed-row-identity",
+      "native-keyboard-controls"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 44,
-      "rawBytes": 150023,
-      "aggregateGzipBytes": 50240,
-      "sha256": "a16fd5dbc08086aa6a7c0ec0aba3a38fbe2a63b96005a81e8747a7f4e45e214e"
+      "rawBytes": 159258,
+      "aggregateGzipBytes": 51627,
+      "sha256": "ebb3358e7a03612459e723ae765c39d105498db9d293415b924f1066cddf4793"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 59409,
-        "javascriptAggregateGzipBytes": 21671
+        "javascriptRawBytes": 61682,
+        "javascriptAggregateGzipBytes": 22297
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 62994,
-        "javascriptAggregateGzipBytes": 22158
+        "javascriptRawBytes": 64166,
+        "javascriptAggregateGzipBytes": 22514
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,

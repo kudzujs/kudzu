@@ -12,9 +12,9 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 *Watch: React-shaped TSX to static HTML and route-specific ESM in 22 seconds.*
 
-> Experimental `0.13.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.14.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.13.3 - File upload boundary.** Native file validation, multipart upload, cancellation, failure and retry, route cleanup, and keyed attachment mutation compose without an upload runtime. Read the [release notes](./RELEASES.md#0133---file-upload-boundary), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.13.3), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.14.0 - Project table CRUD and identity.** Native table structure, ordinary state, collection selectors, and keyed ownership compose complete project CRUD with retained row identity and no data-grid runtime. Read the [release notes](./RELEASES.md#0140---project-table-crud-and-identity), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.14.0), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

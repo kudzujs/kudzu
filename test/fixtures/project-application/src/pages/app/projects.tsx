@@ -1,3 +1,5 @@
+/// <reference lib="es2023.array" />
+
 import { useEffect, useState } from "@kudzujs/core"
 import { useSearchParams } from "react-router-dom"
 import { AppLayout, useWorkspace } from "../../AppLayout"
@@ -22,17 +24,32 @@ const beta: Project = {
   issues: [{ id: "b1", title: "Archive notes" }]
 }
 
-function ProjectRow({ project }: { project: Project }) {
+function ProjectRow({ project, selected, onSelect, onSave, onDelete }: { project: Project; selected: boolean; onSelect: () => void; onSave: (name: string) => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(project)
 
-  return <article data-project={project.id}>
-    <h2 data-project-name>{project.name}</h2>
-    <output data-issue-count>{project.issues.length}</output>
-    <button data-expand={project.id} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>Issues</button>
-    <ul data-issues={project.id}>
-      {project.issues.map(issue => <li key={issue.id} data-issue={issue.id}>{issue.title}</li>)}
-    </ul>
-  </article>
+  return <tr data-project={project.id} data-selected={selected} aria-selected={selected}>
+    <th scope="row" data-project-name>{project.name}</th>
+    <td>{project.status}</td>
+    <td><output data-issue-count>{project.issues.length}</output></td>
+    <td>
+      <button data-select-project={project.id} onClick={onSelect}>Select</button>
+      <button data-expand={project.id} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>Issues</button>
+      <button data-edit-project={project.id} onClick={() => setEditing(true)}>Edit</button>
+      <span data-project-editor={project.id} hidden={!editing}>
+        <input data-project-name-draft={project.id} aria-label="Project name" value={draft.name} onInput={event => setDraft({ id: draft.id, name: event.currentTarget.value, status: draft.status, issues: draft.issues })} />
+        <button data-save-project={project.id} onClick={() => {
+          onSave(draft.name)
+          setEditing(false)
+        }}>Save</button>
+      </span>
+      <button data-delete-project={project.id} onClick={onDelete}>Delete</button>
+      <ul data-issues={project.id}>
+        {project.issues.map(issue => <li key={issue.id} data-issue={issue.id}>{issue.title}</li>)}
+      </ul>
+    </td>
+  </tr>
 }
 
 export default function ProjectsPage() {
@@ -49,7 +66,10 @@ export default function ProjectsPage() {
   const [status, setStatus] = useState("loading")
   const [error, setError] = useState("")
   const [polling, setPolling] = useState(false)
+  const [selectedId, setSelectedId] = useState("")
+  const [sortDirection, setSortDirection] = useState<"source" | "ascending">("source")
   const filterLabel = filter === "all" ? "All projects" : "Active projects"
+  const orderedProjects = projects.toSorted((left, right) => sortDirection === "ascending" ? left.name.localeCompare(right.name) : 0)
 
   useEffect(() => {
     if (!token) return
@@ -128,6 +148,9 @@ export default function ProjectsPage() {
     <button id="disable-project-polling" disabled={!polling} onClick={() => setPolling(false)}>Disable polling</button>
     <button id="show-active" onClick={() => setFilter("active")}>Show active</button>
     <button id="show-all" onClick={() => setFilter("all")}>Show all</button>
+    <button id="insert-project" onClick={() => setProjects([...projects, { id: "delta", name: "Delta", status: "active", issues: [{ id: "d1", title: "Plan table" }] }])}>Insert project</button>
+    <button id="reverse-projects" onClick={() => setProjects([...projects].reverse())}>Reverse projects</button>
+    <button id="sort-projects" onClick={() => setSortDirection("ascending")}>Sort projects</button>
     <button id="toggle-summary" onClick={() => setShowSummary(!showSummary)}>Toggle summary</button>
     <button id="replace-workspace" onClick={() => {
       setSummary({ projectCount: 2, issueCount: 4 })
@@ -151,6 +174,16 @@ export default function ProjectsPage() {
       <span id="total-issues">{summary.issueCount}</span>
     </section>}
     <ul id="saved-filters">{savedFilters.map(saved => <li key={saved.id} data-saved-filter={saved.id}>{saved.label}</li>)}</ul>
-    <div id="project-list">{projects.map(project => (filter === "all" || project.status === "active") && <ProjectRow key={project.id} project={project} />)}</div>
+    <table id="project-list" data-project-table>
+      <thead><tr><th>Project</th><th>Status</th><th>Issues</th><th>Actions</th></tr></thead>
+      <tbody>{orderedProjects.map(project => (filter === "all" || project.status === "active") && <ProjectRow
+        key={project.id}
+        project={project}
+        selected={selectedId === project.id}
+        onSelect={() => setSelectedId(project.id)}
+        onSave={name => setProjects(projects.map(entry => entry.id === project.id ? { ...entry, name } : entry))}
+        onDelete={() => setProjects(projects.filter(entry => entry.id !== project.id))}
+      />)}</tbody>
+    </table>
   </main>
 }

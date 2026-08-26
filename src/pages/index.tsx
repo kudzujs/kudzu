@@ -45,16 +45,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.13.3">
-        <span>v0.13.3</span>
-        <strong>File upload boundary</strong>
+      <a className="release-banner" href="/releases/0.14.0">
+        <span>v0.14.0</span>
+        <strong>Project table CRUD and identity</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.13.3</span> COMPILER FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.14.0</span> COMPILER FRAMEWORK</p>
             <h1>React-shaped input.<br /><em>Static-first output.</em></h1>
             <p className="intro">Kudzu analyzes TypeScript ASTs and specializes familiar components, hooks, routes, effects, and collections into complete HTML plus only the browser capabilities each route uses.</p>
             <div className="actions">
@@ -116,12 +116,12 @@ export default function Counter() {
 
         <section className="model" id="benchmarks">
           <div className="section-title">
-            <p className="eyebrow">MEASURED IN 0.13.3</p>
+            <p className="eyebrow">MEASURED IN 0.14.0</p>
             <h2>Application behavior.<br />Measured output.</h2>
           </div>
           <div className="pipeline">
-            <article><span>NAVIGATION</span><h3>3.8 ms release median</h3><p>List-to-detail completion across seven fresh Chrome profiles, with the bounded upload lifecycle on the destination.</p><code>npm run benchmark:project-navigation</code></article>
-            <article><span>SESSION</span><h3>25,304 B gzip</h3><p>The two-route session ships application-owned multipart upload with no upload runtime.</p><code>17 unique JavaScript files</code></article>
+            <article><span>TABLE UPDATE</span><h3>0.8 ms release median</h3><p>Save-click to committed project name across seven fresh Chrome profiles with retained row identity.</p><code>npm run benchmark:project-navigation</code></article>
+            <article><span>SESSION</span><h3>25,930 B gzip</h3><p>The two-route session ships native project CRUD with no data-grid runtime.</p><code>17 unique JavaScript files</code></article>
             <article><span>STATIC</span><h3>0 B JavaScript</h3><p>The sibling help route remains complete HTML and receives no browser capability code.</p><code>unused capability → no output</code></article>
           </div>
           <div className="actions">
