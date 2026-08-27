@@ -79,7 +79,7 @@ function sample(name) {
   const output = { modules: value.modules, bytes: value.bytes, digest: value.digest }
   expected ??= output
   if (JSON.stringify(output) !== JSON.stringify(expected)) throw new Error(`${name} output ${JSON.stringify(output)} differs from ${JSON.stringify(expected)}`)
-  if (name === "candidate" && JSON.stringify(value.counters) !== JSON.stringify({ parsedModules: 103, exportSummaries: 103, clonedModules: 100 })) throw new Error(`Candidate cache counters differ: ${JSON.stringify(value.counters)}`)
+  if (name === "candidate" && JSON.stringify(value.counters) !== JSON.stringify({ parsedModules: 103, exportSummaries: 103, plainModules: 1, clonedModules: 100 })) throw new Error(`Candidate cache counters differ: ${JSON.stringify(value.counters)}`)
   return value
 }
 

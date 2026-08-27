@@ -959,7 +959,7 @@ projects on `@kudzujs/core@^0.14.1`.
 - **Done condition:** the full journey passes with explicit network and memory
   bounds.
 
-Release candidate evidence complete. The maintained project application adds one
+Published release evidence complete. The maintained project application adds one
 intrinsic sentinel, an owned native `IntersectionObserver`, cursor and request
 primitive state, an owned fetch with `AbortController`, immutable keyed append,
 duplicate ID suppression, and explicit loading/error/retry/end UI. The authored
@@ -1047,7 +1047,8 @@ to the next evidence-ready application capability.
 - **Stop condition:** a custom modal/focus-trap runtime replaces `<dialog>`.
 - **Done condition:** project delete and edit confirmation pass accessibly.
 
-Implementation evidence is local and release gates remain pending. The maintained
+Validation evidence is complete and the packet closed without consuming a release
+because no production compiler or runtime changed. The maintained
 project application replaces immediate keyed project deletion with one shared
 native `<dialog>`, one route-owned object ref, and one pending project ID state.
 Existing row callback specialization opens the browser top layer; native cancel,
@@ -1113,6 +1114,16 @@ Seven fresh macOS arm64 Chrome 151 profiles record table update samples of
 plus navigation samples of `[4, 2.4, 2.6, 2.5, 2.5, 2.8, 2.4]` ms, a 2.5 ms
 median and 2.4/4 ms range. These retained-path ranges overlap prior evidence,
 so no timing improvement or regression is claimed.
+
+Release transaction complete at commit
+`2dd5c409d3553cdf0b04080f1ba7c39b4541c523` and immutable tag `v0.15.1`.
+CI run `33069675599` passed both jobs. The GitHub release is
+[`v0.15.1`](https://github.com/kudzujs/kudzu/releases/tag/v0.15.1), and publish
+workflow run `33071439012` published and verified `@kudzujs/core@0.15.1` and
+`create-kudzu@0.1.126`. A fresh registry install imported `useId()` from core
+and confirmed both exact package versions. The first publish attempt stopped at
+the existing concurrent Chrome timing gate before any publish step; the exact
+same immutable tag passed on the release-event retry.
 
 ### `0.15.2`: Toast And Notification Ownership
 

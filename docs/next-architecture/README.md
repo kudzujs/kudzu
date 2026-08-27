@@ -7,7 +7,7 @@ The top-level [`GOAL_A.md`](../../GOAL_A.md) and [`GOAL_B.md`](../../GOAL_B.md) 
 | Goal | Decision | Start condition |
 |---|---|---|
 | A: compiler foundation | Complete in `0.8.23` | The no-write source compiler, RouteIR v1, CapabilityIR v1, generator boundaries, and output baseline are recorded. |
-| B: optimization benchmarks | Active | Keyed restoration, no-op normalization, exact route-entry transform reuse, and identical route-entry file sharing are retained; continue only when another current fixture reproduces a material loss. |
+| B: optimization benchmarks | Maintained gate | Keyed restoration, no-op normalization, exact route-entry transform reuse, and identical route-entry file sharing are retained; continue only when another current fixture reproduces a material loss. |
 | C: state/resource model | Research only | Reduced fixtures expose a limitation |
 | D: routing compatibility | Current behavior preserved | Revisit only with migration evidence and invariant review |
 
@@ -15,7 +15,7 @@ The completed `0.9.0` milestone is recorded in [`0.9-semantic-compression.md`](.
 
 [`1.0-large-application-compatibility-audit.md`](./1.0-large-application-compatibility-audit.md) records the first post-0.9 probes against Memos, Apache Answer, and Actual Budget. The audit finds that reduced slices build but whole-application source retention and behavior parity do not yet pass.
 
-[`application-capability-release-plan.md`](./application-capability-release-plan.md) is the authoritative post-0.9 execution queue. It assigns one application-capability section to each minor release and one independently accepted evidence packet to each patch release from `0.10.0` through the `1.0.0` gate. It supersedes the provisional 0.10/0.11/0.12 tool-first ordering in the completed 0.9 handoff without rewriting that historical record.
+[`application-capability-release-plan.md`](./application-capability-release-plan.md) is the authoritative post-0.9 execution queue, currently at `0.15.2`. It assigns one application-capability section to each minor release and one independently accepted evidence packet to each patch release from `0.10.0` through the `1.0.0` gate. It supersedes the provisional 0.10/0.11/0.12 tool-first ordering in the completed 0.9 handoff without rewriting that historical record.
 
 ## Required Invariants
 

@@ -145,7 +145,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
   assert.match(docs, /@kudzujs\/core@\^0\.15\.1 typescript/)
-  assert.match(docs, /Current 0\.14\.3 large-list decision/)
+  assert.match(docs, /Current 0\.15\.1 maintained sweep.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.15\.1.*4\.2-9\.9 KiB.*15 \/ 18/s)
   assert.match(examples, /Release 0\.15\.1.*v0\.15\.1.*KUDZU EXAMPLE CATALOG/s)
   assert.match(blog, /Kudzu 0\.15\.1.*v0\.15\.1.*source compiled by the current Kudzu release/s)
   assert.match(html, /class="release-banner" href="\/releases\/0\.15\.1".*Key-scoped native popovers/s)

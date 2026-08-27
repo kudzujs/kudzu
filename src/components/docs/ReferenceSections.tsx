@@ -55,34 +55,26 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.14.3 large-list decision</strong><span>Seven rotating Chrome profiles compare direct 10,000-row DOM, pagination, and a scroll-driven bounded window with matched native edit controls.</span></div>
+    <div className="docs-callout"><strong>Current 0.15.1 maintained sweep</strong><span>Fresh macOS arm64 measurements cover build graphs, keyed rows, native dispatch, compiler scale, commerce output, project navigation, state scale, and the 10,000-row decision.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
-      ["Direct 10,000 rows", "806.6 ms / n/a", "90,023"],
-      ["Pagination, 100 rows", "165.4 / 12.1 ms", "1,470"],
-      ["Scroll window, 100 rows", "161.2 / 16.5 ms", "1,471"]
+      ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],
+      ["Pagination, 100 rows", "39.6 / 5.8 ms", "2,867"],
+      ["Scroll window, 100 rows", "40.7 / 5.8 ms", "2,868"]
     ]} />
     <p>Pagination is selected: it avoids direct DOM scale, has the lower bounded-range median and heap, and preserves native page, keyboard, focus, and variable-height behavior without a scroll listener. No semantic primitive, compiler pass, public API, or runtime concept was added.</p>
-    <h3>0.9 cross-framework proof</h3>
-    <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
-      ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],
-      ["React 19.2.8", "196,089 / 60,661 B", "196,287 B"],
-      ["Vue 3.5.40", "66,620 / 25,624 B", "66,817 B"],
-      ["Svelte 5.56.7", "44,046 / 16,818 B", "44,243 B"],
-      ["Astro 7.1.3 + React", "197,771 / 61,994 B", "198,361 B"]
+    <h3>Public commerce comparison</h3>
+    <BenchmarkTable columns={["Target", "Initial JS gzip", "Reliable click", "Resilience"]} rows={[
+      ["Kudzu 0.15.1", "4.2-9.9 KiB", "300 ms", "15 / 18"],
+      ["Astro 7.1.3 + React", "60.6-61.1 KiB", "1,500 ms", "12 / 18"],
+      ["React Router 8.3.0", "103.8-104.6 KiB", "2,000 ms", "8 / 18"],
+      ["TanStack Start 1.168.32", "103.5-104.1 KiB", "2,000 ms", "9 / 18"],
+      ["Next.js 16.2.11", "144.2-146.2 KiB", "3,000 ms", "8 / 18"]
     ]} />
-    <p>Across 21 fresh rotating profiles every target passes all 19 C2 operations and ownership checks. Kudzu row filter is 12.0 ms versus Vue's 13.3 ms; row restore is 62.6 ms versus the nearest 60.5 ms comparator; search restore is 51.6 ms versus the nearest 50.7 ms comparator.</p>
-    <h3>10,000-product commerce build</h3>
-    <BenchmarkTable columns={["Target", "Pages", "Cold / warm median", "Peak RSS", "Output"]} rows={[
-      ["Kudzu 0.9.0", "10,011", "22,614.0 / 22,150.6 ms", "542,484 KiB", "96,379,876 B"],
-      ["Astro 7.1.3", "10,011", "23,198.1 / 23,438.2 ms", "612,412 KiB", "142,543,510 B"]
-    ]} />
-    <p>Both targets pass sampled-product acceptance. Kudzu is 2.5% faster cold, 5.5% faster warm, and uses 11.4% less peak RSS. The Kudzu deploy digest is <code>811234693329ebd61eeceb6cd05e5d52473e5c81972a820253bf1aea664a0910</code>.</p>
-    <h3>Static and resource ownership</h3>
-    <p>The five-target C1 content application ships 0 B route/session JavaScript for every target by using native disclosure. The C5 Worker matrix records 32 balanced starts, invalidations, listener removals, terminations, and ignored stale callbacks plus 30 mount/dispose cycles, with zero stale mutations and zero final active handles.</p>
+    <p>The public 1,000-product fixture measures six routes. Initial JavaScript is what Chrome received; browser results use seven fresh sessions at 4x CPU slowdown and Slow 4G. Reliable click is the first tested delay after first paint with zero lost add-to-cart attempts. Resilience counts six matched capabilities under blocked, delayed, and partially missing JavaScript.</p>
     <h3>Tracked Worker fixture</h3>
-    <p>The maintained Worker build median is 535.9 ms. Its Worker graph is 907 B raw / 477 B gzip and its aggregate window graph is 14,093 B raw / 6,037 B gzip. The focused Chrome test verifies throughput, cadence, bounded history, stale writes, and 30-cycle termination and listener ownership.</p>
-    <div className="docs-callout"><strong>Historical records retained</strong><span>Paired release measurements, optimization wins, raw arrays, limitations, and the dated 0.7.12 framework snapshot remain in PERFORMANCE.md for provenance. They are not current rankings.</span></div>
+    <p>The maintained Worker build median is 220.1 ms. Its Worker graph is 907 B raw / 477 B gzip and its aggregate window graph is 14,456 B raw / 6,159 B gzip. The focused Chrome test verifies throughput, cadence, bounded history, stale writes, and 30-cycle termination and listener ownership.</p>
+    <div className="docs-callout"><strong>Historical records retained</strong><span>The broader 0.9 React, Vue, Svelte, and Astro proof, paired release measurements, raw arrays, and limitations remain in PERFORMANCE.md for provenance. The unavailable 0.9 workspace is not presented as a current ranking.</span></div>
     <p>The <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">full performance record</a> separates current maintained runs from historical and external-workspace evidence.</p>
   </section>
 }

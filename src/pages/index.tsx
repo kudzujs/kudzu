@@ -120,9 +120,9 @@ export default function Counter() {
             <h2>Application behavior.<br />Measured output.</h2>
           </div>
           <div className="pipeline">
-          <article><span>DIRECT DOM</span><h3>90,023 nodes</h3><p>Ten thousand native table rows establish the unbounded DOM cost.</p><code>806.6 ms load median</code></article>
-          <article><span>PAGINATION</span><h3>1,470 nodes</h3><p>One hundred rows preserve native page and focus behavior without range runtime.</p><code>12.1 ms range median</code></article>
-            <article><span>STATIC</span><h3>0 B JavaScript</h3><p>The sibling help route remains complete HTML and receives no browser capability code.</p><code>unused capability → no output</code></article>
+          <article><span>COMMERCE JS</span><h3>4.2-9.9 KiB</h3><p>Initial JavaScript received across six routes in the public 1,000-product fixture.</p><code>Astro + React: 60.6-61.1 KiB</code></article>
+          <article><span>RELIABLE CLICK</span><h3>300 ms</h3><p>First tested post-paint delay with zero lost add-to-cart attempts in seven sessions.</p><code>4x CPU · Chrome Slow 4G</code></article>
+            <article><span>RESILIENCE</span><h3>15 / 18</h3><p>Matched capabilities surviving blocked, delayed, or partially missing JavaScript.</p><code>five-framework commerce matrix</code></article>
           </div>
           <div className="actions">
             <a className="primary-action" href="/docs#benchmarks">Read benchmark notes</a>

@@ -22,8 +22,8 @@ export default function ReleasePage() {
         <div className="release-links"><a className="primary-action" href="#proof">Inspect the ownership</a><a href="https://github.com/kudzujs/kudzu/releases/tag/v0.15.1">Release evidence</a></div>
       </section>
       <section className="release-metrics" aria-label="Release facts">
-        <div><strong>0</strong><span>Duplicate row IDs</span></div>
-        <div><strong>0 B</strong><span>Static sibling JS</span></div>
+        <div><strong>171,202 B</strong><span>Maintained deploy raw</span></div>
+        <div><strong>77,779 B</strong><span>Two-route session JS</span></div>
         <div><strong>0</strong><span>Overlay runtime concepts</span></div>
       </section>
       <section className="release-section" id="proof">

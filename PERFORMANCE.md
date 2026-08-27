@@ -2,6 +2,65 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.15.1 Current Maintained Benchmark Sweep
+
+Remeasured 2026-08-27 on macOS arm64 with Node 24.14.0, Apple M4 hardware,
+16 GiB RAM, and Chrome 151.0.7922.174. Candidate comparisons use clean
+`v0.14.3` except project-state scale, whose maintained contract compares the
+published `0.10.0` baseline. Every paired compiler/native/commerce output digest
+or manifest is identical unless the row below records route-specific `0.15.1`
+output.
+
+| Maintained runner | Current `0.15.1` result |
+|---|---|
+| `npm run benchmark` | Worker-effects clean-build median 220.1 ms; Worker graph 907 raw / 477 gzip B; window graph 14,456 / 6,159 B. |
+| `npm run benchmark:keyed` | 2,000-row build 233.2 ms; append 2.2 ms, filter 3.9 ms, restore 15.6 ms, reverse 5.3 ms medians; 30,048 raw / 11,748 gzip B JavaScript. |
+| `RUNS=7 npm run benchmark:native` | `v0.14.3` / `0.15.1` dispatch medians 3.5 / 3.4 ms for 5,000 clicks; identical 14,354 raw / 6,470 gzip B JavaScript and zero changed files. |
+| `RUNS=7 WARMUPS=1 npm run benchmark:module-cache` | `v0.14.3` / `0.15.1` medians 248.338 / 249.692 ms and 296.9 / 296.8 MiB peak RSS; identical 454,007-byte result and digest. |
+| `npm run benchmark:source-scale` | 50 routes, 500 modules, 50,550 lines: `v0.14.3` / `0.15.1` compile medians 499.3 / 498.9 ms and clean builds 851.5 / 853.8 ms; identical compiler and output digests. |
+| `RUNS=7 npm run benchmark:commerce` | 1,011-page storefront: `v0.14.3` / `0.15.1` clean-build medians 1,854.6 / 1,822.1 ms; all 1,053 files and 10,140,618 output bytes match. |
+| `npm run benchmark:project-navigation` | Seven-profile table update median 0.4 ms and navigation median 2.3 ms; 17 session JavaScript files total 77,779 raw / 27,050 gzip B. |
+| `npm run benchmark:project-state` | One-, eight-, and 32-state commit medians 0.2, 0.3, and 0.4 ms; deploy digest `3f83712254d95f1cf59c5034f363ea906406efa1bd9539f3bb8b9a0d54a3fdc5`. |
+| `npm run benchmark:project-list-decision` | Direct load 138.2 ms with 90,023 nodes; pagination load/range 39.6/5.8 ms with 2,867 nodes; window load/range 40.7/5.8 ms with 2,868 nodes. |
+
+The paired timing ranges overlap at module-cache and source-scale granularity,
+so no compiler regression or improvement is claimed. Native output is byte
+identical. Pagination remains selected over the timing-tied authored window: it
+uses one listener instead of two, has lower median heap (1,485,168 versus
+1,586,528 B), and preserves native page, focus, keyboard, and variable-row-height
+behavior without fixed-height range policy.
+
+## 0.15.1 Public Cross-Framework Commerce Fixture
+
+Measured 2026-08-27 from public fixture commit
+`f2d5be1a516c539e30f7125f6870d42b1dd02ecd` with 1,000 products and Kudzu
+linked to this `0.15.1` checkout. The matched variants use Astro 7.1.3 with
+React 19.2.8, React Router 8.3.0, TanStack Start 1.168.32, and Next.js 16.2.11.
+All five builds completed before the same asset and browser harnesses ran.
+
+| Variant | Initial JavaScript across six routes, gzip | Total output | First reliable click after first paint | Degraded capabilities |
+|---|---:|---:|---:|---:|
+| Kudzu 0.15.1 | 4.2-9.9 KiB | 9.42 MiB | 300 ms | 15 / 18 |
+| Astro 7.1.3 + React | 60.6-61.1 KiB | 13.95 MiB | 1,500 ms | 12 / 18 |
+| React Router 8.3.0 | 103.8-104.6 KiB | 7.04 MiB | 2,000 ms | 8 / 18 |
+| TanStack Start 1.168.32 | 103.5-104.1 KiB | 9.87 MiB | 2,000 ms | 9 / 18 |
+| Next.js 16.2.11 | 144.2-146.2 KiB | 35.76 MiB | 3,000 ms | 8 / 18 |
+
+The initial-JavaScript column records what Chrome actually received for home,
+search, collection, product, policy, and checkout routes. Browser results are
+medians from seven fresh sessions under 4x CPU slowdown and Chrome Slow 4G.
+Reliable click is the first tested delay with zero lost add-to-cart attempts in
+seven isolated sessions. The resilience score covers six matched capabilities
+under blocked JavaScript, a two-second script delay, and one missing script.
+Pre-rendered content and native links remain usable without JavaScript in every
+variant; the score does not treat read-only fallback as full interactivity.
+
+This is the current executable public commerce comparison, not a replacement
+for the broader historical 0.9 C1/C2/C5 contracts. That ignored local workspace
+is unavailable in current checkouts, so its React, Vue, Svelte, and Astro result
+remains provenance rather than a current ranking. The public commerce fixture
+does not contain Vue or Svelte variants.
+
 ## 0.15.1 Key-Scoped Native Popover Intake
 
 Measured 2026-08-27 on macOS arm64 with Node 24.14.0 and Chrome

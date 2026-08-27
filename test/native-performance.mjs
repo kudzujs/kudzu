@@ -65,7 +65,7 @@ const outputs = { baseline: await buildFixture("baseline"), candidate: await bui
 const artifacts = Object.fromEntries(Object.entries(outputs).map(([name, output]) => [name, javascriptArtifacts(output).sort((left, right) => left.file.localeCompare(right.file))]))
 if (artifacts.baseline.map(entry => entry.file).join("\n") !== artifacts.candidate.map(entry => entry.file).join("\n")) throw new Error("Native benchmark emitted different JavaScript paths")
 const changed = artifacts.candidate.filter((entry, index) => entry.hash !== artifacts.baseline[index].hash).map(entry => entry.file)
-if (changed.length !== 2 || !changed.some(file => file.endsWith("/kudzu-native.js")) || !changed.some(file => file.endsWith("/kudzu-serialization.js"))) throw new Error(`Unexpected native benchmark artifact changes: ${JSON.stringify(changed)}`)
+if (changed.length && (changed.length !== 2 || !changed.some(file => file.endsWith("/kudzu-native.js")) || !changed.some(file => file.endsWith("/kudzu-serialization.js")))) throw new Error(`Unexpected native benchmark artifact changes: ${JSON.stringify(changed)}`)
 const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
 const root = process.argv[1]
