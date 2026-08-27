@@ -164,7 +164,7 @@ function assertList(list, index, ids, stateIds, listIds, parentByChild) {
     parentByChild.set(child.id, list.id)
   }
   for (const row of list.rowStates ?? []) if (!isRecord(row) || !rowTemplate(row.id) || !Object.hasOwn(row, "initialValue") || row.initializer !== undefined && row.initializer !== "list-item") throw new Error(`${label} has invalid row state`)
-  for (const row of [...(list.rowRefs ?? []), ...(list.rowConditions ?? [])]) if (!rowTemplate(row)) throw new Error(`${label} has invalid row ownership ID`)
+  for (const row of [...(list.rowRefs ?? []), ...(list.rowIds ?? []), ...(list.rowConditions ?? [])]) if (!rowTemplate(row)) throw new Error(`${label} has invalid row ownership ID`)
   if (list.seed && list.valueSeed || list.seed !== undefined && !validSeed(list.seed) || list.valueSeed !== undefined && !validSeed(list.valueSeed)) throw new Error(`${label} has invalid seed`)
 }
 

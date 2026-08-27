@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.15.1 native-popover composition contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.14.3")
+  assert.equal(contract.milestone, "0.15.1")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -102,6 +102,28 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
     qualifyingVirtualizationFixtures: 0,
     rejectedStrategies: ["direct-dom", "fixed-height-scroll-window"]
   })
+  assert.deepEqual(contract.virtualRangeDecision, {
+    patch: "0.14.4",
+    status: "closed-by-stop-condition",
+    selectedStrategy: "pagination",
+    requiredIndependentFixtures: 3,
+    qualifyingFixtures: 0,
+    runtime: null
+  })
+  assert.deepEqual(contract.nativeDialogDecision, {
+    patch: "0.15.0",
+    status: "closed-by-native-composition",
+    fixture: "project-application",
+    runtime: null,
+    reusedSemantics: ["native-dialog-top-layer", "ordinary-primitive-state", "object-ref-ownership", "native-cancel-event", "keyed-row-identity", "route-dom-release"]
+  })
+  assert.deepEqual(contract.nativePopoverDecision, {
+    patch: "0.15.1",
+    status: "supported-by-key-scoped-id-references",
+    fixture: "project-application",
+    runtime: "existing-keyed-list-runtime",
+    reusedSemantics: ["native-popover-top-layer", "keyed-row-identity", "key-scoped-use-id", "native-escape-and-light-dismiss", "route-dom-release"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -114,8 +136,8 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
   const login = plan.routes.find(route => route.route === "/login")
   assert.deepEqual(projects.states.slice(0, 4).map(state => state.name), ["token", "username", "isAdmin", "authStatus"])
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection", "loadCursor", "requestedCursor", "loadRequest", "loadStatus", "loadError", "loadEnd", "loadObserverGeneration"])
-  assert.deepEqual(projects.states.slice(0, 28).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection", "loadCursor", "requestedCursor", "loadRequest", "loadStatus", "loadError", "loadEnd", "loadObserverGeneration", "pendingDeleteId"])
+  assert.deepEqual(projects.states.slice(0, 29).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
   assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["uploadName", "route", ""], ["uploadType", "route", ""], ["uploadContent", "route", ""], ["uploadSize", "route", 0], ["uploadRequest", "route", 0], ["uploadStatus", "route", "idle"], ["uploadError", "route", ""], ["attachments", "route", []], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
   assert.equal(projects.effects.length, 8)
   assert.equal(detail.effects.length, 7)
@@ -126,10 +148,11 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
   const issueList = projects.lists.find(list => list.ownerField === "issues")
   assert.equal(issueList.state, projectDataState.id)
   assert.equal(projectList.children.some(child => child.id === issueList.id && child.field === "issues"), true)
+  assert.equal(projectList.rowIds?.length, 1)
   assert.equal(projects.lists.some(list => Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "filter").id) && Object.values(list.selectorStates ?? {}).includes(projects.states.find(state => state.name === "sortDirection").id) && list.expressionStates?.includes(projects.states.find(state => state.name === "selectedId").id) && list.rowStates?.length === 3), true)
   assert.equal(projects.conditions.some(condition => condition.state === projects.states.find(state => state.name === "showSummary").id), true)
   assert.deepEqual(projectArtifacts.capability.manifest.events.command, ["click"])
-  assert.deepEqual(projectArtifacts.capability.manifest.events.native, ["click", "input"])
+  assert.deepEqual(projectArtifacts.capability.manifest.events.native, ["cancel", "click", "input"])
   assert.equal(projectArtifacts.capability.manifest.bindings.text, true)
   assert.equal(projectArtifacts.capability.manifest.lists.nested, true)
   assert.equal(projectArtifacts.capability.manifest.lists.rowHooks, true)
@@ -160,6 +183,11 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
   const detailHtml = await readFile(new URL("dist/app/projects/alpha/index.html", fixture), "utf8")
   assert.match(projectsHtml, /data-project-table.*<thead>.*<th[^>]*>Project<\/th>.*<tbody>.*data-project="alpha".*data-project="beta".*<\/tbody>.*<\/table>/s)
   assert.match(projectsHtml, /data-retry-incremental.*data-project-sentinel.*data-project-page-size="2".*data-project-result-limit="6"/s)
+  assert.match(projectsHtml, /<dialog[^>]*data-delete-project-dialog[^>]*aria-labelledby="delete-project-title"[^>]*aria-describedby="delete-project-description".*data-confirm-project-delete[^>]*>Delete project.*data-cancel-project-delete/s)
+  const alphaActions = projectsHtml.match(/data-project-actions="alpha" popovertarget="([^"]+)".*id="\1" popover="auto" data-project-actions-popover="alpha"/s)
+  const betaActions = projectsHtml.match(/data-project-actions="beta" popovertarget="([^"]+)".*id="\1" popover="auto" data-project-actions-popover="beta"/s)
+  assert.ok(alphaActions && betaActions)
+  assert.notEqual(alphaActions[1], betaActions[1])
   assert.match(await readFile(new URL("dist/assets/handlers/pages/app/projects.js", fixture), "utf8"), /IntersectionObserver.*incremental\?cursor=/s)
   assert.match(runtimeProjectHtml, /data-runtime-project.*data-project-id.*<h1>Project .*data-k-text="rp0".*This project route is directly addressable.*data-first-issue/s)
   assert.match(runtimeIssueHtml, /data-runtime-issue.*data-project-id.*data-issue-id.*<h1>Issue .*data-k-text="rp1".*Project .*data-k-text="rp0"/s)
@@ -195,7 +223,7 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
   delete stableBaseline.routes["/login"].javascriptAggregateGzipBytes
   assert.deepEqual(stableOutput, stableBaseline)
   // gzip output varies slightly across zlib versions; raw bytes and hashes stay exact.
-  assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 128)
+  assert.ok(Math.abs(output.deploy.aggregateGzipBytes - contract.baseline.deploy.aggregateGzipBytes) <= 128, JSON.stringify(output))
   assert.ok(Math.abs(output.routes["/app/projects"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects"].javascriptAggregateGzipBytes) <= 64, JSON.stringify(output))
   assert.ok(Math.abs(output.routes["/app/projects/alpha"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/alpha"].javascriptAggregateGzipBytes) <= 64)
   assert.ok(Math.abs(output.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes - contract.baseline.routes["/app/projects/[projectId]"].javascriptAggregateGzipBytes) <= 64)
@@ -422,6 +450,15 @@ try {
       if (location.pathname !== "/app/projects/alpha" || document.querySelector("[data-app-layout]") !== layout || list.isConnected) throw new Error(routeFailure + "-retry-contract")
       document.body.dataset.routeFailureTest = "pass"
     }
+  } else if (search.has("dialog-cleanup")) {
+    await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Projects loaded" && document.querySelector("[data-delete-project-dialog]"), "dialog-cleanup-entry")
+    const dialog = document.querySelector("[data-delete-project-dialog]")
+    document.querySelector('[data-delete-project="alpha"]').click()
+    await waitFor(() => dialog.open && dialog.matches(":modal"), "dialog-cleanup-open")
+    document.querySelector('a[href="/app/projects/alpha"]').click()
+    await waitFor(() => document.querySelector("[data-project-detail]"), "dialog-cleanup-navigation")
+    if (dialog.isConnected || dialog.matches(":modal")) throw new Error("dialog-route-cleanup")
+    document.body.dataset.dialogCleanupTest = "pass"
   } else if (search.has("infinite-cleanup")) {
     await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Projects loaded" && activeProjectObserver(), "incremental-cleanup-entry")
     const list = document.querySelector("[data-project-list-page]")
@@ -566,9 +603,22 @@ try {
   document.querySelector("#insert-project").click()
   await waitFor(() => document.querySelector('[data-project="delta"]'), "table-insert")
   const delta = document.querySelector('[data-project="delta"]')
-  document.querySelector('[data-delete-project="delta"]').click()
+  const deleteTrigger = document.querySelector('[data-delete-project="delta"]')
+  const deleteDialog = document.querySelector("[data-delete-project-dialog]")
+  deleteTrigger.click()
+  await waitFor(() => deleteDialog.open && deleteDialog.matches(":modal"), "dialog-open")
+  if (document.activeElement !== document.querySelector("[data-confirm-project-delete]") || !delta.isConnected) throw new Error("dialog-initial-focus")
+  document.querySelector("[data-cancel-project-delete]").click()
+  await waitFor(() => !deleteDialog.open && document.activeElement === deleteTrigger, "dialog-cancel")
+  deleteTrigger.click()
+  await waitFor(() => deleteDialog.open, "dialog-reopen")
+  deleteDialog.requestClose()
+  await waitFor(() => !deleteDialog.open && document.activeElement === deleteTrigger, "dialog-escape")
+  deleteTrigger.click()
+  await waitFor(() => deleteDialog.open, "dialog-confirm-open")
+  document.querySelector("[data-confirm-project-delete]").click()
   await waitFor(() => !document.querySelector('[data-project="delta"]'), "table-delete")
-  if (delta.isConnected || document.querySelector('[data-project="alpha"]') !== alpha || document.querySelector('[data-project="beta"]') !== beta) throw new Error("table-crud-identity")
+  if (deleteDialog.open || document.activeElement !== document.querySelector("#insert-project") || delta.isConnected || document.querySelector('[data-project="alpha"]') !== alpha || document.querySelector('[data-project="beta"]') !== beta) throw new Error("table-crud-identity")
 
   document.querySelector("#show-active").click()
   await waitFor(() => !document.querySelector('[data-project="beta"]'), "filter-remove")
@@ -891,6 +941,9 @@ http.createServer((request, response) => {
     const cleanup = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?infinite-cleanup=1`], { encoding: "utf8", timeout: 20_000 })
     assert.equal(cleanup.status, 0, cleanup.stderr)
     assert.match(cleanup.stdout, /data-infinite-cleanup-test="pass"/, cleanup.stderr)
+    const dialogCleanup = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?dialog-cleanup=1`], { encoding: "utf8", timeout: 20_000 })
+    assert.equal(dialogCleanup.status, 0, dialogCleanup.stderr)
+    assert.match(dialogCleanup.stdout, /data-dialog-cleanup-test="pass"/, dialogCleanup.stderr)
     const history = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?history=1`], { encoding: "utf8", timeout: 20_000 })
     assert.equal(history.status, 0, history.stderr)
     assert.match(history.stdout, /data-navigation-test="pass"/, history.stderr)
@@ -988,6 +1041,15 @@ async function runIssueFormJourney(chrome, applicationPort) {
       await send("Input.dispatchKeyEvent", { type: "char", key: "Enter", code: "Enter", text: "\r", unmodifiedText: "\r", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 })
       await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 })
     }
+    const escape = async () => {
+      await send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 })
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 })
+    }
+    const click = async selector => {
+      const { x, y } = await evaluate(`(() => { const rect = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } })()`)
+      await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 })
+      await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 })
+    }
     const insert = text => send("Input.insertText", { text })
     const waitFor = expression => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = () => { if (${expression}) resolve(true); else if (Date.now() - started > 5000) reject(new Error(${JSON.stringify(expression)})); else setTimeout(check, 10) }; check() })`)
     const chooseFile = (name, type, contents) => evaluate(`(() => { const transfer = new DataTransfer(); transfer.items.add(new File([${JSON.stringify(contents)}], ${JSON.stringify(name)}, { type: ${JSON.stringify(type)} })); const input = document.querySelector("#project-attachment"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })) })()`)
@@ -1016,8 +1078,29 @@ async function runIssueFormJourney(chrome, applicationPort) {
     await waitFor('JSON.parse(localStorage.getItem("kudzu-alpha-setup-draft")).summary === "Navigation-safe summary"')
     await evaluate('document.querySelector(`a[href="/app/projects"]`).click()')
     await waitFor('document.querySelector("[data-project-list-page]")')
-    await evaluate('document.querySelector(`a[href="/app/projects/alpha"]`).click()')
+    await waitFor('document.querySelectorAll("[data-project-actions-popover]").length === 2')
+    assert.deepEqual(await evaluate(`(() => { const triggers = [...document.querySelectorAll("[data-project-actions]")]; const popovers = [...document.querySelectorAll("[data-project-actions-popover]")]; return { unique: new Set(popovers.map(node => node.id)).size, linked: triggers.every((node, index) => node.popoverTargetElement === popovers[index]), unresolved: popovers.some(node => node.id.includes("$k")) } })()`), { unique: 2, linked: true, unresolved: false })
+    await evaluate('document.querySelector(`[data-project-actions="alpha"]`).focus(); document.querySelector(`[data-project-actions="alpha"]`).click()')
+    await waitFor('document.querySelector(`[data-project-actions-popover="alpha"]`).matches(":popover-open")')
+    await escape()
+    await waitFor('!document.querySelector(`[data-project-actions-popover="alpha"]`).matches(":popover-open")')
+    assert.equal(await evaluate('document.activeElement === document.querySelector(`[data-project-actions="alpha"]`)'), true)
+    await evaluate('document.querySelector(`[data-project-actions="alpha"]`).click()')
+    await waitFor('document.querySelector(`[data-project-actions-popover="alpha"]`).matches(":popover-open")')
+    await click("#unrelated-control")
+    await waitFor('!document.querySelector(`[data-project-actions-popover="alpha"]`).matches(":popover-open")')
+    const alphaId = await evaluate('document.querySelector(`[data-project-actions-popover="alpha"]`).id')
+    await evaluate('window.__kPopoverRow = document.querySelector(`[data-project="alpha"]`); document.querySelector("#reverse-projects").click()')
+    await waitFor('document.querySelector("#project-list tbody tr")?.dataset.project === "beta"')
+    assert.deepEqual(await evaluate(`({ retained: document.querySelector('[data-project="alpha"]') === window.__kPopoverRow, id: document.querySelector('[data-project-actions-popover="alpha"]').id })`), { retained: true, id: alphaId })
+    await evaluate('document.querySelector("#show-active").click()')
+    await waitFor('!document.querySelector(`[data-project="beta"]`)')
+    await evaluate('document.querySelector("#show-all").click()')
+    await waitFor('document.querySelector(`[data-project="beta"]`)')
+    assert.equal(await evaluate('new Set([...document.querySelectorAll("[data-project-actions-popover]")].map(node => node.id)).size === document.querySelectorAll("[data-project-actions-popover]").length'), true)
+    await evaluate('window.__kOldPopover = document.querySelector(`[data-project-actions-popover="alpha"]`); window.__kOldPopover.showPopover(); window.__kOldPopover.querySelector(`a[href="/app/projects/alpha"]`).click()')
     await waitFor('document.querySelector("#setup-summary")?.value === "Navigation-safe summary"')
+    assert.equal(await evaluate('!window.__kOldPopover.isConnected && !window.__kOldPopover.matches(":popover-open")'), true)
     assert.equal(await evaluate('document.querySelector("[data-setup-draft]").dataset.setupStep'), "2")
     await evaluate('location.reload()')
     await new Promise(resolve => setTimeout(resolve, 500))
@@ -1107,6 +1190,7 @@ async function runIssueFormJourney(chrome, applicationPort) {
     await insert("Verify rollback")
     await evaluate('document.querySelector("#issue-title").focus()')
     await enter()
+    await waitFor('document.querySelector("#issue-submit").disabled && document.querySelector("#issue-submit").textContent === "Creating issue"')
     assert.deepEqual(await evaluate('({ disabled: document.querySelector("#issue-submit").disabled, label: document.querySelector("#issue-submit").textContent })'), { disabled: true, label: "Creating issue" })
     await waitFor('document.querySelector("#issue-title-error")')
     assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()), title = document.querySelector("#issue-title"); return { attempts: counts.issueCreateAttempts, creates: counts.issueCreates, error: document.querySelector("#issue-title-error").textContent, invalid: title.getAttribute("aria-invalid"), describedBy: title.getAttribute("aria-describedby"), focused: document.activeElement === title, title: title.value, body: document.querySelector("#issue-body").value, assignee: document.querySelector("#issue-assignee").value, checklist: document.querySelector("#checklist-check-1").value } })()`), { attempts: 1, creates: 0, error: "Use a more specific title.", invalid: "true", describedBy: "issue-title-error", focused: true, title: "Release blocker", body: "Retain this detailed reproduction", assignee: "Ada", checklist: "Verify rollback" })

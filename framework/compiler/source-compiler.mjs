@@ -517,6 +517,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     let usesListItem = false
     let usesRowState = false
     let usesRowRef = false
+    let usesRowId = false
     let usesComponentState = false
     let usesComponentId = false
     let usesComponentRef = false
@@ -1199,7 +1200,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           ...result.ordinaryStates.map(({ state, setter, source }) => ({ name: state, setter, kind: "component", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
         ],
         refs: [...result.rowRefs.map(({ name, source }) => ({ name, kind: "row", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })), ...result.ordinaryRefs.map(({ name, source }) => ({ name, kind: "component", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))],
-        ids: result.ordinaryIds.map(({ name, source }) => ({ name, ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))
+        ids: [...result.rowIds.map(({ name, source }) => ({ name, kind: "row", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) })), ...result.ordinaryIds.map(({ name, source }) => ({ name, kind: "component", ...(analysisSite(source, "hook") ? { site: analysisSite(source, "hook") } : {}), ...(analysisSource(source) ? { source: analysisSource(source) } : {}) }))]
       })
       result.propStateOwners = new Map(result.props.flatMap(prop => {
         const expression = result.propExpressions.get(prop.name)
@@ -1216,7 +1217,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       return result
     }
     const registerRowHooks = (call, specialization) => {
-      if (!specialization.rowStates.length && !specialization.rowRefs.length) return
+      if (!specialization.rowStates.length && !specialization.rowRefs.length && !specialization.rowIds.length) return
       let owner
       for (let current = call.parent; current; current = current.parent) {
         if (isFunctionLike(current) && settersByFunction.has(current)) {
@@ -1236,6 +1237,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       rowHookCalls.push(call)
       usesRowState ||= specialization.rowStates.length > 0
       usesRowRef ||= specialization.rowRefs.length > 0
+      usesRowId ||= specialization.rowIds.length > 0
     }
     const mergeSpecializedImports = (root, componentSource, call, effects = []) => {
       const componentImports = clientImportBindings(componentSource, componentSource.fileName, sourceFiles)
@@ -1716,7 +1718,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       let count = 0
       const visit = (node, currentAggregate = aggregate) => {
         if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) {
-          const nestedAggregate = { calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [], specializations: [] }
+          const nestedAggregate = { calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [], rowIds: [], specializations: [] }
           for (const argument of node.arguments) visit(argument, nestedAggregate)
           if (nestedAggregate.hookDeclarations.length || nestedAggregate.effects.length) nestedRowSpecializations.set(`${node.pos}:${node.end}`, nestedAggregate)
           return
@@ -1749,6 +1751,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             currentAggregate.hookDeclarations.push(...specialization.hookDeclarations)
             currentAggregate.rowStates.push(...specialization.rowStates)
             currentAggregate.rowRefs.push(...specialization.rowRefs)
+            currentAggregate.rowIds.push(...specialization.rowIds)
           }
           replacements.set(node, specialization.root)
           count++
@@ -1784,7 +1787,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     }
     for (const { node, parts: originalParts } of rawRenderedLists) {
       if (keyedListParentTag(node) === "table") throw new Error("Keyed table rows must be wrapped in <tbody>, <thead>, or <tfoot>")
-      const specialization = componentSpecializations.get(originalParts.root) ?? { root: originalParts.root, calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [], ordinaryStates: [] }
+      const specialization = componentSpecializations.get(originalParts.root) ?? { root: originalParts.root, calculations: [], effects: [], hookDeclarations: [], rowStates: [], rowRefs: [], rowIds: [], ordinaryStates: [] }
       const componentSource = specialization.componentSource ?? sourceFile
       specialization.root = expandKeyedComponents(specialization.root, componentSource, specialization.component ? [specialization.component] : [], specialization)
       if (specialization.imported) synthesizeTree(specialization.root = mergeSpecializedImports(specialization.root, componentSource, originalParts.root, specialization.effects))
@@ -1811,6 +1814,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         specializations: [specialization.analysis?.slot, ...(specialization.specializations ?? [])].filter(slot => slot !== undefined),
         rowStates: [...specialization.rowStates, ...specialization.ordinaryStates],
         rowRefs: specialization.rowRefs,
+        rowIds: specialization.rowIds,
         analysisStateOwners: new Map([...stateOwnersForNode(originalParts.root), ...(specialization.propStateOwners ?? []), ...[...specialization.rowStates, ...specialization.ordinaryStates].map(state => [state.state, state.analysisReference])])
       }
       for (const calculation of specialization.calculations) {
@@ -2297,6 +2301,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     if (usesListEffects) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useEffect"), factory.createIdentifier("__kListUseEffect")))
     if (usesRowState) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useState"), factory.createIdentifier("__kRowUseState")))
     if (usesRowRef) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useRef"), factory.createIdentifier("__kRowUseRef")))
+    if (usesRowId) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useId"), factory.createIdentifier("__kRowUseId")))
     if (usesComponentState) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useState"), factory.createIdentifier("__kComponentUseState")))
     if (usesComponentId) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useId"), factory.createIdentifier("__kComponentUseId")))
     if (usesComponentRef) behaviorImports.push(factory.createImportSpecifier(false, factory.createIdentifier("useRef"), factory.createIdentifier("__kComponentUseRef")))
@@ -2656,7 +2661,6 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
     if (!ts.isIdentifier(tag) || tag.text[0] !== tag.text[0].toLowerCase()) fail(node, "Keyed list items must use intrinsic JSX elements")
   }
   const visit = node => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "useId") fail(node, "useId() is not supported in keyed rows")
     if (ts.isJsxFragment(node)) fail(node, "Fragments are not supported in keyed lists")
     if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) validateElement(node)
     if (node !== root && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && containsJsx(node)) fail(node, nestedDiagnostic)
@@ -2697,6 +2701,7 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
           specializations: [specialization?.analysis?.slot, ...(specialization?.specializations ?? [])].filter(slot => slot !== undefined),
           rowStates: specializedStates,
           rowRefs: specialization?.rowRefs ?? [],
+          rowIds: specialization?.rowIds ?? [],
           analysisStateOwners: new Map([...(parts.analysisStateOwners ?? []), ...(specialization?.propStateOwners ?? []), ...specializedStates.map(state => [state.state, state.analysisReference])])
         }
         for (const calculation of specialization?.calculations ?? []) {
@@ -2746,6 +2751,8 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
   visit(root)
   return analysis
 }
+
+const keyedIdReferenceAttributes = new Set(["id", "htmlFor", "aria-activedescendant", "aria-controls", "aria-describedby", "aria-details", "aria-errormessage", "aria-flowto", "aria-labelledby", "aria-owns", "form", "headers", "list", "popovertarget"])
 
 function directConstObjectLiteral(expression, call) {
   expression = unwrapExpression(expression)
@@ -2947,6 +2954,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
   const hookDeclarations = []
   const rowStates = []
   const rowRefs = []
+  const rowIds = []
   const ordinaryStates = []
   const ordinaryRefs = []
   const ordinaryIds = []
@@ -3012,13 +3020,14 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
         continue
       }
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useId") {
-        if (!ordinaryHooks) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "useId() is not supported in keyed row components")
-        if (declaration.initializer.arguments.length || !ts.isIdentifier(declaration.name)) throw sourceNodeError(declaration.initializer, component.getSourceFile(), "Setter-callback component useId() must initialize one top-level const identifier without arguments")
-        const name = `__kComponentId${Math.max(0, call.pos)}_${hookDeclarations.length}`
+        const hookLabel = ordinaryHooks ? "Setter-callback component" : "Keyed row"
+        if (declaration.initializer.arguments.length || !ts.isIdentifier(declaration.name)) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useId() must initialize one top-level const identifier without arguments`)
+        const ids = ordinaryHooks ? ordinaryIds : rowIds
+        const name = `${ordinaryHooks ? "__kComponentId" : "__kRowId"}${Math.max(0, call.pos)}_${ids.length}`
         substitutions.set(declaration.name.text, factory.createIdentifier(name))
-        const initializer = factory.createCallExpression(factory.createIdentifier("__kComponentUseId"), undefined, [])
+        const initializer = factory.createCallExpression(factory.createIdentifier(ordinaryHooks ? "__kComponentUseId" : "__kRowUseId"), undefined, [])
         hookDeclarations.push(factory.createVariableStatement(undefined, factory.createVariableDeclarationList([factory.createVariableDeclaration(factory.createIdentifier(name), undefined, undefined, initializer)], ts.NodeFlags.Const)))
-        ordinaryIds.push({ name, source: declaration })
+        ids.push({ name, local: declaration.name.text, source: declaration })
         continue
       }
       if (!ts.isIdentifier(declaration.name) || !declaration.initializer) fail(declaration, `${label} component locals must be initialized identifiers`)
@@ -3028,6 +3037,10 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       substitutions.set(declaration.name.text, calculation)
     }
     returned = last.expression
+  }
+  for (const id of rowIds) {
+    for (const reference of referenceIdentifiers(returned, id.local)) if (!validKeyedIdReference(reference)) throw sourceNodeError(reference, component.getSourceFile(), "Keyed row useId() values may only be used in intrinsic id and ID-reference attributes")
+    for (const calculation of calculations) if (referenceIdentifiers(calculation.expression, id.local).length) throw sourceNodeError(calculation.expression, component.getSourceFile(), "Keyed row useId() values may only be used directly in intrinsic id and ID-reference attributes")
   }
   let unsupportedHook
   const findUnsupportedHook = node => {
@@ -3058,6 +3071,7 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     hookDeclarations,
     rowStates,
     rowRefs,
+    rowIds,
     ordinaryStates,
     ordinaryRefs,
     ordinaryIds,
@@ -3066,6 +3080,16 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
     props: propAnalysis,
     usesComponentId: ordinaryIds.length > 0
   }
+}
+
+function validKeyedIdReference(reference) {
+  for (let current = reference.parent; current; current = current.parent) {
+    if (!ts.isJsxAttribute(current)) continue
+    const element = current.parent?.parent
+    const tag = element?.tagName
+    return keyedIdReferenceAttributes.has(current.name.text) && ts.isIdentifier(tag) && tag.text[0] === tag.text[0].toLowerCase()
+  }
+  return false
 }
 
 function isSerializableStateLiteral(node) {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.14.3",
+  "milestone": "0.15.1",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -137,6 +137,17 @@
     "incremental-route-abort-cleanup",
     "incremental-retained-row-identity",
     "bounded-incremental-network-and-memory",
+    "native-destructive-dialog",
+    "dialog-initial-focus",
+    "dialog-cancel-and-escape",
+    "dialog-trigger-focus-restore",
+    "dialog-confirmation-focus-fallback",
+    "dialog-route-cleanup",
+    "native-keyed-popover",
+    "key-scoped-id-references",
+    "popover-escape-and-light-dismiss",
+    "popover-trigger-focus-restore",
+    "popover-route-cleanup",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -157,7 +168,9 @@
     "draft persistence is application-owned versioned storage plus one dependency effect; there is no wizard or autosave scheduler",
     "fetch uploads expose no upload progress; chunking, resume, background sync, and an upload runtime remain unsupported",
     "object-state collection roots require one direct static array field and immutable replacement; dynamic paths and mutation remain unsupported",
-    "incremental loading allows two successful pages of two records and retains at most six unique projects; larger datasets require the separately measured 0.14.3 browser decision"
+    "incremental loading allows two successful pages of two records and retains at most six unique projects; larger datasets require the separately measured 0.14.3 browser decision",
+    "destructive confirmation uses the native dialog top layer; custom focus traps, portals, stacked modals, and animated presence remain unsupported",
+    "non-modal project actions use native Popover and key-scoped ID references; custom positioning engines, menu roving focus, Portal/Slot reconciliation, and retained overlay trees remain unsupported"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -296,21 +309,56 @@
       "fixed-height-scroll-window"
     ]
   },
+  "virtualRangeDecision": {
+    "patch": "0.14.4",
+    "status": "closed-by-stop-condition",
+    "selectedStrategy": "pagination",
+    "requiredIndependentFixtures": 3,
+    "qualifyingFixtures": 0,
+    "runtime": null
+  },
+  "nativeDialogDecision": {
+    "patch": "0.15.0",
+    "status": "closed-by-native-composition",
+    "fixture": "project-application",
+    "runtime": null,
+    "reusedSemantics": [
+      "native-dialog-top-layer",
+      "ordinary-primitive-state",
+      "object-ref-ownership",
+      "native-cancel-event",
+      "keyed-row-identity",
+      "route-dom-release"
+    ]
+  },
+  "nativePopoverDecision": {
+    "patch": "0.15.1",
+    "status": "supported-by-key-scoped-id-references",
+    "fixture": "project-application",
+    "runtime": "existing-keyed-list-runtime",
+    "reusedSemantics": [
+      "native-popover-top-layer",
+      "keyed-row-identity",
+      "key-scoped-use-id",
+      "native-escape-and-light-dismiss",
+      "route-dom-release"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 44,
-      "rawBytes": 168037,
-      "aggregateGzipBytes": 52955,
-      "sha256": "230dea098442275e42a966ca595743a4da9c832327ba52d4d09de663c68f8f1a"
+      "rawBytes": 171202,
+      "aggregateGzipBytes": 53629,
+      "sha256": "46ba45b4a423b9627c6ede5f8dd3a667f593cb5401454ae42ecc66207b07b323"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 65267,
-        "javascriptAggregateGzipBytes": 23118
+        "javascriptRawBytes": 66157,
+        "javascriptAggregateGzipBytes": 23414
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 64415,
-        "javascriptAggregateGzipBytes": 22650
+        "javascriptRawBytes": 64681,
+        "javascriptAggregateGzipBytes": 22782
       },
       "/app/projects/[projectId]": {
         "javascriptRawBytes": 19248,

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.14.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.14.3 - 10,000-item browser decision.** Measured direct DOM, pagination, and scroll-window alternatives select native pagination for large project tables without adding virtualization or range runtime semantics. Read the [release notes](./RELEASES.md#0143---10000-item-browser-decision), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.14.3), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.15.1 - Key-scoped native popovers.** Keyed row `useId()` now scopes native Popover triggers and intrinsic ID references by row key without adding an overlay runtime. Read the [release notes](./RELEASES.md#0151---key-scoped-native-popovers), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.15.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

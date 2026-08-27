@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.14.3/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.15.1/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.14\.3 typescript/)
+  assert.match(docs, /@kudzujs\/core@\^0\.15\.1 typescript/)
   assert.match(docs, /Current 0\.14\.3 large-list decision/)
-  assert.match(examples, /Release 0\.14\.3.*v0\.14\.3.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.14\.3.*v0\.14\.3.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.14\.3".*10,000-item browser decision/s)
-  assert.match(release, /Kudzu 0\.14\.3.*Measure the range.*Choose native pagination/s)
-  assert.match(release, /10,000 ROWS · THREE STRATEGIES · ONE DECISION.*BOUNDED DOM.*npm install @kudzujs\/core@\^0\.14\.3/s)
-  assert.match(release, /<title>Kudzu 0\.14\.3 - 10,000-item browser decision<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.14\.3"/)
-  assert.match(release, /Reject giant DOM.*Add no runtime/s)
+  assert.match(examples, /Release 0\.15\.1.*v0\.15\.1.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.15\.1.*v0\.15\.1.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.15\.1".*Key-scoped native popovers/s)
+  assert.match(release, /Kudzu 0\.15\.1.*Scope the identity.*Let the platform pop/s)
+  assert.match(release, /ONE ROW KEY · ONE NATIVE TOP LAYER · ZERO OVERLAY RUNTIME.*KEYED ID OWNERSHIP.*npm install @kudzujs\/core@\^0\.15\.1/s)
+  assert.match(release, /<title>Kudzu 0\.15\.1 - Key-scoped native popovers<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.15\.1"/)
+  assert.match(release, /Keep useId.*Add no overlay tree/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -2472,11 +2472,25 @@ test("renders deterministic React useId values without browser JavaScript", asyn
   }
 })
 
-test("rejects useId in keyed row components", () => {
-  const fixture = new URL("./fixtures/react-use-id-keyed-invalid", import.meta.url)
+test("scopes useId and ID references to keyed rows", async t => {
+  const fixture = new URL("./fixtures/react-use-id-keyed", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/react-use-id-keyed/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/react-use-id-keyed/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL("./fixtures/react-use-id-keyed/dist/index.html", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/react-use-id-keyed/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.match(html, /<label for="(k-[^"]+)">[\s\S]*?Name[\s\S]*?<input id="\1"><\/label>/)
+  assert.equal(plan.routes[0].lists.some(list => list.rowIds?.length === 1 && list.rowIds[0].includes("$k")), true)
+})
+
+test("rejects keyed useId values outside ID attributes", () => {
+  const fixture = new URL("./fixtures/react-use-id-keyed-usage-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ useId\(\) is not supported in keyed row components/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Keyed row useId\(\) values may only be used in intrinsic id and ID-reference attributes/)
 })
 
 test("rejects non-top-level React useId calls", () => {

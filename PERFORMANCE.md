@@ -2,6 +2,26 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.15.1 Key-Scoped Native Popover Intake
+
+Measured 2026-08-27 on macOS arm64 with Node 24.14.0 and Chrome
+151.0.7922.174. The maintained project fixture uses native Popover with one
+key-scoped `useId()` relationship per project row. Required Chrome verifies
+Escape, light dismiss, trigger focus restoration, reorder identity, inserted
+and remounted IDs, and enhanced-navigation cleanup.
+
+The application emits 44 files totaling 171,202 raw / 53,629 aggregate gzip
+bytes with deploy SHA-256
+`46ba45b4a423b9627c6ede5f8dd3a667f593cb5401454ae42ecc66207b07b323`.
+The maintained two-route session contains 17 JavaScript files totaling 77,779
+raw / 27,050 aggregate gzip bytes. `/help` remains 0 B JavaScript.
+
+Seven fresh Chrome profiles record table update samples of `[0.4, 0.4, 0.5,
+0.4, 0.5, 0.5, 0.5]` ms, a 0.5 ms median and 0.4/0.5 ms range. Navigation
+samples are `[4, 2.4, 2.6, 2.5, 2.5, 2.8, 2.4]` ms, a 2.5 ms median and 2.4/4
+ms range. These ranges overlap prior retained-path evidence; no timing
+improvement or regression is claimed.
+
 ## 0.14.3 10,000-Item Browser Decision Intake
 
 Measured 2026-08-27 on Linux x64 with Node 24.14.0 and Chrome

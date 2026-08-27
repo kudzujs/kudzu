@@ -1030,6 +1030,13 @@ virtual range ownership.
 - **Done condition:** range semantics are package-neutral, optional, measured,
   and absent from non-virtual routes.
 
+Closed by stop condition. The `0.14.3` decision selected pagination over both
+direct 10,000-row DOM and the authored fixed-height scroll window. No independent
+application fixture proves pagination or application-owned bounded ranges
+insufficient, against the required three. Kudzu therefore adds no visible-range
+owner, measurement policy, range primitive, or virtualization runtime and moves
+to the next evidence-ready application capability.
+
 ## `0.15.x`: Overlay And Layer Ownership
 
 ### `0.15.0`: Native Dialog Baseline
@@ -1040,6 +1047,31 @@ virtual range ownership.
 - **Stop condition:** a custom modal/focus-trap runtime replaces `<dialog>`.
 - **Done condition:** project delete and edit confirmation pass accessibly.
 
+Implementation evidence is local and release gates remain pending. The maintained
+project application replaces immediate keyed project deletion with one shared
+native `<dialog>`, one route-owned object ref, and one pending project ID state.
+Existing row callback specialization opens the browser top layer; native cancel,
+explicit cancel, and confirmation handlers close it without a Portal, focus trap,
+overlay runtime, or retained component tree.
+
+Required Chrome proves modal top-layer behavior, native initial focus, explicit
+cancel, Escape-equivalent `requestClose()`, trigger-focus restoration, confirmed
+keyed deletion with fallback focus, retained sibling identity, and exact top-layer
+release on enhanced route navigation. The static `/help` sibling remains 0 B
+JavaScript. The slice adds no semantic primitive, IR kind, compiler pass,
+production compiler/runtime line, normalization rule, adapter, runtime concept,
+or public API. The application emits 44 files totaling 169,778 raw / 53,294
+aggregate gzip bytes with deploy SHA-256
+`91c5517e69c341bbd2051f07b3f0ad7df627098ba8e1984561268ea8666f3407`.
+The maintained two-route session remains 17 JavaScript files totaling 77,453 raw
+/ 26,905 aggregate gzip bytes.
+
+Seven fresh macOS arm64 Chrome 151 profiles record table update samples of
+`[0.5, 0.6, 0.6, 0.6, 0.6, 0.4, 0.5]` ms, a 0.6 ms median and 0.4/0.6 ms range,
+plus navigation samples of `[2.3, 2.6, 2.9, 2.6, 2.5, 2.7, 2.5]` ms, a 2.6 ms
+median and 2.3/2.9 ms range. These retained-path ranges overlap the previous
+same-environment evidence, so no timing improvement or regression is claimed.
+
 ### `0.15.1`: Popover, Dropdown, And Menu Behavior
 
 - **Purpose:** establish the native-first non-modal overlay boundary.
@@ -1049,6 +1081,38 @@ virtual range ownership.
   roving keyboard behavior where menu semantics apply, and route cleanup.
 - **Stop condition:** package Portal/Slot reconciliation enters the runtime.
 - **Done condition:** supported native and custom boundaries are explicit.
+
+Completed with the maintained project application as the qualifying fixture. A
+keyed project row now authors one top-level `useId()`, a native
+`popovertarget`, and a native `popover="auto"` action group. The compiler scopes
+the generated ID by the existing keyed ownership path and the list runtime
+rewrites only intrinsic `id`, `for`, static ARIA IDREF, `form`, `headers`,
+`list`, and `popovertarget` attributes. Unsupported ID escapes receive a source
+diagnostic. Native Chrome behavior supplies the top layer, Escape, light
+dismiss, and trigger focus restoration; ordinary keyed ownership preserves IDs
+across reorder, scopes inserted rows, recreates deterministic IDs after
+remove/re-add, and releases an open popover during enhanced navigation. The
+authored overlay uses static anchor positioning and `role="group"`, so menu
+roving focus is not applicable.
+
+The slice adds no semantic primitive, IR kind, compiler pass, runtime concept,
+public API, Portal/Slot reconciliation, focus manager, positioning engine, or
+retained overlay tree. It adds 52 and removes 24 production lines across the
+source compiler, RouteIR validation, capability projection, build renderer, and
+existing list runtime. The maintained application emits 44 files totaling
+171,202 raw / 53,629 aggregate gzip bytes with deploy SHA-256
+`46ba45b4a423b9627c6ede5f8dd3a667f593cb5401454ae42ecc66207b07b323`.
+The two-route session remains 17 JavaScript files totaling 77,779 raw / 27,050
+aggregate gzip bytes, a 326 raw / 145 gzip byte increase from `0.15.0`; the
+static `/help` sibling remains 0 B JavaScript. Familiar React-shaped `useId()`
+authoring remains intact, so no application adapter or migration-only source
+structure is added.
+
+Seven fresh macOS arm64 Chrome 151 profiles record table update samples of
+`[0.4, 0.4, 0.5, 0.4, 0.5, 0.5, 0.5]` ms, a 0.5 ms median and 0.4/0.5 ms range,
+plus navigation samples of `[4, 2.4, 2.6, 2.5, 2.5, 2.8, 2.4]` ms, a 2.5 ms
+median and 2.4/4 ms range. These retained-path ranges overlap prior evidence,
+so no timing improvement or regression is claimed.
 
 ### `0.15.2`: Toast And Notification Ownership
 
@@ -1477,5 +1541,8 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.14.0` | Released | Preserve native table CRUD, retained identity, keyboard access, and measured update evidence. | None |
 | `0.14.1` | Released | Preserve immutable object-state replacement, nested keyed identity, latest handlers, and exact row release. | None |
 | `0.14.2` | Released | Preserve bounded cursor loading, duplicate suppression, retry/end behavior, retained identity, and route cleanup. | None |
-| `0.14.3` | Release candidate | Complete commit, CI, tag, GitHub release, npm publication, and registry verification. | Release transaction |
-| `0.14.4` onward | Blocked | Complete or explicitly close `0.14.3` first. | Ordered patch boundary |
+| `0.14.3` | Released | Preserve the published 10,000-item pagination decision and measurement evidence. | None |
+| `0.14.4` | Closed by stop condition | Preserve pagination as the selected strategy until three independent fixtures authorize virtual ownership review. | Evidence favors pagination; zero qualifying fixtures |
+| `0.15.0` | Closed by native composition | Preserve the native dialog, focus, cancellation, keyed deletion, and route cleanup evidence. | No production change; no release consumed |
+| `0.15.1` | Released | Preserve key-scoped IDs, native Popover behavior, retained keyed identity, and route cleanup evidence. | None |
+| `0.15.2` | Active | Begin with a real toast and notification ownership fixture. | None |

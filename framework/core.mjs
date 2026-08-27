@@ -49,8 +49,7 @@ let renderContext
 
 export function useId() {
   if (!renderContext) throw new Error("useId() can only run while rendering a Kudzu component")
-  if (renderContext.listRoot || renderContext.listRowRoot || renderContext.listTemplate) throw new Error("useId() is not supported in keyed rows")
-  return `k-${nextRenderId("i")}`
+  return `k-${renderContext.listRoot || renderContext.listRowRoot ? nextRowRenderId("i") : nextRenderId("i")}`
 }
 
 export function useState(initialValue, name, initializer) {
@@ -484,7 +483,7 @@ function serializeCapture(name, value, seen) {
 }
 
 export async function renderPage(component, metadata = {}, props = {}, layout) {
-  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", applicationRoute: metadata.applicationRoute, counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], captureCache: new WeakMap(), sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
+  renderContext = { scoped: Boolean(layout), renderScope: layout ? "layout" : "route", applicationRoute: metadata.applicationRoute, counters: { layout: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 }, route: { s: 0, r: 0, c: 0, l: 0, e: 0, p: 0, i: 0 } }, nextState: 0, nextRef: 0, nextCondition: 0, nextList: 0, nextEffect: 0, nextParam: 0, nextId: 0, conditionDepth: 0, listDepth: 0, listRoot: undefined, listRowRoot: undefined, listTemplate: false, listInitialMarkers: false, listConditionalBranch: false, listFields: undefined, listEffectOwners: [], listRowStates: [], listRowRefs: [], listRowIds: [], listRowConditions: [], listRowLists: [], effectOwners: [], contexts: [], captureCache: new WeakMap(), sharedStates: new Map(), states: {}, textStates: new Set(), conditionStates: new Set(), conditionOwnedStates: new Set(), events: [], effects: [], bindings: [], textBindings: [], conditions: [], lists: [], handlerReferences: new Map(), runtimeParamNames: metadata.runtimeParams, paramEntries: [], params: undefined, searchParams: new Map(), searchParamEntries: [], searchParamsWritable: false, hasBehaviors: false, hasNativeBehaviors: false, hasEffects: false, hasParams: false, hasBindings: false, hasLists: false, hasListStyles: false }
 
   try {
     const page = { [routeScopeMarker]: true, component, props }
@@ -941,6 +940,7 @@ async function renderList(node, namespace, selectValue) {
   const previousListEffectOwners = renderContext.listEffectOwners
   const previousListRowStates = renderContext.listRowStates
   const previousListRowRefs = renderContext.listRowRefs
+  const previousListRowIds = renderContext.listRowIds
   const previousListRowConditions = renderContext.listRowConditions
   const previousListRowLists = renderContext.listRowLists
   try {
@@ -948,10 +948,11 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listEffectOwners = rowList?.effectOwners ?? []
     renderContext.listRowStates = rowList?.rowStates ?? []
     renderContext.listRowRefs = rowList?.rowRefs ?? []
+    renderContext.listRowIds = rowList?.rowIds ?? []
     renderContext.listRowConditions = rowList?.rowConditions ?? []
     renderContext.listRowLists = rowList?.rowLists ?? []
     renderContext.listFields = new Set([node.keyField])
-    const templateRoot = { id, state: node.items.id, descriptor, template: true, effects: [], item: {}, path: ownerRoot?.path ?? [], rowIndexes: { s: 0, r: 0, c: 0, l: 0 } }
+    const templateRoot = { id, state: node.items.id, descriptor, template: true, effects: [], item: {}, path: ownerRoot?.path ?? [], rowIndexes: { s: 0, r: 0, i: 0, c: 0, l: 0 } }
     renderContext.listRoot = templateRoot
     renderContext.listRowRoot = templateRoot
     const template = await renderNode(node.render({}, 0), namespace, selectValue)
@@ -974,6 +975,7 @@ async function renderList(node, namespace, selectValue) {
       descriptor.rowRefs = renderContext.listRowRefs.map(({ id }) => id)
       descriptor.mount = true
     }
+    if (renderContext.listRowIds.length) descriptor.rowIds = renderContext.listRowIds.map(({ id }) => id)
     if (descriptor.rowStates && !descriptor.effects && !descriptor.nested && !template.includes("data-k-text")) descriptor.fastRelease = true
     const valueSeed = node.ownerField || node.keyField === null ? undefined : listSeed(node.values, renderContext.listFields)
     const seed = node.selector.length ? undefined : valueSeed
@@ -984,7 +986,7 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listInitialMarkers = Boolean(descriptor.conditions)
     for (const [index, item] of node.values.entries()) {
       const key = node.keyField === null ? index : item[node.keyField]
-      renderContext.listRoot = { id, state: node.items.id, descriptor, key, template: false, effects: [], item, path: [...(ownerRoot?.path ?? []), `${id}=${typeof key}:${key}`], rowIndexes: { s: 0, r: 0, c: 0, l: 0 } }
+      renderContext.listRoot = { id, state: node.items.id, descriptor, key, template: false, effects: [], item, path: [...(ownerRoot?.path ?? []), `${id}=${typeof key}:${key}`], rowIndexes: { s: 0, r: 0, i: 0, c: 0, l: 0 } }
       renderContext.listRowRoot = renderContext.listRoot
       current += await renderNode(node.render(item, index), namespace, selectValue)
     }
@@ -1007,6 +1009,7 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listEffectOwners = previousListEffectOwners
     renderContext.listRowStates = previousListRowStates
     renderContext.listRowRefs = previousListRowRefs
+    renderContext.listRowIds = previousListRowIds
     renderContext.listRowConditions = previousListRowConditions
     renderContext.listRowLists = previousListRowLists
     renderContext.listDepth--
@@ -1017,7 +1020,7 @@ function nextRowList() {
   const root = renderContext.listRoot ?? renderContext.listRowRoot
   const index = root.rowIndexes.l++
   if (renderContext.listTemplate) {
-    const entry = renderContext.listRowLists[index] ?? { id: nextRenderId("l"), rowLists: [], rowStates: [], rowRefs: [], rowConditions: [], effectOwners: [], planned: false }
+    const entry = renderContext.listRowLists[index] ?? { id: nextRenderId("l"), rowLists: [], rowStates: [], rowRefs: [], rowIds: [], rowConditions: [], effectOwners: [], planned: false }
     renderContext.listRowLists[index] = entry
     return entry
   }
@@ -1035,7 +1038,7 @@ function nextRenderId(kind) {
 function nextRowRenderId(kind, initialValue, initializer) {
   const root = renderContext.listRoot ?? renderContext.listRowRoot
   const index = root.rowIndexes[kind]++
-  const entries = kind === "s" ? renderContext.listRowStates : kind === "r" ? renderContext.listRowRefs : renderContext.listRowConditions
+  const entries = kind === "s" ? renderContext.listRowStates : kind === "r" ? renderContext.listRowRefs : kind === "i" ? renderContext.listRowIds : renderContext.listRowConditions
   if (renderContext.listTemplate) {
     const entry = entries[index]
     if (entry) return entry.id
@@ -1044,7 +1047,7 @@ function nextRowRenderId(kind, initialValue, initializer) {
     return id
   }
   const entry = entries[index]
-  if (!entry) throw new Error(`Keyed row ${kind === "s" ? "state hooks" : kind === "r" ? "ref hooks" : "conditionals"} must have the same order for every item`)
+  if (!entry) throw new Error(`Keyed row ${kind === "s" ? "state hooks" : kind === "r" ? "ref hooks" : kind === "i" ? "ID hooks" : "conditionals"} must have the same order for every item`)
   return rowRenderId(entry.id, root.descriptor.ownerField ? root.path : [`${typeof root.key}:${root.key}`])
 }
 

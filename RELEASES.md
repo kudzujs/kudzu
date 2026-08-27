@@ -1,5 +1,39 @@
 # Kudzu Releases
 
+## 0.15.1 - Key-Scoped Native Popovers
+
+Kudzu 0.15.1 lets ordinary keyed row components use `useId()` for native
+Popover triggers and intrinsic ID relationships without duplicate cloned IDs.
+
+### Changed in 0.15.1
+
+- Key-scoped keyed-row `useId()` through the existing list ownership path.
+- Rewrites cloned `id`, `htmlFor`, static ARIA IDREF, `form`, `headers`, `list`,
+  and `popovertarget` attributes.
+- Rejects keyed IDs used in text, handlers, aliases, arbitrary attributes, or
+  component prop forwarding.
+- Proves native Popover Escape, light dismiss, trigger focus restoration,
+  retained reorder identity, inserted and remounted IDs, and route cleanup.
+- Adds no overlay runtime, focus manager, positioning engine, Portal/Slot
+  reconciliation, retained component tree, or public API.
+- Updates `create-kudzu@0.1.126` to generate projects on
+  `@kudzujs/core@^0.15.1`.
+
+### Output And Browser Evidence
+
+- The maintained application emits 44 files totaling 171,202 raw / 53,629
+  aggregate gzip bytes; `/help` remains 0 B JavaScript.
+- The two-route session remains 17 JavaScript files totaling 77,779 raw /
+  27,050 aggregate gzip bytes.
+- Seven Chrome profiles record a 0.5 ms table-update median and 2.5 ms
+  navigation median, within prior retained-path ranges.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.15.1
+```
+
 ## 0.14.3 - 10,000-Item Browser Decision
 
 Kudzu 0.14.3 measures direct DOM, pagination, and scroll-window alternatives

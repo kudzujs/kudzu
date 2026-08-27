@@ -19,6 +19,7 @@ const conditionTemplates = __KUDZU_LIST_CONDITIONS__ ? new WeakMap() : undefined
 const itemPartsSelector = `[data-k-list-text]${__KUDZU_LIST_ATTRIBUTES__ ? ",[data-k-list-attrs]" : ""}${__KUDZU_LIST_EVENTS__ ? ",[data-k-list-events]" : ""}${__KUDZU_LIST_EXPRESSIONS__ ? ",[data-k-list-expression]" : ""}${__KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? ",[data-k-list-expression-attrs]" : ""}${__KUDZU_LIST_CONDITIONS__ ? ",[data-k-list-condition]" : ""}${__KUDZU_LIST_EFFECTS__ ? ",[data-k-effects]" : ""}`
 const childPrototypes = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
 const itemPartPlans = __KUDZU_NESTED_LISTS__ ? new WeakMap() : undefined
+const rowIdAttributes = new Set(["id", "for", "aria-activedescendant", "aria-controls", "aria-describedby", "aria-details", "aria-errormessage", "aria-flowto", "aria-labelledby", "aria-owns", "form", "headers", "list", "popovertarget"])
 
 function commitLists(id) {
   const lists = listTargets.get(id)
@@ -742,7 +743,7 @@ function listItemPartPlan(template, nested = false, descriptor) {
     conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [location(node), descriptor, node]) : [],
     effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(location) : [],
     rowIds: structural && __KUDZU_GENERAL_ROW_HOOKS__ && hasRowHooks(descriptor) ? source.flatMap(node => {
-      const attributes = [...node.attributes].filter(attribute => attribute.name.startsWith("data-k-") && attribute.value.includes("$k")).map(attribute => attribute.name)
+      const attributes = [...node.attributes].filter(attribute => (attribute.name.startsWith("data-k-") || rowIdAttributes.has(attribute.name)) && attribute.value.includes("$k")).map(attribute => attribute.name)
       return attributes.length ? [[location(node), attributes]] : []
     }) : []
   }
@@ -1086,7 +1087,7 @@ function replaceOwnedRowIds(root) {
   if (!directRowReplacements.delete(root)) return replaceRowIds(root, rowReplacements.get(root))
   const path = listRowPaths.get(root)
   const replace = node => {
-    for (const attribute of [...node.attributes]) if (attribute.name.startsWith("data-k-") && attribute.value.includes("$k")) attribute.value = attribute.value.replaceAll("$k", path)
+    for (const attribute of [...node.attributes]) if ((attribute.name.startsWith("data-k-") || rowIdAttributes.has(attribute.name)) && attribute.value.includes("$k")) attribute.value = attribute.value.replaceAll("$k", path)
     for (const child of node.children) replace(child)
     for (const child of node.content?.children ?? []) replace(child)
   }
@@ -1095,7 +1096,7 @@ function replaceOwnedRowIds(root) {
 /* general-row-hooks-end */
 
 function hasRowHooks(descriptor) {
-  return Boolean(descriptor.rowStates?.length || descriptor.rowRefs?.length || descriptor.rowConditions?.length)
+  return Boolean(descriptor.rowStates?.length || descriptor.rowRefs?.length || descriptor.rowIds?.length || descriptor.rowConditions?.length)
 }
 
 function listLifecycle(descriptor, template) {

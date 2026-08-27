@@ -68,7 +68,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
       lists.expressionAttributes ||= Boolean(list.expressionAttributes)
       lists.seeds ||= Boolean(list.seed || list.valueSeed)
       lists.effects ||= Boolean(list.effects)
-      lists.rowHooks ||= Boolean(list.rowStates?.length || list.rowRefs?.length)
+      lists.rowHooks ||= Boolean(list.rowStates?.length || list.rowRefs?.length || list.rowIds?.length)
       lists.rowRefs ||= Boolean(list.rowRefs?.length)
       lists.complexRowState ||= Boolean(list.rowStates?.some(state => state.initializer === "list-item" || state.initialValue !== null && typeof state.initialValue === "object"))
       lists.nested ||= Boolean(list.ownerField)
@@ -77,7 +77,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
       lists.static ||= Boolean(list.static)
       lists.indexes ||= Boolean(list.indexed)
       lists.stableFastPaths ||= !list.children && !list.ownerField && list.key !== null && !list.indexed && !list.reducer && !list.selector
-      lists.generalRowHooks ||= Boolean(list.ownerField && (list.rowStates?.length || list.rowRefs?.length))
+      lists.generalRowHooks ||= Boolean(list.rowIds?.length || list.ownerField && (list.rowStates?.length || list.rowRefs?.length))
       lists.mounts ||= Boolean(list.mount)
     }
   }

@@ -1,6 +1,6 @@
 /// <reference lib="es2023.array" />
 
-import { useEffect, useRef, useState } from "@kudzujs/core"
+import { useEffect, useId, useRef, useState } from "@kudzujs/core"
 import { useSearchParams } from "react-router-dom"
 import { AppLayout, useWorkspace } from "../../AppLayout"
 import { projectFilters } from "../../projectFilters"
@@ -38,6 +38,7 @@ function IssueRow({ issue }: { issue: Issue }) {
 }
 
 function ProjectRow({ project, selected, onSelect, onSave, onDelete }: { project: Project; selected: boolean; onSelect: () => void; onSave: (name: string) => void; onDelete: () => void }) {
+  const actionsId = useId()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(project)
@@ -58,6 +59,10 @@ function ProjectRow({ project, selected, onSelect, onSave, onDelete }: { project
         }}>Save</button>
       </span>
       <button data-delete-project={project.id} onClick={onDelete}>Delete</button>
+      <button data-project-actions={project.id} popovertarget={actionsId}>More actions</button>
+      <div id={actionsId} popover="auto" data-project-actions-popover={project.id} role="group" aria-label="Project actions" style={{ margin: "0", positionArea: "block-end span-inline-end" }}>
+        <a href={`/app/projects/${project.id}`}>Open project</a>
+      </div>
       <ul data-issues={project.id}>
         {project.issues.map(issue => <IssueRow key={issue.id} issue={issue} />)}
       </ul>
@@ -89,6 +94,8 @@ export default function ProjectsPage() {
   const [loadError, setLoadError] = useState("")
   const [loadEnd, setLoadEnd] = useState(false)
   const [loadObserverGeneration, setLoadObserverGeneration] = useState(0)
+  const [pendingDeleteId, setPendingDeleteId] = useState("")
+  const deleteDialog = useRef<HTMLDialogElement>(null)
   const filterLabel = filter === "all" ? "All projects" : "Active projects"
   const orderedProjects = projectData.projects.toSorted((left, right) => sortDirection === "ascending" ? left.name.localeCompare(right.name) : 0)
 
@@ -252,9 +259,29 @@ export default function ProjectsPage() {
         selected={selectedId === project.id}
         onSelect={() => setSelectedId(project.id)}
         onSave={name => setProjectData({ projects: projectData.projects.map(entry => entry.id === project.id ? { ...entry, name } : entry) })}
-        onDelete={() => setProjectData({ projects: projectData.projects.filter(entry => entry.id !== project.id) })}
+        onDelete={() => {
+          setPendingDeleteId(project.id)
+          deleteDialog.current?.showModal()
+        }}
       />)}</tbody>
     </table>
+    <dialog ref={deleteDialog} data-delete-project-dialog aria-labelledby="delete-project-title" aria-describedby="delete-project-description" onCancel={(event: Event) => {
+      event.preventDefault()
+      deleteDialog.current?.close()
+      document.querySelector<HTMLButtonElement>(`[data-delete-project="${pendingDeleteId}"]`)?.focus()
+    }}>
+      <h2 id="delete-project-title">Delete project</h2>
+      <p id="delete-project-description">Delete the selected project and its issue rows.</p>
+      <button data-confirm-project-delete onClick={() => {
+        deleteDialog.current?.close("confirmed")
+        setProjectData({ projects: projectData.projects.filter(entry => entry.id !== pendingDeleteId) })
+        document.querySelector<HTMLButtonElement>("#insert-project")?.focus()
+      }}>Delete project</button>
+      <button data-cancel-project-delete onClick={() => {
+        deleteDialog.current?.close()
+        document.querySelector<HTMLButtonElement>(`[data-delete-project="${pendingDeleteId}"]`)?.focus()
+      }}>Cancel</button>
+    </dialog>
     <div ref={loadSentinel} data-project-sentinel data-project-page-size="2" data-project-result-limit="6" aria-hidden="true" />
   </main>
 }
