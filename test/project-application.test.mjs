@@ -29,7 +29,7 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.14.2")
+  assert.equal(contract.milestone, "0.14.3")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -90,6 +90,17 @@ test("establishes the 0.14.2 infinite-loading composition contract", { timeout: 
     maxSuccessfulPages: 2,
     maxRetainedProjects: 6,
     reusedSemantics: ["intersection-observer", "owned-fetch", "dependency-effect-cleanup", "ordinary-primitive-state", "immutable-keyed-append", "keyed-row-identity"]
+  })
+  assert.deepEqual(contract.largeListDecision, {
+    patch: "0.14.3",
+    status: "closed-by-pagination",
+    fixture: "project-list-decision",
+    items: 10000,
+    pageSize: 100,
+    selectedStrategy: "pagination",
+    virtualRangeRuntime: null,
+    qualifyingVirtualizationFixtures: 0,
+    rejectedStrategies: ["direct-dom", "fixed-height-scroll-window"]
   })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")

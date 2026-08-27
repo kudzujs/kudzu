@@ -1,5 +1,44 @@
 # Kudzu Releases
 
+## 0.14.3 - 10,000-Item Browser Decision
+
+Kudzu 0.14.3 measures direct DOM, pagination, and scroll-window alternatives
+for one deterministic 10,000-project table and selects native pagination.
+
+### Changed in 0.14.3
+
+- Added a tracked three-route large-list decision fixture.
+- Added rotating fresh-Chrome load, range, DOM, heap, and identity measurement.
+- Rejected direct 10,000-row DOM after its 90,023-node result.
+- Rejected fixed-height scroll windowing for the project table because pagination
+  is faster to change range, uses less heap, and preserves native page/focus and
+  variable-row-height behavior.
+- Added no range primitive, virtualization runtime, compiler pass, or public API.
+- Updated `create-kudzu@0.1.125` to generate projects on
+  `@kudzujs/core@^0.14.3`.
+
+### Browser Evidence
+
+- Direct DOM loads in 806.6 ms median with 90,023 DOM nodes.
+- Pagination loads in 165.4 ms and changes its 100-row page in 12.1 ms median
+  with 1,470 DOM nodes.
+- The scroll window loads in 161.2 ms and changes range in 16.5 ms median with
+  1,471 DOM nodes.
+- Both bounded strategies release an edited off-range row and restore fresh
+  native input identity.
+
+### Decision
+
+Use pagination for 10,000-item project tables. `0.14.4` virtual range ownership
+remains blocked until three independent real fixtures prove pagination and
+application-owned bounded ranges insufficient.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.14.3
+```
+
 ## 0.14.2 - Infinite Loading Composition
 
 Kudzu 0.14.2 composes bounded sentinel-driven loading from ordinary state,

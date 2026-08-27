@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.14.2",
+  "milestone": "0.14.3",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -280,6 +280,20 @@
       "ordinary-primitive-state",
       "immutable-keyed-append",
       "keyed-row-identity"
+    ]
+  },
+  "largeListDecision": {
+    "patch": "0.14.3",
+    "status": "closed-by-pagination",
+    "fixture": "project-list-decision",
+    "items": 10000,
+    "pageSize": 100,
+    "selectedStrategy": "pagination",
+    "virtualRangeRuntime": null,
+    "qualifyingVirtualizationFixtures": 0,
+    "rejectedStrategies": [
+      "direct-dom",
+      "fixed-height-scroll-window"
     ]
   },
   "baseline": {

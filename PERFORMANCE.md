@@ -2,6 +2,34 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.14.3 10,000-Item Browser Decision Intake
+
+Measured 2026-08-27 on Linux x64 with Node 24.14.0 and Chrome
+142.0.7444.175 using `RUNS=7 npm run benchmark:project-list-decision`.
+The tracked fixture rotates three fresh-profile routes, forces garbage collection,
+and records navigation completion, range replacement, DOM counters, JavaScript
+heap, native edit identity, and bounded-row release.
+
+| Strategy | Load median | Range median | Rows | DOM nodes median | JS heap median |
+|---|---:|---:|---:|---:|---:|
+| Direct DOM | 806.6 ms | n/a | 10,000 | 90,023 | 535,572 B |
+| Pagination | 165.4 ms | 12.1 ms | 100 | 1,470 | 1,407,412 B |
+| Scroll window | 161.2 ms | 16.5 ms | 100 | 1,471 | 1,507,712 B |
+
+Direct load samples are `[767, 790.1, 882.8, 908.8, 753, 826.7, 806.6]`
+ms. Pagination load/range samples are `[253.6, 138.6, 157, 133.7, 181.9,
+202, 165.4]` / `[10.8, 22.1, 15.8, 13.7, 12.1, 10.5, 11]` ms. Scroll
+window load/range samples are `[156.7, 154.6, 163.4, 161.2, 175.9, 203.5,
+137.1]` / `[21.3, 16.4, 14.6, 17.1, 15.9, 16.5, 20.4]` ms.
+
+The direct route is static and therefore has the lowest JavaScript heap; that
+does not offset its 61.2x DOM-node count and 4.9x load median. Pagination and the
+scroll window have overlapping load ranges, while pagination has the lower range
+median, lower JavaScript heap, no scroll listener, native focus/page semantics,
+and no fixed-row-height policy. Pagination is selected for 10,000-item project
+tables. The window experiment adds no framework primitive and does not authorize
+`0.14.4`; three independent failing fixtures remain required.
+
 ## 0.14.2 Infinite Loading Composition
 
 Measured 2026-08-26 on macOS arm64 with Node 24.14.0 and Chrome

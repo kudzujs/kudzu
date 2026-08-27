@@ -999,6 +999,25 @@ delta is claimed. `0.14.2` publishes this accepted packet, and
 - **Done condition:** the selected strategy and thresholds are recorded without
   assuming direct 10,000-row rendering is acceptable.
 
+Decision evidence is complete. A tracked three-route fixture and
+`npm run benchmark:project-list-decision` now compare one static 10,000-row
+table with pagination and a scroll-driven 100-row window over the same
+deterministic records and native edit controls. Seven rotating fresh Chrome 142
+profiles show direct DOM
+at an 806.6 ms load median and 90,023 DOM nodes, versus 165.4/161.2 ms and a
+1,470/1,471-node median for pagination and the scroll window. Direct JavaScript
+heap is lower because its route is static; DOM size and load remain materially
+worse.
+
+Pagination is selected. Its 12.1 ms range median is lower than the window's 16.5
+ms, it uses 100,300 fewer median JavaScript-heap bytes, and it preserves native
+page, keyboard, focus, and variable-row-height behavior without a scroll listener
+or measurement policy. Both bounded routes release an edited off-range row and
+restore fresh native input identity. The experiment adds no semantic primitive,
+IR kind, compiler pass, production compiler/runtime line, runtime concept, or
+public API. `0.14.4` remains blocked because this one fixture cannot authorize
+virtual range ownership.
+
 ### `0.14.4`: Virtual Range Ownership
 
 - **Purpose:** implement bounded DOM only if `0.14.3` and three independent
@@ -1457,5 +1476,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.13.3` | Released | Preserve the published upload validation, cancellation, retry, route cleanup, and attachment mutation evidence. | None |
 | `0.14.0` | Released | Preserve native table CRUD, retained identity, keyboard access, and measured update evidence. | None |
 | `0.14.1` | Released | Preserve immutable object-state replacement, nested keyed identity, latest handlers, and exact row release. | None |
-| `0.14.2` | Release candidate | Complete commit, CI, tag, GitHub release, npm publication, and registry verification. | Release transaction |
-| `0.14.3` onward | Blocked | Complete or explicitly close `0.14.2` first. | Ordered patch boundary |
+| `0.14.2` | Released | Preserve bounded cursor loading, duplicate suppression, retry/end behavior, retained identity, and route cleanup. | None |
+| `0.14.3` | Release candidate | Complete commit, CI, tag, GitHub release, npm publication, and registry verification. | Release transaction |
+| `0.14.4` onward | Blocked | Complete or explicitly close `0.14.3` first. | Ordered patch boundary |

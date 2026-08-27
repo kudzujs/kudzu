@@ -11,7 +11,7 @@ import {
 export const metadata = {
   title: "Kudzu Examples — Site patterns built with TSX",
   description:
-    "Browse static site examples compiled with Kudzu 0.14.2, starting with sixteen distinct blog formats.",
+    "Browse static site examples compiled with Kudzu 0.14.3, starting with sixteen distinct blog formats.",
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu",
@@ -37,7 +37,7 @@ export default async function ExamplePage() {
         <nav aria-label="Example navigation">
           <a href="/">Home</a>
           <a href="/docs">Docs</a>
-          <a href="/releases/0.14.2">Release 0.14.2</a>
+          <a href="/releases/0.14.3">Release 0.14.3</a>
           <a className="example-active" href="/example" aria-current="page">
             Examples
           </a>
@@ -46,14 +46,14 @@ export default async function ExamplePage() {
 
       <main className="example-main">
         <section className="example-intro">
-          <p className="eyebrow"><span>v0.14.2</span> KUDZU EXAMPLE CATALOG</p>
+          <p className="eyebrow"><span>v0.14.3</span> KUDZU EXAMPLE CATALOG</p>
           <h1>
             Sites worth
             <br />
             <em>taking apart.</em>
           </h1>
           <p>
-            Complete site patterns compiled by Kudzu 0.14.2, their project
+            Complete site patterns compiled by Kudzu 0.14.3, their project
             structure, and the code behind them. The catalog starts with blogs.
           </p>
         </section>

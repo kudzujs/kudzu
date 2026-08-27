@@ -55,17 +55,14 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.14.2 application proof</strong><span>Required Chrome proves bounded cursor loading, duplicate suppression, error/retry/end behavior, retained keyed identity, observer disconnect, and route-owned fetch abort.</span></div>
+    <div className="docs-callout"><strong>Current 0.14.3 large-list decision</strong><span>Seven rotating Chrome profiles compare direct 10,000-row DOM, pagination, and a scroll-driven bounded window with matched native edit controls.</span></div>
     <h3>Project application</h3>
-    <BenchmarkTable columns={["Measurement", "0.14.2 result", "Protocol"]} rows={[
-      ["Project table update", "0.5 ms release median", "7 fresh Chrome profiles"],
-      ["List-to-detail navigation", "2.3 ms release median", "7 fresh Chrome profiles"],
-      ["Two-route JavaScript", "76,889 / 26,750 B", "raw / aggregate gzip"],
-      ["Login JavaScript", "12,093 / 5,780 B", "raw / aggregate gzip"],
-      ["Deploy output", "168,037 / 52,955 B", "raw / aggregate gzip"],
-      ["Static help JavaScript", "0 B", "route and session"]
+    <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
+      ["Direct 10,000 rows", "806.6 ms / n/a", "90,023"],
+      ["Pagination, 100 rows", "165.4 / 12.1 ms", "1,470"],
+      ["Scroll window, 100 rows", "161.2 / 16.5 ms", "1,471"]
     ]} />
-    <p>The table update range is 0.3-0.6 ms. Incremental loading retains existing project identity and stays within three requests and six rows. No semantic primitive, compiler pass, public API, or runtime concept was added.</p>
+    <p>Pagination is selected: it avoids direct DOM scale, has the lower bounded-range median and heap, and preserves native page, keyboard, focus, and variable-height behavior without a scroll listener. No semantic primitive, compiler pass, public API, or runtime concept was added.</p>
     <h3>0.9 cross-framework proof</h3>
     <BenchmarkTable columns={["Target", "Deploy JS raw / gzip", "Session transfer"]} rows={[
       ["Kudzu 0.9.0", "43,567 / 16,408 B", "45,721 B"],

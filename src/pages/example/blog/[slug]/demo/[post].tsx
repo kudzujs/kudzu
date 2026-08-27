@@ -12,7 +12,7 @@ type Post = BlogExample["posts"][number];
 
 export const metadata = {
   title: "Kudzu Blog Article Demo",
-    description: "A statically generated article page compiled with Kudzu 0.14.2 TSX.",
+    description: "A statically generated article page compiled with Kudzu 0.14.3 TSX.",
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu Examples",

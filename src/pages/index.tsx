@@ -45,16 +45,16 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <a className="release-banner" href="/releases/0.14.2">
-        <span>v0.14.2</span>
-        <strong>Infinite loading composition</strong>
+      <a className="release-banner" href="/releases/0.14.3">
+        <span>v0.14.3</span>
+        <strong>10,000-item browser decision</strong>
         <span>Read release notes →</span>
       </a>
 
       <main>
         <section className="hero">
           <div className="hero-copy">
-            <p className="eyebrow"><span>v0.14.2</span> COMPILER FRAMEWORK</p>
+            <p className="eyebrow"><span>v0.14.3</span> COMPILER FRAMEWORK</p>
             <h1>React-shaped input.<br /><em>Static-first output.</em></h1>
             <p className="intro">Kudzu analyzes TypeScript ASTs and specializes familiar components, hooks, routes, effects, and collections into complete HTML plus only the browser capabilities each route uses.</p>
             <div className="actions">
@@ -116,12 +116,12 @@ export default function Counter() {
 
         <section className="model" id="benchmarks">
           <div className="section-title">
-          <p className="eyebrow">MEASURED IN 0.14.2</p>
+          <p className="eyebrow">MEASURED IN 0.14.3</p>
             <h2>Application behavior.<br />Measured output.</h2>
           </div>
           <div className="pipeline">
-          <article><span>TABLE UPDATE</span><h3>0.5 ms release median</h3><p>Save-click to committed project name across seven fresh Chrome profiles with retained row identity.</p><code>npm run benchmark:project-navigation</code></article>
-          <article><span>SESSION</span><h3>26,750 B gzip</h3><p>The two-route session ships bounded incremental loading with no query or component runtime.</p><code>17 unique JavaScript files</code></article>
+          <article><span>DIRECT DOM</span><h3>90,023 nodes</h3><p>Ten thousand native table rows establish the unbounded DOM cost.</p><code>806.6 ms load median</code></article>
+          <article><span>PAGINATION</span><h3>1,470 nodes</h3><p>One hundred rows preserve native page and focus behavior without range runtime.</p><code>12.1 ms range median</code></article>
             <article><span>STATIC</span><h3>0 B JavaScript</h3><p>The sibling help route remains complete HTML and receives no browser capability code.</p><code>unused capability → no output</code></article>
           </div>
           <div className="actions">
