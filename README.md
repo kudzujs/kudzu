@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.3 - State-owned drag and drop.** A real SortableJS effect may move DOM during a gesture while keyed Kudzu state remains the durable order and identity owner, with keyboard parity, exact disposal, and static exclusion. Read the [release notes](./RELEASES.md#0163---state-owned-drag-and-drop), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.3), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.4 - Scoped GSAP animation lifecycle.** Inline GSAP callbacks stay inside one owned effect while Kudzu retains structural DOM, native reduced-motion fallback, dependency replacement, disposal, and static exclusion. Read the [release notes](./RELEASES.md#0164---scoped-gsap-animation-lifecycle), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.4), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

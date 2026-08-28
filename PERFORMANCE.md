@@ -2,6 +2,20 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.4 Scoped GSAP Animation Lifecycle
+
+Measured 2026-08-28 on Linux x64 with Node 24.14.0 and Chrome. The real GSAP
+fixture emits 8 JavaScript files totaling 94,110 raw / 37,819 aggregate gzip
+bytes, while its static sibling emits zero JavaScript. Required Chrome proves
+scoped presentation, native reduced-motion fallback, dependency replacement,
+conditional and enhanced-route disposal, retained structure, and fresh remount.
+
+The maintained Worker benchmark remains byte-identical at 907 raw / 477 gzip B
+for the Worker graph and 14,456 raw / 6,159 gzip B for the window graph. Seven
+clean builds record a 625.9 ms median on this host. Timing is not compared with
+the prior sweep. The change adds no runtime file or animation abstraction; one
+existing package-reference ancestry helper shrinks by two lines.
+
 ## 0.16.3 State-Owned Drag And Drop
 
 Measured 2026-08-28 on Linux x64 with Node 24.14.0 and Chrome. The real

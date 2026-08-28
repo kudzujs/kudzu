@@ -1,5 +1,44 @@
 # Kudzu Releases
 
+## 0.16.4 - Scoped GSAP Animation Lifecycle
+
+Kudzu 0.16.4 lets inline GSAP callbacks remain inside one owned effect while
+Kudzu retains structural DOM and exact route, conditional, and dependency
+lifetime ownership.
+
+### Changed in 0.16.4
+
+- Accepts package references inside an unbroken chain of inline callbacks passed
+  directly within an owned effect setup or cleanup.
+- Keeps named, local, imported, render-time, and mixed package indirection
+  unsupported.
+- Preserves deterministic visible HTML before GSAP applies bounded opacity and
+  transform presentation.
+- Uses native `prefers-reduced-motion` detection for a static presentation with
+  no residual inline opacity, transform, or visibility.
+- Reverts the previous GSAP context before dependency replacement and on
+  conditional or enhanced-route disposal; remount creates a fresh owner.
+- Adds no animation IR, scheduler, runtime concept, React, VDOM, hydration, or
+  retained component tree.
+- Updates `create-kudzu@0.1.129` to generate projects on
+  `@kudzujs/core@^0.16.4`.
+
+### Output And Browser Evidence
+
+- The GSAP fixture emits 8 JavaScript files totaling 94,110 raw / 37,819
+  aggregate gzip bytes; its static sibling emits zero JavaScript.
+- Required Chrome proves scoped mount, dependency replacement, reduced-motion
+  fallback, conditional and route disposal, retained structure, and fresh
+  remount.
+- The maintained Worker and window graphs remain 907 raw / 477 gzip bytes and
+  14,456 raw / 6,159 gzip bytes respectively.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.4
+```
+
 ## 0.16.3 - State-Owned Drag And Drop
 
 Kudzu 0.16.3 proves that a real SortableJS drag engine can remain a bounded

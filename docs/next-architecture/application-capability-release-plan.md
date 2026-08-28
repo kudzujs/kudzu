@@ -1277,6 +1277,31 @@ differs from the published baseline.
 - **Done condition:** GSAP owns only bounded presentation changes and exact
   cleanup while Kudzu retains document structure and lifetime ownership.
 
+**Result:** complete. A reduction of the MIT-licensed
+Magic Modal landing page at revision
+`ab3df864de5b01d604d26345165ea5f7900eae14` reproduced one compiler failure:
+GSAP's root-scoped `context()` receives an inline callback whose direct package
+calls were rejected because package-reference validation stopped at the nearest
+function. The existing ancestry check now accepts only an unbroken chain of
+inline call arguments back to the owned effect; named, local, and imported helper
+indirection remains rejected. Required Chrome proves deterministic visible HTML,
+root-scoped presentation, native reduced-motion fallback without residual inline
+opacity/transform, dependency replacement with retained DOM identity,
+conditional and enhanced-route disposal, and fresh remount. GSAP owns only
+bounded opacity and transform changes; Kudzu retains structural DOM and lifetime
+ownership. The interactive graph is 94,110 raw / 37,819 aggregate gzip bytes
+across eight JavaScript files; the static sibling emits zero. Its normalized
+deploy archive SHA-256 is
+`2b6467f04452c51878ea81d5e80db21c60286e191e1e49ac482556dbf7c713c3`.
+Semantic primitives, IR kinds, compiler passes, normalization rules, runtime
+concepts, runtime files, animation abstractions, schedulers, and public APIs
+change by zero; one existing compiler ancestry helper shrinks by two LOC. One
+positive fixture and one two-scenario browser contract were added. The maintained
+Worker/effect benchmark remains 907 raw / 477 gzip bytes for the Worker graph and
+14,456 raw / 6,159 gzip bytes for the window graph; its seven-run Linux median was
+625.9 ms, recorded without a timing comparison because the host differs from the
+published baseline.
+
 ## `0.17.x`: Long-Lived Applications
 
 ### `0.17.0`: Endurance Harness
@@ -1653,4 +1678,5 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.16.1` | Released | Preserve the retained CodeMirror instance boundary, bidirectional updates, error recovery, accessibility, and exact cleanup. | None |
 | `0.16.2` | Closed by existing effect ownership | Preserve retained Chart.js data/resize updates, listener and route cleanup, fresh remount, accessibility, and static exclusion. | No production change; no release consumed |
 | `0.16.3` | Released | Preserve state-owned order, keyed identity, keyboard parity, invalid-input recovery, package disposal, and static exclusion. | None |
-| `0.16.4` | Active | Validate one real GSAP landing-page animation through bounded effect ownership. | None |
+| `0.16.4` | Released | Preserve scoped GSAP presentation, reduced-motion fallback, dependency/owner cleanup, fresh remount, and static exclusion. | None |
+| `0.17.0` | Active | Establish the long-session endurance harness and machine-readable ownership counters. | None |

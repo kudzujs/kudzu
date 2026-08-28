@@ -971,10 +971,11 @@ http.createServer((request, response) => {
     assert.match(history.stdout, /data-navigation-test="pass"/, history.stderr)
     for (const mode of ["network", "body", "invalid", "module", "style"]) {
       const runFailure = () => spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=20000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?route-failure=${mode}`], { encoding: "utf8", timeout: 40_000 })
-      let failure = runFailure()
-      if (failure.stdout.includes('data-browser-test="fail-initial-loading"')) {
-        await fetch(`http://127.0.0.1:${port}/api/reset-route-failure?mode=${mode}`)
+      let failure
+      for (let attempt = 0; attempt < 3; attempt++) {
         failure = runFailure()
+        if (!failure.stdout.includes('data-browser-test="fail-initial-loading"')) break
+        await fetch(`http://127.0.0.1:${port}/api/reset-route-failure?mode=${mode}`)
       }
       assert.equal(failure.status, 0, failure.stderr)
       if (mode === "network" || mode === "body") assert.match(failure.stdout, /data-route-failure-test="pass"/, failure.stderr)

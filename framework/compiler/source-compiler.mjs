@@ -2630,19 +2630,17 @@ function insideJsxEventHandler(node, root) {
 }
 
 function insideOwnedEffectCallback(node, root) {
-  let callback
   for (let current = node.parent; current && current !== root.parent; current = current.parent) {
     if (!isFunctionLike(current)) continue
-    callback = current
-    break
-  }
-  if (!callback) return false
-  if (ts.isCallExpression(callback.parent) && callback.parent.arguments[0] === callback && ts.isIdentifier(callback.parent.expression) && callback.parent.expression.text === "useEffect") return true
-  const returned = callback.parent
-  if (!ts.isReturnStatement(returned)) return false
-  for (let current = returned.parent; current && current !== root.parent; current = current.parent) {
-    if (!isFunctionLike(current)) continue
-    return ts.isCallExpression(current.parent) && current.parent.arguments[0] === current && ts.isIdentifier(current.parent.expression) && current.parent.expression.text === "useEffect"
+    if (ts.isCallExpression(current.parent) && current.parent.arguments[0] === current && ts.isIdentifier(current.parent.expression) && current.parent.expression.text === "useEffect") return true
+    if (ts.isReturnStatement(current.parent)) {
+      for (let owner = current.parent.parent; owner && owner !== root.parent; owner = owner.parent) {
+        if (!isFunctionLike(owner)) continue
+        return ts.isCallExpression(owner.parent) && owner.parent.arguments[0] === owner && ts.isIdentifier(owner.parent.expression) && owner.parent.expression.text === "useEffect"
+      }
+      return false
+    }
+    if (!ts.isCallExpression(current.parent) || !current.parent.arguments.includes(current)) return false
   }
   return false
 }

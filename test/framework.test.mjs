@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.16.3/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.16.4/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.16\.3 typescript/)
-  assert.match(docs, /Current 0\.16\.3 maintained sweep.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.3.*4\.2-9\.9 KiB.*15 \/ 18/s)
-  assert.match(examples, /Release 0\.16\.3.*v0\.16\.3.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.16\.3.*v0\.16\.3.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.3".*State-owned drag and drop/s)
-  assert.match(release, /Kudzu 0\.16\.3.*Move the row.*Keep state in charge/s)
-  assert.match(release, /ONE DURABLE ORDER · ONE KEYED OWNER · ZERO DRAG RUNTIME.*STATE-OWNED ORDER.*npm install @kudzujs\/core@\^0\.16\.3/s)
-  assert.match(release, /<title>Kudzu 0\.16\.3 - State-owned drag and drop<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.3"/)
-  assert.match(release, /Move temporarily.*Dispose exactly/s)
+  assert.match(docs, /@kudzujs\/core@\^0\.16\.4 typescript/)
+  assert.match(docs, /Current 0\.16\.4 maintained sweep.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.4.*4\.2-9\.9 KiB.*15 \/ 18/s)
+  assert.match(examples, /Release 0\.16\.4.*v0\.16\.4.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.16\.4.*v0\.16\.4.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.4".*Scoped GSAP animation lifecycle/s)
+  assert.match(release, /Kudzu 0\.16\.4.*Animate the surface.*Keep ownership still/s)
+  assert.match(release, /SCOPED MOTION · STATIC FALLBACK · EXACT REVERT.*OWNED PRESENTATION.*npm install @kudzujs\/core@\^0\.16\.4/s)
+  assert.match(release, /<title>Kudzu 0\.16\.4 - Scoped GSAP animation lifecycle<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.4"/)
+  assert.match(release, /Target locally.*Remount fresh/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -4137,6 +4137,39 @@ test("owns a real Chart.js canvas lifecycle", async t => {
   assert.ok(gzipSync(handler).length > 0)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runChartJsLifecycleBrowserTest(fixture, chrome)
+})
+
+test("owns a real GSAP landing animation lifecycle", async t => {
+  const fixture = new URL("./fixtures/gsap-lifecycle", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/gsap-lifecycle/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/gsap-lifecycle/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/gsap-lifecycle/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const plan = JSON.parse(await readFile(new URL("./fixtures/gsap-lifecycle/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  const route = plan.routes.find(route => route.route === "/")
+  const handler = await readFile(new URL("./fixtures/gsap-lifecycle/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const html = await readFile(new URL("./fixtures/gsap-lifecycle/dist/index.html", import.meta.url), "utf8")
+  const plainHtml = await readFile(new URL("./fixtures/gsap-lifecycle/dist/plain/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/gsap-lifecycle/dist/static/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(component, /from "gsap"|gsap\.context/)
+  assert.deepEqual(route.effects.map(effect => effect.dependencies), [["rs1"]])
+  assert.deepEqual(route.effects.map(effect => effect.scope), [{ root: { type: "ref", id: "rr0" } }])
+  assert.match(handler, /3\.15\.0/)
+  assert.match(handler, /gsapMounts/)
+  assert.match(handler, /gsapDisposals/)
+  assert.match(html, /effects\/index\.js/)
+  assert.match(html, /data-hero="true" data-k-ref="rr0"/)
+  assert.match(html, /Build expressive interfaces without surrendering ownership\./)
+  assert.doesNotMatch(html, /style="[^"]*(opacity|transform|visibility)/)
+  assert.doesNotMatch(plainHtml, /handlers\/pages\/index\.js|gsapMounts/)
+  assert.doesNotMatch(staticHtml, /<script|gsap|gsapMounts/)
+  assert.ok(Buffer.byteLength(handler) > 0)
+  assert.ok(gzipSync(handler).length > 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runGsapLifecycleBrowserTest(fixture, chrome)
 })
 
 test("owns a real SortableJS keyed drag lifecycle", async t => {
@@ -8827,6 +8860,67 @@ try {
 }
 `,
     scenarios: [{ path: "/", attribute: "data-chart-js-lifecycle-test", value: "pass" }],
+    virtualTime: 8000,
+  })
+}
+
+async function runGsapLifecycleBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    setup: `
+const reducedMotion = new URLSearchParams(location.search).has("reduced")
+window.matchMedia = query => ({
+  matches: reducedMotion && query === "(prefers-reduced-motion: reduce)",
+  media: query,
+  onchange: null,
+  addEventListener() {},
+  removeEventListener() {},
+  addListener() {},
+  removeListener() {},
+  dispatchEvent() { return false },
+})
+`,
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 150; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const reduced = new URLSearchParams(location.search).has("reduced")
+const route = name => document.querySelector('[data-route="' + name + '"]')
+try {
+  await waitFor(() => document.querySelector("[data-hero]")?.dataset.animationMode === (reduced ? "reduced" : "animated") && document.body.dataset.gsapMounts === "1", "initial-mount")
+  const first = document.querySelector("[data-hero]")
+  const targets = [...first.querySelectorAll("[data-reveal]")]
+  if (reduced) {
+    await waitFor(() => targets.every(target => getComputedStyle(target).opacity === "1" && getComputedStyle(target).visibility === "visible"), "visible-presentation")
+    if (targets.some(target => target.style.opacity || target.style.transform || target.style.visibility)) throw new Error("reduced-motion-static")
+    document.body.dataset.gsapLifecycleTest = "pass-reduced"
+  } else {
+    await waitFor(() => targets.every(target => target.style.opacity && target.style.transform), "animated-presentation")
+    document.querySelector("[data-change-animation]").click()
+    await waitFor(() => first.dataset.animationOffset === "24" && document.body.dataset.gsapMounts === "2" && document.body.dataset.gsapDisposals === "1", "dependency-replacement")
+    if (document.querySelector("[data-hero]") !== first) throw new Error("dependency-identity")
+    document.querySelector("[data-toggle-hero]").click()
+    await waitFor(() => !document.querySelector("[data-hero]") && document.body.dataset.gsapDisposals === "2", "conditional-disposal")
+    document.querySelector("[data-toggle-hero]").click()
+    await waitFor(() => document.querySelector("[data-hero]")?.dataset.animationOffset === "18" && document.body.dataset.gsapMounts === "3", "conditional-remount")
+    if (document.querySelector("[data-hero]") === first) throw new Error("fresh-conditional-remount")
+    document.querySelector("[data-plain-link]").click()
+    await waitFor(() => route("plain") && document.body.dataset.gsapDisposals === "3", "route-disposal")
+    document.querySelector("[data-animation-link]").click()
+    await waitFor(() => route("animation") && document.querySelector("[data-hero]")?.dataset.animationOffset === "18" && document.body.dataset.gsapMounts === "4", "route-remount")
+    document.body.dataset.gsapLifecycleTest = "pass"
+  }
+} catch (error) {
+  document.body.dataset.gsapLifecycleTest = "fail-" + error.message
+}
+`,
+    scenarios: [
+      { path: "/", attribute: "data-gsap-lifecycle-test", value: "pass" },
+      { path: "/?reduced", attribute: "data-gsap-lifecycle-test", value: "pass-reduced" },
+    ],
     virtualTime: 8000,
   })
 }
