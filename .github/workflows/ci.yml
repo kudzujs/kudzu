@@ -43,4 +43,4 @@ jobs:
 
       - run: npm ci
       - run: npm run check
-      - run: node --test --test-concurrency=1 test/*.test.mjs
+      - run: npm test
