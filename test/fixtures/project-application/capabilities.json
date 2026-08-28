@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.15.2",
+  "milestone": "0.17.0",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -154,6 +154,12 @@
     "notification-route-persistence",
     "notification-live-region",
     "notification-timer-disposal",
+    "layout-owned-notification-websocket",
+    "notification-websocket-keyed-update",
+    "notification-websocket-reconnect",
+    "notification-websocket-stale-rejection",
+    "notification-websocket-offline-recovery",
+    "notification-websocket-exact-cleanup",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -177,7 +183,8 @@
     "incremental loading allows two successful pages of two records and retains at most six unique projects; larger datasets require the separately measured 0.14.3 browser decision",
     "destructive confirmation uses the native dialog top layer; custom focus traps, portals, stacked modals, and animated presence remain unsupported",
     "non-modal project actions use native Popover and key-scoped ID references; custom positioning engines, menu roving focus, Portal/Slot reconciliation, and retained overlay trees remain unsupported",
-    "notifications use one layout-owned queue and one sequential timeout; pause-on-hover, cross-document persistence, priorities, and a global scheduler remain unsupported"
+    "notifications use one layout-owned queue and one sequential timeout; pause-on-hover, cross-document persistence, priorities, and a global scheduler remain unsupported",
+    "the project notification socket has one layout consumer and application-owned reconnect policy; shared transports, replay, backoff, and cross-document delivery remain unsupported"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -365,29 +372,44 @@
       "enhanced-navigation-layout-retention"
     ]
   },
+  "notificationWebSocketDecision": {
+    "patch": "0.17.0",
+    "status": "closed-by-existing-layout-effect-ownership",
+    "fixture": "project-application",
+    "runtime": null,
+    "reconnectMs": 50,
+    "reusedSemantics": [
+      "layout-owned-effect",
+      "layout-owned-array-state",
+      "keyed-list-identity",
+      "effect-invalidation",
+      "enhanced-navigation-layout-retention",
+      "native-websocket-and-online-events"
+    ]
+  },
   "baseline": {
     "deploy": {
       "files": 45,
-      "rawBytes": 193770,
-      "aggregateGzipBytes": 60227,
-      "sha256": "4d99b7ddad557940d9d8ccb1acc61dce93c125c30123ec4122d00a71effbaad5"
+      "rawBytes": 196678,
+      "aggregateGzipBytes": 60879,
+      "sha256": "1e3fa86fb55d830d7d09f2b951d8826b2be35df2716e7a6a0ad2baa094088166"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 67423,
-        "javascriptAggregateGzipBytes": 23722
+        "javascriptRawBytes": 69178,
+        "javascriptAggregateGzipBytes": 24182
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 65947,
-        "javascriptAggregateGzipBytes": 23093
+        "javascriptRawBytes": 67702,
+        "javascriptAggregateGzipBytes": 23555
       },
       "/app/projects/[projectId]": {
-        "javascriptRawBytes": 36915,
-        "javascriptAggregateGzipBytes": 14416
+        "javascriptRawBytes": 38652,
+        "javascriptAggregateGzipBytes": 14875
       },
       "/app/projects/[projectId]/issues/[issueId]": {
-        "javascriptRawBytes": 37012,
-        "javascriptAggregateGzipBytes": 14434
+        "javascriptRawBytes": 38749,
+        "javascriptAggregateGzipBytes": 14894
       },
       "/login": {
         "javascriptRawBytes": 12093,

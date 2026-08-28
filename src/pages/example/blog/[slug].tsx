@@ -14,7 +14,7 @@ import {
 export const metadata = {
   title: "Kudzu Blog Example — Live preview and source",
   description:
-    "Explore a complete static blog example, its project structure, and the Kudzu 0.16.4 TSX source behind it.",
+    "Explore a complete static blog example, its project structure, and the Kudzu 0.16.5 TSX source behind it.",
   lang: "en",
   locale: "en_US",
   siteName: "Kudzu",
@@ -73,14 +73,14 @@ export default async function BlogShowcase({ blog }: { blog: BlogExample }) {
         </a>
         <nav aria-label="Example navigation">
           <a href="/example">All examples</a>
-          <a href="/releases/0.16.4">Kudzu 0.16.4</a>
+          <a href="/releases/0.16.5">Kudzu 0.16.5</a>
           <a href={`/example/blog/${blog.slug}/demo`}>Open demo ↗</a>
         </nav>
       </header>
 
       <main className="showcase-main">
         <section className="showcase-intro">
-          <p className="eyebrow"><span>v0.16.4</span> BLOG EXAMPLE / {blog.label}</p>
+          <p className="eyebrow"><span>v0.16.5</span> BLOG EXAMPLE / {blog.label}</p>
           <h1>
             {blog.name}
             <br />

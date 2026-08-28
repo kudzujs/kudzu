@@ -129,9 +129,9 @@ async function navigate(url, push, source) {
       try { documentResult = await cached }
       catch { documentResult = await fetchDocument(url, record, request.signal) }
     } else documentResult = await fetchDocument(url, record, request.signal)
-    documents.set(url.href, Promise.resolve(documentResult))
     const { incoming, parsed, capabilities } = documentResult
     if (current !== revision) return
+    documents.set(url.href, Promise.resolve(documentResult))
     styleUpdate = prepareStyles(parsed.styles)
     pendingStyleUpdate = styleUpdate
     await styleUpdate.ready

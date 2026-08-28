@@ -6,6 +6,7 @@ dist/
 test/fixtures/**/.kudzu/
 test/fixtures/**/dist/
 benchmarks/
+test-results/endurance/
 
 # wrangler files
 .wrangler

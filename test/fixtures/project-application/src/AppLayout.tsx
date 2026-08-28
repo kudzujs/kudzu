@@ -34,6 +34,7 @@ export function AppLayout({ children }: { children?: unknown }) {
   const [mutationError, setMutationError] = useState("")
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [activeNotificationId, setActiveNotificationId] = useState("")
+  const [notificationConnection, setNotificationConnection] = useState("idle")
 
   useEffect(() => {
     if (!activeNotificationId) return
@@ -115,11 +116,91 @@ export function AppLayout({ children }: { children?: unknown }) {
     return () => controller.abort()
   }, [authStatus, token])
 
+  useEffect(() => {
+    if (authStatus !== "authenticated") return
+    let stopped = false
+    let online = navigator.onLine
+    let socket: WebSocket | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let detach = () => {}
+    let generation = 0
+
+    const connect = () => {
+      if (stopped || !online) return
+      const current = ++generation
+      const next = new WebSocket("wss://example.invalid/projects/notifications")
+      socket = next
+      setNotificationConnection("connecting")
+      const isCurrent = () => !stopped && online && current === generation && socket === next
+      const onOpen = () => {
+        if (isCurrent()) setNotificationConnection("connected")
+      }
+      const onMessage = (event: MessageEvent<string>) => {
+        if (!isCurrent()) return
+        const message = JSON.parse(event.data)
+        if (!Array.isArray(message.notifications) || !message.notifications.every((notification: unknown) => typeof notification === "object" && notification !== null && typeof (notification as Notification).id === "string" && typeof (notification as Notification).message === "string")) {
+          setNotificationConnection("error")
+          return
+        }
+        setNotifications(message.notifications)
+        setActiveNotificationId(message.notifications[0]?.id || "")
+      }
+      const onError = () => {
+        if (isCurrent()) setNotificationConnection("error")
+      }
+      const onClose = () => {
+        detach()
+        if (!isCurrent()) return
+        setNotificationConnection("reconnecting")
+        reconnectTimer = setTimeout(connect, 50)
+      }
+      detach = () => {
+        next.removeEventListener("open", onOpen)
+        next.removeEventListener("message", onMessage)
+        next.removeEventListener("error", onError)
+        next.removeEventListener("close", onClose)
+      }
+      next.addEventListener("open", onOpen)
+      next.addEventListener("message", onMessage)
+      next.addEventListener("error", onError)
+      next.addEventListener("close", onClose)
+    }
+    const onOffline = () => {
+      if (stopped || !online) return
+      online = false
+      generation += 1
+      if (reconnectTimer !== null) clearTimeout(reconnectTimer)
+      reconnectTimer = null
+      detach()
+      socket?.close()
+      setNotificationConnection("offline")
+    }
+    const onOnline = () => {
+      if (stopped || online) return
+      online = true
+      connect()
+    }
+    globalThis.addEventListener("offline", onOffline)
+    globalThis.addEventListener("online", onOnline)
+    if (online) connect()
+    else setNotificationConnection("offline")
+    return () => {
+      stopped = true
+      generation += 1
+      if (reconnectTimer !== null) clearTimeout(reconnectTimer)
+      detach()
+      socket?.close()
+      globalThis.removeEventListener("offline", onOffline)
+      globalThis.removeEventListener("online", onOnline)
+    }
+  }, [authStatus])
+
   return <WorkspaceContext.Provider value={{ token, username, isAdmin, authStatus, workspace, setWorkspace, projectName, setProjectName, projectRevision, setProjectRevision }}>
     <header data-app-layout>
       <output data-session-status>{authStatus}</output>
       <strong data-session-user>{username}</strong>
       <output data-workspace>{workspace}</output>
+      <output data-notification-connection aria-live="polite">{notificationConnection}</output>
       {isAdmin && <button data-rename-project disabled={mutationStatus === "pending"} onClick={async () => {
         if (mutationStatus === "pending") return
         const previousName = projectName

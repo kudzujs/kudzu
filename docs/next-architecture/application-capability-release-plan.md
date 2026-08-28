@@ -1302,9 +1302,7 @@ Worker/effect benchmark remains 907 raw / 477 gzip bytes for the Worker graph an
 625.9 ms, recorded without a timing comparison because the host differs from the
 published baseline.
 
-## `0.17.x`: Long-Lived Applications
-
-### `0.17.0`: Endurance Harness
+### `0.16.5`: Endurance Harness
 
 - **Purpose:** make long-session correctness locally reproducible.
 - **Expected files:** a dedicated browser soak harness and machine-readable heap,
@@ -1314,7 +1312,30 @@ published baseline.
 - **Stop condition:** only a short synthetic timing loop is measured.
 - **Done condition:** failures identify the owner that retained memory or work.
 
-### `0.17.1`: WebSocket Application Journey
+**Result:** closed through existing document, route, conditional, keyed, and
+effect ownership. A dedicated application fixture repeatedly opens and closes a
+native dialog, removes and recreates keyed row state, conditionally disposes and
+remounts a real CodeMirror editor, and navigates to a canonical released route.
+The standalone Chrome harness keeps one browser profile alive, runs five warm-up
+and 30 measured cycles by default, forces GC only before five-cycle checkpoints,
+and retains machine-readable `samples.jsonl`, `summary.json`, and
+`environment.json` artifacts under the ignored `test-results/endurance/` path.
+The required default run completed 71 enhanced navigations with 71 editor mounts
+and 71 disposals. Every released checkpoint had zero active editors, dialogs,
+and keyed rows, 29 route elements, six documents, 141 DOM nodes, and seven event
+listeners. Forced-GC heap moved from 1,820,132 to 2,005,572 bytes, below the
+larger of the declared 2 MiB or 15% observation alarm. A deterministic failure
+reports `route:/plain` and the mismatched counters; browser exceptions and failed
+requests are retained with the same owner. The interactive route graph is
+242,928 raw / 81,792 aggregate gzip bytes across 11 JavaScript files. Semantic
+primitives, IR kinds, compiler passes, core/compiler LOC, runtime concepts,
+runtime files, and public APIs change by zero; one test fixture and one browser
+harness were added. This evidence changed no production source by itself and was
+published with the later stale-prefetch fix in the actual `0.16.5` patch.
+
+## `0.17.x`: Long-Lived Applications
+
+### `0.17.0`: WebSocket Application Journey
 
 - **Purpose:** move from isolated fake socket ownership to project notifications.
 - **Acceptance:** connect, message, keyed update, reconnect, stale socket
@@ -1323,7 +1344,31 @@ published baseline.
 - **Done condition:** repeated navigation balances every listener, timer, and
   socket handle.
 
-### `0.17.2`: Shared SSE/Transport Decision
+**Result:** closed through existing layout state, `EffectIR`, keyed-list, and
+enhanced-navigation ownership. The first project-application browser extension
+failed at `websocket-connect`; one inline layout effect now owns a native
+WebSocket, four socket listeners, native online/offline listeners, generation
+and socket-identity stale guards, and one 50 ms reconnect timer. Incoming
+snapshots are validated before replacing the existing notification array, so a
+same-key server update retains its DOM node and live-region ownership. Required
+Chrome proves connect, message, keyed update, visible error, reconnect, stale
+message/error rejection, offline cancellation, online recovery, and eight
+list/detail enhanced transitions with one retained layout socket. The journey
+creates three sockets total; while connected it has one active socket, four
+socket listeners, and two online/offline listeners. Of two reconnect timers,
+one fires and one is cleared. Final document disposal leaves zero active sockets,
+socket listeners, window listeners, and reconnect timers, and repeated disposal
+changes no counter. The project deploy grows by 2,908 raw / 652 aggregate gzip
+bytes; the list-route JavaScript graph grows by 1,755 raw / 460 aggregate gzip
+bytes, while `/help` remains zero JavaScript. Semantic primitives, IR kinds,
+compiler passes, core/compiler LOC, runtime concepts, runtime files, transport
+abstractions, and public APIs change by zero; one existing application fixture
+and one browser scenario grow. The maintained Worker/effect graph remains 907
+raw / 477 gzip bytes for Worker and 14,456 raw / 6,159 gzip bytes for window;
+its seven-run Linux median was 605.6 ms. No production source changed, so no
+release was consumed.
+
+### `0.17.1`: Shared SSE/Transport Decision
 
 - **Purpose:** test multiple independently mounted consumers, replay, and
   reconnect against existing layout effects/shared state.
@@ -1334,7 +1379,20 @@ published baseline.
 - **Done condition:** existing composition passes or a minimal transport owner is
   architecture-approved.
 
-### `0.17.3`: Memory And Disposal Gate
+**Result:** closed by the stop condition with zero qualifying applications.
+Mattermost and Twenty remain external research candidates, but neither has a
+repository-owned reduction proving the complete shared-consumer, ordered replay,
+reconnect, independent removal, final close, and bounded-history contract. The
+project application has one layout consumer; all Lupin reductions belong to one
+application and each owns its socket in one page effect; the route WebSocket,
+navigation telemetry, Worker dashboard, Memos audit, and development EventSource
+also lack the complete shared transport shape. Existing layout state and
+independent `EffectIR` owners remain authoritative. Semantic primitives, IR
+kinds, compiler passes, core/compiler LOC, runtime concepts, runtime files,
+fixtures, browser bytes, and public APIs change by zero. No production source
+changed, so no release was consumed.
+
+### `0.17.2`: Memory And Disposal Gate
 
 - **Purpose:** close document/layout/route/range/external-instance memory risks.
 - **Acceptance:** long repeated journeys show bounded heap, DOM, prefetch cache,
@@ -1342,6 +1400,29 @@ published baseline.
 - **Stop condition:** undocumented browser GC timing is presented as exact proof.
 - **Done condition:** retained growth has a declared bound and repeated samples
   pass the agreed threshold.
+
+**Result:** complete with one navigation-cache ownership fix. A deterministic
+race holds unique prefetched documents, starts navigation to each, commits a
+canonical route that prunes them, and then releases the stale responses. Before
+the fix, five races left `browserState.size` at zero but increased CDP documents
+from 8 to 16 under owner `navigation:documents`: stale `navigate()` calls wrote
+their parsed documents back into the cache before checking the navigation
+revision. `navigation-runtime.js` now checks revision before the existing cache
+write; no cache type, LRU, cancellation registry, or public instrumentation was
+added. The default gate batches ten races within browser connection limits, then
+runs 30 route, conditional, keyed, dialog, and editor cycles in one Chrome
+profile. Across 101 navigations, baseline/final documents remain 8, browser state
+entries 0, DOM nodes 174, listeners 7, and editor mounts/disposals 71/71. Forced-
+GC heap moves from 1,826,244 to 2,022,160 bytes, below the declared larger-of-2-
+MiB-or-15% alarm. Semantic primitives, IR kinds, compiler passes, runtime
+concepts, runtime files, cache abstractions, and public APIs change by zero; one
+production runtime reorders one existing statement with zero LOC growth. The
+maintained Worker graph remains 907 raw / 477 gzip bytes and the window graph
+remains 14,456 raw bytes with gzip moving from 6,159 to 6,160 bytes; its seven-
+run Linux median was 795.3 ms, recorded without a timing comparison because the
+host load differs. One endurance fixture and browser gate grow, while static
+routes remain zero JavaScript. This packet ships as the actual `0.16.5` patch to
+retain the public `0.16.x` version line.
 
 ## `0.18.x`: Lazy Loading And Code Splitting
 
@@ -1679,4 +1760,8 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.16.2` | Closed by existing effect ownership | Preserve retained Chart.js data/resize updates, listener and route cleanup, fresh remount, accessibility, and static exclusion. | No production change; no release consumed |
 | `0.16.3` | Released | Preserve state-owned order, keyed identity, keyboard parity, invalid-input recovery, package disposal, and static exclusion. | None |
 | `0.16.4` | Released | Preserve scoped GSAP presentation, reduced-motion fallback, dependency/owner cleanup, fresh remount, and static exclusion. | None |
-| `0.17.0` | Active | Establish the long-session endurance harness and machine-readable ownership counters. | None |
+| `0.16.5` | Released | Preserve the reproducible endurance evidence, project notification ownership, and bounded stale-prefetch cache disposal. | None |
+| `0.17.0` | Closed by existing layout effect ownership | Preserve project notification connect, keyed update, reconnect, stale rejection, offline recovery, retained navigation, and exact cleanup evidence. | No production change; no release consumed |
+| `0.17.1` | Closed by stop condition | Preserve independent effect ownership until three applications prove the complete shared transport and bounded replay contract. | Zero qualifying applications; no release consumed |
+| `0.17.2` | Released as `0.16.5` | Preserve stale-prefetch rejection and bounded document, state, resource, listener, DOM, and external-instance ownership. | Patch release retained the `0.16.x` public version line |
+| `0.18.0` | Active | Record exact current route and feature artifact ownership before adding lazy loading. | None |

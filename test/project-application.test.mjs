@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.15.2 notification ownership contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.17.0 notification WebSocket ownership contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.15.2 notification ownership contract", { timeout: 120_00
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.15.2")
+  assert.equal(contract.milestone, "0.17.0")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -132,6 +132,14 @@ test("establishes the 0.15.2 notification ownership contract", { timeout: 120_00
     timeoutMs: 800,
     reusedSemantics: ["layout-owned-array-state", "keyed-list-identity", "dependency-effect-cleanup", "native-live-region", "enhanced-navigation-layout-retention"]
   })
+  assert.deepEqual(contract.notificationWebSocketDecision, {
+    patch: "0.17.0",
+    status: "closed-by-existing-layout-effect-ownership",
+    fixture: "project-application",
+    runtime: null,
+    reconnectMs: 50,
+    reusedSemantics: ["layout-owned-effect", "layout-owned-array-state", "keyed-list-identity", "effect-invalidation", "enhanced-navigation-layout-retention", "native-websocket-and-online-events"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -144,11 +152,11 @@ test("establishes the 0.15.2 notification ownership contract", { timeout: 120_00
   const login = plan.routes.find(route => route.route === "/login")
   assert.deepEqual(projects.states.slice(0, 4).map(state => state.name), ["token", "username", "isAdmin", "authStatus"])
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "notifications", "activeNotificationId", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection", "loadCursor", "requestedCursor", "loadRequest", "loadStatus", "loadError", "loadEnd", "loadObserverGeneration", "pendingDeleteId"])
-  assert.deepEqual(projects.states.slice(0, 31).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.slice(0, 12).map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["notifications", "layout", []], ["activeNotificationId", "layout", ""]])
-  assert.equal(projects.effects.length, 9)
-  assert.equal(detail.effects.length, 8)
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "notifications", "activeNotificationId", "notificationConnection", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection", "loadCursor", "requestedCursor", "loadRequest", "loadStatus", "loadError", "loadEnd", "loadObserverGeneration", "pendingDeleteId"])
+  assert.deepEqual(projects.states.slice(0, 32).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(detail.states.slice(0, 13).map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["notifications", "layout", []], ["activeNotificationId", "layout", ""], ["notificationConnection", "layout", "idle"]])
+  assert.equal(projects.effects.length, 10)
+  assert.equal(detail.effects.length, 9)
   assert.equal(projects.bindings.length, 18)
   assert.equal(projects.lists.length, 4)
   const projectDataState = projects.states.find(state => state.name === "projectData")
@@ -288,6 +296,82 @@ globalThis.IntersectionObserver = class {
     this.callback([{ isIntersecting: true, target: this.target }])
   }
 }
+globalThis.projectSocketStats = { instances: [], activeSockets: 0, activeListeners: 0, closes: 0, reconnectScheduled: 0, reconnectFired: 0, reconnectCleared: 0, pendingReconnects: 0, windowAdds: 0, windowRemoves: 0 }
+class ProjectSocket {
+  constructor(url) {
+    this.url = url
+    this.listeners = new Map()
+    this.closed = false
+    projectSocketStats.instances.push(this)
+    projectSocketStats.activeSockets++
+  }
+  addEventListener(name, callback) {
+    let listeners = this.listeners.get(name)
+    if (!listeners) this.listeners.set(name, listeners = new Set())
+    if (listeners.has(callback)) return
+    listeners.add(callback)
+    projectSocketStats.activeListeners++
+  }
+  removeEventListener(name, callback) {
+    const listeners = this.listeners.get(name)
+    if (!listeners?.delete(callback)) return
+    projectSocketStats.activeListeners--
+    if (!listeners.size) this.listeners.delete(name)
+  }
+  fire(name, event = {}) {
+    for (const callback of [...(this.listeners.get(name) || [])]) callback(event)
+  }
+  close() {
+    if (this.closed) return
+    this.closed = true
+    projectSocketStats.activeSockets--
+    projectSocketStats.closes++
+  }
+  remoteClose() {
+    if (this.closed) return
+    this.closed = true
+    projectSocketStats.activeSockets--
+    this.fire("close")
+  }
+}
+globalThis.WebSocket = ProjectSocket
+const browserSetTimeout = globalThis.setTimeout
+const browserClearTimeout = globalThis.clearTimeout
+const reconnectTimers = new Set()
+globalThis.setTimeout = (callback, delay, ...values) => {
+  if (delay !== 50) return browserSetTimeout(callback, delay, ...values)
+  projectSocketStats.reconnectScheduled++
+  projectSocketStats.pendingReconnects++
+  const timer = browserSetTimeout(() => {
+    if (reconnectTimers.delete(timer)) {
+      projectSocketStats.pendingReconnects--
+      projectSocketStats.reconnectFired++
+    }
+    callback(...values)
+  }, delay)
+  reconnectTimers.add(timer)
+  return timer
+}
+globalThis.clearTimeout = timer => {
+  if (reconnectTimers.delete(timer)) {
+    projectSocketStats.pendingReconnects--
+    projectSocketStats.reconnectCleared++
+  }
+  return browserClearTimeout(timer)
+}
+const browserAddEventListener = globalThis.addEventListener.bind(globalThis)
+const browserRemoveEventListener = globalThis.removeEventListener.bind(globalThis)
+const connectionListeners = new Map([["online", new Set()], ["offline", new Set()]])
+globalThis.addEventListener = (name, callback, options) => {
+  const listeners = connectionListeners.get(name)
+  if (listeners && !listeners.has(callback)) { listeners.add(callback); projectSocketStats.windowAdds++ }
+  return browserAddEventListener(name, callback, options)
+}
+globalThis.removeEventListener = (name, callback, options) => {
+  const listeners = connectionListeners.get(name)
+  if (listeners?.delete(callback)) projectSocketStats.windowRemoves++
+  return browserRemoveEventListener(name, callback, options)
+}
 </script></head>`).replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
   }
   const loginUrl = new URL("login/index.html", output)
@@ -390,6 +474,62 @@ try {
   } else if (search.has("direct-issue")) {
     await waitFor(() => document.querySelector("[data-runtime-issue]")?.dataset.projectId === "gamma" && document.querySelector("[data-runtime-issue]")?.dataset.issueId === "second", "runtime-issue-direct")
     document.body.dataset.directIssueTest = "pass"
+  } else if (search.has("websocket")) {
+    await waitFor(() => document.querySelector("[data-session-status]")?.textContent === "authenticated" && projectSocketStats.instances.length === 1, "websocket-connect")
+    const layout = document.querySelector("[data-app-layout]")
+    const first = projectSocketStats.instances[0]
+    if (first.url !== "wss://example.invalid/projects/notifications" || projectSocketStats.activeSockets !== 1 || projectSocketStats.activeListeners !== 4 || projectSocketStats.windowAdds !== 2) throw new Error("websocket-first-balance")
+    first.fire("open")
+    await waitFor(() => document.querySelector("[data-notification-connection]")?.textContent === "connected", "websocket-open")
+    first.fire("message", { data: JSON.stringify({ notifications: [{ id: "server-build", message: "Build started" }] }) })
+    await waitFor(() => document.querySelector('[data-notification="server-build"]')?.textContent.includes("Build started"), "websocket-message")
+    const notification = document.querySelector('[data-notification="server-build"]')
+    first.fire("message", { data: JSON.stringify({ notifications: [{ id: "server-build", message: "Build finished" }] }) })
+    await waitFor(() => document.querySelector('[data-notification="server-build"]')?.textContent.includes("Build finished"), "websocket-keyed-update")
+    if (document.querySelector('[data-notification="server-build"]') !== notification) throw new Error("websocket-keyed-identity")
+    document.querySelector('a[href="/app/projects/alpha"]').click()
+    await waitFor(() => document.querySelector("[data-project-detail]"), "websocket-detail")
+    document.querySelector('a[href="/app/projects"]').click()
+    await waitFor(() => document.querySelector("[data-project-list-page]"), "websocket-list")
+    if (document.querySelector("[data-app-layout]") !== layout || document.querySelector('[data-notification="server-build"]') !== notification || projectSocketStats.instances.length !== 1 || projectSocketStats.activeSockets !== 1) throw new Error("websocket-layout-lifetime")
+    first.fire("error")
+    await waitFor(() => document.querySelector("[data-notification-connection]")?.textContent === "error", "websocket-error")
+    const staleMessage = [...first.listeners.get("message")][0]
+    const staleError = [...first.listeners.get("error")][0]
+    first.remoteClose()
+    if (projectSocketStats.pendingReconnects !== 1) throw new Error("websocket-reconnect-schedule")
+    await waitFor(() => projectSocketStats.instances.length === 2 && first.listeners.size === 0, "websocket-reconnect")
+    const second = projectSocketStats.instances[1]
+    staleMessage({ data: JSON.stringify({ notifications: [{ id: "stale", message: "Stale message" }] }) })
+    staleError()
+    await new Promise(resolve => setTimeout(resolve, 20))
+    if (document.querySelector('[data-notification="stale"]') || document.querySelector("[data-notification-connection]")?.textContent !== "connecting") throw new Error("websocket-stale-callback")
+    second.fire("open")
+    await waitFor(() => document.querySelector("[data-notification-connection]")?.textContent === "connected", "websocket-reconnected")
+    second.remoteClose()
+    if (projectSocketStats.pendingReconnects !== 1) throw new Error("websocket-offline-pending")
+    dispatchEvent(new Event("offline"))
+    await waitFor(() => document.querySelector("[data-notification-connection]")?.textContent === "offline", "websocket-offline")
+    if (projectSocketStats.pendingReconnects !== 0 || projectSocketStats.reconnectCleared !== 1 || projectSocketStats.activeSockets !== 0) throw new Error("websocket-offline-balance")
+    dispatchEvent(new Event("online"))
+    await waitFor(() => projectSocketStats.instances.length === 3, "websocket-online")
+    const third = projectSocketStats.instances[2]
+    third.fire("open")
+    await waitFor(() => document.querySelector("[data-notification-connection]")?.textContent === "connected", "websocket-online-open")
+    for (let cycle = 0; cycle < 3; cycle++) {
+      document.querySelector('a[href="/app/projects/alpha"]').click()
+      await waitFor(() => document.querySelector("[data-project-detail]"), "websocket-cycle-detail-" + cycle)
+      document.querySelector('a[href="/app/projects"]').click()
+      await waitFor(() => document.querySelector("[data-project-list-page]"), "websocket-cycle-list-" + cycle)
+      if (projectSocketStats.instances.length !== 3 || projectSocketStats.activeSockets !== 1 || projectSocketStats.activeListeners !== 4 || projectSocketStats.windowAdds - projectSocketStats.windowRemoves !== 2) throw new Error("websocket-cycle-balance-" + cycle)
+    }
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await waitFor(() => projectSocketStats.activeSockets === 0 && projectSocketStats.activeListeners === 0 && projectSocketStats.windowAdds === projectSocketStats.windowRemoves && projectSocketStats.pendingReconnects === 0, "websocket-disposal")
+    const final = JSON.stringify(projectSocketStats, (key, value) => key === "instances" ? value.length : value)
+    window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+    await new Promise(resolve => setTimeout(resolve, 60))
+    if (JSON.stringify(projectSocketStats, (key, value) => key === "instances" ? value.length : value) !== final) throw new Error("websocket-repeat-disposal")
+    document.body.dataset.websocketTest = "pass"
   } else if (search.has("history")) {
     await waitFor(() => document.querySelector("[data-project-list-page]") && document.querySelector("[data-k-navigation-status]"), "history-list-entry")
     const layout = document.querySelector("[data-app-layout]")
@@ -966,6 +1106,9 @@ http.createServer((request, response) => {
     const dialogCleanup = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?dialog-cleanup=1`], { encoding: "utf8", timeout: 20_000 })
     assert.equal(dialogCleanup.status, 0, dialogCleanup.stderr)
     assert.match(dialogCleanup.stdout, /data-dialog-cleanup-test="pass"/, dialogCleanup.stderr)
+    const websocket = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=12000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?websocket=1`], { encoding: "utf8", timeout: 30_000 })
+    assert.equal(websocket.status, 0, websocket.stderr)
+    assert.match(websocket.stdout, /data-websocket-test="pass"/, websocket.stdout.match(/data-browser-test="[^"]+"/)?.[0] ?? websocket.stderr)
     const history = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?history=1`], { encoding: "utf8", timeout: 20_000 })
     assert.equal(history.status, 0, history.stderr)
     assert.match(history.stdout, /data-navigation-test="pass"/, history.stderr)

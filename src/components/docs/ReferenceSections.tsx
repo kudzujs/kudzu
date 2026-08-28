@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.16.4 maintained sweep</strong><span>The GSAP fixture adds no shared runtime bytes; the prior macOS sweep still covers build graphs, keyed rows, native dispatch, compiler scale, commerce output, project navigation, state scale, and the 10,000-row decision.</span></div>
+    <div className="docs-callout"><strong>Current 0.16.5 disposal gate</strong><span>Ten stale-prefetch races and 30 ownership cycles retain exact document, state, DOM, listener, and editor bounds; the prior macOS sweep still covers the broader competitive matrix.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],
@@ -65,7 +65,7 @@ export function BenchmarksSection() {
     <p>Pagination is selected: it avoids direct DOM scale, has the lower bounded-range median and heap, and preserves native page, keyboard, focus, and variable-height behavior without a scroll listener. No semantic primitive, compiler pass, public API, or runtime concept was added.</p>
     <h3>Public commerce comparison</h3>
     <BenchmarkTable columns={["Target", "Initial JS gzip", "Reliable click", "Resilience"]} rows={[
-      ["Kudzu 0.16.4", "4.2-9.9 KiB", "300 ms", "15 / 18"],
+      ["Kudzu 0.16.5", "4.2-9.9 KiB", "300 ms", "15 / 18"],
       ["Astro 7.1.3 + React", "60.6-61.1 KiB", "1,500 ms", "12 / 18"],
       ["React Router 8.3.0", "103.8-104.6 KiB", "2,000 ms", "8 / 18"],
       ["TanStack Start 1.168.32", "103.5-104.1 KiB", "2,000 ms", "9 / 18"],

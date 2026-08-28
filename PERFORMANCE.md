@@ -2,6 +2,25 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.5 Bounded Navigation Cache
+
+Measured 2026-08-28 on Linux x64 with Node 24.14.0 and Chrome. Before the
+production fix, five held-prefetch races increased retained CDP documents from 8
+to 16 after a newer canonical navigation had pruned those URLs. Moving the
+existing revision check before the cache write restores the exact bound without
+adding an LRU, cancellation registry, runtime file, or cache abstraction.
+
+The default endurance gate runs ten batched cache races and 30 ownership cycles
+in one Chrome profile. Across 101 navigations, baseline/final documents remain
+8, browser state entries 0, DOM nodes 174, listeners 7, and editor
+mounts/disposals 71/71. Forced-GC heap moves from 1,826,244 to 2,022,160 bytes,
+below the larger of the declared 2 MiB or 15% alarm.
+
+The maintained Worker benchmark remains 907 raw / 477 gzip B for the Worker
+graph and 14,456 raw / 6,160 gzip B for the window graph. Seven clean builds
+record a 795.3 ms median on this host; timing is not compared because concurrent
+host load differs. Production runtime LOC, concepts, and files remain unchanged.
+
 ## 0.16.4 Scoped GSAP Animation Lifecycle
 
 Measured 2026-08-28 on Linux x64 with Node 24.14.0 and Chrome. The real GSAP

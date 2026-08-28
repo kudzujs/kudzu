@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.16.4/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.16.5/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")

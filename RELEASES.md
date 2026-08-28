@@ -1,5 +1,46 @@
 # Kudzu Releases
 
+## 0.16.5 - Bounded Navigation Cache
+
+Kudzu 0.16.5 prevents superseded enhanced navigations from resurrecting pruned
+prefetched documents and adds a reproducible long-session ownership gate.
+
+### Changed in 0.16.5
+
+- Checks the navigation revision before writing a completed prefetched document
+  back into the route cache.
+- Prevents stale slow navigations from retaining parsed documents after a newer
+  route has committed and pruned their URLs.
+- Adds a dedicated Chrome endurance harness with machine-readable heap, DOM,
+  listener, logical-state, resource, and navigation counters.
+- Exercises ten deterministic stale-prefetch races followed by 30 route,
+  conditional, keyed, dialog, and real CodeMirror ownership cycles.
+- Proves a layout-owned project notification WebSocket journey with validated
+  keyed updates, reconnect, stale-callback rejection, offline recovery, retained
+  navigation lifetime, and exact cleanup.
+- Adds no cache abstraction, LRU, transport runtime, ResourceIR, VDOM, hydration,
+  React runtime, or retained component tree.
+- Updates `create-kudzu@0.1.130` to generate projects on
+  `@kudzujs/core@^0.16.5`.
+
+### Output And Browser Evidence
+
+- Before the fix, five stale-prefetch races increased retained CDP documents
+  from 8 to 16 while logical state remained empty.
+- With the fix, the default 101-navigation run keeps documents at 8,
+  `browserState.size` at 0, DOM nodes at 174, listeners at 7, and editor
+  mounts/disposals balanced at 71/71.
+- Forced-GC heap moves from 1,826,244 to 2,022,160 bytes, below the declared
+  larger-of-2-MiB-or-15% alarm.
+- The maintained Worker graph remains 907 raw / 477 gzip bytes; the window graph
+  remains 14,456 raw / 6,160 gzip bytes. Static routes remain zero JavaScript.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.5
+```
+
 ## 0.16.4 - Scoped GSAP Animation Lifecycle
 
 Kudzu 0.16.4 lets inline GSAP callbacks remain inside one owned effect while
