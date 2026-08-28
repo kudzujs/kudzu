@@ -1,5 +1,41 @@
 # Kudzu Releases
 
+## 0.16.3 - State-Owned Drag And Drop
+
+Kudzu 0.16.3 proves that a real SortableJS drag engine can remain a bounded
+effect while existing keyed state owns durable order and DOM identity.
+
+### Changed in 0.16.3
+
+- Treats the browser `HTMLElement` constructor as a platform global inside
+  bundled effect callbacks while preserving lexical shadowing.
+- Restores package-moved DOM before applying one immutable state reorder, so
+  Kudzu remains the only durable keyed DOM owner.
+- Uses the same state operation for drag, keyboard movement, and reset.
+- Recovers invalid package indexes without changing application state.
+- Disposes on conditional and document release; remount creates a fresh package
+  instance.
+- Adds no drag/drop IR, animation frame, runtime concept, React, VDOM, hydration,
+  or retained component tree.
+- Updates `create-kudzu@0.1.128` to generate projects on
+  `@kudzujs/core@^0.16.3`.
+
+### Output And Browser Evidence
+
+- The SortableJS fixture emits 10 JavaScript files totaling 72,251 raw / 26,603
+  aggregate gzip bytes; its static sibling emits zero JavaScript.
+- Required Chrome proves drag and keyboard reorder, state synchronization,
+  retained row/input identity, invalid-input recovery, disposal, and fresh
+  remount.
+- The maintained Worker and window graphs remain 907 raw / 477 gzip bytes and
+  14,456 raw / 6,159 gzip bytes respectively.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.3
+```
+
 ## 0.16.1 - Retained External Editor Ownership
 
 Kudzu 0.16.1 lets one CodeMirror-class package instance remain owned across a

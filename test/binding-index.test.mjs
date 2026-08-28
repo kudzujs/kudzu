@@ -34,7 +34,7 @@ function Page(prop) {
 })
 
 test("distinguishes shadowed browser globals from real globals", () => {
-  const names = ["document", "location", "history", "navigator", "console"]
+  const names = ["document", "location", "history", "navigator", "console", "HTMLElement"]
   const declarations = names.map(name => `const ${name} = ${JSON.stringify(name)}`).join("\n")
   const source = parse(`${declarations}
 const captured = () => [${names.join(", ")}]

@@ -2,6 +2,21 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.3 State-Owned Drag And Drop
+
+Measured 2026-08-28 on Linux x64 with Node 24.14.0 and Chrome. The real
+SortableJS fixture emits 10 JavaScript files totaling 72,251 raw / 26,603
+aggregate gzip bytes, while its static sibling emits zero JavaScript. Required
+Chrome proves drag and keyboard reorder, retained row/input identity, invalid
+package-index recovery, conditional and document disposal, and fresh remount.
+
+The maintained Worker benchmark remains byte-identical at 907 raw / 477 gzip B
+for the Worker graph and 14,456 raw / 6,159 gzip B for the window graph. Seven
+clean builds record a 999.7 ms median on this host. Timing is not compared with
+the prior macOS sweep. The change adds no runtime file or drag/drop abstraction;
+it classifies `HTMLElement` with the existing browser globals used by bundled
+effect callbacks.
+
 ## 0.16.1 Retained Editor Ownership
 
 Measured 2026-08-28 on Linux x64 with Node 24.14.0 and Chrome. The new

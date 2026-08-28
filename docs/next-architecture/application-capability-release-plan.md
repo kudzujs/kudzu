@@ -1210,6 +1210,24 @@ unchanged.
 - **Stop condition:** package-specific concepts enter generic IR/runtime.
 - **Done condition:** one lifecycle model covers editor and chart/map evidence.
 
+**Result:** closed through the `0.16.1` retained-instance contract. A reduced
+Mattermost Chart.js doughnut chart first reproduced the existing diagnostic when
+its dependency effect both created and updated the retained instance. Moving
+acquisition, resize-listener registration, and exact destroy/reset cleanup into
+one mount effect leaves later data effects read-only and lowers the handle to the
+same owner-scoped object state used by CodeMirror. Required Chrome proves initial
+drawing, retained data and resize updates, listener removal, enhanced route
+disposal, fresh remount, accessibility, and package exclusion from the static
+sibling. The interactive graph is 208,686 raw / 73,312 aggregate gzip bytes
+across six JavaScript files; the static sibling emits zero. Semantic primitives,
+IR kinds, compiler passes, core/compiler LOC, normalization rules, runtime
+concepts, runtime files, and public APIs change by zero. One positive fixture and
+one browser contract were added. The maintained Worker/effect benchmark remains
+907 raw / 477 gzip bytes for the Worker graph and 14,456 raw / 6,159 gzip bytes
+for the window graph; its seven-run Linux median was 2,464.9 ms, recorded without
+a timing comparison because the host differs from the published baseline. No
+production source changed, so no release was consumed.
+
 ### `0.16.3`: Grid And Drag/Drop Decision
 
 - **Purpose:** test external data-grid or drag engine ownership against keyed
@@ -1219,6 +1237,45 @@ unchanged.
 - **Stop condition:** two independent renderers attempt to own the same DOM.
 - **Done condition:** either bounded ownership is proven or the package is
   explicitly unsupported with a migration path.
+
+**Result:** complete through existing keyed state and effect ownership. A
+THRM-derived SortableJS fixture reproduced one compiler failure because the
+browser `HTMLElement` constructor was classified as an effect capture and then
+evaluated during the Node build. Adding that platform constructor to the
+existing browser-global set fixes the shared root cause while lexical shadowing
+remains covered. During a gesture SortableJS may move DOM temporarily, but its
+`onEnd` callback restores authored order before one immutable state reorder;
+Kudzu's keyed reconciler remains the durable DOM owner and preserves retained
+row and input identity. The same state operation provides keyboard movement and
+reset, while invalid package indexes restore DOM without changing state.
+Required Chrome proves drag and keyboard reorder, state synchronization,
+identity, invalid-input recovery, conditional/document disposal, and fresh
+remount. The interactive graph is 72,251 raw / 26,603 aggregate gzip bytes
+across ten JavaScript files; the static sibling emits zero. Its normalized
+deploy archive SHA-256 is
+`a55c18e14ba29df3f1f8ccdc7bcae936092508a01d05abdb887417e6fffb2ecf`.
+Semantic primitives, IR kinds, compiler passes, normalization rules, runtime
+concepts, runtime files, drag/drop abstractions, and public APIs change by zero;
+one existing compiler lookup gains one token. One positive fixture, one browser
+contract, and one browser-global shadowing case were added. The maintained
+Worker/effect benchmark remains 907 raw / 477 gzip bytes for the Worker graph
+and 14,456 raw / 6,159 gzip bytes for the window graph; its seven-run Linux
+median was 999.7 ms, recorded without a timing comparison because the host
+differs from the published baseline.
+
+### `0.16.4`: GSAP Animation Lifecycle
+
+- **Purpose:** validate one real GSAP landing-page animation against existing
+  DOM-ref and effect ownership.
+- **Expected boundary:** one owned effect and native reduced-motion behavior;
+  no animation IR or scheduler runtime.
+- **Acceptance:** mount, deterministic static fallback, scoped targets,
+  prefers-reduced-motion behavior, dependency update where required, route and
+  conditional disposal, fresh remount, and static sibling asset exclusion.
+- **Stop condition:** package timelines compete with Kudzu for durable DOM
+  structure or require a retained component renderer.
+- **Done condition:** GSAP owns only bounded presentation changes and exact
+  cleanup while Kudzu retains document structure and lifetime ownership.
 
 ## `0.17.x`: Long-Lived Applications
 
@@ -1594,4 +1651,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.15.3` | Closed by stop condition | Preserve native top-layer and in-place composition until three independent authored-range failures exist. | Zero qualifying failures; no release consumed |
 | `0.16.0` | Closed by existing effect ownership | Preserve real package mount, replacement, disposal, remount, and static exclusion evidence. | No production change; no release consumed |
 | `0.16.1` | Released | Preserve the retained CodeMirror instance boundary, bidirectional updates, error recovery, accessibility, and exact cleanup. | None |
-| `0.16.2` | Active | Validate the same lifecycle against one unrelated real chart or map package. | None |
+| `0.16.2` | Closed by existing effect ownership | Preserve retained Chart.js data/resize updates, listener and route cleanup, fresh remount, accessibility, and static exclusion. | No production change; no release consumed |
+| `0.16.3` | Released | Preserve state-owned order, keyed identity, keyboard parity, invalid-input recovery, package disposal, and static exclusion. | None |
+| `0.16.4` | Active | Validate one real GSAP landing-page animation through bounded effect ownership. | None |

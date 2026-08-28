@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.16.1/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.16.3/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.16\.1 typescript/)
-  assert.match(docs, /Current 0\.16\.1 maintained sweep.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.1.*4\.2-9\.9 KiB.*15 \/ 18/s)
-  assert.match(examples, /Release 0\.16\.1.*v0\.16\.1.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.16\.1.*v0\.16\.1.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.1".*Retained external editor ownership/s)
-  assert.match(release, /Kudzu 0\.16\.1.*Retain the editor.*Bound the lifetime/s)
-  assert.match(release, /ONE PACKAGE INSTANCE · ONE OWNER · ZERO WIDGET RUNTIME.*RETAINED INSTANCE OWNERSHIP.*npm install @kudzujs\/core@\^0\.16\.1/s)
-  assert.match(release, /<title>Kudzu 0\.16\.1 - Retained external editor ownership<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.1"/)
-  assert.match(release, /Create once.*Add no registry/s)
+  assert.match(docs, /@kudzujs\/core@\^0\.16\.3 typescript/)
+  assert.match(docs, /Current 0\.16\.3 maintained sweep.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.3.*4\.2-9\.9 KiB.*15 \/ 18/s)
+  assert.match(examples, /Release 0\.16\.3.*v0\.16\.3.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.16\.3.*v0\.16\.3.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.3".*State-owned drag and drop/s)
+  assert.match(release, /Kudzu 0\.16\.3.*Move the row.*Keep state in charge/s)
+  assert.match(release, /ONE DURABLE ORDER · ONE KEYED OWNER · ZERO DRAG RUNTIME.*STATE-OWNED ORDER.*npm install @kudzujs\/core@\^0\.16\.3/s)
+  assert.match(release, /<title>Kudzu 0\.16\.3 - State-owned drag and drop<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.3"/)
+  assert.match(release, /Move temporarily.*Dispose exactly/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -4107,6 +4107,66 @@ test("owns a real CodeMirror editor lifecycle", async t => {
   assert.ok(gzipSync(handler).length > 0)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runCodeMirrorEditorBrowserTest(fixture, chrome)
+})
+
+test("owns a real Chart.js canvas lifecycle", async t => {
+  const fixture = new URL("./fixtures/chartjs-lifecycle", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/chartjs-lifecycle/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/chartjs-lifecycle/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/chartjs-lifecycle/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/chartjs-lifecycle/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  const handler = await readFile(new URL("./fixtures/chartjs-lifecycle/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const html = await readFile(new URL("./fixtures/chartjs-lifecycle/dist/index.html", import.meta.url), "utf8")
+  const plainHtml = await readFile(new URL("./fixtures/chartjs-lifecycle/dist/plain/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/chartjs-lifecycle/dist/static/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(component, /chart\.js|new Chart/)
+  assert.deepEqual(route.states.find(state => state.name === "chart")?.initialValue, { current: null })
+  assert.deepEqual(route.effects.map(effect => effect.states.chart), ["rs0", "rs0"])
+  assert.deepEqual(route.effects.map(effect => effect.scope), [{ canvas: { type: "ref", id: "rr0" } }, { canvas: { type: "ref", id: "rr0" } }])
+  assert.match(handler, /chartMounts/)
+  assert.match(handler, /chartDisposals/)
+  assert.match(html, /effects\/index\.js/)
+  assert.match(html, /data-k-ref="rr0"[^>]+role="img"[^>]+aria-label="Team activity doughnut chart"/)
+  assert.doesNotMatch(plainHtml, /effects\/index\.js|chartMounts/)
+  assert.doesNotMatch(staticHtml, /<script|chart\.js|chartMounts/)
+  assert.ok(Buffer.byteLength(handler) > 0)
+  assert.ok(gzipSync(handler).length > 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runChartJsLifecycleBrowserTest(fixture, chrome)
+})
+
+test("owns a real SortableJS keyed drag lifecycle", async t => {
+  const fixture = new URL("./fixtures/sortablejs-lifecycle", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/sortablejs-lifecycle/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/sortablejs-lifecycle/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/sortablejs-lifecycle/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/sortablejs-lifecycle/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  const handler = await readFile(new URL("./fixtures/sortablejs-lifecycle/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const html = await readFile(new URL("./fixtures/sortablejs-lifecycle/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/sortablejs-lifecycle/dist/static/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(component, /from "sortablejs"|Sortable\.create/)
+  assert.deepEqual(route.effects.map(effect => effect.dependencies), [["s2"]])
+  assert.deepEqual(route.effects.map(effect => effect.scope), [{ grid: { type: "ref", id: "r0" } }])
+  assert.deepEqual(route.lists.map(list => list.keys), [["a", "b", "c"]])
+  assert.match(handler, /1\.15\.7/)
+  assert.match(handler, /instanceof HTMLElement/)
+  assert.match(handler, /sortableMounts/)
+  assert.match(handler, /sortableDisposals/)
+  assert.match(html, /effects\/index\.js/)
+  assert.match(html, /data-sortable-grid="true" data-k-ref="r0"/)
+  assert.doesNotMatch(staticHtml, /<script|sortablejs|sortableMounts|data-k-state/)
+  assert.ok(Buffer.byteLength(handler) > 0)
+  assert.ok(gzipSync(handler).length > 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSortableJsLifecycleBrowserTest(fixture, chrome)
 })
 
 test("rejects retained instance writes from dependency effects", () => {
@@ -8726,6 +8786,110 @@ try {
 `,
     scenarios: [{ path: "/", attribute: "data-code-mirror-editor-test", value: "pass" }],
     virtualTime: 6000,
+  })
+}
+
+async function runChartJsLifecycleBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 150; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const route = name => document.querySelector('[data-route="' + name + '"]')
+try {
+  await waitFor(() => document.querySelector("[data-chart]")?.dataset.value === "3" && document.body.dataset.chartMounts === "1", "initial-mount")
+  const first = document.querySelector("[data-chart]")
+  const firstId = first.dataset.chartId
+  if (first.getAttribute("role") !== "img" || first.getAttribute("aria-label") !== "Team activity doughnut chart") throw new Error("accessibility")
+  document.querySelector("[data-update-chart]").click()
+  await waitFor(() => first.dataset.value === "4" && document.querySelector("[data-chart-value]").textContent === "4", "data-update")
+  if (document.querySelector("[data-chart]") !== first || first.dataset.chartId !== firstId || document.body.dataset.chartMounts !== "1") throw new Error("retained-instance")
+  window.dispatchEvent(new Event("resize"))
+  await waitFor(() => first.dataset.resizes === "1", "resize")
+  document.querySelector("[data-plain-link]").click()
+  await waitFor(() => route("plain") && document.body.dataset.chartDisposals === "1", "route-disposal")
+  const resizes = first.dataset.resizes
+  window.dispatchEvent(new Event("resize"))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (first.dataset.resizes !== resizes || first.dataset.disposed !== "true") throw new Error("listener-cleanup")
+  document.querySelector("[data-chart-link]").click()
+  await waitFor(() => route("chart") && document.querySelector("[data-chart]")?.dataset.value === "3" && document.body.dataset.chartMounts === "2", "route-remount")
+  if (document.querySelector("[data-chart]") === first) throw new Error("fresh-instance")
+  document.querySelector("[data-plain-link]").click()
+  await waitFor(() => route("plain") && document.body.dataset.chartDisposals === "2", "second-disposal")
+  document.body.dataset.chartJsLifecycleTest = "pass"
+} catch (error) {
+  document.body.dataset.chartJsLifecycleTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-chart-js-lifecycle-test", value: "pass" }],
+    virtualTime: 8000,
+  })
+}
+
+async function runSortableJsLifecycleBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 150; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const rows = () => [...document.querySelectorAll("[data-card-id]")]
+const order = () => rows().map(row => row.dataset.cardId).join(",")
+try {
+  await waitFor(() => order() === "a,b,c", "initial-order")
+  const [alpha, beta, gamma] = rows()
+  const draft = alpha.querySelector("[data-card-draft]")
+  draft.value = "Private alpha"
+  const keyboard = document.querySelector("[data-keyboard-reorder]")
+  keyboard.focus()
+  keyboard.click()
+  await waitFor(() => order() === "c,a,b" && document.querySelector("[data-sort-status]").textContent === "Order updated by keyboard", "keyboard-reorder")
+  if (document.body.dataset.sortableMounts || rows()[1] !== alpha || alpha.querySelector("[data-card-draft]") !== draft || draft.value !== "Private alpha" || document.activeElement !== keyboard) throw new Error("keyboard-identity")
+  document.querySelector("[data-reset-order]").click()
+  await waitFor(() => order() === "a,b,c" && document.querySelector("[data-sort-status]").textContent === "Order reset", "reset")
+  if (rows()[0] !== alpha || rows()[1] !== beta || rows()[2] !== gamma) throw new Error("reset-identity")
+  document.querySelector("[data-toggle-sorting]").click()
+  await waitFor(() => document.body.dataset.sortableMounts === "1" && typeof globalThis.__sortableEnd === "function", "package-mount")
+  const list = document.querySelector("[data-sortable-grid]")
+  list.append(alpha)
+  globalThis.__sortableEnd({ item: alpha, from: list, oldIndex: 0, newIndex: 2 })
+  await waitFor(() => order() === "b,c,a" && document.querySelector("[data-sort-status]").textContent === "Order updated", "drag-reorder")
+  if (rows()[0] !== beta || rows()[1] !== gamma || rows()[2] !== alpha || alpha.querySelector("[data-card-draft]") !== draft || draft.value !== "Private alpha") throw new Error("drag-identity")
+  document.querySelector("[data-keyboard-reorder]").click()
+  await waitFor(() => order() === "a,b,c", "keyboard-equivalent")
+  delete alpha.dataset.cardId
+  list.append(alpha)
+  globalThis.__sortableEnd({ item: alpha, from: list, oldIndex: 0, newIndex: 2 })
+  alpha.dataset.cardId = "a"
+  await waitFor(() => order() === "a,b,c" && document.querySelector("[data-sort-status]").textContent === "Reorder failed; original order restored", "failure-recovery")
+  if (document.querySelector(".sortable-ghost,.sortable-chosen,.sortable-drag")) throw new Error("drag-artifact")
+  document.querySelector("[data-toggle-board]").click()
+  await waitFor(() => !document.querySelector("[data-sortable-grid]") && document.body.dataset.sortableDisposals === "1" && !globalThis.__sortableEnd, "conditional-disposal")
+  document.querySelector("[data-toggle-board]").click()
+  await waitFor(() => order() === "a,b,c", "conditional-remount")
+  if (rows()[0] === alpha) throw new Error("fresh-remount")
+  document.querySelector("[data-toggle-sorting]").click()
+  await waitFor(() => document.body.dataset.sortableMounts === "2", "second-mount")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.sortableDisposals === "2", "document-disposal")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.sortableDisposals !== "2") throw new Error("repeat-disposal")
+  document.body.dataset.sortableJsLifecycleTest = "pass"
+} catch (error) {
+  document.body.dataset.sortableJsLifecycleTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-sortable-js-lifecycle-test", value: "pass" }],
+    virtualTime: 9000,
   })
 }
 

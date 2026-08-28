@@ -955,8 +955,9 @@ http.createServer((request, response) => {
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
   await waitForServer(port)
+  const initialProfile = await mkdtemp(new URL(".chrome-", fixture))
   try {
-    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=12000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", `--user-data-dir=${initialProfile}`, "--virtual-time-budget=12000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/, browser.stdout.match(/data-browser-test="[^"]+"/)?.[0] ?? browser.stderr)
     const cleanup = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?infinite-cleanup=1`], { encoding: "utf8", timeout: 20_000 })
@@ -1012,6 +1013,7 @@ http.createServer((request, response) => {
     await runIssueFormJourney(chrome, port)
   } finally {
     server.kill()
+    await rm(initialProfile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   }
 }
 
