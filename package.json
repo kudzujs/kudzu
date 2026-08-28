@@ -1,6 +1,6 @@
 {
   "name": "@kudzujs/core",
-  "version": "0.15.1",
+  "version": "0.16.1",
   "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM",
   "type": "module",
   "license": "MIT",
@@ -73,6 +73,8 @@
     "typescript": "^5.9.2"
   },
   "devDependencies": {
+    "@codemirror/view": "^6.43.9",
+    "typed.js": "^3.0.0",
     "wrangler": "^4.112.0"
   }
 }

@@ -1,5 +1,5 @@
 import ts from "typescript"
-import { effectReturns, importDeclarationNames, isNodeWithin, isShadowedIdentifier, nearestFunction, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
+import { effectReturns, importDeclarationNames, isNodeWithin, isShadowedIdentifier, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 
 export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
     const frameCall = (node, name) => ts.isCallExpression(node) && (
@@ -24,8 +24,10 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
     }
     const hasUseRefImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useRef"))
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
+    const hasUseStateImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useState"))
     const privateRefs = new Map()
     const effectRefs = new Map()
+    const retainedRefs = new Map()
     const registerPrivateRef = (node, callback) => {
       const initializer = ts.isNumericLiteral(node.initializer.arguments[0]) ? factory.createNumericLiteral(0) : factory.createNull()
       privateRefs.set(node, callback)
@@ -42,20 +44,60 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       const owner = nearestFunction(node)
       if (!owner?.body || !ts.isBlock(owner.body)) return
       const references = referenceIdentifiers(owner.body, node.name.text)
+      const attachedToJsx = references.some(reference => ts.isJsxExpression(reference.parent) && ts.isJsxAttribute(reference.parent.parent) && reference.parent.parent.name.text === "ref")
       const invalidReference = references.find(reference => !ts.isPropertyAccessExpression(reference.parent) || reference.parent.expression !== reference || reference.parent.name.text !== "current")
       const accesses = references.filter(reference => ts.isPropertyAccessExpression(reference.parent) && reference.parent.expression === reference && reference.parent.name.text === "current").map(reference => reference.parent)
+      const mutations = accesses.filter(access =>
+        (ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && access.parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+        ((ts.isPrefixUnaryExpression(access.parent) || ts.isPostfixUnaryExpression(access.parent)) && access.parent.operand === access && [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(access.parent.operator)) ||
+        (ts.isDeleteExpression(access.parent) && access.parent.expression === access)
+      )
       const frameAssignments = accesses.filter(access => ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && frameCall(unwrapExpression(access.parent.right), "requestAnimationFrame") && unshadowedFrameCall(unwrapExpression(access.parent.right), owner))
       const statement = node.parent?.parent
       const topLevelOwner = owner.parent === sourceFile || ts.isVariableDeclaration(owner.parent) && owner.parent.parent?.parent?.parent === sourceFile
       const topLevelConst = topLevelOwner && ts.isVariableStatement(statement) && (statement.declarationList.flags & ts.NodeFlags.Const) && statement.declarationList.declarations.length === 1 && statement.parent === owner.body
       if (frameAssignments.length && invalidReference) throw sourceNodeError(invalidReference, sourceFile, "Animation frame refs may only use direct .current reads and assignments")
       if (frameAssignments.length && !topLevelConst) throw sourceNodeError(node, sourceFile, "Animation frame refs must be one top-level component const")
+      if (attachedToJsx && mutations.length) throw sourceNodeError(mutations[0], sourceFile, "JSX object refs may not assign to ref.current")
       if (!topLevelConst || invalidReference || !accesses.length) return
       const effectCalls = owner.body.statements.flatMap(statement => hasUseEffectImport && ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && ts.isIdentifier(statement.expression.expression) && statement.expression.expression.text === "useEffect" && !isShadowedIdentifier(statement.expression.expression, sourceFile) ? [statement.expression] : [])
       const effects = effectCalls.filter(effect => {
         const callback = effect.arguments[0]
         return callback && accesses.every(access => isNodeWithin(access, callback))
       })
+      if (!frameAssignments.length && refInitializer?.kind === ts.SyntaxKind.NullKeyword && !invalidReference && !effects.length) {
+        const owners = effectCalls.filter(effect => {
+          const callback = effect.arguments[0]
+          return callback && accesses.some(access => isNodeWithin(access, callback))
+        })
+        const callbacks = owners.map(effect => effect.arguments[0])
+        const directCallbacks = callbacks.every(callback => (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) && ts.isBlock(callback.body))
+        const everyAccessOwned = accesses.every(access => callbacks.filter(callback => isNodeWithin(access, callback)).length === 1)
+        const mountEffects = owners.filter(effect => ts.isArrayLiteralExpression(effect.arguments[1]) && !effect.arguments[1].elements.length)
+        const updateEffects = owners.filter(effect => ts.isArrayLiteralExpression(effect.arguments[1]) && effect.arguments[1].elements.length)
+        if (owners.length >= 2 && directCallbacks && everyAccessOwned && mountEffects.length === 1 && updateEffects.length === owners.length - 1 && owners[0] === mountEffects[0]) {
+          const mount = mountEffects[0]
+          const callback = mount.arguments[0]
+          const returns = effectReturns(callback)
+          const cleanup = returns.cleanups.length === 1 ? returns.cleanups[0] : undefined
+          const writes = accesses.filter(access => ts.isBinaryExpression(access.parent) && unwrapExpression(access.parent.left) === access && access.parent.operatorToken.kind === ts.SyntaxKind.EqualsToken)
+          const setupWrites = writes.filter(access => isNodeWithin(access, callback) && (!cleanup || !isNodeWithin(access, cleanup)))
+          const cleanupWrites = cleanup ? writes.filter(access => isNodeWithin(access, cleanup)) : []
+          const setupStatement = setupWrites[0]?.parent.parent
+          const cleanupStatement = cleanupWrites[0]?.parent.parent
+          const directSetup = setupWrites.length === 1 && ts.isExpressionStatement(setupStatement) && setupStatement.parent === callback.body && unwrapExpression(setupWrites[0].parent.right).kind !== ts.SyntaxKind.NullKeyword
+          const directCleanup = cleanup && ts.isBlock(cleanup.body) && cleanupWrites.length === 1 && ts.isExpressionStatement(cleanupStatement) && cleanupStatement.parent === cleanup.body && unwrapExpression(cleanupWrites[0].parent.right).kind === ts.SyntaxKind.NullKeyword
+          const updateWrites = mutations.some(access => updateEffects.some(effect => isNodeWithin(access, effect.arguments[0])))
+          if (directSetup && directCleanup && !updateWrites) {
+            if (!hasUseStateImport) throw sourceNodeError(node, sourceFile, "Retained instance refs require a named useState import")
+            const setterName = `__kSetRetainedRef_${node.name.text}_${node.pos}`
+            if (referencesIdentifier(owner.body, setterName)) throw sourceNodeError(node, sourceFile, "Retained instance ref conflicts with a compiler-owned binding")
+            retainedRefs.set(node, setterName)
+            return
+          }
+        }
+        if (owners.length >= 2) throw sourceNodeError(node, sourceFile, "Retained instance refs require one empty-dependency mount effect with one direct assignment and null-reset cleanup followed by read-only dependency effects")
+      }
       if (!frameAssignments.length) {
         const callback = effects.length === 1 ? effects[0].arguments[0] : undefined
         if (callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) && ts.isBlock(callback.body)) {
@@ -107,9 +149,27 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       registerPrivateRef(node, callback)
     }
     inspect(sourceFile)
-    if (!privateRefs.size) return sourceFile
+    const retainedByOwner = new Map()
+    for (const declaration of retainedRefs.keys()) {
+      const owner = nearestFunction(declaration)
+      const refs = retainedByOwner.get(owner) ?? []
+      refs.push(declaration)
+      retainedByOwner.set(owner, refs)
+    }
+    for (const refs of retainedByOwner.values()) if (refs.length > 1) throw sourceNodeError(refs[1], sourceFile, "Components may own only one retained instance ref")
+    if (!privateRefs.size && !retainedRefs.size) return sourceFile
     const visitor = node => {
       if (ts.isVariableStatement(node) && node.declarationList.declarations.length === 1 && privateRefs.has(node.declarationList.declarations[0])) return undefined
+      if (ts.isVariableDeclaration(node) && retainedRefs.has(node)) {
+        const binding = factory.createArrayBindingPattern([
+          factory.createBindingElement(undefined, undefined, node.name),
+          factory.createBindingElement(undefined, undefined, retainedRefs.get(node))
+        ])
+        const initializer = factory.createCallExpression(factory.createIdentifier("useState"), undefined, [
+          factory.createObjectLiteralExpression([factory.createPropertyAssignment("current", factory.createNull())])
+        ])
+        return factory.updateVariableDeclaration(node, binding, node.exclamationToken, undefined, initializer)
+      }
       const refs = effectRefs.get(node)
       if (refs && (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) && ts.isBlock(node.body)) {
         const body = ts.visitEachChild(node.body, visitor, context)

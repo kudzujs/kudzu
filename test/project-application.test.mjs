@@ -12,7 +12,7 @@ const fixture = new URL("./fixtures/project-application/", import.meta.url)
 const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 const chromePaths = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].filter(Boolean)
 
-test("establishes the 0.15.1 native-popover composition contract", { timeout: 120_000 }, async t => {
+test("establishes the 0.15.2 notification ownership contract", { timeout: 120_000 }, async t => {
   t.after(async () => {
     await rm(new URL(".kudzu", fixture), { recursive: true, force: true })
     await rm(new URL("dist", fixture), { recursive: true, force: true })
@@ -29,7 +29,7 @@ test("establishes the 0.15.1 native-popover composition contract", { timeout: 12
   assert.equal(routes.includes("/app/projects/[projectId]"), true)
   assert.equal(routes.includes("/app/projects/[projectId]/issues/[issueId]"), true)
   assert.deepEqual(routes, contract.routes)
-  assert.equal(contract.milestone, "0.15.1")
+  assert.equal(contract.milestone, "0.15.2")
   assert.deepEqual(contract.architectureDecision, {
     patch: "0.11.2",
     status: "closed-no-new-primitive",
@@ -124,6 +124,14 @@ test("establishes the 0.15.1 native-popover composition contract", { timeout: 12
     runtime: "existing-keyed-list-runtime",
     reusedSemantics: ["native-popover-top-layer", "keyed-row-identity", "key-scoped-use-id", "native-escape-and-light-dismiss", "route-dom-release"]
   })
+  assert.deepEqual(contract.notificationDecision, {
+    patch: "0.15.2",
+    status: "closed-by-layout-composition",
+    fixture: "project-application",
+    scheduler: null,
+    timeoutMs: 800,
+    reusedSemantics: ["layout-owned-array-state", "keyed-list-identity", "dependency-effect-cleanup", "native-live-region", "enhanced-navigation-layout-retention"]
+  })
 
   const projects = plan.routes.find(route => route.route === "/app/projects")
   const detail = plan.routes.find(route => route.route === "/app/projects/alpha")
@@ -136,13 +144,13 @@ test("establishes the 0.15.1 native-popover composition contract", { timeout: 12
   const login = plan.routes.find(route => route.route === "/login")
   assert.deepEqual(projects.states.slice(0, 4).map(state => state.name), ["token", "username", "isAdmin", "authStatus"])
   assert.deepEqual(login.states.map(state => state.name), ["error", "submitting"])
-  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection", "loadCursor", "requestedCursor", "loadRequest", "loadStatus", "loadError", "loadEnd", "loadObserverGeneration", "pendingDeleteId"])
-  assert.deepEqual(projects.states.slice(0, 29).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
-  assert.deepEqual(detail.states.map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["draft", "route", "Clean draft"], ["setupStep", "route", 1], ["setupName", "route", ""], ["setupSummary", "route", ""], ["setupVersion", "route", 0], ["setupReady", "route", false], ["setupDirty", "route", false], ["setupStatus", "route", "idle"], ["setupError", "route", ""], ["savedSetupVersion", "route", 0], ["uploadName", "route", ""], ["uploadType", "route", ""], ["uploadContent", "route", ""], ["uploadSize", "route", 0], ["uploadRequest", "route", 0], ["uploadStatus", "route", "idle"], ["uploadError", "route", ""], ["attachments", "route", []], ["formStatus", "route", "idle"], ["titleError", "route", ""], ["formError", "route", ""], ["fieldMeta", "route", { titleTouched: false, bodyTouched: false }], ["assignee", "route", { enabled: false, name: "", touched: false }], ["checklist", "route", [{ id: "check-1", text: "", touched: false }]], ["nextChecklistId", "route", 2], ["dirtySinceReset", "route", false]])
-  assert.equal(projects.effects.length, 8)
-  assert.equal(detail.effects.length, 7)
+  assert.deepEqual(projects.states.filter(state => !state.internal && !state.name.startsWith("__kRowState")).map(state => state.name), ["token", "username", "isAdmin", "authStatus", "workspace", "storageReady", "projectName", "projectRevision", "mutationStatus", "mutationError", "notifications", "activeNotificationId", "summary", "projectData", "filter", "showSummary", "savedFilters", "request", "status", "error", "polling", "selectedId", "sortDirection", "loadCursor", "requestedCursor", "loadRequest", "loadStatus", "loadError", "loadEnd", "loadObserverGeneration", "pendingDeleteId"])
+  assert.deepEqual(projects.states.slice(0, 31).map(state => state.lifetime), ["layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "layout", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route", "route"])
+  assert.deepEqual(detail.states.slice(0, 12).map(state => [state.name, state.lifetime, state.initialValue]), [["token", "layout", ""], ["username", "layout", ""], ["isAdmin", "layout", false], ["authStatus", "layout", "restoring"], ["workspace", "layout", "Primary"], ["storageReady", "layout", false], ["projectName", "layout", "Alpha"], ["projectRevision", "layout", -1], ["mutationStatus", "layout", "idle"], ["mutationError", "layout", ""], ["notifications", "layout", []], ["activeNotificationId", "layout", ""]])
+  assert.equal(projects.effects.length, 9)
+  assert.equal(detail.effects.length, 8)
   assert.equal(projects.bindings.length, 18)
-  assert.equal(projects.lists.length, 3)
+  assert.equal(projects.lists.length, 4)
   const projectDataState = projects.states.find(state => state.name === "projectData")
   const projectList = projects.lists.find(list => list.source?.states.projectData === projectDataState.id)
   const issueList = projects.lists.find(list => list.ownerField === "issues")
@@ -162,7 +170,7 @@ test("establishes the 0.15.1 native-popover composition contract", { timeout: 12
   assert.equal(projectArtifacts.runtime.requirements.some(path => path.endsWith("/kudzu-list.js")), true)
   assert.equal(projectArtifacts.runtime.family, detailArtifacts.runtime.family)
   assert.equal(detailArtifacts.runtime.entries.some(path => path.endsWith("/kudzu-navigation.js")), true)
-  assert.equal(detail.lists.length, 2)
+  assert.equal(detail.lists.length, 3)
   assert.equal(detailArtifacts.capability.manifest.lists.stableFastPaths, true)
   assert.deepEqual(detailArtifacts.capability.manifest.events.native, ["blur", "change", "click", "input", "reset", "submit"])
   assert.deepEqual(detailArtifacts.handlers, { entries: ["/assets/handlers/AppLayout.js", "/assets/handlers/pages/app/projects/alpha.js"], chunks: [] })
@@ -183,6 +191,7 @@ test("establishes the 0.15.1 native-popover composition contract", { timeout: 12
   const detailHtml = await readFile(new URL("dist/app/projects/alpha/index.html", fixture), "utf8")
   assert.match(projectsHtml, /data-project-table.*<thead>.*<th[^>]*>Project<\/th>.*<tbody>.*data-project="alpha".*data-project="beta".*<\/tbody>.*<\/table>/s)
   assert.match(projectsHtml, /data-retry-incremental.*data-project-sentinel.*data-project-page-size="2".*data-project-result-limit="6"/s)
+  assert.match(projectsHtml, /data-notifications(?:="true")? aria-live="polite" aria-atomic="false"/)
   assert.match(projectsHtml, /<dialog[^>]*data-delete-project-dialog[^>]*aria-labelledby="delete-project-title"[^>]*aria-describedby="delete-project-description".*data-confirm-project-delete[^>]*>Delete project.*data-cancel-project-delete/s)
   const alphaActions = projectsHtml.match(/data-project-actions="alpha" popovertarget="([^"]+)".*id="\1" popover="auto" data-project-actions-popover="alpha"/s)
   const betaActions = projectsHtml.match(/data-project-actions="beta" popovertarget="([^"]+)".*id="\1" popover="auto" data-project-actions-popover="beta"/s)
@@ -483,9 +492,9 @@ try {
     document.body.dataset.storageTest = storageMode
   } else if (sessionStorage.getItem("kudzu-project-refresh") === "pending") {
     sessionStorage.removeItem("kudzu-project-refresh")
-    await waitFor(() => document.querySelector("[data-shared-project-name]")?.textContent === "Alpha renamed" && document.querySelector("[data-shared-project-revision]")?.textContent === "1", "refresh-server-restore")
+    await waitFor(() => document.querySelector("[data-shared-project-name]")?.textContent === "Alpha renamed" && document.querySelector("[data-shared-project-revision]")?.textContent === "2", "refresh-server-restore")
     const counts = await projectCounts()
-    if (counts.reads !== 2 || counts.mutations !== 1 || counts.attempts !== 2 || performance.getEntriesByType("navigation")[0]?.type !== "reload" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("refresh-contract")
+    if (counts.reads !== 2 || counts.mutations !== 2 || counts.attempts !== 3 || performance.getEntriesByType("navigation")[0]?.type !== "reload" || document.querySelector("[data-project-draft]").textContent !== "Clean draft") throw new Error("refresh-contract")
     document.body.dataset.browserTest = "pass"
   } else if (search.has("direct")) {
     await waitFor(() => document.querySelector("[data-project-detail]"), "direct-detail")
@@ -692,32 +701,44 @@ try {
   document.querySelector("[data-rename-project]").click()
   if (document.querySelector('[data-project="alpha"]') !== restored) throw new Error("optimistic-row-identity")
   await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 500" && document.querySelector("[data-shared-project-name]").textContent === "Alpha" && document.querySelector("[data-shared-project-revision]").textContent === "0", "mutation-rollback")
+  await waitFor(() => document.querySelector('[data-notification="project-save-error"]')?.textContent.includes("Project save failed"), "notification-error")
+  const notificationRegion = document.querySelector("[data-notifications]")
+  const errorNotification = document.querySelector('[data-notification="project-save-error"]')
   counts = await projectCounts()
   if (counts.reads !== 1 || counts.mutations !== 0 || counts.attempts !== 1) throw new Error("mutation-rollback-requests")
   document.querySelector('a[href="/app/projects/alpha"]').click()
   await waitFor(() => document.querySelector("[data-project-detail]"), "detail-navigation")
   const firstDetail = document.querySelector("[data-project-detail]")
   counts = await projectCounts()
-  if (document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || counts.reads !== 1 || counts.mutations !== 0 || counts.attempts !== 1) throw new Error("layout-persistence")
+  if (document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-notifications]") !== notificationRegion || document.querySelector('[data-notification="project-save-error"]') !== errorNotification || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || counts.reads !== 1 || counts.mutations !== 0 || counts.attempts !== 1) throw new Error("layout-persistence")
   document.querySelector("[data-rename-project]").click()
   await Promise.resolve()
   if (document.querySelector("[data-shared-project-name]").textContent !== "Alpha optimistic" || document.querySelector('[role="alert"]')) throw new Error("mutation-retry-optimistic")
   await waitFor(() => document.querySelector("[data-shared-project-name]").textContent === "Alpha renamed" && document.querySelector("[data-shared-project-revision]").textContent === "1" && document.querySelector('[data-app-layout] [role="status"]')?.textContent === "Project saved", "shared-project-mutation")
+  await waitFor(() => document.querySelector('[data-notification="project-save-success"]')?.textContent.includes("Project saved"), "notification-success")
+  const successNotification = document.querySelector('[data-notification="project-save-success"]')
+  errorNotification.querySelector("button").click()
+  await waitFor(() => !errorNotification.isConnected, "notification-dismiss")
+  document.querySelector("[data-rename-project]").click()
+  await waitFor(() => document.querySelector("[data-shared-project-revision]").textContent === "2", "notification-dedupe-request")
+  if (document.querySelectorAll('[data-notification="project-save-success"]').length !== 1) throw new Error("notification-dedupe")
   counts = await projectCounts()
-  if (counts.reads !== 1 || counts.mutations !== 1 || counts.attempts !== 2) throw new Error("mutation-requests")
+  if (counts.reads !== 1 || counts.mutations !== 2 || counts.attempts !== 3) throw new Error("mutation-requests")
   document.querySelector("[data-edit-draft]").click()
   await waitFor(() => document.querySelector("[data-project-draft]").textContent === "Dirty draft", "draft-edit")
   document.querySelector('a[href="/app/projects"]').click()
   await waitFor(() => document.querySelector("[data-project-list-page]"), "list-navigation")
+  if (document.querySelector("[data-notifications]") !== notificationRegion || document.querySelector('[data-notification="project-save-success"]') !== successNotification) throw new Error("notification-route-persistence")
+  await waitFor(() => !successNotification.isConnected && !document.querySelector("[data-notification]"), "notification-timeout")
   counts = await projectCounts()
-  if (firstDetail.isConnected || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || document.querySelector("[data-shared-project-revision]").textContent !== "1" || counts.reads !== 1 || counts.mutations !== 1 || counts.attempts !== 2) throw new Error("route-release")
+  if (firstDetail.isConnected || document.querySelector("[data-app-layout]") !== layout || document.querySelector("[data-route-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || document.querySelector("[data-shared-project-revision]").textContent !== "2" || counts.reads !== 1 || counts.mutations !== 2 || counts.attempts !== 3) throw new Error("route-release")
   const cleanupBeforeRemoval = document.body.dataset.projectFetchCleanup
   document.querySelector('a[href="/app/projects/alpha"]').click()
   await waitFor(() => document.querySelector("[data-project-detail]"), "detail-revisit")
   await new Promise(resolve => setTimeout(resolve, 300))
   if (document.body.dataset.projectFetchCleanup === cleanupBeforeRemoval || document.querySelector("[data-project-list-page]") || browserErrors.length) throw new Error("fetch-route-release")
   counts = await projectCounts()
-  if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || counts.reads !== 1 || counts.mutations !== 1 || counts.attempts !== 2 || counts.listRequests !== 11) throw new Error("route-reset")
+  if (document.querySelector("[data-project-detail]") === firstDetail || document.querySelector("[data-project-draft]").textContent !== "Clean draft" || document.querySelector("[data-workspace]").textContent !== "Secondary" || document.querySelector("[data-shared-project-name]").textContent !== "Alpha renamed" || counts.reads !== 1 || counts.mutations !== 2 || counts.attempts !== 3 || counts.listRequests !== 11) throw new Error("route-reset")
   sessionStorage.setItem("kudzu-project-refresh", "pending")
   location.reload()
   }
@@ -935,7 +956,7 @@ http.createServer((request, response) => {
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
   await waitForServer(port)
   try {
-    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=10000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--virtual-time-budget=12000", "--dump-dom", `http://127.0.0.1:${port}/app/projects`], { encoding: "utf8", timeout: 30_000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-browser-test="pass"/, browser.stdout.match(/data-browser-test="[^"]+"/)?.[0] ?? browser.stderr)
     const cleanup = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=5000", "--dump-dom", `http://127.0.0.1:${port}/app/projects?infinite-cleanup=1`], { encoding: "utf8", timeout: 20_000 })

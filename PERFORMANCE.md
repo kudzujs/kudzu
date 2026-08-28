@@ -2,7 +2,26 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
-## 0.15.1 Current Maintained Benchmark Sweep
+## 0.16.1 Retained Editor Ownership
+
+Measured 2026-08-28 on Linux x64 with Node 24.14.0 and Chrome. The new
+CodeMirror fixture emits 7 JavaScript files totaling 214,968 raw / 71,607
+aggregate gzip bytes, while its static sibling emits zero JavaScript. These
+bytes belong to the real editor package and existing selected effect/runtime
+capabilities; no retained-ref runtime file or shared widget runtime was added.
+
+Required Chrome proves initial content, retained package DOM across application
+updates, editor-to-state updates, accessible error recovery, conditional
+disposal/remount, and document disposal. The maintained Worker benchmark remains
+byte-identical to 0.15.1 at 907 raw / 477 gzip B for the Worker graph and 14,456
+raw / 6,159 gzip B for the window graph. The generated 50-route, 500-module
+source-scale fixture retains compiler digest
+`7c366079a984b3d62fb19a26305326d3278f029d2193d39340ddd3a4be5adc6e` and
+output digest `e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`.
+Timing from this Linux host is recorded only as a local check and is not compared
+with the prior macOS release sweep.
+
+## 0.15.1 Maintained Benchmark Sweep
 
 Remeasured 2026-08-27 on macOS arm64 with Node 24.14.0, Apple M4 hardware,
 16 GiB RAM, and Chrome 151.0.7922.174. Candidate comparisons use clean

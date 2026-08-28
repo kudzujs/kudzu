@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.15.1/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.16.1/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.15\.1 typescript/)
-  assert.match(docs, /Current 0\.15\.1 maintained sweep.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.15\.1.*4\.2-9\.9 KiB.*15 \/ 18/s)
-  assert.match(examples, /Release 0\.15\.1.*v0\.15\.1.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.15\.1.*v0\.15\.1.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.15\.1".*Key-scoped native popovers/s)
-  assert.match(release, /Kudzu 0\.15\.1.*Scope the identity.*Let the platform pop/s)
-  assert.match(release, /ONE ROW KEY · ONE NATIVE TOP LAYER · ZERO OVERLAY RUNTIME.*KEYED ID OWNERSHIP.*npm install @kudzujs\/core@\^0\.15\.1/s)
-  assert.match(release, /<title>Kudzu 0\.15\.1 - Key-scoped native popovers<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.15\.1"/)
-  assert.match(release, /Keep useId.*Add no overlay tree/s)
+  assert.match(docs, /@kudzujs\/core@\^0\.16\.1 typescript/)
+  assert.match(docs, /Current 0\.16\.1 maintained sweep.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.1.*4\.2-9\.9 KiB.*15 \/ 18/s)
+  assert.match(examples, /Release 0\.16\.1.*v0\.16\.1.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.16\.1.*v0\.16\.1.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.1".*Retained external editor ownership/s)
+  assert.match(release, /Kudzu 0\.16\.1.*Retain the editor.*Bound the lifetime/s)
+  assert.match(release, /ONE PACKAGE INSTANCE · ONE OWNER · ZERO WIDGET RUNTIME.*RETAINED INSTANCE OWNERSHIP.*npm install @kudzujs\/core@\^0\.16\.1/s)
+  assert.match(release, /<title>Kudzu 0\.16\.1 - Retained external editor ownership<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.1"/)
+  assert.match(release, /Create once.*Add no registry/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -4055,6 +4055,72 @@ test("bundles package imports used directly by owned effects", async t => {
   assert.ok(gzipSync(handler).length > 0)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runPackageEffectBrowserTest(fixture, chrome)
+})
+
+test("owns a package-created external UI instance", async t => {
+  const fixture = new URL("./fixtures/external-ui-package", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/external-ui-package/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/external-ui-package/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/external-ui-package/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const handler = await readFile(new URL("./fixtures/external-ui-package/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const html = await readFile(new URL("./fixtures/external-ui-package/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/external-ui-package/dist/static/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(component, /typed\.js|new Typed/)
+  assert.match(handler, /externalUiMounts/)
+  assert.match(handler, /externalUiDisposals/)
+  assert.match(html, /effects\/index\.js/)
+  assert.doesNotMatch(staticHtml, /<script|typed\.js|externalUi/)
+  assert.ok(Buffer.byteLength(handler) > 0)
+  assert.ok(gzipSync(handler).length > 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runExternalUiPackageBrowserTest(fixture, chrome)
+})
+
+test("owns a real CodeMirror editor lifecycle", async t => {
+  const fixture = new URL("./fixtures/codemirror-editor", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/codemirror-editor/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/codemirror-editor/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const component = await readFile(new URL("./fixtures/codemirror-editor/.kudzu/pages/index.mjs", import.meta.url), "utf8")
+  const route = JSON.parse(await readFile(new URL("./fixtures/codemirror-editor/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
+  const handler = await readFile(new URL("./fixtures/codemirror-editor/dist/assets/handlers/pages/index.js", import.meta.url), "utf8")
+  const html = await readFile(new URL("./fixtures/codemirror-editor/dist/index.html", import.meta.url), "utf8")
+  const staticHtml = await readFile(new URL("./fixtures/codemirror-editor/dist/static/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(component, /@codemirror|EditorView/)
+  assert.deepEqual(route.states.find(state => state.name === "editor")?.initialValue, { current: null })
+  assert.deepEqual(route.effects.map(effect => effect.states.editor), ["s1", "s1"])
+  assert.deepEqual(route.effects.map(effect => effect.scope), [{ host: { type: "ref", id: "r0" } }, {}])
+  assert.match(handler, /editorMounts/)
+  assert.match(handler, /editorDisposals/)
+  assert.match(html, /effects\/index\.js/)
+  assert.match(html, /data-k-ref="r0"/)
+  assert.doesNotMatch(html, /data-k-ref="r1"/)
+  assert.doesNotMatch(staticHtml, /<script|codemirror|editorMounts/)
+  assert.ok(Buffer.byteLength(handler) > 0)
+  assert.ok(gzipSync(handler).length > 0)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runCodeMirrorEditorBrowserTest(fixture, chrome)
+})
+
+test("rejects retained instance writes from dependency effects", () => {
+  const fixture = new URL("./fixtures/codemirror-editor-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /Retained instance refs require one empty-dependency mount effect with one direct assignment and null-reset cleanup followed by read-only dependency effects/)
+})
+
+test("rejects retained instance writes through attached DOM refs", () => {
+  const fixture = new URL("./fixtures/codemirror-editor-attached-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /JSX object refs may not assign to ref\.current/)
 })
 
 test("rejects package imports hidden behind effect helpers", () => {
@@ -8584,6 +8650,82 @@ try {
 }
 `,
     scenarios: [{ path: "/", attribute: "data-package-effect-test", value: "pass" }],
+  })
+}
+
+async function runExternalUiPackageBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => document.querySelector("[data-typed-message]")?.textContent === "Alpha" && document.body.dataset.externalUiMounts === "1", "initial-mount")
+  document.querySelector("[data-update-message]").click()
+  await waitFor(() => document.querySelector("[data-typed-message]")?.textContent === "Beta" && document.body.dataset.externalUiMounts === "2" && document.body.dataset.externalUiDisposals === "1", "dependency-replacement")
+  document.querySelector("[data-toggle-message]").click()
+  await waitFor(() => !document.querySelector("[data-typed-message]") && document.body.dataset.externalUiDisposals === "2", "conditional-disposal")
+  document.querySelector("[data-toggle-message]").click()
+  await waitFor(() => document.querySelector("[data-typed-message]")?.textContent === "Beta" && document.body.dataset.externalUiMounts === "3", "conditional-remount")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.externalUiDisposals === "3", "document-disposal")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await new Promise(resolve => setTimeout(resolve, 50))
+  if (document.body.dataset.externalUiDisposals !== "3") throw new Error("repeat-disposal")
+  document.body.dataset.externalUiPackageTest = "pass"
+} catch (error) {
+  document.body.dataset.externalUiPackageTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-external-ui-package-test", value: "pass" }],
+  })
+}
+
+async function runCodeMirrorEditorBrowserTest(fixture, chrome) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 100; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+try {
+  await waitFor(() => document.querySelector(".cm-content")?.textContent === "Alpha" && document.body.dataset.editorMounts === "1", "initial-mount")
+  const editor = document.querySelector(".cm-editor")
+  const content = document.querySelector(".cm-content")
+  if (content.getAttribute("aria-label") !== "Markdown editor") throw new Error("accessible-name")
+  document.querySelector("[data-update-editor]").click()
+  await waitFor(() => content.textContent === "Beta" && document.querySelector("[data-editor-value]").textContent === "Beta", "application-update")
+  if (document.querySelector(".cm-editor") !== editor || document.body.dataset.editorMounts !== "1") throw new Error("retained-update")
+  content.focus()
+  document.execCommand("selectAll")
+  document.execCommand("insertText", false, "Gamma")
+  await waitFor(() => document.querySelector("[data-editor-value]").textContent === "Gamma", "editor-update")
+  if (document.querySelector(".cm-editor") !== editor || document.activeElement !== content) throw new Error("editor-identity")
+  document.querySelector("[data-fail-editor]").click()
+  await waitFor(() => document.querySelector('[role="alert"]'), "update-error")
+  if (content.textContent !== "Gamma" || document.querySelector(".cm-editor") !== editor) throw new Error("error-retention")
+  document.querySelector("[data-update-editor]").click()
+  await waitFor(() => content.textContent === "Beta" && !document.querySelector('[role="alert"]'), "error-recovery")
+  document.querySelector("[data-toggle-editor]").click()
+  await waitFor(() => !document.querySelector(".cm-editor") && document.body.dataset.editorDisposals === "1", "conditional-disposal")
+  document.querySelector("[data-toggle-editor]").click()
+  await waitFor(() => document.querySelector(".cm-content")?.textContent === "Alpha" && document.body.dataset.editorMounts === "2", "conditional-remount")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.editorDisposals === "2", "document-disposal")
+  document.body.dataset.codeMirrorEditorTest = "pass"
+} catch (error) {
+  document.body.dataset.codeMirrorEditorTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-code-mirror-editor-test", value: "pass" }],
+    virtualTime: 6000,
   })
 }
 

@@ -1,5 +1,41 @@
 # Kudzu Releases
 
+## 0.16.1 - Retained External Editor Ownership
+
+Kudzu 0.16.1 lets one CodeMirror-class package instance remain owned across a
+mount effect and later dependency update effects without a React island or
+generic widget runtime.
+
+### Changed in 0.16.1
+
+- Lowers one proven unattached `useRef(null)` retained-instance handle to
+  existing owner-scoped object state.
+- Requires one empty-dependency mount effect, one direct setup assignment,
+  direct null-reset cleanup, and read-only later dependency effects.
+- Preserves editor DOM identity across application-state and editor-to-state
+  updates, including accessible package errors and recovery.
+- Disposes on conditional and document release; remount receives a fresh handle.
+- Rejects malformed cleanup, update-effect writes, multiple retained handles,
+  aliases, event use, and attached retained refs.
+- Adds no IR kind, runtime concept, resource registry, React, or widget runtime.
+- Updates `create-kudzu@0.1.127` to generate projects on
+  `@kudzujs/core@^0.16.1`.
+
+### Output And Browser Evidence
+
+- The CodeMirror fixture emits 7 JavaScript files totaling 214,968 raw /
+  71,607 aggregate gzip bytes; its static sibling emits zero JavaScript.
+- Required Chrome proves initial mount, retained application updates,
+  editor-to-state updates, package-error recovery, disposal, and fresh remount.
+- The smaller Typed.js boundary fixture proves the same existing effect owner
+  without any production compiler change.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.1
+```
+
 ## 0.15.1 - Key-Scoped Native Popovers
 
 Kudzu 0.15.1 lets ordinary keyed row components use `useId()` for native

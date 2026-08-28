@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "milestone": "0.15.1",
+  "milestone": "0.15.2",
   "application": "project-management",
   "routes": [
     "/app/projects",
@@ -148,6 +148,12 @@
     "popover-escape-and-light-dismiss",
     "popover-trigger-focus-restore",
     "popover-route-cleanup",
+    "layout-owned-notification-queue",
+    "notification-deduplication",
+    "notification-timeout-and-dismissal",
+    "notification-route-persistence",
+    "notification-live-region",
+    "notification-timer-disposal",
     "static-route-zero-javascript"
   ],
   "deferred": [
@@ -170,7 +176,8 @@
     "object-state collection roots require one direct static array field and immutable replacement; dynamic paths and mutation remain unsupported",
     "incremental loading allows two successful pages of two records and retains at most six unique projects; larger datasets require the separately measured 0.14.3 browser decision",
     "destructive confirmation uses the native dialog top layer; custom focus traps, portals, stacked modals, and animated presence remain unsupported",
-    "non-modal project actions use native Popover and key-scoped ID references; custom positioning engines, menu roving focus, Portal/Slot reconciliation, and retained overlay trees remain unsupported"
+    "non-modal project actions use native Popover and key-scoped ID references; custom positioning engines, menu roving focus, Portal/Slot reconciliation, and retained overlay trees remain unsupported",
+    "notifications use one layout-owned queue and one sequential timeout; pause-on-hover, cross-document persistence, priorities, and a global scheduler remain unsupported"
   ],
   "architectureDecision": {
     "patch": "0.11.2",
@@ -344,29 +351,43 @@
       "route-dom-release"
     ]
   },
+  "notificationDecision": {
+    "patch": "0.15.2",
+    "status": "closed-by-layout-composition",
+    "fixture": "project-application",
+    "scheduler": null,
+    "timeoutMs": 800,
+    "reusedSemantics": [
+      "layout-owned-array-state",
+      "keyed-list-identity",
+      "dependency-effect-cleanup",
+      "native-live-region",
+      "enhanced-navigation-layout-retention"
+    ]
+  },
   "baseline": {
     "deploy": {
-      "files": 44,
-      "rawBytes": 171202,
-      "aggregateGzipBytes": 53629,
-      "sha256": "46ba45b4a423b9627c6ede5f8dd3a667f593cb5401454ae42ecc66207b07b323"
+      "files": 45,
+      "rawBytes": 193770,
+      "aggregateGzipBytes": 60227,
+      "sha256": "4d99b7ddad557940d9d8ccb1acc61dce93c125c30123ec4122d00a71effbaad5"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 66157,
-        "javascriptAggregateGzipBytes": 23414
+        "javascriptRawBytes": 67423,
+        "javascriptAggregateGzipBytes": 23722
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 64681,
-        "javascriptAggregateGzipBytes": 22782
+        "javascriptRawBytes": 65947,
+        "javascriptAggregateGzipBytes": 23093
       },
       "/app/projects/[projectId]": {
-        "javascriptRawBytes": 19248,
-        "javascriptAggregateGzipBytes": 8727
+        "javascriptRawBytes": 36915,
+        "javascriptAggregateGzipBytes": 14416
       },
       "/app/projects/[projectId]/issues/[issueId]": {
-        "javascriptRawBytes": 19345,
-        "javascriptAggregateGzipBytes": 8746
+        "javascriptRawBytes": 37012,
+        "javascriptAggregateGzipBytes": 14434
       },
       "/login": {
         "javascriptRawBytes": 12093,

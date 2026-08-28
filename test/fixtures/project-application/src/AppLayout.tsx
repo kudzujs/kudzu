@@ -13,6 +13,8 @@ type WorkspaceValue = {
   setProjectRevision: (revision: number) => void
 }
 
+type Notification = { id: string; message: string }
+
 const WorkspaceContext = createContext<WorkspaceValue>({} as WorkspaceValue)
 
 export function useWorkspace() {
@@ -30,6 +32,18 @@ export function AppLayout({ children }: { children?: unknown }) {
   const [projectRevision, setProjectRevision] = useState(-1)
   const [mutationStatus, setMutationStatus] = useState("idle")
   const [mutationError, setMutationError] = useState("")
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [activeNotificationId, setActiveNotificationId] = useState("")
+
+  useEffect(() => {
+    if (!activeNotificationId) return
+    const timer = setTimeout(() => {
+      const remaining = notifications.filter(notification => notification.id !== activeNotificationId)
+      setNotifications(remaining)
+      setActiveNotificationId(remaining[0]?.id || "")
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [activeNotificationId])
 
   useEffect(() => {
     const storedToken = localStorage.getItem("kudzu-project-token") || ""
@@ -121,11 +135,19 @@ export function AppLayout({ children }: { children?: unknown }) {
           setProjectName(project.name)
           setProjectRevision(project.revision)
           setMutationStatus("success")
+          if (!notifications.some(notification => notification.id === "project-save-success")) {
+            setNotifications([...notifications, { id: "project-save-success", message: "Project saved" }])
+            if (!activeNotificationId) setActiveNotificationId("project-save-success")
+          }
         } catch (cause) {
           setProjectName(previousName)
           setProjectRevision(previousRevision)
           setMutationError(cause instanceof Error ? cause.message : String(cause))
           setMutationStatus("error")
+          if (!notifications.some(notification => notification.id === "project-save-error")) {
+            setNotifications([...notifications, { id: "project-save-error", message: "Project save failed" }])
+            if (!activeNotificationId) setActiveNotificationId("project-save-error")
+          }
         }
       }}>Rename project</button>}
       {mutationStatus === "pending" && <p role="status">Saving project</p>}
@@ -152,6 +174,16 @@ export function AppLayout({ children }: { children?: unknown }) {
         <a href="/app/projects/alpha">Alpha</a>
         <a href="/help">Help</a>
       </nav>
+      <aside data-notifications aria-live="polite" aria-atomic="false">
+        {notifications.map(notification => <p key={notification.id} role="status" data-notification={notification.id}>
+          <span>{notification.message}</span>
+          <button aria-label={`Dismiss ${notification.message}`} onClick={() => {
+            const remaining = notifications.filter(entry => entry.id !== notification.id)
+            setNotifications(remaining)
+            if (activeNotificationId === notification.id) setActiveNotificationId(remaining[0]?.id || "")
+          }}>Dismiss</button>
+        </p>)}
+      </aside>
     </header>
     {children}
   </WorkspaceContext.Provider>

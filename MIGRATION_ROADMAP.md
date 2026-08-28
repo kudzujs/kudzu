@@ -51,7 +51,7 @@ Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts th
 - stronger JavaScript failure resilience;
 - no remaining material large-route build-scaling weakness.
 
-The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.15.2` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
+The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.16.2` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
 
 ### 0.10.0 Through 0.21.x: Application Capability Release Train
 
@@ -128,6 +128,7 @@ The following are available building blocks, not future vertical roadmaps:
 - `useState`, independent repeated non-keyed child state with conditional mount ownership, reduced relative-imported `useReducer`, direct dispatch specialization, and reduced Zustand-shaped shared state lowered through package-neutral shared-state/action IR and proven by migration fixtures.
 - Mount and dependency effects with cleanup, route/layout lifetimes, conditional/keyed ownership, stale-write isolation, and relative TypeScript Workers.
 - Direct browser-only package references in inline effect setup/cleanup callbacks bundle into route-owned effect ESM without entering build-time component execution or static sibling output.
+- A CodeMirror-class editor may retain one package instance across one mount effect and later dependency update effects through a null-initialized ref with one direct setup assignment and null-reset cleanup. The ref lowers to existing owner-scoped object state; package DOM, bidirectional updates, errors, accessibility, conditional disposal, and fresh remount require no widget runtime or React island.
 - Keyed local-state and imported static collections, pure selectors, nested direct-property lists, recursive and directly exported row specialization, static/keyed component reuse, analyzable specialized prop spreads, serializable literal defaults, direct intrinsic rest forwarding, forwarded JSX children, latest-item handlers, row state/effects/refs, and stable keyed identity.
 - Direct object-state props with one-segment binding/effect/list consumers when the child directly maps an array field; ComponentAnalysis links every consumer to the parent SignalIR without authored field state or a browser component.
 - Complete-document native fallback and optional shared-layout navigation groups with parameter initialization, finite prefetch caching, focus, history, cleanup, and independent capability output.

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.15.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.15.1 - Key-scoped native popovers.** Keyed row `useId()` now scopes native Popover triggers and intrinsic ID references by row key without adding an overlay runtime. Read the [release notes](./RELEASES.md#0151---key-scoped-native-popovers), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.15.1), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.1 - Retained external editor ownership.** A CodeMirror-class editor can retain one package instance across mount and dependency effects while Kudzu keeps disposal, remount, errors, and static exclusion owner-bounded. Read the [release notes](./RELEASES.md#0161---retained-external-editor-ownership), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.1), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

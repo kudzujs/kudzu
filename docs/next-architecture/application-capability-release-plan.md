@@ -1136,6 +1136,15 @@ same immutable tag passed on the release-event retry.
 - **Done condition:** notifications remain owner-bounded and absent from unused
   route output.
 
+**Result:** closed by ordinary layout composition. The maintained project
+application now owns one deduplicated notification queue in layout state, renders
+keyed rows in a native polite live region, and uses one cleanup-owned sequential
+timeout plus explicit dismissal. Required Chrome preserves the live-region and
+row identities through enhanced route replacement, proves timeout removal and
+disposal, and keeps `/help` at zero JavaScript. The 45-file deploy totals 193,770
+raw / 60,227 aggregate gzip bytes. No scheduler, primitive, runtime concept, or
+production source changed, so no release was consumed.
+
 ### `0.15.3`: Layer Owner Decision
 
 - **Purpose:** decide whether logical ownership of DOM rendered outside its
@@ -1145,6 +1154,13 @@ same immutable tag passed on the release-event retry.
 - **Stop condition:** the request is React Portal source compatibility alone.
 - **Done condition:** no new concept is added, or a minimal owner edge with exact
   cleanup/focus order is approved.
+
+**Result:** closed with no owner edge. Native dialog and Popover already satisfy
+modal and non-modal top-layer behavior, while maintained dropdown, tooltip,
+notification, and menu fixtures compose in their authored ranges. Zero fixtures
+fail because DOM must render outside its authored range, below the required three
+independent failures. Portal source compatibility alone remains insufficient;
+no production source or release changed.
 
 ## `0.16.x`: External Complex UI
 
@@ -1159,6 +1175,12 @@ same immutable tag passed on the release-event retry.
 - **Done condition:** package ownership remains inside effect/handler ESM and no
   generic widget runtime is added.
 
+**Result:** closed through existing effect ownership. A real Typed.js instance
+creates DOM from one attached host ref, replaces on application-state dependency
+change, disposes on conditional/document release, and remounts fresh. The package
+is absent from the complete zero-JavaScript static sibling. No compiler, IR,
+runtime concept, or production source changed, so no release was consumed.
+
 ### `0.16.1`: Real Editor Lifecycle
 
 - **Purpose:** integrate one real CodeMirror-class editor.
@@ -1167,6 +1189,18 @@ same immutable tag passed on the release-event retry.
 - **Stop condition:** preserving the React wrapper requires a React island.
 - **Done condition:** the native package owns its DOM and Kudzu owns only its
   bounded lifecycle.
+
+**Result:** complete. The Apache Answer-derived CodeMirror fixture exposes the
+first real retained-instance failure: an unattached `useRef(null)` shared by one
+mount/cleanup effect and a later dependency update effect was incorrectly treated
+as a DOM ref. Kudzu now lowers exactly one proven retained handle to existing
+owner-scoped object state. Required Chrome proves initial value, retained
+application updates, editor-to-state updates, package-error recovery, accessible
+textbox naming, conditional disposal, fresh remount, and document disposal. The
+fixture emits 214,968 raw / 71,607 aggregate gzip JavaScript bytes while its
+static sibling emits zero. One existing normalization pass grows; semantic
+concepts, IR kinds, runtime concepts, runtime files, and public APIs remain
+unchanged.
 
 ### `0.16.2`: Chart And Map Lifecycle
 
@@ -1556,4 +1590,8 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.14.4` | Closed by stop condition | Preserve pagination as the selected strategy until three independent fixtures authorize virtual ownership review. | Evidence favors pagination; zero qualifying fixtures |
 | `0.15.0` | Closed by native composition | Preserve the native dialog, focus, cancellation, keyed deletion, and route cleanup evidence. | No production change; no release consumed |
 | `0.15.1` | Released | Preserve key-scoped IDs, native Popover behavior, retained keyed identity, and route cleanup evidence. | None |
-| `0.15.2` | Active | Begin with a real toast and notification ownership fixture. | None |
+| `0.15.2` | Closed by layout composition | Preserve owner-bounded queue, deduplication, dismissal, route persistence, live-region, and timer cleanup evidence. | No production change; no release consumed |
+| `0.15.3` | Closed by stop condition | Preserve native top-layer and in-place composition until three independent authored-range failures exist. | Zero qualifying failures; no release consumed |
+| `0.16.0` | Closed by existing effect ownership | Preserve real package mount, replacement, disposal, remount, and static exclusion evidence. | No production change; no release consumed |
+| `0.16.1` | Released | Preserve the retained CodeMirror instance boundary, bidirectional updates, error recovery, accessibility, and exact cleanup. | None |
+| `0.16.2` | Active | Validate the same lifecycle against one unrelated real chart or map package. | None |
