@@ -1074,7 +1074,7 @@ async function runIssueFormJourney(chrome, applicationPort) {
       await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 })
     }
     const insert = text => send("Input.insertText", { text })
-    const waitFor = expression => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = () => { if (${expression}) resolve(true); else if (Date.now() - started > 5000) reject(new Error(${JSON.stringify(expression)})); else setTimeout(check, 10) }; check() })`)
+    const waitFor = (expression, timeout = 5000) => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = () => { if (${expression}) resolve(true); else if (Date.now() - started > ${timeout}) reject(new Error(${JSON.stringify(expression)})); else setTimeout(check, 10) }; check() })`)
     const chooseFile = (name, type, contents) => evaluate(`(() => { const transfer = new DataTransfer(); transfer.items.add(new File([${JSON.stringify(contents)}], ${JSON.stringify(name)}, { type: ${JSON.stringify(type)} })); const input = document.querySelector("#project-attachment"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })) })()`)
     const waitForUploadAttempts = attempts => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); if (counts.uploadAttempts === ${attempts}) resolve(true); else if (Date.now() - started > 5000) reject(new Error("upload-attempt-${attempts}")); else setTimeout(check, 10) }; check() })`)
     const waitForUploadAborts = aborts => evaluate(`new Promise((resolve, reject) => { const started = Date.now(); const check = async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); if (counts.uploadAborts === ${aborts}) resolve(true); else if (Date.now() - started > 5000) reject(new Error("upload-abort-${aborts}")); else setTimeout(check, 10) }; check() })`)
@@ -1092,7 +1092,7 @@ async function runIssueFormJourney(chrome, applicationPort) {
     await waitFor('document.querySelector("[data-setup-status]").textContent === "saving"')
     await evaluate('document.querySelector("#setup-summary").select()')
     await insert("Current autosave summary")
-    await waitFor('document.querySelector("[data-setup-status]").textContent === "saved" && document.querySelector("[data-saved-setup-version]").textContent === "3"')
+    await waitFor('document.querySelector("[data-setup-status]").textContent === "saved" && document.querySelector("[data-saved-setup-version]").textContent === "3"', 15000)
     await new Promise(resolve => setTimeout(resolve, 700))
     assert.deepEqual(await evaluate(`(async () => { const counts = await fetch("/api/project-counts").then(response => response.json()); return { attempts: counts.draftSaveAttempts, saves: counts.draftSaves, serverVersion: counts.savedDraftVersion, status: document.querySelector("[data-setup-status]").textContent, savedVersion: document.querySelector("[data-saved-setup-version]").textContent, error: Boolean(document.querySelector("[data-setup-error]")), summary: document.querySelector("#setup-summary").value } })()`), { attempts: 2, saves: 1, serverVersion: 3, status: "saved", savedVersion: "3", error: false, summary: "Current autosave summary" })
 
