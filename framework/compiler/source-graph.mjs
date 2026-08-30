@@ -21,6 +21,7 @@ export function createSourceGraph(root) {
       if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         const argument = node.arguments[0]
         const specifier = node.arguments.length === 1 && ts.isStringLiteralLike(argument) ? JSON.stringify(argument.text) : argument?.getText(sourceFile) ?? "<missing>"
+        if (ownedLazyPackageImport(node)) return
         throw sourceNodeError(node, sourceFile, `Dynamic import ${specifier} is not supported in ordinary source modules`)
       }
       ts.forEachChild(node, rejectDynamicImports)
@@ -42,6 +43,18 @@ export function createSourceGraph(root) {
   }
 
   return { ordinaryRuntimeDependencies, parseSourceFile, resolveSourceImport, runtimeModuleReference }
+}
+
+export function ownedLazyPackageImport(node) {
+  if (!ts.isCallExpression(node) || node.expression.kind !== ts.SyntaxKind.ImportKeyword || node.arguments.length !== 1 || !ts.isStringLiteral(node.arguments[0])) return false
+  const target = node.arguments[0].text
+  if (!target || target.startsWith(".") || target.startsWith("/") || /^[a-z][a-z\d+.-]*:/i.test(target)) return false
+  for (let current = node.parent; current; current = current.parent) {
+    if (!ts.isArrowFunction(current) && !ts.isFunctionExpression(current)) continue
+    const call = current.parent
+    return ts.isCallExpression(call) && call.arguments[0] === current && ts.isIdentifier(call.expression) && call.expression.text === "useEffect" && !current.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)
+  }
+  return false
 }
 
 export function runtimeModuleReference(node) {

@@ -1333,6 +1333,16 @@ runtime files, and public APIs change by zero; one test fixture and one browser
 harness were added. This evidence changed no production source by itself and was
 published with the later stale-prefetch fix in the actual `0.16.5` patch.
 
+Release transaction complete at commit
+`f23db7403060df7615b684f3a4a39781e600ed23` and immutable tag `v0.16.5`.
+CI run `33235364419` passed Node 22, required-Chrome Node 24, and the Cloudflare
+deployment. The GitHub release is
+[`v0.16.5`](https://github.com/kudzujs/kudzu/releases/tag/v0.16.5), and publish
+workflow run `33235705347` published and verified `@kudzujs/core@0.16.5` and
+`create-kudzu@0.1.130`. A fresh registry-only install imported core, confirmed
+both exact package versions, generated a two-route application, and passed its
+TypeScript and production build check.
+
 ## `0.17.x`: Long-Lived Applications
 
 ### `0.17.0`: WebSocket Application Journey
@@ -1437,6 +1447,37 @@ retain the public `0.16.x` version line.
   measured.
 - **Done condition:** every eager dependency has a structural reason.
 
+**Result:** closed by the existing RouteBuildRecord and artifact report. A
+test-only collector builds the greenfield project, real CodeMirror editor, four
+separate Apache Answer reductions, and Memos outline reduction: seven fixtures
+and 25 routes total. It joins each route's source page to HTML, runtime entries
+and requirements, handler entries/chunks, Worker entries/chunks, and styles,
+then records exact raw/gzip bytes and SHA-256 values. Every generated JavaScript
+file has at least one route owner, every direct module script has one matching
+`modulepreload`, and every static control owns zero JavaScript and zero preload.
+No measured fixture emits a shared chunk.
+
+The greenfield deploy is 45 files and 196,678 raw / 60,880 aggregate gzip
+bytes. Its project routes own 38,652-69,178 raw JavaScript bytes; `/login` owns
+12,093 raw bytes and `/help` owns zero. The editor route owns 214,968 raw /
+71,607 gzip bytes, including its 200,260 raw / 64,949 gzip CodeMirror handler;
+its static sibling owns zero. The Answer question reduction owns 32,022 raw /
+12,408 gzip bytes. Its route-shell static pages own zero while the two runtime
+parameter pages own 2,134 and 2,078 raw bytes. Answer auth routes own 25,684 and
+26,818 raw bytes with a zero-byte public sibling; authoring/admin routes own
+12,251 and 20,919 raw bytes with a zero-byte legal sibling. The Memos outline
+owns 14,701 raw / 7,044 gzip bytes and its static sibling owns zero.
+
+Current navigation prefetch remains structurally bounded: eligible same-origin
+group links prefetch on hover, focus, viewport proximity, or idle fallback;
+promises deduplicate, failures leave the cache, current/eligible URLs define the
+retained set, and the `0.16.5` revision check rejects stale navigation results
+before cache insertion. The report intentionally records emitted closure rather
+than esbuild input-byte attribution. Answer and Memos remain disconnected
+reductions, not whole-application claims. Semantic primitives, IR kinds,
+compiler passes, production compiler/runtime LOC, runtime concepts/files, and
+public APIs change by zero. No release is consumed.
+
 ### `0.18.1`: Bounded Lazy Capability Import
 
 - **Purpose:** permit one statically analyzable feature dependency to load only
@@ -1449,6 +1490,36 @@ retain the public `0.16.x` version line.
   required.
 - **Done condition:** the feature loader is capability-specific, not a component
   runtime.
+
+**Completion evidence:** one direct literal bare-package `import()` may remain
+inside an inline synchronous effect when its first statement is the exact
+dependency-state guard `if (!state) return`. The source graph, descriptor
+session, ModuleIR validation, build-module erasure, esbuild split graph, and
+route artifact report preserve that edge without adding a loader. Relative,
+URL, render-time, event, indirect, async-effect, unguarded, and multiple dynamic
+imports remain rejected. Failed native ESM evaluation remains visible through
+application-owned error state; same-document retry of the failed URL is not
+claimed because the browser module map cannot be reset without adding the
+loader forbidden by this packet.
+
+The CodeMirror-derived fixture initially requests no deferred chunk. Activation
+requests one chunk, mounts the editor, and owner release destroys it. Remount
+uses the browser module map without another request, and document disposal
+balances the second mount. The initial eager graph is 12,982 raw / 6,153 gzip
+bytes versus 214,968 raw / 71,607 gzip bytes for the existing eager editor;
+250,086 raw / 80,890 gzip bytes move to the deferred graph. Initial gzip falls
+by 65,454 bytes (91.4%), while the static sibling remains 0 B JavaScript.
+
+The packet adds no semantic primitive, compiler pass, public API, browser
+runtime concept/file, React, VDOM, hydration, retained component tree, or retry
+cache. It adds one validated `ImportIR` kind and additive
+`handlers.lazyChunks` reporting. Production compiler sources change by 76 added
+and 11 removed lines. The artifact collector now covers eight fixtures and 27
+routes with no ownerless JavaScript or preload mismatch. `npm run check`, 284
+required-Chrome tests, package smoke, and the maintained benchmark pass. The
+Worker graph remains 907 raw / 477 gzip bytes; the window graph remains 14,456
+raw / 6,160 gzip bytes, with a seven-build median of 222.8 ms. This packet ships
+as the actual `0.16.6` patch to retain the public `0.16.x` version line.
 
 ### `0.18.2`: Lazy Editor Journey
 
@@ -1764,4 +1835,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.17.0` | Closed by existing layout effect ownership | Preserve project notification connect, keyed update, reconnect, stale rejection, offline recovery, retained navigation, and exact cleanup evidence. | No production change; no release consumed |
 | `0.17.1` | Closed by stop condition | Preserve independent effect ownership until three applications prove the complete shared transport and bounded replay contract. | Zero qualifying applications; no release consumed |
 | `0.17.2` | Released as `0.16.5` | Preserve stale-prefetch rejection and bounded document, state, resource, listener, DOM, and external-instance ownership. | Patch release retained the `0.16.x` public version line |
-| `0.18.0` | Active | Record exact current route and feature artifact ownership before adding lazy loading. | None |
+| `0.18.0` | Closed by existing artifact reporting | Preserve exact route/source ownership, bytes, hashes, preload equality, zero-JavaScript controls, and bounded prefetch policy. | No production change; no release consumed |
+| `0.18.1` | Released as `0.16.6` | Preserve one guarded literal package edge, native module-map deduplication, exact owner cleanup, deferred artifact ownership, and static exclusion. | Patch release retained the `0.16.x` public version line |
+| `0.18.2` | Active | Apply the bounded edge to the retained editor mount/update/dispose journey without broadening dynamic imports. | None |

@@ -1,5 +1,45 @@
 # Kudzu Releases
 
+## 0.16.6 - Owner-Triggered Capability Imports
+
+Kudzu 0.16.6 lets one guarded effect load a literal package dependency only
+when its owner activates, using native ESM code splitting without a loader or
+component runtime.
+
+### Changed in 0.16.6
+
+- Accepts one literal bare-package `import()` directly inside an inline
+  synchronous `useEffect` with a direct dependency-state early-return guard.
+- Keeps relative, URL, render-time, event-handler, indirect, async-effect, and
+  multiple dynamic imports unsupported with source diagnostics.
+- Removes the package edge from build-time component execution and preserves it
+  only in the route-owned effect bundle.
+- Reports deferred handler closure separately as `handlers.lazyChunks` while
+  retaining exact route ownership and shared-chunk accounting.
+- Uses native module-map deduplication across owner remounts and exact effect
+  cleanup on owner and document release.
+- Adds no loader, retry cache, component runtime, React, VDOM, hydration, or
+  retained browser component tree.
+- Updates `create-kudzu@0.1.131` to generate projects on
+  `@kudzujs/core@^0.16.6`.
+
+### Output And Browser Evidence
+
+- The eager CodeMirror route owns 214,968 raw / 71,607 gzip bytes. The lazy
+  route initially owns 12,982 raw / 6,153 gzip bytes and defers 250,086 raw /
+  80,890 gzip bytes, reducing initial gzip by 65,454 bytes (91.4%).
+- Required Chrome proves zero initial chunk requests, one activation request,
+  package mount, exact owner cleanup, cached remount without another request,
+  and document cleanup.
+- The static sibling emits zero JavaScript. The maintained Worker and window
+  graphs remain 907 raw / 477 gzip bytes and 14,456 raw / 6,160 gzip bytes.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.6
+```
+
 ## 0.16.5 - Bounded Navigation Cache
 
 Kudzu 0.16.5 prevents superseded enhanced navigations from resurrecting pruned

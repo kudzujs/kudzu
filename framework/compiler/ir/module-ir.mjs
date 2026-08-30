@@ -24,6 +24,11 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
   indexed("EffectIR", moduleIR.effects)
   indexed("KeyedBlockIR", moduleIR.keyedBlocks)
   indexed("ImportIR", moduleIR.imports)
+  const dynamicImports = new Set()
+  for (const imported of moduleIR.imports) if (imported.kind === "dynamic") {
+    if (!imported.package || typeof imported.target !== "string" || !imported.target || imported.target.startsWith(".") || imported.target.startsWith("/") || /^[a-z][a-z\d+.-]*:/i.test(imported.target) || imported.local !== imported.target) throw new Error(`ImportIR ${imported.slot} has an invalid dynamic package target`)
+    dynamicImports.add(imported.slot)
+  }
   for (const action of moduleIR.sharedActions) slot(moduleIR.sharedStates, action.state, `SharedActionIR ${action.slot}`, "SharedStateIR")
   if (componentAnalysis) {
     indexed("Component owner", componentAnalysis.owners)
@@ -82,7 +87,10 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
     exported(handler, `HandlerIR ${handler.slot}`)
     for (const [index, command] of (handler.commands ?? []).entries()) slot(moduleIR.signals, command.signal, `HandlerIR ${handler.slot} command ${index}`, "SignalIR")
     for (const [index, signal] of (handler.signals ?? []).entries()) slot(moduleIR.signals, signal.signal, `HandlerIR ${handler.slot} signal ${index}`, "SignalIR")
-    for (const [index, imported] of (handler.imports ?? []).entries()) slot(moduleIR.imports, imported, `HandlerIR ${handler.slot} import ${index}`, "ImportIR")
+    for (const [index, imported] of (handler.imports ?? []).entries()) {
+      slot(moduleIR.imports, imported, `HandlerIR ${handler.slot} import ${index}`, "ImportIR")
+      if (dynamicImports.has(imported) && handler.role !== "effect") throw new Error(`HandlerIR ${handler.slot} dynamic import ${index} requires role "effect"`)
+    }
     for (const [index, capture] of (handler.captures ?? []).entries()) if (capture.symbol !== undefined) slot(moduleIR.symbols, capture.symbol, `HandlerIR ${handler.slot} capture ${index}`, "SymbolRef")
     for (const [index, action] of (handler.actions ?? []).entries()) slot(moduleIR.sharedActions, action, `HandlerIR ${handler.slot} action ${index}`, "SharedActionIR")
     if (handler.keyedBlock !== undefined) slot(moduleIR.keyedBlocks, handler.keyedBlock, `HandlerIR ${handler.slot} keyed block`, "KeyedBlockIR")
@@ -90,7 +98,10 @@ export function assertModuleIRReferences(moduleIR, componentAnalysis) {
   for (const binding of moduleIR.bindings) {
     exported(binding, `BindingIR ${binding.slot}`)
     for (const [index, signal] of (binding.signals ?? []).entries()) slot(moduleIR.signals, signal, `BindingIR ${binding.slot} signal ${index}`, "SignalIR")
-    for (const [index, imported] of (binding.imports ?? []).entries()) slot(moduleIR.imports, imported, `BindingIR ${binding.slot} import ${index}`, "ImportIR")
+    for (const [index, imported] of (binding.imports ?? []).entries()) {
+      slot(moduleIR.imports, imported, `BindingIR ${binding.slot} import ${index}`, "ImportIR")
+      if (dynamicImports.has(imported)) throw new Error(`BindingIR ${binding.slot} cannot reference a dynamic import`)
+    }
     for (const [index, capture] of (binding.captures ?? []).entries()) if (capture.symbol !== undefined) slot(moduleIR.symbols, capture.symbol, `BindingIR ${binding.slot} capture ${index}`, "SymbolRef")
     if (binding.derived) {
       const derived = slot(moduleIR.derived, binding.derived.derived, `BindingIR ${binding.slot} derived value`, "DerivedIR")

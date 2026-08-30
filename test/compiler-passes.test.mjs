@@ -501,6 +501,16 @@ test("validates ModuleIR v2 structural references after JSON round-tripping", ()
   })
 
   assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(valid())), analysis), valid())
+  const dynamic = valid()
+  dynamic.imports.push({ slot: 0, target: "@codemirror/view", kind: "dynamic", local: "@codemirror/view", package: true })
+  dynamic.handlers[0].imports.push(0)
+  assert.deepEqual(assertModuleIRReferences(JSON.parse(JSON.stringify(dynamic)), analysis), dynamic)
+  const dynamicBinding = JSON.parse(JSON.stringify(dynamic))
+  dynamicBinding.bindings[0].imports.push(0)
+  assert.throws(() => assertModuleIRReferences(dynamicBinding, analysis), /BindingIR 0 cannot reference a dynamic import/)
+  const invalidDynamicTarget = JSON.parse(JSON.stringify(dynamic))
+  invalidDynamicTarget.imports[0].target = "../editor"
+  assert.throws(() => assertModuleIRReferences(invalidDynamicTarget, analysis), /ImportIR 0 has an invalid dynamic package target/)
   assert.throws(() => assertModuleIRReferences({ ...valid(), version: 1 }, analysis), /Unsupported ModuleIR version/)
   const invalidPropertySignal = JSON.parse(JSON.stringify(analysis))
   invalidPropertySignal.specializations[0].props[0].properties[0].signal = 1
@@ -1045,17 +1055,18 @@ test("reports exact route capability and bundled chunk closure", () => {
   const b = routeRecord({ ...routePlan({ events: [{ event: "input", native: { module: "/assets/handlers/b.js", handler: "run", states: {}, scope: {} } }] }), route: "/b" }, { hasBehaviors: true })
   const file = path => resolve(output, path)
   const metafile = { outputs: {
-    [file("assets/handlers/a.js")]: { imports: [{ path: "chunks/a.js", kind: "import-statement" }, { path: "chunks/shared.js", kind: "import-statement" }] },
+    [file("assets/handlers/a.js")]: { imports: [{ path: "chunks/a.js", kind: "import-statement" }, { path: "chunks/shared.js", kind: "import-statement" }, { path: "chunks/lazy.js", kind: "dynamic-import" }] },
     [file("assets/handlers/b.js")]: { imports: [{ path: "chunks/b.js", kind: "import-statement" }, { path: "chunks/shared.js", kind: "import-statement" }] },
     [file("assets/handlers/chunks/a.js")]: { imports: [] },
     [file("assets/handlers/chunks/b.js")]: { imports: [] },
+    [file("assets/handlers/chunks/lazy.js")]: { imports: [] },
     [file("assets/handlers/chunks/shared.js")]: { imports: [{ path: "external.js", external: true }] }
   } }
   const report = createRouteArtifactReport([b, a], { handlerMetafile: metafile, outputDirectory: output })
 
   assert.deepEqual(report.routes.map(route => route.route), ["/a", "/b"])
-  assert.deepEqual(report.routes[0].handlers, { entries: ["/assets/handlers/a.js"], chunks: ["/assets/handlers/chunks/a.js", "/assets/handlers/chunks/shared.js"] })
-  assert.deepEqual(report.routes[1].handlers, { entries: ["/assets/handlers/b.js"], chunks: ["/assets/handlers/chunks/b.js", "/assets/handlers/chunks/shared.js"] })
+  assert.deepEqual(report.routes[0].handlers, { entries: ["/assets/handlers/a.js"], chunks: ["/assets/handlers/chunks/a.js", "/assets/handlers/chunks/shared.js"], lazyChunks: ["/assets/handlers/chunks/lazy.js"] })
+  assert.deepEqual(report.routes[1].handlers, { entries: ["/assets/handlers/b.js"], chunks: ["/assets/handlers/chunks/b.js", "/assets/handlers/chunks/shared.js"], lazyChunks: [] })
   assert.deepEqual(report.sharedChunks, [{ path: "/assets/handlers/chunks/shared.js", routes: ["/a", "/b"] }])
   const family = report.runtimeFamilies.find(entry => entry.routes.includes("/a"))
   assert.deepEqual(report.routes[0].runtime.requirements, ["kudzu.js", "kudzu-native.js", "kudzu-serialization.js"].map(name => `/assets/runtime/${family.id}/${name}`).sort())

@@ -15,7 +15,7 @@ The completed `0.9.0` milestone is recorded in [`0.9-semantic-compression.md`](.
 
 [`1.0-large-application-compatibility-audit.md`](./1.0-large-application-compatibility-audit.md) records the first post-0.9 probes against Memos, Apache Answer, and Actual Budget. The audit finds that reduced slices build but whole-application source retention and behavior parity do not yet pass.
 
-[`application-capability-release-plan.md`](./application-capability-release-plan.md) is the authoritative post-0.9 execution queue, currently at `0.18.0`. It assigns one application-capability section to each minor release and one independently accepted evidence packet to each patch release from `0.10.0` through the `1.0.0` gate. It supersedes the provisional 0.10/0.11/0.12 tool-first ordering in the completed 0.9 handoff without rewriting that historical record.
+[`application-capability-release-plan.md`](./application-capability-release-plan.md) is the authoritative post-0.9 execution queue, currently at `0.18.2`. It assigns one application-capability section to each minor release and one independently accepted evidence packet to each patch release from `0.10.0` through the `1.0.0` gate. It supersedes the provisional 0.10/0.11/0.12 tool-first ordering in the completed 0.9 handoff without rewriting that historical record.
 
 ## Required Invariants
 

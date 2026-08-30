@@ -39,7 +39,8 @@ export function createRouteArtifactReport(records, {
       runtime: routeRuntimeEdges(record, capability, family, base, navigationAssets.get(record.route)),
       handlers: {
         entries: handlerEntries,
-        chunks: handlerOutputs.filter(output => !handlerEntries.includes(output))
+        chunks: handlerOutputs.eager.filter(output => !handlerEntries.includes(output)),
+        lazyChunks: handlerOutputs.lazy
       },
       workers,
       styles: [...record.artifacts.styles].sort()
@@ -47,7 +48,7 @@ export function createRouteArtifactReport(records, {
   }).sort((left, right) => left.route.localeCompare(right.route))
   const owners = new Map()
   for (const route of routes) {
-    for (const path of [...route.handlers.chunks, ...route.workers.flatMap(worker => worker.chunks)]) {
+    for (const path of [...route.handlers.chunks, ...route.handlers.lazyChunks, ...route.workers.flatMap(worker => worker.chunks)]) {
       const paths = owners.get(path) ?? new Set()
       paths.add(route.route)
       owners.set(path, paths)
@@ -109,7 +110,7 @@ function outputGraph(metafile, outputDirectory, base) {
   for (const [output, metadata] of Object.entries(metafile.outputs)) {
     const absolute = resolve(output)
     const url = paths.get(absolute)
-    const imports = (metadata.imports ?? []).filter(entry => !entry.external).map(entry => paths.get(resolve(entry.path)) ?? paths.get(resolve(dirname(absolute), entry.path))).filter(Boolean)
+    const imports = (metadata.imports ?? []).filter(entry => !entry.external).map(entry => ({ path: paths.get(resolve(entry.path)) ?? paths.get(resolve(dirname(absolute), entry.path)), kind: entry.kind })).filter(entry => entry.path)
     graph.set(url, [...new Set(imports)].sort())
   }
   return graph
@@ -123,12 +124,20 @@ function outputUrl(output, outputDirectory, base) {
 
 function closure(entries, graph, requireEntries) {
   const visited = new Set()
-  const visit = output => {
-    if (visited.has(output)) return
+  const eager = new Set()
+  const lazy = new Set()
+  const visit = (output, deferred = false) => {
+    const key = `${Number(deferred)}:${output}`
+    if (visited.has(key)) return
+    visited.add(key)
     if (requireEntries && !graph.has(output)) throw new Error(`Bundled handler entry was not emitted: ${output}`)
-    visited.add(output)
-    for (const imported of graph.get(output) ?? []) visit(imported)
+    if (deferred && !eager.has(output)) lazy.add(output)
+    else {
+      eager.add(output)
+      lazy.delete(output)
+    }
+    for (const imported of graph.get(output) ?? []) visit(imported.path, deferred || imported.kind === "dynamic-import")
   }
   for (const entry of entries) visit(entry)
-  return [...visited].sort()
+  return { eager: [...eager].sort(), lazy: [...lazy].sort() }
 }

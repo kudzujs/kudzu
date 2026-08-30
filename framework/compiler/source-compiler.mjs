@@ -22,6 +22,7 @@ import { createReactMigrationPass, reactMemoExpression } from "./react-migration
 import { normalizeRenderControlFlow } from "./render-control-pass.mjs"
 import { createRouterPass } from "./router-pass.mjs"
 import { createProjectSession } from "./project-session.mjs"
+import { ownedLazyPackageImport } from "./source-graph.mjs"
 import { createZustandPass } from "./zustand-pass.mjs"
 
 export function createSourceCompiler(project) {
@@ -2029,6 +2030,19 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (calculationEntries.length && (calculationEntries.length !== 1 || dependencyEntries.length !== 1)) effectFail(dependencies, "useEffect() selected calculation fields must be the only dependency")
         if (!effectOwner) fail(node, "useEffect() cannot be used outside a Kudzu component")
         if (!ts.isBlock(callback.body)) effectFail(callback, "useEffect() callback must use a block body")
+        const lazyPackageImports = []
+        const collectLazyPackageImports = current => {
+          if (ownedLazyPackageImport(current)) lazyPackageImports.push(current)
+          else ts.forEachChild(current, collectLazyPackageImports)
+        }
+        collectLazyPackageImports(callback)
+        if (lazyPackageImports.length) {
+          const guard = callback.body.statements[0]
+          const condition = guard && ts.isIfStatement(guard) ? unwrapExpression(guard.expression) : undefined
+          const guardedState = condition && ts.isPrefixUnaryExpression(condition) && condition.operator === ts.SyntaxKind.ExclamationToken && ts.isIdentifier(unwrapExpression(condition.operand)) ? unwrapExpression(condition.operand).text : undefined
+          const exits = guard && ts.isIfStatement(guard) && ts.isReturnStatement(guard.thenStatement) && !guard.thenStatement.expression
+          if (lazyPackageImports.length !== 1 || !guardedState || !exits || !ordinaryDependencies.some(dependency => dependency.text === guardedState)) effectFail(lazyPackageImports[0], "Dynamic package import requires one direct dependency-state guard as the first effect statement")
+        }
         const cleanupSubstitutions = new Map()
         const collectNamedCleanups = current => {
           if (current !== callback && isFunctionLike(current)) return
@@ -2120,7 +2134,13 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           factory.createSpreadAssignment(evaluator.descriptor),
           factory.createPropertyAssignment("field", factory.createStringLiteral(dependencyEntries[index].field))
         ]) : factory.createNull()) : []
-        const buildCallback = [...packageBindings].some(([name]) => referenceIdentifiers(callback, name).length)
+        let hasLazyPackageImport = false
+        const findLazyPackageImport = current => {
+          if (ownedLazyPackageImport(current)) hasLazyPackageImport = true
+          else ts.forEachChild(current, findLazyPackageImport)
+        }
+        findLazyPackageImport(callback)
+        const buildCallback = hasLazyPackageImport || [...packageBindings].some(([name]) => referenceIdentifiers(callback, name).length)
           ? factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), factory.createBlock([], false))
           : callback
         return factory.updateCallExpression(node, node.expression, node.typeArguments, [

@@ -4,6 +4,7 @@ import { knownGlobalNames } from "./analysis/binding-index.mjs"
 import { bindingNames, isFunctionLike, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, unwrapExpression } from "./ast-helpers.mjs"
 import { generateCommandBehavior } from "./codegen/command-codegen.mjs"
 import { assertModuleIRReferences, createModuleIR, registerBinding, registerCommandHandler, registerDerived, registerEffect, registerKeyedBlock, registerModuleHandler, registerSignal } from "./ir/module-ir.mjs"
+import { ownedLazyPackageImport } from "./source-graph.mjs"
 
 export function createSemanticArtifact(file) {
   return { componentAnalysis: createComponentAnalysis(file), moduleIR: createModuleIR(file) }
@@ -168,6 +169,17 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     const usedReducers = referencedReducerDispatches(expression.body, reducers, expression, indexedBindingIndex)
     const imports = [...referencedImportedBindings(expression, importBindings, indexedBindingIndex)].map(name => importBindings.get(name))
     imports.push(...[...usedReducers].map(name => reducers.get(name).import).filter(Boolean))
+    const dynamicImports = []
+    const visitDynamicImports = node => {
+      if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+        if (role !== "effect" || !ownedLazyPackageImport(node)) throw new Error("Dynamic package imports require one literal import() directly inside an inline owned effect")
+        dynamicImports.push({ kind: "dynamic", local: node.arguments[0].text, target: node.arguments[0].text, package: true })
+      }
+      ts.forEachChild(node, visitDynamicImports)
+    }
+    visitDynamicImports(expression)
+    if (dynamicImports.length > 1) throw new Error("An owned effect may contain only one dynamic package import")
+    imports.push(...dynamicImports)
     const captures = new Set([...allCaptures].filter(name => !importBindings.has(name) && !usedReducers.has(name)))
     registerClientImports(imports)
     const usedStates = referencedStateNames(expression.body, setters, expression, indexedBindingIndex)
