@@ -1,5 +1,6 @@
 import ts from "typescript"
 import { effectReturns, importDeclarationNames, isNodeWithin, isShadowedIdentifier, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
+import { ownedLazyPackageImport } from "./source-graph.mjs"
 
 export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
     const frameCall = (node, name) => ts.isCallExpression(node) && (
@@ -21,6 +22,16 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       const isNegated = ts.isPrefixUnaryExpression(condition) && condition.operator === ts.SyntaxKind.ExclamationToken
       if (isNegated) condition = unwrapExpression(condition.operand)
       return isNegated === negated && currentAccess(condition, name)
+    }
+    const containsLazyImport = node => {
+      if (ownedLazyPackageImport(node)) return true
+      let found = false
+      ts.forEachChild(node, child => { if (!found) found = containsLazyImport(child) })
+      return found
+    }
+    const directLazyImportCallback = (callback, effectCallback) => {
+      const call = callback?.parent
+      return (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) && ts.isCallExpression(call) && call.arguments[0] === callback && ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "then" && ownedLazyPackageImport(unwrapExpression(call.expression.expression)) && isNodeWithin(callback, effectCallback)
     }
     const hasUseRefImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useRef"))
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
@@ -73,8 +84,8 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
         const callbacks = owners.map(effect => effect.arguments[0])
         const directCallbacks = callbacks.every(callback => (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) && ts.isBlock(callback.body))
         const everyAccessOwned = accesses.every(access => callbacks.filter(callback => isNodeWithin(access, callback)).length === 1)
-        const mountEffects = owners.filter(effect => ts.isArrayLiteralExpression(effect.arguments[1]) && !effect.arguments[1].elements.length)
-        const updateEffects = owners.filter(effect => ts.isArrayLiteralExpression(effect.arguments[1]) && effect.arguments[1].elements.length)
+        const mountEffects = owners.filter(effect => ts.isArrayLiteralExpression(effect.arguments[1]) && (!effect.arguments[1].elements.length || containsLazyImport(effect.arguments[0])))
+        const updateEffects = owners.filter(effect => !mountEffects.includes(effect))
         if (owners.length >= 2 && directCallbacks && everyAccessOwned && mountEffects.length === 1 && updateEffects.length === owners.length - 1 && owners[0] === mountEffects[0]) {
           const mount = mountEffects[0]
           const callback = mount.arguments[0]
@@ -85,7 +96,7 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
           const cleanupWrites = cleanup ? writes.filter(access => isNodeWithin(access, cleanup)) : []
           const setupStatement = setupWrites[0]?.parent.parent
           const cleanupStatement = cleanupWrites[0]?.parent.parent
-          const directSetup = setupWrites.length === 1 && ts.isExpressionStatement(setupStatement) && setupStatement.parent === callback.body && unwrapExpression(setupWrites[0].parent.right).kind !== ts.SyntaxKind.NullKeyword
+          const directSetup = setupWrites.length === 1 && ts.isExpressionStatement(setupStatement) && (setupStatement.parent === callback.body || directLazyImportCallback(nearestFunction(setupWrites[0]), callback)) && unwrapExpression(setupWrites[0].parent.right).kind !== ts.SyntaxKind.NullKeyword
           const directCleanup = cleanup && ts.isBlock(cleanup.body) && cleanupWrites.length === 1 && ts.isExpressionStatement(cleanupStatement) && cleanupStatement.parent === cleanup.body && unwrapExpression(cleanupWrites[0].parent.right).kind === ts.SyntaxKind.NullKeyword
           const updateWrites = mutations.some(access => updateEffects.some(effect => isNodeWithin(access, effect.arguments[0])))
           if (directSetup && directCleanup && !updateWrites) {
@@ -96,7 +107,7 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
             return
           }
         }
-        if (owners.length >= 2) throw sourceNodeError(node, sourceFile, "Retained instance refs require one empty-dependency mount effect with one direct assignment and null-reset cleanup followed by read-only dependency effects")
+        if (owners.length >= 2) throw sourceNodeError(node, sourceFile, "Retained instance refs require one empty-dependency mount effect or guarded lazy activation effect with one direct assignment and null-reset cleanup followed by read-only dependency effects")
       }
       if (!frameAssignments.length) {
         const callback = effects.length === 1 ? effects[0].arguments[0] : undefined

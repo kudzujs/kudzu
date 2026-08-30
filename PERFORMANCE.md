@@ -2,6 +2,21 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.7 Lazy Retained Editor Lifecycle
+
+Measured 2026-08-30 on macOS arm64 with Node 24.14.0 and Chrome. The existing
+eager real CodeMirror editor owns 214,968 raw / 71,607 aggregate gzip B. The
+lazy retained journey initially owns 15,896 raw / 7,230 gzip B and defers
+250,086 raw / 80,890 gzip B, reducing initial gzip by 64,377 B (89.9%). Its
+static sibling remains complete HTML with zero JavaScript.
+
+Required Chrome proves zero initial deferred requests, one activation request,
+bidirectional updates, accessible update-error recovery, retained editor DOM,
+conditional cleanup, cached fresh remount, and document disposal. The maintained
+Worker benchmark remains 907 raw / 477 gzip B for the Worker graph and 14,456
+raw / 6,160 gzip B for the window graph. Seven clean builds record a 230.5 ms
+median. No browser runtime file or concept was added.
+
 ## 0.16.6 Owner-Triggered Capability Imports
 
 Measured 2026-08-29 on macOS arm64 with Node 24.14.0 and Chrome. The existing

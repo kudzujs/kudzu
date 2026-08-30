@@ -1,5 +1,47 @@
 # Kudzu Releases
 
+## 0.16.7 - Lazy Retained Editor Lifecycle
+
+Kudzu 0.16.7 applies owner-triggered package loading to the real retained
+CodeMirror editor journey without losing update, error, identity, or cleanup
+behavior.
+
+### Changed in 0.16.7
+
+- Lets one retained `useRef(null)` package handle receive its single setup
+  assignment inside the direct `.then()` callback of a guarded literal package
+  import.
+- Reuses existing owner-scoped retained state across the lazy activation effect
+  and later read-only update effects.
+- Keeps indirect promise callbacks, multiple assignments, update-effect writes,
+  attached refs, missing null-reset cleanup, and broader dynamic imports
+  unsupported.
+- Preserves application-to-editor and editor-to-application updates, accessible
+  package errors and recovery, retained DOM identity, conditional disposal, and
+  fresh state on remount.
+- Uses the native browser module map for cached remount and adds no loader,
+  resource registry, widget runtime, React, VDOM, hydration, or retained browser
+  component tree.
+- Updates `create-kudzu@0.1.132` to generate projects on
+  `@kudzujs/core@^0.16.7`.
+
+### Output And Browser Evidence
+
+- The eager real editor owns 214,968 raw / 71,607 gzip bytes. The lazy journey
+  initially owns 15,896 raw / 7,230 gzip bytes and defers 250,086 raw / 80,890
+  gzip bytes, reducing initial gzip by 64,377 bytes (89.9%).
+- Required Chrome proves zero initial chunk requests, one on-demand request,
+  bidirectional updates, accessible failure recovery, retained identity, exact
+  conditional cleanup, cached fresh remount, and document cleanup.
+- The static sibling emits zero JavaScript. The maintained Worker and window
+  graphs remain 907 raw / 477 gzip bytes and 14,456 raw / 6,160 gzip bytes.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.7
+```
+
 ## 0.16.6 - Owner-Triggered Capability Imports
 
 Kudzu 0.16.6 lets one guarded effect load a literal package dependency only

@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.16.6 lazy capability gate</strong><span>The CodeMirror graph makes zero initial deferred requests, loads once on owner activation, reuses the browser module map, and disposes exactly; the prior macOS sweep still covers the broader competitive matrix.</span></div>
+    <div className="docs-callout"><strong>Current 0.16.7 lazy editor gate</strong><span>The real CodeMirror journey loads once on activation while preserving bidirectional updates, error recovery, identity, fresh remount state, and exact disposal; the prior macOS sweep still covers the broader competitive matrix.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],
@@ -65,7 +65,7 @@ export function BenchmarksSection() {
     <p>Pagination is selected: it avoids direct DOM scale, has the lower bounded-range median and heap, and preserves native page, keyboard, focus, and variable-height behavior without a scroll listener. No semantic primitive, compiler pass, public API, or runtime concept was added.</p>
     <h3>Public commerce comparison</h3>
     <BenchmarkTable columns={["Target", "Initial JS gzip", "Reliable click", "Resilience"]} rows={[
-      ["Kudzu 0.16.6", "4.2-9.9 KiB", "300 ms", "15 / 18"],
+      ["Kudzu 0.16.7", "4.2-9.9 KiB", "300 ms", "15 / 18"],
       ["Astro 7.1.3 + React", "60.6-61.1 KiB", "1,500 ms", "12 / 18"],
       ["React Router 8.3.0", "103.8-104.6 KiB", "2,000 ms", "8 / 18"],
       ["TanStack Start 1.168.32", "103.5-104.1 KiB", "2,000 ms", "9 / 18"],
@@ -73,7 +73,7 @@ export function BenchmarksSection() {
     ]} />
     <p>The public 1,000-product fixture measures six routes. Initial JavaScript is what Chrome received; browser results use seven fresh sessions at 4x CPU slowdown and Slow 4G. Reliable click is the first tested delay after first paint with zero lost add-to-cart attempts. Resilience counts six matched capabilities under blocked, delayed, and partially missing JavaScript.</p>
     <h3>Tracked Worker fixture</h3>
-    <p>The maintained Worker build median is 222.8 ms. Its Worker graph is 907 B raw / 477 B gzip and its aggregate window graph is 14,456 B raw / 6,160 B gzip. The focused Chrome test verifies throughput, cadence, bounded history, stale writes, and 30-cycle termination and listener ownership.</p>
+    <p>The maintained Worker build median is 230.5 ms. Its Worker graph is 907 B raw / 477 B gzip and its aggregate window graph is 14,456 B raw / 6,160 B gzip. The focused Chrome test verifies throughput, cadence, bounded history, stale writes, and 30-cycle termination and listener ownership.</p>
     <div className="docs-callout"><strong>Historical records retained</strong><span>The broader 0.9 React, Vue, Svelte, and Astro proof, paired release measurements, raw arrays, and limitations remain in PERFORMANCE.md for provenance. The unavailable 0.9 workspace is not presented as a current ranking.</span></div>
     <p>The <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">full performance record</a> separates current maintained runs from historical and external-workspace evidence.</p>
   </section>

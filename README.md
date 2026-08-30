@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.6 - Owner-triggered capability imports.** One literal package dependency may stay out of the initial route graph until its guarded effect owner activates, while static siblings remain JavaScript-free. Read the [release notes](./RELEASES.md#0166---owner-triggered-capability-imports), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.6), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.7 - Lazy retained editor lifecycle.** A real CodeMirror editor now loads on first activation while preserving bidirectional updates, accessible error recovery, retained identity, and exact disposal. Read the [release notes](./RELEASES.md#0167---lazy-retained-editor-lifecycle), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.7), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

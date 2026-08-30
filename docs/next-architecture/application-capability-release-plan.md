@@ -1531,6 +1531,36 @@ as the actual `0.16.6` patch to retain the public `0.16.x` version line.
 - **Done condition:** initial route bytes fall by the exact deferred package
   graph without losing behavior.
 
+**Completion evidence:** a real retained CodeMirror editor now begins closed and
+uses the `0.18.1` guarded literal package edge for its mount. The existing
+effect-private-ref normalization recognizes its one direct `.then()` assignment
+as the retained setup write, lowers the handle to owner-scoped state, and leaves
+later value effects read-only. Indirect callbacks, repeated writes, attached
+refs, update-effect writes, missing null-reset cleanup, and broader dynamic
+imports retain diagnostics. Package evaluation remains entirely in browser
+effect ESM.
+
+Required Chrome records zero chunk requests before activation and one afterward.
+It proves initial content and accessible name, application-to-editor and
+editor-to-application updates, retained DOM identity, authored update failure
+and recovery, exact conditional disposal, fresh `Alpha` state on remount, no
+second package request, and final document disposal. Native ESM evaluation
+failure retry remains outside this packet as recorded in `0.18.1`.
+
+The eager editor owns 214,968 raw / 71,607 gzip bytes. The lazy retained editor
+initially owns 15,896 raw / 7,230 gzip bytes and defers 250,086 raw / 80,890 gzip
+bytes, reducing initial gzip by 64,377 bytes (89.9%). Its static sibling remains
+0 B JavaScript. The artifact collector covers nine fixtures and 29 routes with
+no ownerless JavaScript or preload mismatch.
+
+The packet adds no semantic primitive, IR kind, compiler pass, public API,
+browser runtime concept/file, loader, resource registry, or widget runtime. One
+existing normalization pass changes by 15 added and four removed production
+lines. `npm run check`, 285 required-Chrome tests, package smoke, and the
+maintained benchmark pass. Worker and window graphs remain 907 raw / 477 gzip
+and 14,456 raw / 6,160 gzip bytes; the seven-build median is 230.5 ms. This
+packet ships as the actual `0.16.7` patch to retain the public `0.16.x` line.
+
 ### `0.18.3`: Shared Chunks And Prefetch Policy
 
 - **Purpose:** avoid duplicate large feature graphs and define optional preload.
@@ -1837,4 +1867,5 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.17.2` | Released as `0.16.5` | Preserve stale-prefetch rejection and bounded document, state, resource, listener, DOM, and external-instance ownership. | Patch release retained the `0.16.x` public version line |
 | `0.18.0` | Closed by existing artifact reporting | Preserve exact route/source ownership, bytes, hashes, preload equality, zero-JavaScript controls, and bounded prefetch policy. | No production change; no release consumed |
 | `0.18.1` | Released as `0.16.6` | Preserve one guarded literal package edge, native module-map deduplication, exact owner cleanup, deferred artifact ownership, and static exclusion. | Patch release retained the `0.16.x` public version line |
-| `0.18.2` | Active | Apply the bounded edge to the retained editor mount/update/dispose journey without broadening dynamic imports. | None |
+| `0.18.2` | Released as `0.16.7` | Preserve on-demand retained editor mount, bidirectional updates, failure recovery, identity, exact cleanup, cached fresh remount, and static exclusion. | Patch release retained the `0.16.x` public version line |
+| `0.18.3` | Active | Measure shared deferred graphs and choose the smallest evidence-backed prefetch policy. | None |
