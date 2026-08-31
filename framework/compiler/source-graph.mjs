@@ -24,7 +24,11 @@ export function createSourceGraph(root) {
         const argument = node.arguments[0]
         const specifier = node.arguments.length === 1 && ts.isStringLiteralLike(argument) ? JSON.stringify(argument.text) : argument?.getText(sourceFile) ?? "<missing>"
         if (ownedLazyPackageImport(node, bindingIndex)) return
-        throw sourceNodeError(node, sourceFile, `Dynamic import ${specifier} is not supported in ordinary source modules`)
+        throw sourceNodeError(node, sourceFile, `Dynamic import ${specifier} is not supported in ordinary source modules`, {
+          code: "source.dynamic-import.unsupported",
+          stage: "graph",
+          suggestion: "Use a reachable static import, or the supported guarded package import inside an owned effect.",
+        })
       }
       ts.forEachChild(node, rejectDynamicImports)
     }
@@ -38,7 +42,11 @@ export function createSourceGraph(root) {
       } catch (error) {
         const detail = error.message.slice(error.message.indexOf("Relative import"))
         const edge = ts.isExportDeclaration(node) ? "re-export" : "import"
-        throw sourceNodeError(specifier, sourceFile, detail.replace("Relative import", `Relative runtime ${edge}`))
+        throw sourceNodeError(specifier, sourceFile, detail.replace("Relative import", `Relative runtime ${edge}`), {
+          code: edge === "import" ? "source.import.unresolved" : "source.reexport.unresolved",
+          stage: "graph",
+          suggestion: "Point the relative runtime edge to exactly one .ts or .tsx source file under src/.",
+        })
       }
     }
     return dependencies

@@ -16,7 +16,16 @@ if (command === "build" && !process.env.KUDZU_BUILD_CHILD) {
 } else if (command === "build" || command === "dev") {
   module.enableCompileCache?.()
   const { build, dev } = await import("../framework/build.mjs")
-  await (command === "build" ? build : dev)()
+  const json = command === "build" && process.argv.includes("--json")
+  try {
+    await (command === "build" ? build({ quiet: json }) : dev())
+  } catch (error) {
+    const { diagnosticEnvelope } = await import("../framework/compiler/diagnostics.mjs")
+    const envelope = diagnosticEnvelope(error)
+    if (!envelope) throw error
+    console.error(json ? JSON.stringify(envelope) : error.message)
+    process.exitCode = 1
+  }
 } else {
   console.error(`Unknown command: ${command}\nUse: kudzu <build|dev>`)
   process.exitCode = 1

@@ -11,6 +11,7 @@ import { analyzeCollectionPipeline, collectionExpression, collectionParameters, 
 import { compatibilityPackages } from "./compatibility-registry.mjs"
 import { normalizeCustomHookTimerRefs } from "./custom-hook-timer-pass.mjs"
 import { captureNames, createDescriptorSession, createSemanticArtifact, nativeCaptureNames, referencedReducerDispatches, referencedStateNames } from "./descriptor-session.mjs"
+import { createTypeScriptDiagnosticError } from "./diagnostics.mjs"
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "./effect-analysis.mjs"
 import { createHandlerCodegen } from "./handler-codegen.mjs"
 import { createHandlerLowering } from "./handler-lowering.mjs"
@@ -62,7 +63,7 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
 
   const errors = result.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
   if (errors.length) {
-    throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
+    throw createTypeScriptDiagnosticError(errors, message => ts.flattenDiagnosticMessageText(message, "\n"))
   }
   const packageReference = emittedPackageReference(result.outputText, file, new Set(["react", "react-router-dom"]))
   if (packageReference) throw new Error(`${relative(root, file)} Runtime ${packageReference} module references are not supported`)
@@ -404,7 +405,11 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     for (const [name, binding] of packageBindings) {
       const references = referenceIdentifiers(sourceFile, name)
       const invalid = references.find(reference => !insideJsxEventHandler(reference, sourceFile) && !insideOwnedEffectCallback(reference, sourceFile))
-      if (invalid && binding.target === compatibilityPackages.reactI18next && binding.imported === "useTranslation") throw sourceNodeError(invalid, sourceFile, "React i18next useTranslation() depends on runtime locale resources; migrate build-known locales through getStaticPaths() and props, or browser-only locale reads through an owned effect")
+      if (invalid && binding.target === compatibilityPackages.reactI18next && binding.imported === "useTranslation") throw sourceNodeError(invalid, sourceFile, "React i18next useTranslation() depends on runtime locale resources; migrate build-known locales through getStaticPaths() and props, or browser-only locale reads through an owned effect", {
+        code: "react-i18next.runtime-locale.unsupported",
+        compatibilityClass: "Unsupported",
+        suggestion: "Use getStaticPaths() and props for build-known locales, or read browser-only locale state in an owned effect.",
+      })
       if (invalid) throw sourceNodeError(invalid, sourceFile, `Package import ${JSON.stringify(name)} may only be referenced directly inside JSX event handlers or owned effect setup/cleanup callbacks`)
     }
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))
@@ -3028,7 +3033,10 @@ function specializeComponentCall(call, component, sourceFile, factory, context, 
       }
       if (declaration.initializer && ts.isCallExpression(declaration.initializer) && ts.isIdentifier(declaration.initializer.expression) && declaration.initializer.expression.text === "useRef") {
         const hookLabel = ordinaryHooks ? "Setter-callback component" : "Keyed row"
-        if (declaration.initializer.arguments.length !== 1 || declaration.initializer.arguments[0].kind !== ts.SyntaxKind.NullKeyword) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useRef() must use the direct initial value null`)
+        if (declaration.initializer.arguments.length !== 1 || declaration.initializer.arguments[0].kind !== ts.SyntaxKind.NullKeyword) throw sourceNodeError(declaration.initializer, component.getSourceFile(), `${hookLabel} useRef() must use the direct initial value null`, {
+          code: "keyed.ref.initializer.unsupported",
+          suggestion: "Initialize the object ref directly with null.",
+        })
         if (!ts.isIdentifier(declaration.name)) throw sourceNodeError(declaration.name, component.getSourceFile(), `${hookLabel} useRef() must be assigned to one identifier`)
         const refs = ordinaryHooks ? ordinaryRefs : rowRefs
         const name = `${ordinaryHooks ? "__kComponentRef" : "__kRowRef"}${Math.max(0, call.pos)}_${refs.length}`
@@ -3573,7 +3581,7 @@ async function compileClientModule(file, sourceFiles, staticFiles, cssModules, b
     reportDiagnostics: true
   })
   const errors = result.diagnostics?.filter(diagnostic => diagnostic.category === ts.DiagnosticCategory.Error) ?? []
-  if (errors.length) throw new Error(errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
+  if (errors.length) throw createTypeScriptDiagnosticError(errors, message => ts.flattenDiagnosticMessageText(message, "\n"))
   return { file: relative(root, file).replaceAll(sep, "/"), path: clientModulePath(file), code: result.outputText, importedAssets: [...importedAssets].map(file => relative(root, file).replaceAll(sep, "/")).sort() }
 }
 

@@ -1,4 +1,5 @@
 import ts from "typescript"
+import { createDiagnosticError } from "./diagnostics.mjs"
 
 export function importDeclarationNames(statement) {
   const names = []
@@ -146,11 +147,22 @@ export function functionVarDeclaresName(fn, name) {
   return found
 }
 
-export function sourceNodeError(node, fallbackSource, message) {
+export function sourceNodeError(node, fallbackSource, message, metadata = {}) {
   const original = ts.getOriginalNode(node)
   const sourceFile = original.getSourceFile?.()?.fileName ? original.getSourceFile() : fallbackSource
-  const position = sourceFile.getLineAndCharacterOfPosition(original.getStart(sourceFile))
-  return new Error(`${sourceFile.fileName}:${position.line + 1}:${position.character + 1} ${message}`)
+  const startOffset = original.getStart(sourceFile)
+  const endOffset = original.getEnd()
+  const start = sourceFile.getLineAndCharacterOfPosition(startOffset)
+  const end = sourceFile.getLineAndCharacterOfPosition(endOffset)
+  return createDiagnosticError({
+    message,
+    source: {
+      file: sourceFile.fileName,
+      start: { line: start.line + 1, column: start.character + 1, offset: startOffset },
+      end: { line: end.line + 1, column: end.character + 1, offset: endOffset },
+    },
+    ...metadata,
+  })
 }
 
 export function sourceLocation(node, fallbackSource) {

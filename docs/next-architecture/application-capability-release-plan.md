@@ -1679,6 +1679,27 @@ retain the public `0.16.x` line.
   introduced.
 - **Done condition:** this is a connected browser journey, not a whole-app claim.
 
+Complete. One Apache Answer-derived fixture now connects invalid and valid login,
+layout-shared authentication, page/order query loading, explicit refresh, native
+creation with server validation and retained draft, runtime detail routing,
+editing, reload persistence, keyed administration, delete-and-refetch, and
+logout against one deterministic server. Native controls and status/alert
+regions preserve the accessibility boundary, every retained source file is
+checked, and the public sibling remains complete HTML with zero JavaScript.
+
+The packet reuses existing Zustand normalization, search signals, dependency
+effects, runtime parameters, native handlers, bindings, keyed ownership, and
+enhanced navigation. It adds zero semantic primitives, ModuleIR kinds, compiler
+passes or core LOC, runtime concepts, package adapters, and public APIs. The new
+fixture emits 33 deploy files and 88,198 raw / 33,173 gzip bytes; `/` owns 27,196
+raw / 11,968 gzip bytes, `/questions` owns 51,577 raw / 19,801 gzip bytes,
+`/questions/add` owns 27,109 raw / 11,893 gzip bytes, runtime detail owns 32,783
+raw / 14,056 gzip bytes, admin owns 50,861 raw / 19,426 gzip bytes, and `/public`
+owns zero JavaScript. Worker and window graphs remain 907 raw / 477 gzip and
+14,456 raw / 6,160 gzip bytes; seven clean Linux x64 builds record a 640.5 ms
+median without a timing comparison. No production logic changed, so the public
+version remains `0.16.10` and no release is consumed.
+
 ### `0.19.3`: Memos Feed And CRUD Journey
 
 - **Purpose:** establish the first durable Memos application slice.
@@ -1689,6 +1710,26 @@ retain the public `0.16.x` line.
 - **Done condition:** pinned upstream provenance and exact retained source are
   recorded.
 
+Complete. A fixture pinned to Memos revision
+`e5ed6e7ec60e141d6e354f3ab59906c2c47dccac` now runs invalid and valid login,
+initial loading, a server pagination failure, explicit recovery, overlapping-key
+pagination, create, edit, delete, reload persistence, and logout against one
+deterministic server. The retained memo row keeps DOM identity through the
+failed request, successful pagination, and every CRUD refetch. Native labels,
+status and alert regions preserve the accessibility boundary, every authored
+source file is retained, and the public sibling emits zero JavaScript.
+
+The packet reuses existing Zustand normalization, dependency effects, keyed
+ownership, native forms and handlers, and enhanced navigation. It adds zero
+semantic primitives, ModuleIR kinds, compiler passes or core LOC, runtime
+concepts, package adapters, and public APIs. The fixture emits 19 deploy files
+and 56,167 raw / 21,634 gzip bytes; `/` owns 25,856 raw / 11,396 gzip bytes,
+`/feed` owns 45,690 raw / 17,836 gzip bytes, and `/public` owns zero JavaScript.
+Worker and window graphs remain 907 raw / 477 gzip and 14,456 raw / 6,160 gzip
+bytes; seven clean Linux x64 builds record a 761.8 ms median without a timing
+comparison. No production logic changed, so the public version remains
+`0.16.10` and no release is consumed.
+
 ### `0.19.4`: Memos Realtime Journey
 
 - **Purpose:** add reaction and realtime refresh using the accepted long-lived
@@ -1697,6 +1738,27 @@ retain the public `0.16.x` line.
   rejection, route cleanup, and memory gate.
 - **Stop condition:** a query or SSE package runtime is copied wholesale.
 - **Done condition:** browser and endurance acceptance pass.
+
+Complete. The connected Memos fixture now adds a native reaction mutation and
+an effect-owned WebSocket that refreshes the keyed feed from versioned server
+events. Required Chrome proves duplicate and stale version rejection, old-socket
+callback rejection after reconnect, retained memo DOM identity, exact route
+cleanup, and fresh ownership after re-entry and reload. Active sockets,
+listeners, and reconnect timers remain bounded and return to zero after each
+owner release. The public sibling remains complete HTML with zero JavaScript.
+
+The packet reuses existing native handlers, keyed ownership, effect-private
+lifecycle, invalidation, timers, and route release. It adds zero semantic
+primitives, ModuleIR kinds, compiler passes or core LOC, runtime concepts,
+normalization or adapter rules, and public APIs. The fixture emits 19 deploy
+files and 57,811 raw / 22,069 gzip bytes; `/` owns 25,856 raw / 11,396 gzip
+bytes, `/feed` owns 46,740 raw / 18,184 gzip bytes, and `/public` owns zero
+JavaScript. Worker and window graphs remain 907 raw / 477 gzip and 14,456 raw /
+6,160 gzip bytes; seven clean Linux x64 builds record a 620.7 ms median without
+a timing comparison. Browser-disabled tests pass 292/292, required-Chrome
+focused acceptance, package smoke, and artifact accounting pass. No production
+logic changed, so the public version remains `0.16.10` and no release is
+consumed.
 
 ### `0.19.5`: Actual Budget Intake Decision
 
@@ -1708,6 +1770,18 @@ retain the public `0.16.x` line.
 - **Done condition:** a later packet is authorized, or deferral is recorded with
   no compatibility claim.
 
+Deferred by the stop condition. The pinned MIT revision
+`87e33e49eb4d666c33e0c0f172faf340d1b7aa0a` remains only a sparse desktop-client
+acquisition: 810 TS/TSX modules, 163,344 LOC, and 80 route declarations without
+the workspace tooling, component library, core backend, Yarn release, database,
+worker coordinator, or spreadsheet implementation needed to install and run an
+honest user journey. The prior static report probe is an exported report, not
+Actual Budget, and its 22/906 retained-line result is not a whole-workspace
+denominator. No later application packet, compatibility claim, compiler work,
+runtime, package adapter, public API, version, or release is authorized. Intake
+may resume only from a complete pinned workspace and executable dependency
+graph.
+
 ## `0.20.x`: AI Tooling And Delivery Cost
 
 ### `0.20.0`: Structured Diagnostics
@@ -1718,6 +1792,30 @@ retain the public `0.16.x` line.
 - **Stop condition:** diagnostic codes expose pass filenames or unstable IR.
 - **Done condition:** agents no longer parse message substrings for maintained
   fixtures.
+
+Complete. Authored
+source failures now propagate as one versioned diagnostic envelope with stable
+semantic code, stage, severity, project-relative source range, human message,
+nullable compatibility class, and nullable safe suggestion. `kudzu build
+--json` emits only that deterministic envelope for structured failures, while
+ordinary builds and the development overlay retain readable source-located
+messages. Unresolved imports and re-exports, unsupported dynamic imports,
+TypeScript syntax errors, runtime-locale `react-i18next`, and keyed-row ref
+initializers prove the maintained boundary without parsing message text.
+
+The implementation centralizes 72 lines in `diagnostics.mjs`, reuses the
+existing compatibility classification function, and normalizes paths only at
+the project build boundary. It adds zero semantic primitives, ModuleIR kinds,
+compiler passes, normalization entries, runtime concepts, browser modules, or
+public application APIs. Production source is +111 net lines, including +8 in
+the measured core semantic file set; the increase is compiler/tooling error
+transport rather than semantic analysis. All representative deploy manifests
+and hashes remain unchanged. Worker and window graphs remain 907 raw / 477 gzip
+and 14,456 raw / 6,160 gzip bytes; seven clean Linux x64 release-candidate builds
+record a 1,034.4 ms median without a timing comparison. `npm run check`, 293/293
+browser-disabled and required-Chrome tests, focused CLI JSON tests, development error recovery, package smoke,
+artifact accounting, and `git diff --check` pass. The packet ships as
+`@kudzujs/core@0.16.11` with `create-kudzu@0.1.136`.
 
 ### `0.20.1`: `kudzu inspect --json`
 
@@ -1948,3 +2046,8 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.18.3` | Released as `0.16.8` | Preserve shared deferred ownership, interaction-only loading, native document module-map deduplication, exact owner cleanup, binding-aware import validation, and static exclusion. | Patch release retained the `0.16.x` public version line |
 | `0.19.0` | Released as `0.16.9` | Preserve the compatibility registry, reachable source inventory, exact ranges, and package-neutral output boundary. | Patch release retained the `0.16.x` public version line |
 | `0.19.1` | Released as `0.16.10` | Preserve anonymous, invalid/valid login, token restore, layout-shared session reads, 401 clear, replacement navigation, and public zero-JavaScript output. | Patch release retained the `0.16.x` public version line |
+| `0.19.2` | Closed by existing semantics | Preserve connected auth, query, route, create/edit validation, refresh, persistence, admin deletion, logout, source retention, accessibility, and public zero-JavaScript output. | No production change; no release consumed |
+| `0.19.3` | Closed by existing semantics | Preserve connected Memos login, loading/error, feed, overlapping-key pagination, refresh, CRUD, reload persistence, logout, source retention, accessibility, and public zero-JavaScript output. | No production change; no release consumed |
+| `0.19.4` | Closed by existing effect ownership | Preserve reaction mutation, version deduplication, stale-socket rejection, reconnect, keyed identity, exact route cleanup, fresh ownership, bounded handles/listeners/timers, and public zero-JavaScript output. | No production change; no release consumed |
+| `0.19.5` | Deferred by stop condition | Resume only from a complete pinned Actual Budget workspace with an executable dependency graph and honest retention denominator. | Sparse acquisition omits required workspace and core packages; no compatibility claim |
+| `0.20.0` | Released as `0.16.11` | Preserve stable diagnostic schema/codes, authored ranges, human errors, compatibility reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |

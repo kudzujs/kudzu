@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.16.11 - Structured Compiler Diagnostics
+
+Kudzu 0.16.11 gives tools and agents stable machine-readable authored-source
+errors without replacing concise human diagnostics or exposing compiler internals.
+
+### Changed in 0.16.11
+
+- Adds `kudzu build --json`, which emits one versioned diagnostic envelope with
+  stable semantic code, stage, severity, project-relative source range, message,
+  nullable compatibility class, and nullable safe suggestion.
+- Preserves readable source-located build and development errors; agents no
+  longer need to parse maintained error-message substrings.
+- Covers unresolved imports and re-exports, unsupported dynamic imports,
+  TypeScript syntax errors, runtime-locale `react-i18next`, and invalid keyed-row
+  ref initializers through the shared diagnostic transport.
+- Reuses the existing compatibility registry and keeps pass filenames, generated
+  source, IR slots, runtime records, and stack traces out of machine output.
+- Adds no semantic primitive, compiler pass, runtime concept, browser module, or
+  deploy byte. Representative artifact manifests and hashes remain unchanged.
+- Updates `create-kudzu@0.1.136` to generate projects on
+  `@kudzujs/core@^0.16.11`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.11
+```
+
 ## 0.16.10 - Apache Answer Authentication Journey
 
 Kudzu 0.16.10 promotes the existing Apache Answer authentication reduction from

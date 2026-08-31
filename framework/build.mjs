@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { createCompatibilityReport } from "./compiler/compatibility-registry.mjs"
+import { normalizeDiagnosticError } from "./compiler/diagnostics.mjs"
 import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
 import { createProjectSession } from "./compiler/project-session.mjs"
@@ -51,6 +52,8 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
     project.buildCache = retainCache ? cache : undefined
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
     return result
+  } catch (error) {
+    throw normalizeDiagnosticError(error, root)
   } finally {
     try {
       await rm(stagedOutput, { recursive: true, force: true })

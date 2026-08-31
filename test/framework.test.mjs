@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.16.10/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.16.11/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.16\.10 typescript/)
-  assert.match(docs, /Current 0\.16\.10 authentication evidence.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.8.*4\.2-9\.9 KiB.*15 \/ 18/s)
-  assert.match(examples, /Release 0\.16\.10.*v0\.16\.10.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.16\.10.*v0\.16\.10.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.10".*Apache Answer authentication journey/s)
-  assert.match(release, /Kudzu 0\.16\.10.*Authenticate normally.*Own every transition/s)
-  assert.match(release, /NATIVE LOGIN · OWNED SESSION · ZERO NEW RUNTIME.*CONNECTED AUTHENTICATION.*npm install @kudzujs\/core@\^0\.16\.10/s)
-  assert.match(release, /<title>Kudzu 0\.16\.10 - Apache Answer authentication journey<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.10"/)
-  assert.match(release, /Start without a token.*Share one session.*Expire safely/s)
+  assert.match(docs, /@kudzujs\/core@\^0\.16\.11 typescript/)
+  assert.match(docs, /Current 0\.16\.11 diagnostic evidence.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.8.*4\.2-9\.9 KiB.*15 \/ 18/s)
+  assert.match(examples, /Release 0\.16\.11.*v0\.16\.11.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.16\.11.*v0\.16\.11.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.11".*Structured compiler diagnostics/s)
+  assert.match(release, /Kudzu 0\.16\.11.*Read errors directly.*Stop parsing prose/s)
+  assert.match(release, /STABLE CODES · EXACT RANGES · HUMAN ERRORS PRESERVED.*STRUCTURED DIAGNOSTICS.*npm install @kudzujs\/core@\^0\.16\.11/s)
+  assert.match(release, /<title>Kudzu 0\.16\.11 - Structured compiler diagnostics<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.11"/)
+  assert.match(release, /Version the envelope.*Point to authored ranges.*Preserve readable errors/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -1569,6 +1569,24 @@ test("rejects invalid keyed-row refs with source locations", async t => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:4:\d+ Keyed row useRef\(\) must use the direct initial value null/)
+  const machine = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build", "--json"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(machine.status, 0)
+  const envelope = JSON.parse(machine.stderr)
+  assert.equal(envelope.version, 1)
+  assert.deepEqual(envelope.diagnostics[0], {
+    code: "keyed.ref.initializer.unsupported",
+    stage: "analyze",
+    severity: "error",
+    compatibilityClass: null,
+    suggestion: "Initialize the object ref directly with null.",
+    message: "Keyed row useRef() must use the direct initial value null",
+    source: {
+      file: "src/pages/index.tsx",
+      start: envelope.diagnostics[0].source.start,
+      end: envelope.diagnostics[0].source.end,
+    },
+  })
+  assert.equal(envelope.diagnostics[0].source.start.line, 4)
 })
 
 test("integrates ordinary React-shaped collection, component, condition, and keyed-row hook authoring", async t => {
@@ -1798,6 +1816,30 @@ test("migrates Memos outline tracking with an effect-owned animation frame", asy
   assert.deepEqual(plan.map(route => [route.route, route.events.map(event => event.event), route.effects.map(effect => effect.cleanup)]), [["/", ["click", "click", "click"], [true]], ["/static", [], []]])
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runMemosOutlineMigrationBrowserTest(fixture, chrome)
+})
+
+test("connects the Memos feed, CRUD, and realtime journey", async t => {
+  const fixture = new URL("./fixtures/memos-feed-crud", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/memos-feed-crud/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/memos-feed-crud/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const output = new URL("./fixtures/memos-feed-crud/dist/", import.meta.url)
+  const publicHtml = await readFile(new URL("public/index.html", output), "utf8")
+  const feedHtml = await readFile(new URL("feed/index.html", output), "utf8")
+  const handlerRoot = new URL("assets/handlers/", output)
+  const files = await readdir(handlerRoot, { recursive: true })
+  const handlers = await Promise.all(files.filter(file => file.endsWith(".js")).map(file => readFile(new URL(file, handlerRoot), "utf8")))
+  const artifacts = JSON.parse(await readFile(new URL("./fixtures/memos-feed-crud/.kudzu/kudzu-artifacts.json", import.meta.url), "utf8"))
+  assert.equal(artifacts.routes.length, 3)
+  assert.match(feedHtml, /role="status">Loading memos/)
+  assert.doesNotMatch(handlers.join("\n"), /zustand|tanstack|connectrpc|axios|["']react["']/i)
+  assert.doesNotMatch(publicHtml, /<script|data-k-/)
+  await Promise.all(["README.md", "kudzu.config.mjs", "src/Shell.tsx", "src/session.ts", "src/pages/index.tsx", "src/pages/feed.tsx", "src/pages/public.tsx"].map(source => readFile(new URL(source, `${fixture.href}/`))))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runMemosFeedCrudBrowserTest(fixture, chrome)
 })
 
 test("rejects effect-owned animation frames without cleanup cancellation", () => {
@@ -2924,6 +2966,14 @@ test("directs runtime react-i18next hooks to explicit locale ownership", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ React i18next useTranslation\(\) depends on runtime locale resources; migrate build-known locales through getStaticPaths\(\) and props, or browser-only locale reads through an owned effect/)
+  const machine = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build", "--json"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(machine.status, 0)
+  const diagnostic = JSON.parse(machine.stderr).diagnostics[0]
+  assert.equal(diagnostic.code, "react-i18next.runtime-locale.unsupported")
+  assert.equal(diagnostic.stage, "analyze")
+  assert.equal(diagnostic.compatibilityClass, "Unsupported")
+  assert.match(diagnostic.suggestion, /getStaticPaths/)
+  assert.equal(diagnostic.source.file, "src/pages/index.tsx")
 })
 
 test("owns Apache Answer question data across query dependency replacement", async t => {
@@ -3014,6 +3064,30 @@ test("builds Apache Answer authoring and admin mutations with native controls", 
   assert.match(adminHandler, /answer-questions|\.filter\(/)
   assert.doesNotMatch(`${ask}\n${askHandler}\n${adminHandler}`, /react-hook-form|CodeMirror|axios|zustand|["']react["']/)
   assert.doesNotMatch(legal, /<script|data-k-/)
+})
+
+test("connects the Apache Answer authenticated authoring journey", async t => {
+  const fixture = new URL("./fixtures/apache-answer-connected-authoring", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/apache-answer-connected-authoring/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/apache-answer-connected-authoring/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const output = new URL("./fixtures/apache-answer-connected-authoring/dist/", import.meta.url)
+  const publicHtml = await readFile(new URL("public/index.html", output), "utf8")
+  const handlerRoot = new URL("assets/handlers/", output)
+  const files = await readdir(handlerRoot, { recursive: true })
+  const handlers = await Promise.all(files.filter(file => file.endsWith(".js")).map(file => readFile(new URL(file, handlerRoot), "utf8")))
+  const artifacts = JSON.parse(await readFile(new URL("./fixtures/apache-answer-connected-authoring/.kudzu/kudzu-artifacts.json", import.meta.url), "utf8"))
+  const plan = JSON.parse(await readFile(new URL("./fixtures/apache-answer-connected-authoring/.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
+  assert.equal(artifacts.routes.length, 6)
+  assert.deepEqual(plan.rewrites.map(entry => entry.pattern), ["/questions/[qid]/[slugPermalink]"])
+  assert.doesNotMatch(handlers.join("\n"), /zustand|react-router|axios|react-hook-form|CodeMirror|["']react["']/)
+  assert.doesNotMatch(publicHtml, /<script|data-k-/)
+  await Promise.all(["src/Shell.tsx", "src/session.ts", "src/order.ts", "src/pages/index.tsx", "src/pages/questions.tsx", "src/pages/questions/add.tsx", "src/pages/questions/[qid]/[slugPermalink].tsx", "src/pages/admin/questions.tsx", "src/pages/public.tsx"].map(source => readFile(new URL(source, `${fixture.href}/`))))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runApacheAnswerConnectedAuthoringBrowserTest(fixture, chrome)
 })
 
 test("filters imported static collections with memoized state selectors", async t => {
@@ -5370,6 +5444,363 @@ http.createServer((request, response) => {
     assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-answer-route-shell-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runApacheAnswerConnectedAuthoringBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const script = '<script type="module" src="/browser-test.js"></script>'
+  for (const path of ["index.html", "questions/index.html", "questions/add/index.html", "questions/[qid]/[slugPermalink]/index.html", "admin/questions/index.html"]) {
+    const url = new URL(path, output)
+    await writeFile(url, (await readFile(url, "utf8")).replace("</body>", `${script}</body>`))
+  }
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 300; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const waitForStats = async (test, label) => {
+  for (let index = 0; index < 300; index++) {
+    const stats = await fetch("/answer/api/test-stats").then(response => response.json())
+    if (test(stats)) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const status = () => document.querySelector("[data-session-status]")?.textContent
+try {
+  const phase = sessionStorage.getItem("answer-connected-phase") || "login"
+  if (phase === "login") {
+    await waitFor(() => status() === "anonymous", "anonymous")
+    const form = document.querySelector("form")
+    form.elements.email.value = "invalid@example.com"
+    form.elements.password.value = "wrong"
+    form.requestSubmit()
+    await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 401", "invalid-login")
+    if (localStorage.getItem("answer-token")) throw new Error("invalid-token")
+    form.elements.email.value = "ada@example.com"
+    form.elements.password.value = "correct"
+    form.requestSubmit()
+    await waitFor(() => status() === "authenticated" && localStorage.getItem("answer-token") === "valid-token", "valid-login")
+    document.querySelector("[data-continue]").click()
+    await waitFor(() => status() === "authenticated" && document.querySelector('[data-question="1"]'), "question-list")
+    const main = document.querySelector("main")
+    if (main.dataset.page !== "2" || main.dataset.order !== "active" || document.querySelector('[data-question="1"] a').textContent !== "Original question") throw new Error("query-route")
+    const before = await fetch("/answer/api/test-stats").then(response => response.json())
+    document.querySelector("[data-refresh]").click()
+    await waitForStats(stats => stats.listReads > before.listReads, "list-refresh")
+    document.querySelector('a[href="/questions/add"]').click()
+    await waitFor(() => document.querySelector("form")?.elements.title, "add-navigation")
+    const addForm = document.querySelector("form")
+    addForm.elements.title.value = "Bad title"
+    addForm.elements.body.value = "Draft stays here"
+    addForm.elements.body.dispatchEvent(new InputEvent("input", { bubbles: true }))
+    addForm.requestSubmit()
+    await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "Title is already used", "create-validation")
+    if (addForm.elements.title.value !== "Bad title" || addForm.elements.body.value !== "Draft stays here" || document.querySelector('[aria-label="Preview"] pre').textContent !== "Draft stays here") throw new Error("draft-retention")
+    addForm.elements.title.value = "Connected question"
+    addForm.elements.body.value = "Created body"
+    addForm.elements.body.dispatchEvent(new InputEvent("input", { bubbles: true }))
+    addForm.requestSubmit()
+    await waitFor(() => document.querySelector("[data-created]"), "create-success")
+    document.querySelector("[data-created]").click()
+    await waitFor(() => status() === "authenticated" && document.querySelector('main[data-question-id="2"][data-question-slug="connected-question"]') && document.querySelector("form")?.elements.title.value === "Connected question", "created-detail")
+    const detailForm = document.querySelector("form")
+    detailForm.elements.title.value = "Edited question"
+    detailForm.elements.title.dispatchEvent(new InputEvent("input", { bubbles: true }))
+    detailForm.elements.body.value = "Edited body"
+    detailForm.elements.body.dispatchEvent(new InputEvent("input", { bubbles: true }))
+    detailForm.requestSubmit()
+    await waitFor(() => document.querySelector('[role="status"]')?.textContent === "Question saved", "edit-mutation")
+    sessionStorage.setItem("answer-connected-phase", "restored")
+    location.reload()
+  } else if (phase === "restored") {
+    await waitFor(() => status() === "authenticated" && document.querySelector("form")?.elements.title.value === "Edited question", "edit-persistence")
+    document.querySelector('a[href="/admin/questions"]').click()
+    await waitFor(() => status() === "authenticated" && document.querySelectorAll("[data-admin-question]").length === 2, "admin-list")
+    document.querySelector('[data-admin-question="1"] button').click()
+    await waitFor(() => document.querySelectorAll("[data-admin-question]").length === 1 && document.querySelector('[data-admin-question="2"]'), "admin-delete-refresh")
+    sessionStorage.setItem("answer-connected-phase", "logout")
+    document.querySelector("[data-logout]").click()
+  } else {
+    await waitFor(() => location.pathname === "/" && status() === "anonymous", "logout")
+    if (localStorage.getItem("answer-token")) throw new Error("logout-token")
+    const stats = await fetch("/answer/api/test-stats").then(response => response.json())
+    if (stats.invalidLogins !== 1 || stats.validLogins !== 1 || stats.creates !== 1 || stats.createFailures !== 1 || stats.edits !== 1 || stats.deletes !== 1 || stats.listReads < 2 || stats.adminReads < 2 || stats.detailReads < 2) throw new Error("server-stats")
+    document.body.dataset.answerConnectedTest = "pass"
+  }
+} catch (error) {
+  const stats = await fetch("/answer/api/test-stats").then(response => response.json()).catch(() => ({}))
+  document.body.dataset.answerConnectedTest = "fail-" + error.message + "-" + JSON.stringify(stats) + "-token:" + localStorage.getItem("answer-token")
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+let questions = [{ id: 1, title: "Original question", slug: "original-question", body: "Original body", tags: [{ slug: "kudzu", name: "kudzu" }] }]
+const stats = { invalidLogins: 0, validLogins: 0, restores: 0, restoreFailures: 0, listReads: 0, detailReads: 0, createFailures: 0, creates: 0, edits: 0, adminReads: 0, deletes: 0 }
+const json = (response, value, status = 200) => { response.statusCode = status; response.setHeader("content-type", "application/json"); response.end(JSON.stringify(value)) }
+const readBody = request => new Promise(resolve => { let body = ""; request.on("data", chunk => { body += chunk }); request.on("end", () => resolve(body)) })
+http.createServer(async (request, response) => {
+  const url = new URL(request.url, "http://localhost"), pathname = url.pathname
+  if (pathname === "/answer/api/v1/user/login") {
+    const body = await readBody(request)
+    if (!body.includes("ada@example.com") || !body.includes("correct")) { stats.invalidLogins++; return json(response, { message: "invalid" }, 401) }
+    stats.validLogins++
+    return json(response, { access_token: "valid-token", username: "Ada", is_admin: true })
+  }
+  if (pathname === "/answer/api/test-stats") return json(response, stats)
+  if (pathname === "/answer/api/v1/user/me") {
+    if (request.headers.authorization !== "Bearer valid-token") { stats.restoreFailures++; return json(response, { message: "unauthorized" }, 401) }
+    stats.restores++
+    return json(response, { username: "Ada", is_admin: true })
+  }
+  if (pathname.startsWith("/answer/api/v1/")) {
+    if (request.headers.authorization !== "Bearer valid-token") return json(response, { message: "unauthorized" }, 401)
+    if (pathname === "/answer/api/v1/question/page") { stats.listReads++; return json(response, { data: questions }) }
+    if (pathname === "/answer/api/v1/admin/questions") { stats.adminReads++; return json(response, { data: questions }) }
+    if (pathname === "/answer/api/v1/question" && request.method === "POST") {
+      const body = await readBody(request)
+      if (body.includes("Bad title")) { stats.createFailures++; return json(response, { message: "Title is already used" }, 422) }
+      const question = { id: 2, title: "Connected question", slug: "connected-question", body: "Created body", tags: [{ slug: "migration", name: "migration" }] }
+      questions.push(question); stats.creates++; return json(response, question, 201)
+    }
+    const match = pathname.match(/^\\/answer\\/api\\/v1\\/question\\/(\\d+)$/)
+    if (match) {
+      const id = Number(match[1]), question = questions.find(entry => entry.id === id)
+      if (request.method === "GET") { stats.detailReads++; return question ? json(response, question) : json(response, { message: "missing" }, 404) }
+      if (request.method === "PUT") {
+        const body = await readBody(request)
+        if (!body.includes("Edited question")) return json(response, { message: "invalid edit" }, 422)
+        question.title = "Edited question"; question.body = "Edited body"; stats.edits++; return json(response, question)
+      }
+      if (request.method === "DELETE") { questions = questions.filter(entry => entry.id !== id); stats.deletes++; response.statusCode = 204; return response.end() }
+    }
+  }
+  const relative = /^\\/questions\\/[^/]+\\/[^/]+\\/?$/.test(pathname)
+    ? "questions/[qid]/[slugPermalink]/index.html"
+    : pathname === "/" ? "index.html" : path.extname(pathname) ? pathname.slice(1) : pathname.slice(1) + "/index.html"
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=15000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    await new Promise(resolve => setTimeout(resolve, 10))
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-answer-connected-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runMemosFeedCrudBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const script = '<script type="module" src="/browser-test.js"></script>'
+  const instrumentation = `<script>
+globalThis.memoSocketStats = { instances: [], activeSockets: 0, activeListeners: 0, closes: 0, reconnectScheduled: 0, reconnectFired: 0, pendingReconnects: 0 }
+class MemoSocket {
+  constructor(url) { this.url = url; this.listeners = new Map(); this.closed = false; memoSocketStats.instances.push(this); memoSocketStats.activeSockets++ }
+  addEventListener(name, callback) { let listeners = this.listeners.get(name); if (!listeners) this.listeners.set(name, listeners = new Set()); if (!listeners.has(callback)) { listeners.add(callback); memoSocketStats.activeListeners++ } }
+  removeEventListener(name, callback) { const listeners = this.listeners.get(name); if (listeners?.delete(callback)) { memoSocketStats.activeListeners--; if (!listeners.size) this.listeners.delete(name) } }
+  fire(name, event = {}) { for (const callback of [...(this.listeners.get(name) || [])]) callback(event) }
+  remoteClose() { if (this.closed) return; this.closed = true; memoSocketStats.activeSockets--; this.fire("close") }
+  close() { if (this.closed) return; this.closed = true; memoSocketStats.activeSockets--; memoSocketStats.closes++ }
+}
+globalThis.WebSocket = MemoSocket
+const nativeSetTimeout = globalThis.setTimeout
+const nativeClearTimeout = globalThis.clearTimeout
+const reconnectTimers = new Set()
+globalThis.setTimeout = (callback, delay, ...values) => {
+  if (delay !== 50) return nativeSetTimeout(callback, delay, ...values)
+  memoSocketStats.reconnectScheduled++; memoSocketStats.pendingReconnects++
+  const timer = nativeSetTimeout(() => { if (reconnectTimers.delete(timer)) { memoSocketStats.pendingReconnects--; memoSocketStats.reconnectFired++ } callback(...values) }, delay)
+  reconnectTimers.add(timer)
+  return timer
+}
+globalThis.clearTimeout = timer => { if (reconnectTimers.delete(timer)) memoSocketStats.pendingReconnects--; return nativeClearTimeout(timer) }
+</script>`
+  for (const path of ["index.html", "feed/index.html"]) {
+    const url = new URL(path, output)
+    await writeFile(url, (await readFile(url, "utf8")).replace("<head>", `<head>${instrumentation}`).replace("</body>", `${script}</body>`))
+  }
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 300; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const waitForStats = async (test, label) => {
+  for (let index = 0; index < 300; index++) {
+    const stats = await fetch("/api/test-stats").then(response => response.json())
+    if (test(stats)) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const status = () => document.querySelector("[data-session-status]")?.textContent
+try {
+  const phase = sessionStorage.getItem("memos-feed-phase") || "login"
+  if (phase === "login") {
+    await waitFor(() => status() === "anonymous", "anonymous")
+    const login = document.querySelector("form")
+    login.elements.email.value = "invalid@example.com"
+    login.elements.password.value = "wrong"
+    login.requestSubmit()
+    await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 401", "invalid-login")
+    login.elements.email.value = "ada@example.com"
+    login.elements.password.value = "correct"
+    login.requestSubmit()
+    await waitFor(() => status() === "authenticated" && localStorage.getItem("memos-token") === "memos-token", "valid-login")
+    document.querySelector("[data-continue]").click()
+    await waitFor(() => location.pathname === "/feed", "feed-navigation")
+    await waitFor(() => document.querySelector('[data-memo="1"]') && document.querySelector('[data-memo="2"]'), "initial-feed")
+    const memo1 = document.querySelector('[data-memo="1"]')
+    const firstSocket = memoSocketStats.instances[0]
+    firstSocket.fire("open")
+    await waitFor(() => document.querySelector("[data-connection]").textContent === "connected", "socket-open")
+    memo1.querySelector("[data-react]").click()
+    await waitForStats(stats => stats.reactions === 1, "reaction-mutation")
+    const livePage = [{ id: 1, content: "First memo", reactions: 1 }, { id: 2, content: "Second memo", reactions: 0 }]
+    firstSocket.fire("message", { data: JSON.stringify({ version: 1, data: livePage }) })
+    await waitFor(() => memo1.querySelector("[data-reactions]").textContent === "1", "reaction-event")
+    firstSocket.fire("message", { data: JSON.stringify({ version: 1, data: [{ id: 1, content: "Duplicate memo", reactions: 9 }] }) })
+    firstSocket.fire("message", { data: JSON.stringify({ version: 0, data: [{ id: 1, content: "Stale memo", reactions: 9 }] }) })
+    await wait(20)
+    if (memo1.querySelector("p").textContent !== "First memo" || memo1.querySelector("[data-reactions]").textContent !== "1") throw new Error("event-dedup")
+    firstSocket.remoteClose()
+    await waitFor(() => memoSocketStats.reconnectScheduled === 1, "reconnect-scheduled")
+    await waitFor(() => memoSocketStats.instances.length === 2, "reconnect")
+    firstSocket.fire("message", { data: JSON.stringify({ version: 2, data: [{ id: 1, content: "Old socket", reactions: 9 }] }) })
+    const secondSocket = memoSocketStats.instances[1]
+    secondSocket.fire("open")
+    secondSocket.fire("message", { data: JSON.stringify({ version: 2, data: [{ id: 1, content: "Live refresh", reactions: 1 }, { id: 2, content: "Second memo", reactions: 0 }] }) })
+    await waitFor(() => memo1.querySelector("p").textContent === "Live refresh" && document.querySelector("[data-connection]").textContent === "connected", "realtime-refresh")
+    if (document.querySelector('[data-memo="1"]') !== memo1) throw new Error("realtime-identity")
+    document.querySelector("[data-next]").click()
+    await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 500", "pagination-error")
+    if (!memo1.isConnected || document.querySelector('[data-memo="1"]') !== memo1) throw new Error("error-identity")
+    document.querySelector("[data-refresh]").click()
+    await waitFor(() => document.querySelector("main").dataset.page === "2" && document.querySelector('[data-memo="3"]'), "pagination-refresh")
+    if (document.querySelector('[data-memo="1"]') !== memo1) throw new Error("pagination-identity")
+    const create = document.querySelector("[data-create]")
+    create.elements.content.value = "Created memo"
+    create.requestSubmit()
+    await waitFor(() => document.querySelector('[data-memo="4"]'), "create")
+    if (document.querySelector('[data-memo="1"]') !== memo1) throw new Error("create-identity")
+    memo1.querySelector("[data-edit]").click()
+    await waitFor(() => memo1.querySelector("p").textContent === "Edited memo", "edit")
+    if (document.querySelector('[data-memo="1"]') !== memo1) throw new Error("edit-identity")
+    document.querySelector('[data-memo="3"] [data-delete]').click()
+    await waitFor(() => !document.querySelector('[data-memo="3"]'), "delete")
+    if (document.querySelector('[data-memo="1"]') !== memo1) throw new Error("delete-identity")
+    document.querySelector("[data-leave]").click()
+    await waitFor(() => location.pathname === "/" && memoSocketStats.activeSockets === 0 && memoSocketStats.activeListeners === 0 && memoSocketStats.pendingReconnects === 0, "route-cleanup")
+    if (memoSocketStats.reconnectScheduled !== 1 || memoSocketStats.reconnectFired !== 1) throw new Error("reconnect-counts")
+    document.querySelector("[data-continue]").click()
+    await waitFor(() => location.pathname === "/feed" && memoSocketStats.activeSockets === 1, "fresh-feed-owner")
+    sessionStorage.setItem("memos-feed-phase", "restore")
+    location.reload()
+  } else if (phase === "restore") {
+    await waitFor(() => status() === "authenticated" && document.querySelector('[data-memo="1"] p')?.textContent === "Edited memo" && document.querySelector('[data-memo="4"]'), "persistence")
+    if (document.querySelector('[data-memo="3"]')) throw new Error("delete-persistence")
+    document.querySelector("[data-leave]").click()
+    await waitFor(() => location.pathname === "/" && memoSocketStats.activeSockets === 0 && memoSocketStats.activeListeners === 0 && memoSocketStats.pendingReconnects === 0, "restored-route-cleanup")
+    sessionStorage.setItem("memos-feed-phase", "logout")
+    document.querySelector("[data-logout]").click()
+  } else {
+    await waitFor(() => location.pathname === "/" && status() === "anonymous", "logout")
+    if (localStorage.getItem("memos-token")) throw new Error("logout-token")
+    const stats = await fetch("/api/test-stats").then(response => response.json())
+    if (stats.invalidLogins !== 1 || stats.validLogins !== 1 || stats.pageFailures !== 1 || stats.creates !== 1 || stats.edits !== 1 || stats.deletes !== 1 || stats.reactions !== 1 || stats.restores < 1 || stats.feedReads < 6) throw new Error("server-stats")
+    document.body.dataset.memosFeedTest = "pass"
+  }
+} catch (error) {
+  const stats = await fetch("/api/test-stats").then(response => response.json()).catch(() => ({}))
+  document.body.dataset.memosFeedTest = "fail-" + error.message + "-" + JSON.stringify(stats)
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+let memos = [{ id: 1, content: "First memo", reactions: 0 }, { id: 2, content: "Second memo", reactions: 0 }, { id: 3, content: "Third memo", reactions: 0 }]
+const stats = { invalidLogins: 0, validLogins: 0, restores: 0, feedReads: 0, pageFailures: 0, creates: 0, edits: 0, deletes: 0, reactions: 0 }
+let pageTwoAttempts = 0
+const json = (response, value, status = 200) => { response.statusCode = status; response.setHeader("content-type", "application/json"); response.end(JSON.stringify(value)) }
+const readBody = request => new Promise(resolve => { let body = ""; request.on("data", chunk => { body += chunk }); request.on("end", () => resolve(body)) })
+http.createServer(async (request, response) => {
+  const url = new URL(request.url, "http://localhost"), pathname = url.pathname
+  if (pathname === "/api/v1/auth/signin") {
+    const body = await readBody(request)
+    if (!body.includes("ada@example.com") || !body.includes("correct")) { stats.invalidLogins++; return json(response, { message: "invalid" }, 401) }
+    stats.validLogins++
+    return json(response, { token: "memos-token", username: "Ada" })
+  }
+  if (pathname === "/api/test-stats") return json(response, stats)
+  if (pathname === "/api/v1/user/me") {
+    if (request.headers.authorization !== "Bearer memos-token") return json(response, { message: "unauthorized" }, 401)
+    stats.restores++
+    return json(response, { username: "Ada" })
+  }
+  if (pathname.startsWith("/api/v1/")) {
+    if (request.headers.authorization !== "Bearer memos-token") return json(response, { message: "unauthorized" }, 401)
+    if (pathname === "/api/v1/memos" && request.method === "GET") {
+      stats.feedReads++
+      const page = Number(url.searchParams.get("page"))
+      if (page === 2 && pageTwoAttempts++ === 0) { stats.pageFailures++; return setTimeout(() => json(response, { message: "failed" }, 500), 80) }
+      const ids = page === 2 ? [1, 3, 4] : [1, 2, 4]
+      return setTimeout(() => json(response, { data: ids.map(id => memos.find(memo => memo.id === id)).filter(Boolean) }), 80)
+    }
+    if (pathname === "/api/v1/memos" && request.method === "POST") {
+      await readBody(request)
+      memos.push({ id: 4, content: "Created memo", reactions: 0 }); stats.creates++
+      return json(response, memos.at(-1), 201)
+    }
+    const reaction = pathname.match(/^\\/api\\/v1\\/memos\\/(\\d+)\\/reactions$/)
+    if (reaction && request.method === "POST") {
+      const memo = memos.find(entry => entry.id === Number(reaction[1]))
+      memo.reactions++; stats.reactions++
+      return json(response, memo)
+    }
+    const match = pathname.match(/^\\/api\\/v1\\/memos\\/(\\d+)$/)
+    if (match && request.method === "PUT") {
+      const memo = memos.find(entry => entry.id === Number(match[1]))
+      memo.content = "Edited memo"; stats.edits++
+      return json(response, memo)
+    }
+    if (match && request.method === "DELETE") {
+      memos = memos.filter(entry => entry.id !== Number(match[1])); stats.deletes++
+      response.statusCode = 204; return response.end()
+    }
+  }
+  const relative = pathname === "/" ? "index.html" : path.extname(pathname) ? pathname.slice(1) : pathname.slice(1) + "/index.html"
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=12000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-memos-feed-test="pass"/)
   } finally {
     server.kill()
   }
@@ -9183,6 +9614,8 @@ async function runGsapLifecycleBrowserTest(fixture, chrome) {
   await runResourceBrowserScenarios(fixture, chrome, {
     setup: `
 const reducedMotion = new URLSearchParams(location.search).has("reduced")
+window.requestAnimationFrame = callback => setTimeout(() => callback(performance.now()), 16)
+window.cancelAnimationFrame = clearTimeout
 window.matchMedia = query => ({
   matches: reducedMotion && query === "(prefers-reduced-motion: reduce)",
   media: query,

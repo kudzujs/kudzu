@@ -24,6 +24,12 @@ Apache Answer's first route-shell gate replaces `RouterProvider` and nested `Out
 
 Apache Answer authoring/admin intake now builds native question creation and keyed administration without form, editor, query, or state package runtimes. Constraint-backed title/markdown fields, controlled preview, markdown file import, local draft mutation, keyed admin rows, and deletion compile through existing handlers/lists while a legal sibling remains JavaScript-free. Rich CodeMirror ownership, server validation, upload progress, and destructive confirmation remain later acceptance gates.
 
+Apache Answer's reduced authentication, query, route, detail, create/edit, validation, refresh, administration, and logout paths now pass one connected deterministic browser journey. Existing layout-owned Zustand reduction, search signals, dependency effects, runtime parameters, native forms, keyed lists, enhanced navigation, and direct handlers preserve server-authoritative errors and mutations, edit persistence across reload, admin deletion refresh, accessible statuses, exact source retention, and a zero-JavaScript public sibling. No compiler, IR, runtime, package adapter, or public API changed; this remains a connected reduction rather than a whole-application migration claim.
+
+Memos now has a first durable connected slice derived from pinned upstream source: invalid and valid login, loading and server error, overlapping-key pagination, explicit refresh, native memo creation, editing, deletion, reaction, realtime refresh, reload persistence, and logout pass one deterministic browser journey. Existing layout state, dependency effects, keyed ownership, native forms and handlers, enhanced navigation, and effect-owned WebSocket lifecycle retain one memo DOM node through error recovery, feed mutations, duplicate and stale events, reconnect, and fresh route ownership. Listener, socket, and reconnect-timer counts return to zero on release, and the public sibling remains JavaScript-free. No query runtime, Connect RPC client, React runtime, compiler semantic, or public API is added, and this remains a reduced application slice rather than a whole-Memos claim.
+
+Actual Budget intake remains deferred at its pinned MIT revision. The available sparse acquisition omits required workspace tooling, component and backend packages, database and worker coordination, and spreadsheet implementation, so it cannot establish an executable user journey or honest whole-workspace retention denominator. No compatibility claim or speculative framework work is authorized until a complete pinned workspace is available.
+
 ## North Star
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
@@ -51,7 +57,7 @@ Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts th
 - stronger JavaScript failure resilience;
 - no remaining material large-route build-scaling weakness.
 
-The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.19.2` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
+The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.20.1` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
 
 ### 0.10.0 Through 0.21.x: Application Capability Release Train
 

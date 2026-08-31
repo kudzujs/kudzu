@@ -8,7 +8,7 @@ import { createComponentAnalysis, createComponentAnalysisSession } from "../fram
 import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
 import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
-import { createCompatibilityReport } from "../framework/compiler/compatibility-registry.mjs"
+import { classifyCompatibility, createCompatibilityReport } from "../framework/compiler/compatibility-registry.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "../framework/compiler/effect-analysis.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
@@ -64,6 +64,7 @@ test("classifies compatibility sites deterministically from authored source", ()
     ["react-bootstrap", "Row", undefined, "Normalized", "react-bootstrap.normalized", 1]
   ])
   assert.deepEqual(report.sites[0].location, { line: 1, column: 10, endLine: 1, endColumn: 28 })
+  assert.deepEqual(classifyCompatibility("react-i18next", "useTranslation", "import"), { id: "react-i18next.unsupported", classification: "Unsupported" })
   assert.deepEqual(createCompatibilityReport([...sources].reverse()), report)
 })
 
@@ -134,6 +135,19 @@ export default function Page() {
   assert.deepEqual(compileSource(file, new Set([file, helper]), new Map([[file, source], [helper, "export const format = value => String(value)"]]), new Set(), new Map(), "").componentAnalysis, result.componentAnalysis)
 })
 
+test("preserves TypeScript syntax errors as structured diagnostics", () => {
+  const file = resolve("src/pages/syntax.tsx")
+  const source = "export default function Page() { return <main> }"
+  assert.throws(() => compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), ""), error => {
+    assert.equal(error.diagnostics[0].code, "source.syntax.invalid")
+    assert.equal(error.diagnostics[0].stage, "analyze")
+    assert.equal(error.diagnostics[0].severity, "error")
+    assert.equal(error.diagnostics[0].source.file, file)
+    assert.match(error.message, /corresponding closing tag/)
+    return true
+  })
+})
+
 test("reports ordinary graph failures at the importer source", () => {
   const page = resolve("src/pages/graph.tsx")
   const helper = resolve("src/graph-helper.ts")
@@ -156,6 +170,19 @@ test("reports ordinary graph failures at the importer source", () => {
   for (const expression of ['import("./graph-helper")', 'import("typescript")', 'import(`./graph-helper`)', "import(path)"]) {
     assert.match(failure(`export default function Page() { return ${expression} }`), /src\/pages\/graph\.tsx:1:\d+ Dynamic import .* is not supported in ordinary source modules/)
   }
+
+  assert.throws(() => reachableSourceFiles([page], sourceFiles, new Map([
+    [page, 'import "./missing"\nexport default function Page() {}'],
+    [helper, "export const value = 1"],
+  ])), error => {
+    assert.equal(error.diagnostics[0].code, "source.import.unresolved")
+    assert.equal(error.diagnostics[0].stage, "graph")
+    assert.equal(error.diagnostics[0].severity, "error")
+    assert.equal(error.diagnostics[0].compatibilityClass, null)
+    assert.match(error.diagnostics[0].suggestion, /exactly one/)
+    assert.equal(error.diagnostics[0].source.start.line, 1)
+    return true
+  })
 
   assert.deepEqual(reachableSourceFiles([page], sourceFiles, new Map([
     [page, 'import type { Missing } from "./missing"\nexport default function Page() {}'],

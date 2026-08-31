@@ -36,7 +36,21 @@ const effect = () => { const nested = () => { return 1 }; return () => cleanup()
   assert.equal(returns.invalid, undefined)
 
   const originalNode = ts.setOriginalNode(ts.factory.createIdentifier("copy"), target)
-  assert.match(sourceNodeError(originalNode, ts.createSourceFile("unused.ts", "", ts.ScriptTarget.Latest), "broken").message, /^original\.tsx:5:28 broken$/)
+  const diagnostic = sourceNodeError(originalNode, ts.createSourceFile("unused.ts", "", ts.ScriptTarget.Latest), "broken", { code: "test.broken", stage: "normalize" })
+  assert.match(diagnostic.message, /^original\.tsx:5:28 broken$/)
+  assert.deepEqual(diagnostic.diagnostics, [{
+    code: "test.broken",
+    stage: "normalize",
+    severity: "error",
+    compatibilityClass: null,
+    suggestion: null,
+    message: "broken",
+    source: {
+      file: "original.tsx",
+      start: { line: 5, column: 28, offset: 126 },
+      end: { line: 5, column: 34, offset: 132 },
+    },
+  }])
   const fallback = ts.createSourceFile("fallback.ts", "\nvalue", ts.ScriptTarget.Latest, true)
   const fallbackNode = ts.setTextRange(ts.factory.createIdentifier("value"), fallback.statements[0].expression)
   assert.equal(sourceLocation(fallbackNode, fallback), "fallback.ts:2:1")

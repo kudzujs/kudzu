@@ -46,7 +46,7 @@ function compatibilitySites(file, source) {
   const sites = []
   const add = (target, imported, local, kind, node) => {
     if (!isBarePackage(target) || target === "@kudzujs/core" || target.startsWith("@kudzujs/core/")) return
-    const rule = classify(target, imported, kind)
+    const rule = classifyCompatibility(target, imported, kind)
     const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile))
     const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd())
     sites.push({
@@ -94,7 +94,7 @@ function compatibilitySites(file, source) {
   return sites
 }
 
-function classify(target, imported, kind) {
+export function classifyCompatibility(target, imported, kind) {
   if (kind === "re-export") return { id: "package.re-export.unsupported", classification: "Unsupported" }
   if (kind === "side-effect-import") return { id: "package.side-effect.unsupported", classification: "Unsupported" }
   const root = packageRoot(target)

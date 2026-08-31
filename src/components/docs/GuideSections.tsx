@@ -9,7 +9,7 @@ cd my-app
 npm install
 npm run dev`} />
     <p>To add Kudzu to an existing project, install <code>@kudzujs/core</code> and <code>typescript</code>, configure TypeScript with <code>jsxImportSource: "@kudzujs/core"</code>, and add these scripts to <code>package.json</code>:</p>
-    <CodeBlock language="shell" code={`npm install @kudzujs/core@^0.16.10 typescript`} />
+    <CodeBlock language="shell" code={`npm install @kudzujs/core@^0.16.11 typescript`} />
     <CodeBlock language="text" code={`{
   "scripts": {
     "dev": "kudzu dev",

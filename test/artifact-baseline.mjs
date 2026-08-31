@@ -16,10 +16,12 @@ const fixtures = [
   ["answer-routes", "apache-answer-route-shell"],
   ["answer-auth", "apache-answer-auth-ownership"],
   ["answer-authoring", "apache-answer-authoring-admin"],
+  ["answer-connected", "apache-answer-connected-authoring"],
+  ["memos-feed", "memos-feed-crud"],
   ["memos-outline", "memos-outline-migration"]
 ]
 
-const report = { schema: 1, packet: "0.18.3", revision: process.env.GITHUB_SHA || "working-tree", fixtures: [] }
+const report = { schema: 1, packet: "0.20.0", revision: process.env.GITHUB_SHA || "working-tree", fixtures: [] }
 
 for (const [name, directory] of fixtures) {
   const fixture = join(root, "test/fixtures", directory)
