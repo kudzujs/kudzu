@@ -189,6 +189,65 @@ export default function Page() { return <RouterLink to="/about">About</RouterLin
   assert.doesNotMatch(await readFile(join(fixture, "dist", "index.html"), "utf8"), /react-router-dom|react-i18next/)
 })
 
+test("inspects reachable application facts as bounded deterministic JSON", { timeout: 120_000 }, async t => {
+  const fixture = await mkdtemp(resolve("test/fixtures/inspect-report-"))
+  t.after(() => rm(fixture, { recursive: true, force: true }))
+  const put = async (path, contents) => {
+    const file = join(fixture, path)
+    await mkdir(dirname(file), { recursive: true })
+    await writeFile(file, contents)
+  }
+  await put("src/label.ts", `export const label = "About"`)
+  await put("src/pages/about.tsx", `import { label } from "../label"; export default function About() { return <h1>{label}</h1> }`)
+  await put("src/pages/index.tsx", `
+import { useState } from "@kudzujs/core"
+import { Link } from "react-router-dom"
+export default function Home() {
+  const [count, setCount] = useState(0)
+  return <main><button onClick={() => setCount(count + 1)}>{count}</button><Link to="/about">About</Link></main>
+}
+`)
+  await put("src/unused.tsx", `import { useTranslation } from "react-i18next"`)
+
+  const run = () => spawnSync(process.execPath, [cli, "inspect", "--json"], { cwd: fixture, encoding: "utf8" })
+  const first = run()
+  assert.equal(first.status, 0, `${first.stdout}\n${first.stderr}`)
+  assert.equal(first.stderr, "")
+  const report = JSON.parse(first.stdout)
+  assert.equal(report.version, 1)
+  assert.equal(report.status, "ready")
+  assert.equal(report.inventoryComplete, true)
+  assert.deepEqual(report.modules.map(module => module.file), ["src/label.ts", "src/pages/about.tsx", "src/pages/index.tsx"])
+  assert.deepEqual(report.routes.map(route => route.route), ["/", "/about"])
+  assert.equal(report.routes.find(route => route.route === "/about").static, true)
+  assert.equal(report.routes.find(route => route.route === "/").static, false)
+  assert.deepEqual(report.packages, [{ package: "react-router-dom", classification: "Native", sites: 1 }])
+  assert.deepEqual(report.compatibilitySites.map(site => [site.file, site.package, site.classification]), [["src/pages/index.tsx", "react-router-dom", "Native"]])
+  assert.equal(report.owners.some(owner => owner.module === "src/pages/index.tsx" && owner.slot === 0 && owner.name === "Home" && owner.stateCount === 1), true)
+  assert.deepEqual(report.blockers, [])
+  assert.deepEqual(report.omitted, { modules: 0, routes: 0, packages: 0, compatibilitySites: 0, capabilities: 0, owners: 0, blockers: 0 })
+  assert.doesNotMatch(first.stdout, new RegExp(fixture.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+  assert.doesNotMatch(first.stdout, /buildModule|moduleIR|\"html\"|\"plan\"|captures/)
+  const second = run()
+  assert.equal(second.status, 0, `${second.stdout}\n${second.stderr}`)
+  assert.equal(second.stdout, first.stdout)
+
+  await put("kudzu.config.mjs", `export default { afterBuild() { console.log("application build log") } }`)
+  const logged = run()
+  assert.equal(logged.status, 0, `${logged.stdout}\n${logged.stderr}`)
+  assert.deepEqual(JSON.parse(logged.stdout).summary, report.summary)
+  assert.equal(logged.stderr, "application build log\n")
+
+  await put("src/pages/index.tsx", `import { useTranslation } from "react-i18next"; export default function Home() { const { t } = useTranslation(); return <p>{t("home")}</p> }`)
+  const blockedResult = run()
+  assert.equal(blockedResult.status, 0, `${blockedResult.stdout}\n${blockedResult.stderr}`)
+  assert.equal(blockedResult.stderr, "")
+  const blocked = JSON.parse(blockedResult.stdout)
+  assert.equal(blocked.status, "blocked")
+  assert.equal(blocked.inventoryComplete, false)
+  assert.deepEqual(blocked.blockers.map(blocker => [blocker.kind, blocker.code, blocker.source.file]), [["diagnostic", "react-i18next.runtime-locale.unsupported", "src/pages/index.tsx"]])
+})
+
 test("incremental builds compile and render only affected routes", async t => {
   const fixture = await mkdtemp(resolve("test/fixtures/incremental-build-"))
   t.after(() => rm(fixture, { recursive: true, force: true }))

@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.16.12 - Bounded Application Inspection
+
+Kudzu 0.16.12 lets tools select the first migration blocker from a compact
+reachable-application inventory instead of reading the compiler's raw semantic
+records or scanning an entire source tree.
+
+### Changed in 0.16.12
+
+- Adds `kudzu inspect --json`, which runs the authoritative build graph and emits
+  one versioned report of reachable modules, routes, package compatibility,
+  capability families, semantic owners, and blocker candidates.
+- Sorts every section before applying fixed limits and reports total and omitted
+  counts so large applications retain bounded deterministic context.
+- Distinguishes confirmed structured diagnostic blockers from unsupported
+  compatibility sites and partial-package review candidates.
+- Excludes unreachable source, generated module code, HTML, RouteIR, ModuleIR,
+  captures, state values, and complete artifact closures from inspection output.
+- Reuses existing source, compatibility, ownership, capability, and artifact
+  records; it adds no analyzer, semantic primitive, runtime concept, public
+  application API, or browser byte.
+- Updates `create-kudzu@0.1.137` to generate projects on
+  `@kudzujs/core@^0.16.12`.
+
+`inspect` performs the ordinary authoritative build, including configured
+`afterBuild()` behavior. A structured compiler failure returns a bounded blocked
+report with incomplete inventory rather than pretending that later facts exist.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.12
+```
+
 ## 0.16.11 - Structured Compiler Diagnostics
 
 Kudzu 0.16.11 gives tools and agents stable machine-readable authored-source

@@ -12,6 +12,7 @@ import { classifyCompatibility, createCompatibilityReport } from "../framework/c
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "../framework/compiler/effect-analysis.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
+import { createInspectionReport } from "../framework/compiler/inspection-report.mjs"
 import { assertModuleIRReferences, createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock, registerSharedAction, registerSharedState } from "../framework/compiler/ir/module-ir.mjs"
 import { generateListRuntime } from "../framework/compiler/list-runtime-codegen.mjs"
 import { applyNormalizationPasses } from "../framework/compiler/normalization-pipeline.mjs"
@@ -29,6 +30,32 @@ import { compileSource, createSourceCompiler, reachableSourceFiles } from "../fr
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
 
 const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
+
+test("bounds inspection sections after deterministic blocker ordering", () => {
+  const ready = createInspectionReport({
+    sourceFiles: Array.from({ length: 101 }, (_, index) => `src/module-${String(100 - index).padStart(3, "0")}.ts`),
+    compatibility: { packages: [], sites: [] },
+    artifacts: { routes: [], runtimeFamilies: [] },
+  })
+  assert.equal(ready.summary.modules, 101)
+  assert.equal(ready.modules.length, 100)
+  assert.equal(ready.modules[0].file, "src/module-000.ts")
+  assert.equal(ready.modules.at(-1).file, "src/module-099.ts")
+  assert.equal(ready.omitted.modules, 1)
+
+  const blocked = createInspectionReport({ diagnostics: Array.from({ length: 51 }, (_, index) => ({
+    code: `source.blocker.${String(50 - index).padStart(2, "0")}`,
+    stage: "analyze",
+    severity: "error",
+    message: "Blocked",
+    compatibilityClass: null,
+    suggestion: null,
+    source: { file: `src/${String(50 - index).padStart(2, "0")}.tsx`, start: { line: 1, column: 1, offset: 0 }, end: { line: 1, column: 2, offset: 1 } },
+  })) })
+  assert.equal(blocked.blockers.length, 50)
+  assert.equal(blocked.blockers[0].source.file, "src/00.tsx")
+  assert.equal(blocked.omitted.blockers, 1)
+})
 
 test("classifies compatibility sites deterministically from authored source", () => {
   const sources = [{ file: "src/pages/index.tsx", source: [

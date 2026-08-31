@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.16.11 diagnostic evidence</strong><span>Authored-source failures now expose stable machine-readable codes and ranges while human diagnostics and deployed browser bytes remain unchanged.</span></div>
+    <div className="docs-callout"><strong>Current 0.16.12 inspection evidence</strong><span><code>kudzu inspect --json</code> exposes bounded reachable application and first-blocker facts while deployed browser bytes remain unchanged.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

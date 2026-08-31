@@ -2,6 +2,17 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.12 Bounded Application Inspection
+
+Measured 2026-08-31 on Linux x64 with Node 24.14.0. Inspection is a build-time
+projection over existing source, compatibility, ownership, capability, and
+artifact records. Representative deploy manifests and hashes remain unchanged.
+The maintained Worker graph remains 907 raw / 477 gzip B and the window graph
+remains 14,456 raw / 6,160 gzip B. Seven clean builds record a 648.7 ms median
+on this host without a timing comparison. Browser-disabled and required-Chrome
+suites pass 295/295 tests, package smoke passes, and bounded deterministic CLI
+coverage includes reachable-source filtering and structured blocker output.
+
 ## 0.16.11 Structured Compiler Diagnostics
 
 Measured 2026-08-31 on Linux x64 with Node 24.14.0. Structured diagnostics are

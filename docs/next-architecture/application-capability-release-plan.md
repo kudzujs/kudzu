@@ -1826,6 +1826,27 @@ artifact accounting, and `git diff --check` pass. The packet ships as
 - **Done condition:** the first blocker can be selected without reading hundreds
   of source or dependency files.
 
+Complete. `kudzu inspect --json` now runs the authoritative build and projects
+the existing reachable source, compatibility, ComponentAnalysis, ModuleIR,
+CapabilityIR, and route-artifact records into one versioned report. Modules,
+routes, packages, compatibility sites, capability families, semantic owners,
+and blockers sort before fixed section limits; totals and omitted counts keep
+large-project context explicit. Unreachable source, generated code, HTML, raw
+IR, captures, state values, and full artifact closures remain excluded.
+
+One real CLI fixture proves reachable filtering, static and interactive route
+facts, native package classification, state ownership, project-relative paths,
+deterministic output, and structured blocked inventory. A synthetic 101-module
+and 51-blocker check proves sort-before-truncation and first-blocker retention.
+The implementation is one 154-line projection over existing records plus the
+existing build/CLI seam; it adds no analyzer, semantic primitive, compiler pass,
+normalization entry, runtime concept, or browser module. Representative deploy
+manifests and hashes remain unchanged. Worker and window graphs remain 907 raw /
+477 gzip and 14,456 raw / 6,160 gzip bytes; seven clean builds record a 648.7 ms
+median without a timing comparison. Browser-disabled and required-Chrome suites
+pass 295/295 tests, package smoke and artifact accounting pass, and the packet
+ships as `@kudzujs/core@0.16.12` with `create-kudzu@0.1.137`.
+
 ### `0.20.2`: `kudzu explain --route`
 
 - **Purpose:** trace one authored route to its selected browser artifacts.
@@ -2051,3 +2072,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.19.4` | Closed by existing effect ownership | Preserve reaction mutation, version deduplication, stale-socket rejection, reconnect, keyed identity, exact route cleanup, fresh ownership, bounded handles/listeners/timers, and public zero-JavaScript output. | No production change; no release consumed |
 | `0.19.5` | Deferred by stop condition | Resume only from a complete pinned Actual Budget workspace with an executable dependency graph and honest retention denominator. | Sparse acquisition omits required workspace and core packages; no compatibility claim |
 | `0.20.0` | Released as `0.16.11` | Preserve stable diagnostic schema/codes, authored ranges, human errors, compatibility reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |
+| `0.20.1` | Released as `0.16.12` | Preserve bounded deterministic reachable inventory, first-blocker retention, existing-record reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |

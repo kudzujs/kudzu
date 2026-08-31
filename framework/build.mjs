@@ -5,7 +5,8 @@ import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { createCompatibilityReport } from "./compiler/compatibility-registry.mjs"
-import { normalizeDiagnosticError } from "./compiler/diagnostics.mjs"
+import { diagnosticEnvelope, normalizeDiagnosticError } from "./compiler/diagnostics.mjs"
+import { createInspectionReport } from "./compiler/inspection-report.mjs"
 import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
 import { createProjectSession } from "./compiler/project-session.mjs"
@@ -38,7 +39,12 @@ export async function build({ quiet = false, minify = true, root: projectRoot = 
   return buildWithSession(project, { quiet, minify, retainCache: false })
 }
 
-export async function buildWithSession(project, { changedFiles, quiet = false, minify = true, retainCache = true } = {}) {
+export async function inspect({ minify = true, root: projectRoot = process.cwd() } = {}) {
+  const project = createProjectSession(projectRoot)
+  return buildWithSession(project, { quiet: true, minify, retainCache: false, inspection: true })
+}
+
+export async function buildWithSession(project, { changedFiles, quiet = false, minify = true, retainCache = true, inspection = false } = {}) {
   const { root, outputDirectory } = project
   const stagedOutput = join(root, ".kudzu-dist-staging")
   const backupOutput = join(root, ".kudzu-dist-backup")
@@ -47,13 +53,16 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount, cache } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache })
+    const { result, pageCount, behaviorCount, cache, inspectionData } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache })
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
     project.buildCache = retainCache ? cache : undefined
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
-    return result
+    return inspection ? createInspectionReport(inspectionData) : result
   } catch (error) {
-    throw normalizeDiagnosticError(error, root)
+    const normalized = normalizeDiagnosticError(error, root)
+    const envelope = inspection && diagnosticEnvelope(normalized)
+    if (envelope) return createInspectionReport({ diagnostics: envelope.diagnostics })
+    throw normalized
   } finally {
     try {
       await rm(stagedOutput, { recursive: true, force: true })
@@ -107,7 +116,8 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   if (!pageFiles.length) throw new Error("No pages found in src/pages/")
   const pageSources = new Map(pageFiles.map(file => [file, new Set(reachableSourceFiles([file], allSourceFileSet, sourceIndex))]))
   const sourceFiles = [...new Set([...pageSources.values()].flatMap(files => [...files]))].sort()
-  await writePrettyJson(join(workDirectory, "kudzu-compatibility.json"), createCompatibilityReport(sourceFiles.map(file => ({ file: relative(root, file).replaceAll(sep, "/"), source: sourceIndex.get(file) }))))
+  const compatibility = createCompatibilityReport(sourceFiles.map(file => ({ file: relative(root, file).replaceAll(sep, "/"), source: sourceIndex.get(file) })))
+  await writePrettyJson(join(workDirectory, "kudzu-compatibility.json"), compatibility)
   const sourceFileSet = project.sourceFiles
   sourceFileSet.clear()
   for (const file of sourceFiles) sourceFileSet.add(file)
@@ -527,6 +537,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   const incremental = { compiledModules, renderedPages }
   return {
     result: { sourceResults, incremental },
+    inspectionData: { sourceFiles: sourceFiles.map(file => relative(root, file).replaceAll(sep, "/")), sourceResults, compatibility, artifacts },
     pageCount: routeRecords.length,
     behaviorCount,
     cache: { pageRenders, pageSources, placeholders, sourceResults: sourceResultsByFile }
