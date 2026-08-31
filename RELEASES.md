@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.16.10 - Apache Answer Authentication Journey
+
+Kudzu 0.16.10 promotes the existing Apache Answer authentication reduction from
+build-only evidence to a complete deterministic browser journey.
+
+### Changed in 0.16.10
+
+- Proves anonymous startup, invalid login, valid login, token persistence, and
+  token restoration after a full document reload.
+- Proves one layout-owned package-neutral session record updates the shared
+  header and settings route without a browser component tree.
+- Proves a server 401 clears storage and shared state before native replacement
+  navigation returns to the anonymous login document.
+- Runs the journey against a deterministic native test server while preserving
+  the public sibling as complete HTML with zero JavaScript.
+- Adds no compiler behavior, semantic primitive, IR kind, runtime concept,
+  package adapter, public API, or browser bytes.
+- Updates `create-kudzu@0.1.135` to generate projects on
+  `@kudzujs/core@^0.16.10`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.10
+```
+
 ## 0.16.9 - Compatibility Boundary And Inventory
 
 Kudzu 0.16.9 records deterministic package compatibility provenance from the

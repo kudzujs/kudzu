@@ -2,6 +2,19 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.10 Apache Answer Authentication Journey
+
+Measured 2026-08-31 on Linux x64 with Node 24.14.0 and required Chrome. The
+existing authentication fixture remains 17 deploy files and 36,441 raw / 15,598
+aggregate gzip B. The login route owns 25,684 raw / 11,372 gzip B, settings owns
+26,818 raw / 11,319 gzip B, and the public sibling owns zero JavaScript. Required
+Chrome verifies anonymous, invalid and valid login, token restore, shared
+header/settings state, 401 clearing, and replacement navigation against a
+deterministic server. No production source or deploy artifact changed. The
+maintained Worker graph remains 907 raw / 477 gzip B and the window graph remains
+14,456 raw / 6,160 gzip B. Seven clean builds record a 674.7 ms median on this
+loaded host; timing is not compared.
+
 ## 0.16.9 Compatibility Boundary And Inventory
 
 Measured 2026-08-31 on Linux x64 with Node 24.14.0 and required Chrome. The

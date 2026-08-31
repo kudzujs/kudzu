@@ -1651,6 +1651,24 @@ a 532.6 ms median without a timing comparison. This packet ships as the actual
 - **Stop condition:** client UI is treated as authorization.
 - **Done condition:** the complete journey passes against a deterministic server.
 
+Complete. The existing Apache Answer reduction now runs one required-Chrome
+journey against a deterministic native server. It proves anonymous startup,
+invalid and valid native form submission, token persistence and reload restore,
+layout-owned header/settings reads, a server 401 clearing storage and shared
+state, and replacement navigation back to the anonymous login document. The
+public sibling remains complete HTML with zero JavaScript.
+
+No authored fixture, compiler, IR, runtime, or deploy artifact changed. The
+packet adds one browser harness only: zero semantic primitives, ModuleIR kinds,
+passes, normalization entries, runtime concepts, public APIs, and browser bytes.
+The authentication fixture remains 17 deploy files and 36,441 raw / 15,598 gzip
+bytes; `/` owns 25,684 raw / 11,372 gzip bytes, `/settings` owns 26,818 raw /
+11,319 gzip bytes, and `/public` owns 0 JavaScript bytes. Worker and window
+graphs remain 907 raw / 477 gzip and 14,456 raw / 6,160 gzip bytes; seven clean
+Linux x64 builds record a 674.7 ms median without a timing comparison. This
+packet ships as the actual `0.16.10` patch, with `create-kudzu@0.1.135`, to
+retain the public `0.16.x` line.
+
 ### `0.19.2`: Apache Answer Connected Authoring Journey
 
 - **Purpose:** connect query, route, detail, create/edit, validation, mutation,
@@ -1929,3 +1947,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.18.2` | Released as `0.16.7` | Preserve on-demand retained editor mount, bidirectional updates, failure recovery, identity, exact cleanup, cached fresh remount, and static exclusion. | Patch release retained the `0.16.x` public version line |
 | `0.18.3` | Released as `0.16.8` | Preserve shared deferred ownership, interaction-only loading, native document module-map deduplication, exact owner cleanup, binding-aware import validation, and static exclusion. | Patch release retained the `0.16.x` public version line |
 | `0.19.0` | Released as `0.16.9` | Preserve the compatibility registry, reachable source inventory, exact ranges, and package-neutral output boundary. | Patch release retained the `0.16.x` public version line |
+| `0.19.1` | Released as `0.16.10` | Preserve anonymous, invalid/valid login, token restore, layout-shared session reads, 401 clear, replacement navigation, and public zero-JavaScript output. | Patch release retained the `0.16.x` public version line |

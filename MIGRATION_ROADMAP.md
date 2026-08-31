@@ -18,7 +18,7 @@ Apache Answer's `useTranslation()` cannot be folded safely because its language 
 
 Apache Answer's SWR/axios/qs question reads now have an executable migration path through one native fetch effect with application-owned loading/error/data state. Derived `page` and `order` query dependencies restart the effect, stale responses lose setter authority, recommendation endpoints and HTTP recovery remain explicit, nested keyed tags retain list ownership, and a static sibling remains JavaScript-free. No cache, Provider, retry scheduler, SWR, axios, or query runtime is added.
 
-Apache Answer authentication now has a reduced layout-owned session path: native login form submission persists a token, a mount effect restores and validates it, shared header/settings consumers read one package-neutral state record, and a 401 clears storage/state before native replacement navigation. The public sibling remains JavaScript-free. Full browser acceptance and the broader server-fed settings stores remain subsequent gates.
+Apache Answer authentication now has a browser-proven layout-owned session path: native login form submission persists a token, a mount effect restores and validates it, shared header/settings consumers read one package-neutral state record, and a 401 clears storage/state before native replacement navigation. A deterministic server verifies anonymous, invalid login, valid login, reload restoration, shared consumers, and expiry while the public sibling remains JavaScript-free. Broader server-fed settings stores remain a subsequent gate.
 
 Apache Answer's first route-shell gate replaces `RouterProvider` and nested `Outlet` ownership with seven directly addressable Kudzu file routes, one ordinary shared shell, native anchors, and runtime question/tag parameters. Questions, tags, admin dashboard, and unwrapped legal output build without a browser router; the two bracket routes emit only pathname capability and rewrite metadata.
 
@@ -51,7 +51,7 @@ Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts th
 - stronger JavaScript failure resilience;
 - no remaining material large-route build-scaling weakness.
 
-The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.19.1` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
+The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.19.2` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
 
 ### 0.10.0 Through 0.21.x: Application Capability Release Train
 

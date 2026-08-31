@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.16.9/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.16.10/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.16\.9 typescript/)
-  assert.match(docs, /Current 0\.16\.9 compatibility inventory.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.8.*4\.2-9\.9 KiB.*15 \/ 18/s)
-  assert.match(examples, /Release 0\.16\.9.*v0\.16\.9.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.16\.9.*v0\.16\.9.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.9".*Compatibility boundary and inventory/s)
-  assert.match(release, /Kudzu 0\.16\.9.*Know the boundary.*Keep it out of output/s)
-  assert.match(release, /REACHABLE SOURCE · STABLE CLASSES · ZERO RUNTIME.*COMPATIBILITY PROVENANCE.*npm install @kudzujs\/core@\^0\.16\.9/s)
-  assert.match(release, /<title>Kudzu 0\.16\.9 - Compatibility boundary and inventory<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.9"/)
-  assert.match(release, /Inspect reachable files.*Stop before IR.*Ship no provenance/s)
+  assert.match(docs, /@kudzujs\/core@\^0\.16\.10 typescript/)
+  assert.match(docs, /Current 0\.16\.10 authentication evidence.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.8.*4\.2-9\.9 KiB.*15 \/ 18/s)
+  assert.match(examples, /Release 0\.16\.10.*v0\.16\.10.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.16\.10.*v0\.16\.10.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.10".*Apache Answer authentication journey/s)
+  assert.match(release, /Kudzu 0\.16\.10.*Authenticate normally.*Own every transition/s)
+  assert.match(release, /NATIVE LOGIN · OWNED SESSION · ZERO NEW RUNTIME.*CONNECTED AUTHENTICATION.*npm install @kudzujs\/core@\^0\.16\.10/s)
+  assert.match(release, /<title>Kudzu 0\.16\.10 - Apache Answer authentication journey<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.10"/)
+  assert.match(release, /Start without a token.*Share one session.*Expire safely/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -2970,6 +2970,8 @@ test("owns Apache Answer authentication in shared layout state", async t => {
   assert.doesNotMatch(publicHtml, /<script|data-k-/)
   assert.equal(plans.find(route => route.route === "/").states[0].lifetime, "layout")
   assert.deepEqual(plans.find(route => route.route === "/public").states, [])
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runApacheAnswerAuthBrowserTest(fixture, chrome)
 })
 
 test("builds Apache Answer route shell without a browser router", async t => {
@@ -5211,6 +5213,115 @@ http.createServer((request, response) => {
     assert.ifError(browser.error)
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-answer-questions-test="pass"/)
+  } finally {
+    server.kill()
+  }
+}
+
+async function runApacheAnswerAuthBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const script = '<script type="module" src="/browser-test.js"></script>'
+  for (const path of ["index.html", "settings/index.html"]) {
+    const url = new URL(path, output)
+    await writeFile(url, (await readFile(url, "utf8")).replace("</body>", `${script}</body>`))
+  }
+  await writeFile(new URL("browser-test.js", output), `
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 200; index++) {
+    if (test()) return
+    await wait(10)
+  }
+  throw new Error(label)
+}
+const status = () => document.querySelector("[data-session-status]")?.textContent
+const user = () => document.querySelector("[data-session-user]")?.textContent
+try {
+  const phase = sessionStorage.getItem("answer-auth-phase") || "login"
+  if (phase === "login") {
+    await waitFor(() => status() === "anonymous", "anonymous")
+    const form = document.querySelector("form")
+    form.elements.email.value = "invalid@example.com"
+    form.elements.password.value = "wrong"
+    form.requestSubmit()
+    await waitFor(() => document.querySelector('[role="alert"]')?.textContent === "HTTP 401", "invalid-login")
+    if (status() !== "anonymous" || localStorage.getItem("answer-token")) throw new Error("invalid-session")
+    form.elements.email.value = "ada@example.com"
+    form.elements.password.value = "correct"
+    form.requestSubmit()
+    await waitFor(() => status() === "authenticated" && user() === "Ada", "valid-login")
+    if (localStorage.getItem("answer-token") !== "valid-token") throw new Error("stored-token")
+    document.querySelector('a[href="/settings"]').click()
+    await waitFor(() => location.pathname === "/settings" && status() === "authenticated" && document.querySelector("[data-protected-user]")?.textContent === "Ada", "shared-settings")
+    sessionStorage.setItem("answer-auth-phase", "restore")
+    location.reload()
+  } else if (phase === "restore") {
+    await waitFor(() => status() === "authenticated" && user() === "Ada" && document.querySelector("[data-protected-user]")?.textContent === "Ada", "token-restore")
+    sessionStorage.setItem("answer-auth-phase", "cleared")
+    document.querySelector("[data-check]").click()
+  } else {
+    await waitFor(() => location.pathname === "/" && status() === "anonymous", "401-replacement")
+    if (localStorage.getItem("answer-token")) throw new Error("401-token")
+    const stats = await fetch("/answer/api/test-stats").then(response => response.json())
+    if (stats.invalidLogins !== 1 || stats.validLogins !== 1 || stats.restores < 1 || stats.unauthorizedChecks !== 1) throw new Error("server-stats")
+    document.body.dataset.answerAuthTest = "pass"
+  }
+} catch (error) {
+  document.body.dataset.answerAuthTest = "fail-" + error.message
+}
+`)
+  const port = nextBrowserPort()
+  const serverSource = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+const root = process.argv[1], port = Number(process.argv[2])
+const stats = { invalidLogins: 0, validLogins: 0, restores: 0, unauthorizedChecks: 0 }
+http.createServer((request, response) => {
+  const url = new URL(request.url, "http://localhost")
+  if (url.pathname === "/answer/api/v1/user/login") {
+    let body = ""
+    request.on("data", chunk => { body += chunk })
+    return request.on("end", () => {
+      if (!body.includes("ada@example.com") || !body.includes("correct")) {
+        stats.invalidLogins++
+        response.statusCode = 401
+        return response.end("invalid")
+      }
+      stats.validLogins++
+      response.setHeader("content-type", "application/json")
+      response.end(JSON.stringify({ access_token: "valid-token", username: "Ada", is_admin: true }))
+    })
+  }
+  if (url.pathname === "/answer/api/v1/user/me") {
+    if (url.searchParams.get("check") === "1") {
+      stats.unauthorizedChecks++
+      response.statusCode = 401
+      return response.end("expired")
+    }
+    if (request.headers.authorization !== "Bearer valid-token") {
+      response.statusCode = 401
+      return response.end("invalid")
+    }
+    stats.restores++
+    response.setHeader("content-type", "application/json")
+    return response.end(JSON.stringify({ username: "Ada", is_admin: true }))
+  }
+  if (url.pathname === "/answer/api/test-stats") {
+    response.setHeader("content-type", "application/json")
+    return response.end(JSON.stringify(stats))
+  }
+  const relative = url.pathname === "/" ? "index.html" : url.pathname === "/settings" ? "settings/index.html" : url.pathname.slice(1)
+  const file = path.join(root, relative)
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(port, "127.0.0.1")
+`
+  const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: "ignore" })
+  await waitForServer(port)
+  try {
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=8000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 30000 })
+    assert.ifError(browser.error)
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-answer-auth-test="pass"/)
   } finally {
     server.kill()
   }

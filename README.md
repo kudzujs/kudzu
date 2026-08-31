@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.9 - Compatibility boundary and inventory.** Reachable authored package sites now receive deterministic compatibility classes and source ranges in a compiler-only report without entering semantic IR or browser output. Read the [release notes](./RELEASES.md#0169---compatibility-boundary-and-inventory), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.9), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.10 - Apache Answer authentication journey.** The existing layout-owned session reduction now passes anonymous, invalid and valid login, reload restoration, shared settings, and 401 replacement navigation against a deterministic server without compiler or browser-output changes. Read the [release notes](./RELEASES.md#01610---apache-answer-authentication-journey), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.10), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

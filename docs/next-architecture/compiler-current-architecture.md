@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.16.9` architecture, built on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The active application packet is `0.19.1`; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.16.10` architecture, built on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The active application packet is `0.19.2`; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
