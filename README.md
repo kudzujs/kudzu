@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.8 - Shared lazy capability graphs.** Multiple route owners now share one interaction-triggered CodeMirror graph, with lexical ownership validation and no loader, cache, or eager prefetch. Read the [release notes](./RELEASES.md#0168---shared-lazy-capability-graphs), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.8), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.9 - Compatibility boundary and inventory.** Reachable authored package sites now receive deterministic compatibility classes and source ranges in a compiler-only report without entering semantic IR or browser output. Read the [release notes](./RELEASES.md#0169---compatibility-boundary-and-inventory), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.9), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

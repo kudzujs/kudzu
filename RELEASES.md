@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.16.9 - Compatibility Boundary And Inventory
+
+Kudzu 0.16.9 records deterministic package compatibility provenance from the
+reachable authored source graph without changing semantic IR or browser output.
+
+### Changed in 0.16.9
+
+- Centralizes package identities and compatibility classifications used by
+  React, React Router, React Bootstrap, Zustand, `clsx`, and browser-signal
+  normalization.
+- Writes `.kudzu/kudzu-compatibility.json` from original, pre-normalization
+  source with package/API identity and exact line/column ranges.
+- Classifies sites as Native, Compiled, Normalized, Adapter, Owned External UI,
+  Partial, or Unsupported with stable rule names and deterministic ordering.
+- Includes only modules reachable from page entries; unused migration source is
+  excluded from the report just as it is from compilation.
+- Keeps package origin out of ComponentAnalysis, ModuleIR, RouteIR, codegen,
+  runtime modules, and deploy output. No plugin API or browser capability is
+  added.
+- Updates `create-kudzu@0.1.134` to generate projects on
+  `@kudzujs/core@^0.16.9`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.9
+```
+
 ## 0.16.8 - Shared Lazy Capability Graphs
 
 Kudzu 0.16.8 shares one deferred package graph across route owners while

@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.16.8` architecture, built on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The active application packet is `0.19.0`; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.16.9` architecture, built on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The active application packet is `0.19.1`; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 
@@ -11,6 +11,7 @@ This maps the current `0.16.8` architecture, built on the completed `0.9.0` sema
 | Parsed module cache and symbols | [`framework/compiler/project-session.mjs`](../../framework/compiler/project-session.mjs) | Parses each unchanged source module once per ProjectSession and records source-local declaration/import/re-export sites. Stable ModuleSymbol records resolve direct, aliased, barrel, and `export *` exports with cycle and ambiguity checks; repeated resolutions are cached against their source dependencies, and normalization consumers locate the resolved SiteId in a fresh clone with independent parent links. |
 | Build orchestration | [`framework/build.mjs`](../../framework/build.mjs), `build()`, `buildWithSession()` | Coordinates config, discovery, source compilation, RouteBuildRecord collection, CapabilityIR projection, generator invocation, artifact emission, and `afterBuild`. A retained session caches source results and pre-family route renders by page graph; successful builds alone replace that cache. |
 | Reachability/import resolution | [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `reachableSourceFiles()`; [`framework/compiler/source-graph.mjs`](../../framework/compiler/source-graph.mjs), `ordinaryRuntimeDependencies()`, `resolveSourceImport()` | Starts from page entries, follows relative runtime imports/re-exports and validated Worker references, excludes unreachable migration source, and fails unresolved ordinary edges or dynamic imports at the importer source location before code generation. A lazy package edge must resolve lexically to a named React or Kudzu `useEffect` import. |
+| Compatibility inventory | [`framework/compiler/compatibility-registry.mjs`](../../framework/compiler/compatibility-registry.mjs), `createCompatibilityReport()` | Classifies package/API sites in reachable original source as Native, Compiled, Normalized, Adapter, Owned External UI, Partial, or Unsupported and writes deterministic source ranges to `.kudzu/kudzu-compatibility.json`. Package provenance ends here and never enters semantic IR or browser output. |
 | Ordered normalization | [`framework/compiler/normalization-pipeline.mjs`](../../framework/compiler/normalization-pipeline.mjs), `applyNormalizationPasses()`; [`framework/compiler/source-compiler.mjs`](../../framework/compiler/source-compiler.mjs), `normalizeCompilerSource()` | Applies migration/resource passes in order and repairs TypeScript parent pointers after every structural change. Imported source uses the same pipeline. |
 | Focused normalization passes | [`framework/compiler/`](../../framework/compiler/) | React, Router, browser signals, animation-frame refs, custom-hook timers, Zustand, and render control each validate and lower a narrow source shape. |
 | Shared AST/scope helpers | [`framework/compiler/ast-helpers.mjs`](../../framework/compiler/ast-helpers.mjs) | Binding, scope, reference, inclusive ancestry, effect-return, and source-location analysis. |
@@ -43,6 +44,7 @@ This maps the current `0.16.8` architecture, built on the completed `0.9.0` sema
 src/pages entries + config
   -> ProjectSession(root) with project paths, source records, parsed/symbol caches, graph, and Worker compiler
   -> project discovery and reachable relative graph
+       -> classify original package sites into the scratch compatibility report
        -> in development, intersect changed paths with current and prior per-page graphs
        -> reuse unaffected SourceResult and pre-family route render records
   -> compileSource()

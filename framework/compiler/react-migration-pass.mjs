@@ -1,12 +1,13 @@
 import ts from "typescript"
 import { bindingNames, importDeclarationNames, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, loopDeclaresName, nearestFunction, nearestFunctionLike, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 import { analyzeCollectionPipeline, isArrayFromCall } from "./collection-analysis.mjs"
+import { compatibilityPackages } from "./compatibility-registry.mjs"
 
 export function createReactMigrationPass({ cloneAst, jsxTagName }) {
   function normalizeReactBootstrapLayout(sourceFile, factory, context) {
     const layouts = new Map()
     for (const statement of sourceFile.statements) {
-      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "react-bootstrap") continue
+      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== compatibilityPackages.reactBootstrap) continue
       const clause = statement.importClause
       if (!clause || clause.name || !clause.namedBindings || ts.isNamespaceImport(clause.namedBindings)) throw sourceNodeError(statement, sourceFile, "React Bootstrap layout migration requires named Row or Col imports")
       for (const entry of clause.namedBindings.elements) {
@@ -52,7 +53,7 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
       }
       if (ts.isJsxSelfClosingElement(node) && layout(node.tagName)) return factory.updateJsxSelfClosingElement(node, factory.createIdentifier("div"), node.typeArguments, attributes(node.attributes))
       if (ts.isIdentifier(node) && layouts.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Bootstrap Row and Col imports may only be used as direct JSX elements")
-      if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-bootstrap") {
+      if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === compatibilityPackages.reactBootstrap) {
         const clause = node.importClause
         const bindings = clause?.namedBindings
         if (!clause || !bindings || !ts.isNamedImports(bindings)) return node
@@ -71,7 +72,7 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
     const aliases = new Map()
     const reactObjects = new Set()
     for (const statement of sourceFile.statements) {
-      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "react") continue
+      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== compatibilityPackages.react) continue
       if (statement.importClause?.name) reactObjects.add(statement.importClause.name.text)
       const bindings = statement.importClause?.namedBindings
       if (bindings && ts.isNamespaceImport(bindings)) reactObjects.add(bindings.name.text)
@@ -257,7 +258,7 @@ export function createReactMigrationPass({ cloneAst, jsxTagName }) {
     const missing = [...required].filter(name => !imported.has(name)).sort()
     if (!missing.length) return normalizeReactBootstrapLayout(normalized, factory, context)
     for (const name of missing) {
-      const collision = sourceFile.statements.some(statement => statementDeclaresName(statement, name) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name) && statement.moduleSpecifier.text !== "react")
+      const collision = sourceFile.statements.some(statement => statementDeclaresName(statement, name) || ts.isImportDeclaration(statement) && importDeclarationNames(statement).includes(name) && statement.moduleSpecifier.text !== compatibilityPackages.react)
       if (collision) throw sourceNodeError(sourceFile, sourceFile, `React.${name} cannot be normalized because ${JSON.stringify(name)} is already declared`)
     }
     const declaration = factory.createImportDeclaration(undefined, factory.createImportClause(false, undefined, factory.createNamedImports(missing.map(name => factory.createImportSpecifier(false, undefined, factory.createIdentifier(name))))), factory.createStringLiteral("react"))

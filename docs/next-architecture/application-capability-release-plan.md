@@ -1615,6 +1615,34 @@ comparison. This packet ships as the actual `0.16.8` patch to retain the public
 - **Done condition:** existing React Router, Bootstrap, Zustand, and browser
   normalizations preserve output and diagnostics.
 
+Implementation and release-candidate evidence complete. One internal registry
+now owns package identities and classifies original reachable import, re-export,
+and literal dynamic-import sites before normalization. The deterministic
+`.kudzu/kudzu-compatibility.json` report records package/API identity, stable
+rule, Native, Compiled, Normalized, Adapter, Owned External UI, Partial, or
+Unsupported treatment, and exact authored line/column range. Type-only,
+relative, Node, Kudzu-first-party, and unreachable source stays outside the
+inventory.
+
+React Router, React Bootstrap, Zustand, React migration, browser-signal, `clsx`,
+and i18next recognition reuse the registry's package identities. Focused tests
+cover all seven classes, aliases, exact ranges, deterministic ordering, and a
+real build where an unreachable unsupported module is excluded. Existing
+project output baselines and package diagnostics remain green. Package origin
+does not enter SourceResult, ComponentAnalysis, ModuleIR, RouteIR, codegen,
+runtime files, `afterBuild()`, or deploy output.
+
+The slice adds zero semantic primitives, IR kinds, compiler passes,
+normalization entries, runtime concepts/files, browser bytes, or public APIs.
+Production compiler/orchestration changes are 161 added and 13 removed lines,
+including the 141-line registry, for +148 net compatibility/build lines and zero
+core semantic LOC. `npm run check`, 290 required-Chrome tests, package smoke,
+and the maintained benchmark pass. Worker and window graphs remain 907 raw /
+477 gzip and 14,456 raw / 6,160 gzip bytes; seven clean Linux x64 builds record
+a 532.6 ms median without a timing comparison. This packet ships as the actual
+`0.16.9` patch, with `create-kudzu@0.1.134`, to retain the public
+`0.16.x` line.
+
 ### `0.19.1`: Apache Answer Authentication Journey
 
 - **Purpose:** promote the existing build-only auth fixture to browser evidence.
@@ -1900,3 +1928,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.18.1` | Released as `0.16.6` | Preserve one guarded literal package edge, native module-map deduplication, exact owner cleanup, deferred artifact ownership, and static exclusion. | Patch release retained the `0.16.x` public version line |
 | `0.18.2` | Released as `0.16.7` | Preserve on-demand retained editor mount, bidirectional updates, failure recovery, identity, exact cleanup, cached fresh remount, and static exclusion. | Patch release retained the `0.16.x` public version line |
 | `0.18.3` | Released as `0.16.8` | Preserve shared deferred ownership, interaction-only loading, native document module-map deduplication, exact owner cleanup, binding-aware import validation, and static exclusion. | Patch release retained the `0.16.x` public version line |
+| `0.19.0` | Released as `0.16.9` | Preserve the compatibility registry, reachable source inventory, exact ranges, and package-neutral output boundary. | Patch release retained the `0.16.x` public version line |

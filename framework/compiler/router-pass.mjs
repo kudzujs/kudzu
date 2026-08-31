@@ -1,5 +1,6 @@
 import ts from "typescript"
 import { bindingNames, functionVarDeclaresName, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedIdentifier, loopDeclaresName, nearestFunction, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
+import { compatibilityPackages } from "./compatibility-registry.mjs"
 
 export function createRouterPass({ withBase }) {
   return function normalizeReactRouterSyntax(sourceFile, factory, context, base, importedCollections = new Map()) {
@@ -9,7 +10,7 @@ export function createRouterPass({ withBase }) {
     const searchHooks = new Set()
     const navigateHooks = new Set()
     for (const statement of sourceFile.statements) {
-      if ((ts.isExportDeclaration(statement) || ts.isImportDeclaration(statement)) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react-router-dom") {
+      if ((ts.isExportDeclaration(statement) || ts.isImportDeclaration(statement)) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === compatibilityPackages.reactRouter) {
         if (ts.isExportDeclaration(statement)) throw sourceNodeError(statement, sourceFile, "React Router exports are not supported; import Link directly where it renders")
         const clause = statement.importClause
         if (clause?.isTypeOnly) continue
@@ -306,7 +307,7 @@ export function createRouterPass({ withBase }) {
       if (ts.isIdentifier(node) && matchHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useMatch imports may only initialize the supported top-level const binding")
       if (ts.isIdentifier(node) && searchHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useSearchParams imports may only initialize the supported top-level tuple binding")
       if (ts.isIdentifier(node) && navigateHooks.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile)) throw sourceNodeError(node, sourceFile, "React Router useNavigate imports may only initialize the supported top-level navigate binding")
-      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "react-router-dom") {
+      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === compatibilityPackages.reactRouter) {
         const clause = node.importClause
         if (!clause || clause.isTypeOnly) return node
         const bindings = clause.namedBindings

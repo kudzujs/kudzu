@@ -51,7 +51,7 @@ Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts th
 - stronger JavaScript failure resilience;
 - no remaining material large-route build-scaling weakness.
 
-The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.19.0` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
+The completed 0.9 plan defines the cross-framework comparison and release gate. The active application packet is `0.19.1` in the capability release plan below. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
 
 ### 0.10.0 Through 0.21.x: Application Capability Release Train
 

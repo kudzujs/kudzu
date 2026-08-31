@@ -8,6 +8,7 @@ import { normalizeEffectPrivateRefs } from "./effect-private-ref-pass.mjs"
 import { bindingNames, containsJsx, effectReturns, functionVarDeclaresName, importDeclarationNames, isFunctionLike, isLocalConst, isReferenceIdentifier, isShadowedByParameter, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceLocation, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 import { normalizeMediaQueryExternalStores, normalizeNavigatorCapabilityConditions } from "./browser-signal-passes.mjs"
 import { analyzeCollectionPipeline, collectionExpression, collectionParameters, isArrayFromCall, mutatingCollectionMethods as mutatingListMethods, pureCollectionMathMethods as pureMathMethods, pureCollectionMethods as pureListMethods } from "./collection-analysis.mjs"
+import { compatibilityPackages } from "./compatibility-registry.mjs"
 import { normalizeCustomHookTimerRefs } from "./custom-hook-timer-pass.mjs"
 import { captureNames, createDescriptorSession, createSemanticArtifact, nativeCaptureNames, referencedReducerDispatches, referencedStateNames } from "./descriptor-session.mjs"
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "./effect-analysis.mjs"
@@ -170,7 +171,7 @@ function reachableSourceFiles(entries, sourceFiles, sourceIndex) {
 function normalizeClsxSyntax(sourceFile, factory, context) {
   const names = new Set()
   for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "clsx") continue
+    if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== compatibilityPackages.clsx) continue
     if (statement.importClause?.name) names.add(statement.importClause.name.text)
     const bindings = statement.importClause?.namedBindings
     if (bindings && ts.isNamedImports(bindings)) for (const entry of bindings.elements) if (!entry.isTypeOnly && (entry.propertyName ?? entry.name).text === "clsx") names.add(entry.name.text)
@@ -197,7 +198,7 @@ function normalizeClsxSyntax(sourceFile, factory, context) {
   const visitor = node => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && names.has(node.expression.text) && !isShadowedIdentifier(node.expression, sourceFile)) return combine(node.arguments.map(lower))
     if (ts.isIdentifier(node) && names.has(node.text) && isReferenceIdentifier(node) && !isShadowedIdentifier(node, sourceFile) && !(ts.isCallExpression(node.parent) && node.parent.expression === node)) throw sourceNodeError(node, sourceFile, "clsx imports may only be called directly")
-    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "clsx") {
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === compatibilityPackages.clsx) {
       const clause = node.importClause
       if (!clause || clause.isTypeOnly) return node
       let bindings = clause.namedBindings
@@ -403,7 +404,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     for (const [name, binding] of packageBindings) {
       const references = referenceIdentifiers(sourceFile, name)
       const invalid = references.find(reference => !insideJsxEventHandler(reference, sourceFile) && !insideOwnedEffectCallback(reference, sourceFile))
-      if (invalid && binding.target === "react-i18next" && binding.imported === "useTranslation") throw sourceNodeError(invalid, sourceFile, "React i18next useTranslation() depends on runtime locale resources; migrate build-known locales through getStaticPaths() and props, or browser-only locale reads through an owned effect")
+      if (invalid && binding.target === compatibilityPackages.reactI18next && binding.imported === "useTranslation") throw sourceNodeError(invalid, sourceFile, "React i18next useTranslation() depends on runtime locale resources; migrate build-known locales through getStaticPaths() and props, or browser-only locale reads through an owned effect")
       if (invalid) throw sourceNodeError(invalid, sourceFile, `Package import ${JSON.stringify(name)} may only be referenced directly inside JSX event handlers or owned effect setup/cleanup callbacks`)
     }
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && ["@kudzujs/core", "react"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))

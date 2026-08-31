@@ -8,6 +8,7 @@ import { createComponentAnalysis, createComponentAnalysisSession } from "../fram
 import { sourceNodeError } from "../framework/compiler/ast-helpers.mjs"
 import { analyzeCollectionPipeline, collectionExpression } from "../framework/compiler/collection-analysis.mjs"
 import { generateCommandBehavior } from "../framework/compiler/codegen/command-codegen.mjs"
+import { createCompatibilityReport } from "../framework/compiler/compatibility-registry.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "../framework/compiler/effect-analysis.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
@@ -28,6 +29,63 @@ import { compileSource, createSourceCompiler, reachableSourceFiles } from "../fr
 import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
 
 const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
+
+test("classifies compatibility sites deterministically from authored source", () => {
+  const sources = [{ file: "src/pages/index.tsx", source: [
+    'import { Link as RouterLink } from "react-router-dom"',
+    'import { useState, useTransition } from "react"',
+    'import clsx from "clsx"',
+    'import { create } from "zustand"',
+    'import { Chart } from "chart.js/auto"',
+    'import { useTranslation } from "react-i18next"',
+    'import type { ReactNode } from "react"',
+    'import { useEffect } from "@kudzujs/core"',
+    'import { local } from "../local"'
+  ].join("\n") }, { file: "src/z.ts", source: 'import { Row } from "react-bootstrap"' }]
+  const report = createCompatibilityReport(sources)
+
+  assert.deepEqual(report.summary, {
+    Native: 1,
+    Compiled: 1,
+    Normalized: 2,
+    Adapter: 1,
+    "Owned External UI": 1,
+    Partial: 1,
+    Unsupported: 1
+  })
+  assert.deepEqual(report.sites.map(site => [site.package, site.imported, site.local, site.classification, site.rule, site.location.line]), [
+    ["react-router-dom", "Link", "RouterLink", "Native", "react-router-dom.native", 1],
+    ["react", "useState", undefined, "Compiled", "react.compiled", 2],
+    ["react", "useTransition", undefined, "Partial", "react.partial", 2],
+    ["clsx", "default", "clsx", "Normalized", "clsx.normalized", 3],
+    ["zustand", "create", undefined, "Adapter", "zustand.adapter", 4],
+    ["chart.js/auto", "Chart", undefined, "Owned External UI", "owned-external-ui", 5],
+    ["react-i18next", "useTranslation", undefined, "Unsupported", "react-i18next.unsupported", 6],
+    ["react-bootstrap", "Row", undefined, "Normalized", "react-bootstrap.normalized", 1]
+  ])
+  assert.deepEqual(report.sites[0].location, { line: 1, column: 10, endLine: 1, endColumn: 28 })
+  assert.deepEqual(createCompatibilityReport([...sources].reverse()), report)
+})
+
+test("keeps package subpaths and import forms inside their actual boundary", () => {
+  const report = createCompatibilityReport([{ file: "src/forms.ts", source: [
+    'import "chart.js"',
+    'import { Link } from "react-router-dom/server"',
+    'import { helper } from "unknown-package"',
+    'const owned = () => import("typed.js")',
+    'const contextual = () => import("another-package")',
+    'const invalid = () => import("react")'
+  ].join("\n") }])
+
+  assert.deepEqual(report.sites.map(site => [site.package, site.kind, site.classification, site.rule]), [
+    ["chart.js", "side-effect-import", "Unsupported", "package.side-effect.unsupported"],
+    ["react-router-dom/server", "import", "Partial", "package.contextual"],
+    ["unknown-package", "import", "Partial", "package.contextual"],
+    ["typed.js", "dynamic-import", "Partial", "package.dynamic.partial"],
+    ["another-package", "dynamic-import", "Partial", "package.dynamic.partial"],
+    ["react", "dynamic-import", "Partial", "package.dynamic.partial"]
+  ])
+})
 
 test("repairs parents before the next normalization pass", () => {
   const source = ts.createSourceFile("pass.ts", "", ts.ScriptTarget.Latest, true)

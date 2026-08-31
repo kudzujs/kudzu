@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
+import { createCompatibilityReport } from "./compiler/compatibility-registry.mjs"
 import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
 import { createProjectSession } from "./compiler/project-session.mjs"
@@ -103,6 +104,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   if (!pageFiles.length) throw new Error("No pages found in src/pages/")
   const pageSources = new Map(pageFiles.map(file => [file, new Set(reachableSourceFiles([file], allSourceFileSet, sourceIndex))]))
   const sourceFiles = [...new Set([...pageSources.values()].flatMap(files => [...files]))].sort()
+  await writePrettyJson(join(workDirectory, "kudzu-compatibility.json"), createCompatibilityReport(sourceFiles.map(file => ({ file: relative(root, file).replaceAll(sep, "/"), source: sourceIndex.get(file) }))))
   const sourceFileSet = project.sourceFiles
   sourceFileSet.clear()
   for (const file of sourceFiles) sourceFileSet.add(file)

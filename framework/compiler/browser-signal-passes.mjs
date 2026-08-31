@@ -1,8 +1,9 @@
 import ts from "typescript"
 import { bindingNames, containsJsx, functionVarDeclaresName, importDeclarationNames, isNodeWithin, isShadowedIdentifier, isUnshadowedGlobal, nearestFunction, referenceIdentifiers, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
+import { compatibilityPackages } from "./compatibility-registry.mjs"
 
 export function normalizeMediaQueryExternalStores(sourceFile, factory, context) {
-    const imports = sourceFile.statements.filter(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "react" && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings))
+    const imports = sourceFile.statements.filter(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === compatibilityPackages.react && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings))
     const externalStoreImport = imports.flatMap(statement => statement.importClause.namedBindings.elements.map(entry => ({ entry, statement }))).find(({ entry }) => !entry.isTypeOnly && !entry.propertyName && entry.name.text === "useSyncExternalStore")
     if (!externalStoreImport) return sourceFile
     const returnedExpression = callback => {

@@ -1,12 +1,13 @@
 import { relative, sep } from "node:path"
 import ts from "typescript"
 import { isReferenceIdentifier, isShadowedIdentifier, nearestFunction, sourceNodeError, unwrapExpression } from "./ast-helpers.mjs"
+import { compatibilityPackages } from "./compatibility-registry.mjs"
 
 export function createZustandPass({ isSerializableStateLiteral, nativeCaptureNames, sourceDirectory }) {
   function analyzeZustandStores(sourceFile) {
     const createNames = new Set()
     for (const statement of sourceFile.statements) {
-      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== "zustand") continue
+      if (!ts.isImportDeclaration(statement) || statement.importClause?.isTypeOnly || !ts.isStringLiteral(statement.moduleSpecifier) || statement.moduleSpecifier.text !== compatibilityPackages.zustand) continue
       const bindings = statement.importClause?.namedBindings
       if (statement.importClause?.name || !bindings || !ts.isNamedImports(bindings)) throw sourceNodeError(statement, sourceFile, "Zustand migration input requires a named create import")
       for (const entry of bindings.elements) {
@@ -77,7 +78,7 @@ export function createZustandPass({ isSerializableStateLiteral, nativeCaptureNam
   function normalizeZustandMigrationSyntax(sourceFile, factory, context) {
     const stores = analyzeZustandStores(sourceFile)
     if (!stores.size) {
-      const declaration = sourceFile.statements.find(statement => ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "zustand" && !statement.importClause?.isTypeOnly)
+      const declaration = sourceFile.statements.find(statement => ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === compatibilityPackages.zustand && !statement.importClause?.isTypeOnly)
       if (declaration) throw sourceNodeError(declaration, sourceFile, "Zustand create must directly initialize an exported const store")
       return sourceFile
     }
@@ -92,7 +93,7 @@ export function createZustandPass({ isSerializableStateLiteral, nativeCaptureNam
           factory.createStringLiteral(store.sourceKind)
         ]))
       }
-      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "zustand") return undefined
+      if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === compatibilityPackages.zustand) return undefined
       return ts.visitEachChild(node, visitor, context)
     }
     const normalized = ts.visitNode(sourceFile, visitor)

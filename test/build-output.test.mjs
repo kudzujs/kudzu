@@ -160,7 +160,7 @@ export default function Page() {
   assert.deepEqual(second.sourceResults.map(result => result.file), ["src/label.ts", "src/pages/index.tsx"])
   assert.match(await readFile(join(roots[0], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
   assert.match(await readFile(join(roots[1], ".kudzu", "pages", "index.mjs"), "utf8"), /\.\.\/label\.mjs/)
-  for (const root of roots) for (const name of ["kudzu-plan.json", "kudzu-artifacts.json"]) {
+  for (const root of roots) for (const name of ["kudzu-plan.json", "kudzu-artifacts.json", "kudzu-compatibility.json"]) {
     const json = await readFile(join(root, ".kudzu", name), "utf8")
     assert.equal(json, JSON.stringify(JSON.parse(json), null, 2))
   }
@@ -168,6 +168,25 @@ export default function Page() {
   const secondWorker = (await readdir(join(roots[1], "dist", "assets", "workers"))).find(file => file.startsWith("task.worker-"))
   assert.match(await readFile(join(roots[0], "dist", "assets", "workers", firstWorker), "utf8"), /First project worker/)
   assert.match(await readFile(join(roots[1], "dist", "assets", "workers", secondWorker), "utf8"), /Second project worker/)
+})
+
+test("reports compatibility only from reachable authored source", async t => {
+  const fixture = await mkdtemp(resolve("test/fixtures/compatibility-report-"))
+  t.after(() => rm(fixture, { recursive: true, force: true }))
+  await mkdir(join(fixture, "src", "pages"), { recursive: true })
+  await writeFile(join(fixture, "src", "pages", "index.tsx"), `
+import { Link as RouterLink } from "react-router-dom"
+export default function Page() { return <RouterLink to="/about">About</RouterLink> }
+`)
+  await writeFile(join(fixture, "src", "unused.tsx"), `import { useTranslation } from "react-i18next"`)
+
+  await buildProject({ root: fixture, quiet: true, minify: false })
+  const reportText = await readFile(join(fixture, ".kudzu", "kudzu-compatibility.json"), "utf8")
+  const report = JSON.parse(reportText)
+  assert.equal(reportText, JSON.stringify(report, null, 2))
+  assert.deepEqual(report.summary, { Native: 1, Compiled: 0, Normalized: 0, Adapter: 0, "Owned External UI": 0, Partial: 0, Unsupported: 0 })
+  assert.deepEqual(report.sites.map(site => [site.file, site.package, site.imported, site.classification, site.location.line]), [["src/pages/index.tsx", "react-router-dom", "Link", "Native", 2]])
+  assert.doesNotMatch(await readFile(join(fixture, "dist", "index.html"), "utf8"), /react-router-dom|react-i18next/)
 })
 
 test("incremental builds compile and render only affected routes", async t => {

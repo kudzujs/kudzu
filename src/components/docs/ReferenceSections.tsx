@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.16.8 shared lazy graph gate</strong><span>Two route owners share one deferred CodeMirror graph, navigation does not preload it, and native ESM prevents duplicate requests; the prior macOS sweep still covers the broader competitive matrix.</span></div>
+    <div className="docs-callout"><strong>Current 0.16.9 compatibility inventory</strong><span>Reachable authored package sites are classified with source ranges before normalization without entering semantic IR or browser output; the prior benchmark sweep still covers the competitive matrix.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],
