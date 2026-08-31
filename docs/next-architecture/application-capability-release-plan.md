@@ -1570,6 +1570,37 @@ packet ships as the actual `0.16.7` patch to retain the public `0.16.x` line.
 - **Done condition:** policy minimizes unused transfer while meeting accepted
   interaction latency.
 
+**Completion evidence:** two enhanced-navigation route owners now use one
+deferred CodeMirror graph. Existing multi-entry esbuild splitting emits one
+250,086 raw / 80,890 gzip byte chunk, and the existing artifact report records
+that exact lazy path as shared by `/` and `/second`. Their eager graphs remain
+21,599 raw / 9,466 gzip and 21,609 raw / 9,468 gzip bytes. Neither route HTML
+preloads the deferred chunk, navigation document prefetch does not request it,
+and the static sibling remains complete HTML with 0 B JavaScript.
+
+Required Chrome proves zero requests before interaction, one request when the
+first owner activates, exact disposal, no route-triggered request, and no second
+request when the second owner activates. The selected policy is therefore no
+optional package preload: interaction calls native `import()` immediately, the
+browser module map deduplicates it for the document lifetime, and Kudzu owns no
+additional cache. Native ESM imports cannot be cancelled after request; owner
+cleanup invalidates the callback and prevents a late mount rather than claiming
+network cancellation.
+
+The released lazy-import gate is also hardened before closing the packet.
+`ownedLazyPackageImport()` now resolves the callback callee through the existing
+lexical binding index and accepts only named `useEffect` imports from React or
+Kudzu. A local function with the same text can no longer bypass the ordinary
+dynamic-import diagnostic. The packet adds no semantic primitive, IR kind,
+compiler pass, public API, runtime concept/file, loader, prefetch registry, or
+cache. Four existing compiler files change by 17 added and eight removed lines.
+The artifact collector covers ten fixtures and 32 routes. `npm run check`, 288
+required-Chrome tests, package smoke, and the maintained benchmark pass. Worker
+and window graphs remain 907 raw / 477 gzip and 14,456 raw / 6,160 gzip bytes;
+the loaded Linux host records a 696.6 ms seven-build median without a timing
+comparison. This packet ships as the actual `0.16.8` patch to retain the public
+`0.16.x` line.
+
 ## `0.19.x`: React Ecosystem Migration
 
 ### `0.19.0`: Compatibility Boundary And Inventory
@@ -1868,4 +1899,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.18.0` | Closed by existing artifact reporting | Preserve exact route/source ownership, bytes, hashes, preload equality, zero-JavaScript controls, and bounded prefetch policy. | No production change; no release consumed |
 | `0.18.1` | Released as `0.16.6` | Preserve one guarded literal package edge, native module-map deduplication, exact owner cleanup, deferred artifact ownership, and static exclusion. | Patch release retained the `0.16.x` public version line |
 | `0.18.2` | Released as `0.16.7` | Preserve on-demand retained editor mount, bidirectional updates, failure recovery, identity, exact cleanup, cached fresh remount, and static exclusion. | Patch release retained the `0.16.x` public version line |
-| `0.18.3` | Active | Measure shared deferred graphs and choose the smallest evidence-backed prefetch policy. | None |
+| `0.18.3` | Released as `0.16.8` | Preserve shared deferred ownership, interaction-only loading, native document module-map deduplication, exact owner cleanup, binding-aware import validation, and static exclusion. | Patch release retained the `0.16.x` public version line |

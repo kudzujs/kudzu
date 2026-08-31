@@ -127,7 +127,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   const docs = await readFile(new URL("../dist/docs/index.html", import.meta.url), "utf8")
   const examples = await readFile(new URL("../dist/example/index.html", import.meta.url), "utf8")
   const blog = await readFile(new URL("../dist/example/blog/personal/index.html", import.meta.url), "utf8")
-  const release = await readFile(new URL("../dist/releases/0.16.7/index.html", import.meta.url), "utf8")
+  const release = await readFile(new URL("../dist/releases/0.16.8/index.html", import.meta.url), "utf8")
   const component = await readFile(new URL("../.kudzu/pages/index.mjs", import.meta.url), "utf8")
   const plan = JSON.parse(await readFile(new URL("../.kudzu/kudzu-plan.json", import.meta.url), "utf8"))
   const home = plan.routes.find(route => route.route === "/")
@@ -144,16 +144,16 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(html, /hero-code.*tok-keyword/s)
   assert.match(docs, /Zustand stores.*shared layout.*Values survive enhanced navigation.*persist\/devtools wrappers/s)
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
-  assert.match(docs, /@kudzujs\/core@\^0\.16\.7 typescript/)
-  assert.match(docs, /Current 0\.16\.7 lazy editor gate.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.7.*4\.2-9\.9 KiB.*15 \/ 18/s)
-  assert.match(examples, /Release 0\.16\.7.*v0\.16\.7.*KUDZU EXAMPLE CATALOG/s)
-  assert.match(blog, /Kudzu 0\.16\.7.*v0\.16\.7.*source compiled by the current Kudzu release/s)
-  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.7".*Lazy retained editor lifecycle/s)
-  assert.match(release, /Kudzu 0\.16\.7.*Open the editor.*Only load it once/s)
-  assert.match(release, /LAZY PACKAGE · RETAINED IDENTITY · EXACT CLEANUP.*REAL EDITOR JOURNEY.*npm install @kudzujs\/core@\^0\.16\.7/s)
-  assert.match(release, /<title>Kudzu 0\.16\.7 - Lazy retained editor lifecycle<\/title>/)
-  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.7"/)
-  assert.match(release, /Load on demand.*Retain updates.*Reset on revisit/s)
+  assert.match(docs, /@kudzujs\/core@\^0\.16\.8 typescript/)
+  assert.match(docs, /Current 0\.16\.8 shared lazy graph gate.*138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.8.*4\.2-9\.9 KiB.*15 \/ 18/s)
+  assert.match(examples, /Release 0\.16\.8.*v0\.16\.8.*KUDZU EXAMPLE CATALOG/s)
+  assert.match(blog, /Kudzu 0\.16\.8.*v0\.16\.8.*source compiled by the current Kudzu release/s)
+  assert.match(html, /class="release-banner" href="\/releases\/0\.16\.8".*Shared lazy capability graphs/s)
+  assert.match(release, /Kudzu 0\.16\.8.*Share the graph.*Load on interaction/s)
+  assert.match(release, /SHARED GRAPH · NATIVE ESM · LEXICAL OWNERSHIP.*TWO ROUTE OWNERS.*npm install @kudzujs\/core@\^0\.16\.8/s)
+  assert.match(release, /<title>Kudzu 0\.16\.8 - Shared lazy capability graphs<\/title>/)
+  assert.match(release, /rel="canonical" href="https:\/\/kudzujs\.cloud\/releases\/0\.16\.8"/)
+  assert.match(release, /Defer once.*Navigate without prefetch.*Reject false owners/s)
   assert.doesNotMatch(release, /<script/)
   assert.doesNotMatch(component, /from ["']react["']/)
   assert.match(component, /const \[count, setCount\] = useState\(0, "count"\)/)
@@ -4158,6 +4158,30 @@ test("lazily owns a real CodeMirror editor lifecycle", async t => {
   if (chrome) await runLazyCodeMirrorEditorBrowserTest(fixture, chrome)
 })
 
+test("shares one deferred CodeMirror graph across route owners", async t => {
+  const fixture = new URL("./fixtures/shared-lazy-codemirror", import.meta.url)
+  t.after(async () => {
+    await rm(new URL("./fixtures/shared-lazy-codemirror/.kudzu", import.meta.url), { recursive: true, force: true })
+    await rm(new URL("./fixtures/shared-lazy-codemirror/dist", import.meta.url), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const artifacts = JSON.parse(await readFile(new URL("./fixtures/shared-lazy-codemirror/.kudzu/kudzu-artifacts.json", import.meta.url), "utf8"))
+  const first = artifacts.routes.find(route => route.route === "/")
+  const second = artifacts.routes.find(route => route.route === "/second")
+  const shared = artifacts.sharedChunks.filter(chunk => chunk.routes.includes("/") && chunk.routes.includes("/second") && first.handlers.lazyChunks.includes(chunk.path) && second.handlers.lazyChunks.includes(chunk.path))
+  assert.equal(shared.length, 1)
+  assert.equal(first.handlers.lazyChunks.filter(path => second.handlers.lazyChunks.includes(path)).length, 1)
+  for (const path of ["index.html", "second/index.html"]) {
+    const html = await readFile(new URL(`./fixtures/shared-lazy-codemirror/dist/${path}`, import.meta.url), "utf8")
+    assert.doesNotMatch(html, new RegExp(shared[0].path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+  }
+  const staticHtml = await readFile(new URL("./fixtures/shared-lazy-codemirror/dist/static/index.html", import.meta.url), "utf8")
+  assert.doesNotMatch(staticHtml, /<script|modulepreload|codemirror/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runSharedLazyCodeMirrorBrowserTest(fixture, chrome, shared[0].path)
+})
+
 test("owns a real Chart.js canvas lifecycle", async t => {
   const fixture = new URL("./fixtures/chartjs-lifecycle", import.meta.url)
   t.after(async () => {
@@ -4298,6 +4322,13 @@ test("rejects lazy package imports without an activation-state guard", () => {
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
   assert.match(`${result.stdout}\n${result.stderr}`, /Dynamic package import requires one direct dependency-state guard as the first effect statement/)
+})
+
+test("rejects lazy package imports inside shadowed effect calls", () => {
+  const fixture = new URL("./fixtures/lazy-package-shadowed-invalid", import.meta.url)
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.notEqual(result.status, 0)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Dynamic import "@codemirror\/view" is not supported in ordinary source modules/)
 })
 
 test("compiles normal async JavaScript handlers to external ESM", async t => {
@@ -8955,6 +8986,42 @@ try {
 }
 `,
     scenarios: [{ path: "/", attribute: "data-lazy-code-mirror-editor-test", value: "pass" }],
+    virtualTime: 8000,
+  })
+}
+
+async function runSharedLazyCodeMirrorBrowserTest(fixture, chrome, sharedChunk) {
+  await runResourceBrowserScenarios(fixture, chrome, {
+    script: `
+const waitFor = async (test, label) => {
+  for (let index = 0; index < 150; index++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  throw new Error(label)
+}
+const chunkRequests = () => performance.getEntriesByType("resource").filter(entry => new URL(entry.name).pathname === ${JSON.stringify(sharedChunk)}).length
+try {
+  if (chunkRequests() !== 0 || document.querySelector(".cm-editor")) throw new Error("eager-load")
+  document.querySelector("[data-toggle-shared-editor]").click()
+  await waitFor(() => document.querySelector(".cm-content")?.textContent === "First editor" && document.body.dataset.sharedLazyMounts === "1", "first-owner-mount")
+  if (chunkRequests() !== 1) throw new Error("first-owner-request")
+  document.querySelector("[data-toggle-shared-editor]").click()
+  await waitFor(() => !document.querySelector(".cm-editor") && document.body.dataset.sharedLazyDisposals === "1", "first-owner-disposal")
+  document.querySelector("[data-second-page]").click()
+  await waitFor(() => document.querySelector('[data-shared-lazy-page="second"]'), "second-route")
+  if (chunkRequests() !== 1 || document.querySelector(".cm-editor")) throw new Error("route-prefetch")
+  document.querySelector("[data-toggle-shared-editor]").click()
+  await waitFor(() => document.querySelector(".cm-content")?.textContent === "Second editor" && document.body.dataset.sharedLazyMounts === "2", "second-owner-mount")
+  if (chunkRequests() !== 1) throw new Error("duplicate-fetch")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await waitFor(() => document.body.dataset.sharedLazyDisposals === "2", "document-disposal")
+  document.body.dataset.sharedLazyCodeMirrorTest = "pass"
+} catch (error) {
+  document.body.dataset.sharedLazyCodeMirrorTest = "fail-" + error.message
+}
+`,
+    scenarios: [{ path: "/", attribute: "data-shared-lazy-code-mirror-test", value: "pass" }],
     virtualTime: 8000,
   })
 }

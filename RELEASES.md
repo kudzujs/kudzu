@@ -1,5 +1,40 @@
 # Kudzu Releases
 
+## 0.16.8 - Shared Lazy Capability Graphs
+
+Kudzu 0.16.8 shares one deferred package graph across route owners while
+keeping loading interaction-triggered and ownership validation lexical.
+
+### Changed in 0.16.8
+
+- Records one deferred CodeMirror chunk as shared by both route owners without
+  duplicating its package graph.
+- Keeps the shared chunk out of route HTML, module preload, navigation prefetch,
+  and static siblings until an owner activates.
+- Uses the native browser module map for document-scoped deduplication and adds
+  no loader, prefetch registry, cache, or browser runtime.
+- Resolves lazy `useEffect` ownership through lexical imports so a local
+  same-named function cannot bypass ordinary dynamic-import diagnostics.
+- Preserves exact owner cleanup; native in-flight imports remain non-cancellable
+  and late callbacks cannot mount after disposal.
+- Updates `create-kudzu@0.1.133` to generate projects on
+  `@kudzujs/core@^0.16.8`.
+
+### Output And Browser Evidence
+
+- Both owners share one 250,086 raw / 80,890 gzip byte deferred chunk. Their
+  eager graphs are 21,599 raw / 9,466 gzip and 21,609 raw / 9,468 gzip bytes.
+- Required Chrome proves zero initial requests, one first-owner request, no
+  route-prefetch request, no second-owner duplicate, and exact cleanup.
+- The static sibling emits zero JavaScript. The maintained Worker and window
+  graphs remain 907 raw / 477 gzip bytes and 14,456 raw / 6,160 gzip bytes.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.8
+```
+
 ## 0.16.7 - Lazy Retained Editor Lifecycle
 
 Kudzu 0.16.7 applies owner-triggered package loading to the real retained

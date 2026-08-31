@@ -27,7 +27,7 @@ test("creates a Kudzu project", async t => {
   const readme = await readFile(join(directory, "app/README.md"), "utf8")
   const generatorPackage = JSON.parse(await readFile(new URL("../packages/create-kudzu/package.json", import.meta.url), "utf8"))
   const generatorLock = JSON.parse(await readFile(new URL("../packages/create-kudzu/package-lock.json", import.meta.url), "utf8"))
-  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.16.7")
+  assert.equal(packageJson.dependencies["@kudzujs/core"], "^0.16.8")
   assert.deepEqual(tsconfig.compilerOptions.types, [])
   assert.equal(packageJson.devDependencies.typescript, "^5.9.2")
   assert.equal(packageJson.scripts.check, "tsc --noEmit && kudzu build")

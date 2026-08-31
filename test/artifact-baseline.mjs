@@ -11,6 +11,7 @@ const fixtures = [
   ["editor", "codemirror-editor"],
   ["lazy-editor", "lazy-codemirror"],
   ["lazy-editor-journey", "codemirror-editor-lazy"],
+  ["shared-lazy-editor", "shared-lazy-codemirror"],
   ["answer-questions", "apache-answer-browser-questions"],
   ["answer-routes", "apache-answer-route-shell"],
   ["answer-auth", "apache-answer-auth-ownership"],
@@ -18,7 +19,7 @@ const fixtures = [
   ["memos-outline", "memos-outline-migration"]
 ]
 
-const report = { schema: 1, packet: "0.18.2", revision: process.env.GITHUB_SHA || "working-tree", fixtures: [] }
+const report = { schema: 1, packet: "0.18.3", revision: process.env.GITHUB_SHA || "working-tree", fixtures: [] }
 
 for (const [name, directory] of fixtures) {
   const fixture = join(root, "test/fixtures", directory)

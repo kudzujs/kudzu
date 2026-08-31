@@ -2,6 +2,21 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.8 Shared Lazy Capability Graph
+
+Measured 2026-08-31 on Linux x64 with Node 24.14.0 and Chrome. Two route owners
+share one deferred CodeMirror chunk measuring 250,086 raw / 80,890 aggregate
+gzip B. Their eager graphs are 21,599 raw / 9,466 gzip B and 21,609 raw / 9,468
+gzip B. The static sibling remains complete HTML with zero JavaScript.
+
+Required Chrome proves zero deferred requests before interaction, one request on
+the first owner, no navigation-triggered prefetch, no duplicate request for the
+second owner, and exact owner/document cleanup. Native ESM supplies the
+document-lifetime cache; no loader, prefetch registry, cache, or runtime concept
+was added. The maintained Worker benchmark remains 907 raw / 477 gzip B for the
+Worker graph and 14,456 raw / 6,160 gzip B for the window graph. Seven clean
+builds record a 696.6 ms median on this loaded host; timing is not compared.
+
 ## 0.16.7 Lazy Retained Editor Lifecycle
 
 Measured 2026-08-30 on macOS arm64 with Node 24.14.0 and Chrome. The existing

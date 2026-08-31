@@ -2032,7 +2032,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (!ts.isBlock(callback.body)) effectFail(callback, "useEffect() callback must use a block body")
         const lazyPackageImports = []
         const collectLazyPackageImports = current => {
-          if (ownedLazyPackageImport(current)) lazyPackageImports.push(current)
+          if (ownedLazyPackageImport(current, bindingIndex)) lazyPackageImports.push(current)
           else ts.forEachChild(current, collectLazyPackageImports)
         }
         collectLazyPackageImports(callback)
@@ -2136,7 +2136,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         ]) : factory.createNull()) : []
         let hasLazyPackageImport = false
         const findLazyPackageImport = current => {
-          if (ownedLazyPackageImport(current)) hasLazyPackageImport = true
+          if (ownedLazyPackageImport(current, bindingIndex)) hasLazyPackageImport = true
           else ts.forEachChild(current, findLazyPackageImport)
         }
         findLazyPackageImport(callback)

@@ -1,8 +1,10 @@
 import ts from "typescript"
+import { createBindingIndex } from "./analysis/binding-index.mjs"
 import { effectReturns, importDeclarationNames, isNodeWithin, isShadowedIdentifier, nearestFunction, referenceIdentifiers, referencesIdentifier, sourceNodeError, statementDeclaresName, unwrapExpression } from "./ast-helpers.mjs"
 import { ownedLazyPackageImport } from "./source-graph.mjs"
 
 export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
+    const bindingIndex = createBindingIndex(sourceFile)
     const frameCall = (node, name) => ts.isCallExpression(node) && (
       ts.isIdentifier(node.expression) && node.expression.text === name ||
       ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "window" && node.expression.name.text === name
@@ -24,14 +26,14 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       return isNegated === negated && currentAccess(condition, name)
     }
     const containsLazyImport = node => {
-      if (ownedLazyPackageImport(node)) return true
+      if (ownedLazyPackageImport(node, bindingIndex)) return true
       let found = false
       ts.forEachChild(node, child => { if (!found) found = containsLazyImport(child) })
       return found
     }
     const directLazyImportCallback = (callback, effectCallback) => {
       const call = callback?.parent
-      return (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) && ts.isCallExpression(call) && call.arguments[0] === callback && ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "then" && ownedLazyPackageImport(unwrapExpression(call.expression.expression)) && isNodeWithin(callback, effectCallback)
+      return (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) && ts.isCallExpression(call) && call.arguments[0] === callback && ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "then" && ownedLazyPackageImport(unwrapExpression(call.expression.expression), bindingIndex) && isNodeWithin(callback, effectCallback)
     }
     const hasUseRefImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useRef"))
     const hasUseEffectImport = sourceFile.statements.some(statement => ts.isImportDeclaration(statement) && !statement.importClause?.isTypeOnly && ts.isStringLiteral(statement.moduleSpecifier) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings) && statement.importClause.namedBindings.elements.some(entry => !entry.propertyName && entry.name.text === "useEffect"))

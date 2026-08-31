@@ -172,7 +172,7 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     const dynamicImports = []
     const visitDynamicImports = node => {
       if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-        if (role !== "effect" || !ownedLazyPackageImport(node)) throw new Error("Dynamic package imports require one literal import() directly inside an inline owned effect")
+        if (role !== "effect" || !ownedLazyPackageImport(node, bindingIndex)) throw new Error("Dynamic package imports require one literal import() directly inside an inline owned effect")
         dynamicImports.push({ kind: "dynamic", local: node.arguments[0].text, target: node.arguments[0].text, package: true })
       }
       ts.forEachChild(node, visitDynamicImports)
