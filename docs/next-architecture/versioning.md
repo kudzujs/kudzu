@@ -1,6 +1,6 @@
 # Planned Version Sequence
 
-This is an execution sequence, not release history. `0.8.16` through `0.8.62` are completed scopes represented by package/release records. The `0.10.0` through `1.0.0` minor/patch sequence is maintained in [`application-capability-release-plan.md`](./application-capability-release-plan.md), currently at `0.20.3`; that plan supersedes the provisional tool-first 0.10/0.11/0.12 ordering in the completed 0.9 handoff.
+This is an execution sequence, not release history. `0.8.16` through `0.8.62` are completed scopes represented by package/release records. The `0.10.0` through `1.0.0` minor/patch sequence is maintained in [`application-capability-release-plan.md`](./application-capability-release-plan.md), currently at `0.20.4`; that plan supersedes the provisional tool-first 0.10/0.11/0.12 ordering in the completed 0.9 handoff.
 
 Keep each patch behavior-preserving and independently reviewable. If a boundary proves inseparable, revise this plan before combining releases; do not silently broaden a patch.
 

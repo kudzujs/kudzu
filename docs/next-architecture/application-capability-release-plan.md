@@ -1881,6 +1881,21 @@ HTML, generated code, captures, and state values.
 - **Stop condition:** canonical compiler source replaces ordinary authored TSX.
 - **Done condition:** each fix has one diagnostic code and explicit preconditions.
 
+Deferred by the evidence gate without production changes or a release. A complete
+repository inventory found no recorded model prompt, model/tool version, raw
+attempt, correction cycle, token/cost trace, or repeated source edit proving any
+automatic fix useful. Existing diagnostics offer migration guidance but do not
+identify a uniquely safe edit; replacing a non-null ref initializer would change
+authored behavior. The existing lazy-state-literal normalization could support a
+narrow exact-range rewrite while preserving comments and output bytes, but no AI
+trial records it as a correction or cost reduction. Adding check/preview/write
+infrastructure now would therefore be speculative and violate the packet purpose.
+Resume this packet only after `0.20.4` records a repeated correction with one
+stable diagnostic code, a unique semantics-preserving replacement, and
+compiler-proven preconditions. No fixture, analyzer, fix command, formatter,
+compiler pass, runtime concept, browser module, package version, or release was
+added.
+
 ### `0.20.4`: AI Delivery Protocol And Runner
 
 - **Purpose:** track fair Kudzu and React+Vite delivery attempts.
@@ -2091,3 +2106,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.20.0` | Released as `0.16.11` | Preserve stable diagnostic schema/codes, authored ranges, human errors, compatibility reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |
 | `0.20.1` | Released as `0.16.12` | Preserve bounded deterministic reachable inventory, first-blocker retention, existing-record reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |
 | `0.20.2` | Released as `0.16.13` | Preserve exact emitted-route lookup, authored provenance, semantic ownership, capability/artifact byte reasons and hashes, bounded deterministic output, structured missing-route diagnostics, and zero-JavaScript explanation. | Patch release retained the `0.16.x` public version line |
+| `0.20.3` | Deferred by evidence gate | Resume only after recorded AI trials prove one repeated correction safe and useful with a stable diagnostic code and compiler-proven preconditions. | No recorded AI trials; no production change or release consumed |
