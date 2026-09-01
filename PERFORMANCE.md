@@ -1,6 +1,20 @@
 # Performance Records
 
-Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, and `npm run benchmark:ai-delivery` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+
+## 0.16.14 Fair AI Delivery Evidence
+
+Measured 2026-09-01 on Linux x64 with Node 24.14.0. The deterministic protocol
+fixture records two interleaved attempts per variant, including one success and
+one retained failure each. Both variants therefore report a 50% fixture success
+rate, 50 nanos median successful cost, and 100 nanos total cost per success when
+failed attempts remain in the numerator. Successful artifacts are one 63 raw /
+66 gzip B HTML file with digest
+`0d22f579d793d0034c967c7ffa08e0b2c377bc36c959c7b4bafab587fd5dda60`.
+This validates evidence accounting only and is not a model-driven framework
+comparison. Compiler passes, runtime concepts, representative deploy output, and
+browser bytes are unchanged. Browser-disabled and required-Chrome suites pass
+297/297 tests, package smoke passes, and the runner adds no dependency.
 
 ## 0.16.13 Route Artifact Explanations
 

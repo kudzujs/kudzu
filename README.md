@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.13 - Route artifact explanations.** `kudzu explain --route <route> --json` now traces one exact emitted route from authored source and semantic ownership through its capability family and selected runtime, handler, chunk, style, and Worker bytes without exposing raw IR. Read the [release notes](./RELEASES.md#01613---route-artifact-explanations), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.13), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.14 - Fair AI delivery evidence.** The repository-owned AI delivery runner now pins equal Kudzu and React+Vite conditions, preserves successful and failed attempts, and records attribution, cost, source retention, acceptance, and browser artifacts without claiming a framework winner. Read the [release notes](./RELEASES.md#01614---fair-ai-delivery-evidence), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.14), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

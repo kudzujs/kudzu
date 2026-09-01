@@ -1906,6 +1906,20 @@ added.
   comparator.
 - **Done condition:** every attempt is reproducible or fully attributable.
 
+Completed by `@kudzujs/core@0.16.14` and `create-kudzu@0.1.139`. The
+repository-owned Node standard-library runner pins the model revision, pricing,
+tools, prompt, budgets, adapter, acceptance command, starter digests, optional
+public context, and paired schedule before creating isolated workspaces. It
+retains raw adapter/build/acceptance streams, final source, browser artifacts,
+hashes, attribution, token/cost/tool/file/build metrics, source retention, and
+both successful and failed attempts. The deterministic two-attempt-per-variant
+fixture proves equal ordering, one retained failure per variant, independent
+final builds, framework-neutral acceptance, and failure-inclusive cost per
+success. It is protocol evidence only and makes no Kudzu versus React+Vite
+delivery claim. No dependency, compiler pass, semantic primitive, runtime
+concept, application API, or browser byte was added. Browser-disabled and
+required-Chrome suites pass 297/297 tests, and package smoke passes.
+
 ### `0.20.5`: Tooling Cost Validation
 
 - **Purpose:** prove that diagnostics/inspect/explain/fix lower total cost per
@@ -2107,3 +2121,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.20.1` | Released as `0.16.12` | Preserve bounded deterministic reachable inventory, first-blocker retention, existing-record reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |
 | `0.20.2` | Released as `0.16.13` | Preserve exact emitted-route lookup, authored provenance, semantic ownership, capability/artifact byte reasons and hashes, bounded deterministic output, structured missing-route diagnostics, and zero-JavaScript explanation. | Patch release retained the `0.16.x` public version line |
 | `0.20.3` | Deferred by evidence gate | Resume only after recorded AI trials prove one repeated correction safe and useful with a stable diagnostic code and compiler-proven preconditions. | No recorded AI trials; no production change or release consumed |
+| `0.20.4` | Released as `0.16.14` | Preserve pinned equal conditions, isolated paired attempts, raw failures, independent acceptance, attribution, failure-inclusive costs, source retention, and browser artifact evidence. | Deterministic fixture validates the protocol only; no framework ranking claimed |

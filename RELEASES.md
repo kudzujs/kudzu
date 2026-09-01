@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.16.14 - Fair AI Delivery Evidence
+
+Kudzu 0.16.14 adds a repository-owned protocol and runner for equal-condition,
+fully retained Kudzu and React+Vite delivery attempts.
+
+### Changed in 0.16.14
+
+- Adds `npm run benchmark:ai-delivery`, backed only by Node standard-library
+  process, hash, filesystem, timing, and compression APIs.
+- Pins model revision, pricing, tool permissions, prompt, budgets, adapter,
+  acceptance command, starter trees, public context, and paired attempt order.
+- Runs every attempt in an isolated starter copy, then independently reruns the
+  declared build and framework-neutral acceptance command.
+- Preserves raw adapter/build/acceptance output, final authored source, browser
+  artifacts, hashes, token/cost/tool/file/build metrics, and source retention.
+- Includes deliberate failures in the evidence and total cost-per-success
+  numerator rather than cherry-picking successful attempts.
+- Adds no compiler pass, semantic primitive, runtime concept, application API,
+  dependency, or browser byte.
+- Uses a deterministic fixture only to validate the protocol. It does not claim
+  that Kudzu outperforms React+Vite; measured tooling-cost validation remains the
+  next packet.
+- Updates `create-kudzu@0.1.139` to generate projects on
+  `@kudzujs/core@^0.16.14`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.14
+```
+
 ## 0.16.13 - Route Artifact Explanations
 
 Kudzu 0.16.13 lets tools ask why one exact emitted route owns its browser bytes

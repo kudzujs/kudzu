@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.16.13 route evidence</strong><span><code>kudzu explain --route &lt;route&gt; --json</code> traces authored ownership to selected artifact bytes while deployed browser output remains unchanged.</span></div>
+    <div className="docs-callout"><strong>Current 0.16.14 delivery evidence</strong><span><code>npm run benchmark:ai-delivery</code> retains pinned paired attempts, raw failures, cost, source, acceptance, and artifact evidence.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

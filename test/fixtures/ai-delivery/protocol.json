@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "id": "fixture-equal-delivery",
+  "packet": "0.20.4",
+  "model": {
+    "provider": "fixture",
+    "id": "deterministic-fixture",
+    "revision": "1",
+    "temperature": 0,
+    "seed": 1,
+    "adapter": {
+      "command": "node",
+      "args": ["{protocol}/adapter.mjs"],
+      "sha256": "3318bec2712d48383616742a0d56102a338c317281a04b6e26843468cbede179"
+    },
+    "pricing": {
+      "inputUsdNanosPerMillion": 2000000,
+      "outputUsdNanosPerMillion": 2000000,
+      "reasoningUsdNanosPerMillion": 2000000
+    }
+  },
+  "tools": {
+    "versions": { "runner": "1", "node": "captured-exactly-per-run" },
+    "names": ["read", "write", "build"],
+    "permissions": ["starter-read", "workspace-write", "declared-command"]
+  },
+  "budgets": {
+    "elapsedMs": 30000,
+    "inputTokens": 100,
+    "outputTokens": 100,
+    "reasoningTokens": 100,
+    "toolCalls": 10,
+    "filesRead": 10,
+    "filesModified": 10,
+    "buildAttempts": 3
+  },
+  "task": {
+    "id": "accessible-ready-button",
+    "prompt": "prompt.md",
+    "promptSha256": "7bd8d12c4959c1be1186db2a33264258669d469bd3e292adf6382bc6ff48ffd7",
+    "acceptance": {
+      "command": "node",
+      "args": ["{protocol}/acceptance.mjs", "{workspace}"],
+      "sha256": "445db6ad28a4d9b4d9954b4bbce27764cfbd796435849a4be19728dc38665693"
+    }
+  },
+  "variants": [
+    {
+      "id": "kudzu",
+      "framework": "Kudzu fixture",
+      "starter": "starters/kudzu",
+      "starterSha256": "0614d697e31298d391d168bec899644afb0c2d82fc0749c8a434f982a69bc763",
+      "publicContext": [],
+      "build": { "command": "node", "args": ["build.mjs"] },
+      "artifactDirectory": "dist"
+    },
+    {
+      "id": "react-vite",
+      "framework": "React + Vite fixture",
+      "starter": "starters/react-vite",
+      "starterSha256": "0614d697e31298d391d168bec899644afb0c2d82fc0749c8a434f982a69bc763",
+      "publicContext": [],
+      "build": { "command": "node", "args": ["build.mjs"] },
+      "artifactDirectory": "dist"
+    }
+  ],
+  "schedule": [
+    { "id": "kudzu-0", "variant": "kudzu", "ordinal": 0 },
+    { "id": "react-vite-0", "variant": "react-vite", "ordinal": 0 },
+    { "id": "react-vite-1", "variant": "react-vite", "ordinal": 1 },
+    { "id": "kudzu-1", "variant": "kudzu", "ordinal": 1 }
+  ]
+}
