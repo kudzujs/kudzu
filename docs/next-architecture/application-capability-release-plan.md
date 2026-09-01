@@ -1856,6 +1856,23 @@ ships as `@kudzujs/core@0.16.12` with `create-kudzu@0.1.137`.
 - **Done condition:** existing route records and artifact reports answer the
   query with bounded output.
 
+Completed by `@kudzujs/core@0.16.13` and `create-kudzu@0.1.138`. The
+`worker-effects` fixture proves exact configured-base lookup for an effect-owned
+Worker route, authored source closure, `Dashboard` ownership, capability family,
+runtime/handler/Worker byte reasons, raw/gzip totals, hashes, deterministic
+output, structured missing-route diagnostics, and a static sibling with an empty
+JavaScript closure. The implementation is one 137-line bounded projection over
+existing source results, compatibility sites, route records, and the sole route
+artifact report plus the existing build/CLI seam. It adds no analyzer, semantic
+primitive, compiler pass, normalization entry, runtime concept, or browser
+module. Representative deploy manifests and hashes remain unchanged. Worker and
+window graphs remain 907 raw / 477 gzip and 14,456 raw / 6,160 gzip bytes; seven
+clean builds record a 605 ms median without a timing comparison. Browser-disabled
+and required-Chrome suites pass 296/296 tests, and package smoke and artifact
+accounting pass. Fixed 100-record section limits expose totals and omitted counts;
+the command requires one exact emitted route and intentionally excludes raw IR,
+HTML, generated code, captures, and state values.
+
 ### `0.20.3`: Deterministic Normalize And Fix
 
 - **Purpose:** automate only edits proven safe and useful by recorded AI trials.
@@ -2073,3 +2090,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.19.5` | Deferred by stop condition | Resume only from a complete pinned Actual Budget workspace with an executable dependency graph and honest retention denominator. | Sparse acquisition omits required workspace and core packages; no compatibility claim |
 | `0.20.0` | Released as `0.16.11` | Preserve stable diagnostic schema/codes, authored ranges, human errors, compatibility reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |
 | `0.20.1` | Released as `0.16.12` | Preserve bounded deterministic reachable inventory, first-blocker retention, existing-record reuse, and zero browser/output delta. | Patch release retained the `0.16.x` public version line |
+| `0.20.2` | Released as `0.16.13` | Preserve exact emitted-route lookup, authored provenance, semantic ownership, capability/artifact byte reasons and hashes, bounded deterministic output, structured missing-route diagnostics, and zero-JavaScript explanation. | Patch release retained the `0.16.x` public version line |

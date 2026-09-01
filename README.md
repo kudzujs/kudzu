@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.12 - Bounded application inspection.** `kudzu inspect --json` now projects reachable modules, routes, packages, capabilities, semantic owners, and first blockers from the existing build graph in deterministic bounded output without dumping raw IR. Read the [release notes](./RELEASES.md#01612---bounded-application-inspection), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.12), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.13 - Route artifact explanations.** `kudzu explain --route <route> --json` now traces one exact emitted route from authored source and semantic ownership through its capability family and selected runtime, handler, chunk, style, and Worker bytes without exposing raw IR. Read the [release notes](./RELEASES.md#01613---route-artifact-explanations), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.13), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

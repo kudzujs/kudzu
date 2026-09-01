@@ -1,5 +1,35 @@
 # Kudzu Releases
 
+## 0.16.13 - Route Artifact Explanations
+
+Kudzu 0.16.13 lets tools ask why one exact emitted route owns its browser bytes
+without reading raw semantic records or reconstructing an artifact graph.
+
+### Changed in 0.16.13
+
+- Adds `kudzu explain --route <route> --json`, which runs the authoritative build
+  and projects authored source, normalization provenance, semantic owners,
+  capability facts, selected artifacts, and byte reasons for one emitted route.
+- Reports raw and gzip byte totals plus SHA-256 hashes for runtime, handler,
+  transitive chunk, stylesheet, and Worker artifacts already selected by the
+  existing route artifact report.
+- Explains zero-JavaScript routes from an absent behavior runtime family and an
+  empty compiler-selected JavaScript closure.
+- Uses exact configured-base route matching and returns the structured
+  `explain.route.not-found` diagnostic for missing routes.
+- Sorts every bounded section before truncation and excludes HTML, generated
+  code, RouteIR, ModuleIR, captures, and state values.
+- Adds no analyzer, semantic primitive, compiler pass, runtime concept, public
+  application API, or browser byte.
+- Updates `create-kudzu@0.1.138` to generate projects on
+  `@kudzujs/core@^0.16.13`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.13
+```
+
 ## 0.16.12 - Bounded Application Inspection
 
 Kudzu 0.16.12 lets tools select the first migration blocker from a compact

@@ -5,7 +5,8 @@ import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { createCompatibilityReport } from "./compiler/compatibility-registry.mjs"
-import { diagnosticEnvelope, normalizeDiagnosticError } from "./compiler/diagnostics.mjs"
+import { createDiagnosticError, diagnosticEnvelope, normalizeDiagnosticError } from "./compiler/diagnostics.mjs"
+import { createExplanationReport } from "./compiler/explanation-report.mjs"
 import { createInspectionReport } from "./compiler/inspection-report.mjs"
 import { generateListRuntime } from "./compiler/list-runtime-codegen.mjs"
 import { assetPath, browserPath, relativeModulePath, withBase } from "./compiler/path-helpers.mjs"
@@ -44,7 +45,12 @@ export async function inspect({ minify = true, root: projectRoot = process.cwd()
   return buildWithSession(project, { quiet: true, minify, retainCache: false, inspection: true })
 }
 
-export async function buildWithSession(project, { changedFiles, quiet = false, minify = true, retainCache = true, inspection = false } = {}) {
+export async function explain({ route, minify = true, root: projectRoot = process.cwd() } = {}) {
+  const project = createProjectSession(projectRoot)
+  return buildWithSession(project, { quiet: true, minify, retainCache: false, explanationRoute: route })
+}
+
+export async function buildWithSession(project, { changedFiles, quiet = false, minify = true, retainCache = true, inspection = false, explanationRoute } = {}) {
   const { root, outputDirectory } = project
   const stagedOutput = join(root, ".kudzu-dist-staging")
   const backupOutput = join(root, ".kudzu-dist-backup")
@@ -53,11 +59,11 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount, cache, inspectionData } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache })
+    const { result, pageCount, behaviorCount, cache, inspectionData, explanation } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache, explanationRoute })
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
     project.buildCache = retainCache ? cache : undefined
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
-    return inspection ? createInspectionReport(inspectionData) : result
+    return explanationRoute ? explanation : inspection ? createInspectionReport(inspectionData) : result
   } catch (error) {
     const normalized = normalizeDiagnosticError(error, root)
     const envelope = inspection && diagnosticEnvelope(normalized)
@@ -76,7 +82,7 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   }
 }
 
-async function buildInto(project, outputDirectory, { changedFiles, minify, quiet, retainCache }) {
+async function buildInto(project, outputDirectory, { changedFiles, minify, quiet, retainCache, explanationRoute }) {
   const { root, sourceDirectory, pagesDirectory, workDirectory } = project
   const previous = retainCache ? project.buildCache : undefined
   project.buildGeneration = (project.buildGeneration ?? 0) + 1
@@ -184,6 +190,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   const bindingPlaceholder = placeholders.binding
   const listPlaceholder = placeholders.list
   const pageRenders = new Map()
+  const routePageFiles = new Map()
   let renderedPages = 0
 
   for (const pageFile of pageFiles) {
@@ -304,6 +311,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
         runtimeSchema
       })
       routeRecords.push(record)
+      routePageFiles.set(record, pageFile)
       if (navigationGroup) navigationGroup.buildRecords.push(record)
       routeDrafts.push({ record, runtimeSchema, navigationGroup, applicationRoute, effectPath, nativePath, paramPath })
       if (!retainCache && config.afterBuild === undefined) {
@@ -534,10 +542,21 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
     await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites, artifacts })
   }
 
+  let explanation
+  if (explanationRoute) {
+    const artifact = artifacts.routes.find(entry => entry.route === explanationRoute)
+    const record = routeRecords.find(entry => entry.route === explanationRoute)
+    if (!artifact || !record) throw createDiagnosticError({ code: "explain.route.not-found", stage: "explain", message: `No emitted route exactly matches ${JSON.stringify(explanationRoute)}.`, suggestion: "Use an exact emitted route listed by kudzu inspect --json." })
+    const pageFile = routePageFiles.get(record)
+    const sourceFiles = [...pageSources.get(pageFile)].map(file => relative(root, file).replaceAll(sep, "/"))
+    explanation = await createExplanationReport({ route: explanationRoute, record, artifact, entrySource: relative(root, pageFile).replaceAll(sep, "/"), sourceFiles, sourceResults, compatibility, outputDirectory, base })
+  }
+
   const incremental = { compiledModules, renderedPages }
   return {
     result: { sourceResults, incremental },
     inspectionData: { sourceFiles: sourceFiles.map(file => relative(root, file).replaceAll(sep, "/")), sourceResults, compatibility, artifacts },
+    explanation,
     pageCount: routeRecords.length,
     behaviorCount,
     cache: { pageRenders, pageSources, placeholders, sourceResults: sourceResultsByFile }

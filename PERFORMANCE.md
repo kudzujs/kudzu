@@ -2,6 +2,19 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, and `npm run benchmark:source-scale` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.13 Route Artifact Explanations
+
+Measured 2026-09-01 on Linux x64 with Node 24.14.0. Route explanation is a
+build-time projection over existing route, source, compatibility, ownership,
+capability, and artifact records. Representative deploy manifests and hashes
+remain unchanged. The maintained Worker graph remains 907 raw / 477 gzip B and
+the window graph remains 14,456 raw / 6,160 gzip B. Seven clean builds record a
+605 ms median on this host without a timing comparison. Browser-disabled and
+required-Chrome suites pass 296/296 tests, package smoke passes, and focused CLI
+coverage includes an effect-owned Worker route, configured base, exact missing
+route diagnostic, deterministic output, artifact hashes, and zero-JavaScript
+static exclusion.
+
 ## 0.16.12 Bounded Application Inspection
 
 Measured 2026-08-31 on Linux x64 with Node 24.14.0. Inspection is a build-time
