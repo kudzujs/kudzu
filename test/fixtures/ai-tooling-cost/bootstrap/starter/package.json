@@ -1,0 +1,8 @@
+{
+  "name": "ai-tooling-bootstrap-trial",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kudzujs/core": "0.16.14"
+  }
+}

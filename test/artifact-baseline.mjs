@@ -18,7 +18,8 @@ const fixtures = [
   ["answer-authoring", "apache-answer-authoring-admin"],
   ["answer-connected", "apache-answer-connected-authoring"],
   ["memos-feed", "memos-feed-crud"],
-  ["memos-outline", "memos-outline-migration"]
+  ["memos-outline", "memos-outline-migration"],
+  ["large-list", "project-list-decision"]
 ]
 
 const report = { schema: 1, packet: "0.20.1", revision: process.env.GITHUB_SHA || "working-tree", fixtures: [] }

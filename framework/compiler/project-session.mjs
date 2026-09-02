@@ -5,13 +5,15 @@ import { assetPath } from "./path-helpers.mjs"
 import { createSourceGraph } from "./source-graph.mjs"
 import { createWorkerCompiler } from "./worker-compiler.mjs"
 
-export function createProjectSession(projectRoot = process.cwd(), { counters, sourceIndex = new Map() } = {}) {
+export function createProjectSession(projectRoot = process.cwd(), { counters, sourceIndex = new Map(), timings } = {}) {
   const root = resolve(projectRoot)
   const sourceDirectory = join(root, "src")
   const graph = createSourceGraph(root)
-  const modules = createModuleCache(root, sourceIndex, graph, counters)
+  if (timings && !ts.performance.isEnabled()) ts.performance.enable()
+  const modules = createModuleCache(root, sourceIndex, graph, counters, timings)
   return {
     counters,
+    timings,
     root,
     sourceDirectory,
     pagesDirectory: join(sourceDirectory, "pages"),
@@ -25,7 +27,7 @@ export function createProjectSession(projectRoot = process.cwd(), { counters, so
   }
 }
 
-function createModuleCache(root, sourceIndex, graph, counters) {
+function createModuleCache(root, sourceIndex, graph, counters, timings) {
   const records = new Map()
   let resolvedExports = new WeakMap()
   const moduleName = file => relative(root, file).replaceAll(sep, "/")
@@ -45,7 +47,9 @@ function createModuleCache(root, sourceIndex, graph, counters) {
     if (typeof source !== "string") throw new Error(`Source text is unavailable for ${file}`)
     const cached = records.get(file)
     if (cached?.source === source) return cached
+    const parseBefore = timings ? ts.performance.getDuration("Parse") : 0
     const sourceFile = graph.parseSourceFile(file, source)
+    if (timings) timings.parseMs = (timings.parseMs ?? 0) + ts.performance.getDuration("Parse") - parseBefore
     increment("parsedModules")
     const summary = summarizeModule(file, sourceFile, moduleSymbol, siteId)
     increment("exportSummaries")

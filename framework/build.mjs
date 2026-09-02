@@ -60,7 +60,9 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
     const { result, pageCount, behaviorCount, cache, inspectionData, explanation } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache, explanationRoute })
+    const promoteStarted = project.timings ? performance.now() : 0
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
+    addTiming(project.timings, "writeMs", promoteStarted)
     project.buildCache = retainCache ? cache : undefined
     if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
     return explanationRoute ? explanation : inspection ? createInspectionReport(inspectionData) : result
@@ -110,6 +112,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   await mkdir(workDirectory, { recursive: true })
   await mkdir(outputDirectory, { recursive: true })
 
+  const sourceReadStarted = project.timings ? performance.now() : 0
   const projectFiles = await walk(sourceDirectory)
   const allSourceFiles = projectFiles.filter(file => /\.(?:ts|tsx)$/.test(file) && !file.endsWith(".d.ts")).sort()
   const configuredStyleSources = new Set(configuredStyles.sources.map(style => style.source))
@@ -118,10 +121,13 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   const sourceIndex = project.sourceIndex
   for (const file of sourceIndex.keys()) if (file.startsWith(`${sourceDirectory}${sep}`) && !allSourceFileSet.has(file)) sourceIndex.delete(file)
   for (const [file, source] of await Promise.all(allSourceFiles.map(async file => [file, await readFile(file, "utf8")]))) sourceIndex.set(file, source)
+  addTiming(project.timings, "sourceReadMs", sourceReadStarted)
   const pageFiles = allSourceFiles.filter(file => file.startsWith(`${pagesDirectory}${sep}`) && file.endsWith(".tsx"))
   if (!pageFiles.length) throw new Error("No pages found in src/pages/")
+  const graphStarted = project.timings ? performance.now() : 0
   const pageSources = new Map(pageFiles.map(file => [file, new Set(reachableSourceFiles([file], allSourceFileSet, sourceIndex))]))
   const sourceFiles = [...new Set([...pageSources.values()].flatMap(files => [...files]))].sort()
+  addTiming(project.timings, "graphMs", graphStarted)
   const compatibility = createCompatibilityReport(sourceFiles.map(file => ({ file: relative(root, file).replaceAll(sep, "/"), source: sourceIndex.get(file) })))
   await writePrettyJson(join(workDirectory, "kudzu-compatibility.json"), compatibility)
   const sourceFileSet = project.sourceFiles
@@ -193,6 +199,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   const routePageFiles = new Map()
   let renderedPages = 0
 
+  const renderStarted = project.timings ? performance.now() : 0
   for (const pageFile of pageFiles) {
     const cached = !affectedPages.has(pageFile) ? previous?.pageRenders.get(pageFile) : undefined
     if (cached) {
@@ -328,7 +335,9 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
       rewrites: rewrites.slice(rewriteOffset)
     })
   }
+  addTiming(project.timings, "renderMs", renderStarted)
 
+  const writeStarted = project.timings ? performance.now() : 0
   for (const group of navigationGroups) for (const route of group.routes) if (!emittedApplicationRoutes.has(route)) throw new Error(`${group.label} route ${JSON.stringify(route)} is not an emitted route`)
   rejectNavigationOverlap(navigationGroups)
   for (const group of navigationGroups) {
@@ -541,6 +550,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
     if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
     await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites, artifacts })
   }
+  addTiming(project.timings, "writeMs", writeStarted)
 
   let explanation
   if (explanationRoute) {
@@ -561,6 +571,10 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
     behaviorCount,
     cache: { pageRenders, pageSources, placeholders, sourceResults: sourceResultsByFile }
   }
+}
+
+function addTiming(timings, name, started) {
+  if (timings) timings[name] = (timings[name] ?? 0) + performance.now() - started
 }
 
 function affectedPageFiles({ changedFiles, pageFiles, pageSources, previous, sourceDirectory }) {

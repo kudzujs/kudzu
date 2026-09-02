@@ -22,13 +22,14 @@ const startedAt = new Date().toISOString()
 const attempts = []
 const run = () => ({
   schema: 1,
-  status: attempts.length === protocol.schedule.length ? "complete" : "running",
+  status: attempts.length !== protocol.schedule.length ? "running" : attempts.some(attempt => attempt.attribution === "incomplete") ? "incomplete" : "complete",
   startedAt,
   ...(attempts.length === protocol.schedule.length ? { completedAt: new Date().toISOString() } : {}),
   protocol: { schema: protocol.schema, id: protocol.id, packet: protocol.packet, sha256: sha256(protocolBytes) },
   environment: { node: process.version, executable: process.execPath, platform: process.platform, arch: process.arch },
   schedule: protocol.schedule,
   variants: summarizeAttempts(attempts, protocol.variants),
+  comparison: compareTooling(attempts, protocol.variants),
   attempts,
 })
 
@@ -55,8 +56,9 @@ try {
     await writeFile(join(evidenceDirectory, "adapter.stdout"), adapter.stdout)
     await writeFile(join(evidenceDirectory, "adapter.stderr"), adapter.stderr)
 
-    const trace = await readTrace(traceFile)
-    validateTrace(trace, protocol.model, protocol.tools)
+    const recordedTrace = await readTrace(traceFile)
+    const trace = recordedTrace ?? emptyTrace(scheduled.id, protocol.model, adapter.elapsedMs)
+    if (recordedTrace) validateTrace(trace, protocol.model, protocol.tools)
     const build = await runCommand(variant.build, { cwd: workspace, timeout: protocol.budgets.elapsedMs }, protocolDirectory, workspace)
     await writeFile(join(evidenceDirectory, "build.stdout"), build.stdout)
     await writeFile(join(evidenceDirectory, "build.stderr"), build.stderr)
@@ -77,9 +79,10 @@ try {
       schema: 1,
       id: scheduled.id,
       variant: variant.id,
+      condition: variant.condition ?? null,
       ordinal: scheduled.ordinal,
       status,
-      attribution: protocol.model.provider === "fixture" ? "reproducible" : "fully-attributable",
+      attribution: !recordedTrace ? "incomplete" : protocol.model.provider === "fixture" ? "reproducible" : "fully-attributable",
       provider: trace.provider,
       metrics,
       budgetExceeded: exceeded,
@@ -114,7 +117,7 @@ function validateProtocol(value) {
   if (!plain(value.model) || !plain(value.model.adapter) || !plain(value.model.pricing) || !plain(value.tools) || !plain(value.budgets) || !plain(value.task) || !plain(value.task.acceptance)) throw new Error("AI delivery protocol requires model, tools, budgets, task, adapter, pricing, and acceptance records")
   if (!Array.isArray(value.variants) || !Array.isArray(value.schedule) || value.variants.length !== 2 || !value.schedule.length) throw new Error("AI delivery protocol requires two paired variants and a non-empty schedule")
   const variants = new Map(value.variants.map(variant => [variant.id, variant]))
-  if (variants.size !== 2 || !variants.has("kudzu") || !variants.has("react-vite")) throw new Error("AI delivery variants must be exactly kudzu and react-vite")
+  if (variants.size !== 2 || [...variants.keys()].some(id => typeof id !== "string" || !id)) throw new Error("AI delivery protocol requires two uniquely named variants")
   const attempts = new Set()
   const ordinals = new Map(value.variants.map(variant => [variant.id, []]))
   for (const entry of value.schedule) {
@@ -184,9 +187,27 @@ async function runCommand(specification, options, protocolRoot, workspace) {
 }
 
 async function readTrace(path) {
-  const lines = (await readFile(path, "utf8")).trim().split("\n")
+  let value
+  try { value = await readFile(path, "utf8") } catch (error) {
+    if (error.code === "ENOENT") return null
+    throw error
+  }
+  if (!value.trim()) return null
+  const lines = value.trim().split("\n")
   if (lines.length !== 1) throw new Error("Adapter trace must contain exactly one raw attribution record")
   return JSON.parse(lines[0])
+}
+
+function emptyTrace(attempt, model, elapsedMs) {
+  return {
+    schema: 1,
+    provider: { requestId: `missing:${attempt}`, model: model.id, revision: model.revision },
+    usage: { inputTokens: 0, outputTokens: 0, reasoningTokens: 0 },
+    elapsedMs: Math.round(elapsedMs),
+    tools: [],
+    buildAttempts: 0,
+    correctionCycles: 0,
+  }
 }
 
 function validateTrace(trace, model, tools) {
@@ -230,10 +251,32 @@ function summarizeAttempts(attempts, variants) {
       attempts: selected.length,
       successes: successful.length,
       successRateMillionths: selected.length ? Math.round(successful.length / selected.length * 1_000_000) : null,
-      costPerSuccessUsdNanos: successful.length ? Math.round(selected.reduce((total, attempt) => total + attempt.metrics.costUsdNanos, 0) / successful.length) : null,
+      costPerSuccessUsdNanos: successful.length && selected.every(attempt => attempt.attribution !== "incomplete") ? Math.round(selected.reduce((total, attempt) => total + attempt.metrics.costUsdNanos, 0) / successful.length) : null,
       medianSuccessfulCostUsdNanos: costs.length ? median(costs) : null,
+      tokensPerSuccess: successful.length && selected.every(attempt => attempt.attribution !== "incomplete") ? Math.round(selected.reduce((total, attempt) => total + totalTokens(attempt.metrics.tokens), 0) / successful.length) : null,
+      medianSuccessfulTokens: successful.length ? median(successful.map(attempt => totalTokens(attempt.metrics.tokens)).sort((left, right) => left - right)) : null,
     }
   })
+}
+
+function compareTooling(attempts, variants) {
+  const baseline = variants.find(variant => variant.condition === "baseline")
+  const assisted = variants.find(variant => variant.condition === "tool-assisted")
+  if (!baseline || !assisted) return null
+  const summaries = summarizeAttempts(attempts, variants)
+  const before = summaries.find(summary => summary.id === baseline.id)
+  const after = summaries.find(summary => summary.id === assisted.id)
+  return {
+    baseline: before,
+    toolAssisted: after,
+    tokenCostPerSuccessDelta: before.tokensPerSuccess === null || after.tokensPerSuccess === null ? null : after.tokensPerSuccess - before.tokensPerSuccess,
+    monetaryCostPerSuccessDeltaUsdNanos: before.costPerSuccessUsdNanos === null || after.costPerSuccessUsdNanos === null ? null : after.costPerSuccessUsdNanos - before.costPerSuccessUsdNanos,
+    identicalAcceptance: protocol.task.acceptance.sha256,
+  }
+}
+
+function totalTokens(tokens) {
+  return tokens.input + tokens.output + tokens.reasoning
 }
 
 function median(values) {
@@ -267,14 +310,16 @@ async function inventory(root, excluded) {
       }
     }
   }
-  await visit(root)
+  try { await visit(root) } catch (error) {
+    if (error.code !== "ENOENT") throw error
+  }
   const hash = createHash("sha256")
   for (const entry of entries) hash.update(entry.path).update("\0").update(entry.bytes)
   return { entries, sha256: hash.digest("hex") }
 }
 
 function sourceExcluded(path) {
-  return ["dist", "node_modules", ".git", ".kudzu"].includes(path.split("/")[0])
+  return ["dist", "node_modules", ".git", ".kudzu", ".tools"].includes(path.split("/")[0])
 }
 
 async function copyInventory(entries, root, destination) {

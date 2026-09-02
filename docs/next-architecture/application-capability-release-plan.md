@@ -1931,6 +1931,19 @@ required-Chrome suites pass 297/297 tests, and package smoke passes.
 - **Done condition:** useful tools are retained and non-improving tools are
   removed or deferred.
 
+Measured on 2026-09-01 with five interleaved attempts per condition against one
+Apache Answer-derived static Bootstrap correction. Both conditions passed 5/5
+with identical accepted behavior, source retention, and browser artifacts, but
+plain-build baseline cost 67,860 tokens per success while structured
+build/inspect/explain cost 84,793. The structured bundle is therefore deferred
+as an AI default rather than credited with a cost reduction. Existing JSON,
+inspection, and explanation commands remain for their independently accepted
+machine-readable contracts; no speculative `fix` command, compiler pass,
+runtime concept, application API, dependency, or browser byte was added. Exact
+samples, medians, and ranges are recorded in `PERFORMANCE.md`, while the pinned
+protocol reproduces and retains raw attempt evidence under the ignored
+`test-results/ai-delivery/` path.
+
 ## `0.21.x`: Production-Scale Proof
 
 ### `0.21.0`: Functional Parity Matrix
@@ -1942,6 +1955,28 @@ required-Chrome suites pass 297/297 tests, and package smoke passes.
 - **Done condition:** every claimed capability has a browser journey and static
   exclusion control.
 
+**Result:** closed through existing application semantics without a release.
+The required-Chrome 300-test matrix passes content, authentication, forms, CRUD,
+shared data, large lists, overlays, editor ownership, lazy loading, realtime,
+errors, accessibility, and navigation across the maintained greenfield, Apache
+Answer, Memos, and focused package fixtures. The one material matrix gap was the
+10,000-item pagination decision: its release/remount behavior existed only in an
+optional benchmark. One ordinary browser acceptance now proves Enter-key page
+advance, focus retention, the 101-200 and restored 1-100 ranges, bounded 100-row
+DOM, fresh off-range input state, and no browser exceptions. Greenfield `/help`,
+Answer and Memos `/public`, package `/static` routes, and the complete direct
+10,000-row route provide zero-JavaScript controls.
+
+The artifact inventory now includes the large-list fixture: 19 files,
+1,900,048 raw / 242,968 aggregate gzip bytes, deploy SHA-256
+`1bbaf3479ac90f923deb469c73eb93c0dd7364e7fe906919b167f2f854deda70`.
+Pagination owns 30,143 raw / 11,193 gzip bytes of existing JavaScript while the
+direct static route owns zero. Semantic primitives, IR kinds, compiler passes,
+production compiler/runtime LOC, normalization rules, adapters, runtime
+concepts, public APIs, and browser artifacts change by zero. `npm run check`,
+required-Chrome 300/300, package smoke, focused acceptance, and artifact
+inventory pass. No production feature changed, so no release is consumed.
+
 ### `0.21.1`: Compiler And Route Scale
 
 - **Purpose:** measure clean/incremental compilation and artifact emission.
@@ -1951,6 +1986,33 @@ required-Chrome suites pass 297/297 tests, and package smoke passes.
 - **Stop condition:** projected or incomplete 10,000-route data is called a pass.
 - **Done condition:** repeated measurements and all material regressions are
   explained or fixed.
+
+**Progress:** opt-in internal telemetry now records source reads, reachable
+graph discovery, TypeScript parse, normalize, compile/transform, render, and
+write boundaries without changing deploy output. Compile/transform excludes
+the measured TypeScript parse and Kudzu normalization but includes indivisible
+esbuild parse/transform for proven import-free modules. Render includes
+provisional page materialization, write includes finalization and staged-output
+promotion, and the end-to-end clean build is not their sum. The runner also proves that an
+incremental source edit matches a clean build of the changed source, compares
+paired incremental outputs when a baseline is supplied, names retained-session
+rather than incremental-only peak RSS, and fails the process when either clean
+or retained-session invalid-source recovery changes output. This adds no
+semantic primitive, compiler pass, runtime concept, public API, deploy artifact,
+or browser byte; production compiler/build instrumentation is 35 added and four
+removed lines.
+
+One warm-up and three fresh-process samples pass at 100 routes / 1,000 modules /
+101,100 lines and 1,000 routes / 10,000 modules / 1,011,000 lines. Clean-build
+medians are 7,444.3 and 77,515.9 ms with 672.3 and 3,182.3 MiB peak RSS;
+incremental medians are 1,838.0 and 18,132.1 ms, recompiling exactly 10 modules
+and rendering one page in every sample. Clean and changed digests differ,
+incremental output equals a clean changed-source build, and clean and retained
+failure probes preserve then recover the expected digest. Exact phase samples,
+bytes, and digests are recorded in `PERFORMANCE.md`. The full 10,000-route,
+100,000-module, 10,110,000-line run remains explicitly incomplete pending a
+separately provisioned host; no projection or reduced topology is counted as a
+pass, so this packet does not yet authorize a version or release.
 
 ### `0.21.2`: Browser Performance And Memory
 
@@ -2122,3 +2184,6 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.20.2` | Released as `0.16.13` | Preserve exact emitted-route lookup, authored provenance, semantic ownership, capability/artifact byte reasons and hashes, bounded deterministic output, structured missing-route diagnostics, and zero-JavaScript explanation. | Patch release retained the `0.16.x` public version line |
 | `0.20.3` | Deferred by evidence gate | Resume only after recorded AI trials prove one repeated correction safe and useful with a stable diagnostic code and compiler-proven preconditions. | No recorded AI trials; no production change or release consumed |
 | `0.20.4` | Released as `0.16.14` | Preserve pinned equal conditions, isolated paired attempts, raw failures, independent acceptance, attribution, failure-inclusive costs, source retention, and browser artifact evidence. | Deterministic fixture validates the protocol only; no framework ranking claimed |
+| `0.20.5` | Closed by measured stop condition | Preserve the negative tooling-cost result and do not present structured tools as an AI cost reduction. | Tool-assisted attempts cost 16,933 more tokens per success; no release consumed |
+| `0.21.0` | Closed by existing semantics | Preserve the complete browser parity matrix, large-list keyboard/release acceptance, and static exclusion controls. | No production change; no release consumed |
+| `0.21.1` | Active; telemetry released as `0.16.15` | Preserve the 100/1,000-route phase, RSS, output, digest, incremental-equivalence, and recovery evidence, then run the full separately provisioned 10,000-route topology. | 10,000-route / 100,000-module run remains pending; no projection is accepted |

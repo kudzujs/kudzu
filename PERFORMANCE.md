@@ -2,6 +2,117 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, and `npm run benchmark:ai-delivery` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.21.1 Compiler And Route Scale (Partial)
+
+Measured 2026-09-01 on Linux x64 with Node 24.14.0, an Intel i5-9500, six
+logical CPUs, and 31.2 GiB RAM. Each recorded scale uses one warm-up and three
+measured fresh-process samples. The generated topology contains nine imported
+modules plus one page per route and 1,011 lines per route. Fixture generation is
+excluded. These are absolute candidate measurements, not regression claims.
+
+| Routes | Modules / lines | Graph median | TypeScript parse median | Normalize median | Compile/transform median | Render median | Write median | Clean median / RSS | Incremental median / retained-session peak RSS |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 100 | 1,000 / 101,100 | 1,184.4 ms | 1,796.7 ms | 37.9 ms | 2,428.1 ms | 456.5 ms | 70.4 ms | 7,444.3 ms / 672.3 MiB | 1,838.0 ms / 680.9 MiB |
+| 1,000 | 10,000 / 1,011,000 | 12,152.6 ms | 18,717.6 ms | 302.9 ms | 23,681.5 ms | 4,919.4 ms | 521.7 ms | 77,515.9 ms / 3,182.3 MiB | 18,132.1 ms / 3,281.1 MiB |
+
+The exact 100-route runs are source read `[30.5, 30.3, 24.7]`, graph
+`[1273.8, 1138.8, 1184.4]`, parse `[1749.8, 1911.6, 1796.7]`, normalize
+`[37.2, 37.9, 41.4]`, compile/transform `[2428.1, 2828.6, 2381.1]`, render
+`[516.7, 416.9, 456.5]`, write `[95.3, 53.1, 70.4]`, clean build
+`[7444.3, 7269.2, 8156.1]`, and incremental build
+`[1631.9, 1907.7, 1838.0]` ms. Clean-build RSS is
+`[672.3, 658.6, 675.1]` MiB and retained-session peak RSS is
+`[707.1, 673.9, 680.9]` MiB.
+
+The exact 1,000-route runs are source read `[296.7, 315.7, 271.2]`, graph
+`[12152.6, 12308.1, 10011.3]`, parse `[19099.5, 18717.6, 16398.2]`,
+normalize `[259.6, 302.9, 315.8]`, compile/transform
+`[27200.6, 23681.5, 21608.7]`, render `[4919.4, 4454.6, 5238.7]`, write
+`[748.6, 521.7, 487.8]`, clean build `[77515.9, 70196.9, 82980.2]`, and
+incremental build `[22359.7, 18132.1, 17097.2]` ms. Clean-build RSS is
+`[3181.5, 3182.3, 3188.5]` MiB and retained-session peak RSS is
+`[3281.0, 3281.1, 3284.5]` MiB.
+
+Graph time excludes measured TypeScript parsing. Compile/transform excludes
+measured TypeScript parse and Kudzu normalization, but includes the indivisible
+esbuild parse/transform call for proven import-free modules. Render includes
+provisional page materialization; write includes artifact finalization and
+staged-output promotion. Clean build is an end-to-end wall clock and is not the
+sum of the reported phase boundaries.
+
+Every incremental sample recompiles exactly 10 modules, renders one page,
+matches a clean build of the changed source byte-for-byte, rejects invalid
+source in the retained session without changing output, and recovers in that
+same session after source restoration.
+At 100 routes, clean output is 100 files / 21,980 B with digest
+`61525962c70c5e69a975a656781e598cf6665137d648be82f1c3d5e73f0b1b48`;
+the source change produces digest
+`4c7e0f098f3f3236b6e04fa96e8057341c3aa8bdb35a72fe701e78be06160154`.
+At 1,000 routes, clean output is 1,000 files / 221,780 B with digest
+`ccdd2630bcaf9fac4a481b64c69982c341e4798205bb9fbb4cac67d528246635`;
+the source change produces digest
+`024811a5f4598d5025abc57320695503b2d63d0fd6aa54bcf79efde848c2a94e`.
+Both failure probes reject invalid source without changing the prior deploy and
+recover to the clean digest after source restoration.
+
+The default 10,000-route topology would contain 100,000 modules and 10,110,000
+lines. Extrapolating from the measured 1,000-route RSS is not acceptance
+evidence, and this 31.2 GiB host is not used for an unsafe or reduced substitute.
+The packet remains incomplete until the full topology runs on a separately
+provisioned host. Opt-in internal timing adds no semantic primitive, compiler
+pass, runtime concept, public API, deploy file, or browser byte.
+
+## 0.21.0 Functional Parity Matrix
+
+Measured 2026-09-01 on Linux x64 with Node 24.14.0 and required Chrome. The
+300-test suite passes the maintained content, authentication, forms, CRUD,
+shared-data, large-list, overlay, editor, lazy-load, realtime, error,
+accessibility, and navigation browser journeys. Greenfield `/help`, Apache
+Answer and Memos `/public`, editor `/static`, and the direct 10,000-row route
+remain the corresponding static exclusion controls.
+
+The previously benchmark-only 10,000-item pagination decision now runs once as
+ordinary browser acceptance. Enter advances the native control to rows 101-200,
+focus remains on the control, returning to rows 1-100 releases the old row and
+restores fresh input state, the DOM remains bounded to 100 rows, and no browser
+exception occurs. Its deploy contains 19 files totaling 1,900,048 raw / 242,968
+aggregate gzip B with digest
+`1bbaf3479ac90f923deb469c73eb93c0dd7364e7fe906919b167f2f854deda70`.
+The selected pagination route owns 30,143 raw / 11,193 gzip B JavaScript; the
+complete direct 10,000-row HTML control owns 0 B JavaScript. This freezes
+behavior rather than making a new timing claim.
+
+No fixture source, compiler, IR, normalization pass, runtime concept, public API,
+or browser artifact changed. One focused browser acceptance test and one
+artifact-baseline entry were added. `npm run check`, required-Chrome 300/300,
+package smoke, and the artifact inventory pass, so no release version is
+consumed.
+
+## 0.20.5 Tooling Cost Validation
+
+Measured 2026-09-01 on Linux x64 with Node 24.14.0, OpenCode 1.18.25, and
+`openai/gpt-5.6-sol`. Five interleaved attempts per condition repaired the same
+Apache Answer-derived static React Bootstrap breakpoint under one prompt,
+budget, public context, starter, and acceptance digest. Baseline exposed plain
+`build`; tool-assisted exposed structured `build`, `inspect`, and `explain`.
+Both conditions passed 5/5 with the same 234 raw / 181 gzip B HTML artifact,
+98.94% byte-identical source retention, and zero browser JavaScript.
+
+Baseline total-token samples were `[75485, 75459, 66141, 60644, 61570]`: a
+66,141 median, 60,644/75,485 range, and 67,860 failure-inclusive tokens per
+success. Tool-assisted samples were `[75983, 87615, 108588, 75828, 75950]`: a
+75,983 median, 75,828/108,588 range, and 84,793 tokens per success. Structured
+tools therefore cost 16,933 more tokens per success on this task. Monetary cost
+was reported as zero by the subscription provider in every attempt.
+
+Baseline versus tool-assisted medians and ranges were: file reads 2 (1/3)
+versus 2 (1/3), tool calls 8 (5/9) versus 9 (8/12), builds 2 (2/2) versus 2
+(2/3), correction cycles 1 (1/1) versus 1 (1/2), and completion time 45,811 ms
+(43,194/46,390) versus 60,736 ms (52,313/76,963). There were no failed
+attempts. This rejects an AI cost-reduction claim for the structured tool bundle
+on this task; it does not remove the independently useful machine-readable
+commands or claim results for other tasks.
+
 ## 0.16.14 Fair AI Delivery Evidence
 
 Measured 2026-09-01 on Linux x64 with Node 24.14.0. The deterministic protocol

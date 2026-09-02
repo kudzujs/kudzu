@@ -1,5 +1,44 @@
 # Kudzu Releases
 
+## 0.16.15 - Production Evidence Gates
+
+Kudzu 0.16.15 turns compiler scale, large-list parity, and AI attribution gaps
+into maintained executable evidence instead of release-time assumptions.
+
+### Changed in 0.16.15
+
+- Adds opt-in internal source-read, graph, TypeScript parse, normalization,
+  compile/transform, render, and write timing to the existing project session.
+- Extends `npm run benchmark:source-scale` with retained-session incremental
+  timing and RSS, clean changed-source equivalence, output digests, and clean
+  and retained-session failure recovery.
+- Records repeated 100-route / 1,000-module and 1,000-route / 10,000-module
+  measurements. Every incremental sample recompiles 10 modules and renders one
+  page while matching a clean changed-source build byte-for-byte.
+- Keeps the full 10,000-route / 100,000-module run explicitly pending a
+  separately provisioned host; no projection or reduced fixture is called a
+  pass.
+- Promotes the 10,000-item pagination decision to ordinary Chrome acceptance,
+  including Enter navigation, focus retention, bounded 100-row DOM, state
+  release, and a zero-JavaScript direct-list control.
+- Marks missing AI attribution traces incomplete and withholds token and cost
+  per-success claims instead of treating missing data as zero.
+- Records the equal-condition OpenCode tooling trial: both conditions passed
+  5/5, while structured tools used 16,933 more tokens per success, so no AI cost
+  reduction is claimed.
+- Adds no semantic primitive, compiler pass, runtime concept, application API,
+  dependency, deploy artifact, or browser byte.
+- Passes `npm run check`, required-Chrome 300/300, package smoke, tarball
+  inspection, and both npm publish dry-runs on the exact versioned tree.
+- Updates `create-kudzu@0.1.140` to generate projects on
+  `@kudzujs/core@^0.16.15`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.15
+```
+
 ## 0.16.14 - Fair AI Delivery Evidence
 
 Kudzu 0.16.14 adds a repository-owned protocol and runner for equal-condition,

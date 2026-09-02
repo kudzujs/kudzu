@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
@@ -31,4 +32,55 @@ test("records paired AI delivery successes and raw failures without cherry-picki
   assert.match(await readFile(join(output, failed.evidence, "source/src/value.txt"), "utf8"), /Wrong/)
   assert.match(await readFile(join(output, failed.evidence, "artifacts/index.html"), "utf8"), /Wrong/)
   assert.match(await readFile(join(output, failed.evidence, "acceptance.stdout"), "utf8"), /accessible Ready button/)
+})
+
+test("compares paired baseline and tool-assisted attempts", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "kudzu-ai-tooling-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const fixture = join(directory, "fixture")
+  await cp(resolve("test/fixtures/ai-delivery"), fixture, { recursive: true })
+  const protocolFile = join(fixture, "protocol.json")
+  const protocol = JSON.parse(await readFile(protocolFile, "utf8"))
+  protocol.id = "fixture-tooling-cost"
+  protocol.packet = "0.20.5"
+  protocol.variants[0].id = "baseline"
+  protocol.variants[0].condition = "baseline"
+  protocol.variants[1].id = "tool-assisted"
+  protocol.variants[1].condition = "tool-assisted"
+  protocol.schedule = [
+    { id: "baseline-0", variant: "baseline", ordinal: 0 },
+    { id: "tool-assisted-0", variant: "tool-assisted", ordinal: 0 },
+  ]
+  await writeFile(protocolFile, `${JSON.stringify(protocol, null, 2)}\n`)
+  const output = join(directory, "evidence")
+  const result = spawnSync(process.execPath, [resolve("test/ai-delivery-runner.mjs"), "--protocol", protocolFile, "--out", output], { encoding: "utf8", timeout: 120_000 })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const report = JSON.parse(await readFile(join(output, "run.json"), "utf8"))
+  assert.deepEqual(report.attempts.map(attempt => attempt.condition), ["baseline", "tool-assisted"])
+  assert.equal(report.comparison.baseline.id, "baseline")
+  assert.equal(report.comparison.toolAssisted.id, "tool-assisted")
+  assert.equal(report.comparison.tokenCostPerSuccessDelta, 0)
+  assert.equal(report.comparison.identicalAcceptance, protocol.task.acceptance.sha256)
+})
+
+test("retains an adapter failure that produces no attribution trace", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "kudzu-ai-missing-trace-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const fixture = join(directory, "fixture")
+  await cp(resolve("test/fixtures/ai-delivery"), fixture, { recursive: true })
+  const adapter = "process.exitCode = 1\n"
+  await writeFile(join(fixture, "adapter.mjs"), adapter)
+  const protocolFile = join(fixture, "protocol.json")
+  const protocol = JSON.parse(await readFile(protocolFile, "utf8"))
+  protocol.model.adapter.sha256 = createHash("sha256").update(adapter).digest("hex")
+  protocol.schedule = protocol.schedule.slice(0, 2)
+  await writeFile(protocolFile, `${JSON.stringify(protocol, null, 2)}\n`)
+  const output = join(directory, "evidence")
+  const result = spawnSync(process.execPath, [resolve("test/ai-delivery-runner.mjs"), "--protocol", protocolFile, "--out", output], { encoding: "utf8", timeout: 120_000 })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const report = JSON.parse(await readFile(join(output, "run.json"), "utf8"))
+  assert.deepEqual(report.attempts.map(attempt => [attempt.status, attempt.attribution]), [["failure", "incomplete"], ["failure", "incomplete"]])
+  assert.equal(report.status, "incomplete")
+  assert.equal(report.variants[0].costPerSuccessUsdNanos, null)
+  assert.equal(report.variants[0].tokensPerSuccess, null)
 })

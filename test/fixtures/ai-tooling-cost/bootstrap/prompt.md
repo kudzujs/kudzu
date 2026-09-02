@@ -1,0 +1,1 @@
+Preserve the Apache Answer-derived Questions layout and its authored six-column medium breakpoint. Make the page build successfully without replacing Row or Col, and keep the route fully static with no browser JavaScript. Preserve unrelated source.

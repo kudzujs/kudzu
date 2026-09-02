@@ -14,6 +14,8 @@ if (process.argv[2] === "sample") {
   const fixture = resolve(process.argv[4])
   if (mode === "compile") await sampleCompile(fixture)
   else if (mode === "build") await sampleBuild(fixture)
+  else if (mode === "changed-build") await sampleChangedBuild(fixture)
+  else if (mode === "incremental") await sampleIncremental(fixture)
   else throw new Error(`Unknown sample mode ${JSON.stringify(mode)}`)
   process.exit(0)
 }
@@ -34,20 +36,30 @@ try {
   const targets = baselineRoot ? { baseline: baselineRoot, candidate: localRoot } : { candidate: frameworkRoot }
   for (let index = 0; index < warmups; index++) for (const [name, target] of orderedTargets(targets, index)) {
     sample("compile", fixture, target)
+    sample("incremental", fixture, target)
     sample("build", fixture, target)
   }
 
-  const samples = Object.fromEntries(Object.keys(targets).map(name => [name, { compile: [], build: [] }]))
+  const samples = Object.fromEntries(Object.keys(targets).map(name => [name, { compile: [], build: [], incremental: [] }]))
+  const changedBuilds = new Map(Object.entries(targets).map(([name, target]) => [name, comparableBuild(sample("changed-build", fixture, target))]))
   const expectedBuild = new Map()
+  const expectedIncremental = new Map()
   for (let index = 0; index < runs; index++) for (const [name, target] of orderedTargets(targets, index)) {
     const compile = sample("compile", fixture, target)
+    const incremental = sample("incremental", fixture, target)
     const build = sample("build", fixture, target)
     const previous = expectedBuild.values().next().value
+    const previousIncremental = expectedIncremental.values().next().value
     expectedBuild.set(name, comparableBuild(build))
+    expectedIncremental.set(name, comparableBuild(incremental))
     if (previous && JSON.stringify(comparableBuild(build)) !== JSON.stringify(previous)) throw new Error(`${name} deploy output differs from the comparison target`)
+    if (previousIncremental && JSON.stringify(comparableBuild(incremental)) !== JSON.stringify(previousIncremental)) throw new Error(`${name} incremental output differs from the comparison target`)
+    if (JSON.stringify(comparableBuild(incremental)) !== JSON.stringify(changedBuilds.get(name))) throw new Error(`${name} incremental output differs from a clean build of the changed source`)
     samples[name].compile.push(compile)
+    samples[name].incremental.push(incremental)
     samples[name].build.push(build)
   }
+  const recovery = verifyRecovery(fixture, frameworkRoot, expectedBuild.get("candidate"))
 
   console.log(JSON.stringify({
     fixture: "generated source-scale application",
@@ -63,7 +75,10 @@ try {
     },
     targets: Object.fromEntries(Object.entries(samples).map(([name, values]) => [name, summarizeTarget(values)])),
     ...(baselineRoot ? { pairedCandidateMinusBaselineMs: paired(samples) } : {}),
-    output: expectedBuild.values().next().value
+    recovery,
+    output: expectedBuild.values().next().value,
+    incrementalOutput: expectedIncremental.values().next().value,
+    changedCleanOutput: changedBuilds.values().next().value
   }, null, 2))
 } finally {
   rmSync(fixture, { recursive: true, force: true })
@@ -77,17 +92,21 @@ async function sampleCompile(fixture) {
   const sourceIndex = new Map(files.map(file => [file, readFileSync(file, "utf8")]))
   const sourceReadMs = elapsed(readStarted)
   const counters = {}
+  const timings = {}
   const { createProjectSession } = await import(pathToFileURL(join(frameworkRoot, "framework/compiler/project-session.mjs")))
   const { createSourceCompiler } = await import(pathToFileURL(join(frameworkRoot, "framework/compiler/source-compiler.mjs")))
-  const project = createProjectSession(fixture, { counters, sourceIndex })
+  const project = createProjectSession(fixture, { counters, sourceIndex, timings })
   const compiler = createSourceCompiler(project)
   const graphStarted = performance.now()
+  const parseBefore = timings.parseMs ?? 0
   const reachable = compiler.reachableSourceFiles(pages, new Set(files), sourceIndex)
-  const graphMs = elapsed(graphStarted)
+  const graphMs = Number(Math.max(0, performance.now() - graphStarted - ((timings.parseMs ?? 0) - parseBefore)).toFixed(1))
   const reachableSet = new Set(reachable)
   const compileStarted = performance.now()
+  const compileParseBefore = timings.parseMs ?? 0
+  const normalizeBefore = timings.normalizeMs ?? 0
   const results = reachable.map(file => compiler.compileSource(file, reachableSet, sourceIndex, new Set(), new Map(), ""))
-  const compileMs = elapsed(compileStarted)
+  const compileMs = Number(Math.max(0, performance.now() - compileStarted - ((timings.parseMs ?? 0) - compileParseBefore) - ((timings.normalizeMs ?? 0) - normalizeBefore)).toFixed(1))
   const output = JSON.stringify(results.map(result => [result.file, result.componentAnalysis, result.moduleIR, result.buildModule, result.handlerModule]))
   process.stdout.write(JSON.stringify({
     sourceReadMs,
@@ -97,6 +116,7 @@ async function sampleCompile(fixture) {
     resultBytes: Buffer.byteLength(output),
     digest: createHash("sha256").update(output).digest("hex"),
     counters,
+    timings: roundedTimings(timings),
     maxRssMiB: rss()
   }))
 }
@@ -104,21 +124,73 @@ async function sampleCompile(fixture) {
 async function sampleBuild(fixture) {
   rmSync(join(fixture, ".kudzu"), { recursive: true, force: true })
   rmSync(join(fixture, "dist"), { recursive: true, force: true })
-  const { build } = await import(pathToFileURL(join(frameworkRoot, "framework/build.mjs")))
+  const timings = {}
+  const { createProjectSession } = await import(pathToFileURL(join(frameworkRoot, "framework/compiler/project-session.mjs")))
+  const { buildWithSession } = await import(pathToFileURL(join(frameworkRoot, "framework/build.mjs")))
+  const project = createProjectSession(fixture, { timings })
   const started = performance.now()
-  await build({ root: fixture, quiet: true })
+  await buildWithSession(project, { quiet: true, retainCache: false })
   const elapsedMs = elapsed(started)
-  const outputRoot = join(fixture, "dist")
-  const files = walk(outputRoot)
-  const hash = createHash("sha256")
-  let bytes = 0
-  for (const file of files) {
-    const content = readFileSync(file)
-    bytes += content.length
-    hash.update(relative(outputRoot, file)).update("\0").update(content)
-  }
+  const output = outputSnapshot(join(fixture, "dist"))
   const plan = JSON.parse(readFileSync(join(fixture, ".kudzu/kudzu-plan.json"), "utf8"))
-  process.stdout.write(JSON.stringify({ elapsedMs, files: files.length, pages: plan.routes.length, bytes, digest: hash.digest("hex"), maxRssMiB: rss() }))
+  process.stdout.write(JSON.stringify({ elapsedMs, ...output, pages: plan.routes.length, timings: roundedTimings(timings), maxRssMiB: rss() }))
+}
+
+async function sampleChangedBuild(fixture) {
+  const changed = changedSource(fixture)
+  const source = readFileSync(changed, "utf8")
+  writeFileSync(changed, source.replace("Route 0", "Route 0 updated"))
+  try {
+    await sampleBuild(fixture)
+  } finally {
+    writeFileSync(changed, source)
+  }
+}
+
+async function sampleIncremental(fixture) {
+  rmSync(join(fixture, ".kudzu"), { recursive: true, force: true })
+  rmSync(join(fixture, "dist"), { recursive: true, force: true })
+  const timings = {}
+  const { createProjectSession } = await import(pathToFileURL(join(frameworkRoot, "framework/compiler/project-session.mjs")))
+  const { buildWithSession } = await import(pathToFileURL(join(frameworkRoot, "framework/build.mjs")))
+  const project = createProjectSession(fixture, { timings })
+  await buildWithSession(project, { quiet: true, retainCache: true })
+  for (const name of Object.keys(timings)) delete timings[name]
+  const changed = changedSource(fixture)
+  const source = readFileSync(changed, "utf8")
+  writeFileSync(changed, source.replace("Route 0", "Route 0 updated"))
+  try {
+    const started = performance.now()
+    const result = await buildWithSession(project, { changedFiles: [changed], quiet: true, retainCache: true })
+    const elapsedMs = elapsed(started)
+    const output = outputSnapshot(join(fixture, "dist"))
+    const plan = JSON.parse(readFileSync(join(fixture, ".kudzu/kudzu-plan.json"), "utf8"))
+    const maxRssMiB = rss()
+    const incrementalTimings = roundedTimings(timings)
+    const page = join(fixture, "src/pages/scale-0.tsx")
+    const pageSource = readFileSync(page, "utf8")
+    writeFileSync(page, "export default function Page( {\n")
+    let failed = false
+    try {
+      await buildWithSession(project, { changedFiles: [page], quiet: true, retainCache: true })
+    } catch {
+      failed = true
+    } finally {
+      writeFileSync(page, pageSource)
+    }
+    if (!failed || outputSnapshot(join(fixture, "dist")).digest !== output.digest) throw new Error("Failed retained-session build did not preserve deploy output")
+    await buildWithSession(project, { changedFiles: [page], quiet: true, retainCache: true })
+    if (outputSnapshot(join(fixture, "dist")).digest !== output.digest) throw new Error("Retained session did not recover after source restoration")
+    process.stdout.write(JSON.stringify({ elapsedMs, ...output, pages: plan.routes.length, timings: incrementalTimings, incremental: result.incremental, recovery: { passed: true }, maxRssMiB }))
+  } finally {
+    writeFileSync(changed, source)
+  }
+}
+
+function changedSource(fixture) {
+  const changed = walk(join(fixture, "src/features/route-0")).find(file => file.endsWith(".ts") && readFileSync(file, "utf8").includes('"Route 0"'))
+  if (!changed) throw new Error("Incremental source target was not found")
+  return changed
 }
 
 function generateFixture(root, options) {
@@ -177,20 +249,64 @@ function summarizeTarget(values) {
     phasesMs: {
       sourceRead: summarize(values.compile.map(value => value.sourceReadMs)),
       reachableGraph: summarize(values.compile.map(value => value.graphMs)),
+      parse: summarizeOptional(values.compile.map(value => value.timings.parseMs)),
+      normalize: summarizeOptional(values.compile.map(value => value.timings.normalizeMs)),
       compile: summarize(values.compile.map(value => value.compileMs)),
-      cleanBuild: summarize(values.build.map(value => value.elapsedMs))
+      render: summarizeOptional(values.build.map(value => value.timings.renderMs)),
+      write: summarizeOptional(values.build.map(value => value.timings.writeMs)),
+      cleanBuild: summarize(values.build.map(value => value.elapsedMs)),
+      incrementalBuild: summarize(values.incremental.map(value => value.elapsedMs))
     },
     peakRssMiB: {
       compile: summarize(values.compile.map(value => value.maxRssMiB)),
       cleanBuild: summarize(values.build.map(value => value.maxRssMiB))
     },
-    compiler: { counters: values.compile[0].counters, resultBytes: values.compile[0].resultBytes, digest: values.compile[0].digest }
+    compiler: { counters: values.compile[0].counters, resultBytes: values.compile[0].resultBytes, digest: values.compile[0].digest },
+    incremental: { compiledModules: values.incremental.map(value => value.incremental.compiledModules), renderedPages: values.incremental.map(value => value.incremental.renderedPages), recovery: values.incremental.map(value => value.recovery.passed), retainedSessionPeakRssMiB: summarize(values.incremental.map(value => value.maxRssMiB)) }
   }
 }
 
 function paired(samples) {
   const difference = (phase, field) => samples.candidate[phase].map((value, index) => Number((value[field] - samples.baseline[phase][index][field]).toFixed(1)))
-  return { compile: summarize(difference("compile", "compileMs")), cleanBuild: summarize(difference("build", "elapsedMs")) }
+  return { compile: summarize(difference("compile", "compileMs")), cleanBuild: summarize(difference("build", "elapsedMs")), incrementalBuild: summarize(difference("incremental", "elapsedMs")) }
+}
+
+function verifyRecovery(fixture, target, expected) {
+  rmSync(join(fixture, "node_modules/@kudzujs/core"), { recursive: true, force: true })
+  symlinkSync(target, join(fixture, "node_modules/@kudzujs/core"), "dir")
+  const page = join(fixture, "src/pages/scale-0.tsx")
+  const source = readFileSync(page, "utf8")
+  writeFileSync(page, "export default function Page( {\n")
+  let failed
+  try {
+    failed = spawnSync(process.execPath, [join(target, "bin/kudzu.mjs"), "build"], { cwd: fixture, encoding: "utf8", timeout: 1_200_000 })
+  } finally {
+    writeFileSync(page, source)
+  }
+  if (failed.error || failed.signal || failed.status === 0) throw failed.error || new Error("Failure-recovery probe unexpectedly built invalid source")
+  const preserved = outputSnapshot(join(fixture, "dist"))
+  const recovered = spawnSync(process.execPath, [join(target, "bin/kudzu.mjs"), "build"], { cwd: fixture, encoding: "utf8", timeout: 1_200_000 })
+  if (recovered.error || recovered.signal || recovered.status !== 0) throw recovered.error || new Error(recovered.stderr || recovered.stdout)
+  const final = outputSnapshot(join(fixture, "dist"))
+  const passed = preserved.digest === expected.digest && final.digest === expected.digest
+  if (!passed) throw new Error(`Failure recovery changed deploy output ${expected.digest} -> ${preserved.digest} -> ${final.digest}`)
+  return { passed, failedStatus: failed.status, preservedDigest: preserved.digest, recoveredDigest: final.digest }
+}
+
+function outputSnapshot(outputRoot) {
+  const files = walk(outputRoot)
+  const hash = createHash("sha256")
+  let bytes = 0
+  for (const file of files) {
+    const content = readFileSync(file)
+    bytes += content.length
+    hash.update(relative(outputRoot, file)).update("\0").update(content)
+  }
+  return { files: files.length, bytes, digest: hash.digest("hex") }
+}
+
+function roundedTimings(timings) {
+  return Object.fromEntries(Object.entries(timings).map(([name, value]) => [name, Number(value.toFixed(1))]))
 }
 
 function orderedTargets(targets, round) {
@@ -201,6 +317,10 @@ function orderedTargets(targets, round) {
 function summarize(values) {
   const sorted = [...values].sort((left, right) => left - right)
   return { runs: values, median: sorted[Math.floor(sorted.length / 2)], min: sorted[0], max: sorted.at(-1) }
+}
+
+function summarizeOptional(values) {
+  return values.every(Number.isFinite) ? summarize(values) : null
 }
 
 function integerEnv(name, fallback, minimum) {

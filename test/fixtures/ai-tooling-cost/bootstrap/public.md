@@ -1,0 +1,1 @@
+Kudzu accepts ordinary React-shaped TSX and reports unsupported authored syntax during production builds. Keep declarative components and JSX when a source-local correction can preserve the requested behavior. Build-known static routes must remain complete HTML with zero JavaScript.

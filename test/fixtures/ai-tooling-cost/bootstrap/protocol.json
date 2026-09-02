@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "id": "apache-answer-bootstrap-tooling-cost",
+  "packet": "0.20.5",
+  "model": {
+    "provider": "openai-via-opencode",
+    "id": "openai/gpt-5.6-sol",
+    "revision": "gpt-5.6-sol",
+    "temperature": 0,
+    "seed": 1,
+    "adapter": {
+      "command": "node",
+      "args": ["{protocol}/../../../ai-tooling-opencode-adapter.mjs"],
+      "sha256": "396745751681e8728a67daebd7a3964d5e2f6166213cbebb691636baacdf46ea"
+    },
+    "pricing": {
+      "inputUsdNanosPerMillion": 0,
+      "outputUsdNanosPerMillion": 0,
+      "reasoningUsdNanosPerMillion": 0,
+      "accounting": "provider-reported subscription cost is zero; tokens are the cost comparator"
+    }
+  },
+  "tools": {
+    "versions": { "runner": "1", "opencode": "1.18.25", "node": "captured-exactly-per-run", "kudzu": "0.16.14" },
+    "names": ["read", "write", "build", "inspect", "explain", "shell", "grep", "glob", "list", "task", "question", "todowrite", "skill", "webfetch"],
+    "permissions": ["workspace-read", "workspace-write", "workspace-shell", "declared-kudzu-command"]
+  },
+  "budgets": {
+    "elapsedMs": 300000,
+    "inputTokens": 400000,
+    "outputTokens": 10000,
+    "reasoningTokens": 10000,
+    "toolCalls": 30,
+    "filesRead": 15,
+    "filesModified": 5,
+    "buildAttempts": 5
+  },
+  "task": {
+    "id": "apache-answer-static-bootstrap-breakpoint",
+    "prompt": "prompt.md",
+    "promptSha256": "c05eb97301c64af2039dde014569f34faec5f222c1edfe84c7ce68a33f1627d1",
+    "acceptance": {
+      "command": "node",
+      "args": ["{protocol}/acceptance.mjs", "{workspace}"],
+      "sha256": "63ce9facae123092abe0da4977abe71b4691a9a8293ab35d269453b139c83266"
+    }
+  },
+  "variants": [
+    {
+      "id": "baseline",
+      "condition": "baseline",
+      "framework": "Kudzu 0.16.14",
+      "starter": "starter",
+      "starterSha256": "daa3ae2cd0268f107f080dd8d60acaa387c18784d2d72a8b651062467dd9492e",
+      "publicContext": [{ "path": "public.md", "sha256": "27b8ad1604136641e43e7973426874cfb71ee02b616421f7f1674d90246fcd16" }],
+      "build": { "command": "node", "args": ["{workspace}/.tools/kudzu.mjs", "build"] },
+      "artifactDirectory": "dist"
+    },
+    {
+      "id": "tool-assisted",
+      "condition": "tool-assisted",
+      "framework": "Kudzu 0.16.14",
+      "starter": "starter",
+      "starterSha256": "daa3ae2cd0268f107f080dd8d60acaa387c18784d2d72a8b651062467dd9492e",
+      "publicContext": [{ "path": "public.md", "sha256": "27b8ad1604136641e43e7973426874cfb71ee02b616421f7f1674d90246fcd16" }],
+      "build": { "command": "node", "args": ["{workspace}/.tools/kudzu.mjs", "build"] },
+      "artifactDirectory": "dist"
+    }
+  ],
+  "schedule": [
+    { "id": "baseline-0", "variant": "baseline", "ordinal": 0 },
+    { "id": "tool-assisted-0", "variant": "tool-assisted", "ordinal": 0 },
+    { "id": "tool-assisted-1", "variant": "tool-assisted", "ordinal": 1 },
+    { "id": "baseline-1", "variant": "baseline", "ordinal": 1 },
+    { "id": "baseline-2", "variant": "baseline", "ordinal": 2 },
+    { "id": "tool-assisted-2", "variant": "tool-assisted", "ordinal": 2 },
+    { "id": "tool-assisted-3", "variant": "tool-assisted", "ordinal": 3 },
+    { "id": "baseline-3", "variant": "baseline", "ordinal": 3 },
+    { "id": "baseline-4", "variant": "baseline", "ordinal": 4 },
+    { "id": "tool-assisted-4", "variant": "tool-assisted", "ordinal": 4 }
+  ]
+}

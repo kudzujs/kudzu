@@ -28,7 +28,7 @@ import { ownedLazyPackageImport } from "./source-graph.mjs"
 import { createZustandPass } from "./zustand-pass.mjs"
 
 export function createSourceCompiler(project) {
-const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, modules, counters } = project
+const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, modules, counters, timings } = project
 const buildDirectory = project.buildDirectory ?? workDirectory
 const { ordinaryRuntimeDependencies, resolveSourceImport, runtimeModuleReference } = project.graph
 const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
@@ -42,6 +42,13 @@ async function compileSourceAsync(file, sourceFiles, sourceIndex, staticFiles, c
 }
 
 function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, base, importFreeOutput) {
+  const parseBefore = timings?.parseMs ?? 0
+  const typeScriptParseBefore = timings ? ts.performance.getDuration("Parse") : 0
+  const finishTiming = () => {
+    if (!timings) return
+    const recordedParse = (timings.parseMs ?? 0) - parseBefore
+    timings.parseMs = (timings.parseMs ?? 0) + Math.max(0, ts.performance.getDuration("Parse") - typeScriptParseBefore - recordedParse)
+  }
   const importedAssets = new Set()
   const source = sourceIndex.get(file)
   const semantic = createSemanticArtifact(relative(root, file).replaceAll(sep, "/"))
@@ -74,6 +81,7 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
   const moduleHandlers = moduleIR.handlers.filter(handler => handler.kind === "module-export")
   if (!moduleHandlers.length && !moduleIR.bindings.length) {
     normalizeModulePaths(moduleIR)
+    finishTiming()
     return sourceResult
   }
   const moduleSource = printHandlerModule({ moduleIR, handlerPath })
@@ -85,6 +93,7 @@ function compileSource(file, sourceFiles, sourceIndex, staticFiles, cssModules, 
   if (moduleErrors.length) throw new Error(moduleErrors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"))
   normalizeModulePaths(moduleIR)
   sourceResult.handlerModule = { path: handlerPath, code: moduleResult.outputText, hasNativeHandlers: moduleHandlers.some(handler => handler.role === "native"), hasEffects: moduleHandlers.some(handler => handler.role === "effect"), clientImports: moduleIR.clientModules, hasPackageImports: moduleIR.imports.some(entry => entry.package) }
+  finishTiming()
   return sourceResult
 }
 
@@ -358,7 +367,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const importedStaticCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex, true)
     const importedCollections = new Set(importedStaticCollections.keys())
     const importedFallbackCollections = importedSerializableCollections(sourceFile, file, sourceFiles, sourceIndex)
+    const normalizeStarted = timings ? performance.now() : 0
     const normalized = normalizeCompilerSource(sourceFile, { base, context, file, importedCollections, importedFallbackCollections, importedStaticCollections, sourceFiles, sourceIndex })
+    if (timings) timings.normalizeMs = (timings.normalizeMs ?? 0) + performance.now() - normalizeStarted
     sourceFile = normalized.sourceFile
     const { customHookTimerStates } = normalized
     const bindingIndex = createBindingIndex(sourceFile)
@@ -417,7 +428,9 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const importedSource = target => {
       let result = importedSourceCache.get(target)
       if (!result) {
+        const normalizeStarted = timings ? performance.now() : 0
         result = normalizeCompilerSource(modules.clone(target, context.factory, context), { base, context, file: target, sourceFiles, sourceIndex })
+        if (timings) timings.normalizeMs = (timings.normalizeMs ?? 0) + performance.now() - normalizeStarted
         importedSourceCache.set(target, result)
       }
       return result.sourceFile

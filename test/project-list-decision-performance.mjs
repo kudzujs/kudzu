@@ -10,6 +10,7 @@ const fixture = join(root, "test/fixtures/project-list-decision")
 const runs = Number(process.env.RUNS ?? 7)
 const requestedStrategies = (process.env.STRATEGIES ?? "direct,pagination,windowing").split(",")
 const diagnostic = Boolean(process.env.DIAGNOSTIC)
+const acceptance = Boolean(process.env.ACCEPTANCE)
 const trace = message => { if (diagnostic) console.error(message) }
 const chrome = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
 if (!chrome) throw new Error("Set CHROME_BIN to run the project list decision benchmark")
@@ -91,7 +92,11 @@ async function browserRun(port, strategy) {
     const identity = await evaluate(cdp, sessionId, `window.__row = document.querySelector('[data-project="50"]'); window.__input = window.__row.querySelector("input"); window.__input.value = "edited"; window.__input.focus(); true`)
     if (!identity) throw new Error("row selection setup failed")
     await waitUntil(cdp, sessionId, 'window.__input.value === "edited" && document.activeElement === window.__input')
-    const page = strategy === "direct" ? 0 : await evaluate(cdp, sessionId, `new Promise(resolve => {
+    if (acceptance && strategy === "pagination") {
+      const initial = await evaluate(cdp, sessionId, `document.querySelector("[data-range]").textContent === "1-100" && document.querySelector("[data-next]").textContent === "Next 100"`)
+      if (!initial) throw new Error("pagination initial range or accessible control name is incorrect")
+    }
+    const advance = `new Promise(resolve => {
       const started = performance.now()
       const timeout = setTimeout(() => { observer.disconnect(); resolve(-1) }, 30000)
       const observer = new MutationObserver(() => {
@@ -99,13 +104,24 @@ async function browserRun(port, strategy) {
         observer.disconnect(); clearTimeout(timeout); requestAnimationFrame(() => resolve(performance.now() - started))
       })
       observer.observe(document.querySelector("[data-project-list]"), { childList: true })
-      ${strategy === "windowing" ? 'const target = document.querySelector("[data-scroll-window]"); target.scrollTop = 4000; target.dispatchEvent(new Event("scroll"))' : 'document.querySelector("[data-next]").click()'}
-    })`)
+      ${strategy === "windowing" ? 'const target = document.querySelector("[data-scroll-window]"); target.scrollTop = 4000; target.dispatchEvent(new Event("scroll"))' : acceptance ? "" : 'document.querySelector("[data-next]").click()'}
+    })`
+    let page = 0
+    if (strategy !== "direct" && acceptance && strategy === "pagination") {
+      await evaluate(cdp, sessionId, `window.__pageAdvance = ${advance}; document.querySelector("[data-next]").focus(); document.activeElement === document.querySelector("[data-next]")`)
+      await cdp.send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 }, sessionId)
+      await cdp.send("Input.dispatchKeyEvent", { type: "char", key: "Enter", code: "Enter", text: "\r", unmodifiedText: "\r", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 }, sessionId)
+      await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 }, sessionId)
+      page = await evaluate(cdp, sessionId, "window.__pageAdvance")
+      const advanced = await evaluate(cdp, sessionId, `({ range: document.querySelector("[data-range]").textContent, focused: document.activeElement === document.querySelector("[data-next]") })`)
+      if (advanced.range !== "101-200" || !advanced.focused) throw new Error(`keyboard pagination produced range ${advanced.range} and focus ${advanced.focused}`)
+    } else if (strategy !== "direct") page = await evaluate(cdp, sessionId, advance)
     if (page < 0) throw new Error(`${strategy} page advance timed out; ${cdp.exceptions.join(", ")}`)
     trace(`${strategy}: advanced`)
     if (strategy !== "direct") {
       await evaluate(cdp, sessionId, strategy === "windowing" ? 'const target = document.querySelector("[data-scroll-window]"); target.scrollTop = 0; target.dispatchEvent(new Event("scroll")); true' : 'document.querySelector("[data-previous]").click(); true')
       await waitUntil(cdp, sessionId, "document.querySelector('[data-project=\"50\"]') && document.querySelectorAll('[data-project]').length === 100")
+      if (acceptance && strategy === "pagination" && !await evaluate(cdp, sessionId, `document.querySelector("[data-range]").textContent === "1-100"`)) throw new Error("pagination did not restore the first range")
     }
     trace(`${strategy}: restored`)
     const retained = await evaluate(cdp, sessionId, `({ same: document.querySelector('[data-project="50"]') === window.__row, value: document.querySelector('[data-project="50"] input').value, rows: document.querySelectorAll("[data-project]").length, elements: document.querySelectorAll("*").length })`)
@@ -116,7 +132,6 @@ async function browserRun(port, strategy) {
     if (strategy === "direct" && (!retained.same || retained.value !== "edited")) throw new Error("direct strategy lost retained edit identity")
     if (strategy !== "direct" && (retained.same || retained.value !== "")) throw new Error(`${strategy} did not release and freshly restore off-range edit state`)
     if (cdp.exceptions.length) throw new Error(`browser exceptions: ${cdp.exceptions.join(", ")}`)
-    await cdp.send("Browser.close")
     return { loadMs: Number(Number(load).toFixed(3)), pageMs: Number(Number(page).toFixed(3)), rows: retained.rows, elements: retained.elements, domNodes: dom.nodes, documents: dom.documents, listeners: dom.jsEventListeners, heapBytes: heap.usedSize }
   } finally {
     cdp?.socket.close()
@@ -130,6 +145,9 @@ try {
   trace("build: start")
   const build = spawnSync(process.execPath, [join(root, "bin/kudzu.mjs"), "build"], { cwd: fixture, encoding: "utf8", timeout: 120_000 })
   if (build.error || build.signal || build.status !== 0) throw build.error || new Error(build.stderr || build.stdout)
+  const directHtml = await readFile(join(fixture, "dist/index.html"), "utf8")
+  const staticExclusion = (directHtml.match(/data-project="/g) ?? []).length === 10000 && !/<script\b|data-k-(?:on|state|text|attr|list|condition)/.test(directHtml)
+  if (!staticExclusion) throw new Error("direct 10,000-row static exclusion failed")
   trace("build: complete")
   const source = `const http=require("node:http"),fs=require("node:fs"),path=require("node:path"),root=process.argv[1];http.createServer((request,response)=>{const pathname=new URL(request.url,"http://localhost").pathname,relative=pathname==="/"?"index.html":pathname.slice(1)+(pathname.endsWith("/")?"index.html":""),file=path.join(root,relative);response.setHeader("content-type",file.endsWith(".js")?"text/javascript":"text/html");fs.createReadStream(file).on("error",()=>response.writeHead(404).end()).pipe(response)}).listen(0,"127.0.0.1",function(){console.log(this.address().port)})`
   server = spawn(process.execPath, ["-e", source, join(fixture, "dist")], { stdio: ["ignore", "pipe", "inherit"] })
@@ -146,6 +164,7 @@ try {
   }
   console.log(JSON.stringify({
     fixture: "10,000 project direct DOM, pagination, and bounded-window decision",
+    ...(acceptance ? { acceptance: { keyboard: true, focus: true, releasedState: true, staticExclusion } } : {}),
     environment: { node: process.version, platform: process.platform, arch: process.arch, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
     methodology: `${runs} rotating fresh Chrome profiles per strategy; forced GC before heap usage`,
     strategies: Object.fromEntries(Object.entries(samples).map(([strategy, values]) => [strategy, {

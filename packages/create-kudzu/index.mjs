@@ -33,7 +33,7 @@ const files = {
       check: "tsc --noEmit && kudzu build"
     },
     dependencies: {
-      "@kudzujs/core": "^0.16.14"
+      "@kudzujs/core": "^0.16.15"
     },
     devDependencies: {
       typescript: "^5.9.2"
