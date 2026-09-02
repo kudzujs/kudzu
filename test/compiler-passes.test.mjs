@@ -258,6 +258,23 @@ test("caches canonical modules and clones mutable transformer input", () => {
   assert.deepEqual(isolatedCounters, { parsedModules: 1, exportSummaries: 1 })
 })
 
+test("bounds canonical module records without changing stable symbols", () => {
+  const files = Array.from({ length: 1025 }, (_, index) => resolve("src/cache", `module-${index}.ts`))
+  const sourceIndex = new Map(files.map((file, index) => [file, `export const Value${index} = ${index}`]))
+  const counters = {}
+  const project = createProjectSession(process.cwd(), { counters, sourceIndex })
+  const first = project.modules.read(files[0])
+  const symbol = first.exports.get("Value0").symbol
+
+  for (const file of files.slice(1)) project.modules.read(file)
+  const reparsed = project.modules.read(files[0])
+
+  assert.notEqual(reparsed, first)
+  assert.deepEqual(reparsed.exports.get("Value0").symbol, symbol)
+  assert.equal(ts.isVariableDeclaration(project.modules.declaration(symbol)), true)
+  assert.deepEqual(counters, { parsedModules: 1026, exportSummaries: 1026 })
+})
+
 test("resolves stable module symbols through aliases, barrels, and export stars", () => {
   const files = {
     component: resolve("src/symbols/Component.tsx"),

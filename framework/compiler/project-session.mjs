@@ -28,6 +28,7 @@ export function createProjectSession(projectRoot = process.cwd(), { counters, so
 }
 
 function createModuleCache(root, sourceIndex, graph, counters, timings) {
+  const recordLimit = 1024
   const records = new Map()
   let resolvedExports = new WeakMap()
   const moduleName = file => relative(root, file).replaceAll(sep, "/")
@@ -46,7 +47,11 @@ function createModuleCache(root, sourceIndex, graph, counters, timings) {
   const read = (file, source = sourceIndex.get(file)) => {
     if (typeof source !== "string") throw new Error(`Source text is unavailable for ${file}`)
     const cached = records.get(file)
-    if (cached?.source === source) return cached
+    if (cached?.source === source) {
+      records.delete(file)
+      records.set(file, cached)
+      return cached
+    }
     const parseBefore = timings ? ts.performance.getDuration("Parse") : 0
     const sourceFile = graph.parseSourceFile(file, source)
     if (timings) timings.parseMs = (timings.parseMs ?? 0) + ts.performance.getDuration("Parse") - parseBefore
@@ -54,7 +59,9 @@ function createModuleCache(root, sourceIndex, graph, counters, timings) {
     const summary = summarizeModule(file, sourceFile, moduleSymbol, siteId)
     increment("exportSummaries")
     const record = { source, sourceFile, ...summary }
+    records.delete(file)
     records.set(file, record)
+    if (records.size > recordLimit) records.delete(records.keys().next().value)
     resolvedExports = new WeakMap()
     return record
   }

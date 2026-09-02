@@ -2,18 +2,22 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, and `npm run benchmark:ai-delivery` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
-## 0.21.1 Compiler And Route Scale (Partial)
+## 0.21.1 Compiler And Route Scale
 
 Measured 2026-09-01 on Linux x64 with Node 24.14.0, an Intel i5-9500, six
-logical CPUs, and 31.2 GiB RAM. Each recorded scale uses one warm-up and three
-measured fresh-process samples. The generated topology contains nine imported
-modules plus one page per route and 1,011 lines per route. Fixture generation is
-excluded. These are absolute candidate measurements, not regression claims.
+logical CPUs, and 31.2 GiB RAM. The 100- and 1,000-route scales use one warm-up
+and three measured fresh-process samples. The 10,000-route scale records one
+complete full-contract run with no warm-up after two diagnostic runs completed
+the measured stages but exposed cleanup and recovery-timeout harness defects.
+The generated topology contains nine imported modules plus one page per route
+and 1,011 lines per route. Fixture generation is excluded. These are absolute
+candidate measurements, not cross-framework claims.
 
 | Routes | Modules / lines | Graph median | TypeScript parse median | Normalize median | Compile/transform median | Render median | Write median | Clean median / RSS | Incremental median / retained-session peak RSS |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 100 | 1,000 / 101,100 | 1,184.4 ms | 1,796.7 ms | 37.9 ms | 2,428.1 ms | 456.5 ms | 70.4 ms | 7,444.3 ms / 672.3 MiB | 1,838.0 ms / 680.9 MiB |
 | 1,000 | 10,000 / 1,011,000 | 12,152.6 ms | 18,717.6 ms | 302.9 ms | 23,681.5 ms | 4,919.4 ms | 521.7 ms | 77,515.9 ms / 3,182.3 MiB | 18,132.1 ms / 3,281.1 MiB |
+| 10,000 | 100,000 / 10,110,000 | 103,200.9 ms | 232,840.3 ms | 2,350.3 ms | 244,578.3 ms | 44,885.7 ms | 6,690.1 ms | 1,117,753.0 ms / 5,461.0 MiB | 643,697.2 ms / 8,266.9 MiB |
 
 The exact 100-route runs are source read `[30.5, 30.3, 24.7]`, graph
 `[1273.8, 1138.8, 1184.4]`, parse `[1749.8, 1911.6, 1796.7]`, normalize
@@ -32,6 +36,13 @@ normalize `[259.6, 302.9, 315.8]`, compile/transform
 incremental build `[22359.7, 18132.1, 17097.2]` ms. Clean-build RSS is
 `[3181.5, 3182.3, 3188.5]` MiB and retained-session peak RSS is
 `[3281.0, 3281.1, 3284.5]` MiB.
+
+The complete 10,000-route run records source read `17077.4`, graph `103200.9`,
+TypeScript parse `232840.3`, normalize `2350.3`, compile/transform `244578.3`,
+render `44885.7`, write `6690.1`, clean build `1117753.0`, and incremental
+build `643697.2` ms. Compile-only RSS is 5,561.4 MiB, clean-build RSS is
+5,461.0 MiB, and retained-session peak RSS is 8,266.9 MiB under
+`--max-old-space-size=10240`.
 
 Graph time excludes measured TypeScript parsing. Compile/transform excludes
 measured TypeScript parse and Kudzu normalization, but includes the indivisible
@@ -52,14 +63,19 @@ At 1,000 routes, clean output is 1,000 files / 221,780 B with digest
 `ccdd2630bcaf9fac4a481b64c69982c341e4798205bb9fbb4cac67d528246635`;
 the source change produces digest
 `024811a5f4598d5025abc57320695503b2d63d0fd6aa54bcf79efde848c2a94e`.
-Both failure probes reject invalid source without changing the prior deploy and
-recover to the clean digest after source restoration.
+At 10,000 routes, clean output is 10,000 files / 2,237,780 B with digest
+`7a48bc40ff33c4faaef8a01ab90fcfe611a4bada5364a6fedca42f80ad5070d3`;
+the source change emits 2,237,788 B with digest
+`09a42f84b4ce16c994a8bd55b92e5b645c716168f9290d241cfe27903ccfe98f`.
+Both clean and retained-session failure probes reject invalid source without
+changing the prior deploy and recover to the expected digest.
 
-The default 10,000-route topology would contain 100,000 modules and 10,110,000
-lines. Extrapolating from the measured 1,000-route RSS is not acceptance
-evidence, and this 31.2 GiB host is not used for an unsafe or reduced substitute.
-The packet remains incomplete until the full topology runs on a separately
-provisioned host. Opt-in internal timing adds no semantic primitive, compiler
+The first full 10,000-route attempt exhausted a 10,240 MiB V8 heap while the
+unbounded canonical module cache retained roughly 90,000 parent-linked
+TypeScript ASTs. Bounding complete canonical records to 1,024 retains stable
+position-based symbols while allowing old ASTs to be collected. The identical
+100,000-module / 10,110,000-line topology then completed under the same heap cap.
+This adds eight net production compiler lines, no semantic primitive, compiler
 pass, runtime concept, public API, deploy file, or browser byte.
 
 ## 0.21.0 Functional Parity Matrix

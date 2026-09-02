@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 
 const localRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const frameworkRoot = resolve(process.env.TARGET_ROOT || localRoot)
+const diagnostic = Boolean(process.env.DIAGNOSTIC)
 
 if (process.argv[2] === "sample") {
   const mode = process.argv[3]
@@ -59,7 +60,10 @@ try {
     samples[name].incremental.push(incremental)
     samples[name].build.push(build)
   }
-  const recovery = verifyRecovery(fixture, frameworkRoot, expectedBuild.get("candidate"))
+  if (diagnostic) process.stderr.write("clean recovery: start\n")
+  const recoveryStarted = performance.now()
+  const recovery = verifyRecovery(fixture, frameworkRoot, expectedBuild.get("candidate"), Math.max(1_200_000, routes * 360))
+  if (diagnostic) process.stderr.write(`clean recovery: complete in ${elapsed(recoveryStarted)} ms\n`)
 
   console.log(JSON.stringify({
     fixture: "generated source-scale application",
@@ -81,7 +85,7 @@ try {
     changedCleanOutput: changedBuilds.values().next().value
   }, null, 2))
 } finally {
-  rmSync(fixture, { recursive: true, force: true })
+  rmSync(fixture, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
 }
 
 async function sampleCompile(fixture) {
@@ -233,10 +237,13 @@ function walk(directory, files = []) {
 }
 
 function sample(mode, fixture, target = frameworkRoot) {
+  if (diagnostic) process.stderr.write(`${mode}: start\n`)
+  const started = performance.now()
   rmSync(join(fixture, "node_modules/@kudzujs/core"), { recursive: true, force: true })
   symlinkSync(target, join(fixture, "node_modules/@kudzujs/core"), "dir")
   const result = spawnSync(process.execPath, [process.argv[1], "sample", mode, fixture], { encoding: "utf8", env: { ...process.env, TARGET_ROOT: target }, maxBuffer: 1 << 29 })
   if (result.error || result.signal || result.status !== 0) throw result.error || new Error(result.stderr || result.stdout || `${mode} sample exited with ${result.signal || result.status}`)
+  if (diagnostic) process.stderr.write(`${mode}: complete in ${elapsed(started)} ms\n`)
   return JSON.parse(result.stdout)
 }
 
@@ -271,7 +278,7 @@ function paired(samples) {
   return { compile: summarize(difference("compile", "compileMs")), cleanBuild: summarize(difference("build", "elapsedMs")), incrementalBuild: summarize(difference("incremental", "elapsedMs")) }
 }
 
-function verifyRecovery(fixture, target, expected) {
+function verifyRecovery(fixture, target, expected, timeout) {
   rmSync(join(fixture, "node_modules/@kudzujs/core"), { recursive: true, force: true })
   symlinkSync(target, join(fixture, "node_modules/@kudzujs/core"), "dir")
   const page = join(fixture, "src/pages/scale-0.tsx")
@@ -279,13 +286,13 @@ function verifyRecovery(fixture, target, expected) {
   writeFileSync(page, "export default function Page( {\n")
   let failed
   try {
-    failed = spawnSync(process.execPath, [join(target, "bin/kudzu.mjs"), "build"], { cwd: fixture, encoding: "utf8", timeout: 1_200_000 })
+    failed = spawnSync(process.execPath, [join(target, "bin/kudzu.mjs"), "build"], { cwd: fixture, encoding: "utf8", timeout })
   } finally {
     writeFileSync(page, source)
   }
   if (failed.error || failed.signal || failed.status === 0) throw failed.error || new Error("Failure-recovery probe unexpectedly built invalid source")
   const preserved = outputSnapshot(join(fixture, "dist"))
-  const recovered = spawnSync(process.execPath, [join(target, "bin/kudzu.mjs"), "build"], { cwd: fixture, encoding: "utf8", timeout: 1_200_000 })
+  const recovered = spawnSync(process.execPath, [join(target, "bin/kudzu.mjs"), "build"], { cwd: fixture, encoding: "utf8", timeout })
   if (recovered.error || recovered.signal || recovered.status !== 0) throw recovered.error || new Error(recovered.stderr || recovered.stdout)
   const final = outputSnapshot(join(fixture, "dist"))
   const passed = preserved.digest === expected.digest && final.digest === expected.digest

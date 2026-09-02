@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.16.15 production evidence</strong><span><code>npm run benchmark:source-scale</code> records phase, RSS, incremental-equivalence, digest, and recovery evidence; <code>npm run benchmark:ai-delivery</code> retains complete attributed attempts.</span></div>
+    <div className="docs-callout"><strong>Current 0.16.16 production evidence</strong><span><code>npm run benchmark:source-scale</code> completes 100,000 modules under a 10 GiB heap with phase, RSS, incremental-equivalence, digest, and recovery evidence.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

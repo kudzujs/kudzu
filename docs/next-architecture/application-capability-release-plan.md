@@ -1987,7 +1987,7 @@ inventory pass. No production feature changed, so no release is consumed.
 - **Done condition:** repeated measurements and all material regressions are
   explained or fixed.
 
-**Progress:** opt-in internal telemetry now records source reads, reachable
+**Result:** opt-in internal telemetry records source reads, reachable
 graph discovery, TypeScript parse, normalize, compile/transform, render, and
 write boundaries without changing deploy output. Compile/transform excludes
 the measured TypeScript parse and Kudzu normalization but includes indivisible
@@ -2009,10 +2009,21 @@ incremental medians are 1,838.0 and 18,132.1 ms, recompiling exactly 10 modules
 and rendering one page in every sample. Clean and changed digests differ,
 incremental output equals a clean changed-source build, and clean and retained
 failure probes preserve then recover the expected digest. Exact phase samples,
-bytes, and digests are recorded in `PERFORMANCE.md`. The full 10,000-route,
-100,000-module, 10,110,000-line run remains explicitly incomplete pending a
-separately provisioned host; no projection or reduced topology is counted as a
-pass, so this packet does not yet authorize a version or release.
+bytes, and digests are recorded in `PERFORMANCE.md`.
+
+The full 10,000-route / 100,000-module / 10,110,000-line topology initially
+exhausted a 10,240 MiB V8 heap because the canonical module cache retained about
+90,000 complete TypeScript ASTs. A 1,024-record LRU bounds that existing cache
+without changing stable position-based symbols. The identical topology then
+completed under the same heap cap with 5,461.0 MiB clean-build RSS and 8,266.9
+MiB retained-session peak RSS. It emits 10,000 files / 2,237,780 B with clean
+digest `7a48bc40ff33c4faaef8a01ab90fcfe611a4bada5364a6fedca42f80ad5070d3`;
+incremental output matches a clean changed-source build, recompiles 10 modules,
+renders one page, and clean and retained recovery pass. One complete measured
+run is retained after two diagnostic runs completed measured stages but exposed
+cleanup and timeout defects; no projection or reduced topology is counted.
+The memory fix adds eight net production lines, no semantic primitive, pass,
+runtime concept, public API, deploy artifact, or browser byte.
 
 ### `0.21.2`: Browser Performance And Memory
 
@@ -2186,4 +2197,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.20.4` | Released as `0.16.14` | Preserve pinned equal conditions, isolated paired attempts, raw failures, independent acceptance, attribution, failure-inclusive costs, source retention, and browser artifact evidence. | Deterministic fixture validates the protocol only; no framework ranking claimed |
 | `0.20.5` | Closed by measured stop condition | Preserve the negative tooling-cost result and do not present structured tools as an AI cost reduction. | Tool-assisted attempts cost 16,933 more tokens per success; no release consumed |
 | `0.21.0` | Closed by existing semantics | Preserve the complete browser parity matrix, large-list keyboard/release acceptance, and static exclusion controls. | No production change; no release consumed |
-| `0.21.1` | Active; telemetry released as `0.16.15` | Preserve the 100/1,000-route phase, RSS, output, digest, incremental-equivalence, and recovery evidence, then run the full separately provisioned 10,000-route topology. | 10,000-route / 100,000-module run remains pending; no projection is accepted |
+| `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |

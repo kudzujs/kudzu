@@ -1,5 +1,34 @@
 # Kudzu Releases
 
+## 0.16.16 - Bounded Compiler Module Cache
+
+Kudzu 0.16.16 bounds canonical TypeScript AST retention so the complete
+10,000-route production-scale contract runs under a 10 GiB V8 heap.
+
+### Changed in 0.16.16
+
+- Bounds complete canonical module records to a 1,024-entry LRU while preserving
+  stable position-based module symbols and reparsing evicted source on demand.
+- Fixes the measured 10,000-route failure where roughly 90,000 retained
+  parent-linked TypeScript ASTs exhausted a 10,240 MiB heap.
+- Completes the identical 100,000-module / 10,110,000-line topology with 5,461.0
+  MiB clean-build RSS and 8,266.9 MiB retained-session peak RSS.
+- Verifies 10-module / one-page incremental scope, byte-identical changed-clean
+  output, deterministic digests, and clean and retained-session recovery.
+- Adds scale-aware recovery timeout, diagnostic stage progress, and bounded
+  temporary-fixture cleanup retries to the maintained benchmark harness.
+- Adds eight net production compiler lines, no semantic primitive, compiler
+  pass, runtime concept, application API, dependency, deploy artifact, or
+  browser byte.
+- Updates `create-kudzu@0.1.141` to generate projects on
+  `@kudzujs/core@^0.16.16`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.16
+```
+
 ## 0.16.15 - Production Evidence Gates
 
 Kudzu 0.16.15 turns compiler scale, large-list parity, and AI attribution gaps
