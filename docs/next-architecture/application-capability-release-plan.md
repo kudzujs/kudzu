@@ -2109,6 +2109,25 @@ TypeScript and Kudzu build check.
 - **Done condition:** the evidence either authorizes `1.0.0` or names the next
   measured blocker without changing the release criteria.
 
+The first independently reviewable evidence-integrity prerequisite is released
+as `@kudzujs/core@0.16.18`. A successful adapter result without its raw
+attribution trace previously remained eligible for the success-rate and median
+successful-cost denominators with synthetic zero metrics. The runner now
+requires the trace in the success predicate, retains that attempt as an
+incomplete failure, and withholds unsupported per-success claims. The focused
+three-test harness passes and the change adds one condition with no semantic
+primitive, compiler pass, runtime concept, application API, dependency, or
+application browser byte.
+
+This prerequisite makes no framework ranking. Existing complete fixtures cover
+the content, forms, CRUD/shared-state, and resource/realtime task classes. The
+pinned public `kudzu-based-bench` storefront at commit
+`f2d5be1a516c539e30f7125f6870d42b1dd02ecd` remains the smallest complete paired
+commerce source. The next exact action is to freeze equivalent pre-task starters
+and complete acceptance journeys for those five classes, then run at least five
+interleaved attempts per framework and task under one model, tool, context, and
+time contract.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:
@@ -2254,3 +2273,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
+| `0.21.4` | Active; attribution prerequisite released as `0.16.18` | Freeze paired production starters and complete acceptance for the five required task classes, then run at least five interleaved attempts per framework and task. | No local complete React + Vite starter set; derive four pairs from maintained complete fixtures and pin the public commerce pair |

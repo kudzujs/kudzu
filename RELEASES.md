@@ -1,5 +1,37 @@
 # Kudzu Releases
 
+## 0.16.18 - AI Attribution Integrity
+
+Kudzu 0.16.18 makes the AI delivery evidence boundary fail closed before the
+production-shaped `0.21.4` comparison.
+
+### Changed in 0.16.18
+
+- Requires a recorded raw attribution trace before an AI delivery attempt can
+  count as a success, even when its adapter, build, and acceptance all pass.
+- Retains missing-trace attempts as incomplete failures and reports zero
+  successes instead of synthetic zero-token, zero-cost successes.
+- Keeps per-success token and monetary claims unavailable when no attributable
+  success exists.
+- Adds a focused exit-zero/no-trace regression while preserving the existing
+  paired success/failure and tooling-comparison checks.
+- Records the production corpus boundary: existing complete applications cover
+  content, forms, CRUD/shared state, and resource ownership, while the pinned
+  public commerce comparator remains the smallest complete paired source.
+- Claims no framework ranking and leaves `0.21.4` active until five attempts per
+  framework and task pass the complete behavior, accessibility, build, browser,
+  output, maintainability, and retained-performance contract.
+- Adds one harness condition and no semantic primitive, compiler pass, runtime
+  concept, application API, dependency, or application browser byte.
+- Updates `create-kudzu@0.1.143` to generate projects on
+  `@kudzujs/core@^0.16.18`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.18
+```
+
 ## 0.16.17 - Browser Performance Gates
 
 Kudzu 0.16.17 turns existing browser performance and memory evidence into

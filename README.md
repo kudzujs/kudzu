@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.17 - Browser performance gates.** Kudzu now enforces maintained median budgets for keyed collections, bounded 10,000-item ranges, and enhanced navigation while preserving its existing lazy-load and long-session memory bounds. Read the [release notes](./RELEASES.md#01617---browser-performance-gates), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.17), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.18 - AI attribution integrity.** Kudzu's delivery harness now rejects successful-looking attempts that omit their raw attribution trace instead of counting them as zero-cost successes. No framework ranking is claimed; the production-shaped `0.21.4` comparison remains active. Read the [release notes](./RELEASES.md#01618---ai-attribution-integrity), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.18), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

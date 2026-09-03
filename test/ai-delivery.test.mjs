@@ -63,12 +63,12 @@ test("compares paired baseline and tool-assisted attempts", async t => {
   assert.equal(report.comparison.identicalAcceptance, protocol.task.acceptance.sha256)
 })
 
-test("retains an adapter failure that produces no attribution trace", async t => {
+test("does not count an unattributed adapter result as a success", async t => {
   const directory = await mkdtemp(join(tmpdir(), "kudzu-ai-missing-trace-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const fixture = join(directory, "fixture")
   await cp(resolve("test/fixtures/ai-delivery"), fixture, { recursive: true })
-  const adapter = "process.exitCode = 1\n"
+  const adapter = ""
   await writeFile(join(fixture, "adapter.mjs"), adapter)
   const protocolFile = join(fixture, "protocol.json")
   const protocol = JSON.parse(await readFile(protocolFile, "utf8"))
@@ -81,6 +81,7 @@ test("retains an adapter failure that produces no attribution trace", async t =>
   const report = JSON.parse(await readFile(join(output, "run.json"), "utf8"))
   assert.deepEqual(report.attempts.map(attempt => [attempt.status, attempt.attribution]), [["failure", "incomplete"], ["failure", "incomplete"]])
   assert.equal(report.status, "incomplete")
+  assert.equal(report.variants.every(variant => variant.successRateMillionths === 0), true)
   assert.equal(report.variants[0].costPerSuccessUsdNanos, null)
   assert.equal(report.variants[0].tokensPerSuccess, null)
 })

@@ -74,7 +74,7 @@ try {
     await copyInventory(artifacts.entries, artifactRoot, join(evidenceDirectory, "artifacts"))
     const metrics = metricsFor(trace, protocol.model.pricing)
     const exceeded = budgetFailures(metrics, protocol.budgets)
-    const status = !adapter.error && adapter.status === 0 && !build.error && build.status === 0 && acceptanceResult.passed && !exceeded.length ? "success" : "failure"
+    const status = recordedTrace && !adapter.error && adapter.status === 0 && !build.error && build.status === 0 && acceptanceResult.passed && !exceeded.length ? "success" : "failure"
     const result = {
       schema: 1,
       id: scheduled.id,
