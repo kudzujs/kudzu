@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.16.20 - AI Evidence Forward Release
+
+Kudzu 0.16.20 forward-publishes the unchanged `0.16.19` AI delivery evidence
+packet after that GitHub release's npm workflow stopped on an unrelated flaky
+project browser journey before either package was published.
+
+### Changed in 0.16.20
+
+- Preserves the corrected `0.21.4` protocols, 11/25 Kudzu versus 24/25 React +
+  Vite result, failed `1.0.0` gate, and raw evidence archive byte-for-byte.
+- Moves no tag and republishes no npm version; `0.16.19` remains the immutable
+  GitHub evidence release and `0.16.20` is the first npm package carrying it.
+- Adds no compiler, runtime, public API, dependency, generated behavior, or
+  browser byte.
+- Updates `create-kudzu@0.1.145` to generate projects on
+  `@kudzujs/core@^0.16.20`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.20
+```
+
 ## 0.16.19 - Corrected AI Delivery Evidence
 
 Kudzu 0.16.19 publishes the corrected five-task `0.21.4` AI delivery proof and
@@ -32,6 +55,9 @@ records that the `1.0.0` gate did not pass.
   dependency, generated application behavior, or browser byte.
 - Updates `create-kudzu@0.1.144` to generate projects on
   `@kudzujs/core@^0.16.19`.
+- The GitHub release and raw asset were published, but its npm workflow stopped
+  before publication on an unrelated project browser-test failure. The immutable
+  forward release is `0.16.20` with generator `0.1.145`.
 
 ### Upgrade
 
