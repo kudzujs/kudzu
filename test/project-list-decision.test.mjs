@@ -3,7 +3,7 @@ import { existsSync } from "node:fs"
 import { spawnSync } from "node:child_process"
 import test from "node:test"
 
-const chrome = [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+const chrome = process.env.KUDZU_SKIP_BROWSER ? undefined : [process.env.CHROME_BIN, "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
 
 if (process.env.KUDZU_REQUIRE_CHROME && !chrome) throw new Error("Chrome is required for the project list decision test; set CHROME_BIN to an executable Chrome or Chromium binary")
 

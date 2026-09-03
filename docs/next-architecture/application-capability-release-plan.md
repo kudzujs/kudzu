@@ -2073,7 +2073,10 @@ and browser bytes change by zero. Exact samples and limitations are recorded in
 `create-kudzu@0.1.142`. The exact versioned tree passes `npm run check`, all 301
 remaining tests after the application contract, package smoke, generator
 creation, and both registry dry runs. Tarball inspection records the expected 85
-core files and four generator files with no bundled dependencies.
+core files and four generator files with no bundled dependencies. The Node 22
+no-browser lane initially attempted the list acceptance despite
+`KUDZU_SKIP_BROWSER`; that test now follows the existing skip contract while the
+Node 24 required-Chrome lane retains the browser acceptance.
 
 Seven fresh exact-candidate Chrome profiles pass every maintained alarm. The
 project table-save/navigation medians are 0.7/3.6 ms; direct, pagination, and
