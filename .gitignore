@@ -8,6 +8,7 @@ test/fixtures/**/dist/
 benchmarks/
 test-results/endurance/
 test-results/ai-delivery/
+test-results/ai-delivery-production/
 
 # wrangler files
 .wrangler

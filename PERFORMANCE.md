@@ -1,6 +1,69 @@
 # Performance Records
 
-Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, and `npm run benchmark:ai-delivery` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, `npm run benchmark:ai-delivery`, and `npm run benchmark:ai-delivery-production` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+
+## 0.21.4 Corrected AI Delivery Proof
+
+Measured 2026-09-03 on Linux x64 with Node 24.14.0, Chrome 152.0.7977.64,
+OpenCode 1.18.27, and `openai/gpt-5.6-sol`. Each of five production-shaped task
+classes ran five predeclared interleaved attempts per framework with identical
+model, tools, public-context, 300-second, 400,000-input-token, and 40-tool-call
+limits. Failed and incomplete attempts remain in success and cost denominators.
+Provider-reported subscription cost was zero, so tokens are the cost comparator.
+
+| Task | Kudzu success | React + Vite success | Kudzu tokens / success | React tokens / success |
+|---|---:|---:|---:|---:|
+| Content search | 0/5 | 5/5 | unavailable | 99,779 |
+| Password confirmation | 5/5 | 5/5 | 85,821 | 116,307 |
+| CRUD/shared filter | 1/5 | 5/5 | 2,088,870 | 119,430 |
+| Commerce-derived shipping | 0/5 | 5/5 | unavailable | 57,979 |
+| Realtime ownership | 5/5 | 4/5 | 261,327 | unavailable |
+| **Overall** | **11/25 (44%)** | **24/25 (96%)** | **unavailable** | **unavailable** |
+
+All final builds passed. Browser acceptance passed for 17/25 Kudzu attempts and
+24/25 React attempts; six otherwise-correct Kudzu attempts lost only on frozen
+budgets. The one remaining React attempt timed out in the adapter at 300 seconds,
+produced no attribution trace, and is retained as incomplete rather than
+selectively replaced. Therefore the failure-inclusive realtime and aggregate
+React cost claims are unavailable. No successful retained source used imperative
+DOM replacement, changed dependencies, or embedded acceptance-specific shortcuts.
+
+| Task with accepted output | Kudzu median raw / gzip artifact | React median raw / gzip artifact | Kudzu / React median transferred JS |
+|---|---:|---:|---:|
+| Content | 91,681 / 34,905 B | 206,483 / 66,401 B | 36,114 / 199,137 B |
+| Forms | 24,238 / 9,801 B | 202,702 / 64,305 B | 15,328 / 198,467 B |
+| CRUD | 49,526 / 16,860 B | 203,412 / 64,483 B | 36,127 / 198,495 B |
+| Realtime | 45,854 / 16,138 B | 202,520 / 64,245 B | 36,111 / 199,043 B |
+
+Kudzu retained complete zero-JavaScript static siblings in every accepted output.
+Commerce has no accepted Kudzu output and therefore no Kudzu byte comparison.
+Lower browser output does not offset the failed success-rate and task-cost gate.
+
+The corrected revision-2 protocol SHA-256 values are:
+
+- content `773ac7cf998006bc54f66a6fa278d4f40a2905a558f7c309acf632f201d532a0`;
+- forms `a004d6a65d6a255ba93965f208ca9afe834c8abeeb6ed0f8234a8b01435d55a1`;
+- CRUD `371f491984c582802452f85d3c2c5cca147f74f34197495627369092e87535f5`;
+- commerce `d1b670d72ebadbfc0b2a9a1f9060574fa10d742f99629aadc031c0133726197f`;
+- realtime `c6ae3dfbac72ca07b5e7a95e0e55282aa8a8c2624c391395886376e2b210bf66`.
+
+The first batch, Kudzu 8/25 versus React 16/25, is invalid for ranking. Its
+acceptance SHA changed from
+`78478ae8ae141d7c787b930ce345bf7d4cf62142c64a3b3a5e495149adc14c30`
+to `c1320b8c87c1d3c2303ac20a5385fae9c3935d121ff31aab4bb9a899bd7e7a06`
+after correcting React controlled-input dispatch, hidden live-region and form
+field selectors, incomplete CRUD/realtime journeys, one broken Kudzu CRUD
+starter behavior, and inconsistent React versions. Revision 2 also hashes the
+written acceptance contracts. Both batches remain in the release archive
+[`kudzu-ai-delivery-0.21.4-gpt-5.6-sol.tar.gz`](https://github.com/kudzujs/kudzu/releases/download/v0.16.19/kudzu-ai-delivery-0.21.4-gpt-5.6-sol.tar.gz),
+SHA-256 `4e37d15b4c4b0cf88720a3a7743996794b2e0172dbc43d40514f944fb01bd0f8`.
+
+The measured next blockers are ordinary reactive collection normalization and
+count reuse, plus reactive text ownership inside selected conditional branches.
+Kudzu does not have the highest or tied success rate or a valid lowest aggregate
+cost, so this proof does not authorize `1.0.0`. This evidence packet changes no
+compiler, runtime, public API, dependency, generated application, or browser
+artifact.
 
 ## 0.21.2 Browser Performance And Memory
 

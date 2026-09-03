@@ -1,0 +1,18 @@
+{
+  "name": "ai-delivery-commerce-react-vite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "5.1.4",
+    "vite": "7.3.1",
+    "typescript": "5.9.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3"
+  },
+  "devDependencies": {}
+}

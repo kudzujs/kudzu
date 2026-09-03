@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "revision": 2,
+  "id": "production-realtime-pause-ownership-r2",
+  "packet": "0.21.4",
+  "model": { "provider": "openai-via-opencode", "id": "openai/gpt-5.6-sol", "revision": "gpt-5.6-sol", "adapter": { "command": "node", "args": ["{protocol}/../../../ai-delivery-opencode-adapter.mjs"], "sha256": "905cd84130655b6f6312f89fd3c049feabc8edce40b86cb54a55727111d88299" }, "pricing": { "inputUsdNanosPerMillion": 0, "outputUsdNanosPerMillion": 0, "reasoningUsdNanosPerMillion": 0, "accounting": "provider-reported subscription cost is zero; tokens are the cost comparator" } },
+  "tools": { "versions": { "runner": "1", "opencode": "1.18.27", "node": "captured-exactly-per-run", "kudzu": "0.16.18", "react": "19.2.8" }, "names": ["read", "write", "build", "shell", "grep", "glob", "list", "task", "question", "todowrite", "skill", "webfetch"], "permissions": ["workspace-read", "workspace-write", "workspace-shell", "public-context-only"] },
+  "budgets": { "elapsedMs": 300000, "inputTokens": 400000, "outputTokens": 20000, "reasoningTokens": 20000, "toolCalls": 40, "filesRead": 20, "filesModified": 8, "buildAttempts": 5 },
+  "task": { "id": "pause-resume-owned-socket", "class": "resource-realtime", "prompt": "prompt.md", "promptSha256": "7d50926567b48786f2f5784f8721e02b4986ac290424ccd2a379a4a0a677eadc", "acceptanceContract": { "path": "acceptance-contract.md", "sha256": "053cd5f019afbb20dcdb172910c0618eb370a7920424f2271e6650823f30cd95" }, "acceptance": { "command": "node", "args": ["{protocol}/../../../ai-delivery-production-acceptance.mjs", "{workspace}", "realtime"], "sha256": "c1320b8c87c1d3c2303ac20a5385fae9c3935d121ff31aab4bb9a899bd7e7a06" } },
+  "variants": [
+    { "id": "kudzu", "framework": "Kudzu 0.16.18", "starter": "kudzu", "starterSha256": "a9d7b4fb528a17efae9446ba587a0a40586ce410c2ebc0203792ca796b5d1429", "publicContext": [{ "path": "../public-kudzu.md", "sha256": "1a341f6d42f83784dd7eda729f45a8d9fd66414448f4051c2b3483e7e90eff61" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" },
+    { "id": "react-vite", "framework": "React 19.2.8 + Vite 7.3.6", "starter": "react-vite", "starterSha256": "f8d6915a6c9e1aeb9bde4482baafdbb4015e42b913535b10cb86d66ebc0eb50e", "publicContext": [{ "path": "../public-react-vite.md", "sha256": "de27615c57742bd78f6e4cb3f8861900d8a8e8eea814dc41c037efbcc8f7bfd0" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" }
+  ],
+  "schedule": [
+    { "id": "realtime-kudzu-0", "variant": "kudzu", "ordinal": 0 }, { "id": "realtime-react-vite-0", "variant": "react-vite", "ordinal": 0 }, { "id": "realtime-react-vite-1", "variant": "react-vite", "ordinal": 1 }, { "id": "realtime-kudzu-1", "variant": "kudzu", "ordinal": 1 }, { "id": "realtime-kudzu-2", "variant": "kudzu", "ordinal": 2 }, { "id": "realtime-react-vite-2", "variant": "react-vite", "ordinal": 2 }, { "id": "realtime-react-vite-3", "variant": "react-vite", "ordinal": 3 }, { "id": "realtime-kudzu-3", "variant": "kudzu", "ordinal": 3 }, { "id": "realtime-kudzu-4", "variant": "kudzu", "ordinal": 4 }, { "id": "realtime-react-vite-4", "variant": "react-vite", "ordinal": 4 }
+  ]
+}

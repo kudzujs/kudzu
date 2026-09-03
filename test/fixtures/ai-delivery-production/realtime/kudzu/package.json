@@ -1,0 +1,11 @@
+{
+  "name": "ai-delivery-realtime-kudzu",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "kudzu build"
+  },
+  "dependencies": {
+    "@kudzujs/core": "0.16.18"
+  }
+}

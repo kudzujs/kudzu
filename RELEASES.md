@@ -1,5 +1,44 @@
 # Kudzu Releases
 
+## 0.16.19 - Corrected AI Delivery Evidence
+
+Kudzu 0.16.19 publishes the corrected five-task `0.21.4` AI delivery proof and
+records that the `1.0.0` gate did not pass.
+
+### Changed in 0.16.19
+
+- Adds five paired production-shaped Kudzu and React + Vite starters, frozen
+  prompts, independently hashed acceptance contracts, an OpenCode adapter, and
+  browser acceptance for content, forms, CRUD/shared state, commerce-derived
+  state, and realtime resource ownership.
+- Excludes the first diagnostic batch after finding hidden content/form selector
+  assumptions and inconsistent React versions; retains that batch in the raw
+  archive instead of presenting it as framework evidence.
+- Records the corrected result: Kudzu 11/25 attributable successes (44%) and
+  React + Vite 24/25 (96%), with one React realtime adapter timeout correctly
+  retained as incomplete.
+- Records that Kudzu has no successful task-level result for content or commerce,
+  so its aggregate median token cost per successful task is unavailable and the
+  `1.0.0` success-and-cost gate is not authorized.
+- Keeps React's aggregate failure-inclusive cost unavailable because its timed-out
+  realtime attempt has no attribution trace.
+- Names the measured blockers: excessive correction cost for ordinary reactive
+  content search, filtered-collection count reuse in CRUD, and reactive text
+  frozen inside the selected commerce conditional branch.
+- Publishes both batches as the release asset
+  `kudzu-ai-delivery-0.21.4-gpt-5.6-sol.tar.gz` with SHA-256
+  `4e37d15b4c4b0cf88720a3a7743996794b2e0172dbc43d40514f944fb01bd0f8`.
+- Adds no semantic primitive, compiler pass, runtime concept, public API,
+  dependency, generated application behavior, or browser byte.
+- Updates `create-kudzu@0.1.144` to generate projects on
+  `@kudzujs/core@^0.16.19`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.19
+```
+
 ## 0.16.18 - AI Attribution Integrity
 
 Kudzu 0.16.18 makes the AI delivery evidence boundary fail closed before the

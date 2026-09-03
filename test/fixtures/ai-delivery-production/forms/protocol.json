@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "revision": 2,
+  "id": "production-account-form-r2",
+  "packet": "0.21.4",
+  "model": { "provider": "openai-via-opencode", "id": "openai/gpt-5.6-sol", "revision": "gpt-5.6-sol", "adapter": { "command": "node", "args": ["{protocol}/../../../ai-delivery-opencode-adapter.mjs"], "sha256": "905cd84130655b6f6312f89fd3c049feabc8edce40b86cb54a55727111d88299" }, "pricing": { "inputUsdNanosPerMillion": 0, "outputUsdNanosPerMillion": 0, "reasoningUsdNanosPerMillion": 0, "accounting": "provider-reported subscription cost is zero; tokens are the cost comparator" } },
+  "tools": { "versions": { "runner": "1", "opencode": "1.18.27", "node": "captured-exactly-per-run", "kudzu": "0.16.18", "react": "19.2.8" }, "names": ["read", "write", "build", "shell", "grep", "glob", "list", "task", "question", "todowrite", "skill", "webfetch"], "permissions": ["workspace-read", "workspace-write", "workspace-shell", "public-context-only"] },
+  "budgets": { "elapsedMs": 300000, "inputTokens": 400000, "outputTokens": 20000, "reasoningTokens": 20000, "toolCalls": 40, "filesRead": 20, "filesModified": 8, "buildAttempts": 5 },
+  "task": { "id": "password-confirmation", "class": "forms", "prompt": "prompt.md", "promptSha256": "7d220e8613b2b3498b6ccea5ad9b7c464dc019cac395709921ba362320079213", "acceptanceContract": { "path": "acceptance-contract.md", "sha256": "df8f17718bc000cc8e835e95c186652985f2c813f5b31dce78ac7d4b0f525e18" }, "acceptance": { "command": "node", "args": ["{protocol}/../../../ai-delivery-production-acceptance.mjs", "{workspace}", "forms"], "sha256": "c1320b8c87c1d3c2303ac20a5385fae9c3935d121ff31aab4bb9a899bd7e7a06" } },
+  "variants": [
+    { "id": "kudzu", "framework": "Kudzu 0.16.18", "starter": "kudzu", "starterSha256": "da2f0b390a14582fe49d7dd3520b3c853e9b898802b25bbf1b9a0f590888f005", "publicContext": [{ "path": "../public-kudzu.md", "sha256": "1a341f6d42f83784dd7eda729f45a8d9fd66414448f4051c2b3483e7e90eff61" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" },
+    { "id": "react-vite", "framework": "React 19.2.8 + Vite 7.3.6", "starter": "react-vite", "starterSha256": "d888b6b69fb5fe8b71785b9bd0ac9ea2bca0677e935eb27ceba24cfe87e87196", "publicContext": [{ "path": "../public-react-vite.md", "sha256": "de27615c57742bd78f6e4cb3f8861900d8a8e8eea814dc41c037efbcc8f7bfd0" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" }
+  ],
+  "schedule": [
+    { "id": "forms-kudzu-0", "variant": "kudzu", "ordinal": 0 }, { "id": "forms-react-vite-0", "variant": "react-vite", "ordinal": 0 }, { "id": "forms-react-vite-1", "variant": "react-vite", "ordinal": 1 }, { "id": "forms-kudzu-1", "variant": "kudzu", "ordinal": 1 }, { "id": "forms-kudzu-2", "variant": "kudzu", "ordinal": 2 }, { "id": "forms-react-vite-2", "variant": "react-vite", "ordinal": 2 }, { "id": "forms-react-vite-3", "variant": "react-vite", "ordinal": 3 }, { "id": "forms-kudzu-3", "variant": "kudzu", "ordinal": 3 }, { "id": "forms-kudzu-4", "variant": "kudzu", "ordinal": 4 }, { "id": "forms-react-vite-4", "variant": "react-vite", "ordinal": 4 }
+  ]
+}

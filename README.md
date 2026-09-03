@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.18 - AI attribution integrity.** Kudzu's delivery harness now rejects successful-looking attempts that omit their raw attribution trace instead of counting them as zero-cost successes. No framework ranking is claimed; the production-shaped `0.21.4` comparison remains active. Read the [release notes](./RELEASES.md#01618---ai-attribution-integrity), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.18), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.19 - corrected AI delivery evidence.** The production-shaped `0.21.4` comparison measured Kudzu at 11/25 attributable successes and React + Vite at 24/25, so the `1.0.0` gate remains blocked while content, CRUD, and commerce compiler boundaries are investigated. Read the [release notes](./RELEASES.md#01619---corrected-ai-delivery-evidence), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.19), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

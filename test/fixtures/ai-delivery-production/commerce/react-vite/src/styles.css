@@ -1,0 +1,30 @@
+:root { color: #171914; background: #f4f1e9; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+button { font: inherit; }
+.site-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem clamp(1rem, 4vw, 3rem); border-bottom: 1px solid #cec9bc; background: #fffdf8; }
+.logo { font-weight: 800; letter-spacing: .08em; text-decoration: none; }
+nav { display: flex; gap: 1rem; }
+.product { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(20rem, .9fr); gap: clamp(2rem, 6vw, 6rem); max-width: 74rem; margin: auto; padding: clamp(1.5rem, 5vw, 5rem); }
+.product-gallery { min-height: 34rem; border-radius: 1.5rem; overflow: hidden; background: #d8d2c5; }
+.product-gallery img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.product-detail { align-self: center; }
+.eyebrow { color: #69705f; font-size: .75rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+h1 { margin: .35rem 0; font-family: Georgia, serif; font-size: clamp(2.2rem, 5vw, 4.5rem); line-height: .98; }
+.product-price { margin: 1.2rem 0 2rem; font-size: 1.3rem; }
+.option-group { display: flex; gap: .5rem; margin: 1rem 0; padding: 0; border: 0; }
+.option-group legend { width: 100%; margin-bottom: .45rem; font-size: .85rem; font-weight: 700; }
+.option-group button { min-width: 3.2rem; padding: .65rem .9rem; border: 1px solid #999c90; border-radius: 999px; background: transparent; cursor: pointer; }
+.option-group button[aria-pressed="true"] { color: white; background: #263425; border-color: #263425; }
+.availability { min-height: 1.5rem; color: #5a6254; }
+.add-to-cart, .checkout-button { width: 100%; padding: .9rem 1rem; border: 0; border-radius: .5rem; color: white; background: #263425; font-weight: 700; cursor: pointer; }
+.add-to-cart:disabled, .checkout-button:disabled { opacity: .45; cursor: not-allowed; }
+.confirmation { color: #315e36; }
+.description { margin-top: 2rem; color: #5e6258; }
+.checkout, .policy { max-width: 48rem; margin: auto; padding: clamp(2rem, 7vw, 6rem) 1.25rem; }
+.cart-lines { display: grid; gap: .75rem; padding: 0; list-style: none; }
+.cart-lines li, .subtotal { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #cec9bc; }
+.cart-lines small { display: block; color: #69705f; }
+.subtotal { margin: 2rem 0; font-size: 1.2rem; }
+@media (max-width: 700px) { .product { grid-template-columns: 1fr; } .product-gallery { min-height: 20rem; } .site-header { align-items: flex-start; } }
