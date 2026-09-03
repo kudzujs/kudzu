@@ -2035,6 +2035,31 @@ runtime concept, public API, deploy artifact, or browser byte.
 - **Done condition:** complete features meet declared thresholds with bounded
   long-session growth.
 
+**Result:** closed through existing route artifacts, keyed ownership, enhanced
+navigation, native ESM loading, and the released endurance harness. Seven fresh
+Chrome profiles keep 2,000-row append, filter, restore, and reverse medians at
+9.6, 17.6, 84.5, and 19.4 ms against a 100 ms median alarm. Project table save
+and list-to-detail navigation medians are 0.9 and 4.9 ms against the same alarm;
+the exact session graph owns 17 JavaScript files totaling 81,200 raw / 27,885
+aggregate gzip bytes. The static 10,000-row document loads in a 999.8 ms median
+against a 2,000 ms alarm. Pagination and windowing keep the DOM at 100 rows,
+load in 163.1 and 251.7 ms against a 1,000 ms alarm, and change range in 18.1
+and 23.7 ms against a 100 ms alarm.
+
+The lazy editor retains 12,982 raw / 6,153 gzip eager bytes and one 250,086 raw
+/ 80,890 gzip deferred CodeMirror chunk; two route owners share one native ESM
+module request and the static sibling remains zero JavaScript. Focused Chrome
+acceptance passes 3/3. The endurance gate passes five warm-ups, ten stale-
+prefetch races, 30 ownership cycles, and 101 navigations: editor mounts and
+disposals balance 71/71, browser state stays zero, documents and listeners stay
+at six and seven, DOM nodes move by one, and forced-GC heap grows 79,988 B under
+the existing 2 MiB or 15% alarm. No exception or failed request occurs. Three
+existing benchmark entry points now fail when their declared median budgets are
+exceeded; the artifact collector may name the current packet. Production source,
+semantic primitives, compiler passes, runtime concepts, APIs, deploy artifacts,
+and browser bytes change by zero. Exact samples and limitations are recorded in
+`PERFORMANCE.md`; no package release is consumed.
+
 ### `0.21.3`: Package And Release Candidate
 
 - **Purpose:** verify the exact candidate as an installed product.
@@ -2043,6 +2068,25 @@ runtime concept, public API, deploy artifact, or browser byte.
   dry run, docs, and release rollback procedure.
 - **Stop condition:** version metadata changes before the exact candidate passes.
 - **Done condition:** the reviewed commit is independently publishable.
+
+**Candidate evidence:** accepted as `@kudzujs/core@0.16.17` and
+`create-kudzu@0.1.142`. The exact versioned tree passes `npm run check`, all 301
+remaining tests after the application contract, package smoke, generator
+creation, and both registry dry runs. Tarball inspection records the expected 85
+core files and four generator files with no bundled dependencies.
+
+Seven fresh exact-candidate Chrome profiles pass every maintained alarm. The
+project table-save/navigation medians are 0.7/3.6 ms; direct, pagination, and
+window load medians are 849.2, 166.6, and 184.5 ms; bounded range medians are
+13.0 and 19.7 ms. The keyed benchmark also passes all four 100 ms alarms. A
+fresh endurance run balances editor mounts/disposals at 71/71 across 101
+navigations, with zero document/listener growth, one additional DOM node, and
+144,172 B forced-GC heap growth under the 2 MiB alarm. Package contents preserve
+the existing production compiler/runtime and introduce no semantic primitive,
+pass, runtime concept, API, deploy artifact, or browser byte. The immutable
+rollback contract remains forward-only: a failed push, tag, publication, or
+registry verification keeps this packet active; a published npm version or tag
+is never moved and requires a forward-fix patch.
 
 ### `0.21.4`: AI Delivery Proof
 
@@ -2198,3 +2242,5 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.20.5` | Closed by measured stop condition | Preserve the negative tooling-cost result and do not present structured tools as an AI cost reduction. | Tool-assisted attempts cost 16,933 more tokens per success; no release consumed |
 | `0.21.0` | Closed by existing semantics | Preserve the complete browser parity matrix, large-list keyboard/release acceptance, and static exclusion controls. | No production change; no release consumed |
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
+| `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
+| `0.21.3` | Candidate accepted as `0.16.17` | Complete the immutable release transaction, then advance to `0.21.4`. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |

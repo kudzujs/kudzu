@@ -1,5 +1,33 @@
 # Kudzu Releases
 
+## 0.16.17 - Browser Performance Gates
+
+Kudzu 0.16.17 turns existing browser performance and memory evidence into
+maintained release alarms without changing production compiler or runtime code.
+
+### Changed in 0.16.17
+
+- Enforces 100 ms median budgets for 2,000-row append, filter, restore, and
+  reverse operations and project table-save and enhanced-navigation actions.
+- Enforces 1,000 ms bounded-list and 2,000 ms complete static 10,000-row load
+  budgets while preserving retained identity and fresh off-range state.
+- Records exact initial, session, and lazy JavaScript ownership, including one
+  shared deferred CodeMirror chunk and zero JavaScript on static siblings.
+- Revalidates 30 ownership cycles and 101 navigations with balanced editor
+  handles, stable document/listener/cache counts, and 79,988 B forced-GC heap
+  growth under the existing alarm.
+- Keeps single-run diagnostic acceptance outside statistical median enforcement.
+- Adds no semantic primitive, compiler pass, production source, runtime concept,
+  public API, deploy artifact, or browser byte.
+- Updates `create-kudzu@0.1.142` to generate projects on
+  `@kudzujs/core@^0.16.17`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.17
+```
+
 ## 0.16.16 - Bounded Compiler Module Cache
 
 Kudzu 0.16.16 bounds canonical TypeScript AST retention so the complete

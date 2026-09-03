@@ -2,6 +2,67 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, and `npm run benchmark:ai-delivery` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.21.2 Browser Performance And Memory
+
+Measured 2026-09-03 at revision
+`fcb42ae388c733ff9098f8c4a059690a21a56ed3` on Linux x64 with Node 24.14.0,
+Chrome 152.0.7977.64, an Intel i5-9500, six logical CPUs, and 31.2 GiB RAM.
+These are same-revision application gates, not cross-framework or historical
+regression claims. Each timing benchmark ran alone with seven fresh Chrome
+profiles; the list decision rotates strategies. Median browser budgets are 100
+ms for measured interactions and enhanced navigation, 1,000 ms for bounded-list
+load, and 2,000 ms for the complete static 10,000-row document.
+
+| Fixture | Metric | Raw samples | Median / budget |
+|---|---|---|---:|
+| 2,000 keyed rows | Append 33 | `[9.6, 13.9, 10.8, 12.3, 8.6, 8.8, 7.0]` ms | 9.6 / 100 ms |
+| 2,000 keyed rows | Filter to one | `[16.0, 17.6, 20.4, 21.1, 17.6, 16.3, 16.9]` ms | 17.6 / 100 ms |
+| 2,000 keyed rows | Restore 1,999 | `[66.9, 84.5, 95.3, 78.5, 94.6, 76.4, 98.1]` ms | 84.5 / 100 ms |
+| 2,000 keyed rows | Reverse 2,000 | `[19.4, 18.8, 19.4, 18.7, 18.8, 27.3, 19.6]` ms | 19.4 / 100 ms |
+| Project application | Table save | `[0.8, 0.9, 0.9, 0.9, 0.8, 2.8, 1.0]` ms | 0.9 / 100 ms |
+| Project application | List-to-detail navigation | `[4.2, 9.5, 4.9, 4.2, 6.4, 11.7, 4.1]` ms | 4.9 / 100 ms |
+| 10,000-row direct | Complete load | `[999.8, 1030.9, 982.2, 1070.1, 1047.2, 939.0, 994.3]` ms | 999.8 / 2,000 ms |
+| 100-row pagination | Complete load | `[327.3, 133.9, 163.1, 145.1, 150.5, 417.1, 190.1]` ms | 163.1 / 1,000 ms |
+| 100-row pagination | Next range | `[39.3, 13.3, 14.1, 22.1, 14.6, 18.1, 22.3]` ms | 18.1 / 100 ms |
+| 100-row window | Complete load | `[185.1, 472.8, 247.9, 315.0, 251.7, 148.4, 260.6]` ms | 251.7 / 1,000 ms |
+| 100-row window | Next range | `[23.7, 14.4, 14.0, 48.5, 19.5, 50.5, 26.7]` ms | 23.7 / 100 ms |
+
+The keyed graph is nine JavaScript files totaling 30,048 raw / 11,748
+aggregate gzip B. The project list/detail session owns 17 unique JavaScript
+files totaling 81,200 raw / 27,885 aggregate gzip B; its initial list and
+concrete detail route graphs are 69,178 / 24,183 and 67,702 / 23,556 raw/gzip B.
+These are structural route/session artifact bytes from the exact ownership
+report, not compressed network-transfer measurements from the local uncompressed
+server.
+
+The lazy editor initially owns 12,982 raw / 6,153 gzip B and defers one 250,086
+raw / 80,890 gzip B CodeMirror chunk. Two route owners share that one deferred
+chunk while owning 21,599 / 9,466 and 21,609 / 9,468 eager raw/gzip B; the static
+sibling owns zero JavaScript. Focused required-Chrome tests pass 3/3, proving no
+deferred request before activation, one native module request, reuse by later
+owners, and exact conditional/document cleanup.
+
+The 10,000-row static control retains 10,000 rows, 50,015 elements, 90,023 DOM
+nodes, zero listeners, 534,292 forced-GC heap bytes, and zero JavaScript. Both
+bounded strategies retain exactly 100 rows: pagination records 1,467 nodes, one
+listener, and 1,423,560 median heap bytes; windowing records 1,468 nodes, two
+listeners, and 1,528,288 median heap bytes. Off-range state is released and
+recreated while retained-row identity remains correct.
+
+The default endurance gate passes five warm-ups, ten stale-prefetch races, and
+30 ownership cycles in one profile. Across 101 navigations, editor
+mounts/disposals balance at 71/71, browser state remains zero, documents remain
+six, listeners remain seven, nodes move 164 to 165, and forced-GC heap moves
+1,969,344 to 2,049,332 bytes: a 79,988 B increase under the existing 2 MiB or
+15% alarm. No browser exception or failed request occurs. The raw ignored
+artifacts are under
+`test-results/endurance/2026-09-02T23-54-34-324Z/`.
+
+The packet adds median alarms to three existing browser benchmarks and permits
+the existing artifact collector to name the active packet. It changes no
+production source, semantic primitive, compiler pass, runtime concept, deploy
+artifact, public API, or browser byte.
+
 ## 0.21.1 Compiler And Route Scale
 
 Measured 2026-09-01 on Linux x64 with Node 24.14.0, an Intel i5-9500, six

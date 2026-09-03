@@ -34,14 +34,19 @@ async function main() {
       for (const path of [...record.runtime.entries, ...record.runtime.requirements, ...record.handlers.entries, ...record.handlers.chunks]) paths.add(path)
     }
     const javascript = [...paths].map(path => readFileSync(join(fixture, "dist", path.slice(1))))
+    const tableUpdate = summarize(tableUpdateMs)
+    const navigation = summarize(navigationMs)
+    const medianBudgetMs = { tableUpdate: 100, navigation: 100 }
+    if (tableUpdate.median > medianBudgetMs.tableUpdate || navigation.median > medianBudgetMs.navigation) throw new Error(`Project interaction median exceeded budget: ${JSON.stringify({ tableUpdate, navigation, medianBudgetMs })}`)
     console.log(JSON.stringify({
       fixture: "project application shared-layout navigation",
       environment: { node: process.version, platform: process.platform, arch: process.arch, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
       methodology: `${runs} fresh Chrome profiles; session restoration and initial project fetch precede measured table save, then workspace update precedes measured list-to-detail completion`,
       states: Object.fromEntries(plan.routes.filter(route => route.route.startsWith("/app/projects")).map(route => [route.route, route.states.map(state => ({ name: state.name, lifetime: state.lifetime }))])),
       sessionJavascript: { files: paths.size, rawBytes: javascript.reduce((total, bytes) => total + bytes.length, 0), aggregateGzipBytes: javascript.reduce((total, bytes) => total + gzipSync(bytes).length, 0) },
-      tableUpdateMs: summarize(tableUpdateMs),
-      navigationMs: summarize(navigationMs)
+      medianBudgetMs,
+      tableUpdateMs: tableUpdate,
+      navigationMs: navigation
     }, null, 2))
   } finally {
     server?.kill()

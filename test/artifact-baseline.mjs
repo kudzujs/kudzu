@@ -22,7 +22,7 @@ const fixtures = [
   ["large-list", "project-list-decision"]
 ]
 
-const report = { schema: 1, packet: "0.20.1", revision: process.env.GITHUB_SHA || "working-tree", fixtures: [] }
+const report = { schema: 1, packet: process.env.PACKET || "0.20.1", revision: process.env.GITHUB_SHA || "working-tree", fixtures: [] }
 
 for (const [name, directory] of fixtures) {
   const fixture = join(root, "test/fixtures", directory)

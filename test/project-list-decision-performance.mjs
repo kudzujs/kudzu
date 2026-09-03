@@ -162,11 +162,18 @@ try {
     const strategy = strategies[(run + offset) % strategies.length]
     samples[strategy].push(await browserRun(port, strategy))
   }
+  const medianBudgetMs = { directLoad: 2000, boundedLoad: 1000, boundedPage: 100 }
+  for (const [strategy, values] of runs >= 7 ? Object.entries(samples) : []) {
+    const load = summarize(values.map(value => value.loadMs)).median
+    const page = summarize(values.map(value => value.pageMs)).median
+    if (load > (strategy === "direct" ? medianBudgetMs.directLoad : medianBudgetMs.boundedLoad) || (strategy !== "direct" && page > medianBudgetMs.boundedPage)) throw new Error(`${strategy} median exceeded browser budget`)
+  }
   console.log(JSON.stringify({
     fixture: "10,000 project direct DOM, pagination, and bounded-window decision",
     ...(acceptance ? { acceptance: { keyboard: true, focus: true, releasedState: true, staticExclusion } } : {}),
     environment: { node: process.version, platform: process.platform, arch: process.arch, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
     methodology: `${runs} rotating fresh Chrome profiles per strategy; forced GC before heap usage`,
+    medianBudgetMs,
     strategies: Object.fromEntries(Object.entries(samples).map(([strategy, values]) => [strategy, {
       loadMs: summarize(values.map(value => value.loadMs)),
       pageMs: summarize(values.map(value => value.pageMs)),

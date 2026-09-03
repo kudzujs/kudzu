@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.16 - Bounded compiler module cache.** Kudzu now completes the full 10,000-route, 100,000-module source-scale contract under a 10 GiB V8 heap by bounding retained canonical TypeScript AST records. Read the [release notes](./RELEASES.md#01616---bounded-compiler-module-cache), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.16), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.17 - Browser performance gates.** Kudzu now enforces maintained median budgets for keyed collections, bounded 10,000-item ranges, and enhanced navigation while preserving its existing lazy-load and long-session memory bounds. Read the [release notes](./RELEASES.md#01617---browser-performance-gates), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.17), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

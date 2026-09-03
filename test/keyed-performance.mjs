@@ -200,12 +200,16 @@ http.createServer((request, response) => {
     result.gzip += gzipSync(bytes).length
     return result
   }, { raw: 0, gzip: 0 })
+  const browserMs = Object.fromEntries(Object.entries(browserTimes).map(([name, values]) => [name, { runs: values, median: median(values) }]))
+  const medianBudgetMs = { append: 100, filter: 100, restore: 100, reverse: 100 }
+  for (const [name, budget] of Object.entries(medianBudgetMs)) if (browserMs[name].median > budget) throw new Error(`${name} median exceeded ${budget} ms`)
   console.log(JSON.stringify({
     fixture: "2,000 keyed rows with local state and reactive search",
     environment: { node: process.version, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
     methodology: `one build warm-up, ${runs} clean builds, ${runs} fresh Chrome profiles`,
     buildMs: { runs: buildTimes, median: median(buildTimes) },
-    browserMs: Object.fromEntries(Object.entries(browserTimes).map(([name, values]) => [name, { runs: values, median: median(values) }])),
+    browserMs,
+    medianBudgetMs,
     javascript: { ...artifacts, files: jsFiles.map(file => file.slice(output.length + 1)) }
   }, null, 2))
 } finally {
