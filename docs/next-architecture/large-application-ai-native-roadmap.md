@@ -2,9 +2,9 @@
 
 ## Status
 
-Completed compiler-foundation record and longer-term plan after `0.8.35`. The [`0.9-semantic-compression.md`](./0.9-semantic-compression.md) execution queue is complete. The active queue for current work is [`application-capability-release-plan.md`](./application-capability-release-plan.md) at packet `0.21.3`. This document does not mark any remaining planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
+Completed compiler-foundation record and longer-term plan after `0.8.35`. The [`0.9-semantic-compression.md`](./0.9-semantic-compression.md) execution queue is complete. The active queue for current work is [`application-capability-release-plan.md`](./application-capability-release-plan.md) at packet `0.21.4`. This document does not mark any remaining planned capability as supported and does not authorize a React runtime, VDOM, hydration, retained browser component tree, generic rerenderer, public store/query/resource API, SPA router, or islands.
 
-[`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains the product authority for product invariants and fixture-driven feature selection. [`application-capability-release-plan.md`](./application-capability-release-plan.md) is authoritative for current work order and evidence at packet `0.21.3`; this plan retains the completed foundation, deferred program, and long-term production gates. If implementation evidence changes either boundary, update the relevant document before broadening a patch.
+[`MIGRATION_ROADMAP.md`](../../MIGRATION_ROADMAP.md) remains the product authority for product invariants and fixture-driven feature selection. [`application-capability-release-plan.md`](./application-capability-release-plan.md) is authoritative for current work order and evidence at packet `0.21.4`; this plan retains the completed foundation, deferred program, and long-term production gates. If implementation evidence changes either boundary, update the relevant document before broadening a patch.
 
 ## Product Outcome
 
@@ -483,4 +483,4 @@ The first comparison is Kudzu versus React + Vite using the same agent, model, t
 
 ## Immediate Decision
 
-All listed foundation and `0.9` slices are complete. Current work continues at `0.21.3` package and release candidate proof under the [`application-capability-release-plan.md`](./application-capability-release-plan.md); keep ResourceIR limited to qualifying independent fixtures, and do not add range ownership, virtualization, optimistic transactions, a public adapter/store API, or a router before evidence justifies them.
+All listed foundation and `0.9` slices are complete. Current work continues at `0.21.4` AI delivery proof under the [`application-capability-release-plan.md`](./application-capability-release-plan.md); keep ResourceIR limited to qualifying independent fixtures, and do not add range ownership, virtualization, optimistic transactions, a public adapter/store API, or a router before evidence justifies them.

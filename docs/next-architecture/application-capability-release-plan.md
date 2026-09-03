@@ -2069,7 +2069,7 @@ and browser bytes change by zero. Exact samples and limitations are recorded in
 - **Stop condition:** version metadata changes before the exact candidate passes.
 - **Done condition:** the reviewed commit is independently publishable.
 
-**Candidate evidence:** accepted as `@kudzujs/core@0.16.17` and
+**Result:** released as `@kudzujs/core@0.16.17` and
 `create-kudzu@0.1.142`. The exact versioned tree passes `npm run check`, all 301
 remaining tests after the application contract, package smoke, generator
 creation, and both registry dry runs. Tarball inspection records the expected 85
@@ -2090,6 +2090,13 @@ pass, runtime concept, API, deploy artifact, or browser byte. The immutable
 rollback contract remains forward-only: a failed push, tag, publication, or
 registry verification keeps this packet active; a published npm version or tag
 is never moved and requires a forward-fix patch.
+
+Commit `e9b33c04a7a2a382b858069910e4473800e7b70a`, tag `v0.16.17`, the
+[GitHub release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.17), and
+[publish workflow](https://github.com/kudzujs/kudzu/actions/runs/33704726784)
+are complete. npm exposes core `0.16.17` and generator `0.1.142`; a fresh
+registry-generated application resolves core `0.16.17` and passes its complete
+TypeScript and Kudzu build check.
 
 ### `0.21.4`: AI Delivery Proof
 
@@ -2246,4 +2253,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.0` | Closed by existing semantics | Preserve the complete browser parity matrix, large-list keyboard/release acceptance, and static exclusion controls. | No production change; no release consumed |
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
-| `0.21.3` | Candidate accepted as `0.16.17` | Complete the immutable release transaction, then advance to `0.21.4`. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
+| `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
