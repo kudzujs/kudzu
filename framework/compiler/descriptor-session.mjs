@@ -102,11 +102,11 @@ export function createDescriptorSession({ semantic, handlerUrl, factory, context
     }
   }
 
-  function compileConditional(kind, expression, truthy, falsy, setters) {
+  function compileConditional(kind, expression, truthy, falsy, setters, importBindings = new Map()) {
     const state = directStateIdentifier(expression, setters, bindingIndex)
     const thunk = branch => factory.createArrowFunction(undefined, undefined, [], undefined, factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), branch)
     if (state) return factory.createCallExpression(factory.createIdentifier("__kStateConditional"), undefined, [factory.createStringLiteral(kind), state, thunk(truthy), thunk(falsy)])
-    const [initial, ...descriptor] = compileReactiveExpression(expression, setters)
+    const [initial, ...descriptor] = compileReactiveExpression(expression, setters, importBindings)
     return factory.createCallExpression(factory.createIdentifier("__kConditional"), undefined, [factory.createStringLiteral(kind), initial, thunk(truthy), thunk(falsy), ...descriptor])
   }
 

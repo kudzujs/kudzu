@@ -1107,7 +1107,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       visit(calculation.body)
       validatedEffectCalculations.add(calculation)
     }
-    const validateReactiveJsxExpression = (expression, allowedNames) => {
+    const validateReactiveJsxExpression = (expression, allowedNames, setters) => {
       const value = unwrapExpression(expression)
       const formatAccess = ts.isCallExpression(value) && !value.questionDotToken && ts.isPropertyAccessExpression(value.expression) && !value.expression.questionDotToken && value.expression.name.text === "format" ? value.expression : undefined
       const formatter = formatAccess && unwrapExpression(formatAccess.expression)
@@ -1115,6 +1115,17 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (!constructor) {
         const validate = node => {
           const current = unwrapExpression(node)
+          if (ts.isPropertyAccessExpression(current) && current.name.text === "length") {
+            const collection = analyzeCollectionPipeline(current.expression, {
+              setters,
+              declarations: jsxLocalDeclarations.get(nearestFunction(expression)),
+              fail,
+              importedCollections,
+              stateNames: allowedNames,
+              importedCollectionTransforms
+            })
+            if (collection?.state || collection?.calculation) return factory.createNumericLiteral(0)
+          }
           if (ts.isPropertyAccessExpression(current) && ts.isCallExpression(unwrapExpression(current.expression))) {
             const call = unwrapExpression(current.expression)
             if (ts.isIdentifier(call.expression) && importBindings.has(call.expression.text) && importBindings.get(call.expression.text).kind !== "namespace") {
@@ -1175,7 +1186,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (!usedStates.size) return expression
       const captures = captureNames(expanded, expanded, setters, bindingIndex)
       const allowedNames = new Set([...setters.values(), ...captures])
-      validateReactiveJsxExpression(expanded, allowedNames)
+      validateReactiveJsxExpression(expanded, allowedNames, setters)
       return expanded
     }
     const componentSpecializations = new WeakMap()
@@ -1684,9 +1695,22 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     collectRenderedLists(sourceFile)
     const collectionAliasUses = rawRenderedLists.flatMap(({ parts }) => parts.aliasUses ?? [])
     const collectionAliasDeclarations = new Set(rawRenderedLists.flatMap(({ parts }) => parts.aliasDeclarations ?? []))
+    const collectionLengthDeclarations = new Set()
     for (const declaration of collectionAliasDeclarations) {
       const owner = nearestFunction(declaration)
-      const unsupported = identifierReferences(owner.body, declaration.name.text).find(reference => !collectionAliasUses.includes(reference))
+      const unsupported = identifierReferences(owner.body, declaration.name.text).find(reference => {
+        if (collectionAliasUses.includes(reference)) return false
+        if (!ts.isPropertyAccessExpression(reference.parent) || reference.parent.expression !== reference || reference.parent.name.text !== "length") return true
+        for (let current = reference.parent; current && current !== owner; current = current.parent) {
+          if (isFunctionLike(current)) return true
+          if (ts.isVariableDeclaration(current) && current.initializer && current.parent?.parent?.parent === owner.body && isLocalConst(current)) {
+            collectionLengthDeclarations.add(current)
+            return false
+          }
+          if (ts.isJsxExpression(current) && current.initializer === undefined) return false
+        }
+        return true
+      })
       if (unsupported) fail(unsupported, `Rendered collection alias "${declaration.name.text}" may only be used as a rendered collection source`)
     }
     const rejectUnsupportedRenderControl = node => {
@@ -1850,17 +1874,19 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const parts = conditionalParts(expression)
       if (!parts) return ts.visitNode(expression, visitor)
       const setters = settersForNode(anchor, settersByFunction)
-      const usedStates = referencedStateNames(parts.condition, setters, parts.condition, bindingIndex)
-      const captures = captureNames(parts.condition, parts.condition, setters, bindingIndex)
+      const condition = resolveReactiveJsxExpression(parts.condition, nearestFunction(anchor), setters)
+      const usedStates = referencedStateNames(condition, setters, condition, bindingIndex)
+      const captures = captureNames(condition, condition, setters, bindingIndex)
       if (!usedStates.size && !captures.size) return ts.visitEachChild(expression, visitor, context)
       usesBehavior = true
       usesConditional = true
       return descriptors.compileConditional(
         parts.kind,
-        parts.condition,
+        condition,
         compileRenderExpression(parts.truthy, anchor),
         compileRenderExpression(parts.falsy, anchor),
-        setters
+        setters,
+        importBindings
       )
     }
 
@@ -2190,6 +2216,17 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
 
       if (ts.isVariableDeclaration(node) && listLocalDeclarations.includes(node)) {
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createIdentifier("undefined"))
+      }
+
+      if (ts.isVariableDeclaration(node) && collectionLengthDeclarations.has(node) && node.initializer) {
+        const setters = settersForNode(node, settersByFunction)
+        const expression = resolveReactiveJsxExpression(node.initializer, nearestFunction(node), setters)
+        const stateNames = new Set(setters.values())
+        const rewrite = current => {
+          if (ts.isIdentifier(current) && stateNames.has(current.text) && isReferenceIdentifier(current)) return factory.createPropertyAccessExpression(current, "value")
+          return ts.visitEachChild(current, rewrite, context)
+        }
+        return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, ts.visitNode(expression, rewrite))
       }
 
       if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && importBindings.has(node.initializer.expression.text)) {

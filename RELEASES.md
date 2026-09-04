@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.16.22 - Reactive Collection Count Reuse
+
+Kudzu 0.16.22 removes the first compiler blocker selected by the corrected
+`0.21.4` AI delivery evidence: an ordinary filtered collection alias can now
+feed keyed rendering, a top-level count, reactive text, and a count-selected
+conditional branch without duplicating state or restructuring the component.
+
+### Changed in 0.16.22
+
+- Normalizes supported collection alias `.length` reads through existing
+  collection analysis and reactive binding compilation.
+- Expands count aliases before conditional compilation while preserving initial
+  server-rendered values and keyed DOM ownership across filter changes.
+- Verifies reactive count updates, empty-branch unmount, keyed remount, and the
+  retained diagnostic for unsupported collection alias consumers in Chrome.
+- Adds no semantic primitive, compiler pass, runtime concept, public API,
+  dependency, or shared-runtime byte; `1.0.0` remains unauthorized.
+- Updates `create-kudzu@0.1.147` to generate projects on
+  `@kudzujs/core@^0.16.22`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.22
+```
+
 ## 0.16.21 - AI Evidence npm Recovery
 
 Kudzu 0.16.21 retries npm publication of the unchanged corrected `0.21.4` AI

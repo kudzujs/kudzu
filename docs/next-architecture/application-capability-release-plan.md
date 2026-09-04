@@ -2154,6 +2154,21 @@ and count reuse, then reactive text inside selected conditional branches.
 pass, runtime concept, public API, dependency, generated behavior, or browser
 byte.
 
+The first evidence-selected follow-up now normalizes one supported collection
+alias across a keyed map, a top-level `.length` count, reactive text, and a
+count-selected JSX branch. It reuses collection analysis plus existing binding,
+conditional, and keyed ownership: no semantic primitive, compiler pass, runtime
+concept, API, dependency, or shared-runtime byte was added. The implementation
+changes two existing compiler files by net 37 lines and extends one positive and
+one negative fixture. Required Chrome verifies count updates, empty-branch
+unmount, keyed remount, and retained source diagnostics; all 302 tests, package
+smoke, and `npm run check` pass. The exercised route ships the unchanged 36,219
+B shared runtime closure and 37,870 B total JavaScript including its existing
+route handlers. No benchmark contract or budget changes; the production AI
+comparison must be rerun only after the remaining selected-branch reactive-text
+blocker is addressed. This follow-up is released as `@kudzujs/core@0.16.22`
+with `create-kudzu@0.1.147`. `1.0.0` remains unauthorized.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:
@@ -2299,4 +2314,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | Measured gate failed; npm recovery released as `0.16.21` | Preserve both raw batches, the corrected revision-2 protocols, and the failed success/cost decision; keep `1.0.0` blocked. | Kudzu 11/25 versus React + Vite 24/25; next evidence work is reactive collection normalization/count reuse and conditional-branch reactive text |
+| `0.21.4` | Measured gate failed; first blocker released as `0.16.22` | Preserve both raw batches, the corrected revision-2 protocols, the failed success/cost decision, and collection count reuse; keep `1.0.0` blocked. | Kudzu 11/25 versus React + Vite 24/25; next evidence work is conditional-branch reactive text |

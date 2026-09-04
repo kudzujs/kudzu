@@ -6,7 +6,7 @@ export default function Page() {
 
   return <main>
     <button onClick={() => setItems(items)}>Reset</button>
-    <p>{visible.length}</p>
+    <p>{visible.join(",")}</p>
     <ul>{visible.map(item => <li key={item.id}>{item.id}</li>)}</ul>
   </main>
 }

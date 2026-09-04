@@ -65,6 +65,17 @@ cost, so this proof does not authorize `1.0.0`. This evidence packet changes no
 compiler, runtime, public API, dependency, generated application, or browser
 artifact.
 
+The 2026-09-04 collection follow-up removes the first blocker for one ordinary
+immutable filtered alias reused by keyed rendering, a top-level count, reactive
+text, and a count-selected branch. It adds no primitive, pass, runtime concept,
+API, dependency, or shared-runtime byte; net production compiler growth is 37
+lines across two existing files. The maintained positive and negative fixtures
+pass all 302 tests with Chrome required. Their exercised interactive route uses
+the unchanged 36,219 B shared runtime closure and 37,870 B total JavaScript with
+route handlers. Benchmark contract and budget deltas are zero; the production AI
+comparison is not rerun until selected-branch reactive text is also addressed.
+This follow-up ships as `@kudzujs/core@0.16.22`.
+
 ## 0.21.2 Browser Performance And Memory
 
 Measured 2026-09-03 at revision

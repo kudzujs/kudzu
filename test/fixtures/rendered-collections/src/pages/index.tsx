@@ -25,6 +25,7 @@ export default function RenderedCollectionsPage() {
   const importedVisible = selectVisible(items)
   const pageItems = items.slice(page * 2, page * 2 + 2)
   const searchedItems = items.filter(item => item.label.toLowerCase().includes(query.toLowerCase()))
+  const resultCount = searchedItems.length
   const sortedItems = items.toSorted((left, right) => left.label.localeCompare(right.label))
 
   return <main>
@@ -36,6 +37,7 @@ export default function RenderedCollectionsPage() {
     <button data-action="page-previous" onClick={() => setPage(0)}>Previous page</button>
     <button data-action="page-next" onClick={() => setPage(1)}>Next page</button>
     <button data-action="search" onClick={() => setQuery("mm")}>Search gamma</button>
+    <button data-action="search-none" onClick={() => setQuery("none")}>Search none</button>
     <button data-action="search-clear" onClick={() => setQuery("")}>Clear search</button>
     <button data-action="select-a" onClick={() => setSelectedId("a")}>Select alpha</button>
     <button data-action="select-c" onClick={() => setSelectedId("c")}>Select gamma</button>
@@ -58,6 +60,11 @@ export default function RenderedCollectionsPage() {
     <ul data-page>{pageItems.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
 
     <ul data-search>{searchedItems.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+
+    <p data-search-count>{resultCount} articles</p>
+    {resultCount > 0
+      ? <ul data-search-results>{searchedItems.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
+      : <p data-search-empty>No results</p>}
 
     <ul data-sorted>{sortedItems.map(item => <li key={item.id} data-id={item.id}>{item.label}</li>)}</ul>
 
