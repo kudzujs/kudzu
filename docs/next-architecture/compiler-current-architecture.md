@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.16.20` architecture, built on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The `0.21.4` AI delivery gate is measured and blocked; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.16.21` architecture, built on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The `0.21.4` AI delivery gate is measured and blocked; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
 
 ## Responsibility Map
 

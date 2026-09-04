@@ -2130,8 +2130,10 @@ time contract.
 
 The corrected production comparison was recorded in GitHub release `v0.16.19`.
 Its npm workflow stopped before publication on an unrelated flaky project browser
-journey, so the immutable forward release `@kudzujs/core@0.16.20` carries the
-unchanged evidence and `create-kudzu@0.1.145` targets it.
+journey. The `v0.16.20` forward release passed every repository gate, but npm
+rejected its trusted-publishing signing certificate with HTTP 403. The immutable
+recovery release `@kudzujs/core@0.16.21` carries the unchanged evidence and
+`create-kudzu@0.1.146` targets it.
 The first batch is retained but excluded from ranking after hidden content/form
 selector assumptions and inconsistent React versions were found. Revision 2
 hashes the written contracts and executable acceptance, uses React 19.2.8 in all
@@ -2297,4 +2299,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | Measured gate failed; evidence forward-published as `0.16.20` | Preserve both raw batches, the corrected revision-2 protocols, and the failed success/cost decision; keep `1.0.0` blocked. | Kudzu 11/25 versus React + Vite 24/25; next evidence work is reactive collection normalization/count reuse and conditional-branch reactive text |
+| `0.21.4` | Measured gate failed; npm recovery released as `0.16.21` | Preserve both raw batches, the corrected revision-2 protocols, and the failed success/cost decision; keep `1.0.0` blocked. | Kudzu 11/25 versus React + Vite 24/25; next evidence work is reactive collection normalization/count reuse and conditional-branch reactive text |

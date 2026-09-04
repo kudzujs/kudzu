@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.16.21 - AI Evidence npm Recovery
+
+Kudzu 0.16.21 retries npm publication of the unchanged corrected `0.21.4` AI
+delivery evidence after npm rejected the `0.16.20` trusted-publishing signing
+certificate with HTTP 403.
+
+### Changed in 0.16.21
+
+- Preserves the corrected protocols, 11/25 Kudzu versus 24/25 React + Vite
+  result, failed `1.0.0` gate, and `v0.16.19` raw evidence archive unchanged.
+- Preserves the public `v0.16.20` tag and records its failed npm transaction
+  rather than moving or reusing it.
+- Adds no compiler, runtime, public API, dependency, generated behavior, or
+  browser byte.
+- Updates `create-kudzu@0.1.146` to generate projects on
+  `@kudzujs/core@^0.16.21`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.21
+```
+
 ## 0.16.20 - AI Evidence Forward Release
 
 Kudzu 0.16.20 forward-publishes the unchanged `0.16.19` AI delivery evidence
@@ -11,11 +34,15 @@ project browser journey before either package was published.
 - Preserves the corrected `0.21.4` protocols, 11/25 Kudzu versus 24/25 React +
   Vite result, failed `1.0.0` gate, and raw evidence archive byte-for-byte.
 - Moves no tag and republishes no npm version; `0.16.19` remains the immutable
-  GitHub evidence release and `0.16.20` is the first npm package carrying it.
+  GitHub evidence release.
 - Adds no compiler, runtime, public API, dependency, generated behavior, or
   browser byte.
 - Updates `create-kudzu@0.1.145` to generate projects on
   `@kudzujs/core@^0.16.20`.
+- Its npm workflow passed every repository gate, then npm rejected the core
+  trusted-publishing signing certificate with HTTP 403 before either package
+  was published. The immutable recovery release is `0.16.21` with generator
+  `0.1.146`.
 
 ### Upgrade
 
@@ -57,7 +84,8 @@ records that the `1.0.0` gate did not pass.
   `@kudzujs/core@^0.16.19`.
 - The GitHub release and raw asset were published, but its npm workflow stopped
   before publication on an unrelated project browser-test failure. The immutable
-  forward release is `0.16.20` with generator `0.1.145`.
+  forward chain starts at `0.16.20` with generator `0.1.145`; npm recovery is
+  `0.16.21` with generator `0.1.146`.
 
 ### Upgrade
 
