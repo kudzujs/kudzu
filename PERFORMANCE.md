@@ -76,6 +76,22 @@ route handlers. Benchmark contract and budget deltas are zero; the production AI
 comparison is not rerun until selected-branch reactive text is also addressed.
 This follow-up ships as `@kudzujs/core@0.16.22`.
 
+The 2026-09-04 selected-branch follow-up lowers a reactive scalar branch through
+the existing text-binding compiler path. It adds no semantic primitive,
+compiler pass, runtime concept, API, dependency, or shared-runtime source byte;
+net production growth is 11 lines in one existing compiler file. The focused
+fixture covers an update that remains in the selected branch and a later branch
+replacement. Required Chrome, all 302 tests, `npm run check`, and package smoke
+pass. Rebuilding the five retained commerce sources against this tree changes
+their frozen `below` check from false to true, so all five pass build, behavior,
+accessibility, browser, and output acceptance while retaining the zero-JavaScript
+static sibling. The existing checkout handler grows by 147-154 transferred bytes
+across those authored variants; no shared runtime module was added. Benchmark
+contracts and budgets are unchanged. This is a same-source compiler follow-up,
+not a new equal-condition model run, so the published 11/25 versus 24/25 result
+and the `1.0.0` block remain unchanged pending the complete production rerun.
+This follow-up ships as `@kudzujs/core@0.16.23`.
+
 ## 0.21.2 Browser Performance And Memory
 
 Measured 2026-09-03 at revision

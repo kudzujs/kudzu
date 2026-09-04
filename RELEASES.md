@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.16.23 - Reactive Conditional Branch Text
+
+Kudzu 0.16.23 removes the second commerce compiler blocker selected by the
+corrected `0.21.4` AI delivery evidence: scalar text inside a selected
+conditional branch remains reactive without restructuring ordinary TSX.
+
+### Changed in 0.16.23
+
+- Lowers reactive scalar conditional branches through the existing text-binding
+  compiler path while preserving conditional ownership and static HTML.
+- Verifies updates that remain in one branch and later replace that branch in
+  required Chrome.
+- Passes all five retained commerce sources with `empty`, `below`, and `reached`
+  true while preserving their zero-JavaScript static siblings.
+- Adds no semantic primitive, compiler pass, runtime concept, public API,
+  dependency, or shared-runtime source byte; `1.0.0` remains unauthorized pending
+  a complete equal-condition rerun.
+- Updates `create-kudzu@0.1.148` to generate projects on
+  `@kudzujs/core@^0.16.23`.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.23
+```
+
 ## 0.16.22 - Reactive Collection Count Reuse
 
 Kudzu 0.16.22 removes the first compiler blocker selected by the corrected

@@ -2169,6 +2169,20 @@ comparison must be rerun only after the remaining selected-branch reactive-text
 blocker is addressed. This follow-up is released as `@kudzujs/core@0.16.22`
 with `create-kudzu@0.1.147`. `1.0.0` remains unauthorized.
 
+The second evidence-selected follow-up now lowers reactive scalar text inside a
+selected conditional branch through the existing binding descriptor and
+conditional ownership paths. It adds no semantic primitive, compiler pass,
+runtime concept, API, dependency, or shared-runtime source byte; one production
+compiler file grows by net 11 lines. A focused fixture proves same-branch text
+updates and branch replacement, and required Chrome, all 302 tests, package
+smoke, and `npm run check` pass. The five retained commerce sources now pass
+their complete acceptance with `empty`, `below`, and `reached` all true and a
+zero-JavaScript static sibling. Their route-specific checkout handlers add
+147-154 transferred bytes; no runtime module or benchmark contract changes.
+This does not revise the published equal-condition score without a complete
+rerun, so `1.0.0` remains unauthorized. This follow-up is released as
+`@kudzujs/core@0.16.23` with `create-kudzu@0.1.148`.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:
@@ -2314,4 +2328,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | Measured gate failed; first blocker released as `0.16.22` | Preserve both raw batches, the corrected revision-2 protocols, the failed success/cost decision, and collection count reuse; keep `1.0.0` blocked. | Kudzu 11/25 versus React + Vite 24/25; next evidence work is conditional-branch reactive text |
+| `0.21.4` | Measured gate failed; selected blockers released through `0.16.23` | Preserve both raw batches, the corrected revision-2 protocols, the failed success/cost decision, collection count reuse, and selected-branch reactive text; keep `1.0.0` blocked pending a complete rerun. | Published result remains Kudzu 11/25 versus React + Vite 24/25; retained commerce sources now pass 5/5 on `0.16.23` |

@@ -1872,8 +1872,19 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
 
     const compileRenderExpression = (expression, anchor) => {
       const parts = conditionalParts(expression)
-      if (!parts) return ts.visitNode(expression, visitor)
       const setters = settersForNode(anchor, settersByFunction)
+      if (!parts) {
+        if (containsJsx(expression)) return ts.visitNode(expression, visitor)
+        const resolved = resolveReactiveJsxExpression(expression, nearestFunction(anchor), setters)
+        const usedStates = referencedStateNames(resolved, setters, resolved, bindingIndex)
+        const captures = captureNames(resolved, resolved, setters, bindingIndex)
+        if ((usedStates.size || captures.size) && !ts.isIdentifier(resolved)) {
+          usesBehavior = true
+          usesBinding = true
+          return descriptors.compileReactiveBinding(resolved, { setters, importBindings, derived: calculationBinding(expression, nearestFunction(anchor)) }).node
+        }
+        return ts.visitNode(expression, visitor)
+      }
       const condition = resolveReactiveJsxExpression(parts.condition, nearestFunction(anchor), setters)
       const usedStates = referencedStateNames(condition, setters, condition, bindingIndex)
       const captures = captureNames(condition, condition, setters, bindingIndex)

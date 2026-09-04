@@ -97,6 +97,7 @@ export default function ConditionalPage() {
       <button data-action="close" onClick={() => setOpen(false)}>Close</button>
       <button data-action="hidden" onClick={() => setHidden(hidden + 1)}>Increment hidden</button>
       <button data-action="theme" onClick={() => setTheme("dark")}>Dark theme</button>
+      <p data-remaining>{count < 2 ? `${2 - count} remaining` : "Done"}</p>
       <ThemeContext.Provider value={theme}>
         <ThemeButton />
         <ThemeContext.Provider value="nested"><ThemeValue label="nested" /></ThemeContext.Provider>

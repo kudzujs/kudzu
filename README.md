@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.22 - reactive collection count reuse.** Filtered collection aliases now feed keyed rendering, top-level counts, reactive text, and count-selected branches without duplicated state. This removes the first blocker selected by the failed `0.21.4` AI delivery gate; `1.0.0` remains blocked. Read the [release notes](./RELEASES.md#01622---reactive-collection-count-reuse), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.22), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Latest release: 0.16.23 - reactive conditional branch text.** Selected conditional branches now keep scalar text reactive while their condition remains true, using Kudzu's existing text-binding ownership. The retained commerce sources pass 5/5 on the current compiler; `1.0.0` remains blocked pending a complete equal-condition rerun. Read the [release notes](./RELEASES.md#01623---reactive-conditional-branch-text), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.23), or follow the [architecture packet](./docs/next-architecture/README.md).
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
