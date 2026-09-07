@@ -13,7 +13,7 @@ const cli = new URL("../bin/kudzu.mjs", import.meta.url)
 
 const runtimeDigests = []
 const javascriptDigests = []
-for (const shape of ["aliases", "direct count", "inline control"]) test(`compiles imported article search with ${shape}`, async t => {
+for (const shape of ["aliases", "direct alias count", "direct count", "inline control"]) test(`compiles imported article search with ${shape}`, async t => {
   const root = await mkdtemp(new URL("./fixtures/.article-search-", import.meta.url).pathname)
   t.after(() => rm(root, { recursive: true, force: true }))
   await cp(new URL("src", fixture), join(root, "src"), { recursive: true })
@@ -24,6 +24,7 @@ for (const shape of ["aliases", "direct count", "inline control"]) test(`compile
       .replace(/  const normalizedQuery = .*\n  const filteredArticles = .*\n  const resultCount = filteredArticles.length/, `  const resultCount = ${predicate}.length`)
       .replace("filteredArticles.map", `${predicate}.map`)
     if (shape === "inline control") changed = changed.replace(/  const resultCount = .*\n/, "").replaceAll("resultCount", `${predicate}.length`)
+    if (shape === "direct alias count") changed = source.replace("  const resultCount = filteredArticles.length\n", "").replaceAll("resultCount", "filteredArticles.length")
     await writeFile(join(root, "src/pages/index.tsx"), changed)
   }
   const result = spawnSync(process.execPath, [cli.pathname, "build"], { cwd: root, encoding: "utf8" })
@@ -79,6 +80,25 @@ for (const shape of ["aliases", "direct count", "inline control"]) test(`compile
   clearTimeout(timeout)
   assert.equal(status, 0, stderr)
   assert.match(stdout, /data-search-test="pass"/, stdout)
+})
+
+test("folds the r5 imported static topic filter without list state or JavaScript", async t => {
+  const root = await mkdtemp(new URL("./fixtures/.article-topic-", import.meta.url).pathname)
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await cp(new URL("src", fixture), join(root, "src"), { recursive: true })
+  await writeFile(join(root, "src/pages/index.tsx"), `import { articles } from "../data"
+import { ArticleCard } from "../ArticleCard"
+export default function Topic() {
+  return <main>{articles.filter(article => article.topic === "Engineering").map(article => <ArticleCard key={article.slug} article={article} />)}</main>
+}`)
+  const result = spawnSync(process.execPath, [cli.pathname, "build"], { cwd: root, encoding: "utf8" })
+  assert.equal(result.status, 0, result.stderr)
+  const html = await readFile(join(root, "dist/index.html"), "utf8")
+  assert.match(html, /Alpha systems/)
+  assert.match(html, /Gamma guide/)
+  assert.doesNotMatch(html, /Beta notes/)
+  assert.doesNotMatch(html, /<script|data-k-/)
+  assert.deepEqual((await readdir(join(root, "dist"), { recursive: true })).filter(file => file.endsWith(".js")), [])
 })
 
 const browserCheck = `

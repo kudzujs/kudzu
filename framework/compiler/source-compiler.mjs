@@ -1709,7 +1709,10 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             collectionLengthDeclarations.add(current)
             return false
           }
-          if (ts.isJsxExpression(current) && current.initializer === undefined) return false
+          if (ts.isJsxExpression(current) && current.initializer === undefined) {
+            resolveReactiveJsxExpression(reference.parent, owner, settersForNode(reference, settersByFunction), collectionValueDeclarations)
+            return false
+          }
         }
         return true
       })
@@ -2464,6 +2467,8 @@ function keyedListParts(expression, setters, declarations, fail, aliases = new S
   const field = keyExpression && directProperty(keyExpression, parameters.item)
   const positional = Boolean(keyExpression && parameters.index && ts.isIdentifier(unwrapExpression(keyExpression)) && unwrapExpression(keyExpression).text === parameters.index)
   if (!field && !positional) fail(key ?? root, `Keyed list root must have key={${parameters.item}.<field>} or key={${parameters.index ?? "index"}}`)
+  // Direct build-known imports can execute their map without keyed browser ownership.
+  if (collection.static && !collection.localStatic && !collection.selectorStates.size && !collection.aliasDeclarations?.length) return undefined
   return { ...collection, static: collection.static && (!collection.localStatic || collection.selector.length > 0), callback, root, item: parameters.item, index: parameters.index, indexed: Boolean(parameters.index), keyField: positional ? null : field }
 }
 

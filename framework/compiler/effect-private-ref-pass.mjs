@@ -72,6 +72,8 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
       if (frameAssignments.length && invalidReference) throw sourceNodeError(invalidReference, sourceFile, "Animation frame refs may only use direct .current reads and assignments")
       if (frameAssignments.length && !topLevelConst) throw sourceNodeError(node, sourceFile, "Animation frame refs must be one top-level component const")
       if (attachedToJsx && mutations.length) throw sourceNodeError(mutations[0], sourceFile, "JSX object refs may not assign to ref.current")
+      const renderWrite = mutations.find(access => nearestFunction(access) === owner)
+      if (renderWrite) throw sourceNodeError(renderWrite, sourceFile, "Mutable refs cannot be assigned during render; use component state for values retained across effect replacements, or an effect-private ref with cleanup for invocation-local values")
       if (!topLevelConst || invalidReference || !accesses.length) return
       const effectCalls = owner.body.statements.flatMap(statement => hasUseEffectImport && ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && ts.isIdentifier(statement.expression.expression) && statement.expression.expression.text === "useEffect" && !isShadowedIdentifier(statement.expression.expression, sourceFile) ? [statement.expression] : [])
       const effects = effectCalls.filter(effect => {

@@ -2,6 +2,284 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, `npm run benchmark:ai-delivery`, and `npm run benchmark:ai-delivery-production` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.25 Release Scope
+
+The following r5 compiler follow-up and future-only r6 acceptance alignment ship
+as `@kudzujs/core@0.16.25` with `create-kudzu@0.1.150`. The session records below
+retain their original pre-release scope and verification counts. Publication
+does not rerun a model, rescore r5, upload its local raw archive, or establish a
+timing/cost improvement. Frozen r6 starters remain pinned to released 0.16.24;
+benchmarking the new compiler requires a separately frozen revision and full run.
+
+## r5 Compiler Follow-Up (2026-09-07)
+
+This is compiler regression work and deterministic source replay against
+`5ed0f9bc875691e4e86e2fab832491c78c2f0c69` (`0.16.24`), not a model rerun,
+release, or replacement benchmark score. The dirty r5 results and separately
+prepared r6 acceptance/protocol changes remain intact. Historical r5 stays
+Kudzu 18/25 versus React + Vite 23/25, with two partial traces; `1.0.0` remains
+blocked. No production prompt, protocol, contract, or acceptance script was
+edited by this compiler follow-up.
+
+### Evidence And Reduction
+
+Authorizing batch:
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r5-kudzu-0.16.24-20260907-01/`.
+The reduced checks were run red before their respective compiler edits.
+
+| Evidence | Confirmed problem | Existing path used |
+|---|---|---|
+| `content-kudzu-1/adapter.stdout:35`, first patch; build failure at line 42 | `normalizedQuery = query.trim().toLowerCase()` survives in build scratch when `filteredArticles.length` is read directly in JSX rather than through a count local. It calls a string method on the signal object. | Collection-alias count validation now registers its substituted dependencies in the existing build-value declaration set. Existing binding/conditional/list consumers still subscribe to `query`; build scratch reads `query.value`. |
+| Unchanged content starter `src/pages/topics/performance.tsx:13`, including historically accepted attempts 0/1/4 | A direct imported static `filter().map()` unnecessarily creates list state, prototypes, handler ESM, and a runtime family. | After existing collection/predicate/key analysis, direct imported pipelines with no selector states and no collection aliases remain ordinary build-time map execution. Local state and reactive selectors retain keyed ownership. |
+| `realtime-kudzu-0` and `realtime-kudzu-3`, `src/pages/index.tsx:16` | Zero-initialized version refs have no cleanup reset and are intended to survive `[paused]` effect replacements. | Existing effect-private cleanup diagnostic is correct and remains unchanged. Making the ref invocation-private would reset the version and violate the authored lifetime. No persistent-ref support is added. |
+| `realtime-kudzu-1`, `src/pages/index.tsx:16-17` | An unattached null ref is assigned `1` during render, then mutated by snapshot callbacks. Compilation previously accepted it as a DOM ref. `core.mjs` serializes ref captures by ID, not by numeric `.current`; this does not provide a retained version cell. | Existing ref normalization now rejects render-time writes at the authored source, recommending component state for retained values or cleanup-owned private refs for invocation-local values. This closes a diagnostic gap, not a resource-lifetime extension. |
+
+The historical realtime timeout did not record an exact browser exception, so
+none is asserted retroactively. The new negative reduction proves the null-ref
+shape compiled before the guard and is diagnosed afterward. Replays of original
+realtime sources 0/3 retain the cleanup diagnostic, source 1 receives the new
+render-write diagnostic, and unchanged state-based sources 2/4 still build and
+pass the realtime browser journey. Their authoring compromises remain explicit;
+this is not a claim of persistent React ref compatibility.
+
+### Output And Browser Proof
+
+The new direct-alias-count case uses the existing imported article fixture and
+Chrome journey. All four source variants emit byte-identical JavaScript:
+9 files, 32,190 raw / 12,324 aggregate gzip B. Search by title/topic, whitespace
+and case normalization, singular/plural status, empty branches, retained keys,
+and fresh restored rows pass. The new static topic reduction emits matching
+HTML, no excluded article seed, no state markers, and zero JavaScript files.
+The six existing unsafe collection forms remain source-located diagnostics.
+
+The original failing article source was recovered from the first patch event,
+not reconstructed from the agent's final workaround. Recovered page SHA-256:
+`915d825d15d1799b2a6fc891e12e1e84ca366df5a00a7721bd83d1b0f33db4d2`.
+It and all five final content sources pass the separately prepared r6 acceptance
+with all ten static siblings checked. The two combined polite-region sources
+also pass its corrected semantic count check. These source-only results do not
+erase historical budget failures or change model success/cost denominators.
+
+| Output | Before raw / gzip B | After raw / gzip B | Delta raw / gzip B |
+|---|---:|---:|---:|
+| Complete content JavaScript, attempts 0/1/2/4 | 55,447 / 20,976 | 34,908 / 13,677 | -20,539 / -7,299 |
+| Complete content JavaScript, attempt 3 | 55,440 / 20,987 | 34,901 / 13,688 | -20,539 / -7,299 |
+| Content runtime files only, all five attempts | 51,357 / 19,100 | 30,895 / 11,896 | -20,462 / -7,204 |
+| `/topics/performance/` JavaScript graph | 20,539 / 7,299 | 0 / 0 | -20,539 / -7,299 |
+| Existing reduced search graph | 32,190 / 12,324 | 32,190 / 12,324 | 0 / 0 |
+
+Each content build changes from 11 pages / 2 interactive / 13 JavaScript files
+to 11 pages / 1 interactive / 9 JavaScript files. Removed paths are
+`assets/handlers/pages/topics/performance.js` and the `kudzu.js`, `kudzu-list.js`,
+and `kudzu-collection-selector.js` files in runtime family `432dc692688d09a1`.
+Every retained JavaScript path and byte is identical to its archived r5 output.
+The recovered source emits the same graph as final attempts 0/1/2/4, SHA-256
+`34a34339db48a3da01f67b41fa5a5b0f50ea4d1854e3c30a1569e8e32b2c5270`
+(sorted relative JavaScript paths followed by their bytes). Gzip is summed per
+artifact with Node `gzipSync`, not a compressed archive or network measurement.
+
+### Accounting And Verification
+
+| Metric | Delta |
+|---|---:|
+| Semantic primitives / ModuleIR kinds / core passes | 0 / 0 / 0 |
+| Core semantic LOC (`source-compiler.mjs`, including comment) | +5 |
+| Focused normalization LOC (`effect-private-ref-pass.mjs`) | +2 |
+| Production compiler LOC total | +7 |
+| Ordered normalization entries / transform rules / adapters | 0 / 0 / 0 |
+| Source diagnostic guards | +1 |
+| Runtime concepts / runtime source LOC / dependencies / public APIs | 0 / 0 / 0 / 0 |
+| Positive reduced cases / negative reduced cases | +2 / +2 |
+| AI score, build-speed, interaction-timing, CPU, heap claims | None |
+
+The positive cases extend the existing isolated fixture generator; the two
+negative source fixtures live in `test/realtime-version-ref.test.mjs`. No new
+runtime or generic compiler abstraction was introduced. Static collection
+aliases and cross-invocation mutable refs are not broadened by this change.
+
+```bash
+KUDZU_REQUIRE_CHROME=1 node --test test/imported-article-search.test.mjs
+node --test test/realtime-version-ref.test.mjs
+node /tmp/opencode/r5-compiler-followup.mjs
+node /tmp/opencode/verify-r5-compiler-output.mjs
+npm run check
+KUDZU_REQUIRE_CHROME=1 npm test
+npm run test:package
+```
+
+All pass on the same Linux x64 / Node 24.14.0 / Chrome 152.0.7977.64 host as r5.
+Check builds 224 pages, two interactive. The final full run passes the standalone
+project ownership gate plus 315/315 tests, including the preserved r6 acceptance
+tests; package smoke installs four packages and builds one zero-JavaScript page.
+Full commands use a 1,200,000 ms timeout. Local replay sources, artifacts, full
+acceptance JSON, errors, path lists, and raw/gzip totals are retained separately
+at `/tmp/opencode/r5-compiler-followup-EQOrpR/report.json` and adjacent directories.
+No model, commit, version bump, publication, or release was run. Build/browser
+timings were not sampled under an interleaved performance protocol, so no timing
+improvement is claimed.
+
+## 0.21.4 Released 0.16.24 Rerun (2026-09-07)
+
+All 50 scheduled attempts executed, without selective retries, from
+`2026-09-07T04:18:00.678Z` through `2026-09-07T05:36:06.037Z` (78 minutes
+5 seconds). The frozen scorer reports **Kudzu 18/25 (72%) versus React + Vite
+23/25 (92%)**. Execution finished, but `suite.json` correctly says `incomplete`:
+two Kudzu realtime attempts retain partial attribution after their deadlines.
+This is a new local r5 observation, not a rewrite of the published r2 result,
+proof of a statistically significant improvement, or authorization for `1.0.0`.
+The acceptance/prompt and output-contract gaps below also prevent treating this
+score as a clean production-framework ranking.
+
+### Protocol And Execution
+
+Base revision: `5ed0f9bc875691e4e86e2fab832491c78c2f0c69`, released
+`@kudzujs/core@0.16.24`; no compiler changes during this packet. Although no r4
+execution was found in the local evidence inventory, r4's `0.16.23` pins were
+already release-documented. Revision 5 therefore explicitly changes all five
+Kudzu manifests, lock root dependencies, resolved core versions/tarball URLs,
+registry integrity values, and canonical starter digests. Historical r2/r3 raw
+directories and release records remain untouched. The r4 lifecycle adapter is
+unchanged, SHA-256
+`91c0db691c2f7a7d5c40122e86b2ac7b928e3016a80a202f8c079c2013b3eb0e`.
+
+Model remains `openai/gpt-5.6-sol`; exact OpenCode `1.18.27` is selected with
+`OPENCODE_BIN` rather than the host default `1.18.29`. Node `24.14.0`, npm
+`11.9.0`, Chrome `152.0.7977.64`, Linux x64 `7.0.0-30-generic`, Intel i5-9500
+(6 logical CPUs), and 33,491,050,496 bytes RAM were recorded. OAuth presence was
+checked without reading credentials. A separate tool-free model preflight
+returned `READY`; its 6,755 tokens are excluded from task accounting.
+
+The model, budgets, tools, prompts, public context, executable acceptance,
+written contracts, all React starters, and alternating schedules are identical
+to r4. Each adapter has a setup-inclusive 300,000 ms deadline and limits of
+400,000 input, 20,000 output, 20,000 reasoning tokens, 40 tool calls, 20 files
+read, 8 files modified, and 5 builds. Tasks execute serially in content, forms,
+CRUD, commerce, realtime order; model processes never run in parallel.
+
+```bash
+OPENCODE_BIN=/home/kft/.npm/_npx/3fe6b69ccd55ed58/node_modules/.bin/opencode CHROME_BIN=/usr/bin/google-chrome npm run benchmark:ai-delivery-production -- --out test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r5-kudzu-0.16.24-20260907-01 > test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r5-kudzu-0.16.24-20260907-01/suite.stdout 2> test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r5-kudzu-0.16.24-20260907-01/suite.stderr
+```
+
+The command exits 0 after all schedules finish; that is not a passing benchmark
+gate. The output directory contains `suite.json`, all five `run.json` and copied
+protocols, 50 attempt results, raw adapter output/traces, build/acceptance logs,
+retained source and deploy artifacts, preflight logs, test logs, and `audit.json`
+(all source diffs, raw-trace review extracts, and artifact/token aggregates).
+The complete local archive is
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r5-kudzu-0.16.24-20260907-01.tar.gz`,
+SHA-256 `d0190c9c4d6da0bd9676365037cf1a1def72e808010e3b03a94a701138a31205`.
+Gzip integrity passes; all 50 schedule entries, 50 pinned-model attribution
+traces, and 300 recorded command-stream SHA-256 values were verified. The archive
+is local evidence only and was not uploaded or released.
+
+| Task | r5 protocol SHA-256 | Kudzu starter SHA-256 |
+|---|---|---|
+| Content | `f63c11e20e21659c25ef99498e13085054565382af9a500e7aa6e6520968b1ec` | `6b56448eb0b9179183aeb433bd3e52538749f1a2e609c37c5a8bdf8e479ccd92` |
+| Forms | `967335af955b23c23e8ce81eed35b3a9426c08047b4286a5328e144f30b6e9aa` | `0a762afe93c77cec2137e956796f47a944b9222e3dcff1178462665cf995291b` |
+| CRUD | `063625fd48442c639a059c240d1edaef63f54176f921dcd297c8daf97086430d` | `1e349e2deb163b8bc52fb8844a989e8f29f1ed12a2857da86119bf89ffa3e5c2` |
+| Commerce | `c35cb1801f5a4b98a644f6f48f7c02b2168ebc9ce901b0b8e74fcf792c3d2e0b` | `d2b6e8d926b3e55d0e3e47c0647fdd75f01b46e3dc4ac705108974c7d3e186b3` |
+| Realtime | `bda2526c95862b8d55045018da70370b9dd9a36d4e7ccfe56b3af56f06dbad10` | `f5adc4cf163a8e9cb838173d718fd21302a474fd70920167c12d64518890b218` |
+
+The starter digest is SHA-256 over recursively locale-sorted file names, each
+relative slash-normalized path followed by NUL and file bytes, matching the
+integrity test. Every core lock entry uses registry integrity
+`sha512-qLcVItXkI7vI5ktOC16+87uQ4BqQTQOVrFqR4AK7gz4eMN4imL7o+ocUBc7znuVsMML98ChKLRgMSsUot7GUhg==`.
+
+### Scores And Attribution
+
+| Task | Kudzu success | React success | Kudzu tokens / success | React tokens / success |
+|---|---:|---:|---:|---:|
+| Content | 3/5 | 5/5 | 591,903 | 77,522 |
+| Forms | 5/5 | 5/5 | 92,087 | 81,111 |
+| CRUD | 3/5 | 3/5 | 250,028 | 197,556 |
+| Commerce | 5/5 | 5/5 | 68,746 | 57,756 |
+| Realtime | 2/5 | 5/5 | unavailable | 142,071 |
+| Overall | 18/25 | 23/25 | unavailable | task median 81,111 |
+
+Tokens per success include failed attempts, cache-read input, output, and
+reasoning, following the existing runner's accounting. Recorded totals are
+4,279,911 Kudzu tokens (a lower bound because two traces are partial) and
+2,384,962 React tokens. There are 48 complete and 2 incomplete traces; no raw
+model error event was found. Both timed-out model sessions had already produced
+source and a compiler diagnostic, so they are not model-unavailability failures.
+Provider-reported subscription cost is zero, not a market-price cost comparison.
+Kudzu's aggregate failure-inclusive task cost remains unavailable, not zero.
+Successful-attempt elapsed medians are 69,363/65,918 ms, tool calls 12/10, files
+read 5/4, files modified 2/2, builds 1/1, and correction cycles 0/0 for
+Kudzu/React. These are descriptive scorer subsets, not speed or cost wins.
+
+Final builds passed 23/25 Kudzu and 25/25 React; complete executable acceptance
+passed 18/25 and 23/25. Against historical r2's 11/25 and 24/25, the observed
+counts change by +7 and -1, with content and commerce now having scored Kudzu
+successes. Different stochastic runs, compiler pins, lifecycle accounting, and
+the limitations below prevent attributing that entire change to the compiler.
+
+### Every Failure
+
+| Attempts | Observed failure | Attribution / limitation |
+|---|---|---|
+| `content-kudzu-2`, `content-kudzu-3` | Empty-state live-region text is `0 articlesNo articles match your search.` rather than exactly `0 articles`; all filtering/count transitions otherwise match. Attempt 2 also uses 497,474 input tokens, over 400,000. | Both place separate count and empty-message paragraphs inside one polite region. The grader assumes the entire first live region is the count. Preserve failures, but do not call this broken filtering; the prompt does not explicitly require a count-only region. |
+| `crud-kudzu-1`, `crud-kudzu-3`, `crud-react-vite-2`, `crud-react-vite-4` | Only `initial.group` fails; keyed retention, filters, create/edit/delete, counts, focus, and empty state pass. | All use `role="group" aria-label="Filter memos by status"`. The grader requires exact `Filter memos`. That name exists in the written contract and starter, but the supplied prompt asks only for a named group. The adapter does not supply the written contract. This is a prompt/acceptance alignment gap, not a compiler or missing-group failure. |
+| `realtime-kudzu-0`, `realtime-kudzu-3` | Adapter SIGKILL at about 300,011 ms; final build rejects `src/pages/index.tsx:16:9`: effect-private refs require cleanup that resets or invalidates `.current`. No deploy output. | Version refs initialized with zero are intended to survive pause/resume; current effect-private ownership cannot provide that lifetime. Atomic partial traces retain 117,447 and 175,039 recorded tokens, respectively. No retry or synthetic completion. |
+| `realtime-kudzu-1` | Build passes after changing `useRef(1)` to an unattached `useRef(null)` plus render-time initialization; acceptance times out waiting for the first four-row snapshot. | Generated handler still reads `scope("version").current`. The runtime-ref workaround is not proven safe by its successful build. The frozen timeout path does not serialize browser exception details; do not invent an exact exception or claim a diagnosed compiler fix. |
+
+Raw content traces also retain a residual `query.trim is not a function`
+build failure in attempts 1 and 3 when a normalized query alias feeds a filtered
+array whose `.length` is consumed directly. Both agents inline the query
+expression to recover. Attempts 0/2/4 retain the normalized query with a separate
+count local and build. These exact sources, plus the realtime ref cases, are
+future reduced-fixture inputs; this rerun makes no speculative compiler change.
+
+### Output And Source
+
+| Executable-accepted subset | Kudzu median artifact raw / gzip B | React median artifact raw / gzip B | Kudzu / React median transferred JS B |
+|---|---:|---:|---:|
+| Content (3 / 5 attempts) | 93,274 / 35,226 | 206,504 / 66,425 | 37,608 / 199,132 |
+| Forms (5 / 5) | 23,832 / 9,771 | 202,704 / 64,305 | 15,147 / 198,469 |
+| CRUD (3 / 3) | 48,490 / 16,727 | 203,383 / 64,471 | 35,542 / 198,476 |
+| Commerce (5 / 5) | 53,886 / 21,871 | 201,055 / 64,188 | 30,214 / 197,976 |
+| Realtime (2 / 5) | 45,555 / 16,150 | 202,524 / 64,244 | 36,012 / 199,043 |
+
+Artifact totals include every deploy file; gzip is summed per file. Transferred
+JS sums `.js` resource entries from the frozen journey, including protocol
+overhead, not CPU time or a complete multi-route session. All 18 scored Kudzu
+successes have the designated complete, script/marker-free static sibling.
+Content emits 11 HTML pages but only nine are script/marker-free: besides the
+search route, `/topics/performance/` loads a list capability. Its source was not
+edited by the agents, but this violates the broader written content static-route
+expectation and is not checked by executable acceptance. React's
+`staticZeroJavaScript: true` is a bypass in the checker, not evidence of zero
+React JavaScript. No complete 0.9 performance, memory, resilience, or all-route
+accessibility parity claim follows from these artifact observations.
+
+All 50 retained source inventories were compared with their starters. Only
+authored TSX/CSS changed (one to three files); manifests, locks, seeded data,
+fake transport, and test infrastructure remain unchanged. Search preserves
+`ArticleCard`/`Shell` composition and imported data; CRUD preserves its shared
+Provider and keyed declarative rows. No imperative list/DOM replacement was
+found. Native form refs, focus, and validity calls are ordinary form behavior.
+Maintainability is not uniformly equivalent: commerce Kudzu attempt 4 adds
+derived display state after a formatting diagnostic; realtime Kudzu attempt 2
+calls `setMemos` inside a version-state updater, while attempt 4 carries version
+through state plus an effect-local copy instead of React's persistent ref.
+These are explicit authoring compromises, not proof of abstraction parity.
+The runner's byte-identical-file retention metric includes lockfile bytes and
+is not a semantic source-retention percentage.
+
+Next prerequisite is an acceptance/prompt alignment review, preserving this raw
+batch and changing no scores retroactively. The retained direct-count query and
+cross-invocation version-ref failures then provide concrete compiler intake;
+the static topic output also needs a separately scoped check. `1.0.0` remains
+blocked. This packet adds zero semantic primitives, compiler passes/LOC, runtime
+concepts, or dependencies, and makes no release, speed, price, or superiority claim.
+
+Verification: six protocol/runner/lifecycle tests pass; before execution and
+again after the results documentation, `npm run check` builds 224 pages, two
+interactive, and `npm test` passes the standalone project ownership test plus
+308/308 tests. Final logs are `final-check.log` and `final-test.log` in the raw
+directory. `git diff --check` passes. The final archive/checksum metadata update
+does not change model inputs or any recorded artifact.
+
 ## 0.21.4 Corrected AI Delivery Proof
 
 Measured 2026-09-03 on Linux x64 with Node 24.14.0, Chrome 152.0.7977.64,

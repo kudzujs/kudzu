@@ -2,7 +2,7 @@
 
 ## Scope
 
-This contract applies identically to the Kudzu 0.16.23 and React+Vite starters. The only requested implementation is the shared memo status filter described in `prompt.md`.
+This contract applies identically to the protocol-pinned Kudzu and React+Vite starters. The only requested implementation is the shared memo status filter described in `prompt.md`.
 
 ## Build
 
@@ -23,7 +23,7 @@ This contract applies identically to the Kudzu 0.16.23 and React+Vite starters. 
 
 ## Requested filter behavior
 
-- A group named `Filter memos` contains `All`, `Active`, and `Archived` buttons.
+- A semantically named group contains `All`, `Active`, and `Archived` buttons. No exact group-name wording is required: `Filter memos` and `Filter memos by status` are both valid. Use `role="group"` named by `aria-label` or `aria-labelledby`, or a native `fieldset` named by its legend or ARIA. An unnamed group, a labeled generic container without group semantics, or buttons outside the named group do not satisfy this requirement.
 - Exactly one filter button has `aria-pressed="true"`; initial selection is `All`.
 - `All` renders IDs 101, 102, and 103 in source order.
 - `Active` renders IDs 101 and 103 in source order.

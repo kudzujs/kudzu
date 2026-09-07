@@ -2210,6 +2210,93 @@ untested. The frozen r4 starters stay on published `0.16.23`; old raw records ar
 not reinterpreted. This packet ships as `@kudzujs/core@0.16.24` with
 `create-kudzu@0.1.149`, without authorizing `1.0.0` or a new AI performance claim.
 
+The post-release 2026-09-07 r5 rerun now executes all 50 predeclared attempts with
+published `0.16.24` core pins, registry lock integrity, and canonical hashes in
+all five Kudzu starters. Revision 5 preserves the release-documented r4 pins as
+history rather than relabeling them; model `openai/gpt-5.6-sol`, OpenCode 1.18.27,
+budgets, prompts, public context, acceptance, React starters, schedules, and the
+r4 lifecycle adapter are unchanged. No compiler or runtime change is made.
+
+The frozen scorer records Kudzu 18/25 versus React + Vite 23/25, with per-task
+counts 3/5, 5/5, 3/5, 5/5, 2/5 versus 5/5, 5/5, 3/5, 5/5, 5/5. All tasks finish,
+but two Kudzu realtime deadline failures retain partial attribution, so suite
+status and Kudzu aggregate token cost remain incomplete. React's failure-inclusive
+task-token median is 81,111. Historical r2's published 11/25 versus 24/25 and all
+r3 raw evidence remain unchanged; no selective retries or replacement scores.
+
+This is not a clean ranking or `1.0.0` authorization. Four CRUD failures are
+exact accessible-name mismatches against a requirement absent from the supplied
+prompt; two content failures arise from the grader reading count and empty copy
+as one live-region string, one also exceeding the input budget. The next
+prerequisite is acceptance/prompt alignment review without retroactive rescoring.
+Real compiler intake remains in raw `query.trim` failures for direct count uses
+of normalized-query filters and realtime refs intended to survive pause/resume.
+One null-ref workaround builds but fails the first snapshot; two zero-ref
+attempts fail cleanup proof and time out. Accepted source retains declarative
+composition but some Kudzu attempts add derived/version state workarounds.
+Designated static siblings remain script-free; content's unchanged topic source
+emits list scripts, leaving the broader static-route contract unproven.
+
+Exact commands, nine-failure census, hashes, artifact medians, and scope limits:
+[`PERFORMANCE.md`](../../PERFORMANCE.md#0214-released-01624-rerun-2026-09-07).
+Local raw evidence is
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r5-kudzu-0.16.24-20260907-01/`.
+Six integrity/lifecycle tests, `npm run check`, and the standalone ownership gate
+plus 308 tests pass. No commit, version bump, publication, or release is part of
+this continuation.
+
+### r5 Compiler Follow-Up
+
+The evidence-backed follow-up is implemented without changing the dirty r5/r6
+protocol, prompt, contract, or acceptance work. The two content reductions were
+confirmed red before compiler changes: direct JSX `.length` over a normalized
+query filter threw `query.trim is not a function`, and the unchanged static topic
+filter emitted list state/scripts. Existing count dependency registration now
+selects signal build values, while direct imported pipelines without selector
+states or collection aliases stay in ordinary build-time map execution.
+BindingIR, DerivedIR, KeyedBlockIR, and route/keyed/conditional ownership remain
+unchanged; reactive selectors retain the existing list path and negative checks.
+
+Realtime source tracing closes the proposed lifetime extension negatively.
+Attempts 0/3 correctly reject version refs without cleanup reset; moving them
+into invocation-private closures would lose the version on pause/resume. Attempt
+1 exposes a separate diagnostic gap: render-written null refs were accepted as
+DOM refs, which serialize an ID rather than the retained numeric value. Existing
+ref normalization now rejects those writes at source. No cross-invocation ref,
+resource primitive, runtime, or arbitrary callback support was added. Original
+state-based attempts 2/4 still pass the realtime browser journey.
+
+Accounting: semantic primitives, IR kinds, core passes, normalization entries,
+transform/adapter rules, runtime concepts/source, and APIs all +0; core semantic
+LOC +5, focused normalization LOC +2, one diagnostic guard, two positive and two
+negative reduced cases. The four search variants emit identical JavaScript at
+32,190 raw / 12,324 gzip B. All five final content sources plus the recovered
+first attempt-1 patch pass the prepared r6 acceptance, including every one of the
+ten static siblings and combined polite regions. Each deploy removes four topic
+JavaScript files totaling 20,539 raw / 7,299 gzip B, including 20,462 / 7,204 B of
+runtime files; every retained JavaScript file is byte-identical to r5.
+
+`npm run check`, the standalone ownership gate plus 315 required-Chrome tests,
+and package smoke pass with 1,200,000 ms command timeouts. Exact source locations,
+replay hashes, commands, output tables, diagnostic boundaries, and local evidence
+are in [`PERFORMANCE.md`](../../PERFORMANCE.md#r5-compiler-follow-up-2026-09-07).
+This is source replay, not AI rescoring: r5 remains 18/25 versus 23/25 with partial
+traces, and published r2 remains 11/25 versus 24/25. No model rerun, timing claim,
+commit, release, or `1.0.0` authorization follows. The next benchmark decision
+must use the aligned r6 protocol in a separately authorized complete run, not
+selective retries or broader compiler semantics without new evidence.
+
+### 0.16.25 Release Transaction
+
+The user-authorized patch packages the preceding r5 records, compiler fixes,
+render-ref diagnostic, and future-only r6 acceptance alignment as core 0.16.25
+and create-kudzu 0.1.150. The pre-release session records above remain historical.
+R6 accepts semantically named CRUD groups and combined polite count/empty regions,
+and checks all ten content static siblings. Its hashes and published 0.16.24
+starter pins remain frozen; testing 0.16.25 in a model run requires a new frozen
+revision. No fresh model run, score replacement, persistent-ref support, or
+`1.0.0` authorization is part of this release.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:
@@ -2355,4 +2442,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | Measured gate failed; selected blockers released through `0.16.24` | Preserve historical raw batches and failed success/cost decision; r4 lifecycle integrity applies only to future runs. Keep `1.0.0` blocked pending a complete rerun. | Published result remains Kudzu 11/25 versus React + Vite 24/25; commerce replay passes 5/5 and original imported search replay passes with unchanged JavaScript |
+| `0.21.4` | r5 executed all 50 attempts; compiler follow-up verified; gate remains blocked | Preserve raw scores and partial traces. Direct-count/static-topic fixes and the render-ref diagnostic are verified; persistent version refs remain unsupported. Use aligned r6 only in a separately authorized complete run. | Local historical r5 scorer: Kudzu 18/25 versus React + Vite 23/25, with two partial Kudzu traces. Source replay passes all ten content static siblings but does not replace scores. Published r2 remains 11/25 versus 24/25. |

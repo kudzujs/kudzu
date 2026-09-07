@@ -38,7 +38,7 @@ This contract applies identically to `starters/kudzu` and `starters/react-vite`.
 
 ## Accessibility
 
-- The result summary has `aria-live="polite"`.
+- The result summary is inside an `aria-live="polite"` region. The exact count text and the visible empty message may share that region, including separate child paragraphs; the region's combined text is not required to equal only the count. A missing, hidden, stale, or incorrectly pluralized count does not pass.
 - The empty result message is visible text and is not the input placeholder.
 - The search input is keyboard focusable and retains focus while results update.
 - Heading order on `/articles/` is one `h1` followed by article-title `h2` elements; filtering must not introduce a second `h1` or skip to a deeper card heading.
@@ -48,6 +48,6 @@ This contract applies identically to `starters/kudzu` and `starters/react-vite`.
 
 - Kudzu's built `/articles/index.html` contains the complete initial heading, search label, live summary, and all six article titles before JavaScript executes.
 - Kudzu's built `/static/index.html` contains no `script` element, no module preload, no Kudzu state marker, and references no `.js` asset; loading `/static/` requests zero JavaScript.
-- Kudzu's search capability is owned by `/articles/`; `/`, article detail routes, `/topics/performance/`, `/about/`, and `/static/` remain complete static HTML and do not gain search JavaScript.
+- Kudzu's search capability is owned by `/articles/`; `/`, article detail routes, `/topics/performance/`, `/about/`, and `/static/` remain complete static HTML with no scripts, module preloads, state markers, or JavaScript asset references. Static collection output is not exempt from this requirement.
 - React + Vite may ship and execute its normal React runtime. Its production build must not replace the seeded content with fetched data or add a second application/runtime dependency.
 - Both builds retain the shared stylesheet and native route URLs. Generated source maps, analytics, service workers, hydration shims, and client routers are neither required nor accepted as substitutes for the feature.

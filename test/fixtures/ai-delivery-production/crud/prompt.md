@@ -7,7 +7,7 @@ The existing seeded memo CRUD, sync controls, status/error announcements, stylin
 Implement exactly these behaviors:
 
 - Add `all`, `active`, and `archived` filter state at the existing shared application-state owner.
-- Render a named filter group with buttons labeled `All`, `Active`, and `Archived`.
+- Render a named filter group containing buttons labeled `All`, `Active`, and `Archived`. Use `role="group"` with an accessible name or a native named `fieldset`; descriptive names such as `Filter memos` and `Filter memos by status` are both valid. No exact group-name wording is required.
 - Expose the selected button with `aria-pressed="true"` and the other buttons with `aria-pressed="false"`.
 - Show all memos for `all`, only non-archived memos for `active`, and only archived memos for `archived`.
 - Update the visible-results summary to announce `Showing N of M memos` through the existing polite status region.

@@ -55,7 +55,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.16.24 production evidence</strong><span><code>npm run benchmark:source-scale</code> completes 100,000 modules under a 10 GiB heap, maintained browser benchmarks enforce keyed, range, navigation, lazy-load, and endurance bounds, and the corrected AI delivery comparison keeps <code>1.0.0</code> blocked at 11/25 Kudzu successes versus 24/25 for React + Vite.</span></div>
+    <div className="docs-callout"><strong>Current 0.16.25 production evidence</strong><span><code>npm run benchmark:source-scale</code> completes 100,000 modules under a 10 GiB heap, maintained browser benchmarks enforce keyed, range, navigation, lazy-load, and endurance bounds. Historical r2 remains 11/25 Kudzu successes versus 24/25 for React + Vite; r5 records 18/25 versus 23/25 with two partial traces and acceptance limitations. Static content replay saves 20,539 raw / 7,299 aggregate gzip JavaScript bytes. No fresh r6 model run or replacement score is claimed; <code>1.0.0</code> remains blocked.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

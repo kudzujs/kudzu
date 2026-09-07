@@ -3,6 +3,7 @@ import { existsSync } from "node:fs"
 import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
+import { pathToFileURL } from "node:url"
 
 async function main() {
   const workspace = resolve(process.argv[2])
@@ -53,13 +54,13 @@ async function main() {
 const journeys = {
   async content(cdp) {
     await waitUntil(cdp, `document.querySelectorAll(".article-card").length === 6`)
-    const initial = await evaluate(cdp, `({ label: document.querySelector('label')?.textContent.trim(), type: document.querySelector('input')?.type, count: document.querySelector('[aria-live="polite"]')?.textContent.trim() })`)
+    const initial = await evaluate(cdp, `({ label: document.querySelector('label')?.textContent.trim(), type: document.querySelector('input')?.type, count: (${articleSummary})() })`)
     const failure = await search(cdp, "failure")
     const performance = await search(cdp, "PERFORMANCE")
     const accessibility = await search(cdp, "  accessibility  ")
     const empty = await search(cdp, "no such note")
     const restored = await search(cdp, "")
-    return { passed: initial.label === "Search articles" && initial.type === "search" && initial.count === "6 articles" && failure.count === "1 article" && failure.titles.join() === "Designing for failure" && performance.count === "3 articles" && performance.titles.join("|") === "Shipping less JavaScript|Measuring what matters|Calm release notes" && accessibility.titles.join() === "Accessible by default" && empty.count === "0 articles" && empty.text.includes("No articles match your search.") && restored.titles.length === 6, checks: { initial, failure, performance, accessibility, empty, restored } }
+    return { passed: initial.label === "Search articles" && initial.type === "search" && initial.count === "6 articles" && failure.count === "1 article" && failure.titles.join() === "Designing for failure" && performance.count === "3 articles" && performance.titles.join("|") === "Shipping less JavaScript|Measuring what matters|Calm release notes" && accessibility.count === "1 article" && accessibility.titles.join() === "Accessible by default" && empty.count === "0 articles" && empty.titles.length === 0 && empty.text.includes("No articles match your search.") && restored.count === "6 articles" && restored.titles.length === 6, checks: { initial, failure, performance, accessibility, empty, restored } }
   },
   async forms(cdp, port) {
     const fields = await evaluate(cdp, `(() => { const form=document.querySelector("form"), confirmations=form.querySelectorAll('input[type="password"]'), values=[[form.elements.namedItem("email"),"person@example.com"],[form.elements.namedItem("password"),"northstar2026"],[confirmations[1],"different2026"],[form.elements.namedItem("fullName"),"Ada Lovelace"],[form.elements.namedItem("organization"),"Analytical Engines"],[form.elements.namedItem("role"),"founder"]], setValue=(field,value)=>{let prototype=field;while(prototype&&!Object.getOwnPropertyDescriptor(prototype,"value"))prototype=Object.getPrototypeOf(prototype);Object.getOwnPropertyDescriptor(prototype,"value").set.call(field,value);field.dispatchEvent(new Event("input",{bubbles:true}));field.dispatchEvent(new Event("change",{bubbles:true}))}; for(const [field,value] of values){if(field)setValue(field,value)} form.elements.namedItem("terms").click(); form.requestSubmit(); return confirmations.length === 2 })()`)
@@ -74,18 +75,21 @@ const journeys = {
   },
   async crud(cdp) {
     await waitUntil(cdp, `document.querySelectorAll("[data-memo-id]").length === 3`)
-    const initial = await evaluate(cdp, `(() => { window.__memoNodes=Object.fromEntries([...document.querySelectorAll("[data-memo-id]")].map(node=>[node.dataset.memoId,node]));const group=[...document.querySelectorAll('[role="group"],[aria-label="Filter memos"],fieldset')].find(node=>node.getAttribute("aria-label")==="Filter memos"||node.querySelector("legend")?.textContent.trim()==="Filter memos");return { group:Boolean(group), buttons:[...document.querySelectorAll('button')].filter(button=>["All","Active","Archived"].includes(button.textContent.trim())).map(button=>[button.textContent.trim(),button.getAttribute("aria-pressed")]), ids:[...document.querySelectorAll("[data-memo-id]")].map(node=>node.dataset.memoId), status:document.querySelector(".result-status")?.textContent.trim() } })()`)
+    const initial = await evaluate(cdp, `(() => { window.__memoNodes=Object.fromEntries([...document.querySelectorAll("[data-memo-id]")].map(node=>[node.dataset.memoId,node]));return { group:(${memoFilterSelected})("All"), buttons:[...document.querySelectorAll('button')].filter(button=>["All","Active","Archived"].includes(button.textContent.trim())).map(button=>[button.textContent.trim(),button.getAttribute("aria-pressed")]), ids:[...document.querySelectorAll("[data-memo-id]")].map(node=>node.dataset.memoId), status:document.querySelector(".result-status")?.textContent.trim() } })()`)
     await clickText(cdp, "Active")
     await waitUntil(cdp, `document.querySelectorAll("[data-memo-id]").length === 2`)
+    const filterSelections = { active: await evaluate(cdp, `(${memoFilterSelected})("Active")`) }
     const active = await evaluate(cdp, `({ ids:[...document.querySelectorAll("[data-memo-id]")].map(node=>node.dataset.memoId), retained:[...document.querySelectorAll("[data-memo-id]")].every(node=>node===window.__memoNodes[node.dataset.memoId]), status:document.querySelector(".result-status")?.textContent.trim(), focused:document.activeElement?.textContent.trim() })`)
     await clickText(cdp, "Archived")
     await waitUntil(cdp, `document.querySelectorAll("[data-memo-id]").length === 1`)
     const archived = await evaluate(cdp, `({ ids:[...document.querySelectorAll("[data-memo-id]")].map(node=>node.dataset.memoId), status:document.querySelector(".result-status")?.textContent.trim() })`)
+    filterSelections.archived = await evaluate(cdp, `(${memoFilterSelected})("Archived")`)
     await evaluate(cdp, `(() => { const field=document.querySelector('.composer textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"New active memo");field.dispatchEvent(new Event("input",{bubbles:true}));document.querySelector('.composer form').requestSubmit();return true })()`)
     await waitUntil(cdp, `document.querySelector(".result-status")?.textContent.includes("of 4 memos")`)
     const hiddenNew = await evaluate(cdp, `document.querySelectorAll("[data-memo-id]").length === 1`)
     await clickText(cdp, "Active")
     await waitUntil(cdp, `document.querySelectorAll("[data-memo-id]").length === 3`)
+    filterSelections.activeAfterCreate = await evaluate(cdp, `(${memoFilterSelected})("Active")`)
     const created = await evaluate(cdp, `(() => { const node=[...document.querySelectorAll("[data-memo-id]")].find(item=>!["101","102","103"].includes(item.dataset.memoId));if(!node)return null;window.__newMemoId=node.dataset.memoId;return { id:node.dataset.memoId, value:node.querySelector("textarea")?.value, count:document.querySelector(".result-status")?.textContent.trim() } })()`)
     await evaluate(cdp, `(() => { const node=document.querySelector('[data-memo-id="101"]'),field=node.querySelector("textarea");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(field,"Roadmap notes updated");field.dispatchEvent(new Event("input",{bubbles:true}));node.querySelector("form").requestSubmit();return true })()`)
     await waitUntil(cdp, `document.querySelector('[data-memo-id="101"] textarea')?.value === "Roadmap notes updated"`)
@@ -97,7 +101,7 @@ const journeys = {
     await evaluate(cdp, `(() => { const node=document.querySelector('[data-memo-id="102"]');[...node.querySelectorAll("button")].find(button=>button.textContent.trim()==="Delete").click();return true })()`)
     await waitUntil(cdp, `document.querySelectorAll("[data-memo-id]").length === 0`)
     const empty = await evaluate(cdp, `({ status:document.querySelector(".result-status")?.textContent.trim(), text:document.body.textContent })`)
-    return { passed: initial.group && initial.buttons.length === 3 && initial.buttons.filter(([,pressed])=>pressed === "true").length === 1 && initial.ids.join() === "101,102,103" && initial.status === "Showing 3 of 3 memos" && active.ids.join() === "101,103" && active.retained && active.status === "Showing 2 of 3 memos" && active.focused === "Active" && archived.ids.join() === "102" && archived.status === "Showing 1 of 3 memos" && hiddenNew && created?.value === "New active memo" && created.count === "Showing 3 of 4 memos" && edited.value === "Roadmap notes updated" && edited.status === "Showing 3 of 4 memos" && deleted === "Showing 2 of 3 memos" && empty.status === "Showing 0 of 2 memos" && empty.text.includes("No memos match this filter."), checks: { initial, active, archived, hiddenNew, created, edited, deleted, empty } }
+    return { passed: initial.group && Object.values(filterSelections).every(Boolean) && initial.buttons.length === 3 && initial.buttons.filter(([,pressed])=>pressed === "true").length === 1 && initial.ids.join() === "101,102,103" && initial.status === "Showing 3 of 3 memos" && active.ids.join() === "101,103" && active.retained && active.status === "Showing 2 of 3 memos" && active.focused === "Active" && archived.ids.join() === "102" && archived.status === "Showing 1 of 3 memos" && hiddenNew && created?.value === "New active memo" && created.count === "Showing 3 of 4 memos" && edited.value === "Roadmap notes updated" && edited.status === "Showing 3 of 4 memos" && deleted === "Showing 2 of 3 memos" && empty.status === "Showing 0 of 2 memos" && empty.text.includes("No memos match this filter."), checks: { initial, filterSelections, active, archived, hiddenNew, created, edited, deleted, empty } }
   },
   async commerce(cdp) {
     await waitUntil(cdp, `document.querySelector(".subtotal")`)
@@ -158,12 +162,42 @@ const journeys = {
   },
 }
 
-async function outputChecks(task, isKudzu, root, cdp) {
+export async function staticOutputChecks(task, isKudzu, root) {
   const staticPaths = { content: "static/index.html", forms: "privacy/index.html", crud: "about/index.html", commerce: "shipping/index.html", realtime: "about/index.html" }
-  const staticHtml = await readFile(join(root, isKudzu ? staticPaths[task] : "index.html"), "utf8")
-  const staticZeroJavaScript = !isKudzu || !/<script\b|modulepreload|data-k-(?:on|state|text|attr|list|condition)/.test(staticHtml)
+  const paths = task === "content" ? ["index.html", "topics/performance/index.html", "about/index.html", "static/index.html", ...["designing-for-failure", "shipping-less-javascript", "content-that-lasts", "accessible-by-default", "measuring-what-matters", "calm-release-notes"].map(slug => `articles/${slug}/index.html`)] : [staticPaths[task]]
+  const artifacts = await Promise.all((isKudzu ? paths : ["index.html"]).map(async artifact => {
+    const html = await readFile(join(root, artifact), "utf8").catch(error => { if (error.code === "ENOENT") return null; throw error })
+    return { artifact, exists: html !== null, staticZeroJavaScript: isKudzu ? html !== null && !/<script\b|modulepreload|data-k-(?:on|state|text|attr|list|condition)|(?:src|href)\s*=\s*["'][^"']*\.m?js(?:[?#["'])/i.test(html) : null }
+  }))
+  return { passed: artifacts.every(item => item.exists && item.staticZeroJavaScript !== false), staticZeroJavaScript: isKudzu ? artifacts.every(item => item.staticZeroJavaScript) : null, artifacts }
+}
+
+async function outputChecks(task, isKudzu, root, cdp) {
+  const output = await staticOutputChecks(task, isKudzu, root)
   const resources = await evaluate(cdp, `performance.getEntriesByType("resource").map(entry=>({name:entry.name.split("/").at(-1),transferSize:entry.transferSize||0}))`)
-  return { passed: staticZeroJavaScript, staticZeroJavaScript, artifact: isKudzu ? staticPaths[task] : "index.html", resources }
+  return { ...output, resources }
+}
+
+// These predicates run in the browser and are shared with the no-model regressions.
+export function articleSummary() {
+  const regions = [...document.querySelectorAll('[aria-live="polite"]')].filter(node => node.checkVisibility({ visibilityProperty: true, opacityProperty: true }) && !node.closest('[aria-hidden="true"]'))
+  const summaries = regions.map(node => node.innerText.replace(/\s+/g, " ").trim()).filter(text => /^(?:1 article|(?:0|[2-9]|\d{2,}) articles)(?:\s*No articles match your search\.)?$/.test(text))
+  return summaries.length === 1 ? summaries[0].match(/^\d+ articles?/)[0] : null
+}
+
+export function memoFilterSelected(selected) {
+  const labels = ["All", "Active", "Archived"]
+  return [...document.querySelectorAll('[role="group"],fieldset')].some(group => {
+    if (!group.checkVisibility({ visibilityProperty: true, opacityProperty: true }) || group.closest('[aria-hidden="true"]') || (group.hasAttribute("role") && group.getAttribute("role") !== "group")) return false
+    const labelledby = group.getAttribute("aria-labelledby")
+    const name = labelledby ? labelledby.trim().split(/\s+/).map(id => document.getElementById(id)?.textContent || "").join(" ") : group.getAttribute("aria-label") || (group.tagName === "FIELDSET" ? group.querySelector(":scope > legend")?.textContent : "")
+    if (!name?.trim()) return false
+    const buttons = [...group.querySelectorAll("button")]
+    return buttons.length === 3 && labels.every(label => {
+      const matches = buttons.filter(button => button.textContent.trim() === label)
+      return matches.length === 1 && matches[0].checkVisibility({ visibilityProperty: true, opacityProperty: true }) && !matches[0].closest('[aria-hidden="true"]') && !matches[0].matches(":disabled") && matches[0].getAttribute("aria-pressed") === String(label === selected)
+    })
+  })
 }
 
 function entryPath(task) {
@@ -173,7 +207,7 @@ function entryPath(task) {
 async function search(cdp, value) {
   await evaluate(cdp, `(() => { const input=document.querySelector('input[type="search"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}));return true })()`)
   await new Promise(resolveSleep => setTimeout(resolveSleep, 25))
-  return evaluate(cdp, `({ count:document.querySelector('[aria-live="polite"]')?.textContent.trim(), titles:[...document.querySelectorAll('.article-card h2')].map(node=>node.textContent.trim()), text:document.body.textContent })`)
+  return evaluate(cdp, `({ count:(${articleSummary})(), titles:[...document.querySelectorAll('.article-card h2')].map(node=>node.textContent.trim()), text:document.body.innerText })`)
 }
 
 async function clickText(cdp, text) {
@@ -191,7 +225,7 @@ async function navigate(cdp, url) {
   await waitUntil(cdp, `document.readyState === "complete"`)
 }
 
-async function evaluate(cdp, expression) {
+export async function evaluate(cdp, expression) {
   const response = await cdp.send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, cdp.sessionId)
   if (response.exceptionDetails) throw new Error(response.exceptionDetails.text)
   return response.result.value
@@ -206,7 +240,7 @@ async function waitUntil(cdp, expression) {
   throw new Error(`DOM predicate timed out: ${expression}`)
 }
 
-async function waitForPort(profileDirectory, child) {
+export async function waitForPort(profileDirectory, child) {
   for (let attempt = 0; attempt < 1000; attempt++) {
     if (child.exitCode !== null) throw new Error(`Chrome exited early with ${child.exitCode}`)
     try {
@@ -218,7 +252,7 @@ async function waitForPort(profileDirectory, child) {
   throw new Error("Chrome DevToolsActivePort did not appear")
 }
 
-class CDP {
+export class CDP {
   constructor(url) {
     this.id = 0
     this.pending = new Map()
@@ -246,4 +280,4 @@ class CDP {
   }
 }
 
-await main()
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) await main()

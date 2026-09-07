@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.16.25 - Static Content And Acceptance Alignment
+
+Kudzu 0.16.25 closes the r5 static-topic and direct-count compiler gaps and
+aligns future acceptance with communicated requirements. This release includes
+historical r5 observations, not a fresh model rerun or replacement score.
+
+### Changed in 0.16.25
+
+- Keeps proven direct imported static selector maps at build time and registers
+  normalized query build values for collection counts consumed directly in JSX.
+- Removes four topic JavaScript files from each replayed content build: 13 to 9
+  files, saving 20,539 raw / 7,299 aggregate gzip bytes. Retained JavaScript is
+  byte-identical, and all ten static siblings pass source-replay acceptance.
+- Rejects unsafe render-written mutable refs at authored source locations.
+  Persistent realtime version refs across effect replacements remain unsupported;
+  existing cleanup diagnostics and state-based realtime sources are preserved.
+- Adds seven production compiler lines across two existing files, no semantic
+  primitive, pass, IR kind, runtime concept, public API, or dependency.
+- Aligns named CRUD groups and combined polite count/empty regions, enforces
+  static exclusion on all ten content siblings, and freezes r6 protocol hashes.
+  Those future-only protocols retain published 0.16.24 starters; no r6 model run
+  has been performed.
+- Preserves historical r5's 18/25 Kudzu versus 23/25 React + Vite, with two partial
+  Kudzu traces and acceptance limitations. Published r2 remains 11/25 versus
+  24/25. Neither is rescored; `1.0.0` remains blocked. No timing or cost win is claimed.
+- Updates `create-kudzu@0.1.150` to generate `@kudzujs/core@^0.16.25` projects.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.25
+```
+
 ## 0.16.24 - Imported Article Search And Benchmark Integrity
 
 Kudzu 0.16.24 compiles the original authored imported-article search shape
