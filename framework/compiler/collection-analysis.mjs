@@ -73,7 +73,7 @@ export function analyzeCollectionPipeline(expression, options) {
       if (!source) return undefined
       const parameters = collectionParameters(value.arguments[0], "Rendered collection filter()", fail)
       const selectorStates = new Set(source.selectorStates)
-      return { ...source, selector: [...source.selector, ["filter", collectionExpression(unwrapExpression(value.arguments[0].body), { parameters, fail, stateNames, selectorStates })]], selectorStates }
+      return { ...source, selector: [...source.selector, ["filter", collectionExpression(unwrapExpression(value.arguments[0].body), { parameters, fail, stateNames, selectorStates, declarations })]], selectorStates }
     }
     if (method === "flatMap") {
       if (value.arguments.length !== 1) fail(value, "Rendered collection flatMap() requires one inline projector")
@@ -122,7 +122,7 @@ export function analyzeCollectionPipeline(expression, options) {
   }
 }
 
-export function collectionExpression(expression, { parameters = {}, fail, stateNames = new Set(), selectorStates = new Set() }) {
+export function collectionExpression(expression, { parameters = {}, fail, stateNames = new Set(), selectorStates = new Set(), declarations, aliases = new Set() }) {
   const encode = node => {
     node = unwrapExpression(node)
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isNumericLiteral(node)) return ["value", ts.isNumericLiteral(node) ? Number(node.text) : node.text]
@@ -136,6 +136,19 @@ export function collectionExpression(expression, { parameters = {}, fail, stateN
       if (stateNames.has(node.text)) {
         selectorStates.add(node.text)
         return ["state", node.text]
+      }
+      const entries = declarations?.get(node.text)
+      if (entries?.length === 1 && entries[0].node.parent?.parent?.parent === nearestFunction(entries[0].node)?.body) {
+        if (aliases.has(node.text)) fail(node, `Rendered collection expression local cycle at "${node.text}"`)
+        aliases.add(node.text)
+        const dependencies = new Set()
+        const result = collectionExpression(entries[0].initializer, { fail, stateNames, selectorStates: dependencies, declarations, aliases })
+        for (const name of dependencies) {
+          if (name === parameters.item || name === parameters.index) fail(node, `Rendered collection expression local "${node.text}" cannot capture state shadowed by predicate parameters`)
+          selectorStates.add(name)
+        }
+        aliases.delete(node.text)
+        return result
       }
       fail(node, `Rendered collection expression identifier "${node.text}" is not allowed`)
     }

@@ -92,6 +92,64 @@ not a new equal-condition model run, so the published 11/25 versus 24/25 result
 and the `1.0.0` block remain unchanged pending the complete production rerun.
 This follow-up ships as `@kudzujs/core@0.16.23`.
 
+### Imported Search Source Replay (2026-09-07)
+
+Compiler follow-up shipping as `0.16.24` to `f88279024e68c875ea35592a1ab363bde1cec9d0`
+(`0.16.23`), on Linux x64, Node 24.14.0 and Chrome 152.0.7977.64. Authorizing
+evidence is the initial aliased search patch at line 50 of
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r3-kudzu-0.16.23-continuation-20260907/content/attempts/content-kudzu-0/adapter.stdout`.
+The reduced fixture first reproduced both the source-located generic expression
+diagnostic and the direct-filter-count `query.trim is not a function` build error.
+
+Imported collection discovery now follows top-level const selector aliases from
+map/count uses. Filter predicates encode proven pure query locals using the
+existing expression language, and count dependencies use signal build values in
+scratch rather than invoking string methods on signal objects. Existing binding,
+selector, keyed, and conditional consumers remain authoritative.
+
+| Metric | Result |
+|---|---|
+| Semantic primitives / IR kinds / runtime concepts / APIs | +0 / +0 / +0 / +0 |
+| Core passes / ordered normalization entries / adapters | +0 / +0 / +0 |
+| Existing normalization/proof boundaries extended | 3: import roots, pure filter locals, count build values |
+| Core semantic LOC, unchanged 0.9 file set | +39, 5,466 -> 5,505; source compiler +26, collection analysis +13 |
+| Regression evidence | 1 reduced fixture; 3 positive source variants, 6 negative forms, 4 tests |
+| Reduced route JS | 9 files; 32,190 raw / 12,324 aggregate gzip B in every variant |
+| Delta from fully inlined control | 0 raw / 0 gzip B; identical JS paths and contents |
+| Reduced static sibling | Complete HTML, 0 B JavaScript |
+| Full retained application replay | 11 pages, 2 interactive; build and existing content acceptance pass |
+| Full application JS vs earlier retained inlined artifacts | 13 files; 55,447 raw / 20,976 aggregate gzip B; all paths/bytes identical |
+| Build/browser timing and AI-cost delta | Not measured; no fresh model benchmark or ranking claim |
+
+The full replay restores the initial page and stylesheet patch over the content
+starter while preserving the retained application's other source. It uses the
+current workspace compiler and the unchanged existing content acceptance runner,
+not a new adapter invocation. It passes search/count/empty/restore, accessibility,
+zero-JavaScript static output, and no browser exceptions or failed requests.
+Raw build/acceptance output and `replay.json` are retained separately under
+`test-results/ai-delivery-production/imported-article-search-source-replay-20260907/`. Its sorted
+HTML/CSS/JS path-plus-NUL-plus-content SHA-256 is
+`92d96f7cfdd4535de28ff9b7665aa241815ed2649e6db14fc22c5eadc8258904`.
+The original attempt and earlier benchmark results are not rewritten.
+
+Release verification: `npm run check` (224 pages, 2 interactive),
+`KUDZU_REQUIRE_CHROME=1 npm test` (standalone project ownership gate, then
+308/308 tests), `npm run test:package` (4 installed packages, one static page),
+and both package dry-runs pass. The release gates ran sequentially with a
+1,200-second tool limit, avoiding overlapping fixture tests.
+Chrome regression checks also prove retained rows and fresh remounts; they are
+correctness checks, not latency samples. Mutable aliases, impure calls, cycles,
+collection escapes, mutating sort, and predicate-parameter state collisions remain
+diagnosed. No general local/callback graph or effect cleanup claim is added.
+The same release includes separate r4 benchmark lifecycle integrity changes:
+atomic partial-usage checkpoints, bounded incremental stdout/stderr evidence,
+setup-inclusive deadlines, owned process-tree termination, and incomplete timeout
+attribution. Two Linux lifecycle regressions cover setup and model timeouts,
+partial usage, descendant termination, and passing acceptance after adapter timeout.
+The Windows `taskkill` path remains untested. Future r4 protocols pin published
+`0.16.23` starters; historical raw evidence remains untouched. The published
+11/25 versus 24/25 comparison and `1.0.0` block remain unchanged.
+
 ## 0.21.2 Browser Performance And Memory
 
 Measured 2026-09-03 at revision

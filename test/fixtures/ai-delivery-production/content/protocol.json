@@ -1,17 +1,18 @@
 {
   "schema": 1,
-  "revision": 2,
-  "id": "production-content-search-r2",
+  "revision": 4,
+  "id": "production-content-search-r4",
+  "revisionNote": "Future runs only: incremental evidence, setup-inclusive deadline, owned process-tree termination, and incomplete timeout attribution. Completed r3 evidence is unchanged and must not be reinterpreted.",
   "packet": "0.21.4",
   "model": {
     "provider": "openai-via-opencode",
     "id": "openai/gpt-5.6-sol",
     "revision": "gpt-5.6-sol",
-    "adapter": { "command": "node", "args": ["{protocol}/../../../ai-delivery-opencode-adapter.mjs"], "sha256": "905cd84130655b6f6312f89fd3c049feabc8edce40b86cb54a55727111d88299" },
+    "adapter": { "command": "node", "args": ["{protocol}/../../../ai-delivery-opencode-adapter.mjs"], "sha256": "91c0db691c2f7a7d5c40122e86b2ac7b928e3016a80a202f8c079c2013b3eb0e" },
     "pricing": { "inputUsdNanosPerMillion": 0, "outputUsdNanosPerMillion": 0, "reasoningUsdNanosPerMillion": 0, "accounting": "provider-reported subscription cost is zero; tokens are the cost comparator" }
   },
   "tools": {
-    "versions": { "runner": "1", "opencode": "1.18.27", "node": "captured-exactly-per-run", "kudzu": "0.16.18", "react": "19.2.8" },
+    "versions": { "runner": "1", "opencode": "1.18.27", "node": "captured-exactly-per-run", "kudzu": "0.16.23", "react": "19.2.8" },
     "names": ["read", "write", "build", "shell", "grep", "glob", "list", "task", "question", "todowrite", "skill", "webfetch"],
     "permissions": ["workspace-read", "workspace-write", "workspace-shell", "public-context-only"]
   },
@@ -25,7 +26,7 @@
     "acceptance": { "command": "node", "args": ["{protocol}/../../../ai-delivery-production-acceptance.mjs", "{workspace}", "content"], "sha256": "c1320b8c87c1d3c2303ac20a5385fae9c3935d121ff31aab4bb9a899bd7e7a06" }
   },
   "variants": [
-    { "id": "kudzu", "framework": "Kudzu 0.16.18", "starter": "starters/kudzu", "starterSha256": "c209e1e28df622f55c1e12ac32847cc4e7e02b5bebc16cde75ccd86b11b2404b", "publicContext": [{ "path": "../public-kudzu.md", "sha256": "1a341f6d42f83784dd7eda729f45a8d9fd66414448f4051c2b3483e7e90eff61" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" },
+    { "id": "kudzu", "framework": "Kudzu 0.16.23", "starter": "starters/kudzu", "starterSha256": "8ef9695dffb736e16f98926b42983df43d5d1a405a12a8ab1de9ddf05e2d44ea", "publicContext": [{ "path": "../public-kudzu.md", "sha256": "1a341f6d42f83784dd7eda729f45a8d9fd66414448f4051c2b3483e7e90eff61" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" },
     { "id": "react-vite", "framework": "React 19.2.8 + Vite 8.2.2", "starter": "starters/react-vite", "starterSha256": "371b0a02b7dada5babd1548386e9ddf0809a215c09037f0f9c680af31a3ba02d", "publicContext": [{ "path": "../public-react-vite.md", "sha256": "de27615c57742bd78f6e4cb3f8861900d8a8e8eea814dc41c037efbcc8f7bfd0" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" }
   ],
   "schedule": [

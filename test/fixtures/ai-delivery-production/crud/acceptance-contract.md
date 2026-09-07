@@ -2,7 +2,7 @@
 
 ## Scope
 
-This contract applies identically to the Kudzu 0.16.18 and React+Vite starters. The only requested implementation is the shared memo status filter described in `prompt.md`.
+This contract applies identically to the Kudzu 0.16.23 and React+Vite starters. The only requested implementation is the shared memo status filter described in `prompt.md`.
 
 ## Build
 

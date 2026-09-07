@@ -1149,7 +1149,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       if (!isUnshadowedGlobal(roundAccess.expression, sourceFile)) fail(roundAccess.expression, "Reactive JSX Intl.NumberFormat requires the unshadowed global Math object")
       collectionExpression(rounded.arguments[0], { fail: (node, message) => fail(node, message.replace("Rendered collection", "Reactive JSX local")), stateNames: allowedNames })
     }
-    const resolveReactiveJsxExpression = (expression, owner, setters) => {
+    const resolveReactiveJsxExpression = (expression, owner, setters, buildDeclarations) => {
       const declarations = jsxLocalDeclarations.get(owner)
       if (!declarations) return expression
       const substitutions = new Map()
@@ -1187,6 +1187,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const captures = captureNames(expanded, expanded, setters, bindingIndex)
       const allowedNames = new Set([...setters.values(), ...captures])
       validateReactiveJsxExpression(expanded, allowedNames, setters)
+      if (buildDeclarations) for (const name of substitutions.keys()) buildDeclarations.add(declarations.get(name)[0].node)
       return expanded
     }
     const componentSpecializations = new WeakMap()
@@ -1696,6 +1697,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
     const collectionAliasUses = rawRenderedLists.flatMap(({ parts }) => parts.aliasUses ?? [])
     const collectionAliasDeclarations = new Set(rawRenderedLists.flatMap(({ parts }) => parts.aliasDeclarations ?? []))
     const collectionLengthDeclarations = new Set()
+    const collectionValueDeclarations = new Set()
     for (const declaration of collectionAliasDeclarations) {
       const owner = nearestFunction(declaration)
       const unsupported = identifierReferences(owner.body, declaration.name.text).find(reference => {
@@ -1712,6 +1714,19 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         return true
       })
       if (unsupported) fail(unsupported, `Rendered collection alias "${declaration.name.text}" may only be used as a rendered collection source`)
+    }
+    for (const [owner, declarations] of jsxLocalDeclarations) for (const entries of declarations.values()) {
+      if (entries.length !== 1 || entries[0].node.parent?.parent?.parent !== owner?.body) continue
+      const { node, initializer } = entries[0]
+      const value = unwrapExpression(initializer)
+      if (!ts.isPropertyAccessExpression(value) || value.name.text !== "length") continue
+      const setters = settersForNode(node, settersByFunction)
+      const expression = resolveReactiveJsxExpression(initializer, owner, setters, collectionValueDeclarations)
+      if (!referencedStateNames(expression, setters).size) continue
+      const collection = analyzeCollectionPipeline(unwrapExpression(expression).expression, { setters, declarations, fail, importedCollections, stateNames: new Set(setters.values()), importedCollectionTransforms })
+      if (!collection?.selector.length) continue
+      validateReactiveJsxExpression(expression, new Set(setters.values()), setters)
+      collectionLengthDeclarations.add(node)
     }
     const rejectUnsupportedRenderControl = node => {
       if (ts.isIfStatement(node) && containsRenderControl(node, jsxLocalsByFunction.get(nearestFunction(node)) ?? new Set())) {
@@ -2229,12 +2244,12 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, factory.createIdentifier("undefined"))
       }
 
-      if (ts.isVariableDeclaration(node) && collectionLengthDeclarations.has(node) && node.initializer) {
+      if (ts.isVariableDeclaration(node) && node.initializer && (collectionLengthDeclarations.has(node) || collectionValueDeclarations.has(node))) {
         const setters = settersForNode(node, settersByFunction)
         const expression = resolveReactiveJsxExpression(node.initializer, nearestFunction(node), setters)
         const stateNames = new Set(setters.values())
         const rewrite = current => {
-          if (ts.isIdentifier(current) && stateNames.has(current.text) && isReferenceIdentifier(current)) return factory.createPropertyAccessExpression(current, "value")
+          if (ts.isIdentifier(current) && stateNames.has(current.text) && isReferenceIdentifier(current) && !isShadowedByParameter(current, expression)) return factory.createPropertyAccessExpression(current, "value")
           return ts.visitEachChild(current, rewrite, context)
         }
         return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, node.type, ts.visitNode(expression, rewrite))
@@ -3526,16 +3541,27 @@ function importedSerializableCollections(sourceFile, file, sourceFiles, sourceIn
   for (const statement of sourceFile.statements) if (ts.isImportDeclaration(statement) && ["react", "@kudzujs/core"].includes(statement.moduleSpecifier.text) && statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)) {
     for (const entry of statement.importClause.namedBindings.elements) if ((entry.propertyName ?? entry.name).text === "useMemo") memoNames.add(entry.name.text)
   }
+  const visitedAliases = new Set()
   const collectRoot = node => {
-    if (ts.isPropertyAccessExpression(node) && ["filter", "flatMap", "slice", "toSorted", "map"].includes(node.name.text)) {
+    if (ts.isPropertyAccessExpression(node) && ["filter", "flatMap", "slice", "toSorted", "map", "length"].includes(node.name.text)) {
       let expression = node.expression
       while (ts.isCallExpression(expression) || ts.isPropertyAccessExpression(expression)) expression = expression.expression
-      if (ts.isIdentifier(expression)) mapped.add(expression.text)
+      if (ts.isIdentifier(expression)) {
+        if (!isShadowedIdentifier(expression, sourceFile)) mapped.add(expression.text)
+        const owner = nearestFunction(node)
+        if (owner?.body && ts.isBlock(owner.body)) for (const statement of owner.body.statements) {
+          if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const)) continue
+          for (const declaration of statement.declarationList.declarations) if (ts.isIdentifier(declaration.name) && declaration.name.text === expression.text && declaration.initializer && !visitedAliases.has(declaration)) {
+            visitedAliases.add(declaration)
+            collectRoot(declaration.initializer)
+          }
+        }
+      }
     }
     ts.forEachChild(node, collectRoot)
   }
   const visit = node => {
-    if (ts.isPropertyAccessExpression(node) && node.name.text === "map") {
+    if (ts.isPropertyAccessExpression(node) && ["map", "length"].includes(node.name.text)) {
       collectRoot(node)
     }
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && memoNames.has(node.expression.text) && node.arguments[0]) collectRoot(node.arguments[0])

@@ -7,7 +7,7 @@
     "build": "tsc --noEmit && kudzu build"
   },
   "dependencies": {
-    "@kudzujs/core": "0.16.18"
+    "@kudzujs/core": "0.16.23"
   },
   "devDependencies": {
     "typescript": "7.0.2"

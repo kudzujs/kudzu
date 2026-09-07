@@ -1,4 +1,5 @@
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
+import { appendFileSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -51,14 +52,15 @@ try {
     const adapter = await runCommand(protocol.model.adapter, {
       cwd: workspace,
       timeout: protocol.budgets.elapsedMs,
-      input: JSON.stringify({ schema: 1, attempt: scheduled.id, ordinal: scheduled.ordinal, variant: variant.id, workspace, trace: traceFile, prompt, model: protocol.model, tools: protocol.tools, budgets: protocol.budgets, publicContext })
+      stdoutFile: join(evidenceDirectory, "adapter.stdout"),
+      stderrFile: join(evidenceDirectory, "adapter.stderr"),
+      input: JSON.stringify({ schema: 1, attempt: scheduled.id, ordinal: scheduled.ordinal, variant: variant.id, workspace, trace: traceFile, deadline: Date.now() + protocol.budgets.elapsedMs, prompt, model: protocol.model, tools: protocol.tools, budgets: protocol.budgets, publicContext })
     }, protocolDirectory, workspace)
-    await writeFile(join(evidenceDirectory, "adapter.stdout"), adapter.stdout)
-    await writeFile(join(evidenceDirectory, "adapter.stderr"), adapter.stderr)
-
     const recordedTrace = await readTrace(traceFile)
     const trace = recordedTrace ?? emptyTrace(scheduled.id, protocol.model, adapter.elapsedMs)
     if (recordedTrace) validateTrace(trace, protocol.model, protocol.tools)
+    adapter.timedOut ||= trace.timedOut === true
+    const incomplete = !recordedTrace || trace.complete === false || adapter.timedOut || adapter.signal !== null
     const build = await runCommand(variant.build, { cwd: workspace, timeout: protocol.budgets.elapsedMs }, protocolDirectory, workspace)
     await writeFile(join(evidenceDirectory, "build.stdout"), build.stdout)
     await writeFile(join(evidenceDirectory, "build.stderr"), build.stderr)
@@ -72,9 +74,9 @@ try {
     const artifacts = await inventory(artifactRoot, () => false)
     await copyInventory(source.entries, workspace, join(evidenceDirectory, "source"))
     await copyInventory(artifacts.entries, artifactRoot, join(evidenceDirectory, "artifacts"))
-    const metrics = metricsFor(trace, protocol.model.pricing)
+    const metrics = metricsFor(incomplete ? { ...trace, elapsedMs: Math.max(trace.elapsedMs, Math.round(adapter.elapsedMs)) } : trace, protocol.model.pricing)
     const exceeded = budgetFailures(metrics, protocol.budgets)
-    const status = recordedTrace && !adapter.error && adapter.status === 0 && !build.error && build.status === 0 && acceptanceResult.passed && !exceeded.length ? "success" : "failure"
+    const status = !incomplete && !adapter.error && adapter.status === 0 && !build.error && !build.timedOut && build.status === 0 && acceptanceResult.passed && !exceeded.length ? "success" : "failure"
     const result = {
       schema: 1,
       id: scheduled.id,
@@ -82,7 +84,7 @@ try {
       condition: variant.condition ?? null,
       ordinal: scheduled.ordinal,
       status,
-      attribution: !recordedTrace ? "incomplete" : protocol.model.provider === "fixture" ? "reproducible" : "fully-attributable",
+      attribution: incomplete ? "incomplete" : protocol.model.provider === "fixture" ? "reproducible" : "fully-attributable",
       provider: trace.provider,
       metrics,
       budgetExceeded: exceeded,
@@ -161,15 +163,26 @@ async function runCommand(specification, options, protocolRoot, workspace) {
   const args = specification.args.map(value => value.replaceAll("{protocol}", protocolRoot).replaceAll("{workspace}", workspace))
   const started = performance.now()
   return new Promise(resolveResult => {
-    const child = spawn(executable, args, { cwd: options.cwd, stdio: ["pipe", "pipe", "pipe"], env: { ...process.env } })
+    for (const path of [options.stdoutFile, options.stderrFile]) if (path) writeFileSync(path, "")
+    const child = spawn(executable, args, { cwd: options.cwd, detached: process.platform !== "win32", stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, KUDZU_AI_DELIVERY_GROUP: "1" } })
     const stdout = []
     const stderr = []
     let outputBytes = 0
     let timedOut = false
     let settled = false
-    const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL") }, options.timeout)
-    child.stdout.on("data", chunk => { outputBytes += chunk.length; if (outputBytes <= 1 << 20) stdout.push(chunk) })
-    child.stderr.on("data", chunk => { outputBytes += chunk.length; if (outputBytes <= 1 << 20) stderr.push(chunk) })
+    const timer = setTimeout(() => {
+      timedOut = true
+      if (!child.pid) return
+      if (process.platform === "win32") {
+        const killed = spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"])
+        if (killed.error || killed.status !== 0) throw new Error("Could not terminate command tree")
+      } else {
+        try { process.kill(-child.pid, "SIGKILL") } catch (error) { if (error.code !== "ESRCH") throw error }
+      }
+    }, options.timeout)
+    child.stdout.on("data", chunk => { outputBytes += chunk.length; if (outputBytes <= 1 << 20) { stdout.push(chunk); if (options.stdoutFile) appendFileSync(options.stdoutFile, chunk) } })
+    child.stderr.on("data", chunk => { outputBytes += chunk.length; if (outputBytes <= 1 << 20) { stderr.push(chunk); if (options.stderrFile) appendFileSync(options.stderrFile, chunk) } })
+    child.stdin.on("error", error => { if (error.code !== "EPIPE") throw error })
     child.on("error", error => {
       if (settled) return
       settled = true
@@ -288,7 +301,7 @@ function parseAcceptance(command) {
   let report
   try { report = JSON.parse(command.stdout.toString("utf8")) } catch { report = undefined }
   return {
-    passed: command.status === 0 && report?.schema === 1 && report.passed === true,
+    passed: !command.error && !command.timedOut && command.status === 0 && report?.schema === 1 && report.passed === true,
     status: command.status,
     elapsedMs: command.elapsedMs,
     report: report ?? null,

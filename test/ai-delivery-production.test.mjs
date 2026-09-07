@@ -15,7 +15,9 @@ test("freezes five paired production AI delivery protocols", async () => {
   for (const protocol of protocols) {
     const directory = join(root, protocol.task.class === "crud-shared-state" ? "crud" : protocol.task.class === "commerce-derived-state" ? "commerce" : protocol.task.class === "resource-realtime" ? "realtime" : protocol.task.class)
     assert.equal(protocol.packet, "0.21.4")
-    assert.equal(protocol.revision, 2)
+    assert.equal(protocol.revision, 4)
+    assert.match(protocol.id, /-r4$/)
+    assert.match(protocol.revisionNote, /Completed r3 evidence is unchanged/)
     assert.deepEqual(protocol.variants.map(variant => variant.id), ["kudzu", "react-vite"])
     assert.deepEqual(protocol.variants.map(variant => protocol.schedule.filter(entry => entry.variant === variant.id).map(entry => entry.ordinal).sort()), [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
     assert.equal(await digestFile(join(directory, protocol.task.prompt)), protocol.task.promptSha256)

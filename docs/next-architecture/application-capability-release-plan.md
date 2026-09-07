@@ -2183,6 +2183,33 @@ This does not revise the published equal-condition score without a complete
 rerun, so `1.0.0` remains unauthorized. This follow-up is released as
 `@kudzujs/core@0.16.23` with `create-kudzu@0.1.148`.
 
+The user-approved 2026-09-07 `0.16.24` continuation addresses the initial r3
+content patch's imported collection alias and direct filter-count failures.
+[`imported-article-search`](../../test/fixtures/imported-article-search/README.md)
+reproduced both failures before changes. The reduction extends existing import
+discovery, pure selector normalization, and count build-value lowering, with
+existing BindingIR/DerivedIR/KeyedBlockIR consumers and route/keyed/conditional
+ownership. It adds no primitive, IR kind, pass, runtime concept, API, or adapter;
+the two core files grow by net 39 lines. Three source variants produce identical
+JavaScript (32,190 raw / 12,324 gzip B) and six unsafe neighboring forms remain
+source-located errors. Required Chrome verifies search/count/empty transitions,
+retained keys, fresh remounts, and static zero-JavaScript exclusion. Check, the
+project ownership gate plus 308 tests, package smoke, and both package dry-runs pass.
+
+The full initial-source replay passes the unchanged content acceptance and emits
+the same 13 JavaScript files/bytes as the earlier retained inlined workaround
+(55,447 raw / 20,976 gzip B). This is a source replay, not a fresh model trial or
+replacement benchmark score; no timing or AI-cost improvement is claimed.
+[`PERFORMANCE.md`](../../PERFORMANCE.md#imported-search-source-replay-2026-09-07)
+records commands, provenance, accounting, and limits. Preserve the original r3
+evidence. The release also includes the reviewed r4 protocol/adapter lifecycle
+work: atomic partial traces, bounded incremental output, setup-inclusive deadlines,
+owned process-tree termination, and incomplete timeout attribution. Two Linux
+lifecycle regressions protect future-run integrity; Windows termination remains
+untested. The frozen r4 starters stay on published `0.16.23`; old raw records are
+not reinterpreted. This packet ships as `@kudzujs/core@0.16.24` with
+`create-kudzu@0.1.149`, without authorizing `1.0.0` or a new AI performance claim.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:
@@ -2328,4 +2355,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | Measured gate failed; selected blockers released through `0.16.23` | Preserve both raw batches, the corrected revision-2 protocols, the failed success/cost decision, collection count reuse, and selected-branch reactive text; keep `1.0.0` blocked pending a complete rerun. | Published result remains Kudzu 11/25 versus React + Vite 24/25; retained commerce sources now pass 5/5 on `0.16.23` |
+| `0.21.4` | Measured gate failed; selected blockers released through `0.16.24` | Preserve historical raw batches and failed success/cost decision; r4 lifecycle integrity applies only to future runs. Keep `1.0.0` blocked pending a complete rerun. | Published result remains Kudzu 11/25 versus React + Vite 24/25; commerce replay passes 5/5 and original imported search replay passes with unchanged JavaScript |

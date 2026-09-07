@@ -1,5 +1,38 @@
 # Kudzu Releases
 
+## 0.16.24 - Imported Article Search And Benchmark Integrity
+
+Kudzu 0.16.24 compiles the original authored imported-article search shape
+without an inlined workaround and hardens evidence lifecycle integrity for
+future AI delivery runs. This is source replay evidence, not a new AI score.
+
+### Changed in 0.16.24
+
+- Follows imported collection selector aliases, normalizes proven pure query
+  locals, and evaluates count dependencies from signal build values.
+- Adds 39 net core semantic lines across two existing compiler files, with no
+  new semantic primitive, pass, IR kind, runtime concept, API, or dependency.
+- Covers three byte-identical search variants, six rejected unsafe forms,
+  retained keyed identity, fresh remounts, and a zero-JavaScript static sibling.
+- Replays the original authored application search successfully through the
+  unchanged content acceptance: 13 JavaScript files, 55,447 raw / 20,976 gzip
+  bytes, identical to the retained inlined application's JavaScript.
+- Checkpoints adapter usage atomically, streams bounded output evidence, shares
+  the deadline with setup, kills owned process trees on timeout, and prevents
+  incomplete or timed-out attempts from becoming successful attribution.
+- Freezes r4 protocols with published 0.16.23 starters for future runs only.
+  Historical raw evidence is unchanged. Linux lifecycle regressions cover the
+  termination paths; the Windows `taskkill` path remains untested.
+- Makes no fresh timing, cost, or AI performance claim. The published 11/25
+  versus 24/25 comparison and the `1.0.0` block remain unchanged.
+- Updates `create-kudzu@0.1.149` to generate `@kudzujs/core@^0.16.24` projects.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.24
+```
+
 ## 0.16.23 - Reactive Conditional Branch Text
 
 Kudzu 0.16.23 removes the second commerce compiler blocker selected by the
