@@ -7,11 +7,11 @@ import test from "node:test"
 const root = resolve("test/fixtures/ai-delivery-production")
 const tasks = ["content", "forms", "crud", "commerce", "realtime"]
 const protocolHashes = {
-  content: "0c55f9a614a49df06c56576b7bc63ebd2069598e47a270de1d4cbaa56be30b64",
-  forms: "30bb567ab1b199e052ec95dbe6426e40a357e4181e43c8900ac003eb7872f6e6",
-  crud: "a5d7b04004510378d7beff3aa6990e03496ddb3766b2a089c19afbd25593a2d7",
-  commerce: "6ba490ef520dd014ce641b86084b648fbe90bd5fd0e8d0b340ed4ca9e09bdae4",
-  realtime: "0cfb2d17969125d796ef90a12c78b8d4041a23f27c633750ee04e03edfe650e7",
+  content: "1d47ee2ee374621588bf51abdd99a01965f3cd3e45d388bd2d81d9729a01a3fe",
+  forms: "0238f0cb93f58f8f30a5d4d7b866c0086acc828349feb11060e35574eae7c113",
+  crud: "55d713049c24cbc7fab631929f6d697bed205fde03077677600c077229295f1d",
+  commerce: "acc27f6846ec3dea4adc0a7fb4d76c525f32455fabf56f40a2d2a7b46d4849cc",
+  realtime: "9326b7e150144fca987fccf7b2027083c3cd5f04f887d2259cf347dd8ef2b4e1",
 }
 
 test("freezes five paired production AI delivery protocols", async () => {
@@ -23,10 +23,10 @@ test("freezes five paired production AI delivery protocols", async () => {
   for (const protocol of protocols) {
     const directory = join(root, protocol.task.class === "crud-shared-state" ? "crud" : protocol.task.class === "commerce-derived-state" ? "commerce" : protocol.task.class === "resource-realtime" ? "realtime" : protocol.task.class)
     assert.equal(protocol.packet, "0.21.4")
-    assert.equal(protocol.revision, 7)
-    assert.match(protocol.id, /-r7$/)
+    assert.equal(protocol.revision, 8)
+    assert.match(protocol.id, /-r8$/)
     assert.match(protocol.revisionNote, /Future runs only/)
-    assert.match(protocol.revisionNote, /r5 raw evidence and scores are unchanged/)
+    assert.match(protocol.revisionNote, /r7 raw evidence and scores are unchanged/)
     assert.match(protocol.revisionNote, /frozen r6 inputs remain archived/)
     assert.deepEqual(protocol.variants.map(variant => variant.id), ["kudzu", "react-vite"])
     assert.deepEqual(protocol.variants.map(variant => protocol.schedule.filter(entry => entry.variant === variant.id).map(entry => entry.ordinal).sort()), [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]])
@@ -39,11 +39,11 @@ test("freezes five paired production AI delivery protocols", async () => {
       if (variant.id === "kudzu") {
         const manifest = JSON.parse(await readFile(join(directory, variant.starter, "package.json"), "utf8"))
         const lock = JSON.parse(await readFile(join(directory, variant.starter, "package-lock.json"), "utf8"))
-        assert.equal(protocol.tools.versions.kudzu, "0.16.25")
-        assert.equal(manifest.dependencies["@kudzujs/core"], "0.16.25")
-        assert.equal(lock.packages[""].dependencies["@kudzujs/core"], "0.16.25")
-        assert.equal(lock.packages["node_modules/@kudzujs/core"].version, "0.16.25")
-        assert.equal(lock.packages["node_modules/@kudzujs/core"].integrity, "sha512-dK+mCWWmV/9I5s3dEANnTkbwJRpZpwn4DtYVkMlyIysbO6/o+9vSIU5tnSTNGJALrY0kxsSFA8QL9QrlcFsK4w==")
+        assert.equal(protocol.tools.versions.kudzu, "0.16.26")
+        assert.equal(manifest.dependencies["@kudzujs/core"], "0.16.26")
+        assert.equal(lock.packages[""].dependencies["@kudzujs/core"], "0.16.26")
+        assert.equal(lock.packages["node_modules/@kudzujs/core"].version, "0.16.26")
+        assert.equal(lock.packages["node_modules/@kudzujs/core"].integrity, "sha512-tBXxFr8P/WRbhmEsCnT4ymGRjcOyuYyTC0XpsoagUWhpdjMZfkGUTxyh4rgjyYvyrVHeEeeUKNxr+JDrH7RnPg==")
       }
       for (const context of variant.publicContext) assert.equal(await digestFile(resolve(directory, context.path)), context.sha256)
     }

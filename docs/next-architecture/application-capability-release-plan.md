@@ -2390,6 +2390,117 @@ and runtime concepts are zero. Frozen r7 inputs retain released `0.16.25` and
 `1.0.0` authorization. Current source links and a static release page track the
 new patch while old releases remain unchanged.
 
+### Authorized 0.16.26 r8 Package/README Measurement
+
+The September 8 follow-up authorizes the full unchanged 50-attempt production
+schedule against registry 0.16.26, advancing only Kudzu pins/locks, canonical
+hashes, and revision metadata to r8. Compare r7 content exploration before/after
+first build, docs reads, model steps, failure-inclusive costs, acceptance, source
+retention, and static siblings. Separate uncached/cache/provider token accounting.
+No compiler changes, selective reruns, scorer/budget changes, release, or causal
+proof are authorized. Installed source and public web remain accessible; this
+is not a sandbox. R7 and all interrupted raw evidence remain unchanged.
+The predeclared comparison and subsequent results live in `PERFORMANCE.md` and
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r8-kudzu-0.16.26-20260908-01/`.
+
+### Completed 0.16.26 r8 Measurement
+
+The unchanged serial schedule completed September 8, 04:44:22-06:28:51 UTC,
+with 50 fully attributable attempts and no interruption/retry: Kudzu 23/25,
+React + Vite 24/25. Content is 3/5 versus 5/5; forms 5/5 versus 5/5; CRUD 5/5
+versus 4/5; commerce and realtime each 5/5 versus 5/5. All final builds and all
+25 Kudzu acceptance journeys pass, including every static sibling. Kudzu content
+ordinals 2/4 exceed only input tokens; React CRUD ordinal 4 asks for clarification,
+changes nothing, and fails browser acceptance. All costs/failures remain scored.
+
+Scheduled token totals are 4,541,314 versus 2,786,135, including 3,687,296 versus
+2,062,208 cached input tokens. Reported subscription dollars are zero, not zero
+work; no discounted-cache invoice is available. The one availability preflight
+adds 6,735 tokens separately. Failure-inclusive median task costs are 142,845
+versus 132,422, so the delivery cost/success gate and 1.0 remain blocked.
+
+Content tokens fall 33.6% from r7, with pre-build exploration calls 122 to 73,
+pre-build model steps 57 to 40, and excluded evidence Markdown reads 18 to 0.
+All five read the README once and pass their first build. Post-build steps rise
+28 to 33 and consume 1,052,052 tokens: content output inspection/stopping behavior
+under unchanged budgets is the next measured blocker, not compiler correctness.
+React content also falls 15.1%; small samples, service drift, and r7 interruption
+preclude causal proof. Source searches and a realtime `framework/core.mjs` read
+persist. No sandbox/isolation claim or broader compiler work follows.
+
+`PERFORMANCE.md` records per-task costs, cache accounting, output/retention,
+environment, raw paths, checks, and archive metadata. Audit verifies 50 traces,
+300 streams, 540 artifacts, and 545 source files. Historical r7, interrupted
+provenance, and older scores remain unchanged; no commit, push, bump, or release.
+
+Verification passes: six focused tests, check (226 pages, 2 interactive), the
+standalone ownership gate plus 315/315 required-Chrome tests with no skips, and
+packed-package smoke. The complete local r8 archive contains a 1,798-file
+manifest and is 4,271,388 bytes; SHA-256
+`81bf1d782b68f66ea1891740e40c5bc09bd9b161c769a36b8178ca2604d2f7c6`.
+All 1,707 r7 manifest entries and its archive digest verify unchanged. Archive
+paths and this post-archive metadata-update boundary are recorded in PERFORMANCE.
+
+### Pre-Release Verification Guidance Follow-Up (2026-09-08)
+
+The user-approved patch addresses misleading post-build checks, not compiler
+correctness: r8 content ordinals 2/4 confused raw HTML/tag stripping with visible
+text around binding comments/inert templates; ordinal 3's missing `rg` pipeline
+yielded misleading zeros. All five first builds passed. Generic README/docs
+guidance now distinguishes supported compilation from browser/accessibility
+verification, bounds inspection output, rejects missing/truncated evidence as a
+pass, and calls for affected rechecks after source changes. Optional inspect and
+exact-route explain both rebuild and report compiler/artifact facts only.
+A non-quiet success hint links to docs#build; it neither certifies behavior nor
+asks agents to stop checking.
+
+Four implementation/guidance/test files plus PERFORMANCE and this packet change.
+One framework source file, +3 net core LOC (console only); +0 compiler passes,
+semantic primitives, runtime concepts, APIs, dependencies, or fixtures. Existing
+output tests cover the hint, failed/quiet/JSON suppression, and byte-identical
+fixture artifacts. Browser JS delta is 0 raw / 0 gzip B: four imported-search
+variants retain 9 files, 32,190 raw / 12,324 aggregate gzip B. Documentation HTML
+changes intentionally. Token savings and performance improvements are unmeasured;
+historical r8 metrics above are not results of this patch.
+
+Sequential 1,200,000 ms-timeout checks pass: build-output 6/6, required-Chrome
+imported-article-search 6/6, packed-package smoke, npm check (226 pages, 2
+interactive), and required-Chrome npm test (standalone 1/1 plus 315/315, no skips).
+This is not exhaustive manual browser/accessibility proof. PERFORMANCE records
+the exact commands and byte digest. Existing dirty r8 evidence/protocol changes,
+adapter/scorer/budgets, and historic scores remain untouched; no commit, push,
+release, bump, or new model run is authorized or performed.
+
+### 0.16.27 Release Transaction
+
+The subsequent explicit user authorization releases the completed r8 records and
+verification guidance as core `0.16.27` and create-kudzu `0.1.152`, with commit,
+push, exact-commit CI, immutable annotated tag, GitHub release, protected npm
+publication, registry integrity, and fresh generator-install verification.
+Earlier no-release statements preserve those sessions' scope, not this approval.
+Current source references, tests, release notes, and a new static release page
+track the patch; historical pages and frozen r8 registry pins stay unchanged.
+
+This reduces misleading post-build checks through product documentation and a
+non-quiet console hint, not compiler semantics. Raw HTML/tag stripping is not
+visible-DOM proof; build success is not browser/accessibility proof. Optional
+inspect/explain reports rebuild. Failed/quiet/JSON output suppresses the hint.
+Framework accounting remains +3 net console LOC, zero new passes, semantic
+primitives, runtime concepts, dependencies, fixtures, or browser JavaScript.
+Prior npm internal-doc exclusions remain. Historical r8 remains 23/25 versus
+24/25; this guidance has no measured token benefit, and no new benchmark,
+rescoring, sandbox claim, or `1.0.0` authorization follows. Registry and fresh
+installation remain publication-time gates; protected approval is not bypassed.
+
+Sequential local release checks pass with 1,200,000 ms timeouts: check builds
+227 pages (2 interactive), required-Chrome npm test passes standalone 1/1 plus
+315/315 with no skips, standalone packed-package smoke passes, and both npm pack
+dry runs retain the intended 60-file core / 4-file generator package contents.
+The four imported-search variants retain 32,190 raw / 12,324 aggregate gzip
+JavaScript bytes. PERFORMANCE records exact pack sizes and the documentation-only
+verification-record boundary. Exact-commit CI and protected publication remain
+release-transaction gates, not assumed completed by these local checks.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:
@@ -2535,4 +2646,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | r7 complete, 50 attributable attempts; gate blocked | Review content context consumption and public-context isolation separately. Preserve completed content, archived interruption, and all historical scores; no selective reruns. | Released 0.16.25/r7: Kudzu 20/25 versus React 25/25; all outputs pass acceptance, five content budget failures. Kudzu task-cost median unavailable, React 132,744 tokens. Shipped benchmark/compiler reads limit clean ranking; no causal r5 comparison. |
+| `0.21.4` | r8 complete, 50 attributable attempts; gate blocked | Review content post-build context consumption/stopping behavior and public-context isolation separately; no speculative compiler changes or selective reruns. | Released 0.16.26/r8: Kudzu 23/25 versus React 24/25; two Kudzu content budget failures, one unchanged React CRUD acceptance failure. Median task costs 142,845 versus 132,422 tokens. Content tokens -33.6% from r7 with no excluded evidence reads, but source access persists; no causal/isolation claim. R7 and interrupted raw remain unchanged. |

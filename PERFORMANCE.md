@@ -2,6 +2,252 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, `npm run benchmark:ai-delivery`, and `npm run benchmark:ai-delivery-production` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.27 Release Scope
+
+The separately authorized release packages the completed r8 protocol/evidence
+records and verification-guidance follow-up as core `0.16.27` and
+`create-kudzu@0.1.152`. Earlier no-release statements below describe their
+original sessions, not this transaction. Frozen r8 retains registry `0.16.26`,
+23/25 versus 24/25, unchanged budgets, acceptance, and archived evidence.
+No new benchmark or measured token benefit from this guidance is claimed.
+Compiler semantics, runtime behavior, browser JavaScript, and prior internal-doc
+package exclusions remain unchanged; framework changes are +3 net console LOC.
+The new release page is static; current website version/content edits intentionally
+change HTML. Publication-time CI, registry integrity, and fresh-install checks
+remain required before this transaction is complete.
+
+Release-tree verification ran sequentially with 1,200,000 ms command timeouts:
+`npm run check` passed both TypeScript checks and built 227 pages (2 interactive);
+`KUDZU_REQUIRE_CHROME=1 npm test` passed standalone ownership 1/1 plus 315/315,
+without failures or skips; standalone `npm run test:package` passed. Both
+`npm pack --dry-run --ignore-scripts --json` commands passed: core has 60 files,
+992,116 unpacked / 200,814 gzip bytes; generator has 4 files, 13,937 unpacked /
+5,499 gzip bytes. All four imported-search variants retain 9 JavaScript files,
+32,190 raw / 12,324 aggregate gzip bytes and the digest recorded below. These are
+regression/output checks, not a new performance benchmark or exhaustive manual
+accessibility audit. This verification record is a subsequent documentation-only
+update; registry integrity and fresh-install checks remain publication-time gates.
+
+## Verification Guidance Patch (2026-09-08, Pre-Release Session)
+
+User-approved follow-up to the completed r8 investigation, not a new model run.
+All five Kudzu content first builds succeeded. The budget-failing ordinals 2/4
+used literal `<p>6 articles</p>` or tag-stripping checks that confused binding
+comments/inert templates with rendered text despite correct visible DOM.
+Repeated minified artifact searches/reads added unnecessary context; ordinal 3's
+missing `rg` in a pipeline produced misleading zeros. No compiler fix is justified.
+
+The generic README Verify section and docs Build section distinguish compilation
+from browser/accessibility verification, recommend bounded checks and affected
+rechecks, and explain that optional `inspect --json` and exact-route
+`explain --route /exact-path --json` both rebuild, with compiler/artifact-only
+scope. The ordinary non-quiet success output links to that guidance without
+certifying behavior or instructing agents to stop verification.
+
+Patch footprint: four implementation/guidance/test files (`README.md`,
+`src/components/docs/ReferenceSections.tsx`, `framework/build.mjs`,
+`test/build-output.test.mjs`) plus this record and the application packet.
+Framework source files changed: 1; core LOC: +3 net in build-console output only;
+compiler passes/semantic primitives: +0; runtime concepts/API/dependencies: +0.
+Existing tests extended, no new fixture. Browser JavaScript delta: 0 raw / 0 gzip B;
+all four imported-search variants retain 9 files, 32,190 raw / 12,324 aggregate
+gzip B and runtime digest
+`f2f3df9f2dadbff0c9af957066bbd19bbf5fd9db63c93e8f75c3bdaf43b6705f`.
+Output tests prove ordinary, quiet API, and JSON builds emit byte-identical fixture
+artifacts; failed builds have no success hint and inspect/explain JSON stays clean.
+The documentation page's HTML changes intentionally; no blanket website-byte
+identity claim is made. Token savings and timing improvements are unmeasured.
+
+Sequential verification, each with a 1,200,000 ms command timeout, passes:
+
+- `node --test test/build-output.test.mjs`: 6/6, no skips.
+- `KUDZU_REQUIRE_CHROME=1 node --test test/imported-article-search.test.mjs`: 6/6, no skips.
+- `npm run test:package`: packed installation/imports/build and artifact assertions pass.
+- `npm run check`: both TypeScript checks and 226-page build (2 interactive) pass.
+- `KUDZU_REQUIRE_CHROME=1 npm test`: standalone ownership gate 1/1, then 315/315, no failures or skips.
+
+These checks are not an exhaustive manual browser/accessibility audit. Existing
+dirty r8 protocols, evidence, adapter/scorer/budgets, and historical scores are
+preserved. No commit, push, release, version bump, or new model measurement.
+
+## 0.16.26 R8 Measurement Authorization (2026-09-08)
+
+The next authorized full production suite measures the combined released package
+and README cleanup against r7, not speculative compiler changes. R8 changes only
+the five Kudzu registry pins/locks, canonical hashes, and revision metadata;
+model `openai/gpt-5.6-sol`, OpenCode 1.18.27, acceptance, budgets, prompts, public
+contexts, React inputs, authored starter source, and all 50 scheduled attempts
+remain fixed. Content first-build exploration/docs reads/model steps and actual
+versus cached token accounting are predeclared audit targets. R7's 20/25 versus
+25/25 and interrupted provenance remain unchanged; r5 acceptance differs.
+Small samples and service/environment drift preclude causal proof. Compiler
+source and public web remain accessible: package hygiene is not a sandbox.
+Intention and raw evidence: `test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r8-kudzu-0.16.26-20260908-01/`.
+The run completed as recorded below; no new compiler/release authorization follows.
+
+### R8 Result
+
+The unchanged 50-attempt suite completed continuously on September 8 from
+04:44:22 to 06:28:51 UTC (104 minutes 29 seconds): **Kudzu 23/25 (92%) versus
+React + Vite 24/25 (96%)**. All 50 traces are fully attributable; no attempt was
+interrupted, selectively retried, or replaced. All final builds pass. Kudzu
+passes 25/25 acceptance journeys, React 24/25. No provider errors are recorded.
+
+| Task | Kudzu successes | React successes | Kudzu total tokens | React total tokens | Kudzu tokens/success | React tokens/success |
+|---|---:|---:|---:|---:|---:|---:|
+| Content | 3/5 | 5/5 | 1,882,130 | 662,109 | 627,377 | 132,422 |
+| Forms | 5/5 | 5/5 | 511,606 | 452,066 | 102,321 | 90,413 |
+| CRUD | 5/5 | 4/5 | 714,224 | 576,045 | 142,845 | 144,011 |
+| Commerce | 5/5 | 5/5 | 299,598 | 293,274 | 59,920 | 58,655 |
+| Realtime | 5/5 | 5/5 | 1,133,756 | 802,641 | 226,751 | 160,528 |
+| Total | 23/25 | 24/25 | 4,541,314 | 2,786,135 | - | - |
+
+Failure-inclusive median task cost is **142,845 versus 132,422 tokens**, Kudzu
+7.9% higher. R7's Kudzu median remains unavailable because it had no content
+success; do not replace that historical missing value. Successful-only elapsed
+medians are 120,949 versus 114,211 ms. Both variants have median 15 tool calls,
+5 files read, 2 modified, 1 build, and 0 correction cycles. These unequal success
+subsets and small samples establish neither timing superiority nor a statistical
+tie. The AI delivery cost/success gate and `1.0.0` remain blocked.
+
+Kudzu content ordinals 2 and 4 fail only the 400,000-input-token budget at 482,891
+and 495,436. They pass final acceptance and stay inside all other budgets.
+React CRUD ordinal 4 completes its trace but asks what change is wanted despite
+the supplied task, changes no files, and makes no model build call. The runner's
+unchanged starter builds, then acceptance times out waiting for two memo rows.
+Its 40,519 tokens and failed acceptance remain in the denominator; no retry or
+scorer adjustment was made. A complete trace is not a completed implementation.
+
+### Token Accounting
+
+| Variant | Uncached input | Cache-read input | Cache-write | Output | Reasoning | Provider/adapter total | Reported subscription USD |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Kudzu | 779,436 | 3,687,296 | 0 | 53,373 | 21,209 | 4,541,314 | 0 |
+| React + Vite | 662,525 | 2,062,208 | 0 | 43,181 | 18,221 | 2,786,135 | 0 |
+
+The raw provider totals equal the frozen adapter sum of uncached input, cache
+reads, output, and reasoning for this run: **7,327,449 scheduled tokens**. Cache
+reads count as processed context under the unchanged budget, not new uncached
+input. The provider reports subscription cost zero; no cache-discount dollar
+invoice or market-price estimate is available, and zero dollars is not zero work.
+The single no-tool availability preflight adds 6,735 recorded tokens outside the
+schedule (6,730 input and 5 output, no cache/reasoning, reported $0). It is not a
+delivery attempt. No other model calls were made. R7's separately interrupted
+extra attempt remains partial with unknown total cost, not zero.
+
+### Content Intervention Observations
+
+Content token use falls from **2,832,760 to 1,882,130 (-33.6%)**, and success rises
+from 0/5 to 3/5. Uncached input falls 307,060 to 187,672; cache reads fall
+2,504,192 to 1,673,984. React content also falls 779,912 to 662,109 (-15.1%),
+underscoring that the observed difference is not controlled causal attribution.
+
+Phases use the first model build tool's message ID: completed steps before that
+message, the build message itself, and all later steps. Exploration counts
+read/grep/glob/list/webfetch and non-build shell calls; it excludes writes and
+todo calls. It includes output inspection, not only documentation discovery.
+
+| Kudzu content metric (five attempts) | R7 | R8 |
+|---|---:|---:|
+| Before-build model steps | 57 | 40 |
+| Before-build exploration calls | 122 | 73 |
+| Before-build tokens | 1,436,010 | 701,385 |
+| First-build steps / tokens | 5 / 195,730 | 5 / 128,693 |
+| After-build model steps | 28 | 33 |
+| After-build exploration calls | 49 | 55 |
+| After-build tokens | 1,201,020 | 1,052,052 |
+| Total model steps | 90 | 78 |
+| Total read-tool calls | 92 | 66 |
+| Markdown read-tool calls | 22 | 5 |
+| Excluded evidence Markdown read-tool calls | 18 | 0 |
+
+All five r8 content agents read the generic README once, before their first
+build; none directly reads the removed evidence documents. All five first builds
+pass. Ordinal 4 makes a second successful build after source/CSS refinement, not
+compiler-error recovery. Median total steps fall 18 to 14 and median pre-build
+exploration calls 25 to 15, but aggregate post-build work remains substantial.
+The next evidence-backed blocker is **content post-build context consumption
+and stopping behavior under the existing budget**, not final content compiler
+correctness. No speculative compiler feature is authorized.
+
+This is a combined package/README intervention with five trials, model/service
+variability, and an overnight interruption in r7. It cannot separate README
+guidance from removed package material or prove causation. Four r8 content
+attempts still search installed source; realtime ordinal 2 directly reads
+`framework/core.mjs`, and other attempts read public type declarations. No
+webfetch calls occur in r8, but public web and compiler access remain possible.
+Package hygiene removes observed evidence reads, **not public-context isolation**.
+
+### Output And Retention
+
+All 25 Kudzu outputs pass static-sibling checks, including all ten content
+siblings in each of five attempts. Declarative TSX, local/shared state, keyed
+rendering, and effect ownership remain in authored source; no manifest or
+lockfile changes occurred inside attempts. Byte-identical retained-file counts
+per task are Kudzu 12/14, 6/7, 6/9, 9/11, 6/8; React 17/19, 8/9, 8/11, 9/11,
+8/10, except failed CRUD retains all 11/11 unchanged. This file-level metric is
+not a whole-application maintainability score. Full source diffs are in `audit.json`.
+
+| Task | Kudzu deploy raw/gzip B | React deploy raw/gzip B | Kudzu observed JS B | React observed JS B |
+|---|---:|---:|---:|---:|
+| Content | 68,467 / 26,412 | 206,290 / 66,379 | 37,608 | 199,159 |
+| Forms | 24,332 / 9,774 | 202,765 / 64,329 | 15,340 | 198,530 |
+| CRUD | 53,462 / 16,810 | 203,388 / 64,474 | 35,542 | 198,492 |
+| Commerce | 53,845 / 21,814 | 201,055 / 64,190 | 30,171 | 197,976 |
+| Realtime | 46,254 / 16,129 | 202,523 / 64,239 | 35,863 | 199,072 |
+
+These are acceptance-passing output medians, including budget-failed content but
+excluding failed React CRUD. Gzip sums per-file Node gzip; JS is observed response
+transfer size, not a CPU/heap/readiness or full 0.9 performance rerun. Four realtime
+Kudzu attempts correct ref diagnostics, and one commerce attempt corrects an
+arbitrary reactive call. These retained corrections do not authorize broader
+ref/call semantics. Compiler primitives, core passes/LOC, runtime concepts,
+normalization rules, and compiler fixtures all change by zero.
+
+### R8 Evidence
+
+`freeze.json` pins base `439d1fd9dba5ebeee6f02de79c0198fd25544782`, all five
+canonical protocol/starter hashes, registry SHA-512, and the downloaded core
+tarball SHA-256 `5643885aa41132990631fbca041d1a111060c97aa21d07285a8c6d04a4678247`.
+Environment: Linux x64 7.0.0-30-generic, Intel i5-9500 (6 logical CPUs),
+33,491,050,496 bytes RAM, Node 24.14.0, npm 11.9.0, Chrome 152.0.7977.64,
+OpenCode 1.18.27 (preserved binary explicitly selected through `OPENCODE_BIN`;
+default installed version is 1.18.29). No credentials or broad process dump
+were inspected. The availability preflight succeeded before preparation.
+
+`audit.json` verifies 50 result/run pairs and complete raw token traces, 300
+command-stream hashes, 540 artifact entries with raw/gzip/digests, 545 archived
+source files, unchanged authored starter inputs, and unchanged attempt manifests
+and locks. `summary.json` retains phase token accounting, package/source access,
+diagnostics, and source-retention details; `suite.json` retains official scores.
+The run directory includes frozen r7/r8 inputs and preparation/execution/audit
+scripts. All older raw and interrupted evidence remains untouched. No live
+suite/runner/adapter remained after execution. Verification and archive metadata
+are recorded after the final checks below.
+
+Verification passes with 1,200,000 ms command timeouts: six focused integrity,
+acceptance, and lifecycle tests; `npm run check` (226 pages, 2 interactive);
+`KUDZU_REQUIRE_CHROME=1 CHROME_BIN=/usr/bin/google-chrome npm test` (standalone
+ownership gate plus 315/315 tests, no failures/skips); and `npm run test:package`
+(3 pages, 1 interactive, two static controls). The earlier progress update's
+count of nine focused checks was incorrect; the retained log records six.
+All four imported-search variants retain 32,190 raw / 12,324 aggregate gzip JS
+bytes. `git diff --check` passes. Logs and exact timestamps are retained in
+`integrity.stdout`, `check.stdout`, `tests.stdout`, `package-smoke.stdout`, and
+`*-execution.json`. No compiler, runner, adapter, scorer, package release version,
+commit, push, or publication change occurred.
+
+Full local raw archive:
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r8-kudzu-0.16.26-20260908-01-audited-20260908-01.tar.gz`
+(4,271,388 bytes), SHA-256
+`81bf1d782b68f66ea1891740e40c5bc09bd9b161c769a36b8178ca2604d2f7c6`.
+Its 1,798-file SHA-256 manifest excludes only itself; a sibling `.sha256` file
+records the archive digest. The r7 archive digest and all 1,707 historical
+manifest entries verify unchanged, including interrupted provenance. Archives
+remain local, not uploaded. This checksum paragraph is a subsequent metadata-only
+update; the archived report and passing tests precede it, avoiding a recursive
+archive-hash claim.
+
 ## 0.16.26 Release Scope
 
 The separately approved release packages the r7 evidence records, generic README

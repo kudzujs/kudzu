@@ -7,6 +7,7 @@ import { build as buildProject, buildWithSession } from "../framework/build.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
 
 const cli = resolve("bin/kudzu.mjs")
+const verificationHint = "Browser behavior and accessibility need verification: https://kudzujs.cloud/docs#build"
 
 test("stages output and rejects public artifact collisions", { timeout: 120_000 }, async t => {
   const fixture = await mkdtemp(resolve("test/fixtures/output-safety-"))
@@ -53,7 +54,16 @@ export default {
 
   const initial = build()
   assert.equal(initial.status, 0, `${initial.stdout}\n${initial.stderr}`)
+  assert.equal(initial.stdout, `Built 2 page(s), 2 interactive page(s) into dist/\n${verificationHint}\n`)
   const expected = await fileManifest(join(fixture, "dist"))
+  const quietBuild = `const { build } = await import(${JSON.stringify(new URL("../framework/build.mjs", import.meta.url).href)}); await build({ quiet: true })`
+  for (const args of [[cli, "build", "--json"], ["--input-type=module", "--eval", quietBuild]]) {
+    const quiet = spawnSync(process.execPath, args, { cwd: fixture, encoding: "utf8" })
+    assert.equal(quiet.status, 0, `${quiet.stdout}\n${quiet.stderr}`)
+    assert.equal(quiet.stdout, "")
+    assert.equal(quiet.stderr, "")
+    assert.deepEqual(await fileManifest(join(fixture, "dist")), expected)
+  }
   const chunk = Object.keys(expected).find(path => path.startsWith("assets/handlers/chunks/"))
   assert.ok(chunk, "fixture must emit a shared handler chunk")
   const artifacts = JSON.parse(await readFile(join(fixture, ".kudzu", "kudzu-artifacts.json"), "utf8"))
@@ -88,6 +98,7 @@ export default {
     await put(`public/${path}`, "collision")
     const result = build()
     assert.notEqual(result.status, 0, `${path}\n${result.stdout}\n${result.stderr}`)
+    assert.equal(result.stdout, "")
     assert.match(`${result.stdout}\n${result.stderr}`, message)
     assert.deepEqual(await fileManifest(join(fixture, "dist")), expected)
     await rm(join(fixture, "public", path.startsWith("assets/workers/") ? "assets/workers" : path), { recursive: true, force: true })
@@ -95,6 +106,7 @@ export default {
 
   const lateFailure = build({ KUDZU_TEST_AFTER_BUILD_FAILURE: "1" })
   assert.notEqual(lateFailure.status, 0)
+  assert.equal(lateFailure.stdout, "")
   assert.match(`${lateFailure.stdout}\n${lateFailure.stderr}`, /intentional afterBuild failure/)
   assert.deepEqual(await fileManifest(join(fixture, "dist")), expected)
   assert.equal(Object.hasOwn(expected, "failed-marker.txt"), false)

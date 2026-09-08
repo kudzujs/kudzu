@@ -64,7 +64,10 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
     addTiming(project.timings, "writeMs", promoteStarted)
     project.buildCache = retainCache ? cache : undefined
-    if (!quiet) console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
+    if (!quiet) {
+      console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
+      console.log("Browser behavior and accessibility need verification: https://kudzujs.cloud/docs#build")
+    }
     return explanationRoute ? explanation : inspection ? createInspectionReport(inspectionData) : result
   } catch (error) {
     const normalized = normalizeDiagnosticError(error, root)

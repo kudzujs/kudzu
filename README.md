@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.26](https://github.com/kudzujs/kudzu/releases/tag/v0.16.26).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates.
+**Current release: [0.16.27](https://github.com/kudzujs/kudzu/releases/tag/v0.16.27).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -129,6 +129,19 @@ maps and pure static filters can emit complete HTML without list JavaScript.
 A static sibling outside an enhanced-navigation group ships no JavaScript merely
 because another page is interactive. Shared layout effects or explicit navigation
 groups have their own lifetime; native anchors remain the default.
+
+## Verify
+
+A successful build validates supported source and emits deployable outputs; it
+does not verify browser behavior or accessibility. Check visible DOM and relevant
+interactions, labels, status updates, keyboard focus, and responsive layouts in a
+browser as needed. Binding comments and inert templates mean raw HTML string
+matches or tag stripping are not reliable checks of rendered text.
+
+Keep checks bounded and report concise counts and failing paths rather than
+repeatedly dumping minified artifacts. A missing tool or truncated response is
+not a pass. After source changes, rerun affected checks. Optional compiler/artifact
+reports and their limits are documented under [Build output](https://kudzujs.cloud/docs#build).
 
 ## How It Works
 

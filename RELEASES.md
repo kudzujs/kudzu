@@ -1,5 +1,40 @@
 # Kudzu Releases
 
+## 0.16.27 - Application Verification Guidance
+
+Kudzu 0.16.27 clarifies post-build verification without changing compiler
+semantics, runtime behavior, or emitted application browser JavaScript.
+
+### Changed in 0.16.27
+
+- Adds generic README and public build guidance: successful compilation is not
+  browser/accessibility proof. Verify visible DOM and relevant interactions,
+  labels, status updates, keyboard focus, and responsive layouts.
+- Explains why binding comments and inert templates make raw HTML matching or
+  tag stripping unreliable for rendered text. Keep checks bounded, reject
+  missing tools/truncated evidence as passes, and recheck affected source edits.
+- Documents optional inspect JSON and exact-route explain JSON as rebuilding
+  compiler/artifact reports, including hooks and output emission, not mandatory
+  post-build steps or browser/accessibility certification.
+- Adds one ordinary build-success hint linking to docs#build. Failed, quiet,
+  and JSON builds suppress it; output tests verify byte-identical fixture artifacts.
+- Retains the prior npm internal-document exclusions and packed-source checks.
+  No compiler pass, semantic primitive, runtime concept, API, dependency, or
+  browser JavaScript is added. The only framework edit is +3 net console LOC.
+- Records historical r8 on released 0.16.26: Kudzu 23/25 versus React + Vite
+  24/25 across 50 attributable attempts. All Kudzu outputs pass acceptance;
+  two content attempts exceed input budgets and one unchanged React CRUD output
+  fails acceptance. These are not measurements of this guidance. Token benefit
+  and timing improvements remain unmeasured; no new benchmark or rescoring is
+  included, context isolation is not established, and `1.0.0` remains blocked.
+- Updates `create-kudzu@0.1.152` to generate `@kudzujs/core@^0.16.27` projects.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.27
+```
+
 ## 0.16.26 - Product Documentation And Package Hygiene
 
 Kudzu 0.16.26 improves the installed authoring guide and removes internal
