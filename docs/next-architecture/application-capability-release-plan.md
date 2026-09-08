@@ -2297,6 +2297,99 @@ starter pins remain frozen; testing 0.16.25 in a model run requires a new frozen
 revision. No fresh model run, score replacement, persistent-ref support, or
 `1.0.0` authorization is part of this release.
 
+### Released 0.16.25 r7 Measurement
+
+The separately authorized September 7-8 r7 run pins released 0.16.25 and retains
+r6's aligned acceptance, with unchanged model `openai/gpt-5.6-sol`, OpenCode
+1.18.27, budgets, React inputs, and serial schedules. All 50 scheduled attempts
+finish with complete attribution: Kudzu 20/25 versus React + Vite 25/25. Content
+is 0/5 versus 5/5; forms, CRUD, commerce, and realtime are each 5/5 versus 5/5.
+All final outputs pass build and browser acceptance. Every Kudzu content failure
+exceeds the input-token budget, two also exceed tool calls, and one exceeds files
+read. Content's ten static siblings pass in every Kudzu output.
+
+The aborted session's completed content task remains byte-for-byte unchanged.
+After checking no benchmark process was live, the full interrupted forms
+directory (one recorded success plus partial next attempt) was archived with
+provenance, then its entire ten-attempt schedule restarted before remaining tasks.
+No attempts were merged or selectively replaced. The scored suite is complete;
+the excluded interrupted attempt still has unknown total cost, not zero cost.
+
+Failure-inclusive task-token costs for Kudzu are unavailable, 100,930, 137,740,
+79,680, and 219,656; React costs are 155,982, 93,985, 132,744, 61,196, and 177,862.
+Kudzu's five-task median remains unavailable; React's is 132,744. The gate remains
+blocked and `1.0.0` unauthorized. R6 acceptance/prompt changes prevent causal
+comparison with r5's historical score, which remains untouched.
+
+Audit verifies 50 result/trace pairs, 300 command-stream digests, 540 artifact
+entries, frozen inputs, unchanged manifests/locks, and interruption provenance.
+Raw tools also reveal reads of shipped historical benchmark/architecture reports
+and one installed compiler source file. Public-package availability is not proof
+of isolated public-context-only execution: retain the scores but withhold a clean
+documentation-only ranking. Next work is separate review of content context
+consumption and evidence isolation under unchanged budgets, not speculative
+compiler expansion or selective reruns. All five realtime attempts recover from
+ref diagnostics; this does not establish persistent-ref support.
+
+Exact results, limitations, commands, and local archive metadata are maintained in
+[`PERFORMANCE.md`](../../PERFORMANCE.md#0214-released-01625-rerun-2026-09-08).
+Nine focused checks, `npm run check`, and the ownership gate plus 315/315
+required-Chrome tests pass. The unique local audited archive SHA-256 is
+`aaa16c7881b6b8412e61d1eec88a508af1df5f46bf733270338c2557b5285427`;
+its 1,707-file manifest covers raw runs, interruption evidence, frozen inputs,
+audits, and verification logs. It is not uploaded or published.
+No compiler/acceptance changes, commit, push, release, or version bump occurred in
+this measurement session.
+
+### Approved Product Docs/Package Follow-Up
+
+The September 8 evidence review selects package/documentation hygiene rather
+than compiler expansion: all five content first patches/builds pass, while
+installed evidence reads add unnecessary context. The public README now explains
+native currentTarget/state updates, pure local collection filters/counts, keyed
+children, and route-local static ownership without task-specific labels or
+benchmark solutions. Public release links replace the benchmark-heavy release
+introduction and internal packet links.
+
+The npm allowlist removes internal evidence Markdown, including the architecture
+directory and framework README, while preserving repository records and every
+executable framework/CLI/type/asset file. Actual tarball smoke assertions verify
+required contents, forbidden paths, byte-identical installed sources, unchanged
+exports/bin, the README's generic consumer, and two zero-JavaScript routes.
+No dependency, compiler fixture, semantic primitive, core pass/LOC, normalization
+rule, runtime concept/source, or application browser capability changes.
+
+Measured package size falls from 85 to 60 files, 2,090,515 to 991,259 unpacked
+bytes, 2,154,496 to 1,036,800 raw tar bytes, and 536,166 to 200,431 gzip bytes
+(-62.6%). The public README grows by 1,204 bytes to document supported authoring.
+This measures packaging, not predicted model-token savings. Package smoke,
+12 focused imported-search/benchmark-integrity tests, check (225 pages), and
+the ownership gate plus 315/315 required-Chrome tests pass. Four imported-search
+variants retain identical 32,190 raw / 12,324 aggregate gzip JavaScript bytes.
+Commands, archive paths, and measurement definitions are in
+[`PERFORMANCE.md`](../../PERFORMANCE.md#product-documentation-and-package-cleanup-2026-09-08).
+
+Full public-context isolation remains separately deferred: compiler sources are
+still readable and web/repository references remain possible. No sandbox claim,
+protocol/budget change, retrospective rescoring, model rerun, version bump,
+commit, push, or release follows. Dirty r7 evidence and its 20/25 versus 25/25
+score remain intact; `1.0.0` remains blocked.
+
+### 0.16.26 Release Transaction
+
+The separately approved patch publishes the preceding evidence and product
+documentation/package cleanup as core `0.16.26` and create-kudzu `0.1.151`.
+The earlier no-release session statements remain historical. Internal documents
+remain in the repository but leave the installed package; actual tarball smoke
+assertions protect executable sources, exports/bin, and the generic README example.
+The 85-to-60-file, 536,166-to-200,431-gzip-byte comparison is the historical
+same-tree pre-release measurement, not exact versioned release bytes or predicted
+model-token savings. Compiler/runtime changes, semantic primitives, core passes/LOC,
+and runtime concepts are zero. Frozen r7 inputs retain released `0.16.25` and
+20/25 versus 25/25; there is no new model run, rescoring, sandbox claim, or
+`1.0.0` authorization. Current source links and a static release page track the
+new patch while old releases remain unchanged.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:
@@ -2442,4 +2535,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | r5 executed all 50 attempts; compiler follow-up verified; gate remains blocked | Preserve raw scores and partial traces. Direct-count/static-topic fixes and the render-ref diagnostic are verified; persistent version refs remain unsupported. Use aligned r6 only in a separately authorized complete run. | Local historical r5 scorer: Kudzu 18/25 versus React + Vite 23/25, with two partial Kudzu traces. Source replay passes all ten content static siblings but does not replace scores. Published r2 remains 11/25 versus 24/25. |
+| `0.21.4` | r7 complete, 50 attributable attempts; gate blocked | Review content context consumption and public-context isolation separately. Preserve completed content, archived interruption, and all historical scores; no selective reruns. | Released 0.16.25/r7: Kudzu 20/25 versus React 25/25; all outputs pass acceptance, five content budget failures. Kudzu task-cost median unavailable, React 132,744 tokens. Shipped benchmark/compiler reads limit clean ranking; no causal r5 comparison. |

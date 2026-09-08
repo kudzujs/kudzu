@@ -1,5 +1,36 @@
 # Kudzu Releases
 
+## 0.16.26 - Product Documentation And Package Hygiene
+
+Kudzu 0.16.26 improves the installed authoring guide and removes internal
+documentation from the npm package, without compiler or runtime changes.
+
+### Changed in 0.16.26
+
+- Documents native events/state, pure collection filters/counts, keyed children,
+  and route-local static ownership with a generic, packed consumer example.
+- Excludes internal benchmark, roadmap, release, and architecture documents from
+  npm while retaining them in the repository. README links use public absolute URLs.
+- Verifies the actual tarball manifest, required files, byte-identical installed
+  framework/CLI sources, unchanged exports/bin, and two zero-JavaScript routes.
+- Records the historical same-tree pre-release package comparison: 85 to 60 files
+  and 536,166 to 200,431 gzip bytes (62.6% smaller). These are not exact versioned
+  release bytes, browser transfer savings, or measured AI-token savings.
+- Preserves the completed historical r7 run on released 0.16.25: Kudzu 20/25
+  versus React + Vite 25/25 across 50 attributable attempts. All final outputs
+  pass acceptance; five Kudzu content attempts exceed budgets. Context-isolation
+  limitations preclude a clean documentation-only ranking or sandbox claim.
+- Changes no compiler/runtime source, dependency, semantic primitive, core pass,
+  runtime concept, or supported syntax. No new AI run or rescoring is included;
+  the AI delivery gate and `1.0.0` remain blocked.
+- Updates `create-kudzu@0.1.151` to generate `@kudzujs/core@^0.16.26` projects.
+
+### Upgrade
+
+```sh
+npm install @kudzujs/core@^0.16.26
+```
+
 ## 0.16.25 - Static Content And Acceptance Alignment
 
 Kudzu 0.16.25 closes the r5 static-topic and direct-count compiler gaps and

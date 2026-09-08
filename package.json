@@ -1,6 +1,6 @@
 {
   "name": "@kudzujs/core",
-  "version": "0.16.25",
+  "version": "0.16.26",
   "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM",
   "type": "module",
   "license": "MIT",
@@ -23,13 +23,8 @@
   },
   "files": [
     "bin/",
-    "docs/next-architecture/",
     "framework/",
-    "GOAL_A.md",
-    "GOAL_B.md",
-    "MIGRATION_ROADMAP.md",
-    "PERFORMANCE.md",
-    "RELEASES.md",
+    "!framework/README.md",
     "README.md",
     "LICENSE"
   ],

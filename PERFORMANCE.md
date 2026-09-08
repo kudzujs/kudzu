@@ -2,6 +2,29 @@
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, `npm run benchmark:ai-delivery`, and `npm run benchmark:ai-delivery-production` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 
+## 0.16.26 Release Scope
+
+The separately approved release packages the r7 evidence records, generic README
+authoring guidance, and npm allowlist/smoke assertions as core `0.16.26` and
+`create-kudzu@0.1.151`. Compiler/runtime sources, dependencies, semantic primitives,
+core passes/LOC, runtime concepts, and application browser capabilities are unchanged.
+The 85-to-60-file and 536,166-to-200,431-gzip-byte comparison below is a historical
+same-tree pre-release measurement, not the exact versioned release tarball size
+or an AI-token savings claim. R7 remains frozen at released `0.16.25`, with 20/25
+versus 25/25 and documented context-isolation limits. No model run, rescoring,
+sandbox claim, or `1.0.0` authorization is part of this release. Earlier session
+statements about no publication describe those sessions, not this transaction.
+
+Release verification runs sequentially with a 1,200,000 ms command timeout:
+`npm run check` builds 226 pages (2 interactive), `KUDZU_REQUIRE_CHROME=1 npm test`
+passes the standalone ownership gate plus 315/315 tests without failures or skips,
+and `npm run test:package` passes the actual packed consumer assertions. Both
+`npm pack --dry-run --ignore-scripts --json` commands pass. The versioned core
+dry-run reports 60 files, 991,259 unpacked bytes, and 200,431 gzip bytes; generator
+reports 4 files, 13,937 unpacked bytes, and 5,499 gzip bytes. All four imported
+search variants retain 32,190 raw / 12,324 aggregate gzip JavaScript bytes.
+Registry integrity and fresh-install verification remain publication-time gates.
+
 ## 0.16.25 Release Scope
 
 The following r5 compiler follow-up and future-only r6 acceptance alignment ship
@@ -10,6 +33,214 @@ retain their original pre-release scope and verification counts. Publication
 does not rerun a model, rescore r5, upload its local raw archive, or establish a
 timing/cost improvement. Frozen r6 starters remain pinned to released 0.16.24;
 benchmarking the new compiler requires a separately frozen revision and full run.
+
+## 0.21.4 Released 0.16.25 Rerun (2026-09-08)
+
+The authorized r7 schedule is complete: Kudzu **20/25 (80%)** versus React + Vite
+**25/25 (100%)**, with 50 fully attributable attempts. All 50 final builds and
+acceptance journeys pass; Kudzu's five content attempts fail the unchanged
+budgets. This does not authorize `1.0.0` or establish a causal improvement over
+r5: r7 retains the revised r6 acceptance and prompt alignment, not r5's grader.
+Historical r2, r3, and r5 evidence and scores remain unchanged.
+
+### Frozen Inputs And Resume
+
+R7 pins registry `@kudzujs/core@0.16.25`, React 19.2.8, Vite 8.2.2,
+`openai/gpt-5.6-sol`, and OpenCode 1.18.27. The five canonical protocol/starter
+hashes, registry integrity, original r6 input archive, install preflight, and
+environment are in `freeze.json` and `install-preflight.json`. Model, adapter,
+tools, budgets, React starters, and serial alternating schedules are unchanged
+from the frozen r6 contract. No compiler or acceptance change occurred midrun.
+
+Content completed on September 7 and was not rerun. On September 8, narrowly
+scoped process inspection found no live runner/adapter/suite. Forms retained one
+completed Kudzu success plus an interrupted React attempt. Its entire directory
+was archived before moving to `forms-interrupted-20260908/`; the whole ten-attempt
+forms schedule restarted, followed serially by CRUD, commerce, and realtime.
+No interrupted attempt was merged into the 50-attempt score. Original suite logs
+remain intact alongside new `resume-*.stdout`/`.stderr` logs and
+`resume-provenance.json`. The restart is an operational interruption, not a
+selective retry of a completed failure. Its extra work is outside the scheduled
+denominator and is not free: the interrupted trace cannot establish total cost.
+
+### Measured Results
+
+Token cost per success includes all scheduled failures and cached input tokens,
+plus output and reasoning as defined by the frozen adapter. Provider-reported
+subscription dollars are zero, not a market-price or zero-work claim.
+
+| Task | Kudzu success | React success | Kudzu recorded tokens | React recorded tokens | Kudzu tokens/success | React tokens/success |
+|---|---:|---:|---:|---:|---:|---:|
+| Content | 0/5 | 5/5 | 2,832,760 | 779,912 | unavailable | 155,982 |
+| Forms | 5/5 | 5/5 | 504,651 | 469,925 | 100,930 | 93,985 |
+| CRUD | 5/5 | 5/5 | 688,701 | 663,721 | 137,740 | 132,744 |
+| Commerce | 5/5 | 5/5 | 398,400 | 305,981 | 79,680 | 61,196 |
+| Realtime | 5/5 | 5/5 | 1,098,282 | 889,312 | 219,656 | 177,862 |
+
+Kudzu's prescribed median across all five task costs is unavailable because
+content has no success; it must not be replaced by a four-task median. React's
+median is 132,744 tokens. Successful-only elapsed medians are 116,041 ms versus
+112,935 ms; tool calls 14 versus 15; files read 5 versus 5; files modified 2 versus
+2; build attempts 1 versus 1; correction cycles 0 versus 0. These are descriptive
+medians over unequal successful subsets, not a timing superiority or tie claim.
+
+Every content Kudzu attempt builds on its first recorded model build and passes
+all ten static-sibling checks. Failures are exclusively budget overruns:
+
+| Ordinal | Input tokens (limit 400,000) | Other exceeded limits |
+|---:|---:|---|
+| 0 | 579,172 | 48 tool calls (limit 40) |
+| 1 | 524,765 | none |
+| 2 | 422,456 | none |
+| 3 | 563,417 | none |
+| 4 | 721,442 | 47 tool calls; 24 files read (limit 20) |
+
+The next measured blocker is content documentation/context consumption under
+the existing budgets, not a failing final content compiler or browser result.
+All five realtime Kudzu attempts recover from initial ref diagnostics with a
+second build; one commerce attempt recovers from an arbitrary reactive-call
+diagnostic. These corrections do not prove general persistent-ref support.
+Source diffs in `audit.json` preserve declarative authored-source changes and
+show no manifest/lockfile edits; source retention is byte-identical-file based,
+not a whole-application maintainability score.
+
+### Browser Output
+
+These are medians over acceptance-passing outputs, including the five
+budget-failed content outputs. Deploy gzip is the sum of per-file Node gzip,
+while JS transfer is the acceptance browser's observed response transfer size.
+Neither is a full CPU/heap/readiness or 0.9 cross-framework performance rerun.
+
+| Task | Kudzu deploy raw/gzip B | React deploy raw/gzip B | Kudzu observed JS B | React observed JS B |
+|---|---:|---:|---:|---:|
+| Content | 68,530 / 26,426 | 206,313 / 66,366 | 37,609 | 199,174 |
+| Forms | 24,284 / 9,769 | 202,763 / 64,310 | 15,292 | 198,528 |
+| CRUD | 53,483 / 16,818 | 203,364 / 64,473 | 35,542 | 198,484 |
+| Commerce | 53,763 / 21,803 | 201,054 / 64,187 | 30,152 | 197,975 |
+| Realtime | 45,500 / 16,069 | 202,509 / 64,226 | 35,854 | 199,041 |
+
+### Audit And Limitations
+
+`integrity-audit.json` verifies all 50 result/run pairs, ordered schedules,
+current/frozen protocols, manifests and locks, 50 raw token traces, 300 command
+stream SHA-256 values, and 540 artifact entries with raw/gzip sizes and digests.
+It also verifies the untouched completed content run and interrupted archive
+against resume provenance. `audit.json` retains source diffs, diagnostic history,
+provider errors (none), and package reads. No live benchmark process remains.
+
+The raw tools expose a public-context limitation: content agents read shipped
+`PERFORMANCE.md`, `RELEASES.md`, and architecture/packet documents containing
+prior benchmark evidence; realtime Kudzu ordinal 2 reads the installed
+`framework/compiler/effect-private-ref-pass.mjs`. These are inside the installed
+public package, but the frozen tool policy does not isolate the supplied public
+context from compiler knowledge or historical benchmark material. Keep the raw
+scores, but do not call this a clean documentation-only comparison. Future input
+isolation requires separate review and authorization, not midrun edits or
+retroactive rescoring. The overnight interruption also prevents a continuous
+same-session timing interpretation. There are no incomplete traces among the
+50 scored attempts; the separately archived interrupted attempt remains partial
+and cannot be reported as zero cost.
+
+Raw output:
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r7-kudzu-0.16.25-20260907-01/`.
+Reproduction/continuation and audit scripts are copied into that directory.
+The continuation invokes the unchanged runner once per remaining whole task,
+then `node test/ai-delivery-production-suite.mjs --summarize --out <output>`.
+The unique local archive is
+`test-results/ai-delivery-production/0.21.4-gpt-5.6-sol-r7-kudzu-0.16.25-20260907-01-audited-20260908-01.tar.gz`
+(4,698,504 bytes), SHA-256
+`aaa16c7881b6b8412e61d1eec88a508af1df5f46bf733270338c2557b5285427`.
+Its 1,707-file evidence manifest excludes only itself. The separate interrupted
+forms archive SHA-256 is
+`d25357416820d266969251ce7e059a0ad93e48a9f4e02d2f033fbd8b2da6445b`.
+Both full interrupted directory and archive are retained in the final archive.
+The archive is local, not uploaded or published.
+
+Verification after tracked edits: nine focused protocol/acceptance/lifecycle
+tests pass; `npm run check` builds 225 pages with 2 interactive pages;
+`KUDZU_REQUIRE_CHROME=1 CHROME_BIN=/usr/bin/google-chrome npm test` passes the
+standalone ownership gate and 315/315 tests, with no failures or skips and a
+1,200,000 ms command timeout. Logs and `verification.json` are archived.
+`git diff --check` passes. This final archive/checksum paragraph is a subsequent
+documentation-only metadata update; it does not alter the frozen evidence.
+No commit, push, publication, package version bump, or main compiler change is
+part of this measurement.
+
+## Product Documentation And Package Cleanup (2026-09-08)
+
+The approved r7 follow-up addresses unnecessary installed evidence/context, not
+compiler correctness: all five content first patches/builds pass in the reviewed
+traces. The public README now gives generic native `event.currentTarget`/state,
+pure local/filter/count, keyed-child, and route-local static ownership guidance.
+Its release introduction no longer supplies benchmark results or internal packet
+links; release navigation uses public absolute URLs. No task-specific acceptance
+labels or benchmark solution was added.
+
+The package allowlist excludes `docs/next-architecture/`, `GOAL_A.md`, `GOAL_B.md`,
+`MIGRATION_ROADMAP.md`, `PERFORMANCE.md`, `RELEASES.md`, and `framework/README.md`.
+Repository evidence remains in place. All executable framework/CLI files, types,
+exports, and assets remain included. Root `README.md`, `LICENSE`, and
+`package.json` are verified in the actual tarball, not inferred from exclusions
+or npm's automatic README inclusion.
+
+### Measured Package Effect
+
+Node 24.14.0, npm 11.9.0, Linux x64. The pre-edit
+`npm pack --dry-run --ignore-scripts --json` and actual pre-edit pack agree.
+Before and after archives were produced with
+`npm pack --ignore-scripts --json --pack-destination <directory>` (the before
+actual pack used `--silent` instead of `--json`). `gzip -l <archive>` measures
+raw tar bytes including headers/padding; npm's unpacked size sums file contents.
+These are whole-package gzip sizes, not per-file gzip or browser transfer.
+
+| Metric | Before | After | Delta |
+|---|---:|---:|---:|
+| Tarball file count | 85 | 60 | -25 |
+| Unpacked file bytes | 2,090,515 | 991,259 | -1,099,256 |
+| Raw tar bytes | 2,154,496 | 1,036,800 | -1,117,696 |
+| Gzip archive bytes | 536,166 | 200,431 | -335,735 (62.6%) |
+| Public README bytes | 8,216 | 9,420 | +1,204 |
+
+Local archives are under
+`/tmp/opencode/kudzu-package-cleanup-before-20260908/` and
+`/tmp/opencode/kudzu-package-cleanup-after-20260908/`, both named
+`kudzujs-core-0.16.25.tgz`. The candidate is unpublished and keeps the version;
+it must not be confused with the frozen registry artifact used in r7.
+
+### Verification And Limits
+
+`npm run test:package` compares the actual tar manifest to npm's file list,
+rejects every excluded evidence path, checks all framework/CLI source files are
+present and byte-identical after installation, and asserts unchanged exports/bin.
+The existing fresh consumer now builds the README's generic imported collection
+example with one interactive route and two script-free routes, including a
+static filtered keyed child. It adds no dependency or compiler fixture. Package
+smoke checks build/output; existing imported-search Chrome tests cover browser
+search/count/identity/remount behavior rather than adding another browser runner.
+
+Sequential verification with 1,200,000 ms command timeouts passes:
+
+```bash
+npm run test:package
+KUDZU_REQUIRE_CHROME=1 node --test test/imported-article-search.test.mjs test/ai-delivery-production.test.mjs test/ai-delivery-production-acceptance.test.mjs test/ai-delivery-lifecycle.test.mjs
+npm run check
+KUDZU_REQUIRE_CHROME=1 npm test
+```
+
+The focused run passes 12 tests; check builds 225 pages, 2 interactive; Chrome
+152.0.7977.64 passes the standalone ownership gate plus 315/315 tests without
+failures or skips. Package smoke passes again after strengthening packed-source
+byte assertions. All four search variants retain 32,190 raw / 12,324 aggregate
+gzip JavaScript bytes. Semantic primitives, core passes/LOC, normalization rules,
+runtime concepts/source, and compiler fixtures change by zero. No build/browser
+timing comparison or model-token savings were measured.
+
+**Full public-context isolation remains separately deferred.** Installed compiler
+source remains readable, and web/repository references can still expose evidence.
+This is package hygiene, not a sandbox or clean documentation-only benchmark.
+Frozen r7 protocols, budgets, prompts, acceptance, starters, raw evidence, and
+the 20/25 versus 25/25 score remain unchanged. No model rerun, version bump,
+commit, push, publication, release, or `1.0.0` authorization is part of this work.
 
 ## r5 Compiler Follow-Up (2026-09-07)
 

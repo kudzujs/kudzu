@@ -14,16 +14,14 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Latest release: 0.16.25 - static content and acceptance alignment.** Direct imported static selectors emit HTML without list JavaScript, and original query aliases support direct JSX counts. Content source replay removes four files and 20,539 raw / 7,299 aggregate gzip JavaScript bytes. Future-only r6 acceptance covers named groups, combined polite regions, and all ten static siblings. Historical r5 remains 18/25 versus 23/25 with two partial traces; no fresh model rerun or replacement score is claimed, and `1.0.0` remains blocked. Read the [release notes](./RELEASES.md#01625---static-content-and-acceptance-alignment), open the [release page](https://github.com/kudzujs/kudzu/releases/tag/v0.16.25), or follow the [architecture packet](./docs/next-architecture/README.md).
+**Current release: [0.16.26](https://github.com/kudzujs/kudzu/releases/tag/v0.16.26).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
 - [Components and migration support](https://kudzujs.cloud/docs#components)
 - [Current limits](https://kudzujs.cloud/docs#limits)
 - [Benchmarks](https://kudzujs.cloud/docs#benchmarks)
-- [Raw performance records](https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md)
-- [React migration roadmap](https://github.com/kudzujs/kudzu/blob/main/MIGRATION_ROADMAP.md)
-- [Release history](./RELEASES.md)
+- [Release history](https://github.com/kudzujs/kudzu/releases)
 
 ## Quick Start
 
@@ -87,6 +85,50 @@ export default function HomePage() {
 npm run dev
 npm run build
 ```
+
+## Authoring
+
+Use native HTML controls and events. Read the control through `event.currentTarget`
+inside the handler and update state with its setter; Kudzu does not use React
+synthetic events. Setters update logical state immediately and batch DOM writes.
+
+Keep derived values pure: top-level `const` locals can normalize primitive state,
+filter an immutable collection, and reuse its `.length` in JSX. Render ordinary
+child components with stable keys rather than manually rebuilding DOM rows.
+For example, with `items` exported as a JSON-safe immutable array from `../data`
+and `Item` as a relative component rendering one item:
+
+```tsx
+import { useState } from "@kudzujs/core"
+import { items } from "../data"
+import { Item } from "../Item"
+
+export default function ItemsPage() {
+  const [query, setQuery] = useState("")
+  const normalized = query.trim().toLowerCase()
+  const visible = items.filter(item => item.name.toLowerCase().includes(normalized))
+  const count = visible.length
+
+  return <main>
+    <label htmlFor="item-query">Find items</label>
+    <input id="item-query" type="search" value={query}
+      onInput={event => setQuery(event.currentTarget.value)} />
+    <p aria-live="polite">Matches: {count}</p>
+    <ul>{visible.map(item => <Item key={item.id} item={item} />)}</ul>
+  </main>
+}
+```
+
+Collection aliases must stay within supported collection/count uses; arbitrary
+calls, mutation, and escaping reactive collections are not supported. Use the
+build's source-located diagnostic and [current limits](https://kudzujs.cloud/docs#limits)
+to identify the boundary rather than assuming arbitrary React code will compile.
+
+Keep interactions in the routes that need them. Build-known direct imported
+maps and pure static filters can emit complete HTML without list JavaScript.
+A static sibling outside an enhanced-navigation group ships no JavaScript merely
+because another page is interactive. Shared layout effects or explicit navigation
+groups have their own lifetime; native anchors remain the default.
 
 ## How It Works
 
@@ -155,7 +197,7 @@ npm run check
 npm test
 ```
 
-Read [AGENTS.md](https://github.com/kudzujs/kudzu/blob/main/AGENTS.md) and the [migration roadmap](https://github.com/kudzujs/kudzu/blob/main/MIGRATION_ROADMAP.md) before extending migration syntax or browser capabilities.
+Contributor instructions live in the [repository](https://github.com/kudzujs/kudzu).
 
 ## License
 

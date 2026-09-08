@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "revision": 6,
-  "id": "production-content-search-r6",
-  "revisionNote": "Future runs only: aligns named CRUD groups and combined content live regions with communicated requirements; explicitly enforces all Kudzu content static siblings. Completed r3, r4, and r5 raw evidence and scores are unchanged and must not be reinterpreted or rescored. Retains released Kudzu 0.16.24, model, budgets, adapter lifecycle, incomplete timeout attribution, public context, starters, and schedules. No r6 model run has been performed.",
+  "revision": 7,
+  "id": "production-content-search-r7",
+  "revisionNote": "Future runs only: pins released Kudzu 0.16.25 with registry lock integrity and canonical starter hashes. Historical r5 raw evidence and scores are unchanged; frozen r6 inputs remain archived at release a99d250. Retains r6 named CRUD groups, combined polite content regions, all ten static siblings, model, budgets, tools, adapter lifecycle, incomplete attribution, prompts, public context, React starters, and serial alternating schedules.",
   "packet": "0.21.4",
   "model": {
     "provider": "openai-via-opencode",
@@ -12,7 +12,7 @@
     "pricing": { "inputUsdNanosPerMillion": 0, "outputUsdNanosPerMillion": 0, "reasoningUsdNanosPerMillion": 0, "accounting": "provider-reported subscription cost is zero; tokens are the cost comparator" }
   },
   "tools": {
-    "versions": { "runner": "1", "opencode": "1.18.27", "node": "captured-exactly-per-run", "kudzu": "0.16.24", "react": "19.2.8" },
+    "versions": { "runner": "1", "opencode": "1.18.27", "node": "captured-exactly-per-run", "kudzu": "0.16.25", "react": "19.2.8" },
     "names": ["read", "write", "build", "shell", "grep", "glob", "list", "task", "question", "todowrite", "skill", "webfetch"],
     "permissions": ["workspace-read", "workspace-write", "workspace-shell", "public-context-only"]
   },
@@ -26,7 +26,7 @@
     "acceptance": { "command": "node", "args": ["{protocol}/../../../ai-delivery-production-acceptance.mjs", "{workspace}", "content"], "sha256": "0e665a6b8cc83bb282ee4985ffcf421bb4abba7fcea9f58a732c4b7bfb65aeb7" }
   },
   "variants": [
-    { "id": "kudzu", "framework": "Kudzu 0.16.24", "starter": "starters/kudzu", "starterSha256": "6b56448eb0b9179183aeb433bd3e52538749f1a2e609c37c5a8bdf8e479ccd92", "publicContext": [{ "path": "../public-kudzu.md", "sha256": "1a341f6d42f83784dd7eda729f45a8d9fd66414448f4051c2b3483e7e90eff61" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" },
+    { "id": "kudzu", "framework": "Kudzu 0.16.25", "starter": "starters/kudzu", "starterSha256": "65876ff9cb698e65a7a5ad828380594f392a6acd8e0c3a6627a41ec2c118b57f", "publicContext": [{ "path": "../public-kudzu.md", "sha256": "1a341f6d42f83784dd7eda729f45a8d9fd66414448f4051c2b3483e7e90eff61" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" },
     { "id": "react-vite", "framework": "React 19.2.8 + Vite 8.2.2", "starter": "starters/react-vite", "starterSha256": "371b0a02b7dada5babd1548386e9ddf0809a215c09037f0f9c680af31a3ba02d", "publicContext": [{ "path": "../public-react-vite.md", "sha256": "de27615c57742bd78f6e4cb3f8861900d8a8e8eea814dc41c037efbcc8f7bfd0" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" }
   ],
   "schedule": [

@@ -49,6 +49,7 @@ test("generates canonical SEO output for Cloudflare static assets", async () => 
   routes.push("/releases/0.16.23")
   routes.push("/releases/0.16.24")
   routes.push("/releases/0.16.25")
+  routes.push("/releases/0.16.26")
   try {
     for (const route of routes) {
       const directory = route === "/" ? outDir : join(outDir, route.slice(1))
