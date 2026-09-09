@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.27](https://github.com/kudzujs/kudzu/releases/tag/v0.16.27).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates.
+**Current release: [0.16.28](https://github.com/kudzujs/kudzu/releases/tag/v0.16.28).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -137,6 +137,13 @@ does not verify browser behavior or accessibility. Check visible DOM and relevan
 interactions, labels, status updates, keyboard focus, and responsive layouts in a
 browser as needed. Binding comments and inert templates mean raw HTML string
 matches or tag stripping are not reliable checks of rendered text.
+
+Normal builds also scan generated route HTML after `afterBuild`, reporting counts
+with/without script or modulepreload text markers and unreadable files, with up to
+five paths per category (long paths are truncated). This is a literal text scan,
+not proof of script freedom: comments and inert content can match, inline event
+attributes are not checked, and extra public HTML files are outside the route
+inventory. Quiet and JSON builds omit this summary.
 
 Keep checks bounded and report concise counts and failing paths rather than
 repeatedly dumping minified artifacts. A missing tool or truncated response is

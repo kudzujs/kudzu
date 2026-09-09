@@ -2501,6 +2501,329 @@ JavaScript bytes. PERFORMANCE records exact pack sizes and the documentation-onl
 verification-record boundary. Exact-commit CI and protected publication remain
 release-transaction gates, not assumed completed by these local checks.
 
+### Focused 0.16.27 Content R9 Result (2026-09-09)
+
+The separately authorized ten-attempt comparison is complete: **Kudzu 3/5 versus
+React + Vite 5/5**, with all ten first/final builds and frozen Chrome acceptance
+journeys passing. K2 exceeds input/tool budgets; K4 exceeds input budget. Failures
+remain included: 2,003,387 versus 585,279 tokens, 667,796 versus 117,056 rounded
+tokens per success, and all-attempt elapsed medians 173,645 versus 110,585 ms.
+Kudzu does not use less of everything: raw/gzip deploy medians are smaller
+(68,404/26,410 versus 206,367/66,388 bytes), while AI tokens, time, and tool calls
+are higher. Historical full-suite r8 remains 23/25 versus 24/25, not overwritten
+by this subset; neither the AI cost gate nor `1.0.0` is cleared.
+
+Initial inspection found no live benchmark and a clean worktree, but the original
+r9 stopped after eight complete successes and one partial ninth attempt. Its
+entire directory is preserved in an intact checksummed interruption archive.
+The restart reused the exact frozen ten-entry schedule, model
+`openai/gpt-5.6-sol`, OpenCode 1.18.27, registry core 0.16.27, scorer and budgets;
+no selective retries, merging, model switch, or full fifty-attempt run occurred.
+Known interrupted cost and both preflights are separately retained, yielding at
+least 4,799,245 recorded focused-work tokens, versus 2,588,666 in the fresh schedule.
+
+Against r8 Content, Kudzu total/post-build tokens rise 6.44%/7.05%, while React
+total tokens fall 11.60%. All five Kudzu agents read the Verify guidance and
+receive the build hint, but none follows the URL or executes a browser journey.
+Raw-HTML/template counting, minified searches, missing `rg`, and faulty custom
+assertions persist. Required builds and independent scored acceptance were not
+dropped on either side; agent verification alone is not browser/a11y proof.
+Four Kudzu agents receive compiler/runtime grep snippets; one reads public types.
+No excluded evidence Markdown reads or webfetch occur, but public source access
+persists. Five trials and service/environment drift do not establish causal A/B
+benefit, isolation, or comprehensive accessibility compliance.
+
+The full report, per-attempt metrics, source/scorer limitations, exact hashes,
+and required tracked-change verification/archive record are in PERFORMANCE and
+`test-results/ai-delivery-production/0.21.4-content-only-r9-kudzu-0.16.27-restart-20260909-01/`.
+No compiler/scorer/adapter changes: zero semantic primitives, core passes/LOC,
+runtime concepts, dependencies or compiler fixtures added. No commit, push,
+release or main version bump. Further work needs evidence-backed authorization,
+not selective reruns of budget failures.
+
+Post-edit verification passes sequentially with 1,200,000 ms timeouts: check
+(227 pages, 2 interactive), required-Chrome npm test (standalone 1/1 plus 315/315,
+no skips/failures), and diff whitespace validation. Four imported-search outputs
+retain 32,190 raw / 12,324 gzip JS bytes. PERFORMANCE and the retained execution
+logs record the tested edits and this later verification-metadata-only update.
+
+### Unreleased R9 Tool-Output Follow-Up (2026-09-09)
+
+The authorized next reduction addresses the retained r9 post-build script/preload
+inventory rather than adding compiler semantics or another documentation hint.
+Normal successful build output now reports a literal scan of freshly emitted
+route HTML after `afterBuild`: counts with/without script/modulepreload text
+markers, unreadable files, and at most five bounded paths per nonempty category.
+The existing browser/a11y verification warning remains. No claim of script
+freedom, visible content, or browser correctness follows from this scan.
+
+Existing inspect/explain commands rebuild and continue to do so. The v2 artifact
+report is compiler closure metadata, not final HTML evidence; consuming arbitrary
+cached inventory would introduce freshness/trust requirements without solving
+post-hook correctness. This change instead reuses the current build's route
+records and staged files, printing only after successful promotion. Quiet/JSON
+output, artifact schema and bytes, return contracts, and failure exits remain
+unchanged. Extra public HTML and subsequent external mutations are outside scope.
+
+The new initially failing CLI fixture reproduces the missing bounded inventory,
+then covers static/interactive output, hook-injected scripts/preloads, unreadable
+routes, base paths, truncation by route count, and unchanged deploy/report bytes.
+Seven focused output tests pass. The fixture adds 133 stdout bytes with unchanged
+4,985 raw / 2,591 gzip JS bytes; its static-only build emits no JS files. Build
+orchestration adds 25 net lines; semantic-core LOC, passes, primitives, runtime
+concepts, dependencies, and browser-byte deltas remain zero. Normal builds add
+one sequential route-file read per page; quiet/JSON builds skip it. PERFORMANCE
+records the exact lexical limitations and verification results.
+
+Full sequential verification with 1,200,000 ms timeouts passes: check (227 pages,
+2 interactive), required-Chrome tests (standalone 1/1 plus 316/316, no skips),
+and fresh-install package smoke (3 pages, 1 interactive). The site reports 144
+route files without markers and 83 with markers, including existing post-build
+SEO JSON-LD scripts, with none unreadable. All four maintained imported-search
+fixtures retain 32,190 raw / 12,324 gzip JS bytes and the prior runtime hash.
+
+This is an unreleased tooling change, not a rescoring or new model experiment.
+AI token/cost savings and build-speed effects are unmeasured. Historical full r8
+remains 23/25 versus 24/25, focused r9 remains 3/5 versus 5/5, and the 1.0 gate
+remains blocked. No release transaction or version bump is authorized here.
+
+### Local Summary Candidate R10 Closure (2026-09-09)
+
+The authorized end-to-end assessment is complete, with **no demonstrated AI-cost
+advantage**. An immutable local `0.16.27-summary.20260909.1` tarball ran the exact
+r9 Content schedule, model, OpenCode, budgets, public context and scorer: Kudzu
+4/5 versus React 5/5; all ten first/final builds and Chrome acceptance journeys
+pass. Kudzu's input-budget failure remains included in 1,742,479 versus 467,550
+total tokens, with elapsed medians 157,611 versus 90,893 ms. Kudzu total tokens
+fall 13.02% from r9 while React falls 20.12%; all five Kudzu agents still repeat
+the HTML marker scan. K2 repeats template-counting/minified-code assertions and
+K4 encounters missing `rg`. Neither side runs an agent-owned browser journey.
+No new heuristic or generic verification runtime is justified by this result.
+
+The only production correction bounds the added reads using the existing
+64-file batch size while preserving sorted output. Twenty-one alternating builds
+per size/revision measured the initial sequential 1,011-page median at +5.03%;
+final batched medians are +4.80% at 111 pages and -0.23% at 1,011 pages, with
+paired percentage medians +2.01%/+1.60% and overlapping ranges. There is no
+established repeatable >5% final regression and no claimed speedup. Every deploy
+path and byte remains identical to release. The regression now crosses a batch
+boundary; the correction adds six orchestration lines (+31 total versus release),
+zero semantic-core LOC/passes/primitives, runtime concepts or browser bytes.
+
+PERFORMANCE records the full protocol, failure-inclusive metrics, source and
+verification review, statistical limitations, required gates and archive record.
+Evidence is retained under
+`test-results/ai-delivery-production/summary-candidate-20260909/`; canonical
+protocols and historical archives are unchanged. The workspace remains 0.16.27,
+with no publication or release transaction. Full r8 remains 23/25 versus 24/25,
+focused r9 remains 3/5 versus 5/5, and 1.0 remains blocked. This closes measurement
+of the summary, not the AI-delivery problem; further product work must start
+from trace evidence rather than assuming the inventory solved it.
+
+Final sequential gates pass with 1,200,000 ms timeouts: check (227 pages),
+required-Chrome tests (standalone 1/1 plus 316/316, zero skips/failures), and packed
+package smoke (3 pages). Four imported-search fixtures retain 32,190 raw / 12,324
+gzip JS bytes and their runtime digest. `git diff --check` passes. The sibling
+`summary-candidate-20260909-audited.tar.gz` and `.sha256` preserve the candidate,
+baseline, full experiment and verification evidence without rewriting r9.
+These are subsequent verification/archival metadata, not further code changes.
+
+### Exact Target Diagnostics Follow-Up (2026-09-09)
+
+R11's four CSS-uppercase lookup failures authorize a local diagnostic-only fix.
+Snapshots already contain computed AX names. The shared fill/click error now
+reuses its existing AX tree to show at most five same-role candidates (only exact
+matches on ambiguity), their total count, and 160-character names with truncation
+flags. No extra browser query, DOM scan, fuzzy matching, retry, relaxed assertion
+or new browser API. Hidden/inert/template nodes stay excluded; ambiguity still
+fails before dispatch. Favicon handling, security and cleanup remain unchanged.
+
+One generic Chrome/CLI regression fails before the change and covers uppercase
+computed labels, ARIA names, exclusion, ambiguity, and count/name bounds. Core
+LOC/passes, semantic primitives, runtime concepts, dependencies and deployed
+raw/gzip browser bytes change by zero. PERFORMANCE records the evidence and
+limits. No model rerun or token-saving claim; the repeated agent inventory cost
+is not proven solved. R11 copies/hashes/scores remain frozen, and future model
+measurements require a new equal-tool freeze. No release/version transaction.
+
+Verification: focused checks **9/9**; sequential 1,200,000-ms check (227 pages,
+two interactive), required-Chrome npm test (standalone **1/1** plus **320/320**,
+zero failures/skips), and package smoke (three pages, one interactive) all pass.
+Four imported-search fixtures retain 32,190 raw / 12,324 gzip JS bytes and their
+runtime digest. Frozen input/package/binary integrity and the R11 archive checksum
+pass; `git diff --check` passes. Utility delta is +7/-2 lines, regression +42,
+public instructions +4 net; existing dirty edits are preserved.
+
+### Missing Favicon Smoke Follow-Up (2026-09-09)
+
+Source-only tooling fix: the local smoke server returns 204 only for an exact
+automatic `/favicon.ico` image request with no filesystem entry and no matching
+authored document `href`/`src`. Real files are served; explicit icons, missing
+scripts/styles, document requests, broken/escaping symlinks, exceptions and network
+failures are not ignored. CDP collection and the bounded observation window stay
+unchanged; there is no document/SPA fallback. CLI regression coverage includes a
+genuinely favicon-free page and authored resource failures.
+
+R11 remains **4/5 versus 5/5**, with all eighteen historical smoke calls nonzero
+and every recorded interaction/cost unchanged. Frozen-input/package/binary
+integrity checks pass; archived tools/protocols are not updated. No model rerun,
+rescoring, commit, push or release. Future measurements require a new tool freeze.
+Semantic primitives, core passes/LOC, runtime concepts and browser-byte deltas
+remain zero. PERFORMANCE records this follow-up separately from R11 closure.
+
+Verification passes: focused browser/copy/frozen-protocol tests **8/8**; sequential
+1,200,000-ms gates pass check (227 pages, two interactive), required-Chrome npm
+test (standalone **1/1** plus **319/319**, no failures/skips), and package smoke
+(three pages, one interactive). Four search fixtures retain 32,190 raw / 12,324
+gzip JS bytes and their prior runtime digest. Only verification docs follow.
+
+### Equal Browser Tools R11 Closure (2026-09-09)
+
+The authorized separate CONTENT-only experiment is complete: **Kudzu 4/5 versus
+React + Vite 5/5**, with all ten final builds and unchanged scored Chrome journeys
+passing. Both sides' 5/5 agents now use native browser input and rendered-text
+checks. Browser adoption is proven, but AI-cost superiority is not: total tokens
+are **1,791,290 versus 1,336,775**, median elapsed 160,513 versus 152,302 ms, and
+tokens per success 447,823 versus 267,355. K0's 409,491 input tokens exceed the
+unchanged 400,000 budget. The independent 6,727-token preflight brings recorded
+experiment cost to 3,134,792 tokens; provider-reported subscription dollars are
+zero, not free compute. No incomplete attempt, retry or replacement occurred.
+
+R11 freezes equal `.tools` copies of the two generic browser files and task-neutral
+public instructions through the existing publicContext facility. A new frozen
+adapter copy permits optional post-build browser work, while historical adapters,
+canonical protocols, task, scorer, model `openai/gpt-5.6-sol`, OpenCode 1.18.27,
+React 19.2.8 / Vite 8.2.2, budgets and serial ten-entry schedule remain unchanged.
+The unshipped `0.16.27-browsertools.20260909.1` working-tree snapshot installs from
+a read-only SHA-256-addressed tarball with lock integrity, not a mutable symlink.
+Main remains 0.16.27. No release, commit, push, tag or version transaction occurred.
+
+The runner excludes harness files from both source-retention inventories and
+invalidates changed/missing/symlink tools/docs after the agent and after acceptance.
+All 60 checks pass. Deterministic fake agents prove equal copies, file-by-file
+tamper rejection even with passing acceptance, source exclusion and normal shell
+accounting; real Chrome proves input/click and timeout cleanup. Managed Chrome
+inherits the runner's process group so a deadline cannot strand a detached browser.
+This remains trusted-local tooling, not a hostile-agent sandbox. Browser commands
+are ordinary shell tools; inner observations/input are not hidden build attempts.
+
+K0 and R1/R3/R4 correct CSS-transformed accessible names after real browser failures.
+The agents perform 19 successful fills each, no clicks, across six/twelve shell
+calls. All eighteen calls nevertheless exit nonzero: four initially fail exact
+names, fourteen finish interaction commands but report the starter's missing
+favicon. Every agent discloses the 404; passing individual text checks must not be
+called a clean smoke exit or exhaustive accessibility proof. All five Kudzu agents
+still repeat raw-HTML marker inventory. Three output spill files are retained with
+hashes; archival full command counts are 72/102 versus model-visible 69/100, without
+retroactively charging recovered bytes as observed tokens.
+
+PERFORMANCE contains per-attempt metrics, protocol examples, actual verification
+quality, source review, package/tool hashes and comparative R9/R10 evidence.
+Evidence root: `test-results/ai-delivery-production/browser-tools-r11-20260909/`.
+Protocol SHA-256 is `68bc6175101cedc3a7e66fbf3aa20db5add2365142ae64ebce0ab6a71fbb709e`;
+tarball SHA-256 is `4a5c74cbb7adf9e5a70708f959a2b3c2f4f68351a67a7fed831770ca3e0c104b`.
+The audit reconciles 30 attempts, 180 streams, 510 artifacts and 495 source files
+across the three revisions without rescoring them. Semantic primitives, core
+passes/LOC, runtime concepts, dependencies and browser-byte deltas are zero.
+
+Kudzu tokens rise 2.80% versus R10 while React rises 185.91%; the narrower 1.340x
+ratio does not demonstrate savings. Five trials, changed tool exposure and
+instructions, separate schedules, cache/service and host drift preclude causal
+superiority. R9 remains 3/5 versus 5/5, R10 remains 4/5 versus 5/5, and full R8
+remains 23/25 versus 24/25. Neither the full-50 nor the 1.0 gate is cleared.
+Next blockers are bounded observation output, clear separation of request errors
+from interaction assertions, and remaining post-build inventory/source exploration.
+Any follow-up must freeze a new protocol before measurement, not ignore errors,
+selectively retry budget failures, expand a general browser API or claim a release.
+
+Final sequential 1,200,000-ms gates pass: check (227 pages, two interactive),
+required-Chrome npm test (standalone 1/1 plus 318/318, no failures/skips), fresh
+package smoke (three pages, one interactive), and diff whitespace validation.
+Four imported-search fixtures preserve 32,190 raw / 12,324 gzip JS bytes and the
+prior runtime digest. The sibling `browser-tools-r11-20260909-audited.tar.gz` and
+external `.sha256` retain frozen inputs, tools, package source/tarballs, historical
+byte copies, all comparison traces/artifacts, original tool-output spill files,
+verification and provenance. Subsequent changes are verification/archive metadata
+only; existing batched-summary/docs edits remain intact.
+
+### Ordinary Browser Smoke Follow-Up (2026-09-09)
+
+Historical implementation record; R11 above closes the then-future equal-tool
+experiment, without replacing this record or the historical scores.
+
+User-authorized follow-up to the failed summary candidate addresses raw-HTML
+verification with a real, repository-only Chrome path rather than another hint or
+compiler heuristic. `test/browser-smoke.mjs` reuses the unchanged generic CDP
+transport copied to `test/browser-cdp.mjs`. Neither file imports grader code.
+Extraction failed the frozen acceptance hash test, so the oracle was restored
+byte-for-byte; sharing it must wait for a new protocol. Historical raw
+results, task assertions, adapter, protocol and budgets are not rewritten.
+
+The visible shell interface opens a trusted build directory, returns bounded
+rendered-text/accessibility snapshots, fills and clicks exact accessible role/name
+targets, and optionally checks caller-supplied rendered text. Native input changes
+DOM; inert templates are not counted as content. Failure is nonzero, not a fallback
+to regex approval. One disposable loopback server/profile/browser group owns the
+30-second session and cleanup. External proxy traffic is rejected, not forwarded.
+No Playwright/browser tool was installed in this environment; no dependency was
+added. This is Linux smoke tooling, not a shipped framework API, sandbox, backend
+fixture, comprehensive accessibility harness or hidden acceptance invocation.
+
+PERFORMANCE records invocation examples, exact bounds, network and cleanup limits,
+the generic framework-neutral DOM regression, and future equal-tool protocol
+requirements. Static artifact checks remain separate. Semantic primitives, core
+passes/LOC, runtime concepts, adapter rules, dependencies and browser bytes change
+by zero. No model experiment ran and no token/cost advantage is claimed.
+
+Next: review and freeze a separately named future protocol with identical public
+utility files/docs and explicit browser shell permissions for both frameworks,
+retaining commands/observations and normal tool/time/token accounting. Do not copy
+test assertions, grading answers or task-specific selectors into model tools.
+Do not rerun automatically, rescore R8/R9/R10, release, or bump versions. The AI
+delivery and 1.0 gate remain blocked until new equal-condition evidence exists.
+
+Final sequential gates use 1,200,000-ms timeouts: check passes (227 pages),
+required-Chrome tests pass standalone 1/1 plus 317/317 with no skips/failures,
+and packed-package smoke passes (3 pages). The unchanged frozen-oracle hash gate
+passes; the generic smoke includes a stalled-renderer deadline and CLI failure
+exit check. Tooling/test size is 132 + 51 + 55 lines, with no compiler or deployed
+runtime change. Existing imported-search browser bytes/digest remain unchanged.
+PERFORMANCE records the earlier extraction failure and final results; only this
+verification metadata follows those checks. Existing dirty work is preserved.
+
+### 0.16.28 Release Transaction
+
+The user separately authorizes the accumulated tooling/evidence scope as core
+`0.16.28` and generator `0.1.153`, including commit/push, exact-commit CI,
+immutable annotated tag, GitHub release and protected npm publication. Earlier
+session-specific no-release statements above remain historical records. This is
+not acceptance of the AI-delivery or 1.0 gates, and authorizes no model calls.
+
+The public npm change is the final route HTML lexical summary, batched at 64 reads
+and printed only after successful promotion, plus its generic documentation.
+Browser smoke/CDP utilities, equal public-context copy/integrity checks and
+R9/R10/R11 reports stay repository-only. Package allowlists remain unchanged.
+Release review fixes the browser-test skip/required-Chrome contract and a proven
+missing `srcset` favicon false pass, with CSS-image coverage using CDP request
+classification. Frozen experiment tools, protocols, archives and scores are not
+rewritten. PERFORMANCE records scope, measurements, review and verification.
+
+No semantic primitive, core pass/LOC, runtime concept, dependency or deployed
+browser byte is added. Build orchestration changes by +30 net lines (31 added,
+one removed, correcting the earlier +31 count). Existing
+R10 paired measurements preserve deploy bytes, with no established >5% final
+regression or speedup. No AI-token advantage is demonstrated: full R8 remains
+23/25 versus 24/25, focused R9 is 3/5 versus 5/5, local R10 and R11 each 4/5
+versus 5/5. Registry integrity and fresh generator install remain publication
+gates; protected environment approval must use the normal GitHub UI.
+
+Local sequential gates pass: check (228 pages, two interactive), required-Chrome
+standalone 1/1 plus 320/320 tests with no skips, fresh packed-package smoke and
+both dry-run manifests (core 60 files, generator four). Four search fixtures keep
+32,190 raw / 12,324 gzip JS bytes. PERFORMANCE records exact pack sizes and the
+subsequent verification-metadata-only boundary; CI/publication are still separate
+transaction gates.
+
 ## `1.0.0`: Stable Application Model
 
 `1.0.0` is authorized only after every required `0.21.x` gate passes. It means:

@@ -12,7 +12,7 @@ try {
   const packed = JSON.parse(execFileSync("npm", ["pack", "--ignore-scripts", "--json", "--pack-destination", temporary], { cwd: root, encoding: "utf8" }))
   const files = execFileSync("tar", ["-tzf", join(temporary, packed[0].filename)], { encoding: "utf8" }).trim().split("\n").map(file => file.replace(/^package\//, ""))
   assert.deepEqual(files.toSorted(), packed[0].files.map(file => file.path).toSorted())
-  for (const file of files) assert.doesNotMatch(file, /^(?:docs\/next-architecture\/|(?:GOAL_A|GOAL_B|MIGRATION_ROADMAP|PERFORMANCE|RELEASES)\.md$|framework\/README\.md$)/)
+  for (const file of files) assert.doesNotMatch(file, /^(?:test\/|test-results\/|docs\/next-architecture\/|(?:GOAL_A|GOAL_B|MIGRATION_ROADMAP|PERFORMANCE|RELEASES)\.md$|framework\/README\.md$)/)
   const required = ["package.json", "README.md", "LICENSE"]
   for (const directory of ["bin", "framework"]) {
     for (const file of await readdir(new URL(`${directory}/`, root), { recursive: true, withFileTypes: true })) {

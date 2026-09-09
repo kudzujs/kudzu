@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process"
 import { appendFileSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
+import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -46,9 +46,21 @@ try {
     await mkdir(evidenceDirectory, { recursive: true })
     await cp(resolve(protocolDirectory, variant.starter), workspace, { recursive: true })
     const baseline = await inventory(workspace, sourceExcluded)
+    const copiedContext = variant.publicContext.filter(context => context.copyTo)
+    if (copiedContext.length) await mkdir(join(workspace, ".tools"))
+    for (const context of copiedContext) await cp(resolve(protocolDirectory, context.path), join(workspace, context.copyTo))
+    const contextIntegrity = []
+    async function checkContext(phase) {
+      const directoryIntact = await lstat(join(workspace, ".tools")).then(entry => entry.isDirectory()).catch(() => false)
+      for (const context of copiedContext) {
+        const path = join(workspace, context.copyTo)
+        const actual = directoryIntact ? await lstat(path).then(async entry => entry.isFile() ? sha256(await readFile(path)) : null).catch(() => null) : null
+        contextIntegrity.push({ phase, path: context.copyTo, expected: context.sha256, actual, passed: actual === context.sha256 })
+      }
+    }
     const traceFile = join(evidenceDirectory, "adapter.trace.jsonl")
     const prompt = await readFile(resolve(protocolDirectory, protocol.task.prompt), "utf8")
-    const publicContext = await Promise.all(variant.publicContext.map(async context => ({ ...context, content: await readFile(resolve(protocolDirectory, context.path), "utf8") })))
+    const publicContext = await Promise.all(variant.publicContext.filter(context => context.includeInPrompt !== false).map(async context => ({ ...context, content: await readFile(resolve(protocolDirectory, context.path), "utf8") })))
     const adapter = await runCommand(protocol.model.adapter, {
       cwd: workspace,
       timeout: protocol.budgets.elapsedMs,
@@ -61,6 +73,7 @@ try {
     if (recordedTrace) validateTrace(trace, protocol.model, protocol.tools)
     adapter.timedOut ||= trace.timedOut === true
     const incomplete = !recordedTrace || trace.complete === false || adapter.timedOut || adapter.signal !== null
+    await checkContext("after-agent")
     const build = await runCommand(variant.build, { cwd: workspace, timeout: protocol.budgets.elapsedMs }, protocolDirectory, workspace)
     await writeFile(join(evidenceDirectory, "build.stdout"), build.stdout)
     await writeFile(join(evidenceDirectory, "build.stderr"), build.stderr)
@@ -69,6 +82,7 @@ try {
     await writeFile(join(evidenceDirectory, "acceptance.stdout"), acceptanceRun.stdout)
     await writeFile(join(evidenceDirectory, "acceptance.stderr"), acceptanceRun.stderr)
     const acceptanceResult = parseAcceptance(acceptanceRun)
+    await checkContext("after-acceptance")
     const source = await inventory(workspace, sourceExcluded)
     const artifactRoot = resolve(workspace, variant.artifactDirectory)
     const artifacts = await inventory(artifactRoot, () => false)
@@ -76,7 +90,7 @@ try {
     await copyInventory(artifacts.entries, artifactRoot, join(evidenceDirectory, "artifacts"))
     const metrics = metricsFor(incomplete ? { ...trace, elapsedMs: Math.max(trace.elapsedMs, Math.round(adapter.elapsedMs)) } : trace, protocol.model.pricing)
     const exceeded = budgetFailures(metrics, protocol.budgets)
-    const status = !incomplete && !adapter.error && adapter.status === 0 && !build.error && !build.timedOut && build.status === 0 && acceptanceResult.passed && !exceeded.length ? "success" : "failure"
+    const status = contextIntegrity.every(entry => entry.passed) && !incomplete && !adapter.error && adapter.status === 0 && !build.error && !build.timedOut && build.status === 0 && acceptanceResult.passed && !exceeded.length ? "success" : "failure"
     const result = {
       schema: 1,
       id: scheduled.id,
@@ -88,6 +102,7 @@ try {
       provider: trace.provider,
       metrics,
       budgetExceeded: exceeded,
+      ...(copiedContext.length ? { contextIntegrity, invalid: contextIntegrity.some(entry => !entry.passed) } : {}),
       sourceRetention: retention(baseline, source),
       artifacts: summarizeInventory(artifacts),
       acceptance: acceptanceResult,
@@ -140,8 +155,14 @@ async function verifyInputs(value, directory) {
   for (const variant of value.variants) {
     const actual = (await inventory(resolve(directory, variant.starter), () => false)).sha256
     if (actual !== variant.starterSha256) throw new Error(`${variant.id} starter digest ${actual} does not match protocol ${variant.starterSha256}`)
+    const destinations = new Set()
     for (const context of variant.publicContext) {
       if (!plain(context) || typeof context.path !== "string" || typeof context.sha256 !== "string") throw new Error(`Invalid ${variant.id} public context`)
+      if (context.copyTo !== undefined) {
+        if (typeof context.copyTo !== "string" || !/^\.tools\/[a-zA-Z0-9_-][a-zA-Z0-9._-]*$/.test(context.copyTo) || destinations.has(context.copyTo)) throw new Error("Public context requires a unique .tools filename")
+        destinations.add(context.copyTo)
+      }
+      if (context.includeInPrompt !== undefined && (typeof context.includeInPrompt !== "boolean" || !context.copyTo)) throw new Error("Prompt omission requires copied public context")
       await verifyFile(resolve(directory, context.path), context.sha256, `${variant.id} public context`)
     }
   }

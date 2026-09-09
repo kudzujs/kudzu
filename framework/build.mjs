@@ -59,13 +59,14 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount, cache, inspectionData, explanation } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache, explanationRoute })
+    const { result, pageCount, behaviorCount, cache, inspectionData, explanation, htmlSummary } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache, explanationRoute })
     const promoteStarted = project.timings ? performance.now() : 0
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
     addTiming(project.timings, "writeMs", promoteStarted)
     project.buildCache = retainCache ? cache : undefined
     if (!quiet) {
       console.log(`Built ${pageCount} page(s), ${behaviorCount} interactive page(s) into dist/`)
+      console.log(htmlSummary)
       console.log("Browser behavior and accessibility need verification: https://kudzujs.cloud/docs#build")
     }
     return explanationRoute ? explanation : inspection ? createInspectionReport(inspectionData) : result
@@ -553,6 +554,34 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
     if (typeof config.afterBuild !== "function") throw new Error("kudzu.config afterBuild must be a function")
     await config.afterBuild({ root, outDir: outputDirectory, sourceDir: sourceDirectory, base, routes: plans.map(plan => plan.route), plans, rewrites: sortedRewrites, artifacts })
   }
+  let htmlSummary
+  if (!quiet) {
+    const counts = { "With markers": 0, Unreadable: 0 }
+    const samples = { "With markers": [], Unreadable: [] }
+    // Scan final route files, not compiler closure metadata or a previous build's scratch report.
+    const outputs = routeRecords.map(record => record.output).sort()
+    for (let offset = 0; offset < outputs.length; offset += 64) {
+      const batch = outputs.slice(offset, offset + 64)
+      const categories = await Promise.all(batch.map(async output => {
+        try {
+          const html = await readFile(join(outputDirectory, output, "index.html"), "utf8")
+          if (/<script(?=[\s/>])|<link(?=[\s/>])[^>]*\bmodulepreload\b/i.test(html)) return "With markers"
+        } catch {
+          return "Unreadable"
+        }
+      }))
+      for (const [index, category] of categories.entries()) {
+        if (!category) continue
+        counts[category]++
+        if (samples[category].length < 5) {
+          const path = join("dist", batch[index], "index.html").replaceAll(sep, "/")
+          samples[category].push(JSON.stringify(path.length > 240 ? `${path.slice(0, 240)}...` : path))
+        }
+      }
+    }
+    htmlSummary = `Route HTML scan: ${routeRecords.length - counts["With markers"] - counts.Unreadable} without script/modulepreload text markers, ${counts["With markers"]} with markers, ${counts.Unreadable} unreadable.`
+    for (const category of Object.keys(counts)) if (counts[category]) htmlSummary += `\n  ${category}: ${samples[category].join(", ")}${counts[category] > 5 ? ` (+${counts[category] - 5} more)` : ""}`
+  }
   addTiming(project.timings, "writeMs", writeStarted)
 
   let explanation
@@ -570,6 +599,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
     result: { sourceResults, incremental },
     inspectionData: { sourceFiles: sourceFiles.map(file => relative(root, file).replaceAll(sep, "/")), sourceResults, compatibility, artifacts },
     explanation,
+    htmlSummary,
     pageCount: routeRecords.length,
     behaviorCount,
     cache: { pageRenders, pageSources, placeholders, sourceResults: sourceResultsByFile }

@@ -1,5 +1,45 @@
 # Kudzu Releases
 
+## 0.16.28 - Bounded Route HTML Summary
+
+Kudzu 0.16.28 adds a bounded lexical inventory of final generated route HTML,
+without changing compiler semantics, runtime behavior, or emitted browser bytes.
+
+### Changed in 0.16.28
+
+- Normal builds scan route HTML after public copying and `afterBuild`, using
+  batches of 64 reads and printing only after successful output promotion.
+  Counts distinguish script/modulepreload text markers from unreadable files,
+  with up to five sorted, bounded paths per nonempty category.
+- Quiet/JSON output, failure exits, build return contracts, artifact schemas and
+  deploy bytes remain unchanged. This text scan is not zero-JavaScript proof:
+  comments/inert content can match, inline event attributes are not checked,
+  and extra public HTML is outside the route inventory.
+- Repository-only Linux Chrome smoke tools observe rendered text/accessible
+  names and native input, provide bounded exact-target diagnostics, and fail on
+  observed browser/resource errors. Optional automatic favicon probes do not
+  hide authored icons, scripts, styles, CSS images or `srcset` failures.
+- The test runner can copy hash-pinned public tools equally into workspaces and
+  invalidate changed/missing/symlink-replaced copies. This is trusted-local
+  evidence tooling, not a sandbox, shipped npm API, or acceptance oracle.
+- Release review fixes browser-test skip/required-Chrome handling and adds
+  authored favicon image regressions. Package smoke explicitly excludes tests
+  and private evidence; no npm files expansion or dependency is introduced.
+- Preserves historical r9 (3/5 versus 5/5), local summary r10 and equal-browser
+  tools r11 (each 4/5 versus 5/5), without rescoring. Full r8 remains 23/25 versus
+  24/25. These experiments demonstrate no AI-token advantage; `1.0.0` is blocked.
+- Updates `create-kudzu@0.1.153` to generate `@kudzujs/core@^0.16.28` projects.
+
+The recorded 21-sample alternating build comparison preserves every deploy byte.
+Final batched medians change +4.80% at 111 pages and -0.23% at 1,011 pages, with
+overlapping ranges, not an established speedup or zero-overhead claim.
+
+Upgrade:
+
+```sh
+npm install @kudzujs/core@^0.16.28
+```
+
 ## 0.16.27 - Application Verification Guidance
 
 Kudzu 0.16.27 clarifies post-build verification without changing compiler

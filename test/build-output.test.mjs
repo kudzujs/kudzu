@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
+import { gzipSync } from "node:zlib"
 import test from "node:test"
 import { build as buildProject, buildWithSession } from "../framework/build.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
@@ -54,7 +55,7 @@ export default {
 
   const initial = build()
   assert.equal(initial.status, 0, `${initial.stdout}\n${initial.stderr}`)
-  assert.equal(initial.stdout, `Built 2 page(s), 2 interactive page(s) into dist/\n${verificationHint}\n`)
+  assert.equal(initial.stdout, `Built 2 page(s), 2 interactive page(s) into dist/\nRoute HTML scan: 0 without script/modulepreload text markers, 2 with markers, 0 unreadable.\n  With markers: "dist/index.html", "dist/about/index.html"\n${verificationHint}\n`)
   const expected = await fileManifest(join(fixture, "dist"))
   const quietBuild = `const { build } = await import(${JSON.stringify(new URL("../framework/build.mjs", import.meta.url).href)}); await build({ quiet: true })`
   for (const args of [[cli, "build", "--json"], ["--input-type=module", "--eval", quietBuild]]) {
@@ -137,6 +138,51 @@ export default {
   await assert.rejects(readFile(join(fixture, "dist/old-only.txt")))
   assert.deepEqual((await readdir(fixture)).filter(name => name.startsWith(".kudzu-dist-")), [])
   assert.equal((await readdir(fixture)).includes(".kudzu-build.lock"), false)
+})
+
+test("summarizes final route HTML without certifying compiler metadata or browser behavior", { timeout: 120_000 }, async t => {
+  const fixture = await mkdtemp(resolve("test/fixtures/html-summary-"))
+  t.after(() => rm(fixture, { recursive: true, force: true }))
+  await mkdir(join(fixture, "src/pages"), { recursive: true })
+  await writeFile(join(fixture, "src/pages/index.tsx"), `export default function Page() { return <main><h1>Static content</h1><code>{'<script src="example.js"></script><link rel="modulepreload" href="example.js">'}</code></main> }`)
+  const run = (...args) => spawnSync(process.execPath, [cli, "build", ...args], { cwd: fixture, encoding: "utf8" })
+  const staticBuild = run()
+  assert.equal(staticBuild.status, 0, staticBuild.stderr)
+  assert.equal(staticBuild.stdout, `Built 1 page(s), 0 interactive page(s) into dist/\nRoute HTML scan: 1 without script/modulepreload text markers, 0 with markers, 0 unreadable.\n${verificationHint}\n`)
+  assert.equal(Object.keys(await fileManifest(join(fixture, "dist"))).some(path => /\.m?js$/.test(path)), false)
+  await writeFile(join(fixture, "src/pages/search.tsx"), `
+import { useState } from "@kudzujs/core"
+export default function Search() {
+  const [query, setQuery] = useState("")
+  return <main><input aria-label="Search" onInput={event => setQuery(event.currentTarget.value)} /><p>{query}</p></main>
+}`)
+  const initial = run()
+  assert.equal(initial.status, 0, initial.stderr)
+  assert.equal(initial.stdout, `Built 2 page(s), 1 interactive page(s) into dist/\nRoute HTML scan: 1 without script/modulepreload text markers, 1 with markers, 0 unreadable.\n  With markers: "dist/search/index.html"\n${verificationHint}\n`)
+  const expected = await fileManifest(join(fixture, "dist"))
+  assert.doesNotMatch(Buffer.from(expected["index.html"], "base64").toString(), /<script|<link[^>]*modulepreload/i)
+  const javascript = Object.entries(expected).filter(([path]) => /\.m?js$/.test(path)).map(([, contents]) => Buffer.from(contents, "base64"))
+  assert.ok(javascript.length)
+  for (const contents of javascript) assert.doesNotMatch(contents.toString(), /Route HTML scan|script\/modulepreload text markers/)
+  t.diagnostic(`Summary: ${Buffer.byteLength(initial.stdout) - Buffer.byteLength(`Built 2 page(s), 1 interactive page(s) into dist/\n${verificationHint}\n`)} added stdout bytes; unchanged JS: ${javascript.reduce((sum, bytes) => sum + bytes.length, 0)} raw / ${javascript.reduce((sum, bytes) => sum + gzipSync(bytes).length, 0)} gzip bytes`)
+  const manifest = await readFile(join(fixture, ".kudzu/kudzu-artifacts.json"), "utf8")
+  const quiet = run("--json")
+  assert.equal(quiet.status, 0, quiet.stderr)
+  assert.equal(quiet.stdout, "")
+  assert.deepEqual(await fileManifest(join(fixture, "dist")), expected)
+  assert.equal(await readFile(join(fixture, ".kudzu/kudzu-artifacts.json"), "utf8"), manifest)
+  for (let i = 0; i < 70; i++) await writeFile(join(fixture, `src/pages/p${i}.tsx`), `export default function Page() { return <p>Content</p> }`)
+  await writeFile(join(fixture, "kudzu.config.mjs"), `
+import { writeFile, rm } from "node:fs/promises"
+import { join } from "node:path"
+export default { base: "/base", async afterBuild({ outDir }) {
+  await rm(join(outDir, "index.html"))
+  for (let i = 0; i < 70; i++) await writeFile(join(outDir, "p" + i, "index.html"), i % 2 ? '<ScRiPt src="/external.js"></ScRiPt>' : '<link rel="MODULEPRELOAD" href="/external.js">')
+} }
+`)
+  const changed = run()
+  assert.equal(changed.status, 0, changed.stderr)
+  assert.equal(changed.stdout, `Built 72 page(s), 1 interactive page(s) into dist/\nRoute HTML scan: 0 without script/modulepreload text markers, 71 with markers, 1 unreadable.\n  With markers: "dist/p0/index.html", "dist/p1/index.html", "dist/p10/index.html", "dist/p11/index.html", "dist/p12/index.html" (+66 more)\n  Unreadable: "dist/index.html"\n${verificationHint}\n`)
 })
 
 test("builds independent project roots in one process", async t => {

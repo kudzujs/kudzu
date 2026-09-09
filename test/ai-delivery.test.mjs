@@ -85,3 +85,59 @@ test("does not count an unattributed adapter result as a success", async t => {
   assert.equal(report.variants[0].costPerSuccessUsdNanos, null)
   assert.equal(report.variants[0].tokensPerSuccess, null)
 })
+
+test("copies equal public tools, excludes harness bytes, and invalidates every changed tool or document", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "kudzu-public-tools-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const fixture = join(directory, "fixture")
+  await cp(resolve("test/fixtures/ai-delivery"), fixture, { recursive: true })
+  const names = ["browser-smoke.mjs", "browser-cdp.mjs", "browser-smoke-public.md"]
+  const contexts = []
+  for (const name of names) {
+    const bytes = await readFile(resolve("test", name))
+    await writeFile(join(fixture, name), bytes)
+    contexts.push({ path: name, copyTo: `.tools/${name}`, includeInPrompt: name.endsWith(".md"), sha256: createHash("sha256").update(bytes).digest("hex") })
+  }
+  const original = await readFile(join(fixture, "adapter.mjs"), "utf8")
+  const protocolFile = join(fixture, "protocol.json")
+  const protocol = JSON.parse(await readFile(protocolFile, "utf8"))
+  protocol.tools.names.push("shell")
+  protocol.variants.forEach(variant => { variant.publicContext = contexts })
+  for (const [index, name] of names.entries()) {
+    const adapter = `${original.replace("const successful = input.ordinal === 0", "const successful = true")}
+const assert = (await import('node:assert/strict')).default
+const { createHash } = await import('node:crypto')
+const contexts = ${JSON.stringify(contexts)}
+assert.equal(input.publicContext.length, 1)
+assert.equal(input.publicContext[0].path, 'browser-smoke-public.md')
+for (const entry of contexts) assert.equal(createHash('sha256').update(await readFile(resolve(input.workspace, entry.copyTo))).digest('hex'), entry.sha256)
+const trace = JSON.parse(await readFile(input.trace))
+trace.tools.push({name:'shell',command:'node .tools/browser-smoke.mjs dist'})
+await writeFile(input.trace, JSON.stringify(trace)+'\\n')
+if (input.ordinal === 1) await writeFile(resolve(input.workspace, '.tools/${name}'), 'changed')
+`
+    await writeFile(join(fixture, "adapter.mjs"), adapter)
+    protocol.model.adapter.sha256 = createHash("sha256").update(adapter).digest("hex")
+    await writeFile(protocolFile, JSON.stringify(protocol))
+    const output = join(directory, `evidence-${index}`)
+    const result = spawnSync(process.execPath, [resolve("test/ai-delivery-runner.mjs"), "--protocol", protocolFile, "--out", output], { encoding: "utf8", timeout: 120_000 })
+    assert.equal(result.status, 0, result.stderr)
+    const report = JSON.parse(await readFile(join(output, "run.json")))
+    for (const attempt of report.attempts) {
+      assert.equal(attempt.invalid, attempt.ordinal === 1)
+      assert.equal(attempt.status, attempt.ordinal === 1 ? "failure" : "success")
+      assert.equal(attempt.acceptance.passed, true, "passing acceptance cannot excuse tool tampering")
+      assert.equal(attempt.metrics.buildAttempts, 1, "nested observations do not count as builds")
+      assert.equal(attempt.metrics.toolCalls, 3, "browser shell is a normal tool call")
+      assert.equal(attempt.contextIntegrity.length, 6)
+      assert.equal(attempt.contextIntegrity.filter(entry => !entry.passed).length, attempt.ordinal === 1 ? 2 : 0)
+      assert.equal(attempt.sourceRetention.baselineFiles, report.attempts[0].sourceRetention.baselineFiles)
+      await assert.rejects(readFile(join(output, attempt.evidence, "source/.tools", name)), { code: "ENOENT" })
+    }
+  }
+  protocol.variants[0].publicContext[0].copyTo = "../escape.mjs"
+  await writeFile(protocolFile, JSON.stringify(protocol))
+  const rejected = spawnSync(process.execPath, [resolve("test/ai-delivery-runner.mjs"), "--protocol", protocolFile, "--out", join(directory, "rejected")], { encoding: "utf8" })
+  assert.notEqual(rejected.status, 0)
+  assert.match(rejected.stderr, /unique .tools filename/)
+})
