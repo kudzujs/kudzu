@@ -29,12 +29,18 @@ export function generateBindingRuntime(source, capabilityIR, navigable) {
   assertCapabilityIR(capabilityIR)
   let runtime = replaceRequired(source, '"./shared-runtime.js"', '"./kudzu.js"', "shared runtime import", "binding-runtime.js")
   runtime = replaceRequired(runtime, '"./serialization.js"', '"./kudzu-serialization.js"', "serialization import", "binding-runtime.js")
-  runtime = replaceRequired(runtime, '"./style.js"', '"./kudzu-style.js"', "style import", "binding-runtime.js")
+  runtime = capabilityIR.bindings.style
+    ? replaceRequired(runtime, '"./style.js"', '"./kudzu-style.js"', "style import", "binding-runtime.js")
+    : replaceSequenceRequired(runtime, [
+      ['import { serializeStyle } from "./style.js"\n', "", "unused style import"],
+      ['  } else if (target === "style") {\n    const style = serializeStyle(value)\n    if (style) node.setAttribute("style", style)\n    else node.removeAttribute("style")\n', "", "unused style branch"]
+    ], "binding-runtime.js")
   if (navigable) runtime = specializeNavigationTextDescriptors(runtime)
   return {
     source: runtime,
     define: {
       "globalThis.__KUDZU_TEXT_BINDINGS__": String(capabilityIR.bindings.text),
+      "globalThis.__KUDZU_CONDITIONS__": String(capabilityIR.bindings.conditions),
       "globalThis.__KUDZU_SVG_CONDITIONS__": String(capabilityIR.bindings.svgConditions),
       "globalThis.__KUDZU_CAPTURE_STATE__": String(capabilityIR.captures.nestedState)
     }

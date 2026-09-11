@@ -39,6 +39,7 @@ for (const shape of ["aliases", "direct alias count", "direct count", "inline co
   assert.equal(plan.lists[0].static, true)
   assert.deepEqual(plan.lists[0].selectorStates, { query: "s0" })
   const files = (await readdir(join(root, "dist"), { recursive: true })).filter(file => file.endsWith(".js")).sort()
+  assert.ok(!files.some(file => file.endsWith("/kudzu-style.js")), "text/list search must not ship unused style serialization")
   const runtime = createHash("sha256")
   const javascript = createHash("sha256")
   let raw = 0, gzip = 0

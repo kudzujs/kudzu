@@ -1,0 +1,11 @@
+---
+import type { Article } from "../data"
+interface Props { article: Article }
+const { article } = Astro.props
+---
+<article class="article-card">
+  <p class="eyebrow">{article.topic}</p>
+  <h2><a href={`/articles/${article.slug}/`}>{article.title}</a></h2>
+  <p>{article.excerpt}</p>
+  <p class="meta"><time datetime={article.date}>{article.displayDate}</time> · {article.minutes} min read</p>
+</article>

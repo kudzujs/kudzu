@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "revision": 8,
-  "id": "production-content-search-r8",
-  "revisionNote": "Future runs only: pins released Kudzu 0.16.26 to measure the combined product package and README cleanup with registry lock integrity and canonical starter hashes. Historical r7 raw evidence and scores are unchanged; frozen r6 inputs remain archived. Retains r7 acceptance, all ten static siblings, model, budgets, tools, adapter lifecycle, incomplete attribution, prompts, public context, React starters, authored starter source, and serial alternating schedules. Package hygiene is not a sandbox; compiler source and public web remain accessible.",
+  "revision": 18,
+  "id": "production-content-search-r18",
+  "revisionNote": "Future runs only: count visible Content results instead of hidden DOM cards. Hidden or removed results are permitted equally; visible stale rows still fail. Historical r7 raw evidence and scores are unchanged; frozen r6 inputs remain archived, as do r8 and experimental r9-r17 results. Retains existing package pins, model, budgets, adapter, public context and schedules. No historical rescoring or cost improvement is claimed.",
   "packet": "0.21.4",
   "model": {
     "provider": "openai-via-opencode",
@@ -21,9 +21,9 @@
     "id": "content-search",
     "class": "content",
     "prompt": "prompt.md",
-    "promptSha256": "f5c1a1b7805622ae776560c3d3f0d3819ebe675e7be44d2e993c5e1ab471ae5e",
-    "acceptanceContract": { "path": "acceptance-contract.md", "sha256": "fcc79583cd12d3df69cf24446e9ce142026580555760d28a92c0dcff2b937571" },
-    "acceptance": { "command": "node", "args": ["{protocol}/../../../ai-delivery-production-acceptance.mjs", "{workspace}", "content"], "sha256": "0e665a6b8cc83bb282ee4985ffcf421bb4abba7fcea9f58a732c4b7bfb65aeb7" }
+    "promptSha256": "31a8b69888abcbbd4320aa21459f1c6acfbf219d5424e87f5646b13e94c51bc3",
+    "acceptanceContract": { "path": "acceptance-contract.md", "sha256": "1f9f808aaefe9d859fde5c19c9fd3860ba713a3044601c26ea8f27df7f389b9f" },
+    "acceptance": { "command": "node", "args": ["{protocol}/../../../ai-delivery-production-acceptance.mjs", "{workspace}", "content"], "sha256": "372e02b41025691520a4a71ff00142941a100c7fccf7357e803ff206bd757fd3" }
   },
   "variants": [
     { "id": "kudzu", "framework": "Kudzu 0.16.26", "starter": "starters/kudzu", "starterSha256": "d857c270fe66640ff155719b52a75e0bcf48fdb257f926b32271bf612bf0074e", "publicContext": [{ "path": "../public-kudzu.md", "sha256": "1a341f6d42f83784dd7eda729f45a8d9fd66414448f4051c2b3483e7e90eff61" }], "build": { "command": "npm", "args": ["run", "build"] }, "artifactDirectory": "dist" },

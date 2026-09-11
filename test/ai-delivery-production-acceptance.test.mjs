@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { articleSummary, memoFilterSelected, staticOutputChecks, CDP, evaluate, waitForPort } from "./ai-delivery-production-acceptance.mjs"
+import { articleSummary, visibleArticleTitles, memoFilterSelected, staticOutputChecks, CDP, evaluate, waitForPort } from "./ai-delivery-production-acceptance.mjs"
 
 test("production acceptance checks semantic DOM rather than framework-specific markup", async t => {
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
@@ -47,6 +47,17 @@ test("production acceptance checks semantic DOM rather than framework-specific m
     '<p aria-live="polite">0 articles</p><p aria-live="polite">6 articles</p>',
   ]) assert.equal(await check(html, `(${articleSummary})()`), null, html)
   assert.notEqual(await check('<p aria-live="polite">6 articles</p>', `(${articleSummary})()`), "0 articles", "stale count is not an empty result")
+
+  const card = (name, attributes = "") => `<article class="article-card" ${attributes}><h2>${name}</h2></article>`
+  for (const hidden of ["hidden", 'style="display:none"', 'style="visibility:hidden"']) {
+    assert.deepEqual(await check(card("Selected") + card("Filtered", hidden), `(${visibleArticleTitles})()`), ["Selected"])
+  }
+  assert.deepEqual(await check(card("Selected") + `<div hidden>${card("Filtered")}</div>`, `(${visibleArticleTitles})()`), ["Selected"])
+  assert.deepEqual(await check(card("Filtered", "hidden"), `(${visibleArticleTitles})()`), [])
+  assert.deepEqual(await check(card("Selected") + card("Still visible", 'aria-hidden="true"'), `(${visibleArticleTitles})()`), ["Selected", "Still visible"], "ARIA hiding alone must not hide a visually incorrect result")
+  await check(card("Restored", "hidden"), "true")
+  await evaluate(cdp, 'document.querySelector("article").hidden=false')
+  assert.deepEqual(await evaluate(cdp, `(${visibleArticleTitles})()`), ["Restored"])
 
   const buttons = selected => ["All", "Active", "Archived"].map(label => `<button aria-pressed="${label === selected}">${label}</button>`).join("")
   for (const selected of ["All", "Active", "Archived"]) {

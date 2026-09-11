@@ -75,6 +75,7 @@ export async function browserSmoke(directory, commands, emit = console.log, time
       await send("Network.enable")
       await send("Accessibility.enable")
       await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false })
+      const observations = new Map()
       for (const [index, command] of commands.entries()) {
         const started = performance.now()
         try {
@@ -84,21 +85,25 @@ export async function browserSmoke(directory, commands, emit = console.log, time
             const result = await send("Page.navigate", { url: url.href })
             if (result.errorText) throw new Error(result.errorText)
           } else if (["click", "fill"].includes(command.op)) {
-            if (typeof command.role !== "string" || typeof command.name !== "string") throw new Error("Action requires exact role and accessible name")
+            const named = Object.hasOwn(command, "name")
+            if (typeof command.role !== "string" || !command.role || (named && typeof command.name !== "string")) throw new Error("Action requires exact role and optional string accessible name")
+            if (command.op === "fill" && (!["textbox", "searchbox"].includes(command.role) || typeof command.value !== "string")) throw new Error("fill requires textbox/searchbox and string value")
+            if (command.op === "click" && !["button", "link", "checkbox", "radio", "switch", "tab", "menuitem", "menuitemcheckbox", "menuitemradio"].includes(command.role)) throw new Error("Unsupported click role")
             const { nodes } = await send("Accessibility.getFullAXTree")
             const candidates = nodes.filter(node => !node.ignored && node.role?.value === command.role && node.backendDOMNodeId)
-            const matches = candidates.filter(node => node.name?.value === command.name)
+            const matches = named ? candidates.filter(node => node.name?.value === command.name) : candidates
             if (matches.length !== 1) {
               const alternatives = matches.length ? matches : candidates
               const shown = alternatives.slice(0, 5).map(node => ({ role: node.role.value, name: String(node.name?.value ?? "").slice(0, 160), nameTruncated: String(node.name?.value ?? "").length > 160 }))
-              throw new Error(`Expected one accessible target; found ${matches.length}. Exact role/name required. AX candidates (${alternatives.length} total, at most 5 shown): ${JSON.stringify(shown)}`)
+              throw new Error(`Expected one accessible target; found ${matches.length}. ${named ? "Exact role/name required." : "Role-only query must be unique."} AX candidates (${alternatives.length} total, at most 5 shown): ${JSON.stringify(shown)}`)
             }
             if (matches[0].properties?.some(p => p.name === "disabled" && p.value.value)) throw new Error("Target is disabled")
             const { object } = await send("DOM.resolveNode", { backendNodeId: matches[0].backendDOMNodeId })
+            const { result: actionable } = await send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: `function(){return this.checkVisibility() && !this.closest('[inert]') && !this.matches(':disabled') && ${command.op === "fill" ? "!this.readOnly && (this instanceof HTMLTextAreaElement || (this instanceof HTMLInputElement && ['text','search','email','url','tel','password'].includes(this.type)))" : "true"}}`, returnByValue: true })
+            if (!actionable.value) throw new Error("Target is not visible or does not support this action")
             const focused = await send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function(){this.scrollIntoView({block:'center'});this.focus();return document.activeElement===this}", returnByValue: true })
             if (!focused.result.value) throw new Error("Target cannot receive focus")
             if (command.op === "fill") {
-              if (!["textbox", "searchbox"].includes(command.role) || typeof command.value !== "string") throw new Error("fill requires textbox/searchbox and string value")
               await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", modifiers: 2, windowsVirtualKeyCode: 65 })
               await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", modifiers: 2, windowsVirtualKeyCode: 65 })
               await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Backspace", windowsVirtualKeyCode: 8 })
@@ -107,6 +112,8 @@ export async function browserSmoke(directory, commands, emit = console.log, time
             } else {
               const { model } = await send("DOM.getBoxModel", { backendNodeId: matches[0].backendDOMNodeId })
               const x = (model.content[0] + model.content[4]) / 2, y = (model.content[1] + model.content[5]) / 2
+              const { result: hit } = await send("Runtime.callFunctionOn", { objectId: object.objectId, functionDeclaration: "function(x,y){return this.contains(document.elementFromPoint(x,y))}", arguments: [{ value: x }, { value: y }], returnByValue: true })
+              if (!hit.value) throw new Error("Target is obscured")
               await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 })
               await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 })
             }
@@ -117,8 +124,15 @@ export async function browserSmoke(directory, commands, emit = console.log, time
           const snapshot = await evaluate(cdp, "(() => {const text=document.body?.innerText ?? '';return {text:text.slice(0,4000),textTruncated:text.length>4000}})()")
           if (command.op === "expect-text" && (typeof command.text !== "string" || !await evaluate(cdp, `(document.body?.innerText ?? '').includes(${JSON.stringify(command.text)})`))) throw new Error("Caller-supplied rendered text was not found")
           const { nodes } = await send("Accessibility.getFullAXTree")
-          const exposed = nodes.filter(node => !node.ignored && node.name?.value).map(node => ({ role: node.role?.value, name: String(node.name.value).slice(0, 160) }))
-          emit(JSON.stringify({ index, command, ok: true, elapsedMs: Math.round(performance.now() - started), ...snapshot, accessibility: exposed.slice(0, 60), accessibilityTruncated: exposed.length > 60 }))
+          const namedNodes = nodes.filter(node => !node.ignored && node.name?.value)
+          const distinct = namedNodes.filter(node => !(["StaticText", "InlineTextBox"].includes(node.role?.value) && snapshot.text.includes(String(node.name.value))))
+          const exposed = distinct.map(node => ({ role: node.role?.value, name: String(node.name.value).slice(0, 160) }))
+          const observation = { ...snapshot, accessibility: exposed.slice(0, 60), accessibilityTruncated: exposed.length > 60, duplicateTextEntriesOmitted: namedNodes.length - distinct.length }
+          const serialized = JSON.stringify(observation)
+          const observationIndex = observations.get(serialized)
+          const unchanged = !["open", "snapshot"].includes(command.op) && observationIndex !== undefined
+          emit(JSON.stringify({ index, command, ok: true, elapsedMs: Math.round(performance.now() - started), ...(unchanged ? { observationFrom: observationIndex } : observation) }))
+          if (!unchanged) observations.set(serialized, index)
         } catch (error) {
           emit(JSON.stringify({ index, command, ok: false, elapsedMs: Math.round(performance.now() - started), error: error.message }))
           throw error

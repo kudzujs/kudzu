@@ -1,5 +1,35 @@
 # Kudzu Releases
 
+## 0.16.29 - Unused Runtime Exclusion
+
+Kudzu 0.16.29 uses existing route facts to omit style serialization and
+conditional DOM ownership when a runtime family does not need them.
+
+### Changed in 0.16.29
+
+- Removes unused style imports, patch branches and serializer files. The maintained
+  imported-search graph drops 1,202 raw bytes and about 620 aggregate gzip bytes;
+  dynamic-style owners retain their serializer.
+- Excludes conditional registries, template hooks and branch commit/release work
+  from no-branch binding pages. The binding fixture drops a further 1,399 raw /
+  415 gzip bytes. Mixed and navigable families retain capabilities used by any owner.
+- Adds no semantic primitive, compiler pass, runtime concept or dependency.
+  Capability-family hashes change intentionally; static routes remain script-free.
+- Repository-only browser tooling reuses bounded observations, summarizes duplicate
+  visible AX prose and supports explicit unique-role actions while preserving exact
+  supplied names and actionable-target checks. It remains outside the npm package.
+- Extends comparison infrastructure to additional frameworks, preserves authored
+  Astro pages while excluding generated scratch, and adds an isolated Astro Content
+  starter. Future r18 acceptance counts visible results, supporting native hiding
+  as well as DOM removal; original experiment scores remain preserved.
+- Records R12–R17 evidence and limitations without claiming AI-token, latency or
+  React/Astro superiority. The `1.0.0` gate remains blocked.
+- Updates `create-kudzu@0.1.154` to generate `@kudzujs/core@^0.16.29` projects.
+
+```sh
+npm install @kudzujs/core@^0.16.29
+```
+
 ## 0.16.28 - Bounded Route HTML Summary
 
 Kudzu 0.16.28 adds a bounded lexical inventory of final generated route HTML,

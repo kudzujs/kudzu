@@ -1261,7 +1261,7 @@ test("plans binding and list runtime specializations", () => {
   })
   const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasBindings: true, hasLists: true, hasListStyles: true })])
 
-  assert.deepEqual(manifest.bindings, { count: 1, text: true, svgConditions: true })
+  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, svgConditions: true })
   assert.equal(manifest.lists.count, 1)
   assert.equal(manifest.lists.styleCount, 1)
   assert.equal(manifest.lists.selectors, true)
@@ -1293,9 +1293,39 @@ test("plans native, effect, capture, and dependency runtime capabilities", () =>
   assert.equal(usesRouteDependencyRuntime({ plan, navigable: false, hasBindings: false, hasLists: false }), false)
 })
 
+test("specializes style bindings across the entire runtime family", () => {
+  const source = readFileSync(new URL("../framework/binding-runtime.js", import.meta.url), "utf8")
+  const make = target => routeRecord(routePlan({ states: [{ slot: 0, id: "s0", name: "value", initialValue: "color:red" }], bindings: [{ target, state: "s0" }] }), { hasBehaviors: true, hasBindings: true })
+  const text = make("text"), style = make("style")
+  const without = planRouteCapabilities([text])
+  assert.equal(without.bindings.style, false)
+  assert.doesNotMatch(generateBindingRuntime(source, without, false).source, /serializeStyle|target === "style"/)
+  for (const records of [[style], [text, style], [style, text]]) {
+    const mixed = planRouteCapabilities(records)
+    assert.equal(mixed.bindings.style, true)
+    assert.match(generateBindingRuntime(source, mixed, false).source, /serializeStyle.*kudzu-style\.js/)
+    assert.match(generateBindingRuntime(source, mixed, true).source, /target === "style"/)
+  }
+})
+
 function routePlan(overrides = {}) {
   return { version: 1, route: "/test", states: [], params: [], searchParams: [], searchParamsWritable: false, events: [], effects: [], bindings: [], conditions: [], lists: [], ...overrides }
 }
+
+test("retains conditional capability when any runtime-family owner needs branches", () => {
+  const state = { slot: 0, id: "s0", name: "open", initialValue: false }
+  const binding = routeRecord(routePlan({ states: [state], bindings: [{ target: "text", state: "s0" }] }), { hasBehaviors: true, hasBindings: true })
+  const branch = routeRecord(routePlan({ states: [state], conditions: [{ id: "c0", kind: "and", state: "s0", initial: false }] }), { navigable: true, hasBehaviors: true, hasBindings: true })
+  const source = readFileSync(new URL("../framework/binding-runtime.js", import.meta.url), "utf8")
+  const plain = planRouteCapabilities([binding])
+  assert.equal(plain.bindings.conditions, false)
+  assert.equal(generateBindingRuntime(source, plain, false).define["globalThis.__KUDZU_CONDITIONS__"], "false")
+  for (const records of [[branch], [binding, branch], [branch, binding]]) {
+    const capability = planRouteCapabilities(records)
+    assert.equal(capability.bindings.conditions, true)
+    assert.equal(generateBindingRuntime(source, capability, true).define["globalThis.__KUDZU_CONDITIONS__"], "true")
+  }
+})
 
 function routeCapability(overrides = {}) {
   return { navigable: false, usesDependencyRuntime: false, hasBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false, hasStateSeed: false, hasParams: false, hasEffects: false, ...overrides }

@@ -2,6 +2,8 @@
 
 Add an accessible client-side search to the `/articles/` route.
 
+Only matching articles should be visible. Nonmatching cards may be removed from the DOM or hidden; restoring the query must restore the matching results.
+
 The page must keep its existing heading, introduction, navigation, article data, cards, links, metadata, and styling. Add one visibly labeled search input with the accessible name `Search articles`. As the visitor types, filter the existing seeded articles case-insensitively when the query occurs in either the article title or topic. Ignore leading and trailing whitespace.
 
 Show a live result summary with exact text `6 articles` initially and after clearing the input. Use the singular form `1 article` and otherwise use `<count> articles`. The summary must be in an `aria-live="polite"` region. When no articles match, also show the visible text `No articles match your search.` The count and empty message may share that region or use separate elements. Do not add a submit button, debounce, URL state, persistence, dependency, or server request.

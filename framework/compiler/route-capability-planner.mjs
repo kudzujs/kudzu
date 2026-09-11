@@ -13,7 +13,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
   for (const plan of plans) assertRouteIR(plan, { concrete: true })
   const commandEvents = new Set()
   const nativeEvents = new Set()
-  const bindings = { count: 0, text: false, svgConditions: false }
+  const bindings = { count: 0, text: false, style: false, conditions: false, svgConditions: false }
   const lists = {
     count: 0,
     styleCount: 0,
@@ -50,6 +50,8 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
       if (event.native) nativeEvents.add(event.event)
     }
     bindings.text ||= plan.bindings.some(binding => binding.target === "text")
+    bindings.style ||= plan.bindings.some(binding => binding.target === "style")
+    bindings.conditions ||= plan.conditions.length > 0
     bindings.svgConditions ||= plan.conditions.some(condition => condition.svg)
     effects.any ||= plan.effects.length > 0
     effects.derivedDependencies ||= plan.effects.some(effect => effect.dependencyExpressions?.length)
@@ -118,7 +120,7 @@ export function assertCapabilityIR(capabilityIR, records, options = {}) {
   if (!sections.every(name => isRecord(capabilityIR[name]))) throw new Error("Invalid CapabilityIR v1 structure")
   if (!["behaviors", "regularBehaviors", "regularStateSeeds", "dependencyStateSeeds"].every(name => isCount(capabilityIR.routes[name]))) throw new Error("Invalid CapabilityIR v1 route counts")
   if (!["command", "native"].every(name => Array.isArray(capabilityIR.events[name]) && capabilityIR.events[name].every(event => typeof event === "string")) || typeof capabilityIR.events.hasNativeHandlers !== "boolean") throw new Error("Invalid CapabilityIR v1 events")
-  if (!isCount(capabilityIR.bindings.count) || !["text", "svgConditions"].every(name => typeof capabilityIR.bindings[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 bindings")
+  if (!isCount(capabilityIR.bindings.count) || !["text", "style", "conditions", "svgConditions"].every(name => typeof capabilityIR.bindings[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 bindings")
   const listFlags = ["conditions", "svg", "deepConditions", "textRanges", "attributes", "events", "expressions", "expressionAttributes", "seeds", "effects", "rowHooks", "rowRefs", "complexRowState", "nested", "selectors", "calculated", "static", "indexes", "stableFastPaths", "generalRowHooks", "asyncParts", "mounts"]
   if (!isCount(capabilityIR.lists.count) || !isCount(capabilityIR.lists.styleCount) || !listFlags.every(name => typeof capabilityIR.lists[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 lists")
   if (!["any", "derivedDependencies", "itemDependencies", "captures", "navigable", "navigableOwners"].every(name => typeof capabilityIR.effects[name] === "boolean") || !["nestedState", "setter"].every(name => typeof capabilityIR.captures[name] === "boolean") || !["shared", "dependency"].every(name => typeof capabilityIR.runtime[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 effect, capture, or runtime flags")

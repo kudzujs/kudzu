@@ -185,6 +185,10 @@ export function articleSummary() {
   return summaries.length === 1 ? summaries[0].match(/^\d+ articles?/)[0] : null
 }
 
+export function visibleArticleTitles() {
+  return [...document.querySelectorAll(".article-card h2")].filter(node => node.checkVisibility({ visibilityProperty: true, opacityProperty: true })).map(node => node.textContent.trim())
+}
+
 export function memoFilterSelected(selected) {
   const labels = ["All", "Active", "Archived"]
   return [...document.querySelectorAll('[role="group"],fieldset')].some(group => {
@@ -207,7 +211,7 @@ function entryPath(task) {
 async function search(cdp, value) {
   await evaluate(cdp, `(() => { const input=document.querySelector('input[type="search"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value").set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}));return true })()`)
   await new Promise(resolveSleep => setTimeout(resolveSleep, 25))
-  return evaluate(cdp, `({ count:(${articleSummary})(), titles:[...document.querySelectorAll('.article-card h2')].map(node=>node.textContent.trim()), text:document.body.innerText })`)
+  return evaluate(cdp, `({ count:(${articleSummary})(), titles:(${visibleArticleTitles})(), text:document.body.innerText })`)
 }
 
 async function clickText(cdp, text) {

@@ -1,6 +1,1063 @@
 # Performance Records
 
+## 0.16.29 Release Scope
+
+The accumulated unused-style and unused-conditional runtime exclusions ship as
+core 0.16.29 with generator 0.1.154. Earlier no-release statements describe their
+measurement sessions, not the later release transaction. Repository-only browser
+observation/targeting work, Astro comparison readiness and future r18 visibility
+acceptance are included in source/test history but not the core npm payload.
+Historical raw attempts and scores remain unchanged; smaller deploy artifacts
+do not establish AI-cost or latency superiority. All raw `test-results` stay
+outside the release commit and npm package.
+
+The exact 0.16.29 release tree passes default-parallel required-Chrome `npm test`
+(standalone 1/1 plus 328/328, no skips), check (229 pages), package smoke and both
+pack dry runs. Earlier parallel browser-tool failures remain in their original
+records; the passing release run does not claim that their underlying readiness
+race was fixed. Core tarball contents remain limited to the installed product.
+
+## Unused Conditional Runtime Exclusion (2026-09-11)
+
+The maintained `bindings` fixture has no RouteIR conditions but previously ships
+conditional template scanning, branch cloning/state ownership and condition
+registries. Its new absence assertion fails before the optimization. Existing
+condition records now drive an internal runtime-family `bindings.conditions`
+flag. Generated code removes unused registries, mount/unmount hooks and condition
+commit/release work through the existing esbuild define specialization path.
+Families containing any conditional owner retain the full behavior, including
+navigation; no new primitive, pass, dependency or runtime concept is introduced.
+
+| Same-source JavaScript | Before raw / gzip B | After raw / gzip B |
+|---|---:|---:|
+| Attribute/text bindings without structural branches | 12,113 / 5,180 | 10,714 / 4,765 |
+| Search with empty-result branch | 30,988 / 11,704 | 30,988 / 11,705 |
+| Conditional ownership positive fixture | 13,673 / 5,869 | 13,673 / 5,869 |
+
+The first row removes 1,399 raw / 415 gzip B. The one-byte search gzip change is
+from changed family identifiers/code encoding, not an added browser capability.
+The Project app still requires conditions and retains its 42 files / 193,076 raw
+bytes; its digest changes to
+`4500c7e62447e94ddb51bf6badb0a033ed96b0d0b368fef6679f72507a24b9d6`
+because the family capability record/hash changes. That intentional digest is
+updated without weakening the exact output checks.
+
+Focused planner and binding/conditional behavior tests pass, as does check.
+Two default-parallel required-Chrome full runs pass the standalone ownership
+test and all compiler cases but fail different browser-smoke tests: first an
+empty initial text observation (0 instead of 4,000 characters), then an empty
+CLI response parsed as JSON. These use plain HTML, not Kudzu-generated runtime.
+The unchanged complete suite passes 328/328 with Chrome required and file-level
+concurrency 1, followed by package smoke. Parallel-suite reliability is not
+claimed fixed. Both failed logs and the serial success are retained under
+`test-results/conditional-runtime-exclusion-20260911/`, with exact commands,
+timestamps and before/after file manifests. No test behavior or browser checks
+are skipped beyond the normal separately executed ownership-test split.
+
+No provider call, AI-cost improvement, latency/build-speed claim or release is
+made. These are measured production output savings and fewer unused runtime
+operations, not proof of cross-framework performance superiority.
+
+## Unused Binding Style Exclusion (2026-09-11)
+
+Authorizing output: the imported article-search fixture and retained R17 Kudzu
+Content source emit `kudzu-style.js` despite having no style bindings. The new
+absence assertion fails before this patch. Existing RouteIR binding targets now
+produce an internal `bindings.style` specialization flag; a runtime family with
+no such target omits the style import/patch branch and serializer file. List
+style usage independently retains the file. Mixed-family and navigation codegen
+tests retain style whenever any owner requires it. No authored source rewrite,
+semantic primitive, pass, runtime concept, dependency or new public API is added.
+Production compiler/orchestration growth is six net lines across three files.
+
+| Same-source JavaScript graph | Before raw / gzip B | After raw / gzip B | Files |
+|---|---:|---:|---:|
+| Imported article search | 32,190 / 12,324 | 30,988 / 11,704 | 9 → 8 |
+| Retained full Content source | 34,908 / 13,677 | 33,706 / 13,058 | 9 → 8 |
+| Dynamic-style positive control | 12,113 / 5,180 | 12,113 / 5,180 | 5 → 5 |
+
+The omitted serializer is 1,063 raw / 586 gzip bytes; the omitted binding branch
+accounts for additional savings. Search gzip falls 5.03%, full Content 4.53%.
+The dynamic-style serializer contents remain byte-identical. Runtime family IDs
+change because the capability record now includes the style flag; these URL/hash
+changes are intentional, not a promise that every unaffected HTML byte is fixed.
+
+The Project application drops three unneeded family serializer files: deploy
+45 → 42 files, 196,678 → 193,076 raw bytes, 60,879 → 59,026 aggregate gzip bytes.
+Its executable output baseline is updated only after reproducing the exact new
+manifest; `/help` remains zero-JavaScript. The first full gate stops at that old
+baseline, then passes after recording the intentional reduction. Required-Chrome
+verification passes standalone 1/1 plus 327/327 with no skips, including dynamic
+styles, keyed list styles, navigation and resource ownership. Check and package
+smoke pass. Full retained Content acceptance also passes all ten static siblings,
+search/count/empty/restore behavior and the existing accessibility/browser checks.
+
+Evidence: `test-results/style-binding-exclusion-20260911/{before,after,project}.json`,
+reproducible measurement scripts, full test logs and Content acceptance outputs.
+The first full-source replay lacked an installed core under its own package
+boundary and failed module resolution; the successful replay explicitly links
+the current checkout before building. This is a no-model compiler replay, not an
+AI-delivery attempt. No browser-latency/build-time/AI-token improvement is claimed
+without new matched timing; no provider calls, version bump or release occurred.
+
+## CONTENT R17 Three-Way Measurement (2026-09-11)
+
+One fifteen-attempt schedule (five each Kudzu, React/Vite and Astro) completed
+02:35:28.453Z–03:06:43.779Z, 31m 15.326s. All three root TypeScript versions are
+6.0.3 and their starters install/typecheck/build before provider calls. Astro
+7.0.2 also uses @astrojs/check 0.9.10. Kudzu uses the exact immutable R15 package;
+all three receive identical current browser utilities and documentation. The
+pinned model is `openai/gpt-5.6-sol`, OpenCode 1.18.27, and budgets are unchanged.
+The initial input validation exposes the runner's remaining exact-two guard;
+it is corrected with a failing regression before any model call, then inputs
+are refrozen. Duplicate comparator IDs and unequal schedules still fail.
+
+**R17 cannot establish a fair ranking:** the frozen Content scorer counts hidden
+cards as results. All five Astro agents implement native hiding, and therefore
+receive false behavior failures despite rendering the requested filtered rows.
+Original scored outcomes remain 5/5, 5/5, 0/5. After a regression-led correction,
+a separate no-model replay of unchanged artifacts passes 15/15, including ten
+static siblings for each Kudzu/Astro attempt. Neither the replay nor this note
+replaces the original protocol, attempt statuses, command logs or denominators.
+
+| Recorded metric, all five attempts | Kudzu | React + Vite | Astro |
+|---|---:|---:|---:|
+| Uncached input | 246,422 | 153,944 | 162,957 |
+| Cache-read input | 1,411,968 | 855,296 | 1,128,960 |
+| Output / reasoning | 14,607 / 2,475 | 11,967 / 1,714 | 16,207 / 5,492 |
+| Total tokens | 1,675,472 | 1,022,921 | 1,313,616 |
+| Tokens per scheduled attempt | 335,094.4 | 204,584.2 | 262,723.2 |
+| Median elapsed ms | 133,577 | 89,978 | 138,905 |
+| Median normalized tools | 28 | 20 | 26 |
+| Model builds / corrections | 7 / 2 | 9 / 4 | 10 / 5 |
+| Clean smoke calls | 6/9 | 6/8 | 6/10 |
+| Median deploy raw / aggregate gzip B | 68,461 / 26,417 | 206,365 / 66,405 | 55,510 / 22,453 |
+
+All traces are complete, all budgets and final builds pass. Recorded scheduled
+usage is 4,012,009 tokens, plus a separately recorded 6,727-token availability
+probe. Cache writes and reported subscription dollars are zero, not free work.
+Kudzu's scheduled tokens are 63.79% above React and 27.55% above Astro. These are
+actual usage observations, not a causal optimization claim; do not substitute
+per-attempt cost for the unavailable fair Astro success-cost comparison under
+the flawed original scorer. Multiple changes, small samples and runtime/toolchain
+differences limit historical comparisons. Astro's allowed native script and
+React's client runtime are not penalized merely for differing from Kudzu.
+
+The correction checks title visibility rather than DOM membership, preserving
+hidden ancestor/CSS/restore behavior while still counting visually stale rows
+hidden only via ARIA. It applies equally to every framework. Future-only r18
+tracked protocols explicitly communicate this boundary and pin corrected hashes;
+they retain their previous package inputs and do not represent another measured
+three-way batch. Source labels, count wording, static exclusions, budgets and
+other acceptance conditions are not relaxed. The initial hand-authored Astro
+smoke detached rows, so it missed the hiding case; the regression now covers it.
+
+Evidence: `test-results/ai-delivery-production/three-way-r17-20260911/` retains
+frozen inputs, pre-provider validation failure/correction, package/version
+checks, fifteen traces, ninety streams, 225 artifacts, ninety copied-context
+integrity checks, `audit.json` and a separately labeled `revalidation.json`.
+No additional model batch, compiler optimization, package release or superiority
+claim follows this measurement. AI-cost and full-suite/1.0 goals remain unmet.
+
+Final gates pass sequentially: `npm run check`, required-Chrome standalone 1/1
+plus 326/326 tests without skips, and package smoke. Receipts and raw test logs
+are preserved in the R17 evidence directory. Root runtime/compiler sources and
+package version remain unchanged; only comparison infrastructure and future
+acceptance inputs are corrected.
+
+## Astro Comparison Readiness (2026-09-11, no model calls)
+
+Added an ordinary Astro Content starter with the existing six-article data and
+CSS byte-for-byte, eleven static routes, native navigation, components and slots.
+Search is deliberately absent from the model starter. Astro 7.0.2 and its checker
+0.9.10 are locked. Installation initially rejects TypeScript 7.0.2 because the
+checker declares TypeScript 5/6 peers; the validated starter uses 6.0.3 without
+force/legacy-peer flags. This differs from the current React/Kudzu starter's
+typechecker and must be explicitly resolved or frozen before a fair new trial.
+
+`node test/astro-content-smoke.mjs` validates static starter output and a separate
+temporary native-script search implementation, using the unchanged common
+behavior, accessibility and browser scorer plus all ten static-sibling checks.
+An injected static-sibling script is rejected. This checks comparator readiness,
+not AI delivery success, complete accessibility certification or timing parity.
+
+Two real harness defects are reproduced before correction: the suite summary
+silently omits a third comparator, and source retention includes Astro-generated
+`.astro` scratch. The summary now derives comparator IDs from recorded runs and
+marks missing cross-task coverage incomplete with unavailable aggregate costs.
+Only root `.astro` scratch is excluded; authored `src/*.astro` remains retained.
+Old protocol files and archived scores are not updated or reinterpreted. No new
+framework dependency or compiler/runtime behavior is introduced; Astro's packages
+are isolated comparison-fixture dependencies. No model calls or cost/speed win
+is claimed. The fixed runner requires a new frozen hash for any future trial.
+
+Validation passes: nine focused comparison/protocol/retention tests; the Astro
+smoke with both positive and static-script negative controls; `npm run check`
+(228 pages); required-Chrome standalone 1/1 plus 325/325 tests without skips;
+package smoke and whitespace checks. The standalone Astro build has zero type
+errors, warnings or hints. Its smoke is opt-in after installing the isolated
+lockfile; normal repository tests validate input parity and aggregation without
+installing Astro. No framework release/version or historical result changes.
+
+## Default AX Summary Deduplication (2026-09-11, offline)
+
+The existing browser smoke response repeated visible prose in both `text` and
+named `StaticText`/`InlineTextBox` entries. The default observation now omits only
+those text-node entries whose entire untruncated name already occurs in the
+returned bounded body text, reporting `duplicateTextEntriesOmitted`. Control,
+heading and landmark names remain; text outside the 4,000-character body bound
+remains eligible for the AX summary. Live target lookup still uses the full AX
+tree, and every action/assertion/error check runs unchanged. This is an explicitly
+filtered summary, not a lossless complete accessibility-tree export.
+
+Actual offline Chrome replay of unchanged successful R16 command sequences:
+
+| Source | Prior response bytes | New response bytes | Reduction |
+|---|---:|---:|---:|
+| Kudzu ordinal 1 | 14,601 | 7,035 | 51.82% |
+| React ordinal 1 | 18,968 | 9,323 | 50.85% |
+
+Each sequence retains seven text checks plus its inputs. Expanded observation
+references retain identical body text/truncation, command results and final error
+report; previously observed non-text-node AX names are retained. A regression
+fails before the implementation and passes afterward, covering 70 prose nodes,
+controls, heading names, and text outside the body bound. Evidence and stream
+hashes: `test-results/ai-delivery-production/ax-summary-20260911/replay.mjs` and
+`results.json`. No provider/model calls or historical rescoring occurred. Output
+bytes are not model tokens; actual failure-inclusive cost savings remain
+unmeasured. No compiler, runtime, dependency, public framework API or deploy-byte
+change is involved. The new summary needs newly frozen tool hashes in any future
+experiment; old input copies remain untouched.
+
+Validation: focused lifecycle/protocol/copy/browser tests pass 13/13; check passes
+228 pages. The first full test run fails four legacy browser fixtures after
+receiving nginx's HTTP-on-HTTPS error page instead of fixture content. With no
+source change, the repeated required-Chrome run passes standalone 1/1 plus
+322/322 without skips; package smoke and diff whitespace checks also pass.
+This environment/port-ownership failure is recorded, not claimed fixed by AX
+summary filtering. Imported-search runtime bytes and digest remain unchanged.
+
+## CONTENT R16: Explicit Role Selection (2026-09-11)
+
+One predeclared serial ten-attempt experiment completed in 22m 1.356s,
+00:38:35.084Z–01:00:36.440Z. It reuses the exact immutable R15 application
+tarball and starters, model `openai/gpt-5.6-sol`, OpenCode `1.18.27`, budgets,
+adapter and scorer. Only the equally supplied browser utility and documentation
+change for optional exact-name/unique-role selection and actionability checks.
+Lifecycle, protocol, browser and copied-context tests and frozen input validation
+passed before provider calls. No attempt was replaced or retried.
+
+| Failure-inclusive metric | Kudzu | React + Vite |
+|---|---:|---:|
+| Successes | 5/5 | 4/5 |
+| Final build and acceptance | 5/5 | 5/5 |
+| Total tokens | 1,596,059 | 1,118,574 |
+| Tokens per success | 319,211.8 | 279,643.5 |
+| Uncached / cache-read input | 258,509 / 1,320,448 | 172,753 / 930,048 |
+| Output / reasoning | 14,591 / 2,511 | 13,164 / 2,609 |
+| Median elapsed ms | 131,719 | 106,333 |
+| Median tools | 26 | 24 |
+| Pre / first-build / post tokens | 669,707 / 117,004 / 809,348 | 421,909 / 93,689 / 602,976 |
+| Model builds / corrections | 8 / 3 | 7 / 2 |
+| Clean smoke invocations | 5/8 | 7/9 |
+
+React ordinal 0 reads 24 paths against the unchanged 20-path budget. Its 229,894
+tokens remain charged. All traces are complete; cache writes and reported
+subscription dollars are zero, not zero economic cost. A separate availability
+probe costs 6,727 tokens; total recorded usage is 2,721,360 tokens.
+
+All agents execute native input (21 fills per framework, no clicks). No role-only
+command is observed: **0/10 adoption** despite identical supplied documentation.
+Five exact-name failures remain (K0/K2/K4 and R0/R3); final sources and builds are
+corrected within those attempts. Thus offline role-only feasibility is not an
+observed reduction in authored repair work. The utility does not silently relax
+provided names. Browser smoke is not full keyboard/screen-reader certification.
+
+Kudzu uses **14.15% more tokens per accepted task**, and 42.69% more total tokens
+for the scheduled five attempts. Its total is 3.41% below historical R15, while
+React is 19.24% below R15. Small samples and provider/cache/time variation do not
+establish causal savings. The cost objective and the full-suite/1.0 gates remain
+unmet. Do not add implicit fuzzy targeting or rescore failures to obtain a win.
+
+Evidence: `test-results/ai-delivery-production/role-only-r16-20260911/`, with
+`experiment.mjs`, `freeze.json`, `preregistration.json`, frozen utility/protocol
+copies, `candidate.tgz`, all ten attempt sources/traces/artifacts, `audit.json`
+and `review.json`. Audit checks 60 command streams, 170 artifacts, 165 source
+files, 60 copied-context hashes and 86 backward observation references. This
+measurement changes no compiler, runtime, package version, scorer or budget.
+
+Final sequential gates pass: `npm run check`, `KUDZU_REQUIRE_CHROME=1 npm test`
+(standalone 1/1 plus 321/321, no skips), and `npm run test:package`. The four
+imported-search fixtures retain 32,190 raw / 12,324 gzip JavaScript bytes and
+runtime digest `f2f3df9f2dadbff0c9af957066bbd19bbf5fd9db63c93e8f75c3bdaf43b6705f`.
+Receipts and stdout/stderr are retained beside the experiment. No release or
+additional model batch follows this result.
+
+R16 archive: `role-only-r16-20260911-audited.tar.gz`, 1,741,864 B, SHA-256
+`c8dbd8880124c9a64ca2b437a62300bd608ff08767778897eba7ad1cee1495ad`.
+All 498 extracted files match the source manifest/content. Initial `tar --diff`
+reported intentionally normalized metadata differences; extracted SHA-256 and
+byte comparisons subsequently pass. This checksum closure is external to the
+archive to avoid self-referential hashing.
+
+Latest bounded experiment: [CONTENT R15 observation reuse](#content-r15-observation-reuse-2026-09-10), 5/5 Kudzu versus 5/5 React; Kudzu tokens per accepted task remain 19.30% higher. Objective unmet; model calls stopped.
+
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, `npm run benchmark:ai-delivery`, and `npm run benchmark:ai-delivery-production` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
+
+## Offline R15 Role-Only Targeting (2026-09-11)
+
+No model/provider calls. R15's eight initial failures were exact-name selector
+mismatches, not demonstrated accessibility or compiler defects: Chrome exposed
+one `searchbox` named `SEARCH ARTICLES` while commands supplied `Search articles`.
+The recorded fixes were CSS changes in K1/K3/R1/R2/R3/R4 and redundant `aria-label`
+additions in K0/R0, followed by eight rebuilds. K2/K4 had no initial mismatch.
+CSS uppercase labels remain legitimate in the reconstructed accepted applications.
+
+The existing snapshot and bounded candidate hint already support exact-name
+discovery. A conventional optional-name role locator removes the need to guess a
+name when the caller explicitly wants the unique role. `test/browser-smoke.mjs`
+now accepts `{"op":"fill","role":"searchbox","value":"example"}`. Supplied
+names, including empty strings and uppercase, remain exact; null/non-string names
+fail. No fuzzy matching, fallback, automatic retry or assertion rewriting occurs.
+Uniqueness is over the existing non-ignored AX/backend-node candidates, **before**
+the disabled check; disabled siblings are not discarded to force uniqueness.
+Ambiguity stops before focus/input and retains five-name/160-character diagnostics.
+Action checks require supported roles, writable text input/textarea for fill,
+visibility, enabled state and focus; click hit testing rejects an obscuring element.
+The public utility document applies only to future equal copied inputs; frozen
+protocols, prompts, budgets, acceptance and historical scores are untouched.
+
+Evidence: `test-results/ai-delivery-production/role-only-offline-20260911/`.
+`replay.mjs` copies the eight final sources into disposable workspaces and reverses
+only each trace's post-failure naming correction to reconstruct its original build.
+It uses the archived Kudzu installation and offline-cached React dependencies.
+Every original exact-name failure reproduces with one uppercase AX searchbox.
+Changing only command targeting to omit `name` completes **8/8 sequences, 32 fills,
+54 unchanged text assertions, zero failed calls** (Kudzu 3, React 5). Using exact
+`SEARCH ARTICLES` also passes all eight sequences without an application edit.
+The unchanged frozen acceptance executable independently passes **8/8 original
+reconstructions**, including behavior, accessibility and output checks. Source
+hashes stay identical throughout each replay. These are counterfactual replays,
+not new scored attempts or evidence that an agent would choose this locator.
+
+Measured implementation delta versus the preserved dirty R15 helper: **+6 net
+physical lines** (158 to 164). Semantic primitives, core passes/LOC, runtime
+concepts and production browser raw/gzip bytes: **0**. Four maintained search
+fixtures still emit **32,190 raw / 12,324 gzip B**, runtime digest
+`f2f3df9f2dadbff0c9af957066bbd19bbf5fd9db63c93e8f75c3bdaf43b6705f`.
+All **2,995 regular R15 files** hash-identical before/after replay, including frozen
+inputs, traces, source, artifacts and historical integrity records. This is a live
+tree count including installation files, not the historical 2,247-file archive count.
+
+Validation, executed sequentially with 1,200,000-ms command limits:
+
+- Required-Chrome browser/lifecycle/frozen-protocol/public-copy checks: **12/12**.
+- `npm run check`: pass, 228 pages.
+- Required-Chrome `npm test`: final standalone **1/1**, suite **321/321**, zero skips.
+  Two earlier full runs each had 320/321: first a transient CDP startup `Invalid URL`
+  before a selector assertion; second an unrelated landing-page Chrome dump received
+  nginx's HTTP-to-HTTPS-port 400 page. The landing check passed alone, and the third
+  full run passed without code changes. These failures remain recorded, not erased;
+  the transport helper and framework tests were not changed for this packet.
+- `npm run test:package`: pass (three pages, one interactive).
+
+One added browser test covers unique uppercase/unnamed targets, exact wrong casing,
+explicit empty names, invalid descriptors/values, unknown click roles, ambiguity
+including disabled siblings, hidden/display-none/inert/template exclusion,
+disabled/ARIA-disabled/readonly controls, wrong input types and obscured clicks.
+Prior compaction, bounded diagnostics, lifecycle and copied-tool integrity tests stay.
+Role-only targeting does not verify accessible naming or replace acceptance.
+No measured token/cost/latency saving or causal claim: R15 remains 5/5 versus 5/5,
+Kudzu **19.30% higher** cost in tokens per accepted task; the 1.0 gate remains blocked.
+
+## CONTENT R15 Observation Reuse (2026-09-10)
+
+Archive closure, recorded outside its own snapshot: **73,331,847 B**, **2,247
+manifest files**, SHA-256 `3147eee8fee712ef74a386cef48d399c935d3971548ef1889c8b4014cab7abbc`.
+Manifest SHA-256 `059c0be00ee20ec4d1b6bba14b7a051852421eab31c480c03a6aefbbd70ce77b`.
+Two deterministic packs match; checksum and extracted/live file hashes pass.
+Original R12/R13/R14/offline evidence inventories and prior archive hashes pass.
+
+The separately authorized **single ten-attempt CONTENT schedule is complete**:
+Kudzu **5/5**, React + Vite **5/5**, all final builds and unchanged acceptance
+passing. No selective retry, interruption, substitution or second batch occurred.
+Primary preregistered objective, lower failure-inclusive tokens per accepted task
+than contemporaneous React without lower acceptance, is **unmet**. Model calls
+have stopped. Full R8 remains 23/25 versus 24/25; this does not clear 1.0.
+
+Evidence: `test-results/ai-delivery-production/observation-reuse-r15-20260910/`.
+R15 starts from R13's neutral frozen task, public framework context, scorer,
+runner/adapter, React 19.2.8 + Vite 8.2.2 starter, model `openai/gpt-5.6-sol`,
+pricing and serial K0,R0,R1,K1,K2,R2,R3,K3,K4,R4 schedule. **R14's failed inventory
+policy is excluded**, not adopted as baseline. Both variants receive identical
+copies of current non-adjacent observation reuse, transport and public output
+instructions. Explicit open/snapshot remains full; bounds/assertions stay intact.
+
+The fresh immutable `0.16.28-observation-reuse.20260910.1` tarball uses current
+source, with the unproven README map already removed. Against R13, only README
+and isolated package identity differ in packed source; compiler/runtime/bin are
+identical. Main stays 0.16.28. npm SHA-512 lock integrity and a separate installed
+file-by-file comparison pass; no mutable package link is used. New protocol and
+source hashes identify R15, never rewrite R13/R14. The default OpenCode is 1.18.30;
+the preserved hash-verified **1.18.27** binary is explicitly used instead, with no
+upgrade or configuration change.
+
+Before calls, lifecycle, frozen-protocol, browser and copied-context tests pass
+11/11 with zero skips; actual frozen-input validation passes before workspace
+creation. The wrapper's TAP-only log-prefix check was corrected for Node's default
+reporter before preflight; original script/freeze and correction receipt remain.
+No measured input changed. One availability-only probe costs **6,727 tokens** and
+6.769 s, separately counted. Serial executor: **05:13:48.967-05:42:51.336 UTC,
+29m 2.369s**, with 18,000,000-ms outer timeout. Node 24.14.0, npm 11.9.0,
+Chrome 152.0.7977.64 and the recorded Linux i5-9500 host remain unchanged.
+
+Budgets per attempt stay 300,000 ms, 400,000 input tokens **including cache reads**,
+20,000 output, 20,000 reasoning, 40 normalized tools, 20 read paths, eight modified
+paths and five builds. All pass; K0 input headroom is only 5,369. Setup and agent
+browser work are charged; independent final build/acceptance are outside agent time.
+
+| Failure-inclusive metric | Kudzu | React + Vite |
+|---|---:|---:|
+| Accepted / scheduled | 5/5 | 5/5 |
+| Uncached input | 207,914 | 210,153 |
+| Cache-read input | 1,426,560 | 1,156,608 |
+| Output / reasoning | 15,092 / 2,888 | 15,101 / 3,221 |
+| Total tokens | 1,652,454 | 1,385,083 |
+| Tokens per accepted task | 330,490.8 | 277,016.6 |
+| Median tokens / model steps | 330,998 / 15 | 282,465 / 14 |
+| Total model steps | 74 | 72 |
+| Median elapsed ms (range) | 169,577 (150,499-202,432) | 177,782 (152,749-185,505) |
+| Sum elapsed ms / normalized tools | 847,567 / 145 | 872,914 / 134 |
+| Median tools / read paths | 28 / 12 | 26 / 13 |
+| Sum read / modified paths | 61 / 10 | 65 / 10 |
+| Model builds / corrections | 8 / 3 | 10 / 5 |
+| Before / first-build-message / after tokens | 716,244 / 121,544 / 814,666 | 499,624 / 95,614 / 789,845 |
+| Browser / native-input adopters | 5 / 5 | 5 / 5 |
+| Browser calls / command records | 9 / 75 | 13 / 115 |
+| Successful fills / clicks / text checks | 21 / 0 / 38 | 20 / 0 / 58 |
+| Clean zero-exit smoke calls | 6/9 | 8/13 |
+| All shell zero exits | 14/17 | 18/23 |
+| Accepted deploy median raw / aggregate gzip B | 68,628 / 26,445 | 206,471 / 66,413 |
+
+All **3,037,537 scheduled tokens**, or **3,044,264 including preflight**, reconcile
+with provider step totals. Cache-write counts and subscription-reported dollars
+are zero, not zero economic cost. No usage is missing. Whole first-build message
+boundaries partition phases; `audit.json` retains every step and per-phase token
+kind, while `attempt-metrics.md` records each attempt's cache/output/reasoning,
+time/tools/builds and phase totals. Eight within-attempt corrections remain charged.
+
+| Attempt | Uncached | Cache read | Output | Reasoning | Total tokens | Elapsed ms | Tools | Builds/corrections | Clean smoke |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---|
+| K0 | 36,359 | 358,272 | 3,303 | 595 | 398,529 | 171,666 | 33 | 2/1 | 1/2 |
+| R0 | 49,873 | 205,568 | 2,791 | 572 | 258,804 | 152,749 | 26 | 2/1 | 1/2 |
+| R1 | 48,547 | 207,872 | 2,997 | 605 | 260,021 | 185,505 | 26 | 2/1 | 1/2 |
+| K1 | 33,981 | 293,120 | 3,194 | 703 | 330,998 | 169,577 | 28 | 2/1 | 1/2 |
+| K2 | 34,572 | 251,904 | 2,640 | 546 | 289,662 | 150,499 | 26 | 1/0 | 1/1 |
+| R2 | 29,443 | 250,880 | 2,950 | 632 | 283,905 | 174,723 | 29 | 2/1 | 2/3 |
+| R3 | 45,156 | 233,472 | 3,042 | 795 | 282,465 | 182,155 | 27 | 2/1 | 2/3 |
+| K3 | 46,358 | 317,568 | 3,273 | 555 | 367,754 | 202,432 | 31 | 2/1 | 1/2 |
+| K4 | 56,644 | 205,696 | 2,682 | 489 | 265,511 | 153,393 | 27 | 1/0 | 2/2 |
+| R4 | 37,134 | 258,816 | 3,321 | 617 | 299,888 | 177,782 | 26 | 2/1 | 2/3 |
+
+K0/K1/K3 and every React attempt first fail exact AX targeting on `SEARCH ARTICLES`.
+K0/R0 add an explicit exact `aria-label`; the other six remove the authored CSS
+uppercase transformation, rebuild, and pass. No fuzzy matching or expected-name
+relaxation is used. All 14 clean completions have empty exception, failed-request
+and HTTP-error lists. There are eight nonzero local smoke calls, zero other failed
+shells, and zero final acceptance failures. All agents fill title/topic, empty and
+restored states; none clicks a link or independently proves keyboard navigation.
+Direct sibling opens and smoke snapshots are not comprehensive accessibility,
+screen-reader, mobile or JS-disabled proof. The unchanged scorer supplies only its
+bounded behavior/label/heading/output acceptance. Lexical static scans likewise
+are not a universal no-JavaScript proof, regardless of agents' broader final prose.
+
+The audit verifies **60 command streams, 170 artifacts, 165 source files and all
+60 copied-context checks**. Each attempt changes only article TSX/App and CSS;
+ordinary components, hooks, declarative filters, keyed cards, links and live regions
+remain. Manifests, locks and other authored files stay intact. Persistent context
+tampering is detected; transient write-and-restore remains outside this trusted-local
+check. Source diffs and complete command/final-answer records are retained.
+
+Actual browser JSON contains 43/62 direct full-record references, including 10/10
+references past a more recent different full observation. Expansion produces
+260,775/378,929 B from actual 112,562/174,090 B. Re-encoding those same expanded
+records with the preceding adjacent-only rule would produce 134,124/195,484 B:
+the new rule removes **42,956 B (13.03%)** across both variants. This is output
+serialization accounting, **not token savings**. Each reference has original line,
+command, full-observation and expanded-record hashes; explicit snapshots remain
+full. Structural expansion plus the pre-run deterministic regression and prior
+live replay establish the bounded contract, not unrecorded DOM/focus/value equality.
+
+Contemporary Kudzu cost is **1.1930x React**. Historical neutral R13 totals were
+1,731,168/1,266,931: R15 changes -4.55%/+9.33%; against R12 it changes
++5.10%/+9.00%. The narrower contemporary gap is not sole-change causal evidence.
+Kudzu's 4.62% lower median elapsed time has overlapping ranges and five pairs, not
+statistical superiority. Prebuild excess remains 216,620 of 267,371 excess tokens;
+cache reads account for +269,952 overall, offset by lower uncached/output/reasoning.
+Source identity, README removal, tool/docs and time/cache/provider drift confound
+historical comparisons. Fresh baseline A/B would need twenty attempts and was not
+authorized. No new browser timing benchmark or full-suite advantage is claimed.
+
+Protocol SHA-256: `6ae7cebf31da592a1a9e48c081ff2fee79c5e8092afcf87a06765564539d08d0`.
+Candidate tarball: `399ac4fb05654bed5a232274536b823336649e8e1918167ead632ed37a5e128b`.
+Candidate source inventory: `969db311496a7b34c1a015cdbd10a7b0eab6203c9f2c92db35f38223388975e2`.
+Smoke: `9349ddfeb7bc00e4ba4afa4de61eca85a8831fb2ad1e707a68886d12ac60ebfc`.
+OpenCode: `bddf894e5c2bc3d8cf452bd6e5ab2273bbe4a37eeeb9aec848d3d7d20db1f256`.
+`freeze.json` contains full source, manifest, public context and executable hashes.
+Semantic primitives, core passes/LOC, runtime concepts, compiler fixtures,
+dependencies and production browser-byte deltas added this session: **0**.
+Existing observation reuse stays; failed inventory policy stays unadopted. No
+compiler patch, main version bump, configuration change, commit, push or release.
+
+Sequential gates with individual 1,200,000-ms deadlines pass: `npm run check`
+(228 pages, two interactive), required-Chrome `npm test` (standalone 1/1 plus
+320/320, zero failures/skips), and `npm run test:package` (three pages, one
+interactive). All three stderr logs are empty. Four maintained search fixtures
+retain 32,190 raw / 12,324 aggregate gzip JS B and runtime digest
+`f2f3df9f2dadbff0c9af957066bbd19bbf5fd9db63c93e8f75c3bdaf43b6705f`.
+Only audit/archive scripts and factual gate metadata follow these tests; measured
+inputs, utility, compiler and scorer never change. The sibling audited tarball
+includes R12/R13/R14 comparison traces, registry/candidate bytes, frozen contexts,
+OpenCode executable, source diffs, script hashes and complete per-file manifest;
+disposable install-check dependencies are excluded, not historical evidence.
+
+## Offline Non-Adjacent Observation Reuse (2026-09-10)
+
+No provider/model call. This extends the already-dirty observation compaction,
+not the failed inventory policy. Exact historical output replay preceded the
+implementation: clearing a search restores text/AX already emitted before the
+intervening filters. The existing `observationFrom` can reference that earlier
+full record without a new output field, decoder, tool command or assertion mode.
+
+The repository-only utility now retains at most 20 serialized observations in
+an invocation-local `Map` instead of only the last one: **+1 net implementation
+line** relative to the preceding dirty utility (157 -> 158). All text/AX fields,
+bounds, native actions, assertion evaluations and error checks remain intact.
+References point directly to the most recent matching full record, never another
+reference. Explicit `open`/`snapshot` remain full, including recovery after reuse.
+Equality still says nothing about unreported DOM, values, focus or truncated
+content. No target-scoped replacement or text/AX field deletion is adopted.
+
+Evidence: `test-results/ai-delivery-production/observation-reuse-20260910/`.
+`node <evidence>/replay.mjs` checks all 30 raw attempt streams and recovered spills,
+replays both serialization rules and asserts exact expansion equality, including
+failed calls. `projection.json` contains input SHA-256s, exact shell commands and
+source line numbers, every new reference and expanded-record hashes. R12's
+"before" applies the existing adjacent compaction; R13/R14 before records match
+their actual compact output. Numbers include JSONL newlines, not shell framing,
+spill notices, provider input or repeated model-context exposure.
+
+| Historical output replay | Calls / commands, unchanged | Existing compact bytes | Candidate bytes | Reduction |
+|---|---:|---:|---:|---:|
+| R12 Kudzu | 10 / 81 | 162,993 | 141,607 | 13.12% |
+| R12 React | 10 / 94 | 177,483 | 160,311 | 9.68% |
+| R13 Kudzu | 7 / 75 | 132,367 | 110,803 | 16.29% |
+| R13 React | 12 / 126 | 234,548 | 221,785 | 5.44% |
+| R14 Kudzu | 8 / 99 | 181,054 | 159,495 | 11.91% |
+| R14 React | 9 / 94 | 161,581 | 144,606 | 10.51% |
+
+Total: **1,050,026 -> 938,607 B (-111,419 B, -10.61%)**, 26 new references,
+56 shell calls and 569 observed commands unchanged. Shell failures with no
+browser records remain counted as calls, not fabricated observations. This is
+an exact output-context byte proxy, not tokenizer output or measured token savings.
+
+`node <evidence>/replay.mjs before` uses the preserved adjacent-compaction source;
+`node <evidence>/replay.mjs after` uses the current repository utility. Both replay
+the exact 12-command R12 K1 and R14 React R0 sequences on frozen final artifacts.
+Live output is **22,969 -> 18,743 B (-18.40%)** and **22,989 -> 18,765 B (-18.37%)**.
+Each keeps one shell invocation, 12 commands, 74 CDP requests (16 full AX reads),
+and respectively 12/4 browser network requests. Request paths/method counts match.
+Expanded output is identical except elapsed times; both completions are clean.
+`before.json`/`after.json` and four JSONL files retain commands, counts and hashes.
+Tool SHA-256 changes from `13e8d1128047d67b464eb427808359b25d11110536f032716fcdc4406f05648a`
+to `9349ddfeb7bc00e4ba4afa4de61eca85a8831fb2ad1e707a68886d12ac60ebfc`.
+
+The extended existing regression first fails against the preserved baseline at
+`returning to an earlier exact observation reuses its full record`; candidate
+focused Chrome/browser/copy/lifecycle/protocol tests pass 11/11, zero skips.
+The regression covers AX-only change/restoration, index zero, direct references,
+full snapshot recovery and a failing assertion after reuse. Live replay also
+covers changed rendered text. No production fixture or acceptance is weakened.
+
+Semantic primitives, core passes/LOC, runtime concepts, public framework APIs,
+dependencies and deploy browser-byte deltas: **0**. Frozen utility copies and
+R12/R13/R14 scores remain untouched; inventory policy remains unadopted. Failure-
+inclusive tokens per accepted task and actual AI cost are **UNMEASURED for this
+change**. No cache-count discount, higher budget, cost-goal achievement, timing
+improvement or causal framework advantage is claimed. This small lossless change
+is worth future measurement only with separate authorization; no automatic run,
+configuration change, commit, push, release or version bump is authorized here.
+
+Sequential 1,200,000-ms gates pass: `npm run check` (228 pages, two interactive),
+`KUDZU_REQUIRE_CHROME=1 npm test` (standalone 1/1 plus 320/320, zero failures/skips),
+and `npm run test:package` (three pages, one interactive). `check.mjs` retains exact
+commands, exit receipts and stdout/stderr; its baseline-regression mode replays
+the current regression against the saved old utility. `verify.mjs` checks all
+three historical file manifests, live request/expanded-output equality, gate
+receipts, current source/evidence hashes and `git diff --check`. These tests do
+not invoke a provider. Prior dirty reports/compaction and frozen copies remain.
+
+## Offline Initial Inventory Comparison (2026-09-10)
+
+User-authorized offline evidence only; the five prior dirty files and historical
+evidence remain intact. Reproduce with
+`node test-results/ai-delivery-production/inventory-policy-20260910/compare.mjs`.
+The ignored directory retains immutable-content starter/dependency copies,
+per-file hashes, exact R12/R13 trace outputs/lines, pattern simulations, coverage
+ledgers, and an **uninstalled** generic `POLICY-DRAFT.md`.
+
+Before is exact historical broad-glob output across five attempts per row. After
+is a hypothetical complete source-focused inventory, not a measured tool/model
+run. All broad calls truncate at 100 paths; unreturned totals and proprietary
+matching/order are unknown. After bytes include a nonrecursive root directory
+census and use observed path-list/directory formatting at the same absolute root.
+Inputs, metadata, hidden context, existing source globs, file reads and later work
+are outside this comparison; no token or timing saving is claimed.
+
+| Input | Broad paths / bytes | Dependency paths | Focused paths / bytes including census | Authored coverage per attempt |
+|---|---:|---:|---:|---:|
+| R12 Kudzu | 600 / 69,798 | 559 | 70 / 6,025 | 14/14 |
+| R12 React | 500 / 49,533 | 436 | 95 / 8,790 | 19/19 |
+| R13 Kudzu | 500 / 56,810 | 469 | 70 / 6,025 | 14/14 |
+| R13 React | 600 / 59,918 | 508 | 95 / 8,790 | 19/19 |
+
+Strict `src` plus root files is **rejected**: it misses ten React HTML entrypoints,
+including `about/index.html` and `topics/performance/index.html`. Adding all
+authored HTML/configured roots covers every source, entrypoint, configuration,
+data and stylesheet file without hardcoded application content. These starters
+have no separate public binary assets. Authored bytes are Kudzu 40,307/40,780 B
+(registry/candidate) and React 56,631 B. Observed root overlap is only 3-12/14,
+5-11/14, 11-18/19 and 7-19/19 respectively; later reads can recover omitted paths.
+R12 K2 repeats 48 prior paths, not an entirely redundant response. No observed
+example-directory noise was found; dependency declarations are not examples.
+
+Original temporary R12/R13 trees are gone. Frozen starters and existing Kudzu
+install-check dependencies are copied without edits. React uses an older surviving
+local installation, version-aligned against every installed lock-addressable
+package and direct dependency, not authenticated as the original installation.
+The full report records its exact path and content hashes. All 326 Kudzu and 463
+React declaration files remain accessible, including transitive types and @types;
+there is no blanket dependency ban. The 689 B candidate map remains only in its
+historical snapshot. Eleven observed broad patterns applied symmetrically with
+Node matching and ascending/descending 100-path caps produce 7,080-8,955 B Kudzu
+and 5,558-5,999 B React versus complete focused 507/742 B at a common root prefix.
+These are explicitly simulations, not proprietary-tool measurements. Exact
+recorded read limits/notices are retained; the current 2,000-line Read default
+cannot be inferred as historical fact from small complete reads.
+
+GO for reviewing the generic scoped-discovery draft with root/config coverage and
+explicit dependency access. NO-GO for strict src-only policy, installation into
+configuration/prompts, or an automatic model run. A future run needs separately
+reviewed symmetric authorization and pre-run gates; frozen protocols and scores
+are unchanged. No compiler/CLI/model/configuration, runtime, version or release
+change. Sequential `npm run check` (228 pages, two interactive) and `npm test`
+(standalone 1/1 plus 320/320, zero failures/skips) pass with 1,200,000-ms command
+timeouts. Logs/receipts are retained in this evidence folder; `git diff --check`
+passes. Both historical manifests/archives, 19 prior follow-up evidence files and
+all tracked source hashes are checked without rewriting prior evidence.
+
+## Prebuild Package Discovery Follow-Up (2026-09-10)
+
+This user-authorized continuation addresses prebuild discovery, not another
+browser-output optimization. Release remains `0.16.28` at `04e14e3`; no model
+call, benchmark rerun, configuration change, commit, push or release occurred.
+The preceding dirty observation implementation and both historical reports remain
+intact. Read-only research and source hashes are in
+`test-results/ai-delivery-production/prebuild-discovery-20260910/{analyze.mjs,research.json}`.
+Running that script also verifies all 1,039 frozen R12 manifest files, all 19 prior
+follow-up evidence files listed in its verification record, and the three prior
+browser utility/test/document source hashes without rewriting them.
+
+### Trace Chain And Scope
+
+Raw references are unchanged
+`browser-tools-r12-20260909/content/attempts/content-<variant>-<ordinal>/adapter.stdout`
+under `test-results/ai-delivery-production/`. All discovery calls below precede
+the first edit as well as the first build; first edit/build line pairs are
+K0 33/40, K1 34/41, K2 36/43, K3 34/41, K4 34/41 and
+React 30/37, 38/45, 33/40, 30/37, 33/40.
+
+| Observed prebuild discovery | Kudzu | React + Vite |
+|---|---:|---:|
+| Broad root glob calls | 6 | 5 |
+| Trace-visible root glob output | 69,798 B | 49,533 B |
+| Dependency paths / returned paths | 559 / 600 | 436 / 500 |
+| Explicit package grep output | 42,499 B | 0 B |
+
+All eleven broad inventories are truncated at 100 paths. Even root patterns such
+as `*` return nested dependencies in this tool environment. These are observed
+tool results, not npm package inventories or proof of an ignore-rule defect.
+K2 lines 8-10 first list ten source files, then emit two root inventories of
+12,124 and 12,112 B. The second root inventory repeats 48 paths from preceding
+globs, totaling 5,610 B when each repeated path is counted with a newline. It also
+contains new paths: removing the entire response is not a proven safe saving.
+The analogous broad React inventories include 82-93 dependency paths each.
+Changing OpenCode search/configuration behavior is outside this product edit.
+
+K0 lines 21-26 and K1 lines 22-27 search hooks/hydration across the package and
+discover/read the README afterward. K2 lines 21-29 discover the README, search the
+package (13,112 B, including nested TypeScript results), probe nonexistent package
+`dist/` (14 B, no files), then read the full README (11,795 B with tool framing)
+and manifest (3,170 B). K3 lines 21-27 search, read the 8,121 B public declaration
+response, then read the README. K4 lines 21-27 enumerate 100 declaration paths
+(12,860 B, truncated), search `useState`, then read the README. Their authoring
+questions already have an example, and all five first builds pass. Search bytes
+are an investigation surface, not a measured redundant-byte or token saving.
+
+### Minimal Remedy And Measurement
+
+Unlike the prior rejected proposal for another authoring hint, this edit adds only
+an installed-package location map to the existing README, before Quick Start.
+It links the existing Authoring/Verify sections and public declarations/manifest,
+states that the package ships `bin/` and `framework/` rather than `dist/` or internal
+`docs/`, and names the existing local compiler invocation. Package files/exports
+already establish these facts; no API export, command, compiler behavior, semantic
+primitive, core pass/LOC, normalization/adapter rule, runtime concept or dependency
+changes. No benchmark labels, solution, hidden instruction or stopping rule enters
+the public text. Full verification remains required.
+
+| Deterministic documentation measure | Before | After |
+|---|---:|---:|
+| README UTF-8 bytes | 10,612 | 11,301 |
+| Installed-package map | absent | 689 B |
+| Direct links in that map to authoring/verification/types/manifest | 0 | 4 |
+| Existing Authoring section | 2,023 B | 2,023 B |
+
+Concrete use: read `node_modules/@kudzujs/core/README.md` at Installed Package,
+follow `#authoring` for native events/collections or `./framework/core.d.ts` for
+signatures instead of discovering declaration paths recursively. For package
+layout, the 689 B section answers the absent `dist/` question and points to
+`./package.json`; it does not replace the full API reference. From the application
+root, `./node_modules/.bin/kudzu build` invokes the existing compiler. An npm build
+script may include TypeScript or other necessary checks; this is not permission
+to bypass them. Package smoke actually executes that exact command through `sh`.
+
+This is a bounded discoverability result, **not a context reduction measurement**:
+the README grows by 689 B, including for whole-file readers. Agents that search
+before opening it may gain nothing, and four historical readers chose later line
+ranges. The root-glob duplication and intrinsic exploration/stopping behavior
+remain unresolved. R12's 162,685 excess prebuild tokens, including +178,816 cached
+input offset by lower uncached input, are unchanged; cache reads are not free and
+provider totals cannot assign document-level causal savings. A future equal-
+condition model freeze needs separate authorization; no projected AI saving or
+full-suite advantage is claimed.
+
+### Regression Gates
+
+The existing package smoke now fails on the baseline README at `README has an
+installed-package map`, checks a 1 KiB map ceiling, resolves all four links,
+verifies the installed README exactly matches source, and checks absence of packed
+`dist/` and `docs/`. Existing exact exports/bin/source, interactive/static example,
+and zero-JavaScript assertions remain in place. No new test framework or fixture.
+Sequential commands, each with a 1,200,000-ms timeout, passed on Node v24.14.0:
+
+1. `KUDZU_REQUIRE_CHROME=1 node --test test/browser-smoke.test.mjs test/ai-delivery.test.mjs test/ai-delivery-lifecycle.test.mjs test/ai-delivery-production.test.mjs`: 11/11.
+2. `npm run check`: 228 pages, two interactive.
+3. `KUDZU_REQUIRE_CHROME=1 npm test`: standalone 1/1 plus 320/320, zero skips/failures.
+4. `npm run test:package`: three pages, one interactive, documented shell command passes.
+
+The four maintained search fixtures retain 32,190 raw / 12,324 aggregate gzip JS
+bytes and runtime digest
+`f2f3df9f2dadbff0c9af957066bbd19bbf5fd9db63c93e8f75c3bdaf43b6705f`.
+Production browser-byte delta is zero; no timing benchmark was run. This record
+is appended after those gates; `git diff --check` validates the final documents.
+
+## R12 Observation Output Follow-Up (2026-09-10)
+
+Resumed with the preceding R12 closure records and browser-output implementation
+already dirty; those edits are preserved. This is a local utility fix and trace
+audit, not another model experiment. Evidence is in the separate sibling
+`test-results/ai-delivery-production/browser-observation-followup-20260910/`;
+R12's frozen inputs, raw attempts, archives, scores and accounting are unchanged.
+
+### Token Attribution
+
+Whole first-build message boundaries match R12's audit, including any other work
+in that message. Each cell below is Kudzu / React + Vite over five attempts.
+
+| Metric | Before First Build | First-Build Message | After First Build |
+|---|---:|---:|---:|
+| Total tokens | 675,556 / 512,871 | 117,762 / 98,525 | 778,881 / 659,307 |
+| Uncached input | 163,953 / 179,751 | 1,811 / 1,743 | 108,171 / 102,814 |
+| Cache-read input | 501,888 / 323,072 | 115,456 / 96,256 | 664,960 / 551,040 |
+| Output | 8,909 / 8,572 | 495 / 526 | 4,063 / 3,888 |
+| Reasoning | 806 / 1,476 | 0 / 0 | 1,687 / 1,565 |
+| Model steps | 40 / 35 | 5 / 5 | 23 / 23 |
+| Raw tool events | 91 / 94 | 5 / 5 | 33 / 20 |
+| Trace-visible tool output UTF-8 bytes | 234,979 / 164,027 | 1,730 / 6,405 | 306,165 / 303,616 |
+
+The **301,496** total excess splits into **162,685 before**, **19,237 at** and
+**119,574 after** the first build. Pre-build is 53.96% of the excess, not a
+post-build compiler failure: all five Kudzu first builds passed with no correction.
+Across all phases cache-read input is +311,936, uncached input -10,373, output
++481 and reasoning -548. Pre-build alone is +178,816 cache reads versus -15,798
+uncached input. More accumulated/replayed context and five additional pre-build
+model steps are observed, but the provider trace cannot assign individual cached
+tokens to a particular document, search, tool output or decision. Raw tool counts
+are 129 / 119, distinct from normalized path-expanded counts of 134 / 124.
+Output byte totals exclude inputs and provider/system context and retain visible
+spill notices; recovered spill bytes are not retroactively charged as input.
+
+Concrete trace references below are `content/attempts/<id>/adapter.stdout` lines
+under the unchanged R12 directory. `tool-inventory.txt` records every non-edit,
+non-todo tool event with its phase, input, output bytes and original line.
+
+- K0 lines 8-9: broad root glob 12,135 B, then source glob 735 B. Lines 21-26:
+  package hook/hydration search 8,707 B, README discovery, then README read 4,368 B.
+- K1 lines 22-27: README discovery, broad package search 18,588 B, then README
+  read 4,517 B. K2 lines 9-10 repeat root inventory at 12,124 and 12,112 B;
+  lines 22 and 28 add a 13,112 B package search and 11,795 B full README read.
+- K3 line 24 reads 8,121 B of public `framework/core.d.ts`, then line 27 reads
+  the README. K4 line 21 enumerates package declarations at 12,860 B before its
+  README read. These are evidence of exploration, not missing supported syntax.
+- K0 lines 47/52 repeat raw HTML marker searches at 2,105 B each after the build
+  summary. K2 lines 52-53 and K3 lines 52-53 reread authored source after smoke.
+- K1 line 44 emits 42,179 B for 12 browser commands: six unchanged text checks
+  repeat the preceding bounded observation. K0 line 43 explicitly requests four
+  duplicate snapshots; these remain full output by design. R4 line 53 spills its
+  20-command browser output; its 49,626 trace-visible bytes are not the full stream.
+
+The existing generic README authoring example and lexical build summary already
+answer the observed questions. No new pre-build documentation hint, compiler
+feature, package inventory CLI, hidden instruction or source-access restriction
+is justified here. **The pre-build excess remains unresolved by this fix.**
+
+### Minimal Output Fix
+
+`test/browser-smoke.mjs:118-126` still samples text and AX after every action and
+runs every caller assertion. Only identical bounded observations on actions/text
+checks become `observationFrom: <last full command index>`. References never chain
+and reset on each invocation. Changed text or AX emits a new full observation;
+`open` and explicit `snapshot` always emit full output. The existing 4,000-character
+text, 60-entry AX, 160-character name and truncation limits remain unchanged.
+Equality does not certify unchanged DOM, focus, control values or omitted content.
+Failures, command records, native input, settling, deadlines, network/exception
+checks and exit status remain intact. The public utility document explains this
+output contract; no task-specific selectors or expected values enter the tool.
+
+Local replay of K1's exact 12 commands on its archived accepted artifacts emits
+**42,179 -> 22,969 UTF-8 bytes (-45.54%)**, with six compact observations and clean
+completion on both tools. Expanding references reproduces all baseline command,
+text, AX, truncation and completion fields exactly, excluding elapsed times.
+`before.jsonl`, `after.jsonl` and `replay.json` preserve actual output and commands.
+For example command 2 still checks `6 articles`, but instead of repeating command
+1's full text/AX it emits:
+
+```json
+{"index":2,"command":{"op":"expect-text","text":"6 articles"},"ok":true,"elapsedMs":154,"observationFrom":1}
+```
+
+Elapsed time above is illustrative; the raw replay files are authoritative.
+Baseline smoke SHA-256 is
+`ad2f1197ffc9e29bc26a769bde84e4ab01b8fa2703869ea275cad1dd2234c41e`;
+candidate is `13e8d1128047d67b464eb427808359b25d11110536f032716fcdc4406f05648a`.
+The current regression against the frozen old utility fails at the expected
+`observationFrom` assertion (exit 1), retained in `baseline-regression.stdout`.
+It also covers changed text, AX-only changes, non-chaining, explicit snapshot/open
+output and a failing assertion after compact output.
+
+A separate offline projection over all twenty historical invocations, including
+failed calls and R4's recovered full spill, reduces serialized record bytes from
+272,027 to 162,993 for Kudzu (35 compact records) and 307,487 to 177,483 for React
+(42). Expansion exactly reconstructs every historical bounded observation and
+failure. Ten/eight duplicate explicit open/snapshot observations remain full.
+This is an output-format projection, not newly observed browser behavior, model
+input, token savings, wall-time savings or a revised score. It may benefit React
+more in absolute bytes and does not demonstrate a smaller framework token gap.
+The live replay runs baseline then candidate, not a timing benchmark. Model-token
+and end-to-end productivity savings remain **unmeasured**; no model was called.
+
+Semantic primitives, compiler core passes/LOC, normalization/adapter rules,
+runtime concepts, dependencies and production browser-byte deltas: **0**.
+The utility implementation is +5 net lines; one existing regression is extended,
+with no new compiler fixture. Tools stay repository-only. Future use requires a
+new equal-condition freeze and lifecycle/protocol/browser/copy preflight; budgets,
+cache accounting, scorer, runner, package version and frozen context are untouched.
+No commit, push, release or version bump.
+
+After tracked implementation/test/document edits, sequential 1,200,000-ms gates
+pass: required-Chrome focused browser/copy/lifecycle/frozen-protocol tests 11/11,
+`npm run check` (228 pages, two interactive), `KUDZU_REQUIRE_CHROME=1 npm test`
+(standalone 1/1 plus 320/320, zero failures/skips), and `npm run test:package`
+(three pages, one interactive). All four stderr logs are empty. Four imported
+search fixtures retain 32,190 raw / 12,324 aggregate gzip JS bytes and runtime
+digest `f2f3df9f2dadbff0c9af957066bbd19bbf5fd9db63c93e8f75c3bdaf43b6705f`.
+`git diff --check` passes. Logs live beside the replay; this verification record
+is appended afterward and does not claim a new application timing benchmark.
+
+## Registry Content R12 (2026-09-09)
+
+**Focused score: Kudzu 5/5 versus React + Vite 5/5; AI-cost advantage not proven.**
+All ten final builds and unchanged scored Chrome journeys pass. This is one
+CONTENT-only experiment, not a replacement full-50 result or a 1.0 release gate.
+There is also a verification-order deviation: pre-run validation passed seven
+browser/copy tests but omitted the separate lifecycle and frozen-protocol test
+files. Those tests pass in the post-run full suite. That does not retrospectively
+satisfy the requested pre-measurement gate; the scores retain this qualification.
+No attempt was selectively retried to repair the protocol record.
+
+### Freeze And Scope
+
+Evidence: `test-results/ai-delivery-production/browser-tools-r12-20260909/`.
+The worktree was clean at release commit `04e14e3` before setup. R12 installs exact
+registry `@kudzujs/core@0.16.28` with npm's SHA-512 lock integrity, and archives the
+downloaded tarball plus unpacked source. A separate fresh `npm ci` checks every
+installed package file against that tarball. There is no local snapshot, mutable
+symlink, generator execution, package change or release in this experiment.
+
+R11's task/prompt, acceptance contract/scorer, serial alternating schedule,
+React 19.2.8 / Vite 8.2.2 starter, framework public-context documents, runner,
+adapter, model `openai/gpt-5.6-sol`, and OpenCode 1.18.27 binary/hash are unchanged.
+The equally copied `.tools` files are the released favicon/AX diagnostic versions
+of `browser-smoke.mjs`, unchanged `browser-cdp.mjs`, and updated task-neutral public
+instructions. No private selectors, expected answers or grader source are exposed.
+The tool source is equally readable; only public instructions enter both prompts.
+Registry package README bytes can differ from the older prerelease snapshot, so
+this is not a utility-only causal experiment. Historical frozen inputs stay intact.
+
+Budgets per attempt remain 300,000 ms; 400,000 input tokens including cache reads;
+20,000 output; 20,000 reasoning; 40 normalized tools; 20 unique read paths; eight
+modified paths; five model builds. Browser calls count as ordinary shell tools;
+their inner operations are reported separately, not extra model tools. Agent setup
+and browser time are charged; independent final build/acceptance time is excluded.
+Phases use whole first-build message boundaries, as in R11.
+
+The single ten-entry run used an 18,000,000-ms outer timeout and completed
+07:31:17.477-07:57:44.673 UTC (26m 27.196s). Node 24.14.0, npm 11.9.0, Chrome
+152.0.7977.64, Linux x64, Intel i5-9500/six logical CPUs and 33,491,050,496 bytes
+RAM match the recorded host. No interrupted attempt, replacement, model
+substitution or extra measured call occurred. The availability-only preflight
+costs 6,727 tokens separately; it does not count as one of the ten attempts.
+
+### Failure-Inclusive Accounting
+
+| Metric | Kudzu | React + Vite |
+|---|---:|---:|
+| Scheduled / scored successes | 5 / 5 | 5 / 5 |
+| Final build / acceptance passes | 5 / 5 | 5 / 5 |
+| Uncached input | 273,935 | 284,308 |
+| Cache-read input | 1,282,304 | 970,368 |
+| Output / reasoning | 13,467 / 2,493 | 12,986 / 3,041 |
+| Total tokens | 1,572,199 | 1,270,703 |
+| Tokens per success | 314,439.8 | 254,140.6 |
+| Median total tokens / model steps | 302,343 / 14 | 248,732 / 12 |
+| Median elapsed ms (range) | 150,351 (126,644-183,224) | 151,896 (135,221-176,766) |
+| Sum elapsed ms / normalized tools | 771,434 / 134 | 785,338 / 124 |
+| Median normalized tools / unique read paths | 28 / 10 | 24 / 13 |
+| Sum read / modified paths across attempts | 50 / 10 | 58 / 10 |
+| Median modified paths | 2 | 2 |
+| Model builds / correction cycles, totals | 5 / 0 | 7 / 2 |
+| Before / first-build / after-build tokens | 675,556 / 117,762 / 778,881 | 512,871 / 98,525 / 659,307 |
+| Browser adopters / native-input adopters | 5 / 5 | 5 / 5 |
+| Browser shell calls / full command records | 10 / 81 | 10 / 94 |
+| Successful fills / clicks / text checks | 21 / 0 / 35 | 19 / 0 / 45 |
+| Clean smoke completions and zero exits | 9/10 | 8/10 |
+| All agent shell zero exits | 14/15 | 15/18 |
+
+Scheduled cost is **2,842,902 tokens**, or **2,849,629** with preflight. Cache-write
+tokens and provider-reported subscription dollars are zero, not zero economic
+cost. Raw provider totals reconcile with input plus cache reads, output and
+reasoning; no attempt usage is missing. Every budget passes; K4 has the smallest
+input headroom, 27,994 tokens. Source retention excludes harness bytes and verifies
+only two changed authored files per attempt: the article page/App and stylesheet.
+Ordinary hooks, declarative filters, cards, labels, live regions, native links and
+focus CSS are retained. Manifests, locks and other starter files remain unchanged.
+
+Per-attempt rows follow the actual schedule. `B/C` is model builds/corrections;
+`smoke` is clean zero-exit calls/total calls. All ten have passing final acceptance.
+
+| Attempt | Total tokens | Elapsed ms | Tools | Reads | B/C | Smoke | R11 total tokens | Token delta |
+|---|---:|---:|---:|---:|---|---|---:|---:|
+| K0 | 299,213 | 163,719 | 25 | 9 | 1/0 | 2/2 | 414,186 | -114,973 |
+| R0 | 231,558 | 135,221 | 21 | 10 | 1/0 | 2/2 | 209,079 | +22,479 |
+| R1 | 280,489 | 171,256 | 31 | 14 | 2/1 | 1/2 | 265,217 | +15,272 |
+| K1 | 249,207 | 126,644 | 22 | 10 | 1/0 | 1/1 | 310,399 | -61,192 |
+| K2 | 345,718 | 150,351 | 28 | 10 | 1/0 | 1/1 | 361,298 | -15,580 |
+| R2 | 234,596 | 151,896 | 24 | 13 | 1/0 | 2/2 | 233,650 | +946 |
+| R3 | 248,732 | 150,199 | 22 | 7 | 1/0 | 2/2 | 299,294 | -50,562 |
+| K3 | 302,343 | 147,496 | 28 | 11 | 1/0 | 2/2 | 320,479 | -18,136 |
+| K4 | 375,718 | 183,224 | 31 | 10 | 1/0 | 3/4 | 384,928 | -9,210 |
+| R4 | 275,328 | 176,766 | 26 | 14 | 2/1 | 1/2 | 329,535 | -54,207 |
+
+`attempt-metrics.md` additionally gives every uncached/cache/output/reasoning and
+pre/build/post token count. `audit.json` and `review.json` preserve exact commands,
+exits, observations, final answers, source hashes and all comparison metrics.
+
+### Actual Verification Quality
+
+All agents fill the real search control and observe changed rendered output,
+including empty results and restoration. K2/R0 do not independently smoke a title
+query; R1 does not independently smoke a topic query. No agent clicks a link or
+proves keyboard navigation. K4 and R0/R3/R4 open sibling URLs directly. Successful
+smoke is not exhaustive accessibility, mobile, screen-reader or JS-disabled proof;
+the unchanged independent scorer supplies the final scored acceptance.
+
+R1/R4 first fail exact AX targeting and receive the bounded `SEARCH ARTICLES`
+candidate. Both remove authored label `text-transform`, rebuild and pass without
+relaxing the required target name. K4 instead fails a caller-supplied `Static
+edition` text expectation, reruns with observed `STATIC EDITION`, and discloses
+that correction in its final answer; it does not alter the static page. These
+three nonzero calls remain charged. All seventeen completed smoke calls have
+exit 0 and empty exception/request/HTTP-error lists. R3 also runs `git diff` in a
+non-repository workspace: it compares TSX to CSS and exits 1, not a useful baseline
+diff. A tool status of `completed` alone is not treated as command success.
+
+Four of five Kudzu agents still repeat raw-HTML script/marker scans; K1 uses the
+build summary without another scan. All five inspect installed public framework
+documentation, with package-source/type searches still present. Broad final
+script-free language exceeds a lexical scan's guarantee; no new static-proof or
+public-context-isolation claim is made. R4's large browser output is truncated:
+89 React command records are trace-visible, 94 recoverable from the original spill
+file. Its bytes/provenance are archived without adding recovered text to token
+accounting. R11's three earlier spill files are retained separately in provenance.
+
+Kudzu total tokens fall **12.23%** from R11; React falls **4.94%**. R11 remains
+4/5 versus 5/5 with all eighteen historical smoke invocations nonzero. Same-run
+R12 Kudzu still costs **1.2373x** React in total tokens, despite a median elapsed
+time 1.02% lower with overlapping ranges. Five samples, different run times,
+cache/provider drift, the new registry version and changed tool/docs prohibit a
+causal savings or statistical superiority claim. There is no fresh browser timing
+matrix. Accepted deploy medians are 68,410 / 26,404 raw/gzip bytes versus
+206,338 / 66,378; observed JS-transfer medians are 37,608 versus 199,174 bytes.
+
+### Integrity And Next Gate
+
+Protocol SHA-256: `663e86f02018a7d7d7cc0319d1351a0acc5cce15551d2c630ee163c7caeecc3a`.
+Registry tarball SHA-256: `06acf44d6a7754dca48293ec522b1af6eaca5d6e9cfe6d1d774feba6755ea643`.
+Smoke SHA-256: `ad2f1197ffc9e29bc26a769bde84e4ab01b8fa2703869ea275cad1dd2234c41e`.
+Transport SHA-256: `3082f1df079fbad99bc9dc3b0fcc3c340bdf8a5c22f052e80aaa2a2f13718495`.
+Public tool document SHA-256: `13023f22d569afce286e329dd80283f3ca1dbab94936e5c0ad52c18e48676b13`.
+Runner/adapter remain R11's `a2ee11d3f61b254daee9bf90e013a6688fa140a10592bc7cde5d25cc474aa944`
+and `b1036b3d3b205714a45fb35d2e9a8e25c3f54790936131aa84d92b9ec4639a1e`.
+`freeze.json` records full registry metadata, integrity, binary and input hashes.
+The independent audit verifies R11/R12's 20 result/trace pairs, 120 command streams,
+340 artifacts, 330 source files and 120 context checks, including all 60 R12
+post-agent/post-acceptance checks. Persistent harness tampering is detected;
+transient write-and-restore remains outside this trusted-local mechanism.
+
+Sequential 1,200,000-ms gates pass: `npm run check` (228 pages, two interactive),
+required-Chrome `npm test` (standalone 1/1 plus **320/320**, no failures/skips),
+and package smoke (three pages, one interactive). Full tests include the two
+omitted pre-run lifecycle checks and frozen-protocol checks. Four search fixtures
+retain 32,190 raw / 12,324 gzip JS bytes and runtime digest
+`f2f3df9f2dadbff0c9af957066bbd19bbf5fd9db63c93e8f75c3bdaf43b6705f`.
+Only audit/archive scripts and factual records follow measurement; compiler,
+runner, adapter, scorer, tools and measured frozen inputs never change mid-run.
+
+The sibling `browser-tools-r12-20260909-audited.tar.gz` and external `.sha256`
+archive frozen inputs, registry source/tarball, tool/docs, OpenCode executable,
+all R12 and comparison R11 raw attempts, spill output, verification logs, source
+diffs and a per-file evidence manifest. Prior archives, including interrupted
+evidence, retain their freeze-time hashes and are not overwritten. Disposable
+install-check dependencies are explicitly excluded.
+
+Next evidence-ready work is protocol review of bounded browser observations and
+remaining post-build inventory/stopping cost, not a compiler feature. A future
+freeze must explicitly run lifecycle, frozen-protocol, utility and copy-integrity
+tests before any provider call; no replacement R12 is authorized by this result.
+Full R8 remains 23/25 versus 24/25, and the full-suite/1.0 gates stay blocked.
+Semantic primitives, core passes/LOC, runtime concepts, dependencies and production
+browser-byte deltas added by this session: **0**. No commit, push or version bump.
 
 ## 0.16.28 Release Scope (2026-09-09)
 
@@ -3882,3 +4939,415 @@ Kudzu toggle:  [5.2, 5.4, 5.3, 5.6, 5.3, 5.2, 5.3]
 ```
 
 The original fixture and harness were stored in an excluded local workspace and are unavailable from this checkout. The arrays above remain historical provenance, not an independently reproducible current claim.
+# CONTENT R13 Observation/Map Measurement (2026-09-10)
+
+Archive closure: `browser-tools-r13-20260910-audited.tar.gz`, 68,962,181 B,
+1,042 manifested evidence files; SHA-256
+`83dc57ad33f9e3604f591b8c56b76c310da08490586dfb7474098c7de8a5fa4a`.
+Manifest SHA-256: `137f67a9a9ac68d24489e885af92c6ef9f21b2d8d9cb8e060e4637e7eaad506c`.
+Two deterministic tar invocations produce the identical archive hash; file hashes,
+archive listing and external checksum verify. Freeze-to-archive elapsed is
+**46m 47.248s**, 01:05:37.117Z to 01:52:24.365Z, including the actual batch and
+final checks, excluding initial inspection. This external checksum paragraph and
+the matching packet closure are added after packing to avoid a self-hash cycle;
+the archive contains the full report immediately before these closure additions.
+
+The separately authorized ten-attempt CONTENT batch is complete: **Kudzu 5/5,
+React + Vite 5/5**, with all independent build, behavior, accessibility, browser,
+and output acceptance gates passing. This does **not** establish AI-cost savings.
+Kudzu uses 1,731,168 tokens versus React's 1,266,931 (+36.64%); historical R12 was
+1,572,199 versus 1,270,703. R13 Kudzu is +10.11% versus historical R12, while React
+is -0.30%. Two changes in one stochastic five-pair batch cannot isolate causality.
+
+## Frozen Protocol
+
+Evidence root: `test-results/ai-delivery-production/browser-tools-r13-20260910/`.
+The existing R12 runner, adapter, task, scorer, budgets, source requirements and
+serial schedule are unchanged. React 19.2.8 / Vite 8.2.2 and registry dependency
+lock entries remain unchanged. Kudzu installs the immutable local prerelease
+`0.16.28-observation-map.20260910.1`, packed from working-tree source with the
+689 B README map; only the copied package manifest has a prerelease version.
+The workspace remains `0.16.28`. No mutable package symlink, private grader hints,
+asymmetric instructions, compiler changes, model substitution, retry, release,
+commit or push occurs. Both variants receive identical updated browser utilities
+and public documentation, with equal pre/post-agent context integrity checks.
+
+- Protocol SHA-256: `d0e9fa058e09d6601c1bd04a33a35495e338d55f67fe501cd7854a82203e334c`.
+- Tarball SHA-256: `577f11730a0f6bbb4d31176ddb587dabb8e8f9fdce2358e746792a605d67fad5`.
+- Exact executable: archived OpenCode 1.18.27, verified against R12's binary hash
+  and `--version`; every completed trace reports `openai/gpt-5.6-sol`.
+- `preregistration.json` freezes cost/phase/discovery/adoption/reference/acceptance
+  outcomes and interpretation before provider calls. The candidate's `npm ci`
+  installation matches every packed file and retains all other lock entries.
+- Before model calls, `KUDZU_REQUIRE_CHROME=1` and `KUDZU_AI_DELIVERY_GROUP=1`
+  explicitly run `ai-delivery-lifecycle.test.mjs`, `ai-delivery-production.test.mjs`,
+  `ai-delivery.test.mjs`, and `browser-smoke.test.mjs`: **11/11, zero skips**,
+  01:05:44.244Z to 01:06:24.762Z. R12's sequencing omission is not repeated.
+- A separate availability-only READY probe costs 6,727 tokens and 11.464 seconds.
+  It does not replace any attempt. Total charged tokens including it: **3,004,826**.
+  Reported subscription dollars are zero, not free compute.
+- Actual serial batch: 01:06:54.244Z to 01:35:08.293Z, **28m 14.049s**.
+  The freeze initially stopped on a disposable R12 `node_modules/.bin` symlink;
+  inventory was restricted to evidence outside `node_modules` before freezing.
+  No provider call or attempt occurred during that preparation failure.
+
+## Attempt Costs
+
+K/R abbreviate Kudzu/React + Vite; ordinals are unchanged, not ranked outcomes.
+All rows succeed, so failure-inclusive and successful-attempt totals coincide.
+Failed tool calls and their correction builds remain charged. Cache writes are
+zero throughout. `audit.json` retains every step's cache/noncache/output/reasoning
+usage, message ID, phase totals, tools, observations and final text.
+
+| Attempt | R13 tokens | R12 tokens | Uncached | Cache read | Output | Reasoning | Elapsed ms | Tools | Builds | Pre / build-message / post tokens | Clean smoke / calls |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
+| K0 | 305502 | 299213 | 42899 | 259584 | 2671 | 348 | 156354 | 27 | 1 | 132748 / 25090 / 147664 | 1/1 |
+| R0 | 295549 | 231558 | 34487 | 257408 | 3012 | 642 | 203324 | 26 | 2 | 99051 / 18905 / 177593 | 2/3 |
+| R1 | 286051 | 280489 | 81515 | 201472 | 2472 | 592 | 156615 | 21 | 1 | 102180 / 23304 / 160567 | 2/2 |
+| K1 | 374213 | 249207 | 74154 | 296576 | 2951 | 532 | 167425 | 31 | 1 | 192560 / 32564 / 149089 | 1/1 |
+| K2 | 400732 | 345718 | 39380 | 357632 | 3019 | 701 | 189690 | 29 | 2 | 149081 / 27175 / 224476 | 1/2 |
+| R2 | 214167 | 234596 | 29143 | 182400 | 2299 | 325 | 131002 | 23 | 1 | 114364 / 21877 / 77926 | 1/1 |
+| R3 | 239550 | 248732 | 37389 | 198912 | 2718 | 531 | 157532 | 26 | 1 | 100915 / 19506 / 119129 | 3/3 |
+| K3 | 311472 | 302343 | 43728 | 264320 | 2873 | 551 | 177271 | 28 | 1 | 146741 / 21733 / 142998 | 2/2 |
+| K4 | 339249 | 375718 | 37750 | 298112 | 2838 | 549 | 164598 | 29 | 1 | 149599 / 27204 / 162446 | 1/1 |
+| R4 | 231614 | 275328 | 45005 | 183424 | 2608 | 577 | 151879 | 25 | 1 | 100186 / 18984 / 112444 | 3/3 |
+
+| Metric | R13 Kudzu | R13 React | R12 Kudzu | R12 React |
+|---|---:|---:|---:|---:|
+| Total tokens | 1731168 | 1266931 | 1572199 | 1270703 |
+| Tokens per success | 346233.6 | 253386.2 | 314439.8 | 254140.6 |
+| Uncached input | 237911 | 227539 | 273935 | 284308 |
+| Cache-read input | 1476224 | 1023616 | 1282304 | 970368 |
+| Output / reasoning | 14352 / 2681 | 13109 / 2667 | 13467 / 2493 | 12986 / 3041 |
+| Model steps | 72 | 62 | 68 | 63 |
+| Median elapsed ms | 167425 | 156615 | 150351 | 151896 |
+| Median normalized tools | 29 | 25 | 28 | 24 |
+| Model builds total | 6 | 6 | 5 | 7 |
+| Prebuild tokens | 770729 | 516696 | 675556 | 512871 |
+| First-build-message tokens | 133766 | 102576 | 117762 | 98525 |
+| Postbuild tokens | 826673 | 647659 | 778881 | 659307 |
+
+Phase boundaries use the entire first model message containing a build, not
+wall-clock attribution of individual tokens to individual tool outputs. Kudzu's
+464,237 excess tokens split into 254,033 prebuild, 31,190 build-message and 179,014
+postbuild. Provider accounting cannot identify which read caused a cached token.
+K2's 397,012 input tokens remain inside the unchanged 400,000 input budget;
+400,732 total tokens are not an input-budget failure.
+
+## Discovery And Adoption
+
+`discovery.mjs` reads immutable raw traces and emits per-tool locations, output
+bytes and definitions in `discovery.json`. Broad truncated root inventories are
+R13 **5 / 56,810 B** Kudzu versus **6 / 59,918 B** React; R12 is 6 / 69,798 B versus
+5 / 49,533 B. The broader all-root-glob ledger also counts six small untruncated
+R12 React calls (11 / 51,094 B total); these are not silently conflated with the
+earlier broad-inventory metric. All byte counts are tool output, not model tokens.
+
+Kudzu package operations grow from 17 / 93,722 B to 23 / 159,379 B; actual package
+reads grow from 7 / 37,758 B to 11 / 60,343 B. R13 prebuild steps/raw tools are
+41/102 versus React 34/91; historical R12 is 40/91 versus 35/94.
+
+Only K1 reads the map, in its final pre-edit full README read, **after** reading
+the manifest and public declarations. K0/K2/K4 start their README reads at lines
+75/65/70 and never see it; K3 reads declarations without the README. No agent
+explicitly discusses the map or follows a map link after exposure. The evidence
+supports **one exposure, zero observed map-directed uses**, not knowledge of
+internal model understanding. Search-before-read and package inventories persist.
+
+After preserving the immutable candidate, the 689 B map and its dedicated package
+smoke assertions are removed from the working tree. README returns to 10,612 B;
+the package smoke returns to its prior behavior. This is a minimal decision to
+remove unproven overhead, **not** causal disproof or a measured claim about the
+post-removal package. No second model batch is run.
+
+## Browser Observations
+
+All ten agents use real inputs and receive compact observations. Audit verifies
+**95 references**, each pointing backward directly to a complete observation in
+the same invocation; no chained/forward/out-of-invocation references or compact
+open/snapshot records occur. The focused regression separately checks changed
+AX observations, explicit snapshots, failed assertions and repeated full opens.
+There are no spilled browser outputs in R13.
+
+| JSON record bytes | Kudzu | React | Total |
+|---|---:|---:|---:|
+| Actual compact records | 132367 | 234548 | 366915 |
+| Same records expanded through references | 256764 | 401681 | 658445 |
+| Exact omitted observation bytes | 124397 | 167133 | 291530 |
+| References | 39 | 56 | 95 |
+
+Expansion retains the actual commands, elapsed values, errors and completion
+records, adding only the referenced observation fields; newline bytes are counted.
+It is a byte-exact reconstruction of this trace, not another measured legacy-tool
+run or a prediction of model-token savings. Retain the +5-net-line compaction:
+bounded output savings are proven and no utility correctness regression appears.
+No agent explicitly explains reference resolution; successful continued testing
+shows usable output, not proof of internal model understanding.
+
+Actual clean smoke exits are **6/7 Kudzu, 11/12 React**. K2 and R0 first fail the
+exact AX lookup because authored CSS uppercases `Search articles`; both use the
+existing candidate-name diagnostic, remove the transformation, rebuild and pass.
+Compaction preserves both failures; they are not retry-erased benchmark attempts.
+All other shell calls exit zero. No new tool fix is authorized by these traces.
+
+Successful fill counts K0..K4 are 4/4/5/6/4 (23 total); R0..R4 are 4/4/4/5/4
+(21 total). Text assertions total 39/63, clicks zero. All agents cover no-match
+and clearing/whitespace restore; K0/K2/K3/K4 and R0/R3/R4 explicitly test title
+queries, while K1/R1/R2 use topics for their single-result smoke. Every agent tests
+case and surrounding whitespace somewhere. Independent acceptance tests title
+and topic behavior for every attempt, regardless of agent smoke coverage.
+
+Four Kudzu agents repeat raw-output marker scans; K0 relies on the build summary.
+K3's final wording about `/static/` without JavaScript exceeds its ordinary smoke
+configuration; independent static artifact checks, not that final sentence,
+establish zero-script output. Browser success does not certify source retention.
+
+## Acceptance And Verification
+
+Audit reconciles ten attempt records, 60 raw command streams, 170 artifacts,
+165 retained source files and 60 copied-context checks. Each source changes only
+its article page (`src/pages/articles/index.tsx` or React `src/App.tsx`) and
+`src/styles.css`; data, cards, shell, routes, package manifests and locks remain
+unchanged. The scorer independently checks initial/singular/topic/empty/restored
+states, exact label/type, live counts, one h1, no positive tabindex, browser errors
+and output. Every Kudzu attempt has ten zero-JavaScript siblings; React's existing
+client runtime is permitted and is not mislabeled zero-JavaScript. These are the
+maintained accessibility checks, not an exhaustive screen-reader/mobile audit.
+
+After map removal, sequential 1,200,000-ms command budgets run:
+
+1. `npm run check`: exit 0, 01:37:42.360Z to 01:37:59.268Z.
+2. `KUDZU_REQUIRE_CHROME=1 npm test`: exit 0, standalone 1/1 plus 320/320,
+   zero failures/skips, 01:37:59.270Z to 01:46:47.360Z.
+3. `npm run test:package`: exit 0, 01:46:47.364Z to 01:46:51.894Z.
+
+The archive retains raw R13 evidence, exact candidate/toolchain, R12 comparison
+copies and hashes, final source diff, scripts and test logs. Frozen R12 and R13
+integrity checks pass. No core semantic primitive, pass/LOC, runtime concept,
+dependency or production browser-byte change occurs. Final working source differs
+from the measured candidate only by removal of the map/package assertions and
+these evidence records; measured R13 is never relabeled as the post-removal tree.
+
+Five pairs, provider/cache/time drift, the local candidate identity and two bundled
+interventions preclude causal/statistical superiority. Historical R12 retains its
+pre-run lifecycle/protocol omission; raw scores are not recalculated. Full R8 stays
+23/25 versus 24/25 and the 1.0 gate remains blocked. Next action is evidence-led
+review of prebuild package discovery and repeated postbuild inventories, not new
+compiler syntax, asymmetric hints or an automatic further model run.
+# CONTENT R14 Symmetric Inventory Policy (2026-09-10)
+
+Archive closure (external to its own snapshot):
+`inventory-policy-r14-20260910-audited.tar.gz`, **69,954,597 B**, **1,077 files**,
+SHA-256 `f92d4de5dfb437cdd5ad5f668a3c5ffb00b7faab388933cd281eee9b06418a05`.
+Manifest SHA-256 `2df9514094626a14dc2e0236a5dfb3ba0f42b5cba6c7e9d009296de2d85844be`.
+Two deterministic packs match, every manifest hash/archive member verifies, and
+the sibling checksum passes at 04:41:44.176Z. This paragraph and the matching
+packet closure are added after packing to avoid a self-hash cycle; the archive
+contains the complete report immediately before these checksum additions.
+
+The single authorized ten-attempt batch finished its schedule: **Kudzu 1/5,
+React + Vite 2/5** under the unchanged scorer and budgets, versus historical
+R13 **5/5 and 5/5**. All ten independent final builds and behavioral/accessibility/
+output acceptances pass, but that does not override budget failures. React R3
+times out and has incomplete attribution; `run.json` correctly says `incomplete`,
+not a fully attributable completed benchmark. No retry or second batch occurred.
+**The AI-cost objective was not achieved; do not install this policy as a default.**
+
+Evidence: `test-results/ai-delivery-production/inventory-policy-r14-20260910/`.
+This is an inventory-policy experiment, not a compiler improvement. Main remains
+0.16.28. Existing dirty browser compaction and documentation history are preserved.
+No compiler/runtime/CLI feature, dependency, OpenCode configuration, permission,
+sandbox, release, version bump, commit or push was introduced.
+
+## Frozen Inputs And Gates
+
+- Protocol SHA-256: `451090eb5f0858a0d8b2da229c58e71b18a1c9d1e4d2536990fa7d0aa09de84c`.
+- Immutable candidate tarball SHA-256: `419e87aebf5bc754d973dcd4b47290e41670abfaf9db6871d2c6ae13769d892a`.
+- Policy SHA-256: `86e99f6ce31af14d92f01164c2fe579fbd7f9a0d86a83a20bef27d290c08f667`.
+- Local candidate `0.16.28-inventory-policy.20260910.1` differs from R13 only in
+  README removal of the 689 B map and copied package version. `source-differences.json`
+  freezes both complete per-file source inventories/digests. Compiler, runtime and
+  bin bytes are identical. The main package version is untouched.
+- R13's runner, adapter, scorer, task, acceptance contract, registry dependency
+  locks, React 19.2.8 / Vite 8.2.2 starter, browser tools and public browser docs
+  are reused unchanged. Kudzu starter manifest/lock differences only identify
+  the immutable tarball. `npm ci` verifies every installed packed file.
+- OpenCode 1.18.27 is binary-hash pinned; model is `openai/gpt-5.6-sol` throughout.
+  Schedule remains K0,R0,R1,K1,K2,R2,R3,K3,K4,R4, serial, no model substitution.
+- Both variants receive exactly the same **920 B** plain generic discovery text
+  through public context. It is included in model input and charged, not installed
+  configuration. No preloaded repository map, hidden grader label, stopping rule,
+  dependency-doc/type restriction, or content-specific hint is added.
+- Budgets remain 300,000 ms, 400,000 input tokens including cache reads, 20,000
+  output, 20,000 reasoning, 40 normalized tools, 20 read paths, 8 modified paths,
+  and 5 builds. Subscription pricing remains zero reported dollars, not free compute.
+- Offline `compare.mjs` passes before calls, with 14/14 and 19/19 coverage,
+  including the ten nested React HTML entries outside `src` and root `index.html`.
+  Arbitrary authored roots and explicit dependency access remain in the policy.
+- Explicit lifecycle/protocol/browser/copied-context gates pass **11/11, no skips**,
+  03:43:02.565Z to 03:43:27.448Z. The unchanged runner's actual frozen-input check
+  caught an invalid `includeInPrompt:true` on uncopied context before any provider
+  call. Original protocol/freeze/preregistration and failing log are retained;
+  removing that unnecessary flag uses ordinary default prompt inclusion. The
+  corrected check reaches the intentional existing-output-directory sentinel
+  only after validating every input, before creating any workspace or model call.
+  `input-validation.json` records this bounded preparation repair, not a task retry.
+- One separate availability-only READY probe costs **6,727 tokens**, 6.428 s,
+  03:44:22.261Z to 03:44:28.689Z. Actual serial batch lasts **33m 42.541s**,
+  03:44:29.336Z to 04:18:11.877Z, with a 18,000,000-ms outer command timeout.
+
+## Scores And Costs
+
+All rows pass independent final acceptance. `I/T/R/M/E` denote exceeded input,
+tools, read paths, modified paths and elapsed budgets. R3's recorded token usage
+is a **lower bound** from checkpointed finished steps; unknown tail cost remains
+unknown. It is not zero-filled or extrapolated. Cache writes are zero throughout.
+
+| Attempt | Score / exceeded | Uncached | Cache read | Output | Reasoning | Total recorded | Elapsed ms | Tools / reads / modified / builds | Pre / build-message / post tokens |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| K0 | success | 60944 | 296192 | 3386 | 654 | 361176 | 176916 | 33 / 17 / 2 / 1 | 152262 / 33542 / 175372 |
+| R0 | success | 42482 | 200832 | 3238 | 1042 | 247594 | 184527 | 37 / 19 / 2 / 1 | 110122 / 21545 / 115927 |
+| R1 | failure I,T | 63384 | 487168 | 4078 | 967 | 555597 | 216531 | 47 / 20 / 2 / 2 | 183857 / 39896 / 331844 |
+| K1 | failure I,T,R | 81641 | 554880 | 3636 | 950 | 641107 | 201702 | 44 / 21 / 2 / 1 | 315986 / 58376 / 266745 |
+| K2 | failure I | 56424 | 487552 | 3684 | 1258 | 548918 | 202861 | 39 / 17 / 2 / 1 | 213734 / 40721 / 294463 |
+| R2 | success | 64599 | 190080 | 3232 | 935 | 258846 | 174059 | 39 / 20 / 2 / 1 | 114864 / 22932 / 121050 |
+| R3 | failure I,E,T,R,M; timeout | 56272 | 469504 | 6207 | 1627 | >=533610 | 300006 | 63 / 26 / 13 / 4 | 169963 / 41367 / >=322280 |
+| K3 | failure I | 54463 | 371712 | 3658 | 959 | 430792 | 184993 | 37 / 20 / 2 / 1 | 135333 / 44704 / 250755 |
+| K4 | failure I,T,R | 63186 | 393088 | 3619 | 542 | 460435 | 180279 | 44 / 24 / 2 / 1 | 190341 / 37734 / 232360 |
+| R4 | failure T,R | 38421 | 198272 | 3529 | 776 | 240998 | 181586 | 41 / 21 / 2 / 1 | 117871 / 24080 / 99047 |
+
+| Metric | R14 Kudzu | R14 React | Historical R13 Kudzu | Historical R13 React |
+|---|---:|---:|---:|---:|
+| Attributable successes | 1/5 | 2/5 | 5/5 | 5/5 |
+| Failure-inclusive recorded tokens | 2442428 | >=1836645 | 1731168 | 1266931 |
+| Tokens per success | 2442428 | unknown; >=918322.5 | 346233.6 | 253386.2 |
+| Uncached input | 316658 | >=265158 | 237911 | 227539 |
+| Cache-read input | 2103424 | >=1545856 | 1476224 | 1023616 |
+| Output / reasoning | 17983 / 4363 | >=20284 / >=5347 | 14352 / 2681 | 13109 / 2667 |
+| Median elapsed ms | 184993 | 184527 | 167425 | 156615 |
+| Median normalized tools | 39 | 41 | 29 | 25 |
+| Model builds | 5 | 9 | 6 | 6 |
+| Prebuild tokens | 1007656 | 696677 | 770729 | 516696 |
+| First-build-message tokens | 215077 | 149820 | 133766 | 102576 |
+| Postbuild tokens | 1219695 | >=990148 | 826673 | 647659 |
+
+Total recorded usage including preflight is **>=4,285,800 tokens**; provider
+reported dollars are zero and actual React/full-batch cost is unknown. Kudzu
+recorded tokens rise 41.09% from historical R13; React's lower bound rises 44.97%.
+The recorded K/R token gap is 605,783, but cannot be treated as an exact cost
+difference because R3's tail is unknown. Phase boundaries allocate whole model
+messages, not individual tool-output causality. Historical timing, cache state,
+model service drift and candidate source metadata are not controlled effects.
+
+## Discovery Adoption
+
+Actual-output census, path lists, read inputs/offsets/bytes, dependency paths,
+shell calls, and original trace line numbers are retained in `discovery.json`,
+`discovery-totals.json`, `discovery-review.txt`, and raw `adapter.stdout`.
+All ten perform a non-recursive root read and achieve complete authored-path
+coverage before the first build: 14/14 Kudzu and 19/19 React, all five each.
+React explicitly expands `about`, `articles`, `topics`, and `static`; no unknown
+authored subtree or static entry is missed. This distinguishes filename coverage
+from reading contents. Historical R13 React R1/R3 expose only 11/19 and 14/19
+authored paths under the same exact-output census; their final acceptance still
+passes, so those omissions are discovery observations, not retroactive failures.
+
+| Discovery metric | R14 Kudzu | R14 React | R13 Kudzu | R13 React |
+|---|---:|---:|---:|---:|
+| Root globs / returned bytes | 21 / 46963 | 29 / 51896 | 5 / 56810 | 6 / 59918 |
+| Truncated root globs | 4 | 5 | 5 | 6 |
+| Prebuild raw tools / model steps | 151 / 37 | 172 / 35 | 102 / 41 | 91 / 34 |
+| File read calls / output bytes, all phases | 93 / 323832 | 100 / 215257 | 56 / 129494 | 57 / 88025 |
+| Prebuild file-read output bytes | 307829 | 205634 | 121063 | 83693 |
+| Prebuild dependency file reads / bytes | 15 / 93602 | 0 / 0 | 10 / 60136 | 0 / 0 |
+
+Root-glob scope includes empty/scoped root patterns, not just truncated broad
+inventories. Nine agents still issue a broad recursive root pattern such as
+`*.{json,jsonc,js,mjs,cjs,ts,tsx,html,css,md,yaml,yml}` despite the explicit warning.
+K0 instead gets 19 dependency paths from its long manifest/config brace pattern.
+Thus coverage adoption succeeds, but avoiding dependency-heavy discovery does not.
+All Kudzu agents read all 14 authored files at least partly; React reads 18/19
+(R0) or 19/19. Four Kudzu full lockfile reads return 32,007 B each; K4 reads 120
+lines/4,329 B. React R1/R3 read 46,786 B lockfiles, R2/R4 read 80/160 lines,
+and R0 does not read its lockfile. R13 had no lockfile reads. Smaller glob output
+is outweighed by more reads; these exact output bytes are **not token savings**.
+
+The unchanged scorer counts unique `read` tool paths, including directory reads;
+it does not pretend every grep match or shell `readFileSync` is a separate read
+tool. The audit retains those operations and outputs separately, including
+postbuild artifact scans, so they are not free unreported inspection. Public
+context is charged through model usage; no speculative dependency inventory was
+preloaded. Dependency directories remain accessible, not required to be fully read.
+
+## Browser And Source Audit
+
+All ten final builds and unchanged Chrome acceptance suites pass initial, title,
+topic, singular/plural, empty, restored results, exact label/type, polite live
+status, one h1, no positive tabindex, browser errors, route/content and output
+checks. Audit reconciles **60 command streams, 170 artifacts, 165 source files,
+60 copied-context checks**, with immutable manifest/lockfiles and no source deletion.
+Every Kudzu result retains ten zero-JavaScript siblings. These are maintained
+checks, not an exhaustive mobile or assistive-technology certification.
+
+Nine attempts change only the article component/page and stylesheet, retaining
+ordinary state, pure filtering, keyed `ArticleCard` composition and shared data.
+React R3 additionally changes ten HTML entries and `vite.config.ts`, extracting
+`Site({path})` and using `react-dom/server` during Vite build for static siblings.
+This is source-based rendering, not generated-output tampering or a grader bypass,
+but it expands the change to 13 files and exceeds the budget. It first corrects
+an overly broad index-path test, then a TS5097 extension-import build failure,
+and reaches timeout without an agent browser-smoke call or final completion.
+The independent build/acceptance after timeout cannot make that attempt successful.
+Its static work interprets the existing Kudzu-specific no-script requirement as
+universal; the frozen prompt/scorer are not rewritten or selectively rescored.
+
+Agent browser smoke exits: **8/8 Kudzu, 8/9 React**. All five Kudzu and four React
+agents execute real search input; successful fills total 21/17 and text assertions
+49/49. React R1's uppercase CSS accessible-name mismatch is preserved, diagnosed,
+and repaired by the agent using an explicit matching `aria-label`, then rebuilt.
+K3 has one failed shell-quoted artifact scan followed by a corrected scan; it is
+charged. No browser-tool correctness failure or new compiler failure was found.
+
+Compaction remains unchanged: **96 direct, backward full-observation references**
+validate; no chained, forward or cross-invocation reference. Actual/expanded JSON
+record bytes are 181,054/333,162 Kudzu and 161,581/306,529 React, omitting exactly
+297,056 B, not model tokens. No browser output spills occur. No agent explicitly
+explains reference resolution; successful use is not evidence of internal reasoning.
+
+## Decision And Limits
+
+Do not promote the inventory policy. Complete coverage alone is not the delivery
+objective, and this batch loses success rate while increasing recorded work.
+Preserve the result and stop provider runs. A next bounded **offline** review may
+separate filename inventory from content inspection and clarify the existing
+framework-specific static-output wording; it must preserve arbitrary authored
+roots, config/assets, dependency access and full acceptance. No automatic prompt
+retuning/model rerun or raised budget is authorized by this result.
+
+Five pairs, a timed-out attempt with unknown tail cost, time/cache/provider drift,
+README removal and candidate identity differences preclude causal/statistical
+policy claims. No compiler win, full-suite win or 1.0 qualification is claimed.
+Full R8 remains 23/25 versus 24/25; the full-suite and 1.0 gates remain blocked.
+Semantic primitives, core passes/LOC, runtime concepts, production dependencies
+and framework browser-byte deltas are all zero in this task.
+
+## Final Verification
+
+All commands use explicit 1,200,000-ms budgets and retain stdout/stderr and UTC
+receipts in `verify-execution.json`. `npm run check` passes at 04:26:33.495Z to
+04:26:45.033Z. The first required-Chrome `npm test` passes standalone 1/1 and
+319/320, failing the component-list browser test because it receives an nginx
+HTTP-on-HTTPS error page instead of the fixture. The unchanged legacy test picks
+ports from `10000 + pid % 10000` and accepts any listening responder; `ss` records
+occupied listeners in that range. This is consistent with a port collision, not
+a demonstrated component/compiler defect; the exact failed port was not logged.
+
+One full-suite verification repeat, with no source/environment/budget change,
+passes standalone **1/1 plus 320/320, zero skips**, 04:33:43.101Z to 04:39:27.932Z.
+This is a test verification repeat, not a model or benchmark retry, and the first
+failure is preserved. The legacy port-ownership risk is not claimed fixed.
+Package smoke passes 04:39:27.953Z to 04:39:30.973Z: four installed packages,
+three pages, one interactive. No testing bypass or skipped acceptance was used.
+The archived report, frozen source/toolchain, raw attempts, source diffs, original
+preparation failure, full test logs and evidence manifest retain the complete
+sequence, not merely the final green verification.

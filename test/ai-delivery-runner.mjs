@@ -132,9 +132,9 @@ process.stdout.write(`${JSON.stringify(run())}\n`)
 function validateProtocol(value) {
   if (!plain(value) || value.schema !== 1 || typeof value.packet !== "string" || typeof value.id !== "string") throw new Error("Invalid AI delivery protocol v1")
   if (!plain(value.model) || !plain(value.model.adapter) || !plain(value.model.pricing) || !plain(value.tools) || !plain(value.budgets) || !plain(value.task) || !plain(value.task.acceptance)) throw new Error("AI delivery protocol requires model, tools, budgets, task, adapter, pricing, and acceptance records")
-  if (!Array.isArray(value.variants) || !Array.isArray(value.schedule) || value.variants.length !== 2 || !value.schedule.length) throw new Error("AI delivery protocol requires two paired variants and a non-empty schedule")
+  if (!Array.isArray(value.variants) || !Array.isArray(value.schedule) || value.variants.length < 2 || !value.schedule.length) throw new Error("AI delivery protocol requires at least two variants and a non-empty schedule")
   const variants = new Map(value.variants.map(variant => [variant.id, variant]))
-  if (variants.size !== 2 || [...variants.keys()].some(id => typeof id !== "string" || !id)) throw new Error("AI delivery protocol requires two uniquely named variants")
+  if (variants.size !== value.variants.length || [...variants.keys()].some(id => typeof id !== "string" || !id)) throw new Error("AI delivery protocol requires uniquely named variants")
   const attempts = new Set()
   const ordinals = new Map(value.variants.map(variant => [variant.id, []]))
   for (const entry of value.schedule) {
@@ -143,7 +143,7 @@ function validateProtocol(value) {
     ordinals.get(entry.variant).push(entry.ordinal)
   }
   const paired = [...ordinals.values()].map(values => JSON.stringify([...values].sort((left, right) => left - right)))
-  if (new Set(paired).size !== 1) throw new Error("AI delivery schedule must retain equal attempt ordinals for both variants")
+  if (new Set(paired).size !== 1) throw new Error("AI delivery schedule must retain equal attempt ordinals for all variants")
   for (const budget of Object.values(value.budgets)) if (!Number.isInteger(budget) || budget < 0) throw new Error("AI delivery budgets must be non-negative integers")
   for (const variant of value.variants) if (!plain(variant.build) || typeof variant.starter !== "string" || typeof variant.starterSha256 !== "string" || typeof variant.artifactDirectory !== "string" || !Array.isArray(variant.publicContext)) throw new Error("Invalid AI delivery variant")
 }
@@ -353,7 +353,7 @@ async function inventory(root, excluded) {
 }
 
 function sourceExcluded(path) {
-  return ["dist", "node_modules", ".git", ".kudzu", ".tools"].includes(path.split("/")[0])
+  return ["dist", "node_modules", ".git", ".kudzu", ".astro", ".tools"].includes(path.split("/")[0])
 }
 
 async function copyInventory(entries, root, destination) {

@@ -461,7 +461,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
       const generated = generateEffectRuntime(await readFile(new URL("./effect-runtime.js", import.meta.url), "utf8"), capabilityIR)
       await writeBundledJavaScript(join(familyDirectory, "kudzu-effect.js"), generated.source, minify, generated.define)
     }
-    if (bindings.count || lists.styleCount) await writeJavaScript(join(familyDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
+    if (bindings.style || lists.styleCount) await writeJavaScript(join(familyDirectory, "kudzu-style.js"), await readFile(new URL("./style.js", import.meta.url), "utf8"), minify)
     if (bindings.count) {
       const generated = generateBindingRuntime(await readFile(new URL("./binding-runtime.js", import.meta.url), "utf8"), capabilityIR, family.navigation)
       await writeBundledJavaScript(join(familyDirectory, "kudzu-binding.js"), generated.source, minify, generated.define)

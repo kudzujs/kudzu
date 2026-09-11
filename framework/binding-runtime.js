@@ -4,11 +4,11 @@ import { serializeStyle } from "./style.js"
 
 const imports = new Map()
 const bindingTargets = new Map()
-const conditionTargets = new Map()
+const conditionTargets = globalThis.__KUDZU_CONDITIONS__ && new Map()
 const mountedBindings = new WeakSet()
-const mountedConditions = new WeakSet()
+const mountedConditions = globalThis.__KUDZU_CONDITIONS__ && new WeakSet()
 const bindingRegistrations = new WeakMap()
-const conditionRegistrations = new WeakMap()
+const conditionRegistrations = globalThis.__KUDZU_CONDITIONS__ && new WeakMap()
 const textDescriptors = globalThis.__KUDZU_TEXT_BINDINGS__ && typeof document !== "undefined" ? JSON.parse(document.body.dataset.kTextBindings ?? "[]") : []
 const bindingTypes = ["class", "disabled", "value", "checked", "style"]
 const bindingSelector = [...bindingTypes.map(target => `[data-k-bind-${target}]`), "[data-k-bind-attrs]"].join(",")
@@ -47,6 +47,7 @@ function commitBindings(id) {
       else patchBinding(binding.node, binding.target, binding.read())
     }
   }
+  if (!globalThis.__KUDZU_CONDITIONS__) return
   const conditions = conditionTargets.get(id)
   if (!conditions) return
   for (const condition of conditions) {
@@ -57,9 +58,9 @@ function commitBindings(id) {
 
 registerCommitter(commitBindings)
 registerMountHook(mountBindings, "bindings")
-registerMountHook(mountConditions, "conditions")
+if (globalThis.__KUDZU_CONDITIONS__) registerMountHook(mountConditions, "conditions")
 registerUnmountHook(unmountBindings, "bindings")
-registerUnmountHook(unmountConditions, "conditions")
+if (globalThis.__KUDZU_CONDITIONS__) registerUnmountHook(unmountConditions, "conditions")
 registerStateReleaseHook(releaseBindings)
 
 if (typeof document !== "undefined") mountDom(document)
@@ -206,6 +207,7 @@ function releaseBindings(id) {
     bindingRegistrations.delete(binding.node)
   }
   bindingTargets.delete(id)
+  if (!globalThis.__KUDZU_CONDITIONS__) return
   for (const condition of conditionTargets.get(id) ?? []) {
     const registration = conditionRegistrations.get(condition.start)
     for (const [conditionId, entry] of registration?.registrations ?? []) conditionTargets.get(conditionId)?.delete(entry)

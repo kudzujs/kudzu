@@ -1,0 +1,17 @@
+---
+import Shell from "../../layouts/Shell.astro"
+import { articles, type Article } from "../../data"
+export function getStaticPaths() {
+  return articles.map(article => ({ params: { slug: article.slug }, props: { article } }))
+}
+interface Props { article: Article }
+const { article } = Astro.props
+---
+<Shell title={`${article.title} — Field Notes`} description={article.excerpt}>
+  <article class="article-page">
+    <header><p class="eyebrow">{article.topic}</p><h1>{article.title}</h1><p class="byline">Mara Bell · {article.displayDate} · {article.minutes} min read</p><p class="standfirst">{article.standfirst}</p></header>
+    <h2>{article.sectionTitle}</h2><p>{article.body}</p>
+    <pre tabindex="0"><code>{article.code}</code></pre>
+    <p><a class="text-link" href="/topics/performance/">Browse performance notes</a></p>
+  </article>
+</Shell>

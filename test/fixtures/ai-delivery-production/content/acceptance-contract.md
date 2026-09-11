@@ -1,5 +1,7 @@
 # Content search acceptance contract
 
+Filtering is checked against rendered, visible article titles. Nonmatching cards may be removed or hidden with native HTML/CSS; hidden DOM rows must not count as visible results. An `aria-hidden` attribute alone does not hide visually displayed nonmatching cards. Clearing the query must restore the visible results.
+
 ## Scope
 
 This contract applies identically to `starters/kudzu` and `starters/react-vite`. The only requested product change is the bounded `/articles/` title/topic search described in `prompt.md`. A solution may use framework-idiomatic implementation details, but may not change seeded data, routes, visible copy, navigation, or accessibility to obtain a smaller result.

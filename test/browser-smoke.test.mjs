@@ -20,14 +20,41 @@ test("ordinary browser smoke separates rendered DOM from raw artifacts and repor
   const before = (await readdir(tmpdir())).filter(name => name.startsWith("browser-smoke-"))
   const events = []
   const emit = line => events.push(JSON.parse(line))
-  await browserSmoke(root, [{ op: "open", path: "/" }, { op: "fill", role: "textbox", name: "Message", value: "Changed" }, { op: "click", role: "button", name: "Apply" }, { op: "expect-text", text: "Changed" }], emit)
+  await browserSmoke(root, [{ op: "open", path: "/" }, { op: "fill", role: "textbox", name: "Message", value: "Changed" }, { op: "click", role: "button", name: "Apply" }, { op: "expect-text", text: "Changed" }, { op: "snapshot" }], emit)
   assert.match(events[0].text, /Ready now/)
   assert.doesNotMatch(events[0].text, /phantom/)
-  assert.match(events[3].text, /Changed/)
+  assert.match(events[2].text, /Changed/)
+  assert.equal(events[3].observationFrom, 2, "unchanged assertion output references the last complete observation")
+  assert.equal(events[3].text, undefined)
+  assert.equal(events[3].accessibility, undefined)
+  assert.match(events[4].text, /Changed/, "explicit snapshots always return the complete bounded observation")
+  assert.deepEqual(events[4].accessibility, events[2].accessibility)
+  assert.ok(JSON.stringify(events[3]).length < JSON.stringify(events[2]).length)
   assert.equal(events.at(-1).completed, true)
   assert.deepEqual(events.at(-1), { completed: true, ok: true, exceptions: [], failedRequests: [], httpErrors: [] })
   assert.equal(await readFile(join(root, "index.html"), "utf8"), html, "browser checks do not rewrite or certify static artifacts")
   assert.match(html, /Inert phantom/)
+  await writeFile(join(root, "ax.html"), '<button aria-label="Before" onclick="this.setAttribute(\'aria-label\',this.getAttribute(\'aria-label\')===\'Before\'?\'After\':\'Before\')">Toggle</button>')
+  const ax = []
+  await browserSmoke(root, [{ op: "open", path: "/ax.html" }, { op: "click", role: "button", name: "Before" }, { op: "expect-text", text: "Toggle" }, { op: "expect-text", text: "Toggle" }], line => ax.push(JSON.parse(line)))
+  assert.equal(ax[1].text, ax[0].text)
+  assert.ok(ax[1].accessibility.some(node => node.role === "button" && node.name === "After"), "AX-only changes emit a new observation")
+  assert.equal(ax[2].observationFrom, 1)
+  assert.equal(ax[3].observationFrom, 1, "references never chain through compact records")
+  const restored = []
+  await assert.rejects(browserSmoke(root, [{ op: "open", path: "/ax.html" }, { op: "click", role: "button", name: "Before" }, { op: "click", role: "button", name: "After" }, { op: "expect-text", text: "Toggle" }, { op: "snapshot" }, { op: "expect-text", text: "Toggle" }, { op: "expect-text", text: "Absent" }], line => restored.push(JSON.parse(line))), /rendered text was not found/)
+  assert.equal(restored[2].observationFrom, 0, "returning to an earlier exact observation reuses its full record")
+  assert.equal(restored[3].observationFrom, 0, "subsequent references still point directly to the full record")
+  assert.deepEqual(restored[4].accessibility, restored[0].accessibility, "explicit snapshot recovers full output after non-adjacent reuse")
+  assert.equal(restored[4].text, restored[0].text)
+  assert.equal(restored[5].observationFrom, 4)
+  assert.equal(restored[6].ok, false, "reuse does not bypass a failing assertion")
+  const repeated = []
+  await assert.rejects(browserSmoke(root, [{ op: "open", path: "/ax.html" }, { op: "expect-text", text: "Toggle" }, { op: "open", path: "/ax.html" }, { op: "expect-text", text: "Toggle" }, { op: "expect-text", text: "Absent" }], line => repeated.push(JSON.parse(line))), /rendered text was not found/)
+  assert.equal(repeated[1].observationFrom, 0)
+  assert.equal(repeated[2].text, "Toggle", "open always returns a complete observation, even on the same page")
+  assert.equal(repeated[3].observationFrom, 2)
+  assert.equal(repeated[4].ok, false, "compact output never bypasses a subsequent assertion")
   for (const command of [{ op: "expect-text", text: "Inert phantom" }, { op: "click", role: "button", name: "Missing" }, { op: "open", path: "http://example.com" }]) {
     await assert.rejects(browserSmoke(root, [{ op: "open", path: "/" }, command], emit))
     assert.equal(events.at(-1).ok, false)
@@ -57,6 +84,30 @@ test("ordinary browser smoke separates rendered DOM from raw artifacts and repor
     return true
   })
   assert.deepEqual((await readdir(tmpdir())).filter(name => name.startsWith("browser-smoke-")), before, "success and failure remove disposable profiles")
+})
+
+test("observations keep actionable AX names instead of repeating visible text", { timeout: 30_000, skip: !chrome }, async t => {
+  const root = await mkdtemp(join(tmpdir(), "smoke-observation-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await writeFile(join(root, "index.html"), '<h1>Records</h1>' + Array.from({ length: 70 }, (_, i) => `<p>Record ${i} visible description</p>`).join("") + '<input aria-label="Query"><button onclick="document.querySelector(\'h1\').textContent=\'Updated\'">Apply</button>')
+  const events = []
+  await browserSmoke(root, [{ op: "open", path: "/" }, { op: "fill", role: "textbox", name: "Query", value: "test" }, { op: "click", role: "button", name: "Apply" }, { op: "expect-text", text: "Updated" }], line => events.push(JSON.parse(line)))
+  const first = events[0]
+  assert.match(first.text, /Record 0 visible description/)
+  assert.match(first.text, /Record 69 visible description/)
+  assert.ok(first.accessibility.some(node => node.role === "heading" && node.name === "Records"))
+  assert.ok(first.accessibility.some(node => node.role === "textbox" && node.name === "Query"))
+  assert.ok(first.accessibility.some(node => node.role === "button" && node.name === "Apply"))
+  assert.ok(!first.accessibility.some(node => ["StaticText", "InlineTextBox"].includes(node.role) && first.text.includes(node.name)))
+  assert.ok(first.duplicateTextEntriesOmitted >= 70)
+  assert.equal(first.accessibilityTruncated, false)
+  assert.equal(events.at(-1).ok, true)
+  await writeFile(join(root, "index.html"), '<p>' + 'x'.repeat(4100) + '</p><p>Beyond the text bound</p><button aria-label="AX name outside visible text">Visible button</button>')
+  const bounded = []
+  await browserSmoke(root, [{ op: "open", path: "/" }], line => bounded.push(JSON.parse(line)))
+  assert.equal(bounded[0].textTruncated, true)
+  assert.ok(bounded[0].accessibility.some(node => node.role === "StaticText" && node.name === "Beyond the text bound"))
+  assert.ok(bounded[0].accessibility.some(node => node.role === "button" && node.name === "AX name outside visible text"))
 })
 
 test("exact AX targeting reports bounded computed names and rejects ambiguity", { timeout: 60_000, skip: !chrome }, async t => {
@@ -99,6 +150,39 @@ test("exact AX targeting reports bounded computed names and rejects ambiguity", 
     assert.equal(event.error, 'Expected one accessible target; found 0. Exact role/name required. AX candidates (8 total, at most 5 shown): ' + JSON.stringify(Array.from({ length: 5 }, (_, i) => ({ role: "button", name: `Choice ${i}`, nameTruncated: false }))))
     return true
   })
+})
+
+test("explicit role-only actions are unique, actionable and never relax supplied names", { timeout: 60_000, skip: !chrome }, async t => {
+  const root = await mkdtemp(join(tmpdir(), "smoke-role-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const html = `<style>label{text-transform:uppercase}</style><label for="q">Search articles</label><input id="q" type="search">
+    <input type="search" hidden><input type="search" style="display:none"><div inert><input type="search"></div><template><input type="search"></template>
+    <button onclick="document.querySelector('p').textContent=document.querySelector('#q').value">Apply</button><p>Ready</p>`
+  const run = async (commands, markup = html) => {
+    await writeFile(join(root, "index.html"), markup)
+    const events = []
+    await browserSmoke(root, [{ op: "open", path: "/" }, ...commands], line => events.push(JSON.parse(line)))
+    return events
+  }
+  const fill = { op: "fill", role: "searchbox", value: "Changed" }
+  const events = await run([fill, { op: "click", role: "button" }, { op: "expect-text", text: "Changed" }])
+  assert.ok(events[0].accessibility.some(n => n.role === "searchbox" && n.name === "SEARCH ARTICLES"))
+  assert.equal(await readFile(join(root, "index.html"), "utf8"), html)
+  await run([{ ...fill, name: "SEARCH ARTICLES" }])
+  for (const name of ["Search articles", "search articles", ""]) await assert.rejects(run([{ ...fill, name }]), /found 0.*Exact role\/name required/)
+  for (const name of [null, 1, false]) await assert.rejects(run([{ ...fill, name }]), /optional string/)
+  await assert.rejects(run([{ op: "fill", value: "Changed" }]), /requires exact role/)
+  await assert.rejects(run([{ ...fill, value: 1 }]), /string value/)
+  await assert.rejects(run([{ op: "click", role: "heading" }], '<h1 tabindex="0">Title</h1>'), /Unsupported click role/)
+  await assert.rejects(run([fill], html + '<input type="search" aria-label="Other" disabled>'), /found 2.*Role-only query must be unique.*SEARCH ARTICLES.*Other/)
+  await assert.rejects(run([fill], '<input type="search" disabled>'), /disabled/)
+  await assert.rejects(run([fill], '<input type="search" aria-disabled="true">'), /disabled/)
+  await assert.rejects(run([fill], '<input type="search" readonly>'), /does not support/)
+  await assert.rejects(run([fill], '<input type="number" role="searchbox">'), /does not support/)
+  await assert.rejects(run([fill], '<div role="searchbox" tabindex="0">Not an input</div>'), /does not support/)
+  await assert.rejects(run([fill], '<input type="search" hidden><div inert><input type="search"></div>'), /found 0/)
+  await assert.rejects(run([{ op: "click", role: "button" }], '<button>Apply</button><div style="position:fixed;inset:0">Cover</div>'), /obscured/)
+  await run([{ op: "fill", role: "textbox", name: "", value: "Text" }], '<textarea></textarea>')
 })
 
 test("CLI tolerates only an absent automatic favicon, not authored resources or browser errors", { timeout: 60_000, skip: !chrome }, async t => {

@@ -1,0 +1,13 @@
+---
+import Shell from "../../layouts/Shell.astro"
+import ArticleCard from "../../components/ArticleCard.astro"
+import { articles } from "../../data"
+---
+<Shell title="Articles — Field Notes" description="The complete Field Notes archive: six essays on resilient and accessible products.">
+  <header class="page-heading">
+    <p class="eyebrow">The archive</p>
+    <h1>Articles</h1>
+    <p class="lede">Notes from the practical edge of resilient product engineering.</p>
+  </header>
+  <div class="article-grid">{articles.map(article => <ArticleCard article={article} />)}</div>
+</Shell>

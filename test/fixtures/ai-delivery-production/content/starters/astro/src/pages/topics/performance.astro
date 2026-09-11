@@ -1,0 +1,9 @@
+---
+import Shell from "../../layouts/Shell.astro"
+import ArticleCard from "../../components/ArticleCard.astro"
+import { articles } from "../../data"
+---
+<Shell title="Performance — Field Notes" description="Field Notes essays on shipping less JavaScript and measuring complete experiences.">
+  <header class="page-heading"><p class="eyebrow">Topic</p><h1>Performance</h1><p class="lede">Measure complete experiences and remove work before tuning it.</p></header>
+  <div class="article-grid">{articles.filter(article => article.topic === "Performance").map(article => <ArticleCard article={article} />)}</div>
+</Shell>

@@ -20,10 +20,11 @@ if (!values.summarize) {
 }
 
 const runs = await Promise.all(tasks.map(task => readFile(resolve(output, task, "run.json"), "utf8").then(JSON.parse)))
-const variants = ["kudzu", "react-vite"].map(id => {
+const variantIds = [...new Set(runs.flatMap(run => run.variants.map(variant => variant.id)))]
+const variants = variantIds.map(id => {
   const attempts = runs.flatMap(run => run.attempts.filter(attempt => attempt.variant === id))
   const successful = attempts.filter(attempt => attempt.status === "success")
-  const taskCosts = runs.map(run => run.variants.find(variant => variant.id === id).tokensPerSuccess)
+  const taskCosts = runs.map(run => run.variants.find(variant => variant.id === id)?.tokensPerSuccess ?? null)
   return {
     id,
     attempts: attempts.length,
@@ -34,13 +35,13 @@ const variants = ["kudzu", "react-vite"].map(id => {
     medians: Object.fromEntries(["elapsedMs", "toolCalls", "filesRead", "filesModified", "buildAttempts", "correctionCycles"].map(field => [field, successful.length ? median(successful.map(attempt => attempt.metrics[field]).sort((left, right) => left - right)) : null])),
   }
 })
-const complete = runs.every(run => run.status === "complete")
+const complete = runs.every(run => run.status === "complete" && variantIds.every(id => run.variants.some(variant => variant.id === id)))
 const attributable = runs.every(run => run.attempts.every(attempt => attempt.attribution !== "incomplete"))
 const suite = {
   schema: 1,
   packet: "0.21.4",
   status: complete && attributable ? "complete" : "incomplete",
-  methodology: "five predeclared production task classes; five interleaved attempts per framework and task; failures retained in cost-per-success denominators",
+  methodology: "five predeclared production task classes; protocol-declared framework schedules; failures retained in cost-per-success denominators",
   tasks: runs.map((run, index) => ({ id: tasks[index], protocol: run.protocol, status: run.status, variants: run.variants })),
   variants,
 }
