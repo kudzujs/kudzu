@@ -1261,7 +1261,7 @@ test("plans binding and list runtime specializations", () => {
   })
   const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasBindings: true, hasLists: true, hasListStyles: true })])
 
-  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, svgConditions: true })
+  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, svgConditions: true, properties: [], attributes: false })
   assert.equal(manifest.lists.count, 1)
   assert.equal(manifest.lists.styleCount, 1)
   assert.equal(manifest.lists.selectors, true)
@@ -1330,6 +1330,34 @@ test("retains conditional capability when any runtime-family owner needs branche
 function routeCapability(overrides = {}) {
   return { navigable: false, usesDependencyRuntime: false, hasBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false, hasStateSeed: false, hasParams: false, hasEffects: false, ...overrides }
 }
+
+test("specializes binding targets without losing generic attributes or shared owners", () => {
+  const source = readFileSync(new URL("../framework/binding-runtime.js", import.meta.url), "utf8")
+  const record = target => routeRecord(routePlan({ states: [{ slot: 0, id: "s0", name: "value", initialValue: "initial" }], bindings: [{ target, state: "s0" }] }), { hasBehaviors: true, hasBindings: true })
+  const text = planRouteCapabilities([record("text")])
+  assert.deepEqual(text.bindings.properties, [])
+  assert.equal(text.bindings.attributes, false)
+  assert.match(generateBindingRuntime(source, text, false).source, /const bindingSelector = ""/)
+  assert.equal(generateBindingRuntime(source, text, false).define["globalThis.__KUDZU_ELEMENT_BINDINGS__"], "false")
+  const value = planRouteCapabilities([record("value"), record("text")])
+  assert.deepEqual(value.bindings.properties, ["value"])
+  const generated = generateBindingRuntime(source, value, false)
+  assert.match(generated.source, /const bindingSelector = "\[data-k-bind-value\]"/)
+  assert.equal(generated.define["globalThis.__KUDZU_VALUE_BINDINGS__"], "true")
+  assert.equal(generated.define["globalThis.__KUDZU_CHECKED_BINDINGS__"], "false")
+  for (const records of [[record("value"), record("aria-expanded")], [record("aria-expanded"), record("value")]]) {
+    const shared = planRouteCapabilities(records)
+    assert.equal(shared.bindings.attributes, true)
+    const result = generateBindingRuntime(source, shared, true)
+    assert.equal(result.define["globalThis.__KUDZU_ATTRIBUTE_BINDINGS__"], "true")
+    assert.match(result.source, /\[data-k-bind-value\],\[data-k-bind-attrs\]/)
+  }
+  const invalid = structuredClone(value)
+  invalid.bindings.properties.push("href")
+  assert.throws(() => assertCapabilityIR(invalid), /binding properties/)
+  invalid.bindings.properties = ["value", "style"]
+  assert.throws(() => assertCapabilityIR(invalid), /style flag/)
+})
 
 function routeRecord(plan, capabilities = {}) {
   const references = [

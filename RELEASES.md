@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.16.30 - Binding Target Specialization
+
+Kudzu 0.16.30 specializes property patching, general-attribute decoding and
+element selectors from the binding targets used by each runtime family.
+
+### Changed in 0.16.30
+
+- Omits unused class, disabled, checked, value and general-attribute paths while
+  preserving all targets needed by shared or navigable owners.
+- Skips element binding scans for text-only families and retains generic source
+  helper behavior unless code generation explicitly disables a capability.
+- Reduces the imported-search JavaScript graph by 605 raw / 239 aggregate gzip
+  bytes. The every-property positive control keeps its previous output size;
+  the Project fixture removes 1,221 raw deploy bytes.
+- Validates specialization facts, generic ARIA/data attributes and shared-owner
+  unions. Capability-family identifiers change intentionally with these facts.
+- Adds no semantic primitive, pass, runtime concept, dependency or public API.
+  These are measured output savings, not an AI-token or latency claim.
+- Updates `create-kudzu@0.1.155` to generate `@kudzujs/core@^0.16.30` projects.
+
+```sh
+npm install @kudzujs/core@^0.16.30
+```
+
 ## 0.16.29 - Unused Runtime Exclusion
 
 Kudzu 0.16.29 uses existing route facts to omit style serialization and

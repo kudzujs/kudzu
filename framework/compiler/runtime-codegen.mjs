@@ -27,8 +27,13 @@ export function generateEffectRuntime(source, capabilityIR) {
 
 export function generateBindingRuntime(source, capabilityIR, navigable) {
   assertCapabilityIR(capabilityIR)
+  const { properties, attributes } = capabilityIR.bindings
   let runtime = replaceRequired(source, '"./shared-runtime.js"', '"./kudzu.js"', "shared runtime import", "binding-runtime.js")
   runtime = replaceRequired(runtime, '"./serialization.js"', '"./kudzu-serialization.js"', "serialization import", "binding-runtime.js")
+  runtime = replaceRequired(runtime, /const bindingTypes = \[[^\n]+\]/, `const bindingTypes = ${JSON.stringify(properties)}`, "binding properties", "binding-runtime.js")
+  const selectors = [...properties.map(target => `[data-k-bind-${target}]`), ...(attributes ? ["[data-k-bind-attrs]"] : [])]
+  // The existing generic selector is smaller when all five property kinds are used.
+  if (properties.length !== 5 || !attributes) runtime = replaceRequired(runtime, /^const bindingSelector = .*$/m, `const bindingSelector = ${JSON.stringify(selectors.join(","))}`, "binding selectors", "binding-runtime.js")
   runtime = capabilityIR.bindings.style
     ? replaceRequired(runtime, '"./style.js"', '"./kudzu-style.js"', "style import", "binding-runtime.js")
     : replaceSequenceRequired(runtime, [
@@ -40,6 +45,13 @@ export function generateBindingRuntime(source, capabilityIR, navigable) {
     source: runtime,
     define: {
       "globalThis.__KUDZU_TEXT_BINDINGS__": String(capabilityIR.bindings.text),
+      "globalThis.__KUDZU_ELEMENT_BINDINGS__": String(selectors.length > 0),
+      "globalThis.__KUDZU_PROPERTY_BINDINGS__": String(properties.length > 0),
+      "globalThis.__KUDZU_ATTRIBUTE_BINDINGS__": String(attributes),
+      "globalThis.__KUDZU_CLASS_BINDINGS__": String(properties.includes("class")),
+      "globalThis.__KUDZU_DISABLED_BINDINGS__": String(properties.includes("disabled")),
+      "globalThis.__KUDZU_CHECKED_BINDINGS__": String(properties.includes("checked")),
+      "globalThis.__KUDZU_VALUE_BINDINGS__": String(properties.includes("value")),
       "globalThis.__KUDZU_CONDITIONS__": String(capabilityIR.bindings.conditions),
       "globalThis.__KUDZU_SVG_CONDITIONS__": String(capabilityIR.bindings.svgConditions),
       "globalThis.__KUDZU_CAPTURE_STATE__": String(capabilityIR.captures.nestedState)

@@ -1,6 +1,8 @@
 import { assertRouteBuildRecord } from "./route-build-record.mjs"
 import { assertJsonSafe, assertRouteIR } from "./route-ir.mjs"
 
+const propertyBindings = ["class", "disabled", "value", "checked", "style"]
+
 export function usesRouteDependencyRuntime({ plan, navigable, hasBindings, hasLists }, validate = true) {
   if (validate) assertRouteIR(plan)
   const hasDependencies = plan.effects.some(effect => effect.dependencies?.length)
@@ -92,6 +94,9 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
     dependencyStateSeeds: routeEntries.filter(route => route.hasStateSeed && route.usesDependencyRuntime).length
   }
   bindings.count = routeEntries.filter(route => route.hasBindings).length
+  const bindingTargets = new Set(plans.flatMap(plan => plan.bindings.map(binding => binding.target)))
+  bindings.properties = propertyBindings.filter(target => bindingTargets.has(target))
+  bindings.attributes = [...bindingTargets].some(target => target !== "text" && !propertyBindings.includes(target))
   lists.count = routeEntries.filter(route => route.hasLists).length
   lists.styleCount = routeEntries.filter(route => route.hasListStyles).length
   lists.generalRowHooks ||= lists.rowRefs || lists.complexRowState
@@ -120,7 +125,9 @@ export function assertCapabilityIR(capabilityIR, records, options = {}) {
   if (!sections.every(name => isRecord(capabilityIR[name]))) throw new Error("Invalid CapabilityIR v1 structure")
   if (!["behaviors", "regularBehaviors", "regularStateSeeds", "dependencyStateSeeds"].every(name => isCount(capabilityIR.routes[name]))) throw new Error("Invalid CapabilityIR v1 route counts")
   if (!["command", "native"].every(name => Array.isArray(capabilityIR.events[name]) && capabilityIR.events[name].every(event => typeof event === "string")) || typeof capabilityIR.events.hasNativeHandlers !== "boolean") throw new Error("Invalid CapabilityIR v1 events")
-  if (!isCount(capabilityIR.bindings.count) || !["text", "style", "conditions", "svgConditions"].every(name => typeof capabilityIR.bindings[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 bindings")
+  if (!isCount(capabilityIR.bindings.count) || !["text", "style", "conditions", "svgConditions", "attributes"].every(name => typeof capabilityIR.bindings[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 bindings")
+  if (!Array.isArray(capabilityIR.bindings.properties) || capabilityIR.bindings.properties.some(target => !propertyBindings.includes(target)) || new Set(capabilityIR.bindings.properties).size !== capabilityIR.bindings.properties.length) throw new Error("Invalid CapabilityIR v1 binding properties")
+  if (capabilityIR.bindings.style !== capabilityIR.bindings.properties.includes("style")) throw new Error("CapabilityIR binding style flag does not match its properties")
   const listFlags = ["conditions", "svg", "deepConditions", "textRanges", "attributes", "events", "expressions", "expressionAttributes", "seeds", "effects", "rowHooks", "rowRefs", "complexRowState", "nested", "selectors", "calculated", "static", "indexes", "stableFastPaths", "generalRowHooks", "asyncParts", "mounts"]
   if (!isCount(capabilityIR.lists.count) || !isCount(capabilityIR.lists.styleCount) || !listFlags.every(name => typeof capabilityIR.lists[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 lists")
   if (!["any", "derivedDependencies", "itemDependencies", "captures", "navigable", "navigableOwners"].every(name => typeof capabilityIR.effects[name] === "boolean") || !["nestedState", "setter"].every(name => typeof capabilityIR.captures[name] === "boolean") || !["shared", "dependency"].every(name => typeof capabilityIR.runtime[name] === "boolean")) throw new Error("Invalid CapabilityIR v1 effect, capture, or runtime flags")

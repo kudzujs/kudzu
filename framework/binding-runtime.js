@@ -16,25 +16,25 @@ const bindingSelector = [...bindingTypes.map(target => `[data-k-bind-${target}]`
 export function patchBinding(node, target, value) {
   if (globalThis.__KUDZU_TEXT_BINDINGS__ && target === "text") {
     patchText(node, value)
-  } else if (target === "disabled") {
+  } else if (globalThis.__KUDZU_DISABLED_BINDINGS__ !== false && target === "disabled") {
     node.toggleAttribute("disabled", Boolean(value))
-  } else if (target === "checked") {
+  } else if (globalThis.__KUDZU_CHECKED_BINDINGS__ !== false && target === "checked") {
     node.checked = Boolean(value)
-  } else if (target === "value") {
+  } else if (globalThis.__KUDZU_VALUE_BINDINGS__ !== false && target === "value") {
     const next = value == null ? "" : String(value)
     if (node.value !== next) node.value = next
   } else if (target === "style") {
     const style = serializeStyle(value)
     if (style) node.setAttribute("style", style)
     else node.removeAttribute("style")
-  } else if (target === "class" && (value == null || value === false)) {
+  } else if (globalThis.__KUDZU_CLASS_BINDINGS__ !== false && target === "class" && (value == null || value === false)) {
     node.removeAttribute("class")
-  } else if (target === "class") {
+  } else if (globalThis.__KUDZU_CLASS_BINDINGS__ !== false && target === "class") {
     if (node.namespaceURI === "http://www.w3.org/1999/xhtml") node.className = String(value)
     else node.setAttribute("class", String(value))
-  } else if (value == null || (value === false && !isStringBooleanAttribute(target))) {
+  } else if (globalThis.__KUDZU_ATTRIBUTE_BINDINGS__ !== false && (value == null || (value === false && !isStringBooleanAttribute(target)))) {
     node.removeAttribute(target)
-  } else {
+  } else if (globalThis.__KUDZU_ATTRIBUTE_BINDINGS__ !== false) {
     node.setAttribute(target, value === true && !isStringBooleanAttribute(target) ? "" : String(value))
   }
 }
@@ -66,15 +66,15 @@ registerStateReleaseHook(releaseBindings)
 if (typeof document !== "undefined") mountDom(document)
 
 function mountBindings(root) {
-  for (const node of matching(root, bindingSelector)) {
+  if (globalThis.__KUDZU_ELEMENT_BINDINGS__ !== false) for (const node of matching(root, bindingSelector)) {
     if (mountedBindings.has(node)) continue
     mountedBindings.add(node)
     const registrations = []
     bindingRegistrations.set(node, registrations)
-    const descriptors = bindingTypes.flatMap(target => node.hasAttribute(`data-k-bind-${target}`)
+    const descriptors = globalThis.__KUDZU_PROPERTY_BINDINGS__ !== false ? bindingTypes.flatMap(target => node.hasAttribute(`data-k-bind-${target}`)
       ? [[target, JSON.parse(node.dataset[`kBind${capitalize(target)}`])]]
-      : [])
-    if (node.dataset.kBindAttrs) descriptors.push(...JSON.parse(node.dataset.kBindAttrs).map(({ target, ...descriptor }) => [target, descriptor]))
+      : []) : []
+    if (globalThis.__KUDZU_ATTRIBUTE_BINDINGS__ !== false && node.dataset.kBindAttrs) descriptors.push(...JSON.parse(node.dataset.kBindAttrs).map(({ target, ...descriptor }) => [target, descriptor]))
     for (const [target, descriptor] of descriptors) {
       if (descriptor.state) {
         const binding = { node, target, read: Object.hasOwn(descriptor, "truthy") ? () => browserState.get(descriptor.state) ? descriptor.truthy : descriptor.falsy : () => browserState.get(descriptor.state) }
@@ -168,7 +168,7 @@ function updateCondition(condition) {
   condition.end.parentNode.insertBefore(fragment, condition.end)
   condition.current = next
   if (condition.mount) for (const node of nodes) mountDom(node)
-  const select = condition.start.closest("select[data-k-bind-value]")
+  const select = globalThis.__KUDZU_VALUE_BINDINGS__ !== false && condition.start.closest("select[data-k-bind-value]")
   if (select) {
     for (const binding of new Set((bindingRegistrations.get(select) ?? []).map(([, entry]) => entry))) {
       patchBinding(binding.node, binding.target, binding.read())
@@ -177,7 +177,7 @@ function updateCondition(condition) {
 }
 
 function unmountBindings(root) {
-  for (const node of matching(root, bindingSelector)) {
+  if (globalThis.__KUDZU_ELEMENT_BINDINGS__ !== false) for (const node of matching(root, bindingSelector)) {
     for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
     bindingRegistrations.delete(node)
     mountedBindings.delete(node)

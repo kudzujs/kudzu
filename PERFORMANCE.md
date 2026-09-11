@@ -1,5 +1,57 @@
 # Performance Records
 
+## 0.16.30 Release Scope
+
+Binding target specialization ships as core 0.16.30 and generator 0.1.155. The
+following no-version/no-release measurement statements retain their session
+meaning. This release claims the measured output reduction, not new AI-cost,
+browser-latency or cross-framework superiority. Raw measurements remain outside
+the package and the existing failed/unfinished delivery gates remain blocked.
+
+The release tree passes check (230 pages), default-parallel required-Chrome tests
+(standalone 1/1 plus 329/329, no skips), package smoke and both package dry runs.
+
+## Binding Target Exclusion (2026-09-11, after 0.16.29)
+
+The imported-search fixture uses only value and text bindings, but still shipped
+class/disabled/checked patching, general-attribute decoding and selectors for
+every property. Its new exclusion assertion fails before the change. Existing
+RouteIR binding targets now determine a runtime family's property set and generic
+attribute use. Codegen narrows selectors and erases unused handling; text-only
+families skip element selector scans. Any shared owner retains its needed target,
+including ARIA/data attributes and navigation. Uncompiled helper calls retain the
+generic fallback unless a capability is explicitly false.
+
+| JavaScript graph | 0.16.29 raw / gzip B | Candidate raw / gzip B |
+|---|---:|---:|
+| Imported article search, all four source forms | 30,988 / 11,705 | 30,383 / 11,466 |
+| Every-property positive control | 10,714 / 4,765 | 10,714 / 4,765 |
+| Conditional ownership fixture | 13,673 / 5,869 | 13,636 / 5,836 |
+
+Search removes 605 raw / 239 aggregate gzip bytes and scans one native property
+instead of five plus generic attributes. An intermediate literal full-selector
+expansion grew the all-property control by 69 raw bytes; retaining the existing
+generic selector in that case removes that regression. The initial new flags
+also disabled direct uncompiled helper calls; the existing helper regression
+caught it, and the final explicit-false guard preserves those calls. Neither
+intermediate candidate is represented as the final result.
+
+Project deploy output remains 42 files and drops 193,076 → 191,855 raw bytes.
+The measured output baseline is updated, including the intentional family-ID
+changes; `/help` remains zero JavaScript. Evidence, complete file digests and
+commands are in `test-results/ai-delivery-production/binding-target-exclusion-20260911/`.
+The interrupted first test run ends with one cancelled test file; the resumed
+default-parallel required-Chrome suite and package smoke pass. No provider call,
+version bump, release or actual AI-token/latency improvement is claimed. This
+reuses existing passes and semantics; internal capability facts/codegen defines
+are not new runtime concepts or public APIs.
+
+Final validation: `npm run check` passes; resumed `KUDZU_REQUIRE_CHROME=1 npm test`
+passes standalone 1/1 plus 329/329 with zero skips; package smoke passes. Core
+compiler growth is 19 lines across existing planner/codegen files; runtime source
+line count is unchanged. Generated family identifiers change intentionally with
+the additional specialization facts. No timing or AI-cost delta was measured.
+
 ## 0.16.29 Release Scope
 
 The accumulated unused-style and unused-conditional runtime exclusions ship as

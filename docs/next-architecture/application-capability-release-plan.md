@@ -10,6 +10,20 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+Release transaction 0.16.30 publishes binding-target specialization with
+generator 0.1.155. Existing target facts narrow property handling and element
+scans while preserving shared-owner unions and generic source helpers. Recorded
+byte reductions are not an AI-cost or latency result; prior measurement records
+and the blocked 1.0 gate retain their meaning.
+
+Binding-target follow-up after 0.16.29 uses existing RouteIR targets to specialize
+property patching, general-attribute decoding and element scans per runtime
+family. Imported search drops 605 raw / 239 gzip JS bytes; the all-property control
+is unchanged. Shared owners retain all required targets and source helper calls
+remain generic without explicit false defines. Original interrupted test logs
+are retained alongside the passing resumed suite. This is output specialization,
+not proof of AI-cost or latency superiority; no new semantic primitive is added.
+
 Release transaction 0.16.29 collects the measured unused binding-style and
 conditional runtime exclusions, repository-only browser tooling, and comparison
 integrity follow-ups. Generator 0.1.154 targets the patch. Earlier no-release
