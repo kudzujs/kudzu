@@ -1,6 +1,6 @@
 {
   "name": "create-kudzu",
-  "version": "0.1.155",
+  "version": "0.1.156",
   "description": "Create a Kudzu project",
   "type": "module",
   "license": "MIT",
@@ -18,11 +18,12 @@
   },
   "files": [
     "index.mjs",
+    "ai.mjs",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test ../../test/create-kudzu.test.mjs",
+    "test": "node --test ../../test/create-kudzu.test.mjs ../../test/create-kudzu-ai.test.mjs",
     "prepublishOnly": "npm test"
   },
   "keywords": [

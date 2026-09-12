@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.33](https://github.com/kudzujs/kudzu/releases/tag/v0.16.33).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates. Presentation-only conditional branches omit descendant lifecycle traversal when no owner in their runtime family needs it, removing a further 215 raw / 116 aggregate gzip JavaScript bytes from search. Stateful remounts and effect cleanup are preserved; measured search-transition medians remain approximately equal. AI-cost and 1.0 gates remain blocked.
+**Current release: [0.16.34](https://github.com/kudzujs/kudzu/releases/tag/v0.16.34).** Adds optional AI authoring instructions and local developer tools through `create-kudzu --ai`, preserving the 0.16.33 compiler and runtime. Document lookup and check execution provide bounded responses with full logs retained. AI-token savings are unmeasured; AI-cost and 1.0 gates remain blocked.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -35,6 +35,13 @@ npm run dev
 ```
 
 The generated project includes reusable components, an interactive state example, a zero-JavaScript static route, metadata, and responsive CSS.
+
+For optional AI authoring guidance and local developer tools, use
+`npm create kudzu@latest my-app -- --ai`. The generated `AGENTS.md` describes
+`npm run ai -- docs` for installed documentation and `npm run ai -- check` for
+typecheck/build execution with bounded output and full retained logs. These tools
+stay outside default browser output. AI-token savings have not been measured.
+See the [generator guide](https://github.com/kudzujs/kudzu/tree/main/packages/create-kudzu#optional-ai-authoring-guidance).
 
 To add Kudzu to an existing project:
 

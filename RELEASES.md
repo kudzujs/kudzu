@@ -1,5 +1,27 @@
 # Kudzu Releases
 
+## 0.16.34 - Optional AI Authoring Tools
+
+- Publishes `create-kudzu@0.1.156` with opt-in `--ai`: app-root instructions,
+  a dependency-free Node developer tool, an `ai` npm script, and ignored local logs.
+- Provides installed-version README section lookup and real typecheck/build
+  execution. Check results retain failure codes, timeouts, and complete logs while
+  bounding the excerpt returned to an agent. They do not certify browser behavior.
+- Keeps generated app source and dependencies equivalent apart from the development
+  entry point; paired packaged-generator smoke checks byte-identical deploy output
+  and static zero-JavaScript output. No compiler/runtime implementation changes.
+- Adds a read-only historical trace auditor. R2 accounting matches 49 archived
+  usage traces; one missing-usage stream remains incomplete. This is tooling
+  validation, not a new model experiment or a substitute for missing R16 evidence.
+- **AI-token and monetary savings are unmeasured.** Instructions and tool calls
+  also consume context. No percentage reduction or cleared AI-delivery gate is claimed.
+- Exact-commit Linux CI and protected npm publication are release gates. The
+  generator produces apps targeting `@kudzujs/core@^0.16.34`.
+
+```sh
+npm create kudzu@latest my-app -- --ai
+```
+
 ## 0.16.33 - Conditional DOM Mount Exclusion
 
 - Projects existing `condition.mount` metadata across each runtime family, excluding

@@ -1,5 +1,52 @@
 # Performance Records
 
+## 0.16.34 Optional AI Authoring Tools
+
+User-authorized release transaction: core 0.16.34 and create-kudzu 0.1.156, through
+a reviewed PR, merge, exact-commit Linux CI, immutable tag and protected npm
+publication. Baseline is public 0.16.33 (`4c98059`); concurrent uncommitted compiler
+work in the other worktree is not included. No compiler or runtime source changes.
+
+The opt-in generator supplies a 1,828-byte AGENTS.md, a dependency-free Node tool,
+an npm command, and ignored logs. Document lookup returns installed README sections
+with source ranges and explicit truncation. Check execution retains the app's
+normal check script, failures, timeouts and full logs with a bounded output excerpt.
+This is a developer-time tool layer, not an agent replacement or browser runtime.
+
+### Measured and unmeasured results
+
+| Item | Result |
+|---|---|
+| Generated instructions | 1,828 UTF-8 bytes; 2 KiB regression ceiling |
+| Document section response | At most 6,000 text characters; full source path/range retained |
+| Check excerpt | At most first/last 2,048 log bytes plus an omission marker; full log retained |
+| Paired starter deploy | Four byte-identical files, 9,758 raw / 3,746 aggregate gzip B in each arm |
+| Additional deployed bytes | 0 for the tested default starter |
+| Generator package | Five files; no new dependency |
+| End-to-end AI-token savings | Unmeasured; no provider experiment ran |
+| Monetary savings | Unmeasured; response-byte limits are not token or dollar savings |
+
+The durable `test/create-kudzu-smoke.mjs` packages the generator and executes its
+generated doc/check tools against identical local core/TypeScript installations.
+Default and guided source are equivalent except developer files/scripts/ignore
+rules. It asserts the complete deployment file/byte comparison and static about
+route exclusion. Root files may still be published by custom deployment settings.
+The smoke is now part of `npm run test:package` and the existing CI/publication gate.
+
+The offline auditor independently reconciles 49 historical R2 usage streams with
+their archived normalized totals; one stream without usage remains incomplete.
+This validates accounting, not a current optimization. R16 raw evidence is still
+missing. Historical scores, public benchmark protocols, and AI/1.0 gates remain
+unchanged. See [harness research](docs/ai-harness-research.md) and the
+[R2 audit](docs/ai-harness-r2-audit.md) for provenance and limitations.
+
+Local release-candidate verification on macOS arm64, Node v25.6.1: focused tests
+6/6, `npm run check` (230 pages), core fresh packed-package smoke and paired
+generator smoke pass. Prior 0.16.30-based full runs and their failure/skip records
+remain in the research log; they are not relabeled as integrated-release tests.
+Exact PR and merged-commit Linux Node 22/24 checks must pass before tagging;
+their receipts belong to the corresponding GitHub checks and release.
+
 ## 0.16.33 Release Transaction
 
 The user authorizes verification, this session's reviewed commit/push, immutable
