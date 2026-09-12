@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process"
-import { mkdir, readdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { basename, resolve } from "node:path"
 
 const args = process.argv.slice(2)
 const skipInstall = args.includes("--no-install")
+const ai = args.includes("--ai")
 const target = args.find(argument => !argument.startsWith("-")) ?? "kudzu-app"
 const root = resolve(target)
 
@@ -33,7 +34,7 @@ const files = {
       check: "tsc --noEmit && kudzu build"
     },
     dependencies: {
-      "@kudzujs/core": "^0.16.30"
+      "@kudzujs/core": "^0.16.34"
     },
     devDependencies: {
       typescript: "^5.9.2"
@@ -233,6 +234,31 @@ Documentation: https://kudzujs.cloud/docs
 `
 }
 
+if (ai) {
+  files["kudzu-ai.mjs"] = await readFile(new URL("./ai.mjs", import.meta.url), "utf8")
+  const manifest = JSON.parse(files["package.json"])
+  manifest.scripts.ai = "node kudzu-ai.mjs"
+  files["package.json"] = `${JSON.stringify(manifest, null, 2)}\n`
+  files[".gitignore"] += ".kudzu-ai/\n"
+  files["AGENTS.md"] = `# Kudzu application
+
+## Write
+- This is a Kudzu app, not the compiler repository. Routes are in src/pages; index.tsx maps to /. Reuse the existing components, data, and CSS relevant to the task.
+- Use ordinary function components and declarative TSX. Import hooks from @kudzujs/core. React-shaped syntax is compiler input, not full React runtime compatibility; do not add React, hydration, or a client router as a workaround.
+- Prefer native HTML controls, anchors, and events. Read input values through event.currentTarget.value inside the handler. State setters update logical state immediately; DOM writes are batched.
+
+## Find answers when needed
+- npm run ai -- docs lists installed-version README headings. npm run ai -- docs Authoring reads one section. Full local guide: node_modules/@kudzujs/core/README.md; public types: node_modules/@kudzujs/core/framework/core.d.ts. Read what the task needs.
+- Full guide and current limits: https://kudzujs.cloud/docs. Online docs can differ from the installed version; use local build diagnostics to confirm support.
+
+## Verify
+- npm run ai -- check runs npm run check (typecheck + build) with a timeout, JSON status, bounded excerpt, and full log in .kudzu-ai. Read that log if the excerpt is insufficient. This already performs the check; subsequent edits require a fresh check. npm run dev starts the dev server. Fix source, not generated output.
+- Build success does not prove browser behavior or accessibility. Exercise affected interactions in a browser and check labels, keyboard use, and visible results. Report unavailable checks instead of claiming a pass.
+- Static routes must remain JavaScript-free. Raw HTML text scans and compiler reports are not proof of visible DOM or complete script exclusion. Preserve required checks; avoid repeatedly dumping minified assets.
+`
+  files["README.md"] += "\nAI authoring guidance: [AGENTS.md](AGENTS.md). Start a supporting coding agent from this project root.\n\nRun `npm run ai -- docs` to list installed README headings, `npm run ai -- docs Authoring` to read a section, and `npm run ai -- check` to typecheck/build with a bounded result. Full check logs stay in `.kudzu-ai/`; remove that directory when no longer needed. Check results do not verify browser behavior.\n"
+}
+
 await Promise.all(Object.entries(files).map(async ([file, content]) => {
   await writeFile(resolve(root, file), content)
 }))
@@ -243,3 +269,4 @@ if (!skipInstall) {
 }
 
 console.log(`\nCreated ${name} in ${root}${skipInstall ? "" : " with dependencies installed"}\n\n  cd ${target}\n${skipInstall ? "  npm install\n" : ""}  npm run dev\n`)
+if (ai) console.log("AI authoring guidance: AGENTS.md. Start OpenCode or Codex from the project root in a new session.")

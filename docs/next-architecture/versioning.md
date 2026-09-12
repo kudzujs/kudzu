@@ -66,11 +66,18 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.155` retains the explicit install instructions and generates projects with `@kudzujs/core@^0.16.30`.
+`create-kudzu@0.1.156` retains the explicit install instructions, adds opt-in `--ai`
+developer tools, and generates projects with `@kudzujs/core@^0.16.34`.
 
 ## Release Boundary
 
-The active user-authorized release transaction is `0.16.33`, conditional DOM mount exclusion
+The active user-authorized transaction is core `0.16.34` and generator `0.1.156`,
+optional AI authoring tools. It integrates the public 0.16.33 baseline without the
+other worktree's subsequent compiler changes. The user requests commit, push, PR,
+merge, immutable tag, and release. Follow normal protected npm publication after
+exact-commit Linux CI; do not report AI-cost savings without a model experiment.
+
+The previous user-authorized release transaction was `0.16.33`, conditional DOM mount exclusion
 using existing route facts. `0.16.32` completed its tag, CI, GitHub/npm publication
 and fresh-install verification before this packet began. No generator change is
 needed; the existing `^0.16.30` range remains compatible. Exact-commit Linux CI
