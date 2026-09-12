@@ -1,5 +1,29 @@
 # Kudzu Releases
 
+## 0.16.33 - Conditional DOM Mount Exclusion
+
+- Projects existing `condition.mount` metadata across each runtime family, excluding
+  descendant lifecycle traversal and fragment child collection when no branch needs
+  mounting. Stateful, effectful, nested reactive and shared-owner branches retain it.
+- Removes 215 raw / 116 aggregate gzip JS bytes from imported article search and
+  210 raw / 110 gzip bytes from the all-property binding control. Controls that need
+  conditional mounts retain their raw JS size; compressed bytes vary slightly.
+- Seven interleaved fresh-profile pairs measure about 3.8 ms median for 200 search
+  transitions both before and after. This checks DOM completion, not paint, build
+  latency, memory or cross-framework superiority.
+- Preserves ordinary React-shaped TSX, keyed identity, effect cleanup and static
+  zero-JS siblings. Adds no semantic primitive, pass, runtime concept or dependency.
+- Generator, CLI, diagnostic output, test tools and AI protocols are unchanged.
+  `create-kudzu@0.1.155` retains its compatible `^0.16.30` core dependency.
+- Check, focused browser regressions and package smoke pass. Full macOS parallel
+  and serial attempts encounter browser errors/stalls and outer-timeout cancellations;
+  exact-commit Linux no-skip CI is required before tagging. Its receipt is linked
+  from the GitHub release, preserving the earlier failed local runs.
+
+```sh
+npm install @kudzujs/core@^0.16.33
+```
+
 ## 0.16.32 - Conditional State Exclusion
 
 - Uses existing condition-owned state records to exclude state cloning and release

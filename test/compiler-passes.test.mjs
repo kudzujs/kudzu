@@ -1261,7 +1261,7 @@ test("plans binding and list runtime specializations", () => {
   })
   const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasBindings: true, hasLists: true, hasListStyles: true })])
 
-  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, conditionState: false, svgConditions: true, properties: [], attributes: false })
+  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, conditionState: false, conditionMounts: false, svgConditions: true, properties: [], attributes: false })
   assert.equal(manifest.lists.count, 1)
   assert.equal(manifest.lists.styleCount, 1)
   assert.equal(manifest.lists.selectors, true)
@@ -1382,6 +1382,31 @@ test("specializes binding targets without losing generic attributes or shared ow
   assert.throws(() => assertCapabilityIR(invalid), /binding properties/)
   invalid.bindings.properties = ["value", "style"]
   assert.throws(() => assertCapabilityIR(invalid), /style flag/)
+})
+
+test("retains conditional DOM mounts for any runtime-family owner", () => {
+  const source = readFileSync(new URL("../framework/binding-runtime.js", import.meta.url), "utf8")
+  const make = mount => routeRecord(routePlan({
+    states: [{ slot: 0, id: "s0", name: "open", initialValue: false }],
+    conditions: [{ id: "c0", kind: "and", state: "s0", initial: false, ...(mount ? { mount: true } : {}) }]
+  }), { navigable: true, hasBehaviors: true, hasBindings: true })
+  const plain = make(false), mounted = make(true)
+  const without = planRouteCapabilities([plain])
+  assert.equal(without.bindings.conditionMounts, false)
+  const generated = generateBindingRuntime(source, without, false)
+  assert.equal(generated.define["globalThis.__KUDZU_CONDITION_MOUNTS__"], "false")
+  assert.doesNotMatch(generated.source.split("\n")[0], /unmountDom/)
+  for (const records of [[mounted], [plain, mounted], [mounted, plain]]) {
+    const capability = planRouteCapabilities(records)
+    assert.equal(capability.bindings.conditionState, false, "DOM lifetime is independent of branch-owned state")
+    assert.equal(capability.bindings.conditionMounts, true)
+    const result = generateBindingRuntime(source, capability, true)
+    assert.equal(result.define["globalThis.__KUDZU_CONDITION_MOUNTS__"], "true")
+    assert.match(result.source.split("\n")[0], /unmountDom/)
+    const invalid = structuredClone(capability)
+    invalid.bindings.conditions = false
+    assert.throws(() => assertCapabilityIR(invalid), /conditional mounts require conditions/)
+  }
 })
 
 function routeRecord(plan, capabilities = {}) {

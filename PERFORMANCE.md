@@ -1,5 +1,135 @@
 # Performance Records
 
+## 0.16.33 Release Transaction
+
+The user authorizes verification, this session's reviewed commit/push, immutable
+tag and GitHub release, followed by the existing protected npm publication flow.
+The exact pushed commit must pass Node 22 and Node 24 CI, including required Linux
+Chrome with no skips, before tagging. Prior macOS browser/stall failures below are
+preserved; focused reruns alone do not replace this gate. CI and publication
+receipts attach to the exact GitHub commit/tag/release, not a predicted outcome.
+Generator 0.1.155 and its compatible core range are unchanged. No other worktree's
+AI-authoring changes are included, and the AI/1.0 goals remain blocked.
+
+Release-metadata check passes (230 pages, two interactive), fresh packed-package
+smoke passes (three pages, one interactive), and whitespace validation passes.
+The inspected core manifest contains 60 files, 202,303 packed / 999,711 unpacked
+bytes, local integrity
+`sha512-mfMMHLY5AOXyqArAbhkr8NGbY6f2tvZmW0U2AP68p1Dnmo7ZKjPbValuLMeNa+RNVaJnSDOm7tk3CeQ8QvP+Gw==`.
+Compiler/runtime/test implementation is unchanged from the measured candidate.
+
+## 0.16.33 Conditional DOM Mount Exclusion (2026-09-12, candidate)
+
+Baseline: released `bfcc246` / 0.16.32. The existing imported-search fixture has
+two reactive conditions, neither with `mount`. Its new artifact assertion fails
+before implementation because binding ESM still includes `comparePoint`, descendant
+range traversal, fragment child collection and the `unmountDom` import. The source
+remains ordinary declarative TSX throughout the experiment.
+
+The existing planner projects `condition.mount` into internal
+`bindings.conditionMounts` across all family records. Codegen retains mounting for
+any owner that needs it; a literal false define removes descendant work and an
+exact source anchor removes the unused unmount import. Native range deletion,
+template insertion, state commit and initial document mounting remain. Effects and
+nested reactive content can require mounting without owning branch state; separate
+facts preserve that distinction. No new semantic primitive, pass or runtime concept.
+
+### Artifact Evidence
+
+Same macOS arm64 host, Node v25.6.1, npm 11.18.0, Chrome 152.0.7977.83, locked
+dependencies. Values sum emitted JS files; they are not network transfer:
+
+| Fixture | Before raw / gzip B | Candidate raw / gzip B | Delta raw / gzip B |
+|---|---:|---:|---:|
+| Imported article search | 30,049 / 11,348 | 29,834 / 11,232 | -215 / -116 |
+| All-property bindings | 10,491 / 4,681 | 10,281 / 4,571 | -210 / -110 |
+| Nested reactive conditionals | 13,300 / 5,735 | 13,300 / 5,738 | 0 / +3 |
+| Conditional effects | 12,116 / 5,661 | 12,116 / 5,663 | 0 / +2 |
+| Non-keyed child state | 17,547 / 8,227 | 17,547 / 8,226 | 0 / -1 |
+| Project application | 125,004 / 46,261 | 125,004 / 46,244 | 0 / -17 |
+
+Mount-requiring controls keep their raw size. Family identifiers and minified
+runtime hashes change, so small gzip changes in those controls are not evidence
+of excluded capabilities. Project retains all conditional mount paths, 42 deploy
+files and 190,853 raw deploy bytes. Its new exact deploy digest is
+`a948d6b9a75745d5720edb265722f772de58f0a52205c80a19d1ea6502e48957`.
+Search's four equivalent forms retain eight JS files and share runtime digest
+`b8c428656accfc694028a386dad0a1115113e70ed199b3b82a60dd0474d0ff93`.
+The static search/non-keyed siblings and Project `/help` remain zero-JavaScript.
+
+### Browser Timing
+
+The unchanged before/after search artifacts are served locally. One fresh-profile
+pair is discarded, followed by seven fresh-profile pairs in alternating order.
+Each profile warms up 20 transitions and measures 200 empty/restore transitions,
+checking row count, live-region text and empty notice after microtask checkpoints.
+Measurements include keyed rows and conditional notices; they exclude paint and
+cannot isolate a conditional-operation speedup.
+
+- Before ms: `[3.600000023841858, 3.300000011920929, 3.5, 4.300000011920929, 4, 4.699999988079071, 3.800000011920929]`.
+- Candidate ms: `[4.300000011920929, 3.5, 4.100000023841858, 3.900000035762787, 3.699999988079071, 3.799999952316284, 3.699999988079071]`.
+- Both medians are approximately 3.8 ms per 200 transitions. Overlapping samples
+  establish neither a speedup nor a statistically powered equivalence claim.
+
+### Scope And Gates
+
+Ten focused checks pass, including the previously failing exclusion, mixed-family
+projection in both record orders, conditional effects, keyed/navigation cleanup,
+object-state remount and all four search shapes. Core planner/codegen grows by four
+net physical lines; runtime source LOC, semantic primitives, passes, runtime
+concepts and dependencies grow by zero. Project's exact output baseline is updated.
+CLI, diagnostics, generator, browser/test tools, AI protocols and agent context
+remain unchanged. Full checks/package gates are recorded after completion; this is
+an unpublished candidate, not an AI-cost or cross-framework performance result.
+
+### Local Verification Outcome
+
+`npm run check` passes (230 pages, two interactive), and the standalone Project
+ownership journey passes its exact updated output baseline. The initial macOS
+Chrome `npm test` run reports 320 passes, two failures, one cancellation and five
+Linux-only skips before the outer 1,200,000-ms limit terminates the command.
+Navigation and imported-component browser failures include `CVDisplayLink` errors
+and null exit status; the search test file is cancelled. These are retained failed
+verification results, not a passing full suite or a demonstrated compiler fix.
+
+Without source changes, `caffeinate -i` plus a serial focused run passes all eight
+previously failed/interrupted navigation, imported-component and search checks.
+`npm run test:package` then passes a fresh three-page packed consumer, and whitespace
+validation passes. `--test-concurrency=1` is not allowed in `NODE_OPTIONS`, so the
+full serial attempt uses the existing npm script's suite invocation directly:
+
+```sh
+caffeinate -i env CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" node --test --test-concurrency=1 --test-skip-pattern='^establishes the 0\.17\.0 notification WebSocket ownership contract$' test/*.test.mjs
+```
+
+That attempt also exceeds the outer limit after long stalls: 175 passes, no
+assertion failures, seven cancelled files and five Linux-only skips. It does not
+close the full-suite gate. No timeout/skip policy, test tool or assertion is relaxed
+to obtain a pass. Full stable-environment verification and required no-skip Linux
+Chrome checks remain blockers before release. Long test-run wall times are not
+used as framework performance samples. Subsequent changes record verification only.
+
+Local evidence under `/var/folders/bt/3r_ntp5x65j81brs6_p93rl00000gn/T/opencode/`:
+`condition-mount-measure.mjs`, `condition-mount-{before,after}.json` (complete file
+inventories/hashes), `condition-mount-{before,after}-search/` (unchanged artifacts),
+and `condition-mount-timing.{mjs,json}`. Existing 0.16.32 and AI evidence is preserved.
+
+## 0.16.32 Publication Closure (2026-09-12)
+
+Commit `bfcc246adecdf3e4332084749cfac4d43a89ebe1` and tag `v0.16.32` match the
+[published release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.32).
+[CI 34685545217](https://github.com/kudzujs/kudzu/actions/runs/34685545217) passes:
+required Linux Chrome standalone 1/1 and 330/330 without skips, plus Node 22 after
+one unchanged failed-job rerun. Original Node 22 DevToolsActivePort and empty-browser
+output failures are retained, not claimed fixed by compiler specialization.
+[Publish 34686093723](https://github.com/kudzujs/kudzu/actions/runs/34686093723)
+passes after normal environment approval. Registry version is 0.16.32, integrity
+`sha512-KDMVeORkjbW6r33AcLJtYH3GaeOIgHAlv+juncBr8jdtAkAmQRt13iOcq2oIw+jHe2ZzQvzyXXgn0qVQEHquEg==`.
+Fresh registry installation matches every shipped compiler/runtime/CLI source file
+in the release checkout and builds a conditional page plus a zero-JS static sibling.
+Published compressed-package integrity is recorded separately from the historical
+local pack below; source equality, not cross-environment tarball equality, was verified.
+
 ## 0.16.32 Release Transaction
 
 The user separately authorizes committing and pushing this session's changes,

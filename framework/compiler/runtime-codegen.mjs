@@ -30,6 +30,7 @@ export function generateBindingRuntime(source, capabilityIR, navigable) {
   const { properties, attributes } = capabilityIR.bindings
   let runtime = replaceRequired(source, '"./shared-runtime.js"', '"./kudzu.js"', "shared runtime import", "binding-runtime.js")
   runtime = replaceRequired(runtime, '"./serialization.js"', '"./kudzu-serialization.js"', "serialization import", "binding-runtime.js")
+  if (!capabilityIR.bindings.conditionMounts) runtime = replaceRequired(runtime, ", unmountDom }", " }", "unused conditional unmount import", "binding-runtime.js")
   runtime = replaceRequired(runtime, /const bindingTypes = \[[^\n]+\]/, `const bindingTypes = ${JSON.stringify(properties)}`, "binding properties", "binding-runtime.js")
   const selectors = [...properties.map(target => `[data-k-bind-${target}]`), ...(attributes ? ["[data-k-bind-attrs]"] : [])]
   // The existing generic selector is smaller when all five property kinds are used.
@@ -54,6 +55,7 @@ export function generateBindingRuntime(source, capabilityIR, navigable) {
       "globalThis.__KUDZU_VALUE_BINDINGS__": String(properties.includes("value")),
       "globalThis.__KUDZU_CONDITIONS__": String(capabilityIR.bindings.conditions),
       "globalThis.__KUDZU_CONDITION_STATE__": String(capabilityIR.bindings.conditionState),
+      "globalThis.__KUDZU_CONDITION_MOUNTS__": String(capabilityIR.bindings.conditionMounts),
       "globalThis.__KUDZU_SVG_CONDITIONS__": String(capabilityIR.bindings.svgConditions),
       "globalThis.__KUDZU_CAPTURE_STATE__": String(capabilityIR.captures.nestedState)
     }

@@ -8,6 +8,12 @@ branch's state ownership; codegen excludes unused clone/release calls with a lit
 define. Generic uncompiled source retains lifecycle behavior unless explicitly
 disabled. No new semantic primitive, pass, browser runtime concept or public API.
 
+The `0.16.33` release similarly projects `condition.mount` into
+`bindings.conditionMounts`, excluding unused fragment child collection, descendant
+range traversal and the conditional unmount import. Shared families retain the
+union; generic uncompiled sources keep lifecycle behavior without an explicit false
+define. DOM mounting remains independent of branch-owned state.
+
 The r5 follow-up registers direct collection-count query build values and leaves proven direct imported static selectors in build-time map execution. Existing ref normalization rejects render-written mutable refs; persistent cross-effect version refs remain unsupported. These changes add seven compiler lines, no pass, IR kind, or runtime concept.
 
 ## Responsibility Map

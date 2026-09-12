@@ -10,6 +10,30 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+The user now authorizes the 0.16.33 verification and release transaction: commit
+only this session's fifteen reviewed files, push, require exact-commit Node 22/24
+CI including Linux Chrome without skips, then create the immutable tag and GitHub
+release. Use the existing protected npm workflow and verify a fresh registry
+installation. Earlier local failures remain evidence; no tests, assertions or
+timeouts are relaxed for release. Generator and AI-tooling scope stay unchanged.
+
+The active user-authorized candidate is `0.16.33`, conditional DOM mount exclusion.
+The existing imported-search source fails a new artifact exclusion assertion despite
+having no condition that needs mounting. Project `condition.mount` through the
+existing family planner and codegen; retain traversal for every shared owner that
+needs it. Focused positive/negative and browser checks pass. Search removes 215 raw
+/ 116 gzip JS bytes; seven interleaved fresh-profile pairs have approximately equal
+3.8 ms medians for 200 verified transitions. Check and package smoke pass, but full
+macOS runs stall/cancel despite passing focused reruns. Complete stable-environment
+and Linux no-skip verification block release; see `PERFORMANCE.md` for retained
+failures, the session packet, boundaries and evidence.
+
+The preceding `0.16.32` transaction is complete: commit `bfcc246`, immutable tag,
+GitHub release, exact-commit Linux no-skip CI, protected npm publication and fresh
+registry install/source verification all pass. The first Node 22 attempt's browser
+startup/observation failures remain recorded alongside its successful unchanged
+rerun. Earlier candidate/pending statements below are historical session records.
+
 The user separately authorizes the 0.16.32 release transaction for this session's
 fifteen changed files: reviewed commit/push, exact-commit Linux CI, immutable tag,
 GitHub release and the existing protected npm publication workflow. Generator and

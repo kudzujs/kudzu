@@ -1177,6 +1177,7 @@ test("compiles conditional DOM branches with nested behavior", async t => {
   assert.doesNotMatch(html, /kudzu-list\.js/)
   assert.match(html, /assets\/native\/index\.js/)
   assert.match(runtime, /template\[data-k-if\]/)
+  assert.match(runtime, /comparePoint/, "nested reactive branches must retain descendant lifecycle traversal")
   assert.doesNotMatch(runtime, /createContextualFragment/)
   assert.match(commandRuntime, /\["click"\]/)
   assert.match(nativeRuntime, /\["click"\]/)

@@ -43,6 +43,7 @@ for (const shape of ["aliases", "direct alias count", "direct count", "inline co
   const bindingSource = await readFile(join(root, "dist", files.find(file => file.endsWith("/kudzu-binding.js"))), "utf8")
   assert.doesNotMatch(bindingSource, /data-k-bind-attrs|toggleAttribute|className=|\.checked=/, "search bindings must not ship unused attribute/form-property handlers")
   assert.doesNotMatch(bindingSource, /structuredClone|\.owned/, "search branches without child state must not ship conditional state ownership")
+  assert.doesNotMatch(bindingSource, /comparePoint|commonAncestorContainer|\.childNodes|unmountDom/, "presentation-only search branches must not ship descendant lifecycle traversal")
   const runtime = createHash("sha256")
   const javascript = createHash("sha256")
   let raw = 0, gzip = 0

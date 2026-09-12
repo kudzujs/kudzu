@@ -70,6 +70,13 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The active user-authorized release transaction is `0.16.33`, conditional DOM mount exclusion
+using existing route facts. `0.16.32` completed its tag, CI, GitHub/npm publication
+and fresh-install verification before this packet began. No generator change is
+needed; the existing `^0.16.30` range remains compatible. Exact-commit Linux CI
+must pass before tagging; normal protected publication and fresh registry
+installation must complete before the next packet begins.
+
 The user explicitly authorizes the release transaction for core `0.16.32`,
 conditional-state output exclusion. It carries the unreleased 0.16.31 preparation
 forward without claiming a 0.16.31 publication. No subsequent packet starts until

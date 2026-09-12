@@ -131,7 +131,7 @@ function mountConditions(root) {
     const truthy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgTrue : start.content.querySelector("template[data-k-true]")
     const falsy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgFalse : start.content.querySelector("template[data-k-false]")
     if (!end || !truthy || !falsy) continue
-    const condition = { start, end, truthy, falsy, svg: globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount, owned: globalThis.__KUDZU_CONDITION_STATE__ !== false && descriptor.owned }
+    const condition = { start, end, truthy, falsy, svg: globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: globalThis.__KUDZU_CONDITION_MOUNTS__ !== false && descriptor.mount, owned: globalThis.__KUDZU_CONDITION_STATE__ !== false && descriptor.owned }
     if (globalThis.__KUDZU_CONDITION_STATE__ !== false) mountConditionStates(condition, Boolean(descriptor.initial), false)
     const mount = evaluator => {
       if (!start.isConnected) return
@@ -163,11 +163,11 @@ function updateCondition(condition) {
     : globalThis.__KUDZU_SVG_CONDITIONS__ && condition.svg
       ? svgFragment(condition.start, truthy ? condition.truthy : condition.falsy)
       : (truthy ? condition.truthy : condition.falsy).content.cloneNode(true)
-  const nodes = condition.mount ? [...fragment.childNodes] : undefined
+  const nodes = globalThis.__KUDZU_CONDITION_MOUNTS__ !== false && condition.mount ? [...fragment.childNodes] : undefined
   if (globalThis.__KUDZU_CONDITION_STATE__ !== false) mountConditionStates(condition, truthy, true)
   condition.end.parentNode.insertBefore(fragment, condition.end)
   condition.current = next
-  if (condition.mount) for (const node of nodes) mountDom(node)
+  if (globalThis.__KUDZU_CONDITION_MOUNTS__ !== false && condition.mount) for (const node of nodes) mountDom(node)
   const select = globalThis.__KUDZU_VALUE_BINDINGS__ !== false && condition.start.closest("select[data-k-bind-value]")
   if (select) {
     for (const binding of new Set((bindingRegistrations.get(select) ?? []).map(([, entry]) => entry))) {
@@ -232,7 +232,7 @@ function removeConditionRange(start, end, mount) {
   const range = start.ownerDocument.createRange()
   range.setStartAfter(start)
   range.setEndBefore(end)
-  if (mount) {
+  if (globalThis.__KUDZU_CONDITION_MOUNTS__ !== false && mount) {
     const root = range.commonAncestorContainer
     const nodes = matching(root, "*").filter(node => range.comparePoint(node, 0) === 0)
     for (const node of nodes) if (!nodes.some(parent => parent !== node && parent.contains(node))) unmountDom(node)
