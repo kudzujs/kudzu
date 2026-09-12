@@ -1,5 +1,41 @@
 # Kudzu Releases
 
+## 0.16.32 - Conditional State Exclusion
+
+- Uses existing condition-owned state records to exclude state cloning and release
+  code from runtime families whose branches own no state. Stateful branches and
+  mixed families retain their lifecycle; generic source calls stay enabled.
+- Reduces imported search by 334 raw / 119 aggregate gzip JS bytes and Project
+  application JavaScript by 1,002 raw / 359 aggregate gzip bytes in paired local
+  artifact measurements. The stateful positive control retains its raw size.
+- Preserves React-shaped TSX, static zero-JS siblings, keyed identity and fresh
+  conditional remounts. Adds no semantic primitive, pass, dependency or public API.
+- Carries the unreleased 0.16.31 evidence review forward under the user's explicit
+  next-version instruction. Generator, CLI and AI tooling are unchanged;
+  `create-kudzu@0.1.155` retains its compatible `^0.16.30` core dependency.
+- Local check/package gates pass; macOS Chrome passes standalone 1/1 plus 325
+  tests with five Linux-only skips. Required no-skip Linux verification remains.
+
+```sh
+npm install @kudzujs/core@^0.16.32
+```
+
+## 0.16.31 - AI Delivery Evidence Review (Unreleased; carried into 0.16.32)
+
+- Reconciles active delivery status with R16/R17 while preserving historical
+  failures and the R17 visibility-scorer limitation.
+- Derives the R16 phase gap from recorded totals: pre-first-build work accounts
+  for 247,798 of 477,485 extra scheduled tokens (51.90%), selecting source discovery
+  for the next trace review rather than asserting an unmeasured optimization.
+- Records the missing raw-archive prerequisite and exact offline continuation
+  contract in `PERFORMANCE.md`; no new model experiment or cost win is claimed.
+- Changed no compiler semantics, runtime, dependencies or generator templates.
+  The temporary 0.16.31 metadata was superseded by the 0.16.32 release transaction;
+  no separate 0.16.31 tag or package is published by this session.
+- Records the compiler/runtime versus AI-tooling session handoff and local
+  verification: check/package pass, macOS tests pass with five Linux-only skips;
+  required no-skip Chrome verification remains pending.
+
 ## 0.16.30 - Binding Target Specialization
 
 Kudzu 0.16.30 specializes property patching, general-attribute decoding and

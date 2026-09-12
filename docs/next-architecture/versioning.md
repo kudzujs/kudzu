@@ -70,6 +70,19 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The user explicitly authorizes the release transaction for core `0.16.32`,
+conditional-state output exclusion. It carries the unreleased 0.16.31 preparation
+forward without claiming a 0.16.31 publication. No subsequent packet starts until
+this release transaction completes or another explicit replan is authorized. Generator
+`0.1.155` and its compatible `^0.16.30` core range remain unchanged.
+
+The previous user-authorized candidate was core `0.16.31`: the offline
+AI-delivery evidence/status review described in `PERFORMANCE.md`. It explicitly
+replans the next `0.21.4` step around recovering raw traces and reviewing the R16
+pre-first-build phase gap. It is not a published release or an accepted AI-cost
+optimization. Generator `0.1.155` remains unchanged; its existing `^0.16.30` range
+already admits this core patch. Publication and new model calls are separate gates.
+
 Every patch is independently revertible before publication. After npm publication, never repoint its tag; forward-fix with the next patch. Require the exact commit to pass CI, package smoke installation, registry verification, and the performance gates before starting the next ownership seam.
 
 From `0.10.0` onward every completed patch packet is a full release transaction:

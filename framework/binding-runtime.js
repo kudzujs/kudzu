@@ -131,8 +131,8 @@ function mountConditions(root) {
     const truthy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgTrue : start.content.querySelector("template[data-k-true]")
     const falsy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgFalse : start.content.querySelector("template[data-k-false]")
     if (!end || !truthy || !falsy) continue
-    const condition = { start, end, truthy, falsy, svg: globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount, owned: descriptor.owned }
-    mountConditionStates(condition, Boolean(descriptor.initial), false)
+    const condition = { start, end, truthy, falsy, svg: globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: descriptor.mount, owned: globalThis.__KUDZU_CONDITION_STATE__ !== false && descriptor.owned }
+    if (globalThis.__KUDZU_CONDITION_STATE__ !== false) mountConditionStates(condition, Boolean(descriptor.initial), false)
     const mount = evaluator => {
       if (!start.isConnected) return
       condition.read = evaluator.read
@@ -155,7 +155,7 @@ function updateCondition(condition) {
   if (next === condition.current) return
   const previous = condition.current === "true"
   removeConditionRange(condition.start, condition.end, condition.mount)
-  unmountConditionStates(condition, previous)
+  if (globalThis.__KUDZU_CONDITION_STATE__ !== false) unmountConditionStates(condition, previous)
   const truthy = Boolean(value)
   const falseText = condition.kind === "and" && !truthy ? renderFalsy(value) : ""
   const fragment = falseText
@@ -164,7 +164,7 @@ function updateCondition(condition) {
       ? svgFragment(condition.start, truthy ? condition.truthy : condition.falsy)
       : (truthy ? condition.truthy : condition.falsy).content.cloneNode(true)
   const nodes = condition.mount ? [...fragment.childNodes] : undefined
-  mountConditionStates(condition, truthy, true)
+  if (globalThis.__KUDZU_CONDITION_STATE__ !== false) mountConditionStates(condition, truthy, true)
   condition.end.parentNode.insertBefore(fragment, condition.end)
   condition.current = next
   if (condition.mount) for (const node of nodes) mountDom(node)
@@ -195,7 +195,7 @@ function unmountConditions(root) {
   for (const start of matching(root, "template[data-k-if]")) {
     const registration = conditionRegistrations.get(start)
     for (const [id, condition] of registration?.registrations ?? []) conditionTargets.get(id)?.delete(condition)
-    if (registration?.condition) unmountConditionStates(registration.condition, registration.condition.current === "true")
+    if (globalThis.__KUDZU_CONDITION_STATE__ !== false && registration?.condition) unmountConditionStates(registration.condition, registration.condition.current === "true")
     conditionRegistrations.delete(start)
     mountedConditions.delete(start)
   }
@@ -211,7 +211,7 @@ function releaseBindings(id) {
   for (const condition of conditionTargets.get(id) ?? []) {
     const registration = conditionRegistrations.get(condition.start)
     for (const [conditionId, entry] of registration?.registrations ?? []) conditionTargets.get(conditionId)?.delete(entry)
-    unmountConditionStates(condition, condition.current === "true")
+    if (globalThis.__KUDZU_CONDITION_STATE__ !== false) unmountConditionStates(condition, condition.current === "true")
     conditionRegistrations.delete(condition.start)
   }
   conditionTargets.delete(id)

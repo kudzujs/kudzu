@@ -10,6 +10,44 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+The user separately authorizes the 0.16.32 release transaction for this session's
+fifteen changed files: reviewed commit/push, exact-commit Linux CI, immutable tag,
+GitHub release and the existing protected npm publication workflow. Generator and
+the separate AI-authoring worktree remain unchanged. Earlier candidate statements
+below are historical; 0.16.31 is carried forward, not separately published. The
+next packet remains gated on the complete transaction and registry verification.
+
+The user explicitly authorizes the next-version `0.16.32` framework packet after
+the unreleased 0.16.31 preparation. Existing imported-search branches reproduce
+unused conditional state cloning/release code; one existing-record projection and
+codegen define exclude it while stateful and mixed families retain ownership.
+Paired local artifact savings are 334 raw / 119 gzip JS bytes for search and
+1,002 / 359 for Project. This carries 0.16.31 preparation forward, not a claim
+that 0.16.31 shipped. Local check/package gates and macOS Chrome standalone 1/1
+plus 325 tests pass; five Linux-only tests are skipped. The no-skip Linux release
+gate remains pending. See `PERFORMANCE.md` for complete evidence.
+
+The prior user-authorized `0.16.31` candidate is an offline evidence/status packet,
+explicitly replanning the next `0.21.4` continuation after `0.16.30`. It reconciles
+R16/R17 and selects pre-first-build discovery for trace review from the recorded
+R16 phase gap. Raw attempt archives are absent from this checkout, so command-level
+attribution and replay remain blocked pending archive recovery. No tool or compiler
+change is justified by aggregate phase totals alone. See the 0.16.31 review in
+`PERFORMANCE.md` for arithmetic, provenance, and the exact continuation contract.
+Package metadata preparation is authorized; publication remains pending its
+separate release transaction. Model calls remain stopped.
+
+Session allocation (2026-09-12): this session retains 0.16.31 preparation and
+framework measurement records, then selects compiler/runtime work from executable
+source/output evidence. AI cost, authoring harness, agent instructions, context
+and observation optimization belong to `kudzu-ai-tooling` on
+`feat/ai-authoring-support`; the pre-first-build trace investigation is handed off
+there. Coordinate generator, shared CLI, diagnostic output, test-tool and AI
+protocol scope before edits. Local check/package gates pass; macOS tests pass
+with five Linux-only skips, so required no-skip Chrome verification remains pending.
+Historical measurements are preserved and framework versus harness effects must
+be attributed separately. See `PERFORMANCE.md` for current fixture bytes and owners.
+
 Release transaction 0.16.30 publishes binding-target specialization with
 generator 0.1.155. Existing target facts narrow property handling and element
 scans while preserving shared-owner unions and generic source helpers. Recorded
@@ -3435,4 +3473,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | Full r8 and separately authorized single focused r15 schedule finished; gate blocked | Cost objective unmet; stop model calls. Retain observation reuse, do not adopt R14 inventory policy, preserve all historical failures. Any follow-up is offline review, not an automatic rerun. | Full r8 stays 23/25 versus 24/25. R15 CONTENT is 5/5 versus 5/5 with fully attributable totals 1,652,454 versus 1,385,083; Kudzu tokens per accepted task are 19.30% higher. R13/R12 comparisons remain descriptive. All pre-call lifecycle/protocol/browser/copy gates pass; no selective retry, compiler/runtime/config change or release. |
+| `0.21.4` | Full R8 and focused R16/R17 schedules finished; gate blocked; 0.16.31 offline review candidate | Recover and verify the R16 archive, then inspect pre-first-build discovery before choosing one replayable correction. R18 requires a separately authorized frozen protocol; model calls remain stopped. Preserve observation reuse, reject the R14 inventory policy, and retain historical failures. | R8 remains 23/25 versus 24/25. R16 is 5/5 versus 4/5 with Kudzu success-cost tokens 14.15% higher. R17's original 5/5, 5/5, 0/5 scores have a visibility-scorer defect; unchanged-artifact replay passes 15/15 but is not a new trial or fair ranking. Raw traces are absent locally; no causal cost reduction or 1.0 acceptance. |

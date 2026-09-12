@@ -1,5 +1,182 @@
 # Performance Records
 
+## 0.16.32 Release Transaction
+
+The user separately authorizes committing and pushing this session's changes,
+exact-commit CI, immutable `v0.16.32` tagging and the GitHub release. The existing
+protected npm workflow publishes the matching core version after normal environment
+approval. Generator 0.1.155 is already published and its compatible `^0.16.30` core
+range needs no change. No AI-tooling worktree changes are included.
+
+Earlier candidate/no-release statements retain their measurement-session meaning.
+The 0.16.31 review is carried into 0.16.32 without a separate 0.16.31 publication.
+Only measured byte reductions are claimed; the AI and 1.0 gates remain blocked.
+The exact pushed commit must pass the Linux required-Chrome CI job before tagging;
+local macOS skips do not satisfy it. CI and publication receipts remain attached
+to the exact GitHub commit, tag and release rather than being predicted here.
+
+Release-metadata verification reruns check (230 pages), fresh packed-package smoke
+and whitespace validation successfully. The inspected core dry-run manifest has
+60 files, 202,111 packed / 998,832 unpacked bytes and integrity
+`sha512-KTTACCL1Z/GkrnmuRCWMI/8+0Mmz59+GEyYZm5L37B1aFSoOMSiIBFr5F7KZw0QeI1tM8r/hSD76MWQdwWWAuQ==`.
+The source/test implementation is unchanged from the complete local suite below.
+
+## 0.16.32 Conditional State Exclusion (2026-09-12, candidate)
+
+The user-authorized next framework patch carries the unreleased 0.16.31 preparation
+forward. Baseline production source is `f1ef2b0` (0.16.30); the 0.16.31 preparation
+changes no compiler/runtime source. Before implementation, the existing imported
+article search fails an added artifact assertion: its two conditions own no state,
+yet binding ESM ships `structuredClone` and branch-owned state release machinery.
+
+The planner projects existing validated `condition.owned` entries across every
+record in a runtime family. `bindings.conditionState` is an internal exclusion
+fact, not new state semantics. Literal codegen defines erase unused mount, update,
+unmount and state-release calls; both truthy/falsy state owners and mixed navigation
+families retain the existing implementation. Generic source retains behavior unless
+the define is explicitly false. No authored source or framework comparison input
+changes. Static siblings remain JavaScript-free.
+
+Same-host before/after artifact measurements (macOS arm64, Node v25.6.1, npm
+11.18.0, Chrome 152.0.7977.83; existing locked dependencies):
+
+| Fixture JS graph | Before raw / gzip B | Candidate raw / gzip B | Delta raw / gzip B |
+|---|---:|---:|---:|
+| Imported article search | 30,383 / 11,467 | 30,049 / 11,348 | -334 / -119 |
+| All-property bindings | 10,714 / 4,774 | 10,491 / 4,681 | -223 / -93 |
+| Stateless conditionals | 13,636 / 5,855 | 13,300 / 5,735 | -336 / -120 |
+| Non-keyed child state (positive control) | 17,547 / 8,226 | 17,547 / 8,227 | 0 / +1 |
+| Project application | 126,006 / 46,620 | 125,004 / 46,261 | -1,002 / -359 |
+
+Raw/gzip are sums over emitted JS files, not network transfer. Search's four
+equivalent source forms pass browser identity, empty/restore and error checks,
+each with eight JS files and runtime digest
+`bf15727925cf17e6ff410d0b50b0111a9166fae2566e59484c8b4d8007bd4898`.
+The positive control preserves raw bytes and browser state reset/remount behavior,
+not byte-identical code: an attempted runtime-hash equality check failed, so that
+claim is explicitly rejected. Family identifiers change with the new fact, and
+minified runtime hashes change even for the stateful control; gzip grows by one byte.
+Project retains 42 deploy files, drops from 191,855 to 190,853 raw deploy bytes,
+and has deploy digest
+`6f2e9c3ff93db0b207c337c1416a9cd99592d2e6694ecc10be5bb7499d7654a9`.
+Its exact fixture output baseline is updated; historical reports are preserved.
+
+Evidence scripts and before/after file-size/hash inventories are local under
+`/var/folders/bt/3r_ntp5x65j81brs6_p93rl00000gn/T/opencode/condition-state-{measure,report}.mjs`
+and `condition-state-{before,after}.json`. The focused eight checks pass, including
+the previously failing exclusion and object-state remount browser control. New
+semantic primitives/passes/runtime concepts/dependencies: zero; core planner/codegen
+growth: three net physical lines; runtime source growth: zero. No latency, build
+speed, memory, AI-cost or cross-framework superiority measurement is claimed.
+Final local gates on the 0.16.32 versioned tree: `npm run check` passes (230 pages,
+two interactive); macOS Chrome `npm test` passes standalone 1/1 plus 325 suite
+tests, zero failures and five Linux-only smoke skips; `npm run test:package`
+passes the fresh three-page packed consumer; `git diff --check` passes. The
+Project connected ownership journey passes its updated exact output baseline.
+No test runner, browser tool, diagnostic output, CLI, generator, AI protocol or
+agent context changed. Required no-skip Linux Chrome verification and publication
+remain pending. Subsequent edits only record these verification results.
+
+## 0.16.31 Offline Cost Review (2026-09-12, candidate)
+
+This user-authorized patch reconciles current delivery status and selects the next
+trace investigation. It uses the tracked R16/R17 reports below, not newly inspected
+raw attempts: `test-results/ai-delivery-production/` is absent in this checkout.
+No model call, historical rescoring, command replay or new cost measurement ran.
+
+R16 records the following scheduled-token decomposition, including failed attempts:
+
+| Phase | Kudzu tokens | React tokens | Kudzu minus React | Share of total gap |
+|---|---:|---:|---:|---:|
+| Before first build | 669,707 | 421,909 | 247,798 | 51.90% |
+| First build | 117,004 | 93,689 | 23,315 | 4.88% |
+| After first build | 809,348 | 602,976 | 206,372 | 43.22% |
+| Total | 1,596,059 | 1,118,574 | 477,485 | 100.00% |
+
+Each column sums to the previously recorded total; gap shares divide each phase
+difference by 477,485. These are scheduled-token differences, not success-normalized
+phase costs: R16 has five Kudzu successes and four React successes. Its recorded
+failure-inclusive tokens per success remain 319,211.8 versus 279,643.5 (+14.15%).
+
+**Selected investigation: pre-first-build source discovery.** This phase contributes
+the largest recorded gap (51.90%). Post-build work is still Kudzu's largest absolute
+phase (50.71% of its tokens), but that does not make it the largest comparative gap.
+The aggregates do not isolate useful reading, repeated inventory, implementation,
+or cache effects; they cannot justify shortening context or changing a compiler.
+R16 role-only adoption remains 0/10, and five exact-name failures remain recorded.
+R17's scorer defect prevents a fair three-way success-cost ranking; the 15/15
+unchanged-artifact replay does not replace its original scores or prove AI savings.
+
+### Exact Continuation Contract
+
+1. Recover `role-only-r16-20260911-audited.tar.gz` from the existing evidence archive
+   and verify its recorded SHA-256
+   `c8dbd8880124c9a64ca2b437a62300bd608ff08767778897eba7ad1cee1495ad` before extraction.
+   Keep frozen protocols, traces and scores immutable.
+2. Review all ten attempts through their first model build. Record command/stream
+   references, repeated paths and retained usage accounting. Separate necessary
+   source discovery from repeated inventory and implementation; do not assign
+   model-step token totals to individual shell commands without attributable data.
+3. Select one repeated avoidable operation only if traces establish it. Reuse the
+   existing tools and replay real commands offline with unchanged assertions.
+   Record response bytes and errors separately from unmeasured model-token savings.
+   If evidence does not establish a correction, close the review without a tool change.
+4. Before any new model schedule, separately authorize and freeze R18 with the
+   corrected visibility scorer, equal public tools/docs, exact package/model/toolchain
+   hashes and unchanged acceptance/budget requirements. Existing future R18 inputs
+   are not a measured schedule and do not automatically include core 0.16.31.
+
+Semantic primitives, core passes/LOC, runtime concepts, dependencies, source support
+and browser capability changes: zero. No fixture behavior changes; deploy hashes,
+browser-byte and timing deltas have not been remeasured for this documentation packet.
+Local validation and publication status are recorded separately; 1.0 remains blocked.
+
+### Session Ownership And Local Validation (2026-09-12)
+
+The user assigns compiler/runtime correctness, React-shaped source preservation,
+browser bytes, build/interaction performance, memory and lifecycle work to this
+session. AI authoring support belongs to the separate `kudzu-ai-tooling` worktree,
+branch `feat/ai-authoring-support`, including the pre-first-build investigation
+above. That investigation is a handoff, not authorization for this session to
+change agent instructions, supplied context or tool observations.
+
+Generator, common CLI, diagnostic output, test-tool and AI benchmark protocol
+changes require scope coordination before editing, even across different files.
+Keep existing experiment inputs/results immutable and report framework-output
+effects separately from model/harness effects. Matched behavior, accessibility,
+source abstraction and environment are prerequisites for competitive claims.
+
+Local verification on macOS with Node v25.6.1:
+
+- Initial `npm run check` fails because existing fixture package dependencies are
+  missing. `npm ci --no-audit --no-fund` restores the locked dependencies; check
+  then passes with 230 pages and two interactive pages.
+- `KUDZU_REQUIRE_CHROME=1 npm test` passes the standalone ownership test, then
+  reports 323 passes and two failures: acceptance cannot discover the macOS Chrome
+  path, and browser-smoke tests explicitly require Linux. These failures remain
+  part of this packet; they are not compiler regressions or passed release gates.
+- `CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" npm test`
+  passes standalone 1/1 and 324 suite tests, with zero failures and five explicit
+  Linux-only skips. The required no-skip Linux Chrome gate remains pending.
+- `npm run test:package` passes a fresh packed-core installation and three-page
+  consumer build with one interactive route. `git diff --check` passes.
+- The four existing imported-search source forms pass browser behavior, retained
+  row identity, release/re-entry, negative source boundaries and static exclusion.
+  Each emits eight JS files, 30,383 raw / 11,467 aggregate gzip bytes, runtime digest
+  `057b868606188d72dd2bcd88cfabd9157d03d3fb43245345f00a338501816003`.
+  This is a local baseline, not a paired optimization result. Historical 0.16.30
+  records remain 30,383 / 11,466; no cross-environment gzip or latency win is claimed.
+
+The next framework investigation starts with those existing search forms and the
+binding/runtime-family output, preserving their ordinary declarative TSX. Owners
+are `framework/binding-runtime.js`, `framework/compiler/runtime-codegen.mjs`, and
+the capability/family planners. Source inspection alone establishes no new unused
+capability or performance defect; first prove one with an executable fixture and
+before/after artifacts before selecting a code change. Preserve generic helper
+behavior, shared-family unions, keyed identity, cleanup and zero-JS static siblings.
+Any affected test-tool change is coordinated first; do not silently add it to this
+documentation packet. Publication of 0.16.31 remains pending.
+
 ## 0.16.30 Release Scope
 
 Binding target specialization ships as core 0.16.30 and generator 0.1.155. The
@@ -352,7 +529,7 @@ reported intentionally normalized metadata differences; extracted SHA-256 and
 byte comparisons subsequently pass. This checksum closure is external to the
 archive to avoid self-referential hashing.
 
-Latest bounded experiment: [CONTENT R15 observation reuse](#content-r15-observation-reuse-2026-09-10), 5/5 Kudzu versus 5/5 React; Kudzu tokens per accepted task remain 19.30% higher. Objective unmet; model calls stopped.
+Latest focused evidence: R16 records 5/5 Kudzu versus 4/5 React with Kudzu tokens per accepted task 14.15% higher. R17 adds three-way Content observations but its original visibility scorer cannot support a fair ranking; corrected unchanged-artifact replay is separate evidence. The next offline review is recorded in the 0.16.31 packet above. Objective unmet; model calls stopped.
 
 Reproducibility classes: `npm run benchmark`, `npm run benchmark:keyed`, `npm run benchmark:native`, `npm run benchmark:module-cache`, `npm run benchmark:project-navigation`, `npm run benchmark:project-state`, `npm run benchmark:source-scale`, `npm run benchmark:ai-delivery`, and `npm run benchmark:ai-delivery-production` are maintained in this repository; `npm run benchmark:commerce` is a maintained paired runner over the public external storefront; older excluded-workspace sections are historical provenance only and are not current framework rankings.
 

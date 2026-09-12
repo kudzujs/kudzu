@@ -2,6 +2,12 @@
 
 This maps the current `0.16.30` architecture, including runtime-family specialization of binding properties, general attributes, styles and conditional capabilities through existing RouteIR facts and codegen. It builds on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The `0.21.4` AI delivery gate is measured and blocked; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
 
+The `0.16.32` release projects existing `condition.owned` entries into
+the internal `bindings.conditionState` fact. Runtime-family union preserves either
+branch's state ownership; codegen excludes unused clone/release calls with a literal
+define. Generic uncompiled source retains lifecycle behavior unless explicitly
+disabled. No new semantic primitive, pass, browser runtime concept or public API.
+
 The r5 follow-up registers direct collection-count query build values and leaves proven direct imported static selectors in build-time map execution. Existing ref normalization rejects render-written mutable refs; persistent cross-effect version refs remain unsupported. These changes add seven compiler lines, no pass, IR kind, or runtime concept.
 
 ## Responsibility Map

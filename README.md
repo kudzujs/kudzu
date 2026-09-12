@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.30](https://github.com/kudzujs/kudzu/releases/tag/v0.16.30).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates, retaining only required binding targets and capabilities.
+**Current release: [0.16.32](https://github.com/kudzujs/kudzu/releases/tag/v0.16.32).** Write reusable components, native event handlers, and pure collection expressions; Kudzu specializes supported source into static content and direct browser updates. Runtime families whose branches own no state omit conditional state lifecycle code, removing 334 raw JavaScript bytes from the search fixture while preserving stateful remounts. AI-cost and 1.0 gates remain blocked.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

@@ -53,6 +53,7 @@ export function generateBindingRuntime(source, capabilityIR, navigable) {
       "globalThis.__KUDZU_CHECKED_BINDINGS__": String(properties.includes("checked")),
       "globalThis.__KUDZU_VALUE_BINDINGS__": String(properties.includes("value")),
       "globalThis.__KUDZU_CONDITIONS__": String(capabilityIR.bindings.conditions),
+      "globalThis.__KUDZU_CONDITION_STATE__": String(capabilityIR.bindings.conditionState),
       "globalThis.__KUDZU_SVG_CONDITIONS__": String(capabilityIR.bindings.svgConditions),
       "globalThis.__KUDZU_CAPTURE_STATE__": String(capabilityIR.captures.nestedState)
     }

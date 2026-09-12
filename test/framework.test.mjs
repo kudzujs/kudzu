@@ -2452,6 +2452,7 @@ test("owns repeated non-keyed child state across ordinary component boundaries",
   const importedModule = await readFile(new URL("./fixtures/non-keyed-child-state/.kudzu/ImportedToggle.mjs", import.meta.url), "utf8")
   assert.deepEqual(plan.states.map(state => state.id), ["s0", "s1", "s2", "s3", "s4", "s5"])
   assert.deepEqual(plan.conditions.find(condition => condition.owned)?.owned, { true: [["s5", { value: 0 }]], false: [] })
+  assert.match(await readRuntime("non-keyed-child-state", "kudzu-binding.js"), /structuredClone/, "branch-owned object state must retain fresh remount cloning")
   assert.deepEqual(JSON.parse(html.match(/data-k-state='([^']+)'/)[1]).map(([id]) => id), ["s0", "s1", "s2", "s3", "s4"])
   assert.deepEqual(initialPlan.states.map(state => state.id), ["s0", "s1"])
   assert.deepEqual(initialPlan.conditions[0].owned, { true: [["s1", 0]], false: [] })

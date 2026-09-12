@@ -1261,7 +1261,7 @@ test("plans binding and list runtime specializations", () => {
   })
   const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasBindings: true, hasLists: true, hasListStyles: true })])
 
-  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, svgConditions: true, properties: [], attributes: false })
+  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, conditionState: false, svgConditions: true, properties: [], attributes: false })
   assert.equal(manifest.lists.count, 1)
   assert.equal(manifest.lists.styleCount, 1)
   assert.equal(manifest.lists.selectors, true)
@@ -1330,6 +1330,31 @@ test("retains conditional capability when any runtime-family owner needs branche
 function routeCapability(overrides = {}) {
   return { navigable: false, usesDependencyRuntime: false, hasBehaviors: false, hasBindings: false, hasLists: false, hasListStyles: false, hasStateSeed: false, hasParams: false, hasEffects: false, ...overrides }
 }
+
+test("retains conditional state only for families with branch-owned state", () => {
+  const source = readFileSync(new URL("../framework/binding-runtime.js", import.meta.url), "utf8")
+  const make = owned => routeRecord(routePlan({
+    states: [{ slot: 0, id: "s0", name: "open", initialValue: false }, { slot: 1, id: "s1", name: "draft", initialValue: { value: 0 } }],
+    conditions: [{ id: "c0", kind: "and", state: "s0", initial: false, ...(owned ? { owned } : {}) }]
+  }), { navigable: true, hasBehaviors: true, hasBindings: true })
+  const plain = make(), empty = make({ true: [], false: [] })
+  for (const records of [[plain], [plain, empty]]) {
+    const capability = planRouteCapabilities(records)
+    assert.equal(capability.bindings.conditionState, false)
+    assert.equal(generateBindingRuntime(source, capability, true).define["globalThis.__KUDZU_CONDITION_STATE__"], "false")
+  }
+  for (const owned of [{ true: [["s1", { value: 0 }]], false: [] }, { true: [], false: [["s1", { value: 0 }]] }]) {
+    const branch = make(owned)
+    for (const records of [[branch], [plain, branch], [branch, plain]]) {
+      const capability = planRouteCapabilities(records)
+      assert.equal(capability.bindings.conditionState, true)
+      assert.equal(generateBindingRuntime(source, capability, true).define["globalThis.__KUDZU_CONDITION_STATE__"], "true")
+      const invalid = structuredClone(capability)
+      invalid.bindings.conditions = false
+      assert.throws(() => assertCapabilityIR(invalid), /conditional state requires conditions/)
+    }
+  }
+})
 
 test("specializes binding targets without losing generic attributes or shared owners", () => {
   const source = readFileSync(new URL("../framework/binding-runtime.js", import.meta.url), "utf8")
