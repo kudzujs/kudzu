@@ -1261,7 +1261,7 @@ test("plans binding and list runtime specializations", () => {
   })
   const manifest = planRouteCapabilities([routeRecord(plan, { hasBehaviors: true, hasBindings: true, hasLists: true, hasListStyles: true })])
 
-  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, conditionState: false, conditionMounts: false, svgConditions: true, properties: [], attributes: false })
+  assert.deepEqual(manifest.bindings, { count: 1, text: true, style: false, conditions: true, conditionState: false, conditionMounts: false, svgConditions: true, nestedEvaluators: false, properties: [], attributes: false })
   assert.equal(manifest.lists.count, 1)
   assert.equal(manifest.lists.styleCount, 1)
   assert.equal(manifest.lists.selectors, true)
@@ -1407,6 +1407,32 @@ test("retains conditional DOM mounts for any runtime-family owner", () => {
     invalid.bindings.conditions = false
     assert.throws(() => assertCapabilityIR(invalid), /conditional mounts require conditions/)
   }
+})
+
+test("retains nested evaluators for bindings, conditions and calculated list sources", () => {
+  const source = readFileSync(new URL("../framework/binding-runtime.js", import.meta.url), "utf8")
+  const leaf = { module: "/handler.js", handler: "read", states: { value: "s0" }, scope: {}, scopeStates: {}, scopeBindings: {} }
+  const nested = { ...leaf, states: {}, scopeBindings: { inner: { ...leaf, states: {}, scopeBindings: { value: leaf } } } }
+  const make = entries => routeRecord(routePlan({ states: [{ slot: 0, id: "s0", name: "value", initialValue: [] }], ...entries }), { navigable: true, hasBehaviors: true, hasBindings: true, ...(entries.lists ? { hasLists: true } : {}) })
+  const plain = make({ bindings: [{ target: "text", ...leaf }] })
+  const without = planRouteCapabilities([plain])
+  assert.equal(without.bindings.nestedEvaluators, false)
+  assert.equal(generateBindingRuntime(source, without, false).define["globalThis.__KUDZU_NESTED_EVALUATORS__"], "false")
+  for (const entries of [
+    { bindings: [{ target: "value", ...nested }] },
+    { conditions: [{ id: "c0", kind: "and", initial: false, ...nested }] },
+    { lists: [{ id: "l0", state: "s0", key: "id", keys: [], source: nested }] }
+  ]) {
+    const owner = make(entries)
+    for (const records of [[owner], [plain, owner], [owner, plain]]) {
+      const capability = planRouteCapabilities(records)
+      assert.equal(capability.bindings.nestedEvaluators, true)
+      assert.equal(generateBindingRuntime(source, capability, true).define["globalThis.__KUDZU_NESTED_EVALUATORS__"], "true")
+    }
+  }
+  const invalid = structuredClone(without)
+  delete invalid.bindings.nestedEvaluators
+  assert.throws(() => assertCapabilityIR(invalid), /Invalid CapabilityIR v1 bindings/)
 })
 
 function routeRecord(plan, capabilities = {}) {

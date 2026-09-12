@@ -1,5 +1,31 @@
 # Kudzu Releases
 
+## 0.16.35 - Nested Evaluator Exclusion
+
+- Projects existing nested scope descriptors from bindings, conditions and calculated
+  list sources across the entire runtime family. Flat families omit nested context
+  preparation, lookup and recursive state-ID collection; mixed families retain them.
+- Preserves ordinary React-shaped TSX and generic uncompiled runtime behavior.
+  The existing nested component-prop fixture verifies latest-state reads in both
+  emitted and generic runtimes; its raw JS size remains unchanged.
+- Removes 172 raw / 50 aggregate gzip JS bytes from search and 516 raw / 151 gzip
+  bytes from the Project application. Static siblings retain zero JavaScript.
+- A seven-pair timing signal prompted 21 additional interleaved pairs. Search
+  transition medians change from 3.2 to 3.1 ms per 200 operations; cached evaluator
+  construction changes from 1.5 to 1.4 ms per 1,000 operations. These narrow samples
+  do not establish cold-page readiness, paint, memory, AI-cost or framework rankings.
+- Adds no semantic primitive, pass, runtime concept or dependency. Preserves the
+  released 0.16.34 AI tools and create-kudzu 0.1.156, including its expanded package
+  smoke gate and compatible `^0.16.34` core range. No new CLI, diagnostic, generator,
+  test-tool or AI-protocol change is part of this compiler patch.
+- Integrated check and core/generator package smoke pass; macOS Chrome passes
+  standalone 1/1 plus 332 tests with five Linux-only skips. Exact-commit Linux CI
+  must pass before tagging; receipts are attached to the GitHub release.
+
+```sh
+npm install @kudzujs/core@^0.16.35
+```
+
 ## 0.16.34 - Optional AI Authoring Tools
 
 - Publishes `create-kudzu@0.1.156` with opt-in `--ai`: app-root instructions,

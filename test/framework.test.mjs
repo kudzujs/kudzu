@@ -976,6 +976,28 @@ test("patches reactive attributes and form properties without a VDOM", async t =
   assert.doesNotMatch(bindings, /\beval\b|new Function/)
   assert.equal(plan.bindings.length, 24)
   assert.ok(plan.bindings.some(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
+  assert.match(bindingRuntime, /scopeBindings/, "nested component-prop evaluators must retain recursive context and dependency support")
+  const resolveDescriptor = descriptor => ({ ...descriptor, module: new URL(`./fixtures/bindings/dist${descriptor.module}`, import.meta.url).href, scopeBindings: Object.fromEntries(Object.entries(descriptor.scopeBindings).map(([name, binding]) => [name, resolveDescriptor(binding)])) })
+  const nestedDescriptor = resolveDescriptor(plan.bindings.find(binding => Object.keys(binding.scopeBindings ?? {}).length > 0))
+  for (const [bindingUrl, stateUrl] of [
+    [await runtimeAssetUrl("bindings", "kudzu-binding.js"), await runtimeAssetUrl("bindings", "kudzu.js")],
+    [new URL("../framework/binding-runtime.js", import.meta.url), new URL("../framework/shared-runtime.js", import.meta.url)]
+  ]) {
+    const { loadEvaluator } = await import(bindingUrl.href)
+    const { browserState } = await import(stateUrl.href)
+    const hadState = browserState.has("s1"), previous = browserState.get("s1")
+    try {
+      browserState.set("s1", "Kudzu")
+      const nested = await loadEvaluator(nestedDescriptor)
+      assert.deepEqual([...nested.stateIds], ["s1"])
+      assert.equal(nested.read(), "Kudzu!")
+      browserState.set("s1", "Grown")
+      assert.equal(nested.read(), "Grown!", "nested evaluator reads current state in compiled and generic runtime")
+    } finally {
+      if (hadState) browserState.set("s1", previous)
+      else browserState.delete("s1")
+    }
+  }
 
   const evaluators = await import(`${new URL("./fixtures/bindings/dist/assets/handlers/pages/index.js", import.meta.url).href}?v=${Date.now()}`)
   const context = {

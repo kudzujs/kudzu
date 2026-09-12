@@ -1,5 +1,32 @@
 # Performance Records
 
+## 0.16.35 Integration And Release Transaction
+
+The user authorizes this compiler packet as 0.16.35 after the independent
+0.16.34 AI-authoring release (`570aed9`, create-kudzu 0.1.156). The local draft
+previously used 0.16.34 before discovering that release; it was never committed
+or published under that number. Its measured compiler/runtime changes and raw
+evidence are retained without rewriting the published 0.16.34 tooling record.
+
+The 0.16.34 source is fast-forwarded into this worktree and the compiler packet
+reapplied. Both sides of overlapping documentation are preserved; the generator,
+AI helpers and expanded `test:package` gate remain exactly as released in 0.16.34.
+No generator version bump is needed: 0.1.156's `^0.16.34` core range admits 0.16.35.
+Framework effects remain separate from unmeasured AI-tooling effects. Require
+the integrated commit's Node 22/24 and no-skip Linux Chrome CI before immutable
+tagging, then normal protected npm publication and fresh-install verification.
+
+Integrated 0.16.35 local gates pass: check builds 230 pages with two interactive;
+the unchanged npm test script passes standalone 1/1 plus 332 suite tests, with zero
+failures/cancellations and five Linux-only skips. Core package smoke passes, and
+the preserved paired generator smoke verifies four byte-identical deploy files,
+9,758 raw / 3,746 aggregate gzip bytes in both arms, with 1,828-byte instructions.
+The core dry-run manifest has 60 files, 202,551 packed / 1,000,673 unpacked bytes,
+local integrity
+`sha512-CoNj7+yQEkh6d3SdWghA6p7q7WLUFQvVOUaFsEBxjXY2tu7GfUESvUt2aV6139GTtz683TLWVkVSpt46TTcaQw==`.
+Exact-commit Linux CI remains the no-skip release gate; prior draft results are not
+relabeled as integrated tests. Subsequent changes only record verification.
+
 ## 0.16.34 Optional AI Authoring Tools
 
 User-authorized release transaction: core 0.16.34 and create-kudzu 0.1.156, through
@@ -46,6 +73,109 @@ generator smoke pass. Prior 0.16.30-based full runs and their failure/skip recor
 remain in the research log; they are not relabeled as integrated-release tests.
 Exact PR and merged-commit Linux Node 22/24 checks must pass before tagging;
 their receipts belong to the corresponding GitHub checks and release.
+
+## 0.16.35 Nested Evaluator Exclusion (2026-09-12, measurement record)
+
+Baseline: released `4c98059` / 0.16.33. Existing imported article search has no
+nonempty evaluator `scopeBindings`, but its binding ESM still prepares nested
+contexts, checks nested getters and recursively collects dependency IDs. An added
+exclusion assertion over this real fixture fails before implementation.
+
+`loadEvaluator()` consumers are ordinary attribute/text bindings, conditions and
+calculated list sources. The existing planner checks all three descriptor roots
+and unions their nonempty scopes across family owners. A root cannot have deeper
+nested scopes without a nonempty immediate scope; no recursive compiler scan or
+new pass is needed. `bindings.nestedEvaluators` drives an existing codegen define
+boundary. Explicit false removes nested work; omitted defines keep generic source
+behavior. Authored TSX, state semantics and handler modules remain unchanged.
+
+### Artifact Evidence
+
+Same macOS arm64 host, Node v25.6.1, npm 11.18.0, Chrome 152.0.7977.83 and locked
+dependencies. Sums over emitted JS files, not compressed network transfer:
+
+| Fixture | Before raw / gzip B | Candidate raw / gzip B | Delta raw / gzip B |
+|---|---:|---:|---:|
+| Imported article search | 29,834 / 11,232 | 29,662 / 11,182 | -172 / -50 |
+| Nested component-prop bindings | 10,281 / 4,571 | 10,281 / 4,570 | 0 / -1 |
+| Conditionals | 13,300 / 5,738 | 13,128 / 5,685 | -172 / -53 |
+| Calculated collections | 47,561 / 17,861 | 47,389 / 17,802 | -172 / -59 |
+| Project application | 125,004 / 46,244 | 124,488 / 46,093 | -516 / -151 |
+
+The existing `Field` fixture has one nested `value` evaluator over state `s1`.
+Both emitted and generic runtime evaluation retain that dependency and read
+`Kudzu!` then `Grown!` after state replacement. Its raw size is unchanged; the
+one-byte gzip change is not a capability saving. Planner tests cover two-level
+scopes, all three consumers and both mixed-family record orders. Calculated-list
+and conditional browser checks pass. Search's four ordinary source forms retain
+eight JS files and share runtime digest
+`ed28477e2c25d154562c681fdeafcc5200e43186941b671c2576b565de713527`.
+Project retains 42 deploy files, drops to 190,337 raw deploy bytes and has digest
+`68c80a5e885b0a9e66744149528784c4154e5056c9c6ceb2897beab46163ecb3`.
+Static sibling exclusions pass. Family IDs change with the new internal fact;
+exact output baselines are updated without rewriting historical records.
+
+### Timing And Confirmation
+
+Each fresh Chrome profile serves unchanged before/after search artifacts. Discard
+one profile pair, alternate variant order, warm up 20 search transitions and 100
+cached evaluator constructions, then measure 200 transitions and 1,000 constructions.
+Every transition checks keyed count, live-region text and empty notice after
+microtasks. Each constructed evaluator must retain `s0` and return the expected
+current result. Context timings exclude network/module loading and do not measure
+cold page initialization. DOM completion excludes paint.
+
+| Measurement | Initial 7-pair median before / after | Additional 21-pair median before / after |
+|---|---:|---:|
+| 200 search transitions | 3.0 / 3.2 ms | 3.2 / 3.1 ms |
+| 1,000 cached flat evaluator constructions | 1.6 / 1.4 ms | 1.5 / 1.4 ms |
+
+The initial search median is 6.67% higher with overlapping ranges, triggering the
+larger confirmation rather than hiding the signal. The unchanged 21-pair run does
+not reproduce a >5% median loss. Both complete runs are retained; small overlapping
+samples do not establish statistically powered equivalence or a user-facing speed
+win. Cached construction medians improve descriptively, not as a cold-load claim.
+No build-speed, memory, AI-token or cross-framework ranking is measured.
+
+### Scope, Reproduction And Gates
+
+Nine focused checks pass before the full gate. Production changes are one existing
+planner projection and codegen define plus four guarded runtime lines: two net
+core compiler/codegen LOC, zero runtime LOC growth, zero new primitives, passes,
+runtime concepts or dependencies. No public source boundary is broadened. CLI,
+diagnostics, generator, browser/test tools and AI protocols remain unchanged.
+
+Local evidence under `/var/folders/bt/3r_ntp5x65j81brs6_p93rl00000gn/T/opencode/`:
+`nested-binding-measure.mjs`, `nested-binding-{before,after}.json` (descriptors and
+complete file hashes), `nested-binding-{before,after}-search/` (frozen artifacts),
+`nested-binding-timing.mjs`, `nested-binding-timing.json` (original seven pairs) and
+`nested-binding-timing-21.json` (all exact raw values for the confirmation). The
+timing script accepts the odd pair count as its argument; default seven, confirmation
+21. It changes no repository test tool. Publication and full verification remain
+pending; following edits record the actual gate results.
+
+Pre-integration local gates passed on the draft labeled 0.16.34 (not the published
+AI-tooling release): `npm run check` builds 230
+pages with two interactive; `caffeinate -di` with the explicit macOS Chrome path
+runs the unchanged `npm test` script, passing standalone 1/1 plus 327 suite tests,
+zero failures/cancellations and five Linux-only skips. `npm run test:package`
+passes a fresh three-page consumer with one interactive route; whitespace checks
+pass. The connected Project ownership journey passes its exact updated baseline.
+No runner, assertion, timeout or skip policy is changed. Required no-skip Linux
+verification and publication remain pending. Subsequent edits record results only.
+
+## 0.16.33 Publication Closure (2026-09-12)
+
+Commit `4c9805954d50eafdf9f99b9a5ccafd804b661c73` matches tag `v0.16.33` and the
+[published release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.33).
+[CI 34691921743](https://github.com/kudzujs/kudzu/actions/runs/34691921743) passes
+Node 22/24 on the first attempt; required Linux Chrome passes standalone 1/1 plus
+331/331 with no failures or skips. [Publish 34692243324](https://github.com/kudzujs/kudzu/actions/runs/34692243324)
+passes after normal environment approval. Registry integrity is
+`sha512-3ypzPbEf5ZctzhlTLFUaBL73vABJFMve+UdU9lD9vweP6RH23bOT2zKTCPviKQudKGvnNGbfyY9hNOQul2gmdw==`.
+Fresh registry installation matches every compiler/runtime/CLI source file and
+passes conditional lifecycle exclusion plus a zero-JS static sibling. Earlier
+failed local full runs remain preserved below; they are not performance samples.
 
 ## 0.16.33 Release Transaction
 

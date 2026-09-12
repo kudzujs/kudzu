@@ -14,6 +14,13 @@ range traversal and the conditional unmount import. Shared families retain the
 union; generic uncompiled sources keep lifecycle behavior without an explicit false
 define. DOM mounting remains independent of branch-owned state.
 
+The `0.16.35` release projects nonempty `scopeBindings` from binding,
+condition and calculated-list source descriptors into `bindings.nestedEvaluators`.
+Any root with a nested descendant necessarily has a nonempty immediate scope, so
+the planner does not recursively rescan the descriptor graph. A literal false
+define excludes nested preparation, lookup and dependency collection; shared-family
+union and generic source preserve the existing recursive evaluator contract.
+
 The r5 follow-up registers direct collection-count query build values and leaves proven direct imported static selectors in build-time map execution. Existing ref normalization rejects render-written mutable refs; persistent cross-effect version refs remain unsupported. These changes add seven compiler lines, no pass, IR kind, or runtime concept.
 
 ## Responsibility Map

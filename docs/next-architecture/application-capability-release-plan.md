@@ -10,6 +10,36 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+The active user-authorized release transaction is `0.16.35`, nested evaluator
+exclusion integrated on the published 0.16.34 AI-authoring release (`570aed9`).
+The earlier uncommitted compiler draft used 0.16.34; that number now belongs to
+the independent tooling release. Preserve its generator 0.1.156, AI helpers and
+expanded package smoke gate unchanged. Its `^0.16.34` core range includes this
+patch. Exact integrated-commit Linux CI must pass before tagging and publication.
+
+Integrated local check, core and paired generator package smoke pass; macOS Chrome
+passes standalone 1/1 plus 332 tests with five Linux-only skips. Generator smoke
+keeps four identical deploy files in its default/AI arms. These results preserve
+the separate framework and tooling attribution; Linux no-skip CI is still required.
+
+The compiler packet retains the following independently measured evidence.
+The existing flat imported-search fixture fails an artifact exclusion assertion for
+`scopeBindings`. Project nested-scope use from binding, condition and calculated-list
+source descriptors through the existing runtime-family/codegen boundary. Mixed
+families and generic source retain recursive behavior; no new semantics are added.
+Search saves 172 raw / 50 gzip JS bytes and Project saves 516 / 151. Nine focused
+checks pass. A first seven-pair timing signal is retained alongside the 21-pair
+confirmation; no repeatable >5% search-transition loss was observed. Local check,
+package smoke and macOS Chrome standalone 1/1 plus 327 tests pass, with five
+Linux-only skips. No-skip Linux verification and publication remain pending;
+`PERFORMANCE.md` owns the exact measurements and session boundary. These are
+pre-integration checks, not results from the published 0.16.34 tooling release.
+
+The preceding `0.16.33` transaction is complete: commit `4c98059`, immutable tag,
+GitHub release, first-attempt Node 22/24 CI (Linux Chrome 1 + 331 tests with no
+skips), protected npm publication and fresh registry/source verification all pass.
+Earlier pending statements below retain their historical session meaning.
+
 The user now authorizes the 0.16.33 verification and release transaction: commit
 only this session's fifteen reviewed files, push, require exact-commit Node 22/24
 CI including Linux Chrome without skips, then create the immutable tag and GitHub

@@ -286,14 +286,14 @@ export async function loadEvaluator(descriptor) {
 
 async function createBindingContext(descriptor) {
   const scope = Object.fromEntries(Object.entries(descriptor.scope).map(([name, value]) => [name, deserialize(value, id => browserState.get(id))]))
-  const nested = {}
-  await Promise.all(Object.entries(descriptor.scopeBindings).map(async ([name, binding]) => {
+  const nested = globalThis.__KUDZU_NESTED_EVALUATORS__ !== false && {}
+  if (globalThis.__KUDZU_NESTED_EVALUATORS__ !== false) await Promise.all(Object.entries(descriptor.scopeBindings).map(async ([name, binding]) => {
     const evaluator = await loadEvaluator(binding)
     nested[name] = evaluator.read
   }))
   return {
     get: name => browserState.get(descriptor.states[name]),
-    scope: name => name in descriptor.scopeStates ? browserState.get(descriptor.scopeStates[name]) : name in nested ? nested[name]() : scope[name]
+    scope: name => name in descriptor.scopeStates ? browserState.get(descriptor.scopeStates[name]) : globalThis.__KUDZU_NESTED_EVALUATORS__ !== false && name in nested ? nested[name]() : scope[name]
   }
 }
 
@@ -302,7 +302,7 @@ function bindingStateIds(descriptor) {
     ...Object.values(descriptor.states),
     ...Object.values(descriptor.scopeStates),
     ...(globalThis.__KUDZU_CAPTURE_STATE__ ? Object.values(descriptor.scope).flatMap(serializedStateIds) : []),
-    ...Object.values(descriptor.scopeBindings).flatMap(binding => [...bindingStateIds(binding)])
+    ...(globalThis.__KUDZU_NESTED_EVALUATORS__ !== false ? Object.values(descriptor.scopeBindings).flatMap(binding => [...bindingStateIds(binding)]) : [])
   ])
 }
 

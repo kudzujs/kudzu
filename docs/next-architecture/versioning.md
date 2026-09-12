@@ -71,7 +71,14 @@ developer tools, and generates projects with `@kudzujs/core@^0.16.34`.
 
 ## Release Boundary
 
-The active user-authorized transaction is core `0.16.34` and generator `0.1.156`,
+The active user-authorized transaction is core `0.16.35`, nested evaluator
+exclusion. The earlier uncommitted 0.16.34 compiler draft is renumbered because
+the separate AI-authoring release already owns 0.16.34. Integrate that release
+without changing its generator or tooling, then require exact-commit Linux CI,
+immutable tagging, GitHub/npm publication and fresh-install verification.
+Generator 0.1.156 keeps its compatible `^0.16.34` core range.
+
+The completed user-authorized transaction is core `0.16.34` and generator `0.1.156`,
 optional AI authoring tools. It integrates the public 0.16.33 baseline without the
 other worktree's subsequent compiler changes. The user requests commit, push, PR,
 merge, immutable tag, and release. Follow normal protected npm publication after

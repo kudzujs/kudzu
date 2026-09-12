@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.34](https://github.com/kudzujs/kudzu/releases/tag/v0.16.34).** Adds optional AI authoring instructions and local developer tools through `create-kudzu --ai`, preserving the 0.16.33 compiler and runtime. Document lookup and check execution provide bounded responses with full logs retained. AI-token savings are unmeasured; AI-cost and 1.0 gates remain blocked.
+**Current release: [0.16.35](https://github.com/kudzujs/kudzu/releases/tag/v0.16.35).** Flat evaluator families omit nested context preparation and recursive dependency collection, removing another 172 raw / 50 aggregate gzip JavaScript bytes from search. Nested component-prop evaluators retain current-state reads. The optional `create-kudzu --ai` authoring tools introduced in 0.16.34 remain available; AI-token savings are unmeasured and the AI-cost/1.0 gates remain blocked.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
