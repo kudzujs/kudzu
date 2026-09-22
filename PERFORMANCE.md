@@ -9,6 +9,11 @@ The 88-byte Project navigation increase is documented below; no size or AI-cost
 improvement is claimed. Include the website page/current links and verify the
 release commit, package installation and public deployment separately. The local
 publication-wait draft in the primary worktree is excluded from this release.
+The first release-candidate CI passes required Chrome but its browser-disabled
+Node 22 job still launches Chrome from the acceptance regression and times out
+waiting for DevToolsActivePort. That test now honors `KUDZU_SKIP_BROWSER`; a
+simultaneous `KUDZU_REQUIRE_CHROME` fails explicitly. Required-Chrome coverage
+remains intact, and the scorer, timeouts and acceptance assertions are unchanged.
 
 ## PR #5 Navigation Request Guard Baseline (2026-09-22)
 

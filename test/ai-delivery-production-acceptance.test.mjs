@@ -7,7 +7,9 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { articleSummary, visibleArticleTitles, memoFilterSelected, staticOutputChecks, CDP, evaluate, waitForPort } from "./ai-delivery-production-acceptance.mjs"
 
-test("production acceptance checks semantic DOM rather than framework-specific markup", async t => {
+if (process.env.KUDZU_REQUIRE_CHROME && process.env.KUDZU_SKIP_BROWSER) throw new Error("Cannot skip browser checks when Chrome is required")
+
+test("production acceptance checks semantic DOM rather than framework-specific markup", { skip: Boolean(process.env.KUDZU_SKIP_BROWSER) }, async t => {
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   assert.ok(chrome, "Chrome is required for acceptance regressions")
   const profile = await mkdtemp(join(tmpdir(), "kudzu-acceptance-regression-"))

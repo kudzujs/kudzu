@@ -12,6 +12,8 @@
   tolerances remain; static Help output retains zero JavaScript.
 - Local browser ownership/navigation checks and package smoke pass. This is a
   browser request boundary, not a new router or evidence of server-side requests.
+- Makes the browser acceptance regression honor the existing browser-disabled
+  Node 22 job; required-Chrome runs keep the full regression and reject conflicting flags.
 - Adds this release's website page and refreshes current links. Generator
   0.1.157 and its compatible `^0.16.36` core range are unchanged.
 
