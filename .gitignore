@@ -11,6 +11,7 @@ test-results/ai-delivery/
 test-results/ai-delivery-production/
 test-results/style-binding-exclusion-*/
 test-results/conditional-runtime-exclusion-*/
+test-results/npm-publication-processing-*/
 
 # wrangler files
 .wrangler

@@ -1,5 +1,24 @@
 # Performance Records
 
+## Local Main Sync and Publication Wait Decision (2026-09-22)
+
+Local main is fast-forwarded to the published 0.16.40 commit
+`5ad33d02ff890f60915dc04870e17cedc40300f8`. Five draft files are backed up under
+`/tmp/opencode/kudzu-main-sync-20260922/`; workflow/test/ignore contents match
+their saved hashes and the two documentation conflicts retain both the full
+upstream files and the entire original inserted draft sections. Earlier stashes
+are preserved.
+
+Keep the bounded publication-wait correction as the selected follow-up: two
+historical processing delays justify retaining 120 five-second attempts within
+a 15-minute step timeout. The successful 0.16.40 publication is not evidence that
+those failures cannot recur. The user authorizes committing and pushing this
+correction after integrated validation. It retains diagnostics, exact-version/exit
+checks and bounded exhaustion; a new publication run has not exercised it yet.
+No version bump or model experiment follows from synchronization.
+Integrated `npm run check`, required-Chrome `npm test` (1/1 then 345/345, no
+skips), and package smoke pass on the synchronized tree with the wait draft.
+
 ## 0.16.40 Release Scope
 
 PR #5 is merged after both CI jobs pass on 95dbf16. The user authorizes a patch
@@ -14,6 +33,10 @@ Node 22 job still launches Chrome from the acceptance regression and times out
 waiting for DevToolsActivePort. That test now honors `KUDZU_SKIP_BROWSER`; a
 simultaneous `KUDZU_REQUIRE_CHROME` fails explicitly. Required-Chrome coverage
 remains intact, and the scorer, timeouts and acceptance assertions are unchanged.
+Release closure is complete: PR #5 is merged, exact-commit CI and npm publication
+pass, fresh default/AI installs include the navigation guard, and public website
+URLs match release artifacts. Receipts are attached to
+[v0.16.40](https://github.com/kudzujs/kudzu/releases/tag/v0.16.40).
 
 ## PR #5 Navigation Request Guard Baseline (2026-09-22)
 
@@ -33,6 +56,44 @@ manual-redirect mode and HTML accept header. This is a browser request boundary,
 not evidence of server-side request execution or a new runtime capability.
 Check, required-Chrome tests (standalone 1/1 then 345/345, no skips), and package
 smoke pass with the updated contract, including the existing navigation journey.
+
+## Asynchronous npm Publication Availability (2026-09-22)
+
+Full publish-step logs supply evidence that the earlier final-step-only review
+missed. Both 0.16.38 and 0.16.39 return success with npm's explicit notice:
+`Your package is being processed and may take a few minutes to become available.`
+For 0.16.39 this appears at 23:59:46.854Z; all twelve version lookups return E404
+and the verifier exits at 00:00:51.301Z. The registry subsequently records the
+version's publish timestamp as 00:00:41.972Z. Publication acceptance is therefore
+not a guarantee of immediate read availability; the old one-minute polling window
+does not cover the processing interval advertised by npm.
+
+A fresh local cache with the same setup-node placeholder-token configuration
+successfully reads 0.16.39, as does a direct anonymous registry HTTP request.
+The current metadata response advertises `Cache-Control: public, max-age=300`.
+These current same-host reads do not recreate the historical runner or its
+regional registry view. The evidence supports waiting for asynchronous
+availability, not a claim isolating internal processing from edge/cache delay
+or proving that every future publication will appear within a fixed interval.
+Relevant logs and the comparison are retained in
+`test-results/npm-publication-processing-20260922/`.
+
+The final lookup now permits 120 attempts at five-second intervals, returning
+immediately on a successful exact-version lookup. It does not sleep after the
+last failed attempt; the whole verification step has a 15-minute timeout to
+bound slow requests and both package checks. Errors remain visible, nonzero
+lookup status cannot pass, and exhaustion still fails. No package is republished,
+cache cleared, credential changed or historical failure relabeled.
+
+The existing executable workflow test adds a delayed-availability case with
+thirteen E404 responses followed by success: it fails under the former twelve
+attempts and passes with the new bound. It also checks five-second sleep requests,
+no final sleep, recovery, status checking, mismatched versions and exhaustion.
+This is local validation; a future authorized publication must exercise the
+updated workflow before CI behavior can be claimed as verified in production.
+The actual verification step passes against currently published versions in a
+read-only local run. `npm run check`, required-Chrome `npm test` (1/1 then
+344/344, no skips), and `git diff --check` also pass.
 
 ## 0.16.39 Release Scope
 

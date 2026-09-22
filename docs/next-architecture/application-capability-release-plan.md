@@ -10,12 +10,29 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+Local main is synchronized to 0.16.40 on 2026-09-22 with all five prior draft
+files preserved. PR #5 merge, release CI, npm publication, fresh installs and
+website checks are complete. Retain the bounded publication-wait correction as
+the next selected change: the 0.16.40 success does not invalidate the two recorded
+processing delays. The user authorizes committing and pushing this verified
+correction with exact-commit CI. Its behavior during a future publication remains
+to be observed; no new package release or AI experiment is part of this change.
+
 The user authorizes 0.16.40 release closure after merging PR #5. The same-origin
 navigation request guard is covered by a focused no-request regression and the
 existing Chrome navigation journey. Update the precise 88-byte output delta,
 release notes and current website links; require exact-commit CI, protected npm
 publication, fresh installs and live URL verification. No new migration semantic,
 AI experiment or generator change is included.
+
+The next publication correction (2026-09-22) is grounded in the full npm logs:
+both recent publishes explicitly warn that accepted packages may take minutes
+to become available. A one-minute verifier exited before subsequent successful
+reads. Current fresh-cache npm and direct HTTP reads agree, without proving the
+historical regional cache/processing split. Allow 120 five-second lookup attempts
+inside a 15-minute step limit, preserve errors and exact-version/exit checks, and
+cover delayed availability plus bounded exhaustion with the actual workflow test.
+This is a local workflow correction, not a republish or an AI experiment.
 
 The user authorizes 0.16.39 release closure for browser target release before
 navigation, the npm verifier correction and the R20 confirmation evidence.

@@ -67,17 +67,19 @@ jobs:
           fi
 
       - name: Verify published versions
+        timeout-minutes: 15
         run: |
           verify() {
             local actual
-            for attempt in {1..12}; do
+            # npm can accept a publish while processing keeps it unavailable for minutes.
+            for attempt in {1..120}; do
               if actual=$(npm view "$2@$1" version); then
                 test "$1" = "$actual" && return
                 echo "Expected $1 for $2, received: $actual" >&2
               fi
-              sleep 5
+              if (( attempt < 120 )); then sleep 5; fi
             done
-            echo "Could not verify $2@$1 after 12 attempts; see lookup errors above" >&2
+            echo "Could not verify $2@$1 after 120 attempts; see lookup errors above" >&2
             return 1
           }
           verify "$(node -p "require('./package.json').version")" "@kudzujs/core"
