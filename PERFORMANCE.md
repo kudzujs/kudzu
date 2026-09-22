@@ -1,5 +1,24 @@
 # Performance Records
 
+## PR #5 Navigation Request Guard Baseline (2026-09-22)
+
+The same-origin check in `fetchDocument()` adds 88 raw bytes to the Project
+application's shared navigation output. CI stopped at the exact fixture baseline
+before reaching browser checks. Local reproduction matches CI exactly: 42 deploy
+files, 190,425 raw bytes, SHA-256
+`cfea41ff917adea2e12df34aa8836d12d9b1ce60af94969690ac4c95e850dad5`.
+Projects and Alpha route JavaScript become 67,387 and 65,911 bytes respectively;
+other route raw sizes, including the zero-JavaScript Help route, are unchanged.
+
+Update only those three raw sizes and the deploy hash in the fixture contract.
+Existing exact comparisons and gzip tolerances remain. A focused test executes
+the authored fetch function, proves foreign hosts/protocols/ports cause zero
+fetch calls, and verifies same-origin requests retain their abort signal,
+manual-redirect mode and HTML accept header. This is a browser request boundary,
+not evidence of server-side request execution or a new runtime capability.
+Check, required-Chrome tests (standalone 1/1 then 345/345, no skips), and package
+smoke pass with the updated contract, including the existing navigation journey.
+
 ## 0.16.39 Release Scope
 
 The user authorizes release closure for the browser target-release sequencing

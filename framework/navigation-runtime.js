@@ -177,6 +177,7 @@ async function loadCapabilities(parsed) {
 }
 
 async function fetchDocument(url, record, signal) {
+  if (url.origin !== location.origin) throw new Error("Navigation request must be same-origin")
   let response
   try {
     response = await fetch(url, { signal, redirect: "manual", headers: { accept: "text/html" } })
