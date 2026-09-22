@@ -1,5 +1,20 @@
 # Kudzu Releases
 
+## 0.16.40 - Same-Origin Navigation Requests
+
+- Merges PR #5: enhanced-navigation document requests explicitly require the
+  current origin before calling fetch. Existing native-anchor eligibility,
+  manual-redirect handling and document validation remain intact.
+- Adds a focused regression proving foreign hosts, protocols and ports do not
+  issue a request, while same-origin requests retain their signal and headers.
+- Updates the Project fixture's three affected raw-byte totals and deployment
+  hash for the 88-byte navigation guard. Exact comparisons and existing gzip
+  tolerances remain; static Help output retains zero JavaScript.
+- Local browser ownership/navigation checks and package smoke pass. This is a
+  browser request boundary, not a new router or evidence of server-side requests.
+- Adds this release's website page and refreshes current links. Generator
+  0.1.157 and its compatible `^0.16.36` core range are unchanged.
+
 ## 0.16.39 - Browser Target Release Before Navigation
 
 - Releases temporary CDP DOM handles after their last use and before native

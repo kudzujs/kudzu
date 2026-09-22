@@ -1,5 +1,15 @@
 # Performance Records
 
+## 0.16.40 Release Scope
+
+PR #5 is merged after both CI jobs pass on 95dbf16. The user authorizes a patch
+release and deployment of the same-origin navigation guard, its exact output
+baseline and regression test. Core becomes 0.16.40; generator remains 0.1.157.
+The 88-byte Project navigation increase is documented below; no size or AI-cost
+improvement is claimed. Include the website page/current links and verify the
+release commit, package installation and public deployment separately. The local
+publication-wait draft in the primary worktree is excluded from this release.
+
 ## PR #5 Navigation Request Guard Baseline (2026-09-22)
 
 The same-origin check in `fetchDocument()` adds 88 raw bytes to the Project

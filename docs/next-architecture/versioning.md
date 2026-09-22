@@ -71,6 +71,13 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The active user-authorized transaction is core `0.16.40`, the merged PR #5
+same-origin navigation request guard and its validated output baseline. Generator
+0.1.157 remains unchanged. Require exact-commit CI, immutable tagging, GitHub/npm
+publication, fresh installations, and separate website deployment/public checks.
+The unrelated uncommitted publication-wait change in the primary worktree is not
+part of this transaction. Earlier release-boundary statements are historical.
+
 The active user-authorized transaction is core `0.16.39`, browser target release
 before navigation, publication verification and the R20 confirmation record.
 Generator `0.1.157` is unchanged and the rejected guidance candidate is absent.

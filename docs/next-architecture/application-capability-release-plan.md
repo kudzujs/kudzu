@@ -10,6 +10,13 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+The user authorizes 0.16.40 release closure after merging PR #5. The same-origin
+navigation request guard is covered by a focused no-request regression and the
+existing Chrome navigation journey. Update the precise 88-byte output delta,
+release notes and current website links; require exact-commit CI, protected npm
+publication, fresh installs and live URL verification. No new migration semantic,
+AI experiment or generator change is included.
+
 The user authorizes 0.16.39 release closure for browser target release before
 navigation, the npm verifier correction and the R20 confirmation evidence.
 Generator 0.1.157 stays unchanged. Complete website notes, exact-commit CI,
