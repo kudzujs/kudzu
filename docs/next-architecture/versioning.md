@@ -71,6 +71,13 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The active user-authorized transaction is core `0.16.41`, the narrow Realtime
+ref diagnostic, corrected packed README, R21/R8 evidence and website note.
+Generator 0.1.157 remains unchanged. Require exact-commit CI, immutable tag,
+GitHub/npm publication, registry integrity/fresh installs and independent
+public website verification. The earlier active statements are historical;
+0.16.40 and its website and npm publication are complete.
+
 The active user-authorized transaction is core `0.16.40`, the merged PR #5
 same-origin navigation request guard and its validated output baseline. Generator
 0.1.157 remains unchanged. Require exact-commit CI, immutable tagging, GitHub/npm

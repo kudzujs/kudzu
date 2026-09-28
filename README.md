@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.36](https://github.com/kudzujs/kudzu/releases/tag/v0.16.36).** The optional `create-kudzu --ai` check tool now respects managed process-group cancellation while retaining its own timeout, failure reporting and full logs. Compiler/runtime behavior is unchanged; AI-token savings are unmeasured and the AI-cost/1.0 gates remain blocked.
+**Current release: [0.16.41](https://github.com/kudzujs/kudzu/releases/tag/v0.16.41).** Realtime ref diagnostics now point to existing effect-local ownership and cleanup without changing compiled browser output. The AI-authoring cost experiments have not established a reliable saving; the AI-cost/1.0 gates remain blocked.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -40,7 +40,7 @@ For optional AI authoring guidance and local developer tools, use
 `npm create kudzu@latest my-app -- --ai`. The generated `AGENTS.md` describes
 `npm run ai -- docs` for installed documentation and `npm run ai -- check` for
 typecheck/build execution with bounded output and full retained logs. These tools
-stay outside default browser output. AI-token savings have not been measured.
+stay outside default browser output. No reliable AI-cost saving has been established.
 See the [generator guide](https://github.com/kudzujs/kudzu/tree/main/packages/create-kudzu#optional-ai-authoring-guidance).
 
 To add Kudzu to an existing project:

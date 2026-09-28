@@ -28,6 +28,10 @@ try {
   await writeFile(join(consumer, "src", "data.ts"), 'export const items = [{ id: "fern", name: "Fern" }, { id: "moss", name: "Moss" }]\n')
   await writeFile(join(consumer, "src", "Item.tsx"), 'export function Item({ item }) { return <li>{item.name}</li> }\n')
   const readme = await readFile(new URL("README.md", root), "utf8")
+  const release = readme.match(/\*\*Current release: \[(\d+\.\d+\.\d+)\]\(https:\/\/github\.com\/kudzujs\/kudzu\/releases\/tag\/v(\d+\.\d+\.\d+)\)/)
+  assert.ok(release, "packed README links the current release")
+  assert.equal(release[1], JSON.parse(await readFile(new URL("package.json", root))).version)
+  assert.equal(release[2], release[1])
   const example = readme.match(/```tsx\n(import \{ useState \}[^`]+export default function ItemsPage\(\)[^`]+)```/)
   assert.ok(example, "public collection example is present")
   await writeFile(join(consumer, "src", "pages", "items.tsx"), example[1])
@@ -35,6 +39,7 @@ try {
   execFileSync("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", join(temporary, packed[0].filename)], { cwd: consumer, stdio: "inherit" })
   execFileSync(process.execPath, [join(consumer, "index.mjs")], { cwd: consumer, stdio: "inherit" })
   const manifest = JSON.parse(await readFile(join(consumer, "node_modules", "@kudzujs", "core", "package.json"), "utf8"))
+  assert.equal(await readFile(join(consumer, "node_modules", "@kudzujs", "core", "README.md"), "utf8"), readme)
   assert.deepEqual(manifest.exports, {
     ".": { types: "./framework/core.d.ts", default: "./framework/core.mjs" },
     "./jsx-runtime": { types: "./framework/jsx-runtime.d.ts", default: "./framework/jsx-runtime.mjs" }

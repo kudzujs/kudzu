@@ -1,5 +1,441 @@
 # Performance Records
 
+## 0.16.41 Release Scope
+
+The user authorizes commit, push, immutable tagging and publication of the
+source-located Realtime ownership diagnostic and corrected packed README.
+The R21/R8 evidence remains negative or historical, not a measured saving;
+compiler ownership, browser runtimes and WebSocket fixture deploy files remain
+unchanged. Generator 0.1.157 keeps its compatible `^0.16.36` core range.
+Complete exact-commit CI, package/registry/fresh-install verification, the
+current website release page and separate live URL checks before closure.
+Local `npm run check`, required-Chrome tests (standalone 1/1 then 346/346,
+zero skips), package smoke and the new release page's Chrome/canonical/sitemap
+checks pass. The first full candidate test run fails the existing documentation
+assertion because the updated site callout omitted R19's non-replication; the
+R19 fact is restored, the focused test and complete rerun pass, and the original
+failure log is retained under `/tmp/opencode/kudzu-0.16.41-release/`. Comparing
+all sixty core pack paths with the published 0.16.40 tarball shows only the
+README, the effect-private-ref diagnostic source and core manifest version
+change. The generator's five packed files remain byte-identical. WebSocket
+fixture output and paired starter deploy parity are unchanged. Exact-commit CI,
+tagging, npm, registry and public website publication remain independent gates.
+
+## Realtime Ref Ownership Diagnostic Candidate (2026-09-28, unmeasured)
+
+R8 Realtime's four initial Kudzu build failures use a zero-initialized ref with
+a render-time `.current = 1` assignment; two retries then fail the effect-private
+ref's required cleanup proof. All five accepted Kudzu results—including one
+first-build success—use existing effect-local socket/timer/generation variables
+and authored cleanup. The current source-located diagnostics already reject the
+unsafe forms. They now also point to the native **effect-local variable inside
+the owning effect with resource cleanup** alternative, while retaining state for
+values that truly span effect replacements and the supported effect-private ref
+path. No source form is newly accepted, no ref constraint is weakened, and
+there is no new semantic primitive, pass, ModuleIR kind or runtime concept.
+
+`test/realtime-version-ref.test.mjs` adds the exact R8 numeric render-write
+shape beside its existing effect-only numeric and null render-write cases. All
+three first fail their new guidance assertion against the old compiler, then
+pass with unchanged authored source locations and rejection reasons. A separate
+WebSocket fixture build at released commit `be52488` and this candidate emits
+**11 byte-identical deploy files**: eight JavaScript files totaling 16,789 raw
+/ 7,478 aggregate gzip bytes in both; the static sibling stays zero JavaScript.
+The comparison receipt is under
+`test-results/ai-delivery-production/realtime-ref-diagnostic-20260928/output-parity.json`.
+
+This is a narrow build-time diagnostic candidate supported by one real Realtime
+task, not evidence that an agent would follow it or save any tokens. In
+particular, no R8 score is changed and the +331,115-token Realtime gap is not
+presented as recoverable. Runtime, codegen, generator instructions and public
+APIs are untouched. Independent model evidence would be required before a
+cost-reduction claim or a broader ref-normalization decision.
+`npm run check`, required-Chrome `npm test` (standalone 1/1 then 346/346,
+zero skips), `npm run test:package`, and `git diff --check` all pass. Generator
+smoke still reports four byte-identical deploy files at 9,758 raw / 3,741
+aggregate gzip bytes with the original 1,828-byte opt-in guidance. Logs remain
+under `test-results/ai-delivery-production/realtime-ref-diagnostic-20260928/`.
+
+## R8 Forms Workdir Attribution (2026-09-28, offline)
+
+Forms is the next five-pair task with equal success (Kudzu and React 5/5) after
+Realtime. Kudzu records 511,606 versus React 452,066 tokens: **+59,540 total,
++11,908 per success**. Pair 3 alone accounts for **+49,457** of the total gap;
+the other four pairs sum to +10,083 and include three where Kudzu uses fewer
+tokens. All agent-owned builds that actually execute in the other nine attempts
+pass on their first try.
+
+In `forms-kudzu-3`, the first three `npm run build` tool calls set non-existent
+`workdir` values and return `NotFound: FileSystem.access` *without running the
+compiler*. Its fourth call uses the actual workspace path and succeeds. The
+original `buildAttempts: 4` remains charged because it counts attempted tools;
+it is not evidence of four compilation failures or of a form semantic gap.
+Both frameworks' independent acceptance passes for the task.
+
+An initial heuristic phase ledger split this attempt at its first **attempted**
+build, even though that call never ran. Repartitioning at the first **executed**
+build moves those messages to prebuild. Across Forms the resulting Kudzu-minus-
+React differences are +88,348 tokens before that build, -2,298 in its message,
+and -26,510 afterward. The sum remains +59,540; no historical trace, score or
+usage changes. These message buckets still include other work, so neither the
+pair-3 gap nor any phase total is a measured saving from preventing bad paths.
+
+`test-results/ai-delivery-production/r8-independent-cost-20260928/forms-v2.json`
+retains the errors; `forms-executed.json` records the corrected boundary. The
+first `forms.json` is preserved. No compiler/form feature, new shell path fixer,
+AI prompt policy, benchmark relaxation or additional model calls are justified
+by one agent's three invalid directories. The R8 Realtime loss remains the
+larger independent task gap and its valid ref-ownership diagnostics remain in
+force.
+
+## Packed README Release Claim Correction (2026-09-28, local candidate)
+
+The root README packed into `@kudzujs/core` still called 0.16.36 the current
+release while package metadata, GitHub and the live website are at 0.16.40.
+It also called AI-token savings unmeasured after the complete R19–R21 trials
+had measured and rejected the tested cost interventions. The root README now
+links 0.16.40 and says only that a reliable AI-cost saving is not established.
+The generator's `^0.16.36` compatibility range and 0.1.157-specific instructions
+remain accurate and unchanged.
+
+The existing packed-package smoke now compares README version and tag with
+`package.json` and verifies the installed README equals the source. Its focused
+check fails on the old 0.16.36 text and passes after this correction. This is a
+**local README/package-smoke candidate**: the published 0.16.40 tarball is
+immutable, so its installed README is not silently changed by editing the
+checkout. Corrected installed documentation requires a future, separately
+authorized package release; no model call, compiler/runtime change or AI-cost
+benefit is claimed from this text edit.
+`npm run check`, required-Chrome `npm test` (standalone 1/1 then 345/345,
+no skips), and core/paired-generator `npm run test:package` all pass. The default
+and AI starter still emit four identical deploy files at 9,758 raw / 3,741
+aggregate gzip bytes; `git diff --check` passes.
+
+## R8 Independent Application Cost Gap (2026-09-28, offline)
+
+After the Content-only text-check review found no comparable agent-authored
+browser commands in other tasks, the archived R8 Forms, CRUD, Commerce and
+Realtime runs are audited for a *different* cost loss. Forty original
+result/trace/command-stream files verify against the R8 evidence manifest and
+their recorded usage. Cache reads and failed attempts remain charged; one React
+CRUD failure with no agent-owned build stays **unpartitioned**, never counted as
+zero or silently placed before the first build. R8's original scorer and all
+attempts remain unchanged.
+
+| R8 task, five attempts per framework | Kudzu / React successes | Kudzu / React total tokens | Kudzu minus React tokens per success |
+|---|---:|---:|---:|
+| Forms | 5/5 / 5/5 | 511,606 / 452,066 | +11,908 |
+| CRUD | 5/5 / 4/5 | 714,224 / 576,045 | -1,166.45 |
+| Commerce | 5/5 / 5/5 | 299,598 / 293,274 | +1,264.8 |
+| Realtime | 5/5 / 5/5 | 1,133,756 / 802,641 | **+66,223** |
+
+The largest complete equal-success gap is **Realtime: +331,115 total tokens**.
+Message-level attribution places 60,464 of that difference before the first
+agent-owned build, 10,617 in its message, and **260,034 (78.53%) afterward**.
+Four of five Kudzu attempts first author `useRef(0)` and assign `.current` during
+render to seed a version. Their first builds correctly reject render-time
+mutation; two attempts then hit an effect-private-ref cleanup diagnostic before
+building successfully. One Kudzu attempt builds successfully on the first try.
+All five React attempts build successfully first try (one later performs another
+successful build). The four extra Kudzu first-build failures and two secondary
+diagnostics are observed correction cycles, **not** 260,034 tokens proved
+recoverable by eliminating a command.
+
+The R8 Realtime source asks for pause/resume WebSocket ownership, ignoring stale
+events and exact cleanup. All five accepted Kudzu outputs use ordinary
+effect-local socket, timer and generation variables plus returned cleanup; one
+successful first-try Kudzu authoring example demonstrates the same existing
+semantics without a compiler feature. `effect-private-ref-pass.mjs` rejects the
+render assignment because retaining mutable values outside the owned effect
+would break its lifetime proof. Relaxing that diagnostic, accepting nonzero
+component refs, adding a retained resource graph, or changing the R8 scorer is
+not justified by one Realtime task. A separately reduced failing migration
+fixture and evidence that native/effect-local ownership is insufficient would be
+required before considering normalization or a new primitive.
+
+The source of truth remains the archived R8 Content/Forms/CRUD/Commerce/Realtime
+protocols and outcomes; this review does not imply current 0.16.40 costs or
+cross-framework generality. `test-results/ai-delivery-production/r8-independent-cost-20260928/report.json`
+retains phase and per-attempt accounting, and `realtime-v2.json` retains the
+four original diagnostics, initial ref lines and post-build command inventory.
+The earlier `realtime.json` is preserved; v2 adds initial-ref details without
+altering historical traces. No model calls or production code changes occur.
+All five Kudzu Realtime agents explicitly read the installed `framework/core.d.ts`
+before their first build, and even the four bounded/truncated reads include
+`useRef()` signatures. No explicit README read is recorded in these five traces;
+other prompt/context delivery cannot be ruled out. The successful first-build
+attempt reads the whole declaration file, but that correlation cannot establish
+that its length or truncation caused the four different coding decisions.
+`docs-v2.json` retains exact read ranges, truncated flags and signature presence.
+The current compiler already locates render-time mutations and missing effect
+cleanup at authored source lines; successful R8 final outputs use native
+effect-local variables with no browser resource abstraction. A new ref initializer,
+relaxed render mutation, generic resource runtime or another AI instruction is
+not authorized by this one-task evidence. Seek an unrelated failing real source
+that cannot retain the same ownership with native/effect-local syntax before
+planning a compiler semantic slice.
+Read-only audit, `npm run check`, required-Chrome `npm test` (standalone 1/1
+then 345/345, zero skips), and `git diff --check` pass; verification logs are
+retained alongside the derived reports.
+
+## Independent Task Search for Text-Assertion Errors (2026-09-23, offline)
+
+The archived five-task R8 block supplies an independent fixture check for the
+Content-only text-expectation pattern. A read-only audit verifies each of fifty
+attempts' archived stdout/result hashes against its evidence manifest and
+reconciles its protocol hash. The Forms, CRUD, Commerce and Realtime tasks have
+forty attempts in total: **zero recorded agent-authored browser tool commands
+and zero matching text-target error responses**. The ten Content attempts are
+also audited as a control and contain no matching recorded browser commands
+in that earlier protocol.
+
+This is **absence of comparable agent-authored browser-verification traces** in
+those independent fixtures, not proof that agents never chose an incorrect
+string or that independent applications lack the problem. The runner's external
+acceptance browser is not agent verification and cannot be counted as if the
+agent authored an `expect-text`. No R8 score, task definition or archive changes.
+The read-only inventory is retained at
+`test-results/ai-delivery-production/text-assertion-review-20260923/independent.json`.
+
+`npm run check` passes. The first required-Chrome `npm test` run fails once when
+the pagination fixture's Chrome does not produce `DevToolsActivePort`; that
+failure is retained and is not attributed to this read-only review. The same
+focused test passes 1/1 in isolation. A subsequent required-Chrome full rerun
+passes standalone 1/1 plus 345/345, zero skips, without changing code or test
+timeouts. Its full logs and `verification.json` remain beside the inventory;
+this is not proof that Chrome startup is stable under every parallel run.
+
+The R20/R21 Content traces and their five verified short replays remain the
+only observed instances of this specific mistake. No new hint, retry, cache or
+semantic primitive is justified by this evidence. Require a separate real
+application with a *recorded agent-authored* comparable failure before freezing
+another diagnostic intervention. No new model calls or source changes occur.
+
+## Recorded Text-Expectation Failures (2026-09-23, offline)
+
+A read-only review of the two R20 blocks and R21 finds four attempts with one
+failed caller-supplied `expect-text` each. In every case the *immediately preceding
+open observation* already includes real content for that page within its bounded
+4,000-character excerpt; the invented expectation is absent. R20's candidate
+checks `Engineering for the long run` and `This route is intentionally static.`;
+R21 control checks `Performance notes`, while R21 candidate checks `Static by
+design`. The latter pair and the earlier R19 `3 performance articles` error are
+cross-checked against retained source and artifact hashes. The same Content task
+is shared by these blocks; this is not independent multi-application evidence.
+
+The released 0.16.40 browser utility is replayed with the original and a source-
+grounded two-command open/expect pair for those five examples: all invented
+strings fail, all actual strings pass, and original artifacts remain unchanged.
+These short diagnostics are not complete replacements for the authored browser
+sequences or rescored agent tasks.
+
+All four R20/R21 attempts invoke the browser once more after their failed text
+assertion; none edits source or calls the build afterward. The audit records
+80,006–134,156 tokens in the *remaining completed model messages*, including
+other verification and reporting. None of those totals is the price of the
+failed assertion or a recoverable saving. The browser command stops at the first
+failure, and no extra browser capability is needed: the relevant observed text
+was already present before the failing command. The tested R20 stopping policy
+and R21 AX hint both failed to reduce cost, so adding another generic hint,
+retry, cache, or changed scorer here is not supported. Preserve the failures;
+look for a separately observed mistake in an unrelated real fixture before
+proposing another intervention. No provider calls occur during this review.
+
+Executable review and receipts are under
+`test-results/ai-delivery-production/text-assertion-review-20260923/`:
+`report.json`, `followup.json` and `replay.json`. Recorded trace usage, original
+artifacts, scorer and R21 archive are unchanged.
+Read-only analysis/replay, `npm run check`, required-Chrome `npm test`
+(standalone 1/1 then 345/345 with zero skips), and `git diff --check` pass.
+
+## R21 AX Diagnostic-Only A/B (2026-09-23, rejected)
+
+The user-authorized ten-attempt serial Content block executes frozen protocol
+`918600966e6d3d44ef1447fa3f29710b61233fcda636f9b131847a6f77d2cdb5`.
+Both arms use identical published AI guidance, core 0.16.36, source, locks,
+scorer, model/OpenCode 1.18.27 and budgets. Only the candidate's 142-byte
+exact-name-miss hint and three lines of public documentation differ. No extra
+probes, selective retries, changed budgets or rescores occur.
+
+| Five attempts per arm | Released diagnostic | Candidate hint |
+|---|---:|---:|
+| Scored successes | 4/5 | 4/5 |
+| Independent final acceptance | 5/5 | 5/5 |
+| Recorded tokens, including failed work and cache reads | 1,713,647 | 1,920,986 |
+| Failure-inclusive tokens per success | 428,411.75 | 480,246.5 |
+| Median elapsed ms | 189,388 | 187,120 |
+| Median normalized tools | 31 | 29 |
+| Browser calls / failed browser commands | 10 / 3 | 10 / 2 |
+| Build/check calls | 7 | 6 |
+| Hint-bearing failed commands | 0 | 1 |
+| Before / first-build-message / after tokens | 602,520 / 106,262 / 1,004,865 | 756,151 / 126,879 / 1,037,956 |
+
+The candidate uses **207,339 more recorded tokens (+12.10%)** with equal scored
+success. Control ordinal 3 and candidate ordinal 4 each exceed the unchanged
+400,000-input budget; their independent final acceptance passes do not turn
+them into scored successes. All ten usage traces have complete attribution;
+total scheduled work is 3,634,633 recorded tokens. Lower median time and tool
+count alone do not establish cheaper authoring.
+
+One candidate attempt actually sees the hint (ordinal 3). It still removes the
+CSS uppercase transform after the failed named fill, reruns its check and passes
+acceptance. This documents an exposure that did not prevent that source edit,
+not why the agent chose it or the per-command token cost. Nine attempts never
+saw the hint. Audit verifies ten traces, sixty command streams, two hundred
+artifacts, 180 context checks and retained AI check logs. Each attempt changes
+only the article page and stylesheet; frozen inputs and historical scores stay
+unchanged.
+
+Execution is 01:26:43.122Z–01:59:03.539Z (32m 20.417s). Raw evidence,
+authorization, audit and the rejection decision are under
+`test-results/ai-delivery-production/ax-name-diagnostic-preflight-20260922/v2/`.
+**Reject this candidate** rather than run another block or claim AI-cost savings.
+The repository utility, public description and tests are restored byte-for-byte
+to the released 0.16.40 behavior after the experiment. Its exact candidate
+remains frozen for audit; results cannot be pooled with R19/R20's different
+interventions or described as a current-core comparison. The AI/1.0 gate stays
+blocked.
+
+After restoring the released utility, `npm run check`, required-Chrome `npm test`
+(standalone 1/1 then 345/345, zero skips), paired generator package smoke
+(four identical deploy files, original 1,828-byte guidance), and `git diff --check`
+pass. This verifies the rollback locally, not a new model result.
+
+R21 archive: `test-results/ai-delivery-production/ax-name-diagnostic-preflight-20260922/ax-name-diagnostic-r21-audited.tar.gz`,
+61,702,378 bytes; SHA-256
+`db8c2e56fb919cb9fe1a8b4e6e477be26e8b24463cb58db58ca565b2dbbd203a`.
+Fresh extraction verifies all 705 content files plus the manifest, including
+raw attempts, exact candidate/control tools, scorer, pinned executable and
+package tarballs; installed `node_modules` trees are omitted and can be restored
+from retained locks. `.sha256` and `.verified.json` are outside the archive
+snapshot. Archival makes no provider call or independent experimental trial.
+
+## R21 Pre-Registered AX Diagnostic-Only Input Freeze (2026-09-22)
+
+A proposed same-Kudzu Content comparison is frozen under
+`test-results/ai-delivery-production/ax-name-diagnostic-preflight-20260922/v2/`.
+Both arms start from the same 1,828-byte published AI guidance, authored source,
+lockfiles, pinned core 0.16.36, model/OpenCode 1.18.27, 300-second/400,000-input
+budgets, acceptance/scorer and alternating five-pair schedule. The control copies
+the released 0.16.40 browser smoke tool and public instructions; the candidate
+changes only the 142-byte exact-name-miss hint and its three-line public
+description. Source comparison proves those exact differences. Both arms contain
+the 0.16.39 pre-navigation target-release fix; comparing with R20's *older* tool
+would have confounded the diagnostic with that bug fix.
+
+Protocol SHA-256 `918600966e6d3d44ef1447fa3f29710b61233fcda636f9b131847a6f77d2cdb5`;
+frozen input inventory SHA-256
+`b74c4d6c5f6fa47fe3aebf36595a794a466a8a287a6a40ca67bde23f85fa0ba7`.
+The frozen protocol identifies both utility copies as public `.tools` files and
+provides each arm only its own version. The previously rejected R20 guidance
+candidate is absent from both starters. Keeping core 0.16.36 isolates the
+diagnostic against the previously archived Content fixture, not current-core
+authoring cost; results could not be represented as a 0.16.40 comparison.
+
+Offline preflight verifies all frozen hashes and the pinned executable, runner
+input rejection for an existing output directory, and positive/negative immutable
+input fixtures. Fresh exact-lock installs and AI typecheck/build checks pass for
+both arms; twelve starting deploy files have identical hashes. In real Chrome,
+both frozen utilities reject the same incorrect named searchbox selector and
+both pass corrected role-only selection; their failure strings differ by exactly
+the 142-byte hint. No model request or fresh loading probe ran, and prior R20
+scores and artifacts remain untouched. An initial preparation attempt rejected
+an incorrect local comparison of the hint's leading space before any protocol
+was frozen; the separately created `v2/` is the validated packet. The first
+R20 result and the R20 confirmation cannot be pooled with this different
+intervention. Execution required separate user authorization and fresh
+accounting of failures, cache reads and any unknown timeout tail, supplied
+for the block above. Initial preflight check and required-Chrome `npm test`
+(standalone 1/1 then 345/345, no skips) passed. The candidate was not shipped.
+
+## AX Name Recovery Diagnostic Candidate (2026-09-22, initial offline reduction)
+
+Following the R20 selector replay, a named action with zero exact matches and
+existing same-role candidates received a bounded recovery reminder: compare
+the selector with full observed AX names before editing source, CSS may change
+case, and truncated names are not exact selectors. Missing-role, ambiguous-match
+and role-only errors retain their previous messages and behavior. Matching,
+candidate limits, actionability checks, failure codes and execution are unchanged;
+there is no normalization, automatic selection, retry, or application edit.
+
+The suffix adds 142 ASCII bytes per affected error string (the CLI reports that
+string in both its failed-command stdout record and final stderr error). No
+additional browser request, compiler pass, runtime capability or dependency is
+introduced. This initial reduction was not proof of model adoption or token
+savings. Frozen R20 tools, scores and input files remain intact. The later R21
+block above tested and rejected this exact tool/docs revision.
+
+The existing exact-target test first fails against the old diagnostic, then
+passes with the new suffix. It retains CSS-uppercase recovery, bounded names,
+ambiguity and exact-case rejection, and adds a no-candidate case proving the
+hint is not emitted when there is no observed same-role name to inspect. The
+full browser suite passes 8/8.
+
+The exact fifteen-command R20 confirmation sequence is replayed against the
+disposable CSS reconstruction from the preceding review. Frozen and current
+utilities both stop at the same named fill; their error strings differ only by
+the 142-byte hint. Retained original artifact hashes reconcile before and after.
+`test-results/ai-delivery-production/ax-name-recovery-20260922/replay.json` keeps
+both observations and the unchanged caller commands. This is not a rescored
+agent attempt or demonstrated token saving. Final `npm run check`, required-Chrome
+`npm test` (1/1 then 345/345, zero skips), and `git diff --check` pass. This
+candidate was never shipped and has since been rejected by R21.
+
+## R20 Discovery and Selector Replay (2026-09-22, offline)
+
+Review both R20 blocks through the existing trace auditor and each frozen build
+pattern. Original run/protocol/freeze/trace/result hashes match archive manifests;
+all twenty attempts reconcile to the recorded 6,793,845 tokens. The new report is
+`test-results/ai-delivery-production/r20-discovery-review-20260922/report-v2.json`.
+The first derived report counted only absolute root paths; v2 also recognizes
+relative/default roots, with runnable positive/negative checks. Original evidence
+and scores are unchanged.
+
+| Before first build | First control | First candidate | Confirmation control | Confirmation candidate |
+|---|---:|---:|---:|---:|
+| Recorded model tokens | 592,521 | 559,275 | 628,113 | 723,170 |
+| Recorded tool output bytes | 177,430 | 152,457 | 176,084 | 232,022 |
+| Workspace-root search calls | 13 | 12 | 14 | 14 |
+| Their recorded output bytes | 18,207 | 18,661 | 20,261 | 52,370 |
+
+Root location alone does not mean an unconstrained query: patterns may restrict
+it to source files. Tool output bytes exclude metadata and are not token counts
+or proven model-visible context. These observations do not identify causal
+savings from replacing particular reads. The sole exact read-repeat candidate
+is a first-block control dist grep with an intervening potential mutation; it
+does not justify a transparent cache.
+
+Confirmation candidate total tokens exceed control by 314,932: 95,057 before
+the first build, 14,636 in its message, and 205,239 afterward (65.17% of the gap).
+The rejected instruction therefore did not establish either a stable discovery
+improvement or cheaper post-build work. Initial control ordinal 3 first exceeds
+the input budget in its final response; confirmation control ordinal 3 crosses
+it in a TODO-completion message. Confirmation candidate ordinal 4 crosses it
+in the second check message at 426,220 cumulative input tokens after a CSS edit.
+These message costs are not individual tool charges or removable savings.
+
+That CSS edit removes `text-transform: uppercase` after a fill expecting source
+text `Search articles` fails against Chrome's computed `SEARCH ARTICLES` name.
+Reconstruct the earlier styling in a disposable copy of final artifacts by
+reversing exactly that recorded one-line CSS patch. This is explicitly a
+reconstruction, not an original pre-edit artifact snapshot. The frozen R20 browser
+utility reproduces the original mismatch. Both existing alternatives pass the
+same fifteen commands: use the observed exact AX name, or omit the name for the
+single unique searchbox. Original artifact hashes verify before and afterward;
+the disposable copy differs only in the restored stylesheet rule.
+
+`replay.mjs` and `replay.json` retain that diagnostic. Existing selector behavior
+already covers the case without changing application styling, weakening exact
+matching or introducing another runtime/API. This does not prove an agent would
+choose the alternative, avoid the source edit, save tokens, or turn a historical
+failure into success. No new provider calls occur. Keep the R20 guidance rejection;
+the next intervention decision must account for this selector evidence rather
+than repeat the rejected stopping policy or assume a compiler gap.
+Analysis assertions, the frozen-utility selector replay, `npm run check`, and
+required-Chrome `npm test` (1/1 then 345/345, zero skips) pass. The continuation
+table now reflects recovered R16 evidence and completed R19/R20 work instead of
+directing another archive recovery or implying no AI trials exist.
+
 ## Local Main Sync and Publication Wait Decision (2026-09-22)
 
 Local main is fast-forwarded to the published 0.16.40 commit

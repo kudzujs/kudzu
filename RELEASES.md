@@ -1,5 +1,23 @@
 # Kudzu Releases
 
+## 0.16.41 - Realtime Ownership Diagnostics
+
+- R8 Realtime authoring repeatedly attempted render-time mutation of
+  `useRef(0)` and then missed ref cleanup. Source-located diagnostics now point
+  to existing effect-local variables and returned resource cleanup as a native
+  alternative; ownership proofs and rejected forms stay unchanged.
+- The reduced render-write and missing-cleanup tests fail against the old
+  messages and pass with the new guidance. A WebSocket ownership fixture emits
+  11 byte-identical deploy files compared with 0.16.40, including a zero-JS
+  static sibling. No semantic primitive, runtime concept, browser bytes, or
+  migration API is added.
+- Corrects the packed README's stale current-release claim and adds a package
+  smoke check for README version/tag consistency and installed content.
+- Records R21's rejected AX diagnostic experiment and the independent R8 cost
+  review. No AI-token savings are claimed from this diagnostic-only release.
+- Adds this release's website note and updates current navigation links.
+  Generator 0.1.157 and its compatible `^0.16.36` core range remain unchanged.
+
 ## 0.16.40 - Same-Origin Navigation Requests
 
 - Merges PR #5: enhanced-navigation document requests explicitly require the
