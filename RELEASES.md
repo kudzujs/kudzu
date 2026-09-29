@@ -1,7 +1,26 @@
 # Kudzu Releases
 
+## 0.16.43 - Publication Browser Gate Separation
+
+- Forward-releases the unchanged 0.16.42 compiler and generated AI helper after
+  both protected npm attempts on its immutable tag failed before publication:
+  one Chrome smoke CDP URL error and one WebSocket journey with no rendered
+  browser result. Core 0.16.42 and generator 0.1.158 were not published.
+- The publish job reruns `npm test` with browser tests disabled; exact-commit
+  Node 24 CI still requires Chrome, while Node 22 CI and the publish job cover
+  non-browser tests and package smoke. No browser acceptance rule or product
+  source semantics change. The 0.16.42 tag and failed job records remain intact.
+- Generator 0.1.158 is still the first publish of the changed AI helper. Its
+  `^0.16.36` core range and default output stay unchanged. Graph traversal
+  measurement and AI-token uncertainty retain their original scope.
+- Adds the 0.16.43 website page and current-release links. The R8/1.0 AI gate
+  remains blocked; no AI experiment or recovered token saving is claimed.
+
 ## 0.16.42 - Source Graph And AI Check Output
 
+- GitHub-only release: two protected npm attempts failed on distinct browser
+  test errors before either package could publish. Its tag is preserved;
+  version 0.16.43 forwards the same product/tool changes to the registry.
 - Defer ordinary-module lexical binding indexing until a dynamic `import()`
   actually requires its ownership proof. Seven alternating source-scale samples
   reduce the 50-route/450-imported-module graph median from 893.3 to 484.1 ms
@@ -10,8 +29,9 @@
 - The opt-in generated AI check retains full logs, returns only the last 512
   bytes of long successful checks, and includes a bounded middle-of-log failure
   diagnostic when available. Failure status and cleanup remain unchanged.
-- Publishes `create-kudzu@0.1.158` for the changed AI helper. Its `^0.16.36`
-  core compatibility range and default generated app remain unchanged.
+- Changes the generated AI helper; the intended `create-kudzu@0.1.158` registry
+  release is forwarded to 0.16.43. Its `^0.16.36` core compatibility range and
+  default generated app remain unchanged.
 - Reconciles the historical R2 and latest R8 AI gate summaries and corrects
   architecture owner links. R8 remains 23/25 versus 24/25; no model trial or
   measured AI-token saving follows from this release, and 1.0 remains blocked.

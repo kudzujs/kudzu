@@ -36,7 +36,10 @@ jobs:
       - run: npm install --global "npm@^11.5.1"
       - run: npm ci
       - run: npm run check
+      # Required-Chrome tests run in CI on the exact commit before this tag is released.
       - run: npm test
+        env:
+          KUDZU_SKIP_BROWSER: "1"
       - run: npm run test:package
 
       - name: Verify package versions and release tag

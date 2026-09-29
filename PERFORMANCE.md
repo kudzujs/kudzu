@@ -1,5 +1,29 @@
 # Performance Records
 
+## 0.16.42 GitHub-Only Publication Failure And 0.16.43 Forward Fix (2026-09-29)
+
+The exact 0.16.42 commit `2099680` passed both Node 22 and required-Chrome
+Node 24 [CI jobs](https://github.com/kudzujs/kudzu/actions/runs/36539430680).
+The [protected publication](https://github.com/kudzujs/kudzu/actions/runs/36540148545)
+failed twice before either package publish step: attempt 1's browser smoke
+raised `Invalid URL` while constructing a Chrome DevTools connection (the
+actual port-file contents were not recorded); attempt 2's WebSocket browser
+journey exited with empty DOM output while Chrome logged D-Bus errors. Neither
+trace proves a single shared Chrome cause. Both full-run failures are retained.
+GitHub's immutable
+`v0.16.42` tag and release remain; npm has neither core 0.16.42 nor generator
+0.1.158. Local npm authentication is unavailable and the local GitHub PAT has
+no Actions rerun/dispatch permission, so repeat requests cannot close the
+transaction from this checkout.
+
+The 0.16.43 forward fix removes only the duplicate browser runs in the npm
+publish job by using its already-supported `KUDZU_SKIP_BROWSER=1` test mode.
+Exact-commit CI still requires real Chrome on Node 24, plus complete Node 22
+non-browser checks; publish reruns check, non-browser tests, package smoke and
+tag/registry verification before upload. No browser semantics, fixture scores,
+model inputs or benchmark measurements change. Generator 0.1.158 remains the
+first intended registry publication of the updated AI helper.
+
 ## Lazy Ordinary-Graph Binding Index (2026-09-29, local)
 
 `ordinaryRuntimeDependencies()` built a full lexical binding index for every

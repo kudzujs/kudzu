@@ -71,12 +71,18 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
-The user-authorized `0.16.42` transaction covers measured ordinary source-graph
-index deferral, bounded generated AI check results, and the reconciled documentation.
-Publish `create-kudzu@0.1.158` because its packed AI helper changes. Retain the
-generator's `^0.16.36` core range and the blocked 1.0 AI-cost gate. Require
-exact-commit CI, immutable tag, GitHub/npm publication, fresh installs and
-separate public website verification before marking this transaction complete.
+The user-authorized forward release is core `0.16.43` with the still-unpublished
+`create-kudzu@0.1.158`. It retains the 0.16.42 compiler and AI helper, while
+the npm publish job delegates required-Chrome proof to exact-commit CI and
+reruns the non-browser tests and package smoke. Require the new commit's
+required-Chrome CI, immutable tag, GitHub/npm publication, fresh installs and
+public website checks before closure. The generator's `^0.16.36` core range
+and blocked 1.0 AI-cost gate remain unchanged.
+
+Core `0.16.42` is GitHub-only: exact commit `2099680` and tag passed CI, but
+two protected npm attempts failed before publication on distinct browser
+test errors. Preserve [v0.16.42](https://github.com/kudzujs/kudzu/releases/tag/v0.16.42)
+and both failed run attempts; never repoint its tag or claim registry delivery.
 
 Core `0.16.41` is released: exact commit `a8eb4e1` passed CI, the immutable tag,
 GitHub/npm publication, registry integrity, fresh default/AI installs, and

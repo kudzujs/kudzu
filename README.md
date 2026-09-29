@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.42](https://github.com/kudzujs/kudzu/releases/tag/v0.16.42).** Ordinary source-graph analysis now skips unused lexical indexing; the opt-in AI check returns shorter successful output and surfaces a middle-of-log error. No reliable AI-token saving is established; the AI-cost/1.0 gates remain blocked.
+**Current release: [0.16.43](https://github.com/kudzujs/kudzu/releases/tag/v0.16.43).** This forward release carries 0.16.42's source-graph and opt-in AI-check improvements through a publication workflow that retains required Chrome in exact-commit CI. No reliable AI-token saving is established; the AI-cost/1.0 gates remain blocked.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

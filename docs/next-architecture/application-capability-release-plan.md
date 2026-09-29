@@ -10,12 +10,16 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-The user authorizes the `0.16.42` release transaction for the measured source-
-graph index deferral, bounded generated AI check output and existing offline
-documentation alignment. The changed packed helper requires `create-kudzu@0.1.158`;
-its core range stays `^0.16.36`. Exact-commit CI, immutable tag, GitHub/npm,
-fresh-install and separate deployed-website checks remain mandatory. The R8
-score and blocked AI success/cost gate do not change.
+Core `0.16.42` passed exact-commit CI and has an immutable GitHub release, but
+both protected npm attempts failed before any package publication: first a
+Chrome CDP URL error, then an empty WebSocket browser result. Preserve
+both failed attempts and the tag. The user-authorized forward release is core
+`0.16.43` with still-unpublished `create-kudzu@0.1.158`, retaining all 0.16.42
+source/tool behavior. The publish job reruns non-browser tests and package smoke;
+exact-commit Node 24 CI remains the required-Chrome gate. Require new commit
+CI, immutable tag, GitHub/npm, fresh-install and deployed-website verification
+before closure. The generator core range stays `^0.16.36`, while the R8 score
+and blocked AI success/cost gate remain unchanged.
 
 The 0.16.41 transaction is complete: [exact-commit CI](https://github.com/kudzujs/kudzu/actions/runs/36377259762),
 [protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36377722747),
@@ -3806,9 +3810,10 @@ continues the same target version.
 7. Create tag `vX.Y.Z` on that exact commit and push the tag. Never move or
    repoint a published tag.
 8. Publish the matching GitHub release. The existing `Publish npm` workflow
-   checks out the tag, reruns check/test/package gates, verifies version/tag
-   equality, publishes `@kudzujs/core` and any changed `create-kudzu`, and checks
-   npm registry visibility.
+   checks out the tag, reruns check/non-browser-test/package gates (required
+   Chrome runs in exact-commit Node 24 CI), verifies version/tag equality,
+   publishes `@kudzujs/core` and any changed `create-kudzu`, and checks npm
+   registry visibility.
 9. Require the publish workflow to pass, verify npm metadata and a fresh install
    manually, and record the release URL and registry versions.
 10. Only after commit, push, tag, GitHub release, npm publication, registry

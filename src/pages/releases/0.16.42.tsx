@@ -8,6 +8,7 @@ export const metadata = {
 
 export default function ReleasePage() {
   return <ReleaseNotes version="0.16.42" title="Source graph and AI check output">
+    <p>This release is available on GitHub only. Two protected npm runs stopped on distinct browser-test errors before publishing either package; the 0.16.43 forward release carries the same compiler and AI check changes to npm.</p>
     <h2>Skip unused graph indexing</h2>
     <p>Ordinary source modules create a lexical binding index during graph traversal only when a dynamic import needs ownership proof. In seven alternating runs on 50 routes and 450 imported modules, graph traversal median fell from 893.3 to 484.1 ms. Compiled output is byte-identical; whole-build timing is inconclusive.</p>
     <h2>Keep checks concise and useful</h2>
