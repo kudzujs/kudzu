@@ -16,7 +16,7 @@ Use `--no-install` to create the files without installing dependencies.
 
 ## Optional AI authoring guidance
 
-`create-kudzu@0.1.157` provides optional local AI developer tools with managed check cancellation:
+`create-kudzu@0.1.158` provides optional local AI developer tools with managed check cancellation:
 
 ```bash
 npm create kudzu@latest my-app -- --ai
@@ -59,9 +59,10 @@ npm run ai -- check --timeout-ms 600000
   `ps` PID/parent-PID inspection to stop only that check's descendant snapshot,
   preserving sibling work; inspection errors are reported as failures.
 - Full stdout/stderr are retained in a unique `.kudzu-ai/check-*/output.log`.
-  Large logs show the first/last 2,048 bytes with an omission marker; an error may
-  be in the omitted middle. Read the full log when needed. Old logs are not deleted
-  automatically; remove `.kudzu-ai/` when no longer needed.
+  Long successful checks return only the last 512 bytes. Failed checks return
+  bounded head/tail excerpts and the first recognized diagnostic in the first
+  MiB when present. Read the full log if the excerpt is insufficient. Old logs
+  are not deleted automatically; remove `.kudzu-ai/` when no longer needed.
 - The tool does not cache checks or certify browser behavior. Later edits require
   a new check. Scripts that intentionally detach background jobs or custom
   deployment rules need their own lifecycle/asset handling. Use

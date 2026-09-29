@@ -66,17 +66,30 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.157` retains the explicit install instructions, provides opt-in
+`create-kudzu@0.1.158` retains the explicit install instructions, provides opt-in
 `--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.16.36`.
 
 ## Release Boundary
 
-The active user-authorized transaction is core `0.16.41`, the narrow Realtime
+The user-authorized `0.16.42` transaction covers measured ordinary source-graph
+index deferral, bounded generated AI check results, and the reconciled documentation.
+Publish `create-kudzu@0.1.158` because its packed AI helper changes. Retain the
+generator's `^0.16.36` core range and the blocked 1.0 AI-cost gate. Require
+exact-commit CI, immutable tag, GitHub/npm publication, fresh installs and
+separate public website verification before marking this transaction complete.
+
+Core `0.16.41` is released: exact commit `a8eb4e1` passed CI, the immutable tag,
+GitHub/npm publication, registry integrity, fresh default/AI installs, and
+public website URL checks. [v0.16.41](https://github.com/kudzujs/kudzu/releases/tag/v0.16.41)
+retains those receipts. No next release version is authorized by this closure;
+`0.21.4` remains an independently blocked AI-delivery gate.
+
+The completed user-authorized transaction was core `0.16.41`, the narrow Realtime
 ref diagnostic, corrected packed README, R21/R8 evidence and website note.
-Generator 0.1.157 remains unchanged. Require exact-commit CI, immutable tag,
+Generator 0.1.157 remains unchanged. It required exact-commit CI, immutable tag,
 GitHub/npm publication, registry integrity/fresh installs and independent
-public website verification. The earlier active statements are historical;
-0.16.40 and its website and npm publication are complete.
+public website verification. All of those gates passed; earlier active statements
+below retain their historical session meaning.
 
 The active user-authorized transaction is core `0.16.40`, the merged PR #5
 same-origin navigation request guard and its validated output baseline. Generator

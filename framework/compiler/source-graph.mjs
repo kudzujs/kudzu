@@ -18,12 +18,12 @@ export function createSourceGraph(root) {
 
   const ordinaryRuntimeDependencies = (file, sourceFile, sourceFiles, isStaticImport) => {
     const dependencies = []
-    const bindingIndex = createBindingIndex(sourceFile)
+    let bindingIndex
     const rejectDynamicImports = node => {
       if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         const argument = node.arguments[0]
         const specifier = node.arguments.length === 1 && ts.isStringLiteralLike(argument) ? JSON.stringify(argument.text) : argument?.getText(sourceFile) ?? "<missing>"
-        if (ownedLazyPackageImport(node, bindingIndex)) return
+        if (ownedLazyPackageImport(node, bindingIndex ??= createBindingIndex(sourceFile))) return
         throw sourceNodeError(node, sourceFile, `Dynamic import ${specifier} is not supported in ordinary source modules`, {
           code: "source.dynamic-import.unsupported",
           stage: "graph",

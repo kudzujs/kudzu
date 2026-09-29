@@ -10,6 +10,46 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+The user authorizes the `0.16.42` release transaction for the measured source-
+graph index deferral, bounded generated AI check output and existing offline
+documentation alignment. The changed packed helper requires `create-kudzu@0.1.158`;
+its core range stays `^0.16.36`. Exact-commit CI, immutable tag, GitHub/npm,
+fresh-install and separate deployed-website checks remain mandatory. The R8
+score and blocked AI success/cost gate do not change.
+
+The 0.16.41 transaction is complete: [exact-commit CI](https://github.com/kudzujs/kudzu/actions/runs/36377259762),
+[protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36377722747),
+registry integrity, fresh default/AI installs, and deployed website URLs have
+separate passing receipts in [v0.16.41](https://github.com/kudzujs/kudzu/releases/tag/v0.16.41).
+No subsequent patch version or model batch is authorized by that closure;
+the R8 success-and-cost/1.0 gate remains blocked.
+
+The current architecture handoff is corrected to published core 0.16.41 on
+2026-09-28. Its internal owner table had cited a nonexistent animation-frame
+pass; the implemented effect-private ref pass owns that proof. A read-only
+path check moves from one broken `.mjs` reference to zero. This is a
+documentation-only correction, not a ref semantic change, a package release
+or AI-cost result.
+
+The 0.16.41 protected npm publish (2026-09-28) supplies the first remote
+verification of the committed bounded poll: eleven logged E404 reads after npm
+accepted the package, then success on the twelfth lookup about 59 seconds after
+acceptance. The 120-attempt ceiling was not used beyond the former limit in
+this run; v0.16.39's twelve E404 responses and failed job stay historical.
+Registry/fresh-install receipts and site rollout separately pass. Preserve
+`inspection-v3.json` and the exact run URLs; do not treat this single success
+as proof that longer waiting always suffices or add another release for it.
+
+R8 Content budget review (2026-09-28): the original two Kudzu failures still
+pass final independent acceptance but exceed 400,000 input tokens at recorded
+step finishes after their first successful builds. Both use a brittle raw-HTML
+text check; unchanged historical artifacts render `6 articles` and an accessible
+named searchbox in Chrome despite lacking contiguous `<p>6 articles</p>` markup.
+Preserve the original 3/5 versus React 5/5 score and all failed work. These
+recorded message buckets do not prove recoverable cost, and the previously
+rejected broad hints are not reintroduced. This review adds no browser runtime,
+benchmark retry, model call, or 1.0 authorization.
+
 The user authorizes 0.16.41 release closure for the bounded R8 Realtime
 source-located diagnostic, corrected packed README and current website notes.
 Existing ref ownership/cleanup proofs remain unchanged; the WebSocket fixture
@@ -3840,4 +3880,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | R16 archive recovered; R19–R21 blocks audited; gate blocked | Keep rejected guidance and name-miss hint out of the released tools. Select another independent real failure from recorded traces before proposing a distinct bounded correction; preserve scorer, budgets and all failures. Obtain separate authorization for any new model batch. | R8 remains 23/25 versus 24/25; R17's original scores retain their visibility-scorer defect. R19 and R20 improvements did not replicate. R21 diagnostic hint scores 4/5 versus 4/5 with candidate total tokens 12.10% higher; only one attempt sees the hint and still edits CSS. Audited local archives exist; no causal cost reduction or 1.0 acceptance. |
+| `0.21.4` | R16 recovered; R19–R21 audited; full AI gate blocked | Preserve historical R8 Content budget failures, the R8 Realtime ref/Forms workdir cost evidence, and the rejected R20/R21 interventions. Seek an unrelated real fixture or a distinct, predeclared measurable correction before another equal-condition model trial; freeze inputs and obtain separate authorization. No ref-ownership relaxation, generic hint, rescore or automatic batch. | R8 remains Kudzu 23/25 versus React + Vite 24/25; both Kudzu Content misses exceed input budget after accepted output. Realtime agents reuse existing effect ownership after diagnostics; one Forms pair invents invalid workdirs. R19/R20 gains fail confirmation and the R21 hint costs 12.10% more at equal 4/5 success. R17's original visibility defect stays labeled; no proven AI-cost reduction or 1.0 acceptance. |

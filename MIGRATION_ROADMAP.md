@@ -57,7 +57,7 @@ Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts th
 - stronger JavaScript failure resilience;
 - no remaining material large-route build-scaling weakness.
 
-The completed 0.9 plan defines the cross-framework comparison and release gate. Packet `0.21.4` is measured at Kudzu 11/25 attributable successes versus React + Vite 24/25 and blocks `1.0.0`; subsequent work must come from those recorded failures. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
+The completed 0.9 plan defines the cross-framework comparison and release gate. Historical R2 recorded Kudzu 11/25 versus React + Vite 24/25. The later complete R8 recorded Kudzu 23/25 versus React + Vite 24/25 and still blocks `1.0.0`; two Kudzu Content attempts pass acceptance but exceed the input-token budget. Subsequent work must come from recorded failures and cost gaps. Benchmark-only feature omission, unmatched accessibility, weighted scores that hide losses, and unrecorded environment differences do not count as proof.
 
 ### 0.10.0 Through 0.21.x: Application Capability Release Train
 

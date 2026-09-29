@@ -1,5 +1,182 @@
 # Performance Records
 
+## Lazy Ordinary-Graph Binding Index (2026-09-29, local)
+
+`ordinaryRuntimeDependencies()` built a full lexical binding index for every
+reachable module even though graph traversal only uses it for a dynamic
+`import()` ownership check. It now builds the index on the first such call.
+Static import/re-export validation, dynamic-import rejection, and guarded
+effect import proof still use the same existing paths; no semantic primitive,
+pass, runtime concept or browser byte is added.
+
+The maintained 50-route / 450-imported-module / 50,550-line source-scale
+benchmark ran seven alternating baseline (`a8eb4e1`) and local-candidate
+fresh-process samples, one warm-up, Node 24.14.0 on Linux x64 i5-9500.
+Reachable-graph medians fell from **893.3 to 484.1 ms** (45.8%); all seven
+round-paired graph samples improved, with median candidate-minus-baseline
+-409.2 ms. The unchanged compiler-result digest is
+`7c366079a984b3d62fb19a26305326d3278f029d2193d39340ddd3a4be5adc6e`;
+both emit the same 50 static HTML files, 10,980 bytes and deploy digest
+`e107d78a7f55bc8a1af0ea6e53efeffa19b3d44d21c892484d103fa346e7ba7b`.
+Clean-build medians are 6,077.1 / 5,905.2 ms, but paired ranges overlap
+(-1,596.4 to +876.0 ms), so no reliable whole-build speedup is established.
+Incremental medians are 1,605.1 / 913.0 ms and all seven pairs favor the
+candidate; this is a synthetic no-dynamic-import graph, not an AI-token or
+cross-framework result. Full output and recovery equivalence pass.
+`npm run check`, required-Chrome `npm test` (standalone 1/1 then 346/346,
+zero skips), `npm run test:package`, and `git diff --check` pass, including
+existing positive guarded-package-import and negative dynamic-import fixtures.
+
+## AI Check Success Output Bound (2026-09-29, local)
+
+The generated `npm run ai -- check` helper retains the full check log on disk.
+For a successful check longer than 512 bytes it now returns only its final
+512 bytes, rather than the previous first/last 4,096 bytes plus an omission
+marker. A failing or interrupted check keeps its existing 4,096-byte excerpt;
+the full log remains available in both cases. The focused synthetic 16 KB
+success check first failed the new output bound, then passed after the change;
+its full log still contains the original output. This reduces successful tool
+response bytes and log-read bytes, not measured model input tokens. Archived R8
+agents ran `npm run build` directly, so their scores and costs cannot be
+attributed to this helper change. No browser output or compiler semantics change.
+`npm run check`, required-Chrome `npm test` (standalone 1/1 then 346/346,
+zero skips), `npm run test:package`, and `git diff --check` pass. The starter
+smoke still emits four identical deploy files (9,758 raw / 3,741 aggregate
+gzip bytes) and reports AI-token savings as unmeasured.
+
+The same tool's failing-check fixture exposed a second cost risk: an error in
+the middle of a 16 KB log was absent from the previous first/last 4 KB excerpt,
+requiring a separate full-log read to see it. The failing excerpt now scans at
+most the first MiB for one diagnostic, retaining the head, tail, original exit
+code and full log under a 4.3 KB response bound. The fixture first failed its
+new middle-error assertion and now passes both a separate `Error:` line and an
+inline TypeScript-style `error TS2322:` marker. This is local diagnostic
+visibility, not evidence that an agent makes fewer calls or spends fewer tokens.
+
+## 0.16.41 Release Closure Documentation Check (2026-09-29)
+
+The 0.16.41 release is marked complete in the versioning and capability plans;
+the separate `0.21.4` AI success/cost gate remains blocked. `npm run check`
+passed. The first required-Chrome `npm test` was interrupted; its partial log
+and check result remain in `test-results/ai-delivery-production/release-closure-20260928/`.
+The next test run found a stale fixture build lock owned by the interrupted
+process (PID 3323212, no longer running). After removing only that lock, the
+required-Chrome suite passed standalone 1/1 and full 346/346 with zero skips.
+`git diff --check` passes. No model trial or release transaction was rerun.
+
+## Architecture Owner Link Repair (2026-09-28, documentation-only)
+
+The current architecture handoff still labeled itself 0.16.30 despite the
+published core being 0.16.41. The framework-internal owner list also pointed
+animation-frame ref handling at nonexistent
+`framework/compiler/animation-frame-pass.mjs`. The actual owner is
+`framework/compiler/effect-private-ref-pass.mjs`, which validates effect-exclusive
+refs and animation-frame cleanup before lowering them to invocation-private
+effect closures. Both documents now name the existing producer without changing
+the supported ref boundary. A read-only check of `.mjs` references in the two
+owner maps finds exactly that missing path before the edit and zero afterward;
+receipts are under `test-results/ai-delivery-production/architecture-map-20260928/`.
+The framework-internal README is excluded from the published core tarball.
+Compiler code, browser output, model inputs and scores remain unchanged.
+`npm run check`, required-Chrome `npm test` (standalone 1/1 then 346/346,
+zero skips), and `git diff --check` pass; logs are retained with the link
+audit. The active `0.21.4` continuation table now points to the recorded R8
+cost/ownership findings rather than another attempt at the rejected R21 hint.
+
+## Current AI Gate Summary Reconciliation (2026-09-28, offline)
+
+The product roadmap and architecture overview had still described the original
+R2 Kudzu 11/25 versus React + Vite 24/25 score as the current `0.21.4` result.
+The later complete R8 five-task result is 23/25 versus 24/25; two Kudzu Content
+attempts pass final acceptance but exceed input-token budgets. The R2 figure
+remains labeled historical, and original R2/R8 release records and scorer outputs
+are unchanged. The longer-term roadmap now selects only observed R8 Content
+budget failures and task-specific cost gaps, not historical CRUD/Commerce
+attempts described as current Kudzu failures.
+
+`test-results/ai-delivery-production/current-gate-status-20260928/verification.json`
+checks the three current-orientation documents against the independently
+SHA-256-verified R8 archive (`81bf1d782b68f66ea1891740e40c5bc09bd9b161c769a36b8178ca2604d2f7c6`).
+This is documentation alignment, not a new model trial, current-core full-suite
+score, or 1.0 acceptance.
+`npm run check`, required-Chrome `npm test` (standalone 1/1 then 346/346,
+zero skips), and `git diff --check` pass; full logs are retained with the
+offline verification receipt.
+
+## npm Processing Poll In Production (2026-09-28, offline receipt)
+
+The first publication after committing the bounded npm poll is the protected
+[v0.16.41 workflow](https://github.com/kudzujs/kudzu/actions/runs/36377722747)
+on exact commit `a8eb4e1`. npm reports `Your package is being processed and may
+take a few minutes to become available` at 04:37:26Z. The final lookup step
+records **eleven E404 responses** (first 04:37:27Z, last 04:38:19Z), then
+succeeds on the **twelfth** core version lookup; its job step completes at
+04:38:25Z, about 59 seconds after publication acceptance. The unchanged
+generator version also verifies and the complete protected workflow is green.
+Registry integrity, exact packed files and fresh installs are separately
+verified in the [release receipts](https://github.com/kudzujs/kudzu/releases/tag/v0.16.41).
+
+For comparison, v0.16.39's published package remains charged to its historical
+failed workflow: all twelve logged lookups returned E404 and the final check
+failed about 64 seconds after acceptance. v0.16.38's lookup errors were
+suppressed, so no E404 count can be reconstructed there. The longer **120-attempt
+ceiling was not required for the successful v0.16.41 run**; its twelfth attempt
+would have fit the old count. The new bound remains a finite allowance for npm's
+observed asynchronous processing, not proof that future propagation takes at
+most fifteen minutes or that npm internals versus edge cache caused the delay.
+No new publication, tag, model call, or workflow edit is made by this review.
+
+Read-only run/job log digests and timestamps are retained in
+`test-results/npm-publication-processing-20260928/inspection-v3.json`.
+Earlier derived v1/v2 inspections remain intact; v3 uses the actual completed
+step time and excludes command-source `echo` lines from failure timestamps.
+`npm run check`, required-Chrome `npm test` (standalone 1/1 then 346/346,
+zero skips), and `git diff --check` pass; the logs remain with the receipt.
+
+## R8 Content Input-Budget Failures (2026-09-28, offline)
+
+The first full R8 AI-delivery gate still scores Content Kudzu **3/5** versus
+React + Vite **5/5**. Kudzu records 1,882,130 tokens (627,376.67 per scored
+success) versus React's 662,109 (132,421.8 per success). Both failed Kudzu
+attempts produce final artifacts passing independent acceptance but exceed the
+unchanged 400,000-input budget: ordinal 2 records 482,891 input tokens and
+ordinal 4 records 495,436. These remain scored failures; build/acceptance
+passing is not a substitute for the budget gate.
+
+Their first authored builds exit successfully. Audited per-attempt token
+partitions (message-level, including cache reads) are:
+
+| R8 failed Kudzu attempt | Before first build | First build message | After first build | First observed input-budget crossing |
+|---|---:|---:|---:|---:|
+| Content ordinal 2 | 146,612 | 27,272 | 313,410 | 407,385 at recorded step 15, after build |
+| Content ordinal 4 | 143,033 | 26,377 | 331,442 | 423,876 at recorded step 16, after build |
+
+Ordinal 2 runs a local raw-HTML assertion demanding literal `<p>6 articles</p>`
+and gets `Missing <p>6 articles</p>`; ordinal 4 similarly asserts a contiguous
+text shape after stripping tags and fails, inspects HTML and succeeds with a
+corrected check. Its second build succeeds. The retained article HTML files in
+both attempts have the same SHA-256
+`4ad7ac0b1d267e2e915d91b3ffa5d06ffe086fe6105464b783953083a3b271ea`.
+In a **separate offline replay**, the existing Chrome smoke utility reads both
+unchanged artifacts: `6 articles` is rendered, the `Search articles` searchbox
+has an accessible name, and the raw literal `<p>6 articles</p>` is absent due
+to Kudzu's binding markers. This distinguishes an authored raw-string check
+from a broken browser result. The root README already warns against raw markup
+or tag-stripping as rendered-text acceptance; another generic AI hint was not
+adopted after R20/R21's negative results.
+
+`test-results/ai-delivery-production/r8-content-budget-20260928/` contains
+`report.json`, `followup-v2.json` and `replay.json`. Both original result/trace
+streams, protocol and artifact hashes are verified, no original attempt is
+rewritten, and no new provider call or scorer change occurs. The recorded
+message tokens after a failed local check include other verification and final
+reporting: neither the >300k post-build phase nor the budget overrun is proven
+recoverable by deleting one assertion. More representative source or an
+independent cost intervention is required before making a 1.0 claim.
+Read-only audit/replay, `npm run check`, required-Chrome `npm test` (standalone
+1/1 then 346/346, zero skips), and `git diff --check` pass. Verification logs
+are retained beside the derived reports.
+
 ## 0.16.41 Release Scope
 
 The user authorizes commit, push, immutable tagging and publication of the
@@ -20,6 +197,16 @@ README, the effect-private-ref diagnostic source and core manifest version
 change. The generator's five packed files remain byte-identical. WebSocket
 fixture output and paired starter deploy parity are unchanged. Exact-commit CI,
 tagging, npm, registry and public website publication remain independent gates.
+Closure: exact commit `a8eb4e1` passes [Linux CI](https://github.com/kudzujs/kudzu/actions/runs/36377259762)
+and the [protected npm workflow](https://github.com/kudzujs/kudzu/actions/runs/36377722747).
+Downloaded core/generator tarballs match registry SHA-512/SHA-1 and local pack
+metadata. Fresh default and AI apps install 0.16.41 with byte-matching README
+and diagnostics and four identical deploy files; the static sibling stays
+JavaScript-free. Public [0.16.41 notes](https://kudzujs.cloud/releases/0.16.41/)
+and twelve prior pages return 200 with byte-identical release HTML, and current
+navigation and the sitemap are verified. Receipts are attached to
+[v0.16.41](https://github.com/kudzujs/kudzu/releases/tag/v0.16.41). This
+completes release delivery but does not establish an AI-cost advantage.
 
 ## Realtime Ref Ownership Diagnostic Candidate (2026-09-28, unmeasured)
 

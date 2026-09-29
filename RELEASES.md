@@ -1,5 +1,21 @@
 # Kudzu Releases
 
+## 0.16.42 - Source Graph And AI Check Output
+
+- Defer ordinary-module lexical binding indexing until a dynamic `import()`
+  actually requires its ownership proof. Seven alternating source-scale samples
+  reduce the 50-route/450-imported-module graph median from 893.3 to 484.1 ms
+  with identical compiler and deploy digests. Whole-build timing ranges overlap;
+  no whole-build speedup is claimed.
+- The opt-in generated AI check retains full logs, returns only the last 512
+  bytes of long successful checks, and includes a bounded middle-of-log failure
+  diagnostic when available. Failure status and cleanup remain unchanged.
+- Publishes `create-kudzu@0.1.158` for the changed AI helper. Its `^0.16.36`
+  core compatibility range and default generated app remain unchanged.
+- Reconciles the historical R2 and latest R8 AI gate summaries and corrects
+  architecture owner links. R8 remains 23/25 versus 24/25; no model trial or
+  measured AI-token saving follows from this release, and 1.0 remains blocked.
+
 ## 0.16.41 - Realtime Ownership Diagnostics
 
 - R8 Realtime authoring repeatedly attempted render-time mutation of

@@ -85,21 +85,41 @@ export async function check(root, timeoutMs = 300000) {
       })
     })
     const { size } = await log.stat()
-    const buffer = Buffer.alloc(Math.min(size, 4096))
-    // ponytail: bounded head/tail is an excerpt, never a substitute for the retained full log.
+    const passed = result.exitCode === 0 && !result.timedOut && !result.interrupted && !result.error
+    const limit = passed ? 512 : 4096
+    const buffer = Buffer.alloc(Math.min(size, limit))
+    // ponytail: a bounded excerpt never substitutes for the retained full log.
     let excerpt
-    if (size <= 4096) {
+    if (size <= limit) {
       const { bytesRead } = await log.read(buffer, 0, buffer.length, 0)
       excerpt = buffer.subarray(0, bytesRead).toString("utf8")
+    } else if (passed) {
+      await log.read(buffer, 0, limit, size - limit)
+      excerpt = buffer.toString("utf8")
     } else {
-      await log.read(buffer, 0, 2048, 0)
-      await log.read(buffer, 2048, 2048, size - 2048)
-      excerpt = buffer.subarray(0, 2048).toString("utf8") + "\n[... omitted; read full output.log ...]\n" + buffer.subarray(2048).toString("utf8")
+      const middle = Buffer.alloc(8192)
+      let diagnostic = ""
+      // ponytail: scan at most the first MiB for a useful error; the full log stays on disk.
+      for (let offset = 2048; offset < Math.min(size - 2048, 1 << 20); offset += middle.length - 128) {
+        const length = Math.min(middle.length, size - 2048 - offset)
+        await log.read(middle, 0, length, offset)
+        const text = middle.subarray(0, length).toString("utf8")
+        const match = /(?:\berror(?: TS\d{4})?|\bfailed)\s*:|\bTS\d{4}\s*:|✖/i.exec(text)
+        if (!match) continue
+        const start = Math.max(text.lastIndexOf("\n", match.index) + 1, match.index - 120)
+        const end = text.indexOf("\n", match.index)
+        diagnostic = text.slice(start, end < 0 ? match.index + 240 : Math.min(end, match.index + 240)).trim()
+        break
+      }
+      const edge = diagnostic ? 1536 : 2048
+      await log.read(buffer, 0, edge, 0)
+      await log.read(buffer, edge, edge, size - edge)
+      excerpt = buffer.subarray(0, edge).toString("utf8") + "\n[... omitted; read full output.log ...]\n" + (diagnostic ? diagnostic.slice(0, 400) + "\n[... omitted ...]\n" : "") + buffer.subarray(edge, edge * 2).toString("utf8")
     }
     return {
-      command: "npm run check", passed: result.exitCode === 0 && !result.timedOut && !result.interrupted && !result.error,
+      command: "npm run check", passed,
       ...result, elapsedMs: Math.round(performance.now() - start),
-      log: { path, bytes: size, excerpt, truncated: size > 4096 },
+      log: { path, bytes: size, excerpt, truncated: size > limit },
       browserVerified: false, note: "Fresh check result only; later edits invalidate it. Compiler success is not browser or accessibility proof.",
     }
   } finally {
