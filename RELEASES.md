@@ -1,5 +1,26 @@
 # Kudzu Releases
 
+## 0.16.45 - Named Component Ref Diagnostics
+
+- An archive-verified inventory of R22's twenty Realtime attempts finds four
+  first-build failures with only the build-time message `Kudzu DOM refs must
+  initialize with null`. Each agent authored `useRef(1)` in a named `Feed`
+  component. The existing compiler guard checked default exports but left
+  these named components to fail later without an authored location.
+- Extend that guard to unattached top-level named and variable components,
+  after effect-private refs have normalized. A reduced real-source case now
+  reports its source line. JSX-attached keyed-row and setter-child refs retain
+  their more-specific source diagnostics; the first broad local candidate
+  preempted those messages and was narrowed before release.
+- The accepted R8 WebSocket source still passes unchanged Chrome acceptance
+  with eleven byte-identical deploy files (44,081 raw / 15,176 aggregate gzip
+  bytes) and a script-free static sibling. No semantic primitive, compiler
+  pass, browser runtime concept, or public API is added.
+- This is a local diagnostic boundary correction, not a measured AI-token
+  improvement or R22/R8 rescore. The AI-cost/1.0 gate remains blocked.
+  Generator 0.1.158 and its compatible `^0.16.36` core range are unchanged.
+  Adds the current website release note and links.
+
 ## 0.16.44 - Owned Ref Boundary And Browser Errors
 
 - A real R22 Realtime attempt built successfully but could not connect: an

@@ -80,3 +80,31 @@ export default function Page() {
   assert.equal(result.moduleIR.effects.length, 1)
   assert.ok(result.moduleIR.handlers.length > 0)
 })
+
+test("diagnoses a non-null ref in a named Realtime component", () => {
+  const file = resolve("src/pages/realtime-named-ref.tsx")
+  const source = `import { useRef, useState } from "@kudzujs/core"
+function Feed() {
+  const [paused, setPaused] = useState(false)
+  const version = useRef(1)
+  return <button onClick={() => { version.current += 1; setPaused(!paused) }}>Resume</button>
+}
+export default function Page() { return <Feed /> }`
+  assert.throws(() => compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), ""), error => {
+    assert.match(error.message, /src\/pages\/realtime-named-ref\.tsx:4:\d+/)
+    assert.match(error.message, /Mutable useRef\(\) values must be referenced exclusively inside one owned effect/)
+    assert.match(error.message, /effect-local|useRef\(null\)/)
+    return true
+  })
+})
+
+test("diagnoses a non-null ref in a top-level variable component", () => {
+  const file = resolve("src/pages/realtime-variable-ref.tsx")
+  const source = `import { useRef } from "@kudzujs/core"
+const Feed = () => {
+  const version = useRef(1)
+  return <button onClick={() => version.current++}>Resume</button>
+}
+export default function Page() { return <Feed /> }`
+  assert.throws(() => compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), ""), /src\/pages\/realtime-variable-ref\.tsx:3:\d+ Mutable useRef\(\) values must be referenced exclusively inside one owned effect/)
+})

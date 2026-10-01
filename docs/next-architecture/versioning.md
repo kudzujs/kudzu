@@ -71,14 +71,22 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
-The user-authorized core `0.16.44` transaction closes the real R22
+The user-authorized core `0.16.45` transaction closes the R22 named-component
+non-null-ref diagnostic boundary while preserving keyed-row and setter-child
+source errors. Accepted R8 WebSocket output and browser behavior remain
+byte-identical; no AI-cost saving is claimed. Generator `0.1.158` and its
+`^0.16.36` core range remain unchanged. Require exact-commit Chrome CI,
+immutable tag/GitHub release, protected npm publication, registry/fresh
+installs and separately verified website URLs before closure.
+
+The completed core `0.16.44` transaction closed the real R22
 effect-to-handler callback-ref fail-open boundary, the repository-only caught
 Error/partial Chrome-port browser checks, the negative/incomplete AI-cost
 confirmation, and the website release page. Generator `0.1.158` remains
-unchanged with core range `^0.16.36`. Require exact-commit CI with Chrome,
-immutable tag and GitHub release, protected npm publication, registry and
-fresh-install integrity, and separate public website verification. The R8
-scores and blocked 1.0 AI gate are not revised.
+unchanged with core range `^0.16.36`. Exact-commit Chrome CI, immutable tag,
+GitHub/npm publication, registry and fresh-install integrity, and public
+website verification passed. The R8 scores and blocked 1.0 AI gate were not
+revised.
 
 The `0.16.43` forward release is complete: exact commit `b5959aa` passed
 [required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36543226746),

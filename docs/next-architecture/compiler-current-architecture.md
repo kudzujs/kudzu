@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.16.44` architecture, including runtime-family specialization of binding properties, general attributes, styles and conditional capabilities through existing RouteIR facts and codegen. It builds on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The `0.21.4` AI delivery gate is measured and blocked; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.16.45` architecture, including runtime-family specialization of binding properties, general attributes, styles and conditional capabilities through existing RouteIR facts and codegen. It builds on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The `0.21.4` AI delivery gate is measured and blocked; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
 
 The `0.16.32` release projects existing `condition.owned` entries into
 the internal `bindings.conditionState` fact. Runtime-family union preserves either

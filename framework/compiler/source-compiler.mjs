@@ -911,7 +911,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         const owner = nearestFunction(node)
         if (owner && node.initializer.expression.text === "useRef") {
           const nullInitializer = node.initializer.arguments.length === 1 && node.initializer.arguments[0].kind === ts.SyntaxKind.NullKeyword
-          if (!nullInitializer && owner.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)) throw sourceNodeError(node.initializer, sourceFile, "Mutable useRef() values must be referenced exclusively inside one owned effect; DOM refs require useRef(null)")
+          const attachedToJsx = !nullInitializer && referenceIdentifiers(owner.body, node.name.text).some(reference => ts.isJsxExpression(reference.parent) && ts.isJsxAttribute(reference.parent.parent) && reference.parent.parent.name.text === "ref")
+          if (!nullInitializer && !attachedToJsx && (owner.parent === sourceFile || ts.isVariableDeclaration(owner.parent) && owner.parent.parent?.parent?.parent === sourceFile)) throw sourceNodeError(node.initializer, sourceFile, "Mutable useRef() values must be referenced exclusively inside one owned effect; DOM refs require useRef(null)")
           if (nullInitializer) {
             ensureOwner(owner)
             componentAnalysis.registerRef(owner, { name: node.name.text, site: analysisSite(node, "hook"), source: analysisSource(node) })

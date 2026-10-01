@@ -1,5 +1,34 @@
 # Performance Records
 
+## R22 Named-Component Ref Diagnostic Boundary (2026-10-01, local)
+
+An archive-verified inventory of both R22 blocks retains all twenty scored
+attempts: two timeout attempts issue no agent-owned build, one first build
+succeeds, and seventeen first builds fail. Four first failures report only
+`Error: Kudzu DOM refs must initialize with null`. Their original authored
+patches use a top-level **named** `function Feed()` with `useRef(1)` (one also
+declares a generation `useRef(0)`), rather than the default-export function
+already covered by source diagnostics. The errors arise later during build-time
+rendering, without an authored line. The offline read-only inventory is
+`test-results/ai-delivery-production/r22-first-build-20261001/report.json`;
+neither original model stream nor failure score is rewritten.
+
+A reduced named-component `useRef(1)` fixture first compiled without a source
+diagnostic, then passes after expanding the existing compiler guard to
+unattached top-level function/variable component refs. The first full gate
+found that a broader guard preempted two existing keyed-row and setter-child
+JSX-ref diagnostics; narrowing it to refs without a JSX attachment restores
+both original source-located messages. Proven effect-private refs still
+normalize first; DOM refs still require `null`, and the supported state-driven
+Realtime alternative remains accepted. Core source changes the existing guard in
+`source-compiler.mjs` (no new semantic primitive, pass, ModuleIR kind, runtime
+concept or browser byte). On the archived accepted R8 Realtime source, the
+local compiler still emits the same **11 files / 44,081 raw and 15,176 gzip
+bytes**, with unchanged digest, passing Chrome acceptance and a zero-JavaScript
+static sibling. The archived R22 broken callback-ref source still fails at its
+authored handler line; this new guard addresses the separate numeric-ref case.
+No agent-use or token-cost improvement has been measured for this local edit.
+
 ## R22 Caught Browser Error Visibility And CDP Port Validation (2026-10-01, local)
 
 The preserved R22 confirmation candidate-3 output provides a real browser

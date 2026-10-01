@@ -10,14 +10,30 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-The user authorizes core `0.16.44` release closure for the observed R22
+The user authorizes core `0.16.45` release closure for the R22 first-build
+named-component ref diagnostic and current website note. The first broad
+candidate preempted existing keyed-row/setter-child errors; the accepted guard
+now leaves those JSX-attached ref paths to their original source diagnostics.
+The R8 WebSocket fixture stays byte-identical with a zero-JavaScript sibling.
+Generator 0.1.158 and core range `^0.16.36` remain unchanged. Require exact
+commit CI, immutable tag/GitHub release, protected npm, registry/fresh installs
+and public website checks; no AI-token saving or original rescore is implied.
+
+Core `0.16.44` is complete: exact commit `458d0b7` passed [required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36800285785),
+[protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36800947934),
+registry integrity, fresh default/AI installs, and separate public
+[website verification](https://kudzujs.cloud/releases/0.16.44/). The R22
+raw evidence archive is attached to [v0.16.44](https://github.com/kudzujs/kudzu/releases/tag/v0.16.44);
+timeout tails remain unknown and the 1.0 gate is blocked.
+
+The completed core `0.16.44` packet covered the observed R22
 effect-owned ref fail-open correction, caught browser Error/partial Chrome-port
 repository tooling, retained negative/incomplete diagnostic-cost evidence, and
 the website note. Existing supported R8 Realtime output remains byte-identical
 and its static sibling JavaScript-free; generator 0.1.158 remains unchanged.
-Require exact-commit Chrome CI, immutable tag/GitHub release, protected npm,
-registry and fresh-install verification, and independent deployed URL checks.
-Do not claim token savings or 1.0 acceptance from the incomplete confirmation.
+Its exact-commit Chrome CI, immutable tag/GitHub release, protected npm,
+registry/fresh-install and deployed URL checks passed. The incomplete
+confirmation establishes no token saving or 1.0 acceptance.
 
 R22 Realtime diagnostic-only trial (2026-09-30): one full five-pair block over
 identical 0.16.43 package sources except the two effect-local ref diagnostic
@@ -43,6 +59,19 @@ complete `DevToolsActivePort` before WebSocket construction. The old npm
 `Invalid URL` did not retain its port file, so shared causation is unproven.
 These local tool corrections add no application browser bytes, do not alter
 frozen R22 acceptance or measured tokens, and are not a new 1.0 cost claim.
+
+Further read-only R22 first-build inventory (2026-10-01) finds two attempts
+without an agent-owned build, one successful first build and seventeen first
+failures across both complete schedules. Four failures reach a generic DOM-ref
+initializer error without an authored location; all four agents first write
+`useRef(1)` in a top-level named `Feed` component. The existing compiler guard
+covered default exports only. It now diagnoses unsupported non-null refs in
+unattached named top-level components at source, after proven effect-private
+refs have normalized; JSX-attached keyed-row and setter-child refs keep their
+existing more-specific source diagnostics. The accepted R8 WebSocket source
+retains its 11 identical deploy files and browser behavior. This local
+fail-closed correction neither
+rescales the four original model costs nor proves fewer future corrections.
 
 The fully attributable R22 browser failure reveals a distinct local
 fail-closed compiler correction: an unattached `useRef(null)` callback handle
