@@ -15,7 +15,7 @@ export async function waitForPort(profileDirectory, child) {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error(`Chrome exited early with ${child.exitCode ?? child.signalCode}`)
     try {
       const [port, path] = (await readFile(join(profileDirectory, "DevToolsActivePort"), "utf8")).trim().split("\n")
-      return { port, path }
+      if (/^[1-9]\d{0,4}$/.test(port) && Number(port) <= 65535 && /^\/devtools\/browser\/[^/\s]+$/.test(path ?? "")) return { port, path }
     } catch {}
     await new Promise(resolveSleep => setTimeout(resolveSleep, 10))
   }
@@ -27,12 +27,16 @@ export class CDP {
     this.id = 0
     this.pending = new Map()
     this.exceptions = []
+    this.consoleErrors = []
     this.failures = []
     this.socket = new WebSocket(url)
     this.ready = new Promise((resolveReady, reject) => { this.socket.onopen = resolveReady; this.socket.onerror = reject })
     this.socket.onmessage = event => {
       const message = JSON.parse(event.data)
       if (message.method === "Runtime.exceptionThrown") this.exceptions.push(message.params.exceptionDetails.text)
+      if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") for (const arg of message.params.args) {
+        if (arg.subtype === "error" && this.consoleErrors.length < 20) this.consoleErrors.push(String(arg.description ?? arg.value ?? "Error").slice(0, 400))
+      }
       if (message.method === "Network.loadingFailed" && !message.params.canceled) this.failures.push(message.params.errorText)
       if (!message.id) return
       const callback = this.pending.get(message.id)

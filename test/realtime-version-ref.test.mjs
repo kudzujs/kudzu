@@ -40,3 +40,43 @@ export default function Page() { return <Feed /> }
     return true
   })
 })
+
+test("rejects an effect-owned callback ref used by an intrinsic handler", () => {
+  const file = resolve("src/pages/realtime-ref-event.tsx")
+  const source = `import { useEffect, useRef, useState } from "@kudzujs/core"
+export default function Page() {
+  const [connected, setConnected] = useState(false)
+  const resume = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    resume.current = () => setConnected(true)
+    return () => { resume.current = null }
+  }, [])
+  return <main><button onClick={() => resume.current?.()}>Resume</button><p>{connected ? "connected" : "idle"}</p></main>
+}`
+  assert.throws(() => compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), ""), error => {
+    assert.match(error.message, /src\/pages\/realtime-ref-event\.tsx:9:\d+/)
+    assert.match(error.message, /Effect-owned mutable refs cannot be used outside their owning effect/)
+    assert.match(error.message, /state-driven effect/)
+    return true
+  })
+})
+
+test("keeps pause/resume in a state-driven owned effect", () => {
+  const file = resolve("src/pages/realtime-state-pause.tsx")
+  const source = `import { useEffect, useState } from "@kudzujs/core"
+export default function Page() {
+  const [paused, setPaused] = useState(false)
+  const [connection, setConnection] = useState("connecting")
+  useEffect(() => {
+    if (paused) { setConnection("paused"); return }
+    const socket = new WebSocket("wss://example.invalid/feed")
+    const onOpen = () => setConnection("connected")
+    socket.addEventListener("open", onOpen)
+    return () => { socket.removeEventListener("open", onOpen); socket.close() }
+  }, [paused])
+  return <main><button onClick={() => setPaused(!paused)}>Toggle</button><p>{connection}</p></main>
+}`
+  const result = compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), "")
+  assert.equal(result.moduleIR.effects.length, 1)
+  assert.ok(result.moduleIR.handlers.length > 0)
+})

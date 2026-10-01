@@ -10,16 +10,105 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-Core `0.16.42` passed exact-commit CI and has an immutable GitHub release, but
-both protected npm attempts failed before any package publication: first a
-Chrome CDP URL error, then an empty WebSocket browser result. Preserve
-both failed attempts and the tag. The user-authorized forward release is core
-`0.16.43` with still-unpublished `create-kudzu@0.1.158`, retaining all 0.16.42
-source/tool behavior. The publish job reruns non-browser tests and package smoke;
-exact-commit Node 24 CI remains the required-Chrome gate. Require new commit
-CI, immutable tag, GitHub/npm, fresh-install and deployed-website verification
-before closure. The generator core range stays `^0.16.36`, while the R8 score
-and blocked AI success/cost gate remain unchanged.
+The user authorizes core `0.16.44` release closure for the observed R22
+effect-owned ref fail-open correction, caught browser Error/partial Chrome-port
+repository tooling, retained negative/incomplete diagnostic-cost evidence, and
+the website note. Existing supported R8 Realtime output remains byte-identical
+and its static sibling JavaScript-free; generator 0.1.158 remains unchanged.
+Require exact-commit Chrome CI, immutable tag/GitHub release, protected npm,
+registry and fresh-install verification, and independent deployed URL checks.
+Do not claim token savings or 1.0 acceptance from the incomplete confirmation.
+
+R22 Realtime diagnostic-only trial (2026-09-30): one full five-pair block over
+identical 0.16.43 package sources except the two effect-local ref diagnostic
+strings scores 5/5 in both arms, with diagnostic cost per success 236,069 versus
+control 259,252.6 tokens. Four candidate attempts see the message; all ten
+first authored builds fail. The independent same-protocol confirmation has
+control 2/5 and candidate 3/5 successes but is **incomplete**, including
+three and one respective timeout attempts with unknown usage tails and one
+further candidate browser-acceptance failure. Its cost ranking is unavailable;
+do not promote the first block to a replicated AI saving, retry selected
+failures or start a third block. Original R8 scores and the 1.0 gate remain
+unchanged. Freeze, original attempts, failed work and the manifest-verified
+5,355,168-byte archive are recorded in `PERFORMANCE.md`; no diagnostic-cost
+claim or release follows from this negative/inconclusive confirmation. The
+separately reproduced fail-open boundary is treated below.
+
+R22 browser observation follow-up (2026-10-01) uses the unchanged failed
+artifacts: a caught ref TypeError left the page connecting with zero sockets,
+yet the optional repository browser smoke reported success. CDP now records
+bounded `console.error(Error)` objects for that utility without treating plain
+string logs as failures. A separate partial-port regression waits for a
+complete `DevToolsActivePort` before WebSocket construction. The old npm
+`Invalid URL` did not retain its port file, so shared causation is unproven.
+These local tool corrections add no application browser bytes, do not alter
+frozen R22 acceptance or measured tokens, and are not a new 1.0 cost claim.
+
+The fully attributable R22 browser failure reveals a distinct local
+fail-closed compiler correction: an unattached `useRef(null)` callback handle
+was assigned inside an effect, read from an intrinsic handler, compiled, then
+failed before creating a socket because its serialized `.current` was read-only.
+A real failing reduction now receives a source-located diagnostic and a
+state-driven effect alternative; the accepted R8 WebSocket fixture still has
+eleven byte-identical files, exact Chrome behavior and a zero-JavaScript
+static sibling. This +5-LOC proof adds no semantic primitive, pass or runtime;
+it is not evidence of model-token savings, a changed R22 score or an authorized
+package release. Keep the four unknown confirmation tails charged as unknown.
+
+Core `0.16.43` and `create-kudzu@0.1.158` are delivered: exact commit
+`b5959aa` passed [required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36543226746),
+[protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36544151787),
+registry integrity, fresh default/AI installs and separately verified public
+[website URLs](https://kudzujs.cloud/releases/0.16.43/). The generator retains
+its `^0.16.36` core range. The publish job reruns non-browser tests and package
+smoke; exact-commit Node 24 CI owns required-Chrome proof. Preserve the
+immutable [v0.16.42](https://github.com/kudzujs/kudzu/releases/tag/v0.16.42)
+GitHub-only tag and its two failed pre-publication browser-test attempts. This
+closure changes no R8 score, AI-cost conclusion or 1.0 authorization.
+
+Read-only R8 cross-task shell inventory (2026-09-30) verifies all 50 archived
+attempt results and traces against the original manifest. Content contains
+seven authored post-build HTML inspection/assertion calls, including both
+previously documented failed Kudzu assertions. Forms, CRUD, Commerce and
+Realtime contain 51 shell calls in total, all `npm run build`; they offer no
+independent example of the same authored raw-HTML text mistake. Tool-output
+bytes and message tokens cannot be translated into saved model cost. Do not
+repeat the rejected generic hints, weaken acceptance or start a model batch
+without a separate real failure and predeclared equal-condition measurement.
+
+R8 Content usage partition (2026-09-30): Kudzu's 1,673,984 provider cache-read
+tokens versus React's 522,368 account for 1,151,616 of the 1,220,021
+five-pair total-token gap; after first builds, the cache-read gap is 821,632
+of 867,411 extra tokens. These are charged input tokens, not repeated file
+reads. The conservative auditor finds zero exact repeated read/search output
+candidates across the ten original traces. No local read cache or one-command
+deletion is authorized as a measured cost fix. Retain both Content input-budget
+failures and seek a separate reproducible correction before a new model trial.
+
+The independent R8 cache-read audit verifies the other forty original attempts
+(2026-09-30). Realtime is the second large equal-success gap: 300,160 of its
+331,115 extra total tokens, and 252,160 of 260,034 extra post-build tokens,
+are provider cache reads. Forms' post-build Kudzu tokens are 26,510 lower;
+CRUD has unequal success and one React failure without any agent-owned build.
+All forty traces have zero exact repeated read/search output candidates. This
+confirms a billed-input **measurement pattern** in Content and Realtime, not a
+common causal source failure or a safe file-cache optimization. Preserve
+failed work and seek a distinct, predeclared correction before authorized
+equal-condition model trials; the `0.21.4` gate is unchanged.
+
+Real-source build transfer check (2026-09-30) pairs published cores 0.16.41
+and 0.16.43 over unchanged archived R8 Content and Realtime final sources.
+Both versions emit matching 20 Content and 11 Realtime files, and pass each
+task's unchanged independent Chrome acceptance. Seven rotating cold builds
+show overlapping ranges:
+Content medians 999.4 / 954.0 ms, Realtime 712.1 / 721.4 ms. The synthetic
+source-graph improvement does not establish a reliable whole-build gain on
+these small real applications or a model-token advantage. Preserve their
+original 0.16.26 scores and require a separate model-cost trial before 1.0.
+Instrumented core 0.16.43 build medians on the same copied inputs are 439.8 ms
+for Content and 323.4 ms for Realtime, with only 28.0 / 27.4 ms in graph
+traversal; phase clocks overlap and exclude npm/Content typecheck startup.
+This does not authorize another compiler cache or an AI-cost claim.
 
 The 0.16.41 transaction is complete: [exact-commit CI](https://github.com/kudzujs/kudzu/actions/runs/36377259762),
 [protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36377722747),
@@ -3885,4 +3974,4 @@ release transaction where possible or document and publish a forward-fix patch.
 | `0.21.1` | Released as `0.16.16` | Preserve 100/1,000/10,000-route phase, RSS, output, digest, incremental-equivalence, recovery, and bounded canonical-AST retention evidence. | Full 10,000-route report has one complete measured run after two measured-stage diagnostics; no projection used |
 | `0.21.2` | Closed by existing semantics | Preserve initial/session/lazy bytes, keyed/range/navigation median alarms, and bounded endurance ownership evidence. | Same-revision absolute gates; structural artifact bytes are not compressed network transfer |
 | `0.21.3` | Released as `0.16.17` | Preserve exact package, browser, benchmark, registry, and fresh-install evidence. | One initial navigation benchmark invocation stalled at the outer timeout; its clean seven-profile rerun passed all alarms |
-| `0.21.4` | R16 recovered; R19–R21 audited; full AI gate blocked | Preserve historical R8 Content budget failures, the R8 Realtime ref/Forms workdir cost evidence, and the rejected R20/R21 interventions. Seek an unrelated real fixture or a distinct, predeclared measurable correction before another equal-condition model trial; freeze inputs and obtain separate authorization. No ref-ownership relaxation, generic hint, rescore or automatic batch. | R8 remains Kudzu 23/25 versus React + Vite 24/25; both Kudzu Content misses exceed input budget after accepted output. Realtime agents reuse existing effect ownership after diagnostics; one Forms pair invents invalid workdirs. R19/R20 gains fail confirmation and the R21 hint costs 12.10% more at equal 4/5 success. R17's original visibility defect stays labeled; no proven AI-cost reduction or 1.0 acceptance. |
+| `0.21.4` | R16 recovered; R19–R22 audited; full AI gate blocked | Preserve historical R8 Content budget failures, the R8 Realtime ref/Forms workdir cost evidence, and rejected R20/R21 interventions. R22's initial diagnostic cost reduction lacks an attributable independent confirmation: no selective retry or third batch. Seek an unrelated real failure or distinct predeclared correction before separately authorized equal-condition model work. No ref-ownership relaxation, generic hint or rescore. | R8 remains Kudzu 23/25 versus React + Vite 24/25; both Kudzu Content misses exceed input budget after accepted output. R22 first block is 5/5 versus 5/5 with 8.9% lower candidate cost; its independent block has four timeout tails unknown and one additional candidate browser failure, so no confirmed cost ranking. R19/R20 gains failed confirmation and R21 hint cost 12.10% more at equal 4/5 success. No proven AI-cost reduction or 1.0 acceptance. |

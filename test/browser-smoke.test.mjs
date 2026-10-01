@@ -8,10 +8,20 @@ import { createServer } from "node:http"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { browserSmoke } from "./browser-smoke.mjs"
-import { CDP } from "./browser-cdp.mjs"
+import { CDP, waitForPort } from "./browser-cdp.mjs"
 
 const chrome = !process.env.KUDZU_SKIP_BROWSER && process.platform === "linux" && existsSync(process.env.CHROME_BIN ?? "/usr/bin/google-chrome")
 if (process.env.KUDZU_REQUIRE_CHROME && !chrome) throw new Error("Linux Chrome is required for browser smoke tests; set CHROME_BIN")
+
+test("waits for a complete Chrome DevTools port file", async t => {
+  const root = await mkdtemp(join(tmpdir(), "kudzu-partial-port-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await writeFile(join(root, "DevToolsActivePort"), "9222\n")
+  const path = "/devtools/browser/12345678-1234-1234-1234-123456789abc"
+  const timer = setTimeout(() => writeFile(join(root, "DevToolsActivePort"), `9222\n${path}\n`), 50)
+  t.after(() => clearTimeout(timer))
+  assert.deepEqual(await waitForPort(root, { exitCode: null, signalCode: null }), { port: "9222", path })
+})
 
 test("ordinary browser smoke separates rendered DOM from raw artifacts and reports failures", { timeout: 60_000, skip: !chrome }, async t => {
   const root = await mkdtemp(join(tmpdir(), "smoke-dom-"))
@@ -85,6 +95,26 @@ test("ordinary browser smoke separates rendered DOM from raw artifacts and repor
     return true
   })
   assert.deepEqual((await readdir(tmpdir())).filter(name => name.startsWith("browser-smoke-")), before, "success and failure remove disposable profiles")
+})
+
+test("browser smoke reports caught Error objects without failing on plain console strings", { timeout: 30_000, skip: !chrome }, async t => {
+  const root = await mkdtemp(join(tmpdir(), "smoke-caught-error-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const broken = '<p>Connecting</p><script>try { throw new TypeError("Cannot assign effect ref") } catch (error) { console.error(error) }</script>'
+  await writeFile(join(root, "index.html"), broken)
+  const events = []
+  await assert.rejects(browserSmoke(root, [{ op: "open", path: "/" }], line => events.push(JSON.parse(line))), /Browser errors observed/)
+  assert.equal(events.at(-1).completed, true)
+  assert.equal(events.at(-1).ok, false)
+  assert.deepEqual(events.at(-1).exceptions, [])
+  assert.match(events.at(-1).consoleErrors[0], /TypeError: Cannot assign effect ref/)
+  assert.equal(await readFile(join(root, "index.html"), "utf8"), broken)
+
+  await writeFile(join(root, "index.html"), '<p>Logged</p><script>console.error("Expected status message")</script>')
+  const ordinary = []
+  await browserSmoke(root, [{ op: "open", path: "/" }], line => ordinary.push(JSON.parse(line)))
+  assert.equal(ordinary.at(-1).ok, true)
+  assert.equal(ordinary.at(-1).consoleErrors, undefined)
 })
 
 test("open observes the parsed destination, including reloads and fragment navigation", { timeout: 30_000, skip: !chrome }, async t => {

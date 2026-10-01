@@ -71,13 +71,23 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
-The user-authorized forward release is core `0.16.43` with the still-unpublished
-`create-kudzu@0.1.158`. It retains the 0.16.42 compiler and AI helper, while
-the npm publish job delegates required-Chrome proof to exact-commit CI and
-reruns the non-browser tests and package smoke. Require the new commit's
-required-Chrome CI, immutable tag, GitHub/npm publication, fresh installs and
-public website checks before closure. The generator's `^0.16.36` core range
-and blocked 1.0 AI-cost gate remain unchanged.
+The user-authorized core `0.16.44` transaction closes the real R22
+effect-to-handler callback-ref fail-open boundary, the repository-only caught
+Error/partial Chrome-port browser checks, the negative/incomplete AI-cost
+confirmation, and the website release page. Generator `0.1.158` remains
+unchanged with core range `^0.16.36`. Require exact-commit CI with Chrome,
+immutable tag and GitHub release, protected npm publication, registry and
+fresh-install integrity, and separate public website verification. The R8
+scores and blocked 1.0 AI gate are not revised.
+
+The `0.16.43` forward release is complete: exact commit `b5959aa` passed
+[required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36543226746),
+[protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36544151787),
+registry integrity, fresh default/AI installs and public website checks.
+[v0.16.43](https://github.com/kudzujs/kudzu/releases/tag/v0.16.43) retains
+the receipts. `create-kudzu@0.1.158` is published with its unchanged
+`^0.16.36` core range. The blocked `0.21.4` AI cost/success gate remains
+separate; this delivery authorizes no next release or model batch.
 
 Core `0.16.42` is GitHub-only: exact commit `2099680` and tag passed CI, but
 two protected npm attempts failed before publication on distinct browser

@@ -80,6 +80,11 @@ export function normalizeEffectPrivateRefs(sourceFile, factory, context) {
         const callback = effect.arguments[0]
         return callback && accesses.every(access => isNodeWithin(access, callback))
       })
+      const effectCallbacks = effectCalls.map(effect => effect.arguments[0]).filter(Boolean)
+      const outsideEffect = accesses.find(access => !effectCallbacks.some(callback => isNodeWithin(access, callback)))
+      if (!attachedToJsx && outsideEffect && mutations.some(access => effectCallbacks.some(callback => isNodeWithin(access, callback)))) {
+        throw sourceNodeError(outsideEffect, sourceFile, "Effect-owned mutable refs cannot be used outside their owning effect; use a state-driven effect and keep resource callbacks effect-local")
+      }
       if (!frameAssignments.length && refInitializer?.kind === ts.SyntaxKind.NullKeyword && !invalidReference && !effects.length) {
         const owners = effectCalls.filter(effect => {
           const callback = effect.arguments[0]

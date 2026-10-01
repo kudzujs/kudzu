@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.16.44 - Owned Ref Boundary And Browser Errors
+
+- A real R22 Realtime attempt built successfully but could not connect: an
+  effect assigned callbacks into unattached refs that intrinsic handlers read,
+  and the emitted browser refs had getter-only `.current` values. Kudzu now
+  rejects that cross-owner mutable ref at the authored handler line with an
+  existing state-driven effect alternative. A reduced failing fixture turns
+  green; the accepted R8 WebSocket source still passes Chrome acceptance and
+  emits eleven byte-identical deploy files including a zero-JavaScript sibling.
+- The repository-only browser smoke now reports caught `console.error(Error)`
+  objects instead of falsely returning success on that unchanged failed
+  artifact. Ordinary console strings are not treated as failures. Shared CDP
+  connection setup waits for both parts of `DevToolsActivePort`, covering a
+  reproduced partial-file race. Historical npm `Invalid URL` logs lack that
+  file and are not claimed to have this proven cause.
+- A frozen diagnostic-only R22 model block scored 5/5 in both arms with an
+  8.9% lower candidate cost per success, but its independent confirmation has
+  four unknown timeout tails and one additional browser failure; no replicated
+  AI-cost advantage or R8 rescore is claimed. The original R8/1.0 gate remains
+  blocked. Raw evidence is retained separately from published package files.
+- Adds this release's site page and current-release links. Generator 0.1.158
+  and its compatible `^0.16.36` core range remain unchanged.
+
 ## 0.16.43 - Publication Browser Gate Separation
 
 - Forward-releases the unchanged 0.16.42 compiler and generated AI helper after

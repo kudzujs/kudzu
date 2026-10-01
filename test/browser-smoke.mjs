@@ -149,8 +149,8 @@ export async function browserSmoke(directory, commands, emit = console.log, time
           throw error
         }
       }
-      emit(JSON.stringify({ completed: true, ok: !cdp.exceptions.length && !cdp.failures.length && !requests.length, exceptions: cdp.exceptions.slice(0, 20), failedRequests: cdp.failures.slice(0, 20), httpErrors: requests }))
-      if (cdp.exceptions.length || cdp.failures.length || requests.length) throw new Error("Browser errors observed")
+      emit(JSON.stringify({ completed: true, ok: !cdp.exceptions.length && !cdp.consoleErrors.length && !cdp.failures.length && !requests.length, exceptions: cdp.exceptions.slice(0, 20), ...(cdp.consoleErrors.length ? { consoleErrors: cdp.consoleErrors } : {}), failedRequests: cdp.failures.slice(0, 20), httpErrors: requests }))
+      if (cdp.exceptions.length || cdp.consoleErrors.length || cdp.failures.length || requests.length) throw new Error("Browser errors observed")
     })()])
   } finally {
     stopped = true

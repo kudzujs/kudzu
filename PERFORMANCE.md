@@ -1,5 +1,233 @@
 # Performance Records
 
+## R22 Caught Browser Error Visibility And CDP Port Validation (2026-10-01, local)
+
+The preserved R22 confirmation candidate-3 output provides a real browser
+failure: its effect logs a caught `TypeError` from a read-only ref `.current`,
+creates zero sockets, and leaves the connection at `connecting`. Before this
+change, the repository-only browser smoke reported `completed: true, ok: true`
+because its shared CDP transport collected only uncaught
+`Runtime.exceptionThrown` events. A focused real-Chrome fixture reproduces
+that false pass and now reports `ok: false` with an optional, bounded
+`consoleErrors` entry for `console.error(Error)` objects. Plain string console
+messages retain the existing success behavior. The unchanged R22 deploy files
+replay with the original getter-only TypeError visible; no page, grader,
+acceptance contract, model input or historical attempt was rewritten.
+
+A separate focused fixture first showed `waitForPort()` returning
+`{ port: "9222", path: undefined }` from a partly written Chrome
+`DevToolsActivePort` file. The shared transport now waits for a valid numeric
+port and browser path before constructing the URL. This is consistent with the
+`Invalid URL` seen in one historical publication run, whose port-file contents
+were not retained; it does **not** establish that the historical failure had
+this cause. Both changes are repository browser-tool guards, add no compiler
+semantic/pass, browser runtime concept or shipped application byte, and have
+no measured AI-token effect. The original R22 score and unknown timeout tails
+remain untouched; the local replay receipt is
+`test-results/ai-delivery-production/realtime-ref-diagnostic-r22-20260930/browser-logging.json`.
+
+## R22 Realtime Diagnostic-Only AI Cost Trial And Confirmation (2026-09-30)
+
+The real R8 Realtime first-build ref rejection supplies a narrow, already
+released treatment: two source-located diagnostics added an effect-local
+variable/cleanup alternative in 0.16.41. An offline preflight copied published
+0.16.43 core into two locally packed arms and removed **only those two strings**
+from the control. The 60 packed core paths otherwise match byte-for-byte;
+starter source, installed package metadata, R8 prompt, public context, frozen
+adapter/acceptance, model `openai/gpt-5.6-sol`, OpenCode 1.18.27, tools, budgets
+(300 seconds and 400,000 input tokens per attempt), and serial five-pair
+schedule are identical. The two arms emit 11 byte-identical files and both
+pass unchanged Chrome acceptance on the archived final R8 Realtime source.
+This is a diagnosis-cost test, not a new framework feature or historical rescore.
+
+The first ten-attempt block completes with **5/5 success per arm**, no budget
+failures and fully attributable usage. Failure-inclusive totals are control
+1,296,263 versus diagnostic 1,180,345 tokens: 259,252.6 versus 236,069 per
+success (8.9% lower in this block). Four of five pairs use fewer candidate
+tokens, one uses 78,113 more. Four candidate agents encounter the new text;
+**all ten first authored builds fail**, so it did not prevent initial compiler
+corrections. This one block is provisional, not a causal token-saving claim.
+
+The separately frozen, same-protocol ten-attempt confirmation is **incomplete**:
+control 2/5 and diagnostic 3/5 scored successes, with three control and one
+candidate deadline failures whose model-usage tails are unknown. Another
+fully-attributable candidate fails independent browser acceptance because the
+connection status never reaches `connected`. Recorded totals of 1,062,887 and
+887,444 are lower bounds, **not comparable failure-inclusive costs**; no
+confirmation or combined cost-per-success ranking exists. Preserve every
+failure, do not selectively retry, and do not present the first block as a
+replicated AI advantage. The original R8 23/25 versus 24/25 and blocked 1.0
+gate are unchanged; the published diagnostic remains valid correctness guidance.
+
+Both full attempt schedules, the partial timeout evidence, frozen inputs,
+exact score reports and decision are retained in the 5,355,168-byte local
+`test-results/ai-delivery-production/realtime-ref-diagnostic-r22-20260930-audited.tar.gz`
+(SHA-256 `9281d659ec102dd6b83b68dc1e3cc67979c4df65972510aea01cb51b69b9985c`).
+All 608 manifest files and the archive digest verify. No third batch, source
+semantic, scorer, released package or benchmark input was changed.
+
+## R22 Effect-To-Handler Callback Ref Boundary (2026-09-30, local candidate)
+
+The independent confirmation also retained one **fully attributable** candidate
+failure beyond the four timeout tails. Its authored `src/pages/index.tsx:108`
+reads `resumeUpdates.current` in an intrinsic handler after the owning effect
+assigns a callback to that unattached `useRef(null)`. The published compiler
+accepted and emitted this source, but unchanged artifacts stay at `connecting`:
+Chrome reports zero WebSockets and logs `TypeError: Cannot set property current
+of #<Object> which has only a getter` before effect setup can connect. The
+frozen independent acceptance times out waiting for `connected`. This is an
+actual fail-open compiler boundary, not a reason to rescore that attempt.
+
+A reduced ordinary TSX regression first built against the published compiler
+and failed its required rejection assertion. The effect-private ref pass now
+rejects a mutable ref written inside an effect when a direct `.current` use
+escapes all component effects. It points to a state-driven effect and
+effect-local callbacks at the authored handler line. A reduced state-driven
+pause/resume alternative compiles; the original archived R8 Realtime supported
+source passes its unchanged browser acceptance. That source still emits **11
+byte-identical files / 44,081 raw and 15,176 aggregate gzip bytes** versus
+published 0.16.43, including a zero-JavaScript static sibling. The failing
+R22 source now stops at its authored line instead of shipping a broken route.
+
+Semantic primitives, ModuleIR kinds, passes and browser runtime concepts added:
+zero. Core semantic source: `effect-private-ref-pass.mjs` +5 LOC; no accepted
+source or browser bytes change. The earlier first full and standalone Chrome
+gates encountered separate project-journey context/timing failures; focused
+ownership checks and the unchanged-source browser replay passed, followed by
+required-Chrome `npm test` (standalone 1/1 then 348/348, no skips),
+`npm run check`, `npm run test:package` and `git diff --check`. This local
+diagnostic correction is **unmeasured for model cost**, changes no original
+R22 result, and is not a new release or 1.0 acceptance. Offline debug and
+output parity receipts remain beside the archived experiment.
+
+## R8 Real-Source Build Transfer Check (2026-09-30, offline)
+
+Two accepted final Kudzu sources from the immutable R8 archive (Content
+ordinal 2, 14 authored files; Realtime ordinal 2, eight files) were hash-checked
+and copied to temporary workspaces. Their authored manifests and lockfiles
+remained byte-identical; only the installed core was changed to released
+`0.16.41` or `0.16.43`. One warm-up and seven alternating fresh-output
+`npm run build` runs per version and task include npm startup and, for Content,
+the authored TypeScript check. Both versions pass the unchanged independent
+Chrome behavior/accessibility/output acceptance on both tasks.
+
+| Real R8 source | 0.16.41 build median (range) | 0.16.43 build median (range) | Candidate-minus-baseline paired range | Deploy parity |
+|---|---:|---:|---:|---|
+| Content | 999.4 ms (948.8–1,135.4) | 954.0 ms (947.0–1,006.1) | -142.2 to +57.3 ms | 20 identical files / 65,841 B |
+| Realtime | 712.1 ms (661.7–730.3) | 721.4 ms (682.6–843.6) | -35.8 to +131.5 ms | 11 identical files / 44,081 B |
+
+Content's matched deploy digest is
+`42de8c735c1a37c09b56b6de1be19ae40265f4c81e270a396d68e122729e0e04`;
+Realtime's is
+`3272fc77212fc5f0772f261bef5060d8c1c8e899fd9f7ce47f8bf756093d49f9`.
+The ranges overlap and both tasks have rounds favoring each version: no
+reliable whole-build win follows from the earlier 50-route synthetic graph
+speedup. The full raw samples and initial probe are retained in
+`test-results/ai-delivery-production/r8-real-source-build-20260930/` (ignored
+local evidence). This is an offline replay of final source with newer packages,
+not original 0.16.26 scoring, model authoring, token-cost measurement or a
+cross-framework benchmark. Original traces, artifacts and scores remain intact.
+
+Seven additional fresh-process **instrumented core 0.16.43 builds** of those
+same copied sources retain the exact paired-output digests above. Content's
+core-build median is 439.8 ms, with source read 12.0 ms, graph 28.0 ms, parse
+44.4 ms, normalize 28.7 ms, render 29.0 ms and write 70.9 ms medians. Realtime
+is 323.4 ms, with 11.7 / 27.4 / 38.3 / 18.7 / 14.5 / 58.9 ms respectively.
+These stages overlap (TypeScript parse work occurs within graph/compilation),
+and instrumented core time excludes the npm process startup and Content's
+separate authored `tsc` check; do not sum the stage medians or compare them
+as identical measurements to the `npm run build` table. On these small real
+fixtures graph traversal is roughly 28 ms, not a demonstrated whole-build
+bottleneck. `profile.json` holds the raw per-run phase records. No further
+compiler cache or browser runtime is added on this evidence.
+
+## R8 Independent-Task Provider Cache-Read Attribution (2026-09-30, offline)
+
+All 40 original Forms, CRUD, Commerce and Realtime result/trace pairs and their
+protocol hashes verify against the R8 SHA-256 manifest. Each provider token
+partition reconciles with its original attempt and prior failure-inclusive
+task totals. Phase boundaries use the first **executed** agent-owned build:
+Forms' three invalid-workdir calls do not run a compiler, and the one React
+CRUD attempt without a build retains 40,519 tokens as unpartitioned.
+
+| R8 task (Kudzu / React successes) | Total Kudzu minus React tokens | Provider cache-read difference | After executed build, total difference | After executed build, cache-read difference |
+|---|---:|---:|---:|---:|
+| Forms (5/5 / 5/5) | +59,540 | +71,808 | -26,510 | -22,656 |
+| CRUD (5/5 / 4/5) | +138,179 | +94,464 | +22,329 | +30,720 |
+| Commerce (5/5 / 5/5) | +6,324 | +7,040 | +23,120 | +22,400 |
+| Realtime (5/5 / 5/5) | +331,115 | +300,160 | +260,034 | +252,160 |
+
+Realtime's equal-success gap is dominated by cache reads, including after the
+first build; Forms' post-build difference goes the opposite direction and CRUD
+has unequal success and an unpartitioned React failure. Across these 40 traces
+the conservative auditor finds zero exact repeated file read/search outputs.
+Together with the separate Content ledger, this is **provider input accounting**
+across multiple tasks, not evidence that a local file cache, generic guidance,
+or removing any one command would save those tokens. The read-only receipt is
+`test-results/ai-delivery-production/r8-cache-cost-20260930/report.json`
+(ignored local evidence). Original scores, failures, model inputs and timeout
+attribution remain unchanged; no provider calls or compiler changes were made.
+
+## R8 Content Provider Cache-Read Attribution (2026-09-30, offline)
+
+All ten original Content result/trace pairs and the frozen protocol verify
+against the R8 SHA-256 manifest; provider usage reconciles with the scored
+attempts without changing failures. Kudzu records 187,672 uncached input plus
+1,673,984 provider cache-read tokens, while React + Vite records 128,718 plus
+522,368. Cache reads are **1,151,616 of the 1,220,021 total-token difference**
+across all five attempts per framework. After the first agent-owned build,
+Kudzu records 996,352 cache reads in 1,052,052 total tokens versus React's
+174,720 in 184,641: **821,632 of the 867,411 post-build gap** is cache reads.
+These are charged model-input tokens, not tool-output bytes or reusable
+application-file cache entries.
+
+Both Kudzu Content budget failures retain passing independent acceptance and
+their original input overruns. Across all ten traces the conservative auditor
+finds **zero exact repeated read/search request-and-output observations**;
+this does not exclude overlapping reads or repeated semantics. Neither a local
+read cache nor deletion of one failed raw-HTML assertion has a measured
+recoverable token value. The read-only receipt is
+`test-results/ai-delivery-production/r8-content-usage-20260930/report-v2.json`
+(ignored local evidence). No scorer, provider call, frozen input, benchmark
+result or framework feature changes; `0.21.4` remains blocked.
+
+## R8 Cross-Task Authored Shell Verification (2026-09-30, offline)
+
+A read-only inventory checks all 50 R8 attempt results, protocol hashes,
+adapter streams and usage against the frozen SHA-256 manifest. Content has 18
+agent-authored shell calls; seven inspect or assert generated HTML after a
+successful build. The two failed assertions are the original Kudzu Content
+ordinals 2 and 4. The other four tasks have 51 shell calls (Forms 14, CRUD 9,
+Commerce 11, Realtime 17), **all exactly `npm run build`**. Three Forms calls
+are invalid-workdir tool errors, not builds; failing Commerce/Realtime calls
+are compiler attempts. None is an independent agent-authored HTML text check.
+
+The versioned read-only inventory and original failure excerpts are under
+`test-results/ai-delivery-production/r8-shell-verification-20260930/` (ignored
+local evidence). This extends the earlier negative browser-command inventory;
+it does not prove independent agents never inspected content by other means.
+Do not ship a new generic text-check hint or claim avoidable model tokens from
+these seven commands. R8 scores, provider usage, budgets, acceptance and raw
+attempts remain unchanged; no new model call was made.
+
+## 0.16.43 Release Delivery Closure (2026-09-30)
+
+Exact commit `b5959aa` passed [Node 22 and required-Chrome Node 24 CI](https://github.com/kudzujs/kudzu/actions/runs/36543226746).
+The immutable [v0.16.43 release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.43)
+and [protected npm workflow](https://github.com/kudzujs/kudzu/actions/runs/36544151787)
+completed with core `0.16.43` and generator `0.1.158`. Downloaded package
+SHA-512/SHA-1 metadata matches the local packs. Fresh default and AI apps
+install core 0.16.43, pass check, and emit four matching deploy files after
+normalizing their different project names; About stays script-free. Installed
+README, compiler source and generated AI helper match the release checkout.
+
+Cloudflare deployment `f8b7e179-e295-4a17-a948-53348ff8466a` serves the
+new [release page](https://kudzujs.cloud/releases/0.16.43/). Public home,
+docs, examples, release pages 0.16.41–0.16.43 and sitemap match local HTML
+byte-for-byte. The 0.16.42 tag and both failed npm attempts remain historical;
+neither package was published at that version. This closes delivery, not the
+`0.21.4` AI success/cost gate, and establishes no model-token saving.
+
 ## 0.16.42 GitHub-Only Publication Failure And 0.16.43 Forward Fix (2026-09-29)
 
 The exact 0.16.42 commit `2099680` passed both Node 22 and required-Chrome
