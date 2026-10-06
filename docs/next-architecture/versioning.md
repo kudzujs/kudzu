@@ -71,14 +71,17 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
-The user-authorized core `0.16.46` and generator `0.1.159` patch transaction
+The completed core `0.16.46` and generator `0.1.159` patch transaction
 extends managed AI check process-table inspection from one to five seconds after
 two parallel-suite `ps` deadline failures. A deterministic delayed-inspection
-regression retains exact descendant cleanup and sibling survival. Compiler,
-default generator app, and browser output are unchanged; no AI cost benefit
-is measured. Require exact-commit required-Chrome CI, immutable tag/GitHub
-release, protected npm publication of both packages, registry integrity,
-fresh default/AI installs, and independently verified public website URLs.
+regression retains exact descendant cleanup and sibling survival. Exact commit
+`e6b6df7` passed [Node 22 and required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/37395479199),
+[protected publication of both packages](https://github.com/kudzujs/kudzu/actions/runs/37395933522),
+registry integrity, fresh default/AI installs, and independently verified
+[public website URLs](https://kudzujs.cloud/releases/0.16.46/).
+[v0.16.46](https://github.com/kudzujs/kudzu/releases/tag/v0.16.46) retains
+the evidence. Compiler, default generator app, and browser output are unchanged;
+no AI cost benefit is measured. The `0.21.4` gate remains blocked.
 
 The completed core `0.16.45` transaction closes the R22 named-component
 non-null-ref diagnostic boundary while preserving keyed-row and setter-child

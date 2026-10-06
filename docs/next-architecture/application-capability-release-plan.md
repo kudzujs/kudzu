@@ -10,15 +10,25 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-The user authorizes core `0.16.46` and `create-kudzu@0.1.159` patch release
-closure for the managed AI check inspection deadline correction below. The
-one-line timeout change and delayed-process-table regression retain owned
-descendant cleanup, sibling isolation, and inspection failure reporting. The
-generator's `^0.16.36` core range and default app remain unchanged; core
-compiler semantics and browser bytes are unchanged. Require exact-commit
-required-Chrome CI, immutable tag/GitHub release, protected npm publication
-of both packages, registry/fresh installs, and separate public website checks.
-No AI-cost improvement or original R8/R22 rescore is implied.
+Core `0.16.46` and `create-kudzu@0.1.159` are complete: exact commit
+`e6b6df707ba61bd26d5c450522e910f42453e916` passed [Node 22 and
+required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/37395479199),
+[protected publication of both packages](https://github.com/kudzujs/kudzu/actions/runs/37395933522),
+registry integrity (`@kudzujs/core`: `sha512-n6dPr0vBcSDX4y0ODI0mX52xLOI1a2/HnlyGZLHT+CwFYml3fQaTYpbRP9UWBBsZb/+qH5JfhfZV80yzcN0RXw==`;
+`create-kudzu`: `sha512-EMp3WYtNkjLxq6ekKtbF0GuJwxV66HjMj756zipT3cGXqOMi646z8kg8d0EwZ4k7NQK6FjhNRWnE9JPzAap24A==`),
+and fresh default/AI installs resolving core 0.16.46. The installed AI helper
+contains the five-second inspection limit and passes its check. The immutable
+[v0.16.46 release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.46)
+and independent [website verification](https://kudzujs.cloud/releases/0.16.46/)
+complete the transaction: Cloudflare version
+`19a5ae8d-bb44-4481-b396-53a45180622a` serves matching homepage, docs,
+examples, release note, and sitemap bytes at both public origins. Descendant
+cleanup, sibling isolation and inspection failure reporting remain intact.
+The generator's `^0.16.36` core range and default app remain unchanged; core
+compiler semantics and browser bytes are unchanged. No AI-cost improvement,
+R8/R22 rescore or 1.0 acceptance is implied. The next `0.21.4` step still
+requires an unrelated real failure or a distinct predeclared correction before
+any separately authorized equal-condition model work.
 
 Core `0.16.45` is complete: exact commit `dbcef2af5ec0d04ea54a40f19c4299c09f3f4dd2`
 passed [Node 22 and required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36807476603),
