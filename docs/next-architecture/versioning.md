@@ -66,18 +66,30 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.158` retains the explicit install instructions, provides opt-in
+`create-kudzu@0.1.159` retains the explicit install instructions, provides opt-in
 `--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.16.36`.
 
 ## Release Boundary
 
-The user-authorized core `0.16.45` transaction closes the R22 named-component
+The user-authorized core `0.16.46` and generator `0.1.159` patch transaction
+extends managed AI check process-table inspection from one to five seconds after
+two parallel-suite `ps` deadline failures. A deterministic delayed-inspection
+regression retains exact descendant cleanup and sibling survival. Compiler,
+default generator app, and browser output are unchanged; no AI cost benefit
+is measured. Require exact-commit required-Chrome CI, immutable tag/GitHub
+release, protected npm publication of both packages, registry integrity,
+fresh default/AI installs, and independently verified public website URLs.
+
+The completed core `0.16.45` transaction closes the R22 named-component
 non-null-ref diagnostic boundary while preserving keyed-row and setter-child
-source errors. Accepted R8 WebSocket output and browser behavior remain
+source errors. Exact commit `dbcef2a` passed [Node 22 and required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36807476603),
+[protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36808001405),
+registry integrity, fresh default/AI installs, and independently verified
+[public website URLs](https://kudzujs.cloud/releases/0.16.45/).
+[v0.16.45](https://github.com/kudzujs/kudzu/releases/tag/v0.16.45) retains
+the evidence. Accepted R8 WebSocket output and browser behavior remain
 byte-identical; no AI-cost saving is claimed. Generator `0.1.158` and its
-`^0.16.36` core range remain unchanged. Require exact-commit Chrome CI,
-immutable tag/GitHub release, protected npm publication, registry/fresh
-installs and separately verified website URLs before closure.
+`^0.16.36` core range remain unchanged. The `0.21.4` gate is still blocked.
 
 The completed core `0.16.44` transaction closed the real R22
 effect-to-handler callback-ref fail-open boundary, the repository-only caught

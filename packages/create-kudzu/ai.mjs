@@ -58,7 +58,7 @@ export async function check(root, timeoutMs = 300000) {
           const pids = [managed ? child.pid : -child.pid]
           if (managed) {
             // Keep the outer group alive on this tool's timeout; stop only its ordinary descendants.
-            const table = spawnSync("ps", ["-A", "-o", "pid=", "-o", "ppid="], { encoding: "utf8", timeout: 1000, maxBuffer: 1024 * 1024 })
+            const table = spawnSync("ps", ["-A", "-o", "pid=", "-o", "ppid="], { encoding: "utf8", timeout: 5000, maxBuffer: 1024 * 1024 })
             if (table.status !== 0) error = table.error?.message || table.stderr?.trim() || "Could not inspect managed check descendants"
             else {
               const parents = table.stdout.trim().split("\n").map(line => line.trim().split(/\s+/).map(Number))

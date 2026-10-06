@@ -16,7 +16,7 @@ Use `--no-install` to create the files without installing dependencies.
 
 ## Optional AI authoring guidance
 
-`create-kudzu@0.1.158` provides optional local AI developer tools with managed check cancellation:
+`create-kudzu@0.1.159` provides optional local AI developer tools with managed check cancellation:
 
 ```bash
 npm create kudzu@latest my-app -- --ai

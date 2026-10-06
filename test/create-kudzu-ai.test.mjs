@@ -122,9 +122,13 @@ test("managed check timeout and interruption stop its descendants without killin
     const root = await mkdtemp(join(tmpdir(), "kudzu-ai-managed-"))
     await writeFile(join(root, "package.json"), JSON.stringify({ private: true, type: "module", scripts: { check: "node worker.mjs" } }))
     await writeFile(join(root, "worker.mjs"), 'import{spawn}from"node:child_process";import{writeFileSync}from"node:fs";const child=spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"ignore"});writeFileSync("workers.json",JSON.stringify([process.pid,child.pid]));console.log("worker started");setInterval(()=>{},1000)')
+    if (mode === "timeout") {
+      await mkdir(join(root, "bin"))
+      await writeFile(join(root, "bin/ps"), '#!/bin/sh\nsleep 1.2\nexec /usr/bin/ps "$@"\n', { mode: 0o755 })
+    }
     const helper = new URL("../packages/create-kudzu/ai.mjs", import.meta.url).href
     const script = `import{spawn,spawnSync}from'node:child_process';const {check}=await import(${JSON.stringify(helper)});const sibling=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});try{const result=await check(${JSON.stringify(root)},${mode === "timeout" ? 3000 : 10000});const state=spawnSync('ps',['-p',String(sibling.pid),'-o','stat='],{encoding:'utf8'}).stdout.trim();console.log(JSON.stringify({result,siblingAlive:!!state&&!state.startsWith('Z')}))}finally{sibling.kill('SIGKILL')}`
-    const outer = spawn(process.execPath, ["--input-type=module", "-e", script], { detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, KUDZU_AI_DELIVERY_GROUP: "1" } })
+    const outer = spawn(process.execPath, ["--input-type=module", "-e", script], { detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, KUDZU_AI_DELIVERY_GROUP: "1", PATH: mode === "timeout" ? `${join(root, "bin")}:${process.env.PATH}` : process.env.PATH } })
     let stdout = "", stderr = ""
     outer.stdout.on("data", data => { stdout += data })
     outer.stderr.on("data", data => { stderr += data })

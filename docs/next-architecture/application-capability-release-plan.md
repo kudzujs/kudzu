@@ -10,14 +10,41 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-The user authorizes core `0.16.45` release closure for the R22 first-build
-named-component ref diagnostic and current website note. The first broad
-candidate preempted existing keyed-row/setter-child errors; the accepted guard
-now leaves those JSX-attached ref paths to their original source diagnostics.
-The R8 WebSocket fixture stays byte-identical with a zero-JavaScript sibling.
-Generator 0.1.158 and core range `^0.16.36` remain unchanged. Require exact
-commit CI, immutable tag/GitHub release, protected npm, registry/fresh installs
-and public website checks; no AI-token saving or original rescore is implied.
+The user authorizes core `0.16.46` and `create-kudzu@0.1.159` patch release
+closure for the managed AI check inspection deadline correction below. The
+one-line timeout change and delayed-process-table regression retain owned
+descendant cleanup, sibling isolation, and inspection failure reporting. The
+generator's `^0.16.36` core range and default app remain unchanged; core
+compiler semantics and browser bytes are unchanged. Require exact-commit
+required-Chrome CI, immutable tag/GitHub release, protected npm publication
+of both packages, registry/fresh installs, and separate public website checks.
+No AI-cost improvement or original R8/R22 rescore is implied.
+
+Core `0.16.45` is complete: exact commit `dbcef2af5ec0d04ea54a40f19c4299c09f3f4dd2`
+passed [Node 22 and required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36807476603),
+[protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36808001405),
+registry integrity (`sha512-Wjjg3OA+aH96nKVZkty00i6qQCnka0HmqbNn6T8LiXgg/IWWsQV9QS5dbI4er2E9zeLqSjujzUUD/9v3vuD7hg==`),
+fresh default/AI installs resolving core 0.16.45, and separate public
+[website verification](https://kudzujs.cloud/releases/0.16.45/). Cloudflare
+version `4bfba813-9143-4d28-bb00-7c90fe224a09` serves matching homepage,
+docs, examples, release note, and sitemap bytes at both public origins. The
+immutable [v0.16.45](https://github.com/kudzujs/kudzu/releases/tag/v0.16.45)
+retains the named-component ref diagnostic: keyed-row/setter-child errors and
+the accepted R8 WebSocket output remain unchanged. Generator 0.1.158 and core
+range `^0.16.36` are unchanged; neither R8/R22 scores nor AI cost are revised.
+The `0.21.4` success-and-cost gate remains blocked; this release does not
+authorize another model batch or a speculative compiler capability.
+
+Pre-release generator check: the default parallel suite
+twice hit `spawnSync ps ETIMEDOUT` while verifying managed check descendant
+cleanup; its standalone and serial runs passed. Keep the existing fail-closed
+process-table inspection and sibling isolation, but allow up to five seconds
+for `ps` under parallel load instead of one. An existing managed-owner test
+now delays its `ps` lookup by 1.2 seconds while checking descendant cleanup
+and sibling survival. The default parallel 352-test suite, package smoke and
+site build pass with this candidate. It changes no compiler semantics or
+application browser bytes; the previously published generator 0.1.158 remains
+immutable, and no AI-cost saving is established.
 
 Core `0.16.44` is complete: exact commit `458d0b7` passed [required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/36800285785),
 [protected npm publication](https://github.com/kudzujs/kudzu/actions/runs/36800947934),

@@ -1,5 +1,20 @@
 # Kudzu Releases
 
+## 0.16.46 - Managed AI Check Cleanup
+
+- Two full parallel test runs found that the generated AI check's managed-runner
+  cleanup can report `spawnSync ps ETIMEDOUT` while inspecting the process tree:
+  the one-second inspection limit is too narrow under parallel load. Allow up
+  to five seconds, retaining failure reporting if inspection still fails.
+- The existing owner regression now delays `ps` by 1.2 seconds and checks that
+  a timed-out check kills its descendants without killing sibling work. The
+  default parallel suite, required Chrome, and packed default/AI app checks
+  validate this generator-only correction; the compiler and browser artifacts
+  are unchanged. No model-token or task-success improvement is claimed.
+- Publishes `create-kudzu@0.1.159` alongside core 0.16.46. The generator's
+  `^0.16.36` core range and default project source stay unchanged. Adds the
+  current website release note and links; the R8/1.0 AI gate remains blocked.
+
 ## 0.16.45 - Named Component Ref Diagnostics
 
 - An archive-verified inventory of R22's twenty Realtime attempts finds four
