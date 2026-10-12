@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.16.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.47](https://github.com/kudzujs/kudzu/releases/tag/v0.16.47).** The opt-in `create-kudzu@0.1.160` AI check inspects only its own Linux process subtree, including worker-thread children, while preserving sibling work and reporting inspection failures. Repository browser checks now reject disconnected commands instead of waiting indefinitely. Compiler behavior and browser output remain unchanged. No reliable AI-token saving is established; the AI-cost/1.0 gates remain blocked.
+**Current release: [0.16.48](https://github.com/kudzujs/kudzu/releases/tag/v0.16.48).** Binding setup uses one native attribute read per selected property and removes temporary arrays and name conversion. Measured JavaScript savings are 53 raw / 43 gzip bytes in C2 and 153 / 119 in Project, with unchanged HTML, route plans and application behavior. The 21-profile comparison does not establish faster row restoration. Generator `create-kudzu@0.1.160` is unchanged. No reliable AI-token saving is established; the AI-cost/1.0 gates remain blocked.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

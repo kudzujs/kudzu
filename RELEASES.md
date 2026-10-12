@@ -1,5 +1,25 @@
 # Kudzu Releases
 
+## 0.16.48 - Lean Binding Mounts
+
+- Discover property bindings with one native attribute read and an ordinary
+  loop, removing `flatMap()` intermediates and the capitalization helper.
+  Runtime-family property selection, descriptor order, parsing, state and
+  DOM ownership retain their existing behavior.
+- C2 JavaScript shrinks by 53 raw / 43 aggregate gzip bytes; Project shrinks by
+  153 / 119 across three families. Eight paired fixtures retain complete HTML,
+  emitted paths and RouteIR. Exact Project output totals/hash are updated to
+  the measured result without changing acceptance or gzip tolerances.
+- Twenty-one rotating fresh profiles per baseline/candidate/React arm pass the
+  unchanged C2 journey, including identity, cleanup, remount, accessibility,
+  resilience and zero-JavaScript static siblings. Restore medians are 59.0 /
+  58.6 ms, but the paired candidate-minus-baseline median is +0.3 ms: this is
+  output simplification, not a demonstrated latency improvement. The measured
+  React restore gap and separate AI-delivery gate remain open.
+- Adds no semantic primitive, compiler pass, runtime concept or public API.
+  Generator 0.1.160 and its `^0.16.36` core range are unchanged. Adds the
+  current website note and links; no AI-token saving is claimed.
+
 ## 0.16.47 - Scoped AI Cleanup And Browser Verification
 
 - Linux managed AI checks inspect their own `/proc` process subtree instead of

@@ -10,6 +10,31 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+The user authorizes the `0.16.48` release transaction for the binding-mount
+simplification below. Generator 0.1.160 remains unchanged. Complete the exact
+versioned checks, reviewed commit/push, Node 22/required-Chrome CI, immutable
+tag/GitHub release, protected npm publication, fresh installs and public website
+verification. Earlier local-candidate statements retain their session meaning;
+no additional optimization or model experiment is included in this release.
+
+Local continuation after 0.16.47 (2026-10-12): C2 CPU profiles identify binding
+mounting and structural row filling as contributors to owned-row restoration.
+The bounded next packet simplifies property descriptor discovery to one native
+attribute read and a loop, deleting the capitalization helper. A complete
+21-profile rotating baseline/candidate/React comparison passes every original
+journey. It saves 53 raw / 43 gzip C2 bytes and 153 / 119 Project bytes, but
+does **not** demonstrate faster restoration: medians are 59.0/58.6 ms and the
+paired candidate-minus-baseline median is +0.3 ms. React is 38.8 ms in this
+shared-host observation; the performance blocker stays open. This is a local
+output simplification, not completion of the isolated-host performance gate.
+Eight paired fixtures retain HTML, paths and RouteIR; check, required-Chrome
+1 + 354 tests with no skips and package smoke pass. Preserve the complete
+evidence in `PERFORMANCE.md`; no new primitive, pass, runtime concept, public
+API or model trial is added. This packet remains uncommitted/unreleased.
+Next performance work must separate structural row filling, lifecycle attachment
+and layout costs before selecting another candidate; do not promote this byte
+reduction or the rejected attribute-write shortcut into a latency claim.
+
 Core `0.16.47` and `create-kudzu@0.1.160` are complete: exact commit
 `5f064337f6f88c8f052e8f834eeb61914e71ad88` passes [Node 22 and required-Chrome
 CI](https://github.com/kudzujs/kudzu/actions/runs/38203572521), [protected npm

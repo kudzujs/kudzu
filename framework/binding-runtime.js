@@ -71,9 +71,11 @@ function mountBindings(root) {
     mountedBindings.add(node)
     const registrations = []
     bindingRegistrations.set(node, registrations)
-    const descriptors = globalThis.__KUDZU_PROPERTY_BINDINGS__ !== false ? bindingTypes.flatMap(target => node.hasAttribute(`data-k-bind-${target}`)
-      ? [[target, JSON.parse(node.dataset[`kBind${capitalize(target)}`])]]
-      : []) : []
+    const descriptors = []
+    if (globalThis.__KUDZU_PROPERTY_BINDINGS__ !== false) for (const target of bindingTypes) {
+      const encoded = node.getAttribute(`data-k-bind-${target}`)
+      if (encoded !== null) descriptors.push([target, JSON.parse(encoded)])
+    }
     if (globalThis.__KUDZU_ATTRIBUTE_BINDINGS__ !== false && node.dataset.kBindAttrs) descriptors.push(...JSON.parse(node.dataset.kBindAttrs).map(({ target, ...descriptor }) => [target, descriptor]))
     for (const [target, descriptor] of descriptors) {
       if (descriptor.state) {
@@ -338,10 +340,6 @@ function patchText(start, value) {
     return
   }
   if (next) end.before(start.ownerDocument.createTextNode(next))
-}
-
-function capitalize(value) {
-  return value[0].toUpperCase() + value.slice(1)
 }
 
 function isStringBooleanAttribute(name) {

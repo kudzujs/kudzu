@@ -1,5 +1,107 @@
 # Performance Records
 
+## 0.16.48 Versioned Release Preflight (2026-10-12)
+
+The user-authorized core 0.16.48 candidate passes `npm run check` (250 pages),
+the required-Chrome standalone 1/1 plus remaining 354/354 tests with zero skips,
+package smoke and the website deployment dry run. Generator 0.1.160 remains
+unchanged; paired default/AI apps retain four identical deploy files at 9,758
+raw / 3,741 aggregate gzip bytes and 1,828-byte guidance. The first versioned
+run rejected shortened R19 website evidence copy; restoring the explicit
+historical confirmation statement fixes that documentation assertion without
+changing the test or acceptance. The complete versioned rerun passes.
+The measured output reductions below remain the release's scope; exact-commit
+CI, immutable tag, registry/fresh-install and deployed-site verification are
+separate publication gates.
+
+## C2 Binding Mount Read Simplification (2026-10-12, local candidate)
+
+The next investigation starts from released 0.16.47 at `75bb1a0`. The original
+C2 source and full behavioral/accessibility/ownership/resilience acceptance
+remain unchanged. A separate one-profile Kudzu/React diagnostic enables CDP
+CPU sampling only around row filter/restore; its timings are not competitive
+samples. Kudzu restore attributes about 9.421 ms inclusive to binding mounting
+and 8.292 ms to structural row filling. Its completion callback, including
+forced layout, accounts for 28.328 ms. These samples identify work to inspect,
+not recoverable savings or the complete cause of the React gap.
+
+`mountBindings()` builds property descriptors through `flatMap()`, empty
+intermediate arrays, presence checks and dataset-name capitalization. A
+single `getAttribute()` per selected property and an ordinary loop preserve
+descriptor order and parsing while deleting the capitalization helper. The
+existing codegen still chooses property kinds per runtime family. No value
+write is skipped; this is distinct from the rejected attribute-write candidate.
+
+Before applying it to production source, a frozen scratch comparison runs
+baseline, candidate and React in rotating order: one build warm-up, seven
+measured cold builds and **21 fresh Chrome profiles per arm**. All 63 complete
+journeys pass original acceptance, including exact cleanup, retained identity,
+fresh remount, SVG keyboard behavior, delayed/missing scripts and zero-JS static
+siblings. CPU profiling is disabled during these measurements. The command is
+`node /tmp/opencode/compare-kudzu-c2-binding-read.mjs`; its bounded copied runner
+and protocol are preserved in the archive below. This is a three-arm diagnostic
+comparison, not a rerun of the entire five-framework release matrix.
+
+| Metric | Baseline | Candidate | React 19.2.8 |
+|---|---:|---:|---:|
+| Owned row restore median | 59.0 ms | 58.6 ms | 38.8 ms |
+| Owned row filter median | 11.5 ms | 11.6 ms | 9.9 ms |
+| Row reverse median | 32.3 ms | 33.2 ms | 37.6 ms |
+| Search restore median | 42.5 ms | 42.8 ms | 50.5 ms |
+| JS raw / aggregate gzip | 43,646 / 16,449 B | 43,593 / 16,406 B | 196,089 / 60,661 B |
+| Cold build median | 913.365 ms | 881.639 ms | 352.533 ms |
+
+Restore candidate-minus-baseline paired median is **+0.3 ms**; only 9/21
+candidate profiles are faster. Thus the small difference between unpaired
+medians is **not a demonstrated restore speedup**. Restore ranges overlap
+(53.4–86.5 versus 51.3–72.1 ms). Conditional-unmount medians are 1.4/1.5 ms,
+and row-local/readded-state medians are 0.2/0.3 ms with zero paired-median
+difference for the latter two. Retain these small adverse observations rather
+than claiming every operation improves. No build or interaction latency win
+is established; the original owned-row performance gap remains open.
+
+Restore raw milliseconds in paired round order:
+
+```text
+baseline [58.8,59.6,58.4,59.3,86.5,53.4,55.3,59.6,63,60.6,54.5,53.5,57.3,61.2,58.7,59,56.3,59.7,60.9,57.1,60.8]
+candidate [66.8,72.1,68.3,60.6,58.3,58.2,63.9,57.1,55.1,54.4,51.3,55.5,62.4,58.2,58.6,59.3,66,59.9,58.1,55,66.8]
+react [38.4,41.2,40.1,37,37.3,37.9,38.1,37.4,38.8,36.3,36.6,37.7,38.9,46.5,44.7,56.8,38.4,55.8,39.7,48.3,49.4]
+```
+
+Environment: Node 24.14.0, Chrome 152.0.7977.64, Linux 7.0.0-38-generic x64,
+Intel i5-9500, six logical CPUs. The shared host still carries unrelated load;
+final load averages are 5.97 / 6.77 / 7.66. Sequential rotating samples do not
+establish host isolation. An isolated-host performance conclusion remains gated.
+
+The change is retained locally for its deterministic output simplification,
+not as a fix for the measured latency gap. Eight additional paired fixtures
+retain identical HTML, complete path sets and RouteIR. Only binding ESM files
+change. Binding-only output loses 51 raw / 38 gzip B; imported article search
+loses 51 / 35; Project loses 153 / 119 across three families. Conditional effects,
+keyed effects, navigation and runtime params have equal byte totals with changed
+minifier names; the Worker fixture is entirely byte-identical. C2 output digests
+are `bf2df7d1f8561d20342917b2f7e9ef84a6c2884f323de4417d48efcba867db7f`
+and `2f8efcdd76844fe62d913b9badbcd5f0be12449cfbe2a8d4883977e56a9b5c76`.
+The baseline Project hash matches its existing contract before the candidate's
+exact totals/hash replace that baseline; gzip tolerances are unchanged. An
+initial scratch artifact copy lacked the core package link and failed before
+comparison; the corrected copy explicitly links each arm's core.
+
+Semantic primitives, compiler passes/LOC, normalization/adapter rules and
+runtime concepts added: zero. Runtime source delta: **-2 lines**. New fixtures:
+zero; maintained positive/negative and browser suites cover the same boundary.
+`npm run check`, required-Chrome standalone 1/1 plus remaining 354/354 tests
+(zero skips), and package smoke pass. Default/AI starter output stays four
+identical files at 9,758 raw / 3,741 gzip B. No source restructuring, new React
+compatibility or AI-token saving is claimed. Version metadata is unchanged.
+
+Evidence is retained outside tracked/package source under
+`benchmarks/runtime-matrix/results/binding-read-20261012/` (57 content files
+plus a SHA-256 manifest). The 283,944-byte sibling `.tar.gz` archive has SHA-256
+`bc73f3be67224fa7c42bc666e6b191ab9c692bc7030b016a0a8e6007ac5ac18e`.
+It contains the CPU profiles, complete raw samples, frozen scripts/protocol,
+source copies, both C2 deploy outputs and eight-fixture artifact comparison.
+
 ## 0.16.47 Release Receipts (2026-10-12)
 
 The user-authorized transaction is complete at immutable commit

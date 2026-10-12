@@ -71,6 +71,13 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The user authorizes core `0.16.48` for the measured binding-mount output
+simplification. Generator 0.1.160 and its compatible `^0.16.36` range are
+unchanged. Require versioned local checks, exact-commit Node 22/Chrome CI,
+immutable tag/GitHub release, protected npm publication, fresh installs and
+independent website verification. The C2 timing observations do not establish
+a latency improvement or close the separate AI-delivery gate.
+
 Core `0.16.47` and generator `0.1.160` are released for Linux managed subtree
 cleanup, disconnected CDP commands, keyed-benchmark shutdown and the explicit
 browser-skip boundary. Exact commit `5f06433` passes [Node 22/Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/38203572521),
