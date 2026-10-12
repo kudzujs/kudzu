@@ -10,14 +10,20 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-The user authorizes release `0.16.47` with `create-kudzu@0.1.160` for the
-validated Linux subtree-cleanup and browser-verification corrections below.
-This explicitly makes evidence/tooling closure the active patch before the
-next C2 investigation. Release notes and the website identify this bounded
-scope; require versioned local gates, exact-commit CI, immutable tag/GitHub
-release, protected npm publication, fresh registry installs and live website
-verification. Earlier unreleased statements remain dated session history.
-No application runtime optimization or new model trial is part of this release.
+Core `0.16.47` and `create-kudzu@0.1.160` are complete: exact commit
+`5f064337f6f88c8f052e8f834eeb61914e71ad88` passes [Node 22 and required-Chrome
+CI](https://github.com/kudzujs/kudzu/actions/runs/38203572521), [protected npm
+publication](https://github.com/kudzujs/kudzu/actions/runs/38204063372), both
+registry integrity checks and fresh default/AI installs. The user approved the
+protected environment after the local token's approval API returned 403.
+The immutable [v0.16.47 release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.47)
+contains registry and website receipts. Cloudflare version
+`96803c2a-1001-4c49-b672-cbe26088a5bc` serves byte-matching homepage, docs,
+examples, release note and sitemap on both public origins. Earlier unreleased
+statements below are session history. This closes scoped Linux cleanup and
+browser verification, not an application runtime optimization or AI-cost claim.
+The next investigation remains the evidence-selected C2 restore/filter profile;
+the separate AI-delivery/1.0 gate remains blocked.
 
 Current continuation (2026-10-12): evaluate improvements against all three
 product outcomes together: ordinary React application migration with minimal

@@ -71,13 +71,13 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
-The user authorizes core `0.16.47` and generator `0.1.160` for Linux managed
-subtree cleanup, disconnected CDP commands, keyed-benchmark shutdown and the
-explicit browser-skip boundary. The complete local required-Chrome gate passes
-before version preparation. Require the exact release commit's CI, immutable
-annotated tag/GitHub release, protected npm publication, fresh installs and
-independent website checks before declaring the transaction complete. No new
-compiler capability, application performance or AI-token saving is claimed.
+Core `0.16.47` and generator `0.1.160` are released for Linux managed subtree
+cleanup, disconnected CDP commands, keyed-benchmark shutdown and the explicit
+browser-skip boundary. Exact commit `5f06433` passes [Node 22/Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/38203572521),
+[protected publication](https://github.com/kudzujs/kudzu/actions/runs/38204063372),
+registry integrity, fresh default/AI installs and independent public website
+checks. Receipts are attached to the immutable [v0.16.47 release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.47).
+No new compiler capability, application speedup or AI-token saving is claimed.
 
 The completed core `0.16.46` and generator `0.1.159` patch transaction
 extends managed AI check process-table inspection from one to five seconds after

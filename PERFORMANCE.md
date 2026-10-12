@@ -1,5 +1,29 @@
 # Performance Records
 
+## 0.16.47 Release Receipts (2026-10-12)
+
+The user-authorized transaction is complete at immutable commit
+`5f064337f6f88c8f052e8f834eeb61914e71ad88` / tag `v0.16.47`:
+
+- Node 22 and required-Chrome CI: https://github.com/kudzujs/kudzu/actions/runs/38203572521 .
+- Protected npm publication: https://github.com/kudzujs/kudzu/actions/runs/38204063372 .
+  The local token could not approve the npm environment (403); the user
+  approved it through GitHub and the existing workflow completed successfully.
+- Core 0.16.47 registry integrity:
+  `sha512-1XZ101I/BEtl7rkLHdSD8vQejiZCU3G/+ZyUSust4Pm/+yvbdSkpsLi5uN9zFa+n9AUogF7rsI5TxuMwffsmTg==`.
+- Generator 0.1.160 registry integrity:
+  `sha512-9nM0GDCWmj/Cu0xnaOEDYjav7IoK7fjQL5Y56a9+qOIDG5Sya7FVKGNz5jjOFtdrnj3jZj9FUn5tSfvyhgyGeg==`.
+- Fresh-cache default and AI apps resolve core 0.16.47 and pass their checks.
+  The installed core README and generated AI helper match the release source;
+  both About routes remain script/modulepreload-free.
+- Cloudflare deployment `96803c2a-1001-4c49-b672-cbe26088a5bc` serves exact
+  local build bytes for `/`, `/docs/`, `/example/`, `/releases/0.16.47/` and
+  `/sitemap.xml` on `kudzujs.cloud` and `kudzu.bunzzeok.workers.dev`.
+
+Machine-readable registry/install and website/hash receipts are attached to
+https://github.com/kudzujs/kudzu/releases/tag/v0.16.47 . No historical benchmark
+score, incomplete timing attempt or AI-cost result is revised by publication.
+
 ## 0.16.47 Versioned Release Preflight (2026-10-12)
 
 Core 0.16.47 and generator 0.1.160 pass the site check (249 pages), required
