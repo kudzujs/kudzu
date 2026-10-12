@@ -118,16 +118,19 @@ test("managed check descendants stop when their outer process group is killed", 
 })
 
 test("managed check timeout and interruption stop its descendants without killing sibling work", { timeout: 30000, skip: process.platform === "win32" }, async () => {
-  for (const mode of ["timeout", "signal"]) {
+  for (const mode of ["timeout", "signal", ...(process.platform === "linux" ? ["inspection-error"] : [])]) {
     const root = await mkdtemp(join(tmpdir(), "kudzu-ai-managed-"))
     await writeFile(join(root, "package.json"), JSON.stringify({ private: true, type: "module", scripts: { check: "node worker.mjs" } }))
-    await writeFile(join(root, "worker.mjs"), 'import{spawn}from"node:child_process";import{writeFileSync}from"node:fs";const child=spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"ignore"});writeFileSync("workers.json",JSON.stringify([process.pid,child.pid]));console.log("worker started");setInterval(()=>{},1000)')
+    await writeFile(join(root, "worker.mjs"), 'import{spawn}from"node:child_process";import{writeFileSync}from"node:fs";import{Worker}from"node:worker_threads";const child=spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"ignore"});const thread=new Worker(`const{spawn}=require("node:child_process");const{parentPort}=require("node:worker_threads");const child=spawn(process.execPath,["-e","setInterval(()=>{},1000)"],{stdio:"ignore"});parentPort.postMessage(child.pid)`,{eval:true});thread.on("message",pid=>{writeFileSync("workers.json",JSON.stringify([process.pid,child.pid,pid]));console.log("worker started")});setInterval(()=>{},1000)')
     if (mode === "timeout") {
       await mkdir(join(root, "bin"))
-      await writeFile(join(root, "bin/ps"), '#!/bin/sh\nsleep 1.2\nexec /usr/bin/ps "$@"\n', { mode: 0o755 })
+      await writeFile(join(root, "bin/ps"), process.platform === "linux"
+        ? '#!/bin/sh\nif [ "$1" = "-A" ]; then echo "whole-host scan forbidden" >&2; exit 99; fi\nexec /usr/bin/ps "$@"\n'
+        : '#!/bin/sh\nsleep 1.2\nexec /usr/bin/ps "$@"\n', { mode: 0o755 })
     }
     const helper = new URL("../packages/create-kudzu/ai.mjs", import.meta.url).href
-    const script = `import{spawn,spawnSync}from'node:child_process';const {check}=await import(${JSON.stringify(helper)});const sibling=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});try{const result=await check(${JSON.stringify(root)},${mode === "timeout" ? 3000 : 10000});const state=spawnSync('ps',['-p',String(sibling.pid),'-o','stat='],{encoding:'utf8'}).stdout.trim();console.log(JSON.stringify({result,siblingAlive:!!state&&!state.startsWith('Z')}))}finally{sibling.kill('SIGKILL')}`
+    const inspectionFailure = mode === "inspection-error" ? `import fs from 'node:fs';import{syncBuiltinESMExports}from'node:module';const original=fs.readdirSync;fs.readdirSync=(path,...args)=>{if(String(path).startsWith('/proc/'))throw Object.assign(new Error('proc inspection denied'),{code:'EACCES'});return original(path,...args)};syncBuiltinESMExports();` : ""
+    const script = `${inspectionFailure}import{spawn,spawnSync}from'node:child_process';const {check}=await import(${JSON.stringify(helper)});const sibling=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});try{const result=await check(${JSON.stringify(root)},${mode === "signal" ? 10000 : 3000});const state=spawnSync('ps',['-p',String(sibling.pid),'-o','stat='],{encoding:'utf8'}).stdout.trim();console.log(JSON.stringify({result,siblingAlive:!!state&&!state.startsWith('Z')}))}finally{sibling.kill('SIGKILL')}`
     const outer = spawn(process.execPath, ["--input-type=module", "-e", script], { detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, KUDZU_AI_DELIVERY_GROUP: "1", PATH: mode === "timeout" ? `${join(root, "bin")}:${process.env.PATH}` : process.env.PATH } })
     let stdout = "", stderr = ""
     outer.stdout.on("data", data => { stdout += data })
@@ -138,14 +141,18 @@ test("managed check timeout and interruption stop its descendants without killin
       for (let i = 0; i < 100; i++) {
         try { workers = JSON.parse(await readFile(join(root, "workers.json"), "utf8")); break } catch { await new Promise(resolve => setTimeout(resolve, 50)) }
       }
-      assert.equal(workers?.length, 2, "managed worker and grandchild must start")
+      assert.equal(workers?.length, 3, "managed worker and main/worker-thread grandchildren must start")
       if (mode === "signal") outer.kill("SIGTERM")
       assert.equal(await exited, 0, stderr)
       const { result, siblingAlive } = JSON.parse(stdout)
       assert.equal(siblingAlive, true)
       assert.equal(result.passed, false)
-      assert.equal(result.timedOut, mode === "timeout")
+      assert.equal(result.timedOut, mode !== "signal")
       assert.equal(result.interrupted, mode === "signal" ? "SIGTERM" : null)
+      if (mode === "inspection-error") {
+        assert.match(result.error, /proc inspection denied/, "incomplete inspection must remain a reported failure")
+        continue
+      }
       assert.equal(result.error, null)
       assert.match(await readFile(result.log.path, "utf8"), /worker started/)
       for (const pid of workers) {

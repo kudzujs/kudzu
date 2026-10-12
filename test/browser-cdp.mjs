@@ -30,7 +30,17 @@ export class CDP {
     this.consoleErrors = []
     this.failures = []
     this.socket = new WebSocket(url)
-    this.ready = new Promise((resolveReady, reject) => { this.socket.onopen = resolveReady; this.socket.onerror = reject })
+    this.ready = new Promise((resolveReady, reject) => {
+      this.socket.onopen = resolveReady
+      const fail = error => {
+        this.failure ??= error
+        reject(this.failure)
+        for (const callback of this.pending.values()) callback.reject(new Error(`${callback.method}: ${this.failure.message}`))
+        this.pending.clear()
+      }
+      this.socket.onerror = () => fail(new Error("CDP connection failed"))
+      this.socket.onclose = event => fail(new Error(`CDP connection closed (${event.code})`))
+    })
     this.socket.onmessage = event => {
       const message = JSON.parse(event.data)
       if (message.method === "Runtime.exceptionThrown") this.exceptions.push(message.params.exceptionDetails.text)
@@ -47,6 +57,7 @@ export class CDP {
   }
   async send(method, params = {}, sessionId) {
     await this.ready
+    if (this.failure) throw this.failure
     const id = ++this.id
     const response = new Promise((resolveResponse, reject) => this.pending.set(id, { resolve: resolveResponse, reject, method, expression: params.expression }))
     this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }))

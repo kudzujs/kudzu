@@ -10,6 +10,69 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+The user authorizes release `0.16.47` with `create-kudzu@0.1.160` for the
+validated Linux subtree-cleanup and browser-verification corrections below.
+This explicitly makes evidence/tooling closure the active patch before the
+next C2 investigation. Release notes and the website identify this bounded
+scope; require versioned local gates, exact-commit CI, immutable tag/GitHub
+release, protected npm publication, fresh registry installs and live website
+verification. Earlier unreleased statements remain dated session history.
+No application runtime optimization or new model trial is part of this release.
+
+Current continuation (2026-10-12): evaluate improvements against all three
+product outcomes together: ordinary React application migration with minimal
+source restructuring, better matched browser performance, and lower AI cost
+per successfully delivered application. Compiler specialization is the means;
+smaller artifacts alone, narrower application behavior, or more diagnostics
+without measured delivery benefit do not satisfy this goal.
+
+Local verification closure (2026-10-12, after host restart): unchanged
+article-search and Project browser checks pass, followed by `npm run check`,
+the default-schedule required-Chrome standalone 1/1 plus remaining 354/354
+suite with zero skips, and package smoke. The accumulated tooling fixes have
+passed their local full-suite gate. Earlier failures below remain historical;
+their precise environmental cause is not established by this passing run.
+No release or AI-cost improvement is implied. The next evidence-selected
+investigation is the recorded C2 owned-row restore/filter profile under
+controlled conditions, preserving the complete React-shaped fixture and
+acceptance. Do not repeat the rejected attribute-write candidate on isolated
+fast samples. See the dated closure in `PERFORMANCE.md`.
+
+The managed AI-check follow-up removes whole-host process inspection on Linux
+by reading only the check child's `/proc` subtree, including worker-thread
+children. The executable no-global-scan regression first fails on the original
+helper, then passes timeout, interruption, sibling-isolation and inspection-error
+cases. Check, package smoke and the explicit non-browser suite pass. The
+article-search test now respects the existing skip flag without relaxing its
+required-Chrome path. Required-Chrome Project and article-search journeys still
+fail with empty DOM output; keep that unresolved gate and the earlier failed
+runs. The generator change is unreleased and establishes no AI-token saving.
+
+The preceding bounded verification correction reproduces pending CDP commands after
+disconnect and fixes the repository transport. The keyed benchmark reuses it
+and waits for owned-process termination instead of a `Browser.close` response;
+the real disconnected-shutdown failure and subsequent complete seven-profile
+run are recorded in `PERFORMANCE.md`. Focused transport/browser-smoke checks
+and the site check pass. The complete required-Chrome suite still fails on
+managed process inspection, navigation startup and a framework cancellation,
+so this is locally verified tooling with a remaining full-suite gate, not a
+released performance or AI-cost improvement. Preserve those failures and
+resolve the stable-host verification prerequisite before release or further
+performance optimization.
+
+The local October 6 C2 owned-row restore loss is the next performance
+investigation under the existing browser-performance gate. Before another
+production optimization, reproduce and profile that accepted C2 journey on an
+isolated host. Preserve authored React-shaped components and all identity,
+accessibility, state, cleanup and remount acceptance. The October 12 bounded
+shared-host attribute-write trial is incomplete and inconsistent: retain its
+failed baseline and do not adopt its candidate. See `PERFORMANCE.md` for the
+raw evidence. This investigation does not reopen completed capabilities or
+authorize a new runtime. The `0.21.4` AI gate remains blocked separately;
+compatibility work still begins with a real failing source and must record
+source restructuring as well as browser cost. New model trials require their
+own frozen equal-condition protocol and authorization.
+
 Core `0.16.46` and `create-kudzu@0.1.159` are complete: exact commit
 `e6b6df707ba61bd26d5c450522e910f42453e916` passed [Node 22 and
 required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/37395479199),

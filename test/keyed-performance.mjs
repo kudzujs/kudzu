@@ -1,11 +1,12 @@
 import { spawn, spawnSync } from "node:child_process"
 import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { gzipSync } from "node:zlib"
 import { performance } from "node:perf_hooks"
+import { CDP, waitForPort } from "./browser-cdp.mjs"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const fixture = resolve(root, "test/fixtures/keyed-performance")
@@ -46,45 +47,7 @@ function filesUnder(directory, output = []) {
   return output
 }
 
-class CDP {
-  constructor(url) {
-    this.id = 0
-    this.pending = new Map()
-    this.exceptions = []
-    this.socket = new WebSocket(url)
-    this.ready = new Promise((resolveReady, reject) => {
-      this.socket.onopen = resolveReady
-      this.socket.onerror = reject
-    })
-    this.socket.onmessage = event => {
-      const message = JSON.parse(event.data)
-      if (message.method === "Runtime.exceptionThrown") this.exceptions.push(message.params.exceptionDetails.text)
-      if (!message.id) return
-      const callback = this.pending.get(message.id)
-      this.pending.delete(message.id)
-      if (message.error) callback.reject(new Error(message.error.message))
-      else callback.resolve(message.result)
-    }
-  }
-  async send(method, params = {}, sessionId) {
-    await this.ready
-    const id = ++this.id
-    const response = new Promise((resolveResponse, reject) => this.pending.set(id, { resolve: resolveResponse, reject }))
-    this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }))
-    return response
-  }
-}
-
 const sleep = milliseconds => new Promise(resolveSleep => setTimeout(resolveSleep, milliseconds))
-
-async function waitForFile(file, child) {
-  for (let attempt = 0; attempt < 1000; attempt++) {
-    if (child.exitCode !== null) throw new Error(`Chrome exited early with ${child.exitCode}`)
-    try { return await readFile(file, "utf8") } catch {}
-    await sleep(10)
-  }
-  throw new Error("Chrome DevToolsActivePort did not appear")
-}
 
 async function evaluate(cdp, sessionId, expression) {
   const response = await cdp.send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, sessionId)
@@ -132,7 +95,7 @@ async function browserRun(port) {
   ], { stdio: "ignore" })
   let cdp
   try {
-    const [debugPort, browserPath] = (await waitForFile(join(profile, "DevToolsActivePort"), child)).trim().split("\n")
+    const { port: debugPort, path: browserPath } = await waitForPort(profile, child)
     cdp = new CDP(`ws://127.0.0.1:${debugPort}${browserPath}`)
     const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" })
     const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true })
@@ -153,11 +116,12 @@ async function browserRun(port) {
     await waitUntil(cdp, sessionId, `document.querySelector('[data-row="1"]').dataset.selected === "true"`)
     const reverse = await timedClick(cdp, sessionId, '[data-action="reverse"]', 'document.querySelector("[data-row]")?.dataset.row === "2000" && document.querySelector(\'[data-row="1000"]\') === window.__retained')
     if (cdp.exceptions.length) throw new Error(`browser exceptions: ${cdp.exceptions.join(", ")}`)
-    await cdp.send("Browser.close")
     return { append, filter, restore, reverse }
   } finally {
     cdp?.socket.close()
-    if (child.exitCode === null) child.kill("SIGKILL")
+    const exited = new Promise(done => child.exitCode !== null || child.signalCode !== null ? done() : child.once("exit", done))
+    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL")
+    await exited
     await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   }
 }
@@ -202,7 +166,6 @@ http.createServer((request, response) => {
   }, { raw: 0, gzip: 0 })
   const browserMs = Object.fromEntries(Object.entries(browserTimes).map(([name, values]) => [name, { runs: values, median: median(values) }]))
   const medianBudgetMs = { append: 100, filter: 100, restore: 100, reverse: 100 }
-  for (const [name, budget] of Object.entries(medianBudgetMs)) if (browserMs[name].median > budget) throw new Error(`${name} median exceeded ${budget} ms`)
   console.log(JSON.stringify({
     fixture: "2,000 keyed rows with local state and reactive search",
     environment: { node: process.version, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
@@ -212,6 +175,7 @@ http.createServer((request, response) => {
     medianBudgetMs,
     javascript: { ...artifacts, files: jsFiles.map(file => file.slice(output.length + 1)) }
   }, null, 2))
+  for (const [name, budget] of Object.entries(medianBudgetMs)) if (browserMs[name].median > budget) throw new Error(`${name} median exceeded ${budget} ms`)
 } finally {
   server?.kill()
   await rm(resolve(fixture, "dist"), { recursive: true, force: true })

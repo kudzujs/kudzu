@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process"
+import { readFileSync, readdirSync } from "node:fs"
 import { mkdir, mkdtemp, open, readFile, realpath } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -56,7 +57,24 @@ export async function check(root, timeoutMs = 300000) {
           if (killed.status !== 0) error = killed.error?.message ?? killed.stderr ?? "Could not terminate check tree"
         } else {
           const pids = [managed ? child.pid : -child.pid]
-          if (managed) {
+          if (managed && process.platform === "linux") {
+            // Inspect only this subtree; worker threads can also own child processes.
+            for (let index = 0; index < pids.length; index++) {
+              let tasks
+              try { tasks = readdirSync(`/proc/${pids[index]}/task`) } catch (failure) {
+                if (failure.code !== "ENOENT") error = failure.message
+                continue
+              }
+              for (const task of tasks) try {
+                const text = readFileSync(`/proc/${pids[index]}/task/${task}/children`, "utf8").trim()
+                const children = text ? text.split(/\s+/).map(Number) : []
+                if (children.some(pid => !Number.isSafeInteger(pid) || pid <= 1 || pid === process.pid)) throw new Error("Invalid managed check process children")
+                for (const pid of children) if (!pids.includes(pid)) pids.push(pid)
+              } catch (failure) {
+                if (failure.code !== "ENOENT") error = failure.message
+              }
+            }
+          } else if (managed) {
             // Keep the outer group alive on this tool's timeout; stop only its ordinary descendants.
             const table = spawnSync("ps", ["-A", "-o", "pid=", "-o", "ppid="], { encoding: "utf8", timeout: 5000, maxBuffer: 1024 * 1024 })
             if (table.status !== 0) error = table.error?.message || table.stderr?.trim() || "Could not inspect managed check descendants"

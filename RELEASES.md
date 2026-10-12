@@ -1,5 +1,28 @@
 # Kudzu Releases
 
+## 0.16.47 - Scoped AI Cleanup And Browser Verification
+
+- Linux managed AI checks inspect their own `/proc` process subtree instead of
+  scanning the entire host with `ps`. Worker-thread children are included,
+  sibling work remains alive, and inspection errors remain failed checks.
+  Other Unix hosts retain their bounded process-table inspection.
+- Regression coverage first rejects the old whole-host scan, then proves
+  timeout/interruption cleanup, worker-thread descendants, sibling isolation,
+  and explicit permission-error reporting. Publishes `create-kudzu@0.1.160`
+  with its unchanged `^0.16.36` core compatibility range and default app.
+- Repository CDP checks reject pending/future commands on disconnect. The keyed
+  benchmark reuses this transport and waits for its owned browser process to
+  exit instead of awaiting a response to `Browser.close`. Raw samples print
+  before a budget failure; article-search tests honor explicit non-browser runs
+  while retaining required-Chrome acceptance.
+- Retains the observed C2 performance loss and unsuccessful attribute-write
+  experiment. No runtime optimization, compiler semantic, compatibility API,
+  browser-byte reduction or measured AI-token saving is claimed. The full
+  required-Chrome suite and package smoke validate the accumulated corrections;
+  earlier failed runs remain recorded in `PERFORMANCE.md`.
+- Adds the website release page and refreshes current release links. The
+  independent AI-delivery/1.0 gate remains blocked.
+
 ## 0.16.46 - Managed AI Check Cleanup
 
 - Two full parallel test runs found that the generated AI check's managed-runner

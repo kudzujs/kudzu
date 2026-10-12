@@ -1,5 +1,267 @@
 # Performance Records
 
+## 0.16.47 Versioned Release Preflight (2026-10-12)
+
+Core 0.16.47 and generator 0.1.160 pass the site check (249 pages), required
+Chrome standalone 1/1 plus remaining 354/354 tests with no skips, and packed
+core/default/AI generator smoke. Paired apps still emit four identical files
+at 9,758 raw / 3,741 gzip bytes; guidance remains 1,828 bytes. The first
+versioned suite had one stale assertion for the previous homepage release
+banner; updating that exact expected copy fixes it, and the complete suite
+then passes. No behavior assertion, browser deadline or acceptance criterion
+was relaxed. Exact-commit CI, immutable release, registry and website receipts
+are separate gates for the user-authorized publication.
+
+## Full Required-Chrome Verification Closure (2026-10-12, local)
+
+The host had restarted before this continuation (observed uptime seven
+minutes, load averages 1.48 / 0.87 / 0.44; Chrome 152.0.7977.64). No source,
+timeout or acceptance change preceded the following verification. The four
+article-search browser shapes and its two compiler checks pass 6/6, followed
+by the Project WebSocket/cleanup journey passing 1/1. The formerly empty DOM
+output is not reproduced. This does not establish the precise cause of the
+earlier empty output or pending-promise cancellations.
+
+The complete existing default-schedule command then passes:
+
+```sh
+npm run check && KUDZU_REQUIRE_CHROME=1 CHROME_BIN=/usr/bin/google-chrome npm test && npm run test:package
+```
+
+- Check: 248 pages, two interactive pages.
+- Standalone Project ownership contract: 1/1.
+- Remaining required-Chrome suite: 354/354, zero failures, cancellations or skips.
+- Packed core and paired default/AI generator installation checks: pass.
+- Default/AI artifacts: four identical deploy files, 9,758 raw / 3,741 aggregate
+  gzip bytes; generated guidance remains 1,828 bytes.
+
+This closes the local full-suite verification blocker for the accumulated CDP
+disconnect, keyed-benchmark cleanup, Linux managed-check subtree and browser
+skip-flag corrections. Preserve all earlier failed runs and the incomplete
+attribute-write experiment. The generator correction remains unreleased; no
+package version, tag or registry metadata changes. Compiler semantics, passes,
+runtime concepts and application browser bytes remain unchanged. No new
+React compatibility, browser speedup or AI-token saving is claimed.
+
+Next execution remains the recorded C2 owned-row performance investigation:
+capture an accepted baseline and profile the actual restore/filter path under
+controlled conditions before selecting another implementation candidate. The
+rejected attribute-write shortcut does not become eligible because this test
+suite passed; the separate AI-delivery gate remains blocked.
+
+## Managed AI Check Subtree Inspection (2026-10-12, local)
+
+Repeated managed-check failures expose the whole-host `ps -A` dependency at
+the tool's timeout boundary. A direct host lookup takes 3.615 seconds in one
+read-only observation; prior full-suite runs exceeded its existing
+five-second inspection limit. This is an observed process lookup cost, not an
+AI-token measurement or a complete attribution of host load.
+
+On Linux the generator helper now walks only `/proc/<pid>/task/*/children`
+from its own npm child, including subprocesses created by worker threads.
+Descendants are still killed in reverse discovery order; outer-group sibling
+work is never selected. Exited process/thread `ENOENT` races are ignored,
+whereas malformed child IDs or inspection failures remain reported errors.
+Other POSIX hosts retain their existing bounded `ps` path; Windows and
+unmanaged group cancellation retain their existing implementation.
+
+The existing managed-owner regression now creates both main-thread and
+worker-thread grandchildren and rejects any Linux `ps -A` invocation. It
+fails before the change with `whole-host scan forbidden` and passes after it.
+Timeout and SIGTERM both release all three observed worker PIDs while keeping
+the sibling alive. A separate mode injects `/proc` permission denial and
+requires a failed result containing that error; the test's own outer-group
+cleanup removes the intentionally uninspected workers. All four focused AI
+helper tests pass, with the expanded ownership test taking 6.667 seconds
+including two authored three-second deadlines. The inspection timeout was not
+increased.
+
+Verification:
+
+- `npm run check` passes (248 pages).
+- `npm run test:package` passes; default/AI generated apps retain four identical
+  deploy files at 9,758 raw / 3,741 aggregate gzip bytes.
+- Required-Chrome `npm test` fails in the first Project journey: the infinite
+  cleanup browser exits zero with empty DOM output. Later suite stages do not
+  run in that invocation. Its browser failure remains unresolved.
+- An explicit non-browser run exposed article-search tests ignoring the
+  repository's `KUDZU_SKIP_BROWSER` flag (340 passes, three browser failures,
+  eleven skips). Those tests now honor it while retaining the required-Chrome
+  rejection and every build/artifact assertion. The repeated non-browser run
+  passes its standalone build contract plus 343 tests with eleven explicit
+  skips; embedded browser checks are also omitted, so this is not browser proof.
+- A focused required-Chrome article-search run still executes all four browser
+  cases and fails with empty output after their existing 20-second deadlines;
+  its two non-browser cases pass. The flag correction did not hide those failures.
+
+Compiler semantics/passes/LOC, application runtime concepts and browser-byte
+delta are zero. Generator source changes are unreleased; package versions and
+frozen AI protocols/scores remain unchanged. This removes a demonstrated
+whole-host inspection dependency from AI check cancellation, not a measured
+AI-cost reduction. Full required-Chrome verification remains the release gate.
+
+## Browser Transport Disconnect And Keyed Shutdown (2026-10-12, local)
+
+A local WebSocket server reproduces the repository CDP utility leaving two
+in-flight commands unresolved after its connection closes: the new regression
+times out at five seconds before the fix. The shared utility now rejects all
+pending commands with the method and connection failure, clears the pending
+map, and rejects subsequent commands. Normal close and abrupt disconnect both
+pass without Chrome or a new dependency. This proves a transport defect, not
+the cause of every earlier framework-test cancellation.
+
+The keyed benchmark now reuses that transport and the existing validated
+DevTools port reader instead of its duplicate implementations. The first real
+run reveals `Browser.close: CDP connection failed`: Chrome can disconnect while
+its shutdown request is still pending. The benchmark now finishes its unchanged
+acceptance checks, then uses its existing owned-process kill cleanup and waits
+for process exit before deleting the disposable profile. It no longer waits
+for a protocol response from the browser being shut down. Application checks,
+timed intervals and median budgets are unchanged.
+
+`RUNS=7 CHROME_BIN=/usr/bin/google-chrome timeout --signal=TERM
+--kill-after=10s 110s npm run benchmark:keyed` then completes all seven profiles:
+
+| Operation | Raw milliseconds | Median |
+|---|---|---:|
+| Append | 9.7, 11, 25.1, 8.8, 11.8, 11.6, 15.8 | 11.6 |
+| Filter | 16.9, 22.8, 28.7, 21, 24.5, 16.2, 29.1 | 22.8 |
+| Restore | 74.5, 71.7, 118.5, 91.2, 135.9, 84.3, 75.9 | 84.3 |
+| Reverse | 23.6, 44.7, 21.1, 27.4, 38, 17.3, 17.5 | 23.6 |
+
+All ownership checks and 100 ms median alarms pass. Clean-build samples are
+`[704.3, 793.5, 972.1, 761.3, 778.3, 1002.8, 1304.4]` ms (793.5 ms median).
+The eight application JS paths retain 26,225 raw / 10,174 gzip bytes. Compiler
+LOC, passes, semantic primitives and application runtime concepts added: zero.
+This is verification reliability work, not a browser-speed, React-compatibility
+or AI-token improvement claim; historical frozen benchmark oracles and scores
+remain unchanged.
+
+`npm run check` passes (248 pages). Required-Chrome `npm test` passes the
+standalone WebSocket contract, both new transport cases and every browser-smoke
+case, but the full run fails: managed-check deadlines/process-table inspection,
+Chrome navigation startup, and a later pending-promise framework cancellation
+remain. Its remaining-suite summary is 323 passes, two failures and two
+cancellations; the outer command reaches its 600-second limit afterward. No
+timeout or acceptance assertion was relaxed. A passing full suite on a stable
+host remains a completion/release blocker; these results do not diagnose those
+remaining failures or authorize another performance candidate.
+
+## Bounded Attribute-Write Investigation (2026-10-12, local, incomplete)
+
+The unchanged 0.16.46 source at `6bdcca7` was measured before considering
+production changes. `RUNS=7 CHROME_BIN=/usr/bin/google-chrome timeout
+--signal=TERM --kill-after=10s 110s npm run benchmark:keyed` passes the existing
+identity, state reset and handler checks. Restore samples are
+`[60, 60.4, 58.1, 64.8, 57.2, 57.4, 56.2]` ms (58.1 ms median); append,
+filter and reverse medians are 7.8, 14.1 and 17.6 ms. The earlier 110.6 ms
+absolute alarm is not reproduced in this run. This does not remeasure or
+disprove the separate C2 React comparison.
+
+A scratch-only candidate compares the current DOM attribute before the
+generic binding runtime calls `setAttribute`, reusing the existing keyed
+binding approach. No application source or acceptance changes. The bounded
+trial schedules seven alternating baseline/candidate rounds, each containing
+seven clean builds and seven fresh Chrome profiles. Every invocation has a
+60-second process-group limit and five-second termination grace period.
+
+| Round | Baseline restore median, ms | Candidate restore median, ms |
+|---|---:|---:|
+| 1 | 66.4 | 59.6 |
+| 2 | 61.5 | 61.8 |
+| 3 | 71.5 | 75.9 |
+| 4 | 65.8 | 60.7 |
+| 5 | 60.3 | 70.8 |
+| 6 | timed out without a complete report | 71.2 |
+| 7 | not run | not run |
+
+The trial stops at the first failed invocation; no selective retry or aggregate
+speedup is reported. Completed reports pass the existing ownership and 100 ms
+alarms. Candidate JavaScript grows from 26,225 raw / 10,174 gzip bytes to
+26,265 / 10,190 with the same eight emitted paths. It does not establish a
+consistent restore improvement and is **not adopted**. Production compiler,
+runtime, semantic primitives, passes and application bytes remain unchanged.
+React compatibility and AI-token savings were not measured by this trial.
+
+The scratch runner is `/tmp/opencode/kudzu-binding-trial-20261012.mjs`;
+per-invocation stdout/stderr and the eleven complete reports in `results.json`
+are under `/tmp/opencode/kudzu-binding-trial-20261012/`. The environment uses
+Node 24.14.0 and Chrome 152.0.7977.64 on the same shared Linux host; initial
+load averages were 4.35 / 2.92 / 2.45 with 3,288 MiB swap used. This is bounded
+exploratory evidence, not the isolated-host confirmation required by the
+October 6 record. An isolated accepted C2 profile is still needed before a
+new production performance candidate is selected. Do not repeat this
+attribute-write candidate based on its faster individual samples.
+
+Repository verification after the documentation update: `npm run check` passes
+(248 pages). `npm test` does not pass: the standalone WebSocket contract passes,
+but managed-check tests report a 20-second deadline and `spawnSync ps ETIMEDOUT`,
+and `framework.test.mjs` ends with a pending-promise/event-loop failure. The
+remaining runner summary records 207 passes, one failure and two cancellations;
+the outer command subsequently reaches its 240-second tool limit. These are
+retained failures, not attributed to a runtime candidate (none was applied),
+and do not establish a passing full suite or release readiness.
+
+## Current C2 React Comparison And Keyed Restore Loss (2026-10-06, local)
+
+The unchanged 0.16.46 compiler at `6bdcca7` passes the five-target frozen C2
+behavior/accessibility, ownership, zero-JavaScript static-sibling, and browser
+failure checks. Local ignored `benchmarks/runtime-matrix/run.mjs` was changed
+only to redirect its result directory to `/tmp/opencode`; the original ignored
+`benchmarks/runtime-matrix/results/` and historical R8/R22 records are intact.
+The fresh report is `/tmp/opencode/kudzu-c2-01646-21/raw.json` (benchmark-source
+SHA-256 `059ae0cc195cdbaa79400c9e2e22467c95f9e934bd4acb8fb034736b935fd1c5`).
+The runner uses one untimed build warm-up, seven rotating fresh-process builds,
+and **21 rotating fresh Chrome profiles per target** on Linux 7.0.0-30-generic
+x64, Intel i5-9500 (6 logical CPUs), Node 24.14.0, Chrome 152.0.7977.64;
+React/React DOM 19.2.8, Vue 3.5.40, Svelte 5.56.7, Astro 7.1.3, Vite 8.1.5.
+
+| C2 accepted result | Kudzu | React + Vite | Qualification |
+|---|---:|---:|---|
+| 1,000 owned-row restore median | 102.1 ms | 67.9 ms | Kudzu is 50.4% slower; both retain row identity and exact cleanup/remount. |
+| 1,000 owned-row filter median | 28.4 ms | 16.1 ms | Kudzu is 76.4% slower; 21-profile ranges overlap. |
+| Clean build median | 1,256.416 ms | 522.474 ms | Kudzu emits full HTML; React variant emits a client shell, so build work is not equivalent. |
+| Deploy JavaScript raw / gzip | 43,646 / 16,449 B | 196,089 / 60,661 B | Kudzu also retains a zero-JavaScript static sibling. |
+
+Owned-row restore raw milliseconds (rotating sample order):
+
+```text
+Kudzu  [99.2, 93, 87.5, 73.9, 116.3, 86.2, 81.7, 108.1, 105.5, 102.1, 144.4, 79.2, 177.8, 151.2, 113.1, 91, 85.3, 122.4, 130.7, 185.3, 95.2]
+React  [54.9, 50.3, 47.4, 101.8, 46.9, 61.2, 59.2, 74, 65.9, 70.8, 48.5, 66.6, 75.3, 70.2, 121.1, 60.5, 76.7, 118, 102.1, 67.9, 95]
+```
+
+The maintained 2,000-row keyed browser benchmark also passed ownership checks
+but exceeded its 100 ms restore alarm. Previously it threw before printing raw
+samples; it now prints the complete output before reporting the same failure.
+One seven-profile baseline yielded restore `[120.6, 135.9, 110.6, 108.5,
+105.6, 102.6, 171.6]` ms (median 110.6), JS 26,225 raw / 10,174 gzip B.
+This is an absolute diagnostic, not a comparison against React.
+
+A one-line candidate skipped redundant native attribute writes on equal
+reactive values. Its separate seven-profile keyed restore median was 60.3 ms
+and added 40 raw / 16 gzip JS bytes, but the host also sped up between runs.
+An attempted seven-round interleaved revision comparison retained baseline
+restore medians 72.3, 62.4, 66.9 ms and candidate medians 57.3, 60.6 ms for
+the first two pairs, then its third candidate timed out without a result.
+The host had 12,403 Chrome crashpad zombies when investigated; more than
+11,000 had seven unrelated RMF service processes as parents. This is host
+contention, not evidence that Kudzu or this benchmark created those processes.
+The candidate is **reverted**: incomplete pairs and differing run conditions
+do not prove a production speedup. No React win, AI-token saving, or release
+is claimed from this measurement. A next performance patch needs bounded,
+complete paired runs and unchanged acceptance before claiming a gain.
+After restoring production source, `npm run check` passed. A concurrent
+`npm test` run had two unrelated time-sensitive failures (the adapter setup
+deadline and a Chrome navigation startup timeout); both focused reruns passed,
+and the full 352-test suite passed with `--test-concurrency=1`. The overloaded
+host's timing failures are retained, not treated as performance samples or
+evidence that the candidate improved production behavior.
+Follow-up host inspection found a 6-core machine with load averages 2.76 /
+3.85 / 9.25 and 3.2 GiB swap in use. Do not terminate those unrelated
+services to manufacture a clean benchmark. Repeat a bounded interleaved
+baseline/candidate comparison on an isolated host before revisiting the
+reverted attribute-write candidate.
+
 ## R22 Named-Component Ref Diagnostic Boundary (2026-10-01, local)
 
 An archive-verified inventory of both R22 blocks retains all twenty scored

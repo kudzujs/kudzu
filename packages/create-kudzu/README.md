@@ -16,7 +16,7 @@ Use `--no-install` to create the files without installing dependencies.
 
 ## Optional AI authoring guidance
 
-`create-kudzu@0.1.159` provides optional local AI developer tools with managed check cancellation:
+`create-kudzu@0.1.160` provides optional local AI developer tools with managed check cancellation:
 
 ```bash
 npm create kudzu@latest my-app -- --ai
@@ -55,9 +55,11 @@ npm run ai -- check --timeout-ms 600000
   process group on Unix or process tree on Windows and reports failure.
   Under the existing `KUDZU_AI_DELIVERY_GROUP=1` managed-runner contract, Unix
   checks inherit their outer group so a hard group cancellation also reaches
-  their ordinary descendants. A check-local timeout or interruption uses native
-  `ps` PID/parent-PID inspection to stop only that check's descendant snapshot,
-  preserving sibling work; inspection errors are reported as failures.
+  their ordinary descendants. On Linux, a check-local timeout or interruption
+  reads only that check's `/proc` subtree, including worker-thread children.
+  Other Unix hosts use bounded `ps` PID/parent-PID inspection. Both stop only
+  the check's descendant snapshot, preserve sibling work, and report inspection
+  errors as failures.
 - Full stdout/stderr are retained in a unique `.kudzu-ai/check-*/output.log`.
   Long successful checks return only the last 512 bytes. Failed checks return
   bounded head/tail excerpts and the first recognized diagnostic in the first

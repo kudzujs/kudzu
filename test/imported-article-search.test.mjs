@@ -62,10 +62,10 @@ for (const shape of ["aliases", "direct alias count", "direct count", "inline co
   assert.equal(javascriptDigests.at(-1), javascriptDigests[0])
   t.diagnostic(`${shape}: ${files.length} JS files, ${raw} raw / ${gzip} aggregate gzip B; runtime ${runtimeDigests.at(-1)}`)
 
-  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].find(path => path && existsSync(path))
+  const chrome = !process.env.KUDZU_SKIP_BROWSER && [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"].find(path => path && existsSync(path))
   if (!chrome) {
     assert.notEqual(process.env.KUDZU_REQUIRE_CHROME, "1", "Chrome is required")
-    t.diagnostic("Chrome unavailable; browser coverage not run")
+    t.diagnostic("Chrome disabled or unavailable; browser coverage not run")
     return
   }
   const server = createServer(async (request, response) => {
