@@ -1,5 +1,30 @@
 # Performance Records
 
+## 0.16.48 Release Receipts (2026-10-13)
+
+The user-authorized transaction is complete at immutable commit
+`96bdf74f5166340bbc6d345f2656819f99f81fa8` / tag `v0.16.48`:
+
+- Node 22 and required-Chrome CI: https://github.com/kudzujs/kudzu/actions/runs/38209033549 .
+- Protected npm publication: https://github.com/kudzujs/kudzu/actions/runs/38209492347 .
+  The user's environment approval allowed the existing workflow to finish;
+  the local token's 403 was not bypassed. Core 0.16.48 is npm's latest version;
+  the already-published generator 0.1.160 is unchanged.
+- Core registry integrity:
+  `sha512-yvSIfB9R63CTKbHXl3N6+ecM0v3WEjWv2modUUQBe74VeqJMZHQ00mAms2v3J8eIzRWQvcSxBG0CO4jvlBwhCQ==`.
+- Fresh-cache default and AI apps resolve core 0.16.48 and pass their checks.
+  Installed README and binding-runtime source match the tagged checkout;
+  the AI helper matches unchanged generator source and its check passes.
+  Both About routes remain free of scripts and module preloads.
+- Cloudflare version `f6437559-069a-4a0e-b5a4-262dac040924` serves exact local
+  build bytes for `/`, `/docs/`, `/example/`, `/releases/0.16.48/` and
+  `/sitemap.xml` at `kudzujs.cloud` and `kudzu.bunzzeok.workers.dev`.
+
+The verified 57-content-file comparison archive plus manifest, registry/install
+receipt and website hashes are attached to
+https://github.com/kudzujs/kudzu/releases/tag/v0.16.48 . Publication does not
+turn the measured output reduction into a restoration speedup or AI-token claim.
+
 ## 0.16.48 Versioned Release Preflight (2026-10-12)
 
 The user-authorized core 0.16.48 candidate passes `npm run check` (250 pages),

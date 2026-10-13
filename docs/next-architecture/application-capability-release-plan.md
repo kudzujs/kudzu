@@ -10,12 +10,20 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-The user authorizes the `0.16.48` release transaction for the binding-mount
-simplification below. Generator 0.1.160 remains unchanged. Complete the exact
-versioned checks, reviewed commit/push, Node 22/required-Chrome CI, immutable
-tag/GitHub release, protected npm publication, fresh installs and public website
-verification. Earlier local-candidate statements retain their session meaning;
-no additional optimization or model experiment is included in this release.
+Core `0.16.48` is complete (2026-10-13): exact commit
+`96bdf74f5166340bbc6d345f2656819f99f81fa8` passes [Node 22 and required-Chrome
+CI](https://github.com/kudzujs/kudzu/actions/runs/38209033549), [protected npm
+publication](https://github.com/kudzujs/kudzu/actions/runs/38209492347), registry
+integrity and fresh default/AI installs resolving core 0.16.48. The user
+approved the npm environment; generator 0.1.160 remains unchanged. Cloudflare
+version `f6437559-069a-4a0e-b5a4-262dac040924` serves byte-matching homepage,
+docs, examples, release note and sitemap at both public origins. The immutable
+[v0.16.48 release](https://github.com/kudzujs/kudzu/releases/tag/v0.16.48)
+contains the raw comparison archive and registry/site verification receipts.
+Earlier local-candidate statements below are historical. This closes the
+binding-mount output simplification, not the restoration latency or AI-cost
+gate. Next work still separates structural row filling, lifecycle attachment
+and layout costs before selecting another performance candidate.
 
 Local continuation after 0.16.47 (2026-10-12): C2 CPU profiles identify binding
 mounting and structural row filling as contributors to owned-row restoration.
