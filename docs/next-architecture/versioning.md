@@ -71,6 +71,12 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+Core 0.17.0 and generator 0.1.161 are released from `c627432`: exact-commit
+[CI](https://github.com/kudzujs/kudzu/actions/runs/38502782176),
+[publication](https://github.com/kudzujs/kudzu/actions/runs/38503401446), registry
+integrity, fresh default/AI installs and independently verified website delivery
+pass. See `PERFORMANCE.md` for receipts and preserved verification failures.
+
 The user-authorized 0.17.0 transaction combines the accepted effect-output
 specialization and static-primitive calculation compatibility expansion. This
 minor marks the public compiler boundary; historical planned 0.17+ labels remain

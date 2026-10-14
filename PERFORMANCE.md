@@ -1,5 +1,33 @@
 # Performance Records
 
+## 0.17.0 Release Receipts (2026-10-14)
+
+Core 0.17.0 and create-kudzu 0.1.161 are delivered from exact commit
+`c627432c800cb6619fd316cb695cb4ad65d8f942`, immutable tag `v0.17.0`.
+[Node 22/package and required-Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/38502782176)
+and [protected publication](https://github.com/kudzujs/kudzu/actions/runs/38503401446)
+pass. The user approved the npm environment after the local approval API returned
+403. Both published tarballs match independently packed local SHA512 integrity:
+
+- Core: `sha512-aw0HbxNZ7I5zyI+dFXiLaRh6cMvsbvhfzTCla4/ltrN/mpLXsVY91zO0qjPtLVjAE6U81asSkrwB1jX6zRREwA==`
+- Generator: `sha512-KZT9hH4GP+DdPejjOn9i6UaH0JCNCXnkcNhihE5ib6DPz7q2ZRDtGl09rZ79jtY5A3hWZjqj82JnvKxbpz4sAg==`
+
+Fresh-cache registry-generated default/AI apps both resolve core 0.17.0 and pass
+check; the AI check passes too. With identical app names all four deploy files
+are byte-identical, and the static about route has no scripts or modulepreloads.
+The first comparison mistakenly used different app names, producing expected
+title differences; that verification script was corrected. A subsequent tool
+timeout interrupted verification, which was resumed successfully on the same
+fresh installations rather than counted as a pass.
+
+Website deployment succeeds as Cloudflare version
+`42dd9d0c-47d3-4fa0-829b-32608357646a` after an initial upload tool timeout.
+Independent HTTPS requests return 200 and exact local-build HTML bytes at `/`,
+`/docs/`, `/example/`, `/releases/0.17.0/` and `/example/blog/personal/`.
+The [GitHub release](https://github.com/kudzujs/kudzu/releases/tag/v0.17.0)
+retains both comparison archives. These receipts close delivery, not the separate
+C2 latency or AI-cost/1.0 gates.
+
 ## 0.17.0 Versioned Release Preflight (2026-10-14)
 
 The user authorizes core 0.17.0 and generator 0.1.161 (^0.17.0), combining

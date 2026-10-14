@@ -10,6 +10,13 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+Release closure (2026-10-14): core 0.17.0 / generator 0.1.161 are published
+from `c627432` after exact-commit Node 22/package and required-Chrome CI
+38502782176 and user-approved publication 38503401446. Registry integrity,
+fresh default/AI installs and checks, identical deploy output, Cloudflare
+deployment and five independent public-URL byte comparisons pass. Receipts are
+in `PERFORMANCE.md`; the C2 latency and AI-cost/1.0 gates remain separate.
+
 User-authorized release transaction (2026-10-14): core 0.17.0 combines the
 accepted effect-output specialization and static-primitive compatibility slice;
 create-kudzu 0.1.161 targets ^0.17.0. This public compatibility expansion is
