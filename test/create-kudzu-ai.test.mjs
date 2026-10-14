@@ -6,6 +6,9 @@ import { join } from "node:path"
 import test from "node:test"
 import { docs, check } from "../packages/create-kudzu/ai.mjs"
 
+// Linux quick mode reads only the requested PID instead of scanning the process table.
+const pidOption = process.platform === "linux" ? "-q" : "-p"
+
 test("reads installed README sections without including fenced headings or hiding truncation", async t => {
   const root = await mkdtemp(join(tmpdir(), "kudzu-ai-docs-"))
   t.after(() => rm(root, { recursive: true, force: true }))
@@ -74,7 +77,7 @@ test("executes the real check, retains complete logs, propagates failure, and bo
   if (process.platform !== "win32") {
     const pid = Number(await readFile(join(root, "child.pid"), "utf8"))
     // Killed children can briefly remain zombies; ps status distinguishes them from a live worker.
-    const status = spawnSync("ps", ["-p", String(pid), "-o", "stat="], { encoding: "utf8" })
+    const status = spawnSync("ps", [pidOption, String(pid), "-o", "stat="], { encoding: "utf8" })
     assert.ok(status.status !== 0 || !status.stdout.trim() || status.stdout.trim().startsWith("Z"), status.stdout)
   }
   await assert.rejects(check(root, 0), /timeout-ms/)
@@ -98,8 +101,8 @@ test("managed check descendants stop when their outer process group is killed", 
       try { worker = Number(await readFile(join(root, "worker.pid"), "utf8")); await readFile(join(root, "heartbeat")); break } catch { await new Promise(resolve => setTimeout(resolve, 50)) }
     }
     assert.ok(worker > 1, "managed check worker must start")
-    const workerGroup = Number(spawnSync("ps", ["-p", String(worker), "-o", "pgid="], { encoding: "utf8" }).stdout.trim())
-    const selfGroup = Number(spawnSync("ps", ["-p", String(process.pid), "-o", "pgid="], { encoding: "utf8" }).stdout.trim())
+    const workerGroup = Number(spawnSync("ps", [pidOption, String(worker), "-o", "pgid="], { encoding: "utf8" }).stdout.trim())
+    const selfGroup = Number(spawnSync("ps", [pidOption, String(process.pid), "-o", "pgid="], { encoding: "utf8" }).stdout.trim())
     assert.ok(workerGroup > 1 && workerGroup !== selfGroup, "cleanup is limited to the test's owned groups")
     group = workerGroup
     process.kill(-outer.pid, "SIGKILL")
@@ -108,7 +111,7 @@ test("managed check descendants stop when their outer process group is killed", 
     await new Promise(resolve => setTimeout(resolve, 250))
     assert.equal(await readFile(join(root, "heartbeat"), "utf8"), before, "check must not keep writing after its outer owner is killed")
     assert.equal(group, outer.pid, "managed descendants inherit the outer group")
-    const state = spawnSync("ps", ["-p", String(worker), "-o", "stat="], { encoding: "utf8" })
+    const state = spawnSync("ps", [pidOption, String(worker), "-o", "stat="], { encoding: "utf8" })
     assert.ok(state.status !== 0 || !state.stdout.trim() || state.stdout.trim().startsWith("Z"))
   } finally {
     for (const pid of new Set([outer.pid, group].filter(pid => pid > 1))) try { process.kill(-pid, "SIGKILL") } catch (error) { if (error.code !== "ESRCH") throw error }
@@ -125,12 +128,12 @@ test("managed check timeout and interruption stop its descendants without killin
     if (mode === "timeout") {
       await mkdir(join(root, "bin"))
       await writeFile(join(root, "bin/ps"), process.platform === "linux"
-        ? '#!/bin/sh\nif [ "$1" = "-A" ]; then echo "whole-host scan forbidden" >&2; exit 99; fi\nexec /usr/bin/ps "$@"\n'
+        ? '#!/bin/sh\nif [ "$1" = "-A" ] || [ "$1" = "-p" ]; then echo "process-table scan forbidden" >&2; exit 99; fi\nexec /usr/bin/ps "$@"\n'
         : '#!/bin/sh\nsleep 1.2\nexec /usr/bin/ps "$@"\n', { mode: 0o755 })
     }
     const helper = new URL("../packages/create-kudzu/ai.mjs", import.meta.url).href
     const inspectionFailure = mode === "inspection-error" ? `import fs from 'node:fs';import{syncBuiltinESMExports}from'node:module';const original=fs.readdirSync;fs.readdirSync=(path,...args)=>{if(String(path).startsWith('/proc/'))throw Object.assign(new Error('proc inspection denied'),{code:'EACCES'});return original(path,...args)};syncBuiltinESMExports();` : ""
-    const script = `${inspectionFailure}import{spawn,spawnSync}from'node:child_process';const {check}=await import(${JSON.stringify(helper)});const sibling=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});try{const result=await check(${JSON.stringify(root)},${mode === "signal" ? 10000 : 3000});const state=spawnSync('ps',['-p',String(sibling.pid),'-o','stat='],{encoding:'utf8'}).stdout.trim();console.log(JSON.stringify({result,siblingAlive:!!state&&!state.startsWith('Z')}))}finally{sibling.kill('SIGKILL')}`
+    const script = `${inspectionFailure}import{spawn,spawnSync}from'node:child_process';const {check}=await import(${JSON.stringify(helper)});const sibling=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'});try{const result=await check(${JSON.stringify(root)},${mode === "signal" ? 10000 : 3000});const state=spawnSync('ps',[${JSON.stringify(pidOption)},String(sibling.pid),'-o','stat='],{encoding:'utf8'}).stdout.trim();console.log(JSON.stringify({result,siblingAlive:!!state&&!state.startsWith('Z')}))}finally{sibling.kill('SIGKILL')}`
     const outer = spawn(process.execPath, ["--input-type=module", "-e", script], { detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, KUDZU_AI_DELIVERY_GROUP: "1", PATH: mode === "timeout" ? `${join(root, "bin")}:${process.env.PATH}` : process.env.PATH } })
     let stdout = "", stderr = ""
     outer.stdout.on("data", data => { stdout += data })
@@ -156,7 +159,7 @@ test("managed check timeout and interruption stop its descendants without killin
       assert.equal(result.error, null)
       assert.match(await readFile(result.log.path, "utf8"), /worker started/)
       for (const pid of workers) {
-        const state = spawnSync("ps", ["-p", String(pid), "-o", "stat="], { encoding: "utf8" })
+        const state = spawnSync("ps", [pidOption, String(pid), "-o", "stat="], { encoding: "utf8" })
         assert.ok(state.status !== 0 || !state.stdout.trim() || state.stdout.trim().startsWith("Z"), `live check descendant ${pid}: ${state.stdout}`)
       }
     } finally {

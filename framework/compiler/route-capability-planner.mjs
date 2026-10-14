@@ -105,6 +105,7 @@ export function planRouteCapabilities(records, { navigationRouteCount = 0 } = {}
   lists.generalRowHooks ||= lists.rowRefs || lists.complexRowState
   lists.asyncParts = lists.expressions || lists.expressionAttributes || lists.conditions
   lists.mounts ||= lists.conditions || lists.nested
+  if (effects.any && plans.every(plan => plan.effects.every(effect => !Object.keys(effect.states).length && !hasCaptureType(effect.scope, "setter")))) effects.stateWrites = false
 
   const capabilityIR = {
     version: 1,
@@ -143,6 +144,7 @@ export function assertCapabilityIR(capabilityIR, records, options = {}) {
   if (capabilityIR.lists.rowRefs && !capabilityIR.lists.rowHooks || capabilityIR.lists.generalRowHooks && !capabilityIR.lists.rowHooks) throw new Error("CapabilityIR row ownership requires row hooks")
   if (capabilityIR.effects.navigableOwners && (!capabilityIR.effects.navigable || !capabilityIR.effects.any)) throw new Error("CapabilityIR navigable effect owners require navigable effects")
   if ((capabilityIR.bindings.count || capabilityIR.lists.count || capabilityIR.events.native.length || options.navigationRouteCount) && !capabilityIR.runtime.shared) throw new Error("CapabilityIR shared runtime flag is inconsistent")
+  if (capabilityIR.effects.stateWrites !== undefined && (capabilityIR.effects.stateWrites !== false || !capabilityIR.effects.any)) throw new Error("Invalid CapabilityIR effect state-write exclusion")
   assertJsonSafe(capabilityIR, "CapabilityIR")
   if (records) {
     const expected = planRouteCapabilities(records, options, false)

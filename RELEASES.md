@@ -1,5 +1,22 @@
 # Kudzu Releases
 
+## 0.17.0 - Static Calculation Configuration and Lean Effects
+
+- Selected calculation effect dependencies accept strings, finite numbers other
+  than negative zero, booleans, null and normalized const aliases alongside at
+  least two direct state inputs. Existing evaluators and ownership preserve
+  selected-value comparison and cleanup without additional signals or runtime.
+- Read-only effect families omit state-write machinery only with a validated
+  exclusion proof; ordinary owned effects omit unused keyed-row machinery.
+  Measured fixture reductions range from 253 to 990 raw JavaScript bytes.
+  Stateful/keyed controls and C2 retain byte-identical deploy output.
+- Adds the maintained Medusa preference fixture and source-boundary/browser
+  regression checks. Object/array configuration and dynamic arguments remain
+  unsupported. No restoration-latency or AI-token improvement is claimed.
+- Publishes create-kudzu 0.1.161 targeting core ^0.17.0. The minor version marks
+  the expanded compiler compatibility boundary; the independent 1.0 gate remains
+  blocked. Earlier planned version labels remain evidence identifiers.
+
 ## 0.16.48 - Lean Binding Mounts
 
 - Discover property bindings with one native attribute read and an ordinary

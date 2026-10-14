@@ -9,7 +9,7 @@ cd my-app
 npm install
 npm run dev`} />
     <p>To add Kudzu to an existing project, install <code>@kudzujs/core</code> and <code>typescript</code>, configure TypeScript with <code>jsxImportSource: "@kudzujs/core"</code>, and add these scripts to <code>package.json</code>:</p>
-    <CodeBlock language="shell" code={`npm install @kudzujs/core@^0.16.48 typescript`} />
+    <CodeBlock language="shell" code={`npm install @kudzujs/core@^0.17.0 typescript`} />
     <CodeBlock language="text" code={`{
   "scripts": {
     "dev": "kudzu dev",
@@ -501,6 +501,7 @@ useEffect(() => {
   return () => window.removeEventListener(event, listener, capture)
 }, [event, capture])`} />
     <p>Kudzu coalesces committed dependency changes, awaits every affected cleanup in declaration order, and then runs new setups in declaration order. Dependencies may be direct signal identifiers, aliases holding JSON-safe primitives, destructured ordinary child props passed directly from parent state, direct property paths over ordinary object state, or one top-level immutable local derived through a supported pure primitive expression from state. Derived dependencies subscribe to their source states but compare the calculated value with <code>Object.is</code>; setup and cleanup evaluate the latest expression. Effect setup and directly returned cleanup callbacks may each be one top-level simple <code>const</code> function in the same component; Kudzu substitutes them into the existing handler. A keyed row may also use direct primitive properties such as <code>[item.id]</code> or <code>[version, item.name]</code>; only rows whose selected values changed rerun, reorder does not rerun, and key changes remount. Whole-object, prototype-sensitive, object-valued, spread, arbitrary-call, and dynamic dependencies are rejected. Indirect or dynamically selected callbacks, callback parameters, cleanup parameters or generators, cross-component references, and non-serializable captures remain unsupported. Routes without dependency effects do not load <code>kudzu-deps.js</code>.</p>
+    <p>A primitive field of a pure synchronous relative calculation, such as <code>[selected.available]</code>, may be the sole dependency. The calculation must retain at least two direct state inputs and may also receive static strings, finite numbers other than negative zero, booleans or <code>null</code>. Local <code>const</code> aliases that normalize to those literals are accepted. These arguments add no signals or runtime: the existing evaluator subscribes only to source states and compares the selected result with <code>Object.is</code>. Object/array configuration, mutable locals, composed arguments, <code>undefined</code>, non-finite values and parameter defaults/rest remain unsupported.</p>
     <p>An effect may own a relative TypeScript module Worker. Kudzu emits its graph separately and creates it only when the effect mounts.</p>
     <CodeBlock code={`useEffect(() => {
   const worker = new Worker(

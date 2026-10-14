@@ -1,6 +1,6 @@
 # Current Compiler Architecture
 
-This maps the current `0.16.48` architecture, including runtime-family specialization of binding properties, general attributes, styles and conditional capabilities through existing RouteIR facts and codegen. It builds on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The `0.21.4` AI delivery gate is measured and blocked; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
+This maps the current `0.17.0` architecture, including runtime-family specialization of binding properties, general attributes, styles, conditional capabilities and effects through existing RouteIR facts and codegen. It builds on the completed `0.9.0` semantic-compression release and `0.8.23` Goal A compiler foundation. The `0.21.4` AI delivery gate is measured and blocked; file and function names are the stable references, while line numbers are intentionally omitted because later work may still move code.
 
 The `0.16.32` release projects existing `condition.owned` entries into
 the internal `bindings.conditionState` fact. Runtime-family union preserves either
@@ -96,6 +96,14 @@ src/pages entries + config
 The browser consumes static HTML first. State seeds and descriptors in that HTML connect only to emitted command, binding, list, native-handler, effect, parameter, or navigation modules. Browser execution patches owned DOM directly; it does not invoke component functions or reconstruct a component tree.
 
 ## Residual Coupling
+
+Effect-output specialization: the existing capability projection
+may prove `effects.stateWrites = false` from empty effect state maps and absent
+captured setters across the entire family. Effect runtime codegen removes only
+the corresponding write block; absent proof retains generic behavior. Owned
+entry generators independently omit keyed-only machinery when neither keyed
+effects nor item dependencies exist. No source semantic or new runtime owner
+is introduced.
 
 - `createKudzuTransformer()` remains one large source-local analysis unit combining validation, specialization, descriptor registration, and transformed-source emission.
 - Transient component rewrite indexes remain source-local AST indexes; finalized handler, binding, derived, keyed, effect, signal, import, and component ownership edges use explicit JSON-safe slots or stable symbols.

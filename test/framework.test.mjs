@@ -154,7 +154,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.ok(blog.includes(`Kudzu ${version}`) && blog.includes(`v${version}`))
   assert.match(blog, /source compiled by the current Kudzu release/)
   assert.ok(html.includes(`class="release-banner" href="/releases/${version}"`))
-  assert.match(html, /Leaner binding setup/)
+  assert.match(html, /Static calculation configuration and lean effects/)
   assert.match(release, /Kudzu 0\.16\.30.*Patch the target.*Skip the rest/s)
   assert.match(release, /BINDING TARGET SPECIALIZATION.*npm install @kudzujs\/core@\^0\.16\.30/s)
   assert.match(release, /<title>Kudzu 0\.16\.30 - Binding target specialization<\/title>/)
@@ -1132,6 +1132,15 @@ test("compiles a selected Derived field as an effect dependency", async t => {
   assert.match(effectEntry, /calculated dependency/)
   assert.doesNotMatch(effectEntry, /evaluateCollectionExpression|kudzu-collection-selector/)
   assert.equal(await hasRuntime("derived-medusa-product-actions", "kudzu-collection-selector.js"), false)
+
+  const preferred = inspectSourceResult(fixture, "src/pages/preference.tsx")
+  const preferredDerived = preferred.moduleIR.derived.find(entry => entry.kind === "calculation")
+  assert.deepEqual(preferredDerived.signals, [0, 1], "static configuration must not allocate another signal")
+  assert.match(preferred.moduleIR.bindings[0].code, /derivePreferredVariant\([\s\S]*"Black"/)
+  const preferencePlan = JSON.parse(await readFile(new URL("./fixtures/derived-medusa-product-actions/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/preference")
+  assert.equal(preferencePlan.states.length, 2)
+  assert.deepEqual(preferencePlan.effects[0].dependencyEvaluators[0].states, { color: "s0", size: "s1" })
+  assert.deepEqual(preferencePlan.effects[0].dependencyEvaluators[0].scope, {}, "static arguments normalize into the existing evaluator")
 
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runDerivedCalculationBrowserTest(fixture, chrome)
@@ -2128,6 +2137,9 @@ test("migrates locale routing, interactive MDX, and an effect-owned canvas", asy
   assert.match(handler, /requestAnimationFrame/)
   assert.match(handler, /cancelAnimationFrame/)
   assert.match(handler, /performance\.now/)
+  for (const route of ["/", "/ko", "/en"]) {
+    assert.doesNotMatch(await readRuntime(fixture, "kudzu-effect.js", route), /queueMicrotask|new Set|\.clear\(/, "stateless locale/canvas effects must not ship a state-write scheduler")
+  }
   assert.doesNotMatch(`${entryHtml}\n${koHtml}\n${enHtml}\n${entryHandler}\n${mdxHandler}\n${handler}`, /new Function|\beval\(|["']react["']|next-intl/)
   assert.doesNotMatch(staticHtml, /<script|data-k-/)
   assert.deepEqual(plans.map(plan => [plan.route, plan.states.length, plan.events.length, plan.effects.length]), [["/ko", 2, 3, 1], ["/en", 2, 3, 1], ["/", 0, 0, 1], ["/static", 0, 0, 0]])
@@ -3862,6 +3874,7 @@ test("owns effects rendered inside conditional DOM", async t => {
   assert.match(html, /data-k-effect=/)
   assert.match(entry, /registerMountHook/)
   assert.equal(plan.effects[0].owner, "e0")
+  assert.doesNotMatch(entry, /Keyed row effect template was not emitted|\[data-k-effects\]/, "ordinary conditional effects must not ship keyed-row effect registration")
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runConditionalEffectBrowserTest(fixture, chrome)
 })
@@ -3890,6 +3903,7 @@ test("owns effects rendered by imported keyed row components", async t => {
   const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
   assert.match(html, /data-k-effects=/)
   assert.match(entry, /kEffectItem/)
+  assert.match(entry, /Keyed row effect template was not emitted/, "keyed effects retain their registration path")
   assert.match(entry, /registerListItemHook/)
   assert.match(itemOnlyEntry, /registerListItemHook/)
   assert.doesNotMatch(itemOnlyEntry, /registerCommitter|dependencyIds/)
@@ -4344,6 +4358,7 @@ test("owns a real GSAP landing animation lifecycle", async t => {
   assert.match(handler, /3\.15\.0/)
   assert.match(handler, /gsapMounts/)
   assert.match(handler, /gsapDisposals/)
+  assert.doesNotMatch(await readFile(new URL("./fixtures/gsap-lifecycle/dist/assets/effects/index.js", import.meta.url), "utf8"), /kEffects|kEffectItem/, "ordinary navigable effects must not ship keyed-row ownership")
   assert.match(html, /effects\/index\.js/)
   assert.match(html, /data-hero="true" data-k-ref="rr0"/)
   assert.match(html, /Build expressive interfaces without surrendering ownership\./)
@@ -8417,6 +8432,39 @@ try {
   document.body.dataset.derivedCalculationTest = "fail-" + error.message
 }
 `)
+  const preferenceHtmlUrl = new URL("preference/index.html", output)
+  const preferenceHtml = await readFile(preferenceHtmlUrl, "utf8")
+  await writeFile(preferenceHtmlUrl, preferenceHtml.replace("</body>", '<script type="module" src="/preference-browser-test.js"></script></body>'))
+  await writeFile(new URL("preference-browser-test.js", output), `
+const wait = () => new Promise(resolve => setTimeout(resolve, 100))
+const button = name => [...document.querySelectorAll("main button")].find(node => node.textContent === name)
+try {
+  await wait()
+  const cart = document.querySelector("[data-purchase]")
+  if (document.body.dataset.preferenceRuns !== "1" || cart.disabled || document.querySelector("[data-preference]").textContent !== "Black") throw new Error("initial")
+  button("Black").click()
+  await wait()
+  if (document.body.dataset.preferenceRuns !== "1" || document.body.dataset.preferenceCleanups) throw new Error("same-state")
+  button("Ivory").click()
+  await wait()
+  if (document.body.dataset.preferenceRuns !== "2" || document.body.dataset.preferenceCleanups !== "1" || !cart.disabled) throw new Error("changed-value")
+  button("Small").click()
+  await wait()
+  if (document.body.dataset.preferenceRuns !== "2" || document.body.dataset.preferenceCleanups !== "1" || document.querySelector("[data-price]").textContent !== "19,000") throw new Error("unchanged-selected-value")
+  button("Black").click()
+  await wait()
+  if (document.body.dataset.preferenceRuns !== "2" || !cart.disabled) throw new Error("unavailable-preferred-size")
+  button("Medium").click()
+  await wait()
+  if (document.body.dataset.preferenceRuns !== "3" || document.body.dataset.preferenceCleanups !== "2" || cart.disabled) throw new Error("restored-value")
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await wait()
+  window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }))
+  await wait()
+  if (document.body.dataset.preferenceCleanups !== "3") throw new Error("dispose-once")
+  document.body.dataset.staticCalculationTest = "pass"
+} catch (error) { document.body.dataset.staticCalculationTest = "fail-" + error.message }
+`)
   const port = nextBrowserPort()
   const serverSource = `
 const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
@@ -8434,6 +8482,9 @@ http.createServer((request, response) => {
     const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
     assert.equal(browser.status, 0, browser.stderr)
     assert.match(browser.stdout, /data-derived-calculation-test="pass"/)
+    const preference = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=4000", "--dump-dom", `http://127.0.0.1:${port}/preference/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(preference.status, 0, preference.stderr)
+    assert.match(preference.stdout, /data-static-calculation-test="pass"/)
   } finally {
     server.kill()
   }

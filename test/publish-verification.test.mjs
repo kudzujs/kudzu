@@ -16,16 +16,25 @@ test("publication verification retries visible errors and requires a successful 
   await mkdir(join(root, "packages/create-kudzu"), { recursive: true })
   await writeFile(join(root, "package.json"), JSON.stringify({ version: "1.2.3" }))
   await writeFile(join(root, "packages/create-kudzu/package.json"), JSON.stringify({ version: "0.0.7" }))
-  await writeFile(join(root, "bin/npm"), `#!/usr/bin/env node
-const fs = require("node:fs");
-const args = process.argv.slice(2), version = args[1].split("@").at(-1);
-fs.appendFileSync(process.env.CALL_LOG, JSON.stringify(args) + "\\n");
-const calls = fs.readFileSync(process.env.CALL_LOG, "utf8").trim().split("\\n").length;
-if (process.env.MODE === "retry" && calls === 1 || process.env.MODE === "processing" && calls <= 13) {
-  console.error("npm error E404 registry not yet updated"); process.exitCode = 1;
-} else if (process.env.MODE === "unauthorized") {
-  console.log(version); console.error("npm error E401 lookup rejected"); process.exitCode = 1;
-} else console.log(process.env.MODE === "mismatch" ? "0.0.0" : version);
+  // Keep retry exhaustion about the workflow, not hundreds of Node startups.
+  await writeFile(join(root, "bin/npm"), `#!/bin/sh
+[ "$#" -eq 3 ] && [ "$1" = view ] && [ "$3" = version ] || exit 2
+printf '["%s","%s","%s"]\\n' "$1" "$2" "$3" >> "$CALL_LOG"
+version=\${2##*@}
+calls=0
+while IFS= read -r line; do calls=$((calls + 1)); done < "$CALL_LOG"
+if { [ "$MODE" = retry ] && [ "$calls" -eq 1 ]; } || { [ "$MODE" = processing ] && [ "$calls" -le 13 ]; }; then
+  printf '%s\\n' 'npm error E404 registry not yet updated' >&2
+  exit 1
+elif [ "$MODE" = unauthorized ]; then
+  printf '%s\\n' "$version"
+  printf '%s\\n' 'npm error E401 lookup rejected' >&2
+  exit 1
+elif [ "$MODE" = mismatch ]; then
+  printf '%s\\n' '0.0.0'
+else
+  printf '%s\\n' "$version"
+fi
 `, { mode: 0o755 })
   await writeFile(join(root, "bin/sleep"), '#!/bin/sh\nprintf "%s\\n" "$1" >> "$SLEEP_LOG"\n', { mode: 0o755 })
   for (const mode of ["retry", "processing", "unauthorized", "mismatch"]) {

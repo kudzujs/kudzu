@@ -8,3 +8,12 @@ export function deriveVariant(color: string, size: string) {
     available: selected?.available ?? false
   }
 }
+
+export function derivePreferredVariant(color: string, size: string, preferredColor: string) {
+  const selected = variants.find(variant => variant.color === color && variant.size === size)
+  return {
+    id: selected?.id ?? "",
+    price: selected?.price ?? "Unavailable",
+    available: (selected?.available ?? false) && color === preferredColor
+  }
+}

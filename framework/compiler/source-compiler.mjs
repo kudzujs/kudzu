@@ -1043,7 +1043,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
       const reject = (target, message) => { throw sourceNodeError(target, calculationSource, message) }
       if (calculation.asteriskToken || calculation.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword)) reject(calculation, "Imported calculations used by useEffect() must be synchronous; move async work into the owned effect")
       if (calculation.parameters.some(parameter => !ts.isIdentifier(parameter.name) || parameter.dotDotDotToken || parameter.initializer || parameter.questionToken)) reject(calculation, "Imported calculations used by useEffect() require ordinary identifier parameters without defaults or rest")
-      if (call.arguments.some(argument => !ts.isIdentifier(unwrapExpression(argument)))) fail(call, "useEffect() selected calculation arguments must be direct primitive state identifiers; aliases, property paths, and composed arguments are not supported")
+      if (call.arguments.some(argument => !ts.isIdentifier(unwrapExpression(argument)) && !isStaticPrimitiveArgument(argument))) fail(call, "useEffect() selected calculation arguments must be direct primitive state identifiers or static primitive literals; property paths and composed arguments are not supported")
       const shapes = returns.map(returned => returned.properties.map(property => {
         if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property) || ts.isComputedPropertyName(property.name) || ["__proto__", "constructor", "prototype"].includes(property.name.text)) reject(property, "Imported calculations used by useEffect() must return direct safe plain-object fields without spreads, methods, or computed names")
         return property.name.text
@@ -2085,7 +2085,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const call = unwrapExpression(expanded.expression)
           if (!ts.isCallExpression(call) || !ts.isIdentifier(call.expression) || !importBindings.has(call.expression.text)) return undefined
           const states = referencedStateNames(call, setters, call, bindingIndex)
-          if (states.size < 2 || call.arguments.some(argument => !ts.isIdentifier(unwrapExpression(argument)) || !states.has(unwrapExpression(argument).text))) effectFail(call, "useEffect() selected calculations require at least two direct primitive state arguments")
+          if (states.size < 2) effectFail(call, "useEffect() selected calculations require at least two direct primitive state arguments")
+          if (call.arguments.some(argument => !isStaticPrimitiveArgument(argument) && (!ts.isIdentifier(unwrapExpression(argument)) || !states.has(unwrapExpression(argument).text)))) effectFail(call, "useEffect() selected calculation arguments must be direct state identifiers or static primitive literals after const normalization")
           return { name: value.expression.text, field: value.name.text, call, states, source: dependency }
         }
         const dependencyAnalysis = analyzeEffectDependencies({
@@ -3241,6 +3242,13 @@ function isPrimitiveDefaultLiteral(node) {
   return ts.isStringLiteral(node) || ts.isNumericLiteral(node) ||
     (ts.isPrefixUnaryExpression(node) && (node.operator === ts.SyntaxKind.PlusToken || node.operator === ts.SyntaxKind.MinusToken) && ts.isNumericLiteral(node.operand)) ||
     node.kind === ts.SyntaxKind.TrueKeyword || node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.NullKeyword
+}
+
+function isStaticPrimitiveArgument(node) {
+  const value = unwrapExpression(node)
+  if (!isPrimitiveDefaultLiteral(value) && !ts.isNoSubstitutionTemplateLiteral(value)) return false
+  const number = ts.isNumericLiteral(value) ? Number(value.text) : ts.isPrefixUnaryExpression(value) ? (value.operator === ts.SyntaxKind.MinusToken ? -1 : 1) * Number(value.operand.text) : null
+  return number === null || Number.isFinite(number) && !Object.is(number, -0)
 }
 
 function isEventOnlyComponentLocal(root, name) {

@@ -38,3 +38,21 @@ the selected-ID `EffectIR` dependency reference that identity. The effect uses
 the existing generated binding evaluator, source-state scheduling, `Object.is`
 comparison, and effect ownership; no calculation runtime or collection
 evaluator is emitted.
+
+## Static Primitive Configuration Extension
+
+The `preference` route extends this reduction with a build-known preferred
+color passed as an ordinary top-level const to `derivePreferredVariant()`.
+Color and size remain the only two signals. The selected availability field
+controls the cart button and is the sole effect dependency; the observer body
+only counts setups and cleanups. This is a maintained extension of the reduced
+fixture, not an additional claim about unmodified upstream source.
+
+Before this extension it failed at `preference.tsx:8:20` with
+`useEffect() selected calculations require at least two direct primitive state arguments`.
+The compiler now folds static primitive arguments through the existing const
+normalization and binding evaluator. The browser journey verifies initial
+availability, same-state writes, a changed selected value, source-state changes
+whose selected value stays equal, restoration and exactly-once disposal.
+Configuration allocates no additional signal and the static sibling stays
+JavaScript-free. Object/array configuration and dynamic arguments remain rejected.

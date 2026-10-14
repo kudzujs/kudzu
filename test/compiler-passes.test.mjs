@@ -11,6 +11,7 @@ import { generateCommandBehavior } from "../framework/compiler/codegen/command-c
 import { classifyCompatibility, createCompatibilityReport } from "../framework/compiler/compatibility-registry.mjs"
 import { createDescriptorSession, createSemanticArtifact } from "../framework/compiler/descriptor-session.mjs"
 import { analyzeEffectDependencies, validateEffectOwnedBrowserResources } from "../framework/compiler/effect-analysis.mjs"
+import { createEffectCodegen } from "../framework/compiler/effect-codegen.mjs"
 import { createHandlerLowering } from "../framework/compiler/handler-lowering.mjs"
 import { createInspectionReport } from "../framework/compiler/inspection-report.mjs"
 import { assertModuleIRReferences, createModuleIR, registerCommandHandler, registerEffect, registerKeyedBlock, registerSharedAction, registerSharedState } from "../framework/compiler/ir/module-ir.mjs"
@@ -776,6 +777,47 @@ export default function Page() {
   assert.match(failure({ helper: `export function derive(color: string, size: string) { if (color) return { id: color, price: size, available: true }; return { id: size, available: false } }` }), /same direct plain-object fields on every path/)
   assert.match(failure({ helper: `export function derive(color: string, size: string) { if (color) return { id: color, price: size, available: true } }` }), /must end with an unconditional return/)
   assert.match(failure({ helper: `export async function derive(color: string, size: string) { return { id: color, price: size, available: true } }` }), /must be synchronous functions/)
+  assert.match(failure({ helper: baseHelper.replace("size: string)", 'size: string = "M")') }), /without defaults or rest/)
+  assert.match(failure({ helper: baseHelper.replace("size: string)", "...size: string[])") }), /without defaults or rest/)
+})
+
+test("normalizes static primitive calculation arguments without adding dependency signals", () => {
+  const page = resolve("test/fixtures/derived-effect-boundary/src/pages/index.tsx")
+  const derive = resolve("test/fixtures/derived-effect-boundary/src/derive.ts")
+  const compile = (argument, declaration = "", call = `derive(color, size, ${argument})`) => {
+    const sourceIndex = new Map([
+      [derive, `export function derive(color: string, size: string, setting: string | number | boolean | null) { return { id: color + size + String(setting), price: 10 } }`],
+      [page, `import {useEffect,useState} from "react"
+import {derive} from "../derive"
+export default function Page() {
+  const [color,setColor]=useState("Black")
+  const [size,setSize]=useState("M")
+  ${declaration}
+  const selected=${call}
+  useEffect(()=>{document.body.dataset.selected=selected.id},[selected.id])
+  return <output>{selected.price}</output>
+}`]
+    ])
+    return compileSource(page, new Set(sourceIndex.keys()), sourceIndex, new Set(), new Map(), "")
+  }
+  for (const argument of ['"Black"', '`Black`', "42", "+2", "-2", "0", "+0", "-0.5", "1e3", "0xff", "1_024", "true", "false", "null", '("Black" as const)']) {
+    const result = compile(argument)
+    const calculation = result.moduleIR.derived.find(entry => entry.kind === "calculation")
+    assert.deepEqual(calculation.signals, [0, 1], argument)
+    assert.deepEqual(result.moduleIR.effects[0].subscriptions, [0, 1], argument)
+    assert.equal(result.moduleIR.bindings[0].captures.length, 0, argument)
+  }
+  const alias = compile("setting", 'const first = "Black"; const setting = first')
+  assert.deepEqual(alias.moduleIR.effects[0].subscriptions, [0, 1])
+  assert.match(alias.moduleIR.bindings[0].code, /"Black"/)
+  for (const [argument, declaration] of [
+    ['{ color: "Black" }', ""], ['["Black"]', ""], ["-0", ""], ["1e999", ""],
+    ["Infinity", ""], ["NaN", ""], ["undefined", ""], ["color.toLowerCase()", ""],
+    ["setting", 'let setting = "Black"'], ["setting", 'const setting = color + "!"'],
+    ["setting", 'let mutable = "Black"; const setting = mutable'],
+    ["setting", 'const setting = { color: "Black" }']
+  ]) assert.throws(() => compile(argument, declaration), /src\/pages\/index\.tsx:\d+:\d+ .*(?:selected calculation|Reactive imported calculation)/, argument)
+  assert.throws(() => compile('"Black"', "", 'derive(color, "M", "Black")'), /at least two direct primitive state arguments/)
 })
 
 test("generates the existing command behavior AST from HandlerIR", () => {
@@ -1285,12 +1327,60 @@ test("plans native, effect, capture, and dependency runtime capabilities", () =>
 
   assert.deepEqual(manifest.events.native, ["submit"])
   assert.equal(manifest.events.hasNativeHandlers, true)
-  assert.deepEqual(manifest.effects, { any: true, derivedDependencies: true, itemDependencies: true, captures: true, navigable: true, navigableOwners: true })
+  assert.deepEqual(manifest.effects, { any: true, derivedDependencies: true, itemDependencies: true, captures: true, navigable: true, navigableOwners: true, stateWrites: false })
   assert.equal(generateListRuntime(readFileSync(new URL("../framework/list-runtime.js", import.meta.url), "utf8"), manifest).define.__KUDZU_LIST_EFFECTS__, "true")
   assert.deepEqual(manifest.captures, { nestedState: true, setter: true })
   assert.equal(manifest.runtime.shared, true)
   assert.equal(usesRouteDependencyRuntime({ plan: routePlan({ states: [{ slot: 0, id: "count", name: "count", initialValue: 0 }], effects: [{ module: "/handler.js", handler: "effect1", states: {}, scope: {}, dependencies: ["count"] }] }), navigable: false, hasBindings: false, hasLists: false }), true)
   assert.equal(usesRouteDependencyRuntime({ plan, navigable: false, hasBindings: false, hasLists: false }), false)
+})
+
+test("excludes effect writes only when every owner has no state mapping or captured setter", () => {
+  const source = readFileSync(new URL("../framework/effect-runtime.js", import.meta.url), "utf8")
+  const make = (states, scope) => routeRecord(routePlan({
+    states: [{ slot: 0, id: "s0", name: "value", initialValue: 0 }],
+    effects: [{ module: "/handler.js", handler: "effect0", states, scope }]
+  }), { hasBehaviors: true, hasEffects: true })
+  const readonly = make({}, { label: "ready" })
+  const without = planRouteCapabilities([readonly])
+  assert.equal(without.effects.stateWrites, false)
+  assert.doesNotMatch(generateEffectRuntime(source, without).source, /new Set|queueMicrotask|set\(name, value\)/)
+  assert.equal(generateEffectRuntime(source, without).define["globalThis.__KUDZU_CAPTURE_SETTER__"], "false")
+  assert.throws(() => generateEffectRuntime(source.replace("/* effect-state-writes */", ""), without), /unused effect state writes specialization/)
+  assert.throws(() => generateEffectRuntime(source.replace("set(name, value)", "set(key, value)"), without), /unused effect setter specialization/)
+  for (const writer of [
+    make({ value: "s0" }, {}),
+    make({}, { update: { type: "setter", id: "s0" } }),
+    make({}, { nested: { type: "object", value: [["updates", { type: "array", value: [{ type: "setter", id: "s0" }] }]] } })
+  ]) for (const records of [[writer], [readonly, writer], [writer, readonly]]) {
+    const manifest = planRouteCapabilities(records)
+    assert.equal(manifest.effects.stateWrites, undefined)
+    assert.match(generateEffectRuntime(source, manifest).source, /queueMicrotask/)
+    const forged = structuredClone(manifest)
+    forged.effects.stateWrites = false
+    assert.throws(() => assertCapabilityIR(forged, records), /does not match RouteBuildRecord projection/)
+  }
+  const invalid = structuredClone(without)
+  invalid.effects.any = false
+  assert.throws(() => assertCapabilityIR(invalid), /effect state-write exclusion/)
+  invalid.effects.any = true
+  invalid.effects.stateWrites = "false"
+  assert.throws(() => assertCapabilityIR(invalid), /effect state-write exclusion/)
+})
+
+test("ordinary owned effects exclude keyed machinery while mixed and item-dependent entries retain it", () => {
+  const generate = createEffectCodegen({ assetPath: (_base, path) => `/${path}`, inlineJson: JSON.stringify, relativeModulePath: (_from, to) => to })
+  const plain = { module: "/assets/handlers.js", handler: "effect0", owner: "e0", states: {}, scope: {}, cleanup: true, lifetime: "route" }
+  const keyed = { ...plain, handler: "effect1", owner: "e1", list: true }
+  const itemDependent = { ...plain, itemDependencies: ["id"], listState: "s0" }
+  for (const navigable of [false, true]) {
+    const emit = effects => generate(effects, "/assets/effects/index.js", [{ path: "handlers.js" }], "/assets", "", undefined, "kudzu.js", navigable)
+    assert.doesNotMatch(emit([plain]), /kEffects|kEffectItem|\[data-k-effects\]/)
+    for (const effects of [[keyed], [plain, keyed], [keyed, plain], [itemDependent]]) {
+      assert.match(emit(effects), /\[data-k-effects\]/)
+      assert.match(emit(effects), /marker\.dataset\.kEffects/)
+    }
+  }
 })
 
 test("specializes style bindings across the entire runtime family", () => {

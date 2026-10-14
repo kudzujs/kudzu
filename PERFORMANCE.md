@@ -1,5 +1,409 @@
 # Performance Records
 
+## 0.17.0 Versioned Release Preflight (2026-10-14)
+
+The user authorizes core 0.17.0 and generator 0.1.161 (^0.17.0), combining
+the two accepted slices below. Versioned check builds 251 pages. A stale root
+build lock was removed only after its recorded PID was confirmed absent.
+The required-Chrome npm test attempt passes the standalone Project contract,
+then reports 215 passes, one website-copy assertion failure and one framework
+cancellation before the 900-second tool boundary. This is not a full-suite pass.
+The copy mismatch is corrected while preserving the R19 negative result and
+updating the expected release banner; the focused website regression passes.
+Check and package smoke pass again, with default/AI deploys identical across
+four files (9,758 raw / 3,741 aggregate gzip bytes), and git diff --check passes.
+Exact-commit remote CI must pass before tagging and protected publication.
+
+## Static Primitive Arguments In Selected Calculation Effects (2026-10-14, unreleased)
+
+A maintained extension of the pinned Medusa reduction adds a preferred-color
+argument to its pure relative calculation and observes selected availability.
+The application retains two `useState` inputs, one ordinary const setting,
+reactive price/availability bindings and a selected-field effect with cleanup.
+Before the change `preference.tsx:8:20` fails the direct-state-only argument
+guard. No application rewrite is needed after the change.
+
+The existing argument guards now also accept static strings (including plain
+template literals), finite numbers except negative zero, booleans and null.
+Existing const normalization handles immutable aliases; literals remain in the
+existing evaluator instead of becoming signals or effect captures. At least
+two direct state inputs and one sole selected primitive dependency remain
+required. Object/array configuration, mutable locals, composed expressions,
+undefined/non-finite values, dynamic result keys and defaults/rest are not
+enabled. This does not admit the earlier static-object configuration probe.
+
+The browser journey verifies initial availability, same-state updates, changed
+selected values, source-state changes with equal selected values, restoration,
+cleanup ordering and exactly-once document disposal. IR checks retain exactly
+two signals/subscriptions and an empty evaluator capture scope. Positive
+compiler checks cover fifteen literal forms and a const-alias chain; negative
+checks retain source locations for unsafe neighboring forms and too few state
+inputs. Existing helper purity/default/rest diagnostics remain intact.
+
+Four unchanged-input paired controls (original Medusa route, Mercury, Project,
+and colonni) emit byte-identical complete deploy manifests. For the new route,
+the old compiler's equivalent supported recipe moves the preference inside the
+helper and removes the third call argument. Compared with that recipe, the new
+source keeps identical HTML, RouteIR and runtime files: sixteen deploy paths
+remain, and application JavaScript changes from 21,104 raw / 9,668 gzip bytes
+to 21,120 / 9,675 (+16 raw / +7 gzip). This is application literal/parameter
+code, not a new framework runtime or a latency claim. The original static
+sibling remains JavaScript-free.
+
+Accounting for this slice alone: semantic primitives +0; compiler passes +0;
+core compiler LOC +8; runtime concepts/LOC +0; new signals +0. One narrow source
+admission rule reuses existing normalization, BindingIR, DerivedIR and EffectIR.
+Public support/limit text and the fixture provenance distinguish the maintained
+preference extension from the unmodified upstream Medusa source.
+
+Verification: `npm run check` passes (250 pages); package smoke passes with four
+identical default/AI outputs at 9,758 raw / 3,741 gzip bytes. Medusa's root and
+preference journeys and the independent Mercury Chrome journey pass. The full
+required-Chrome command is attempted but the unchanged Project contract is
+cancelled at its existing 120-second deadline while host load reaches 52.80 /
+52.72 / 39.58 on six logical CPUs. The user declines remote branch/PR verification
+and requests local continuation. Explicit serial non-browser execution
+(`KUDZU_SKIP_BROWSER=1 node --test --test-concurrency=1 test/*.test.mjs`) then
+passes 347 tests with eleven explicit skips and no failures/cancellations;
+embedded browser checks are also omitted. This is not a full Chrome pass.
+The focused Medusa/Mercury Chrome checks pass again afterward. Keep the full
+browser gate pending without changing test deadlines or weakening acceptance.
+
+Local continuation retains another failure rather than retrying until green:
+the unchanged Project Chrome contract subsequently passes alone in 66.823
+seconds. The default-schedule remaining Chrome suite then encounters deadline,
+startup, empty-output and cancellation failures as host load rises to 109.41 /
+114.76 / 81.75. Its partial summary is 163 passes, six failures and three
+cancellations, followed by the 900-second outer tool limit; it is not a complete
+358-test result. A bounded read-only process inventory also exceeds twelve
+seconds, so the exact load source is not attributed and no unrelated process
+is stopped. Further whole-suite retries need usable local host conditions.
+Focused feature/browser, serial non-browser, package and artifact results retain
+their stated scope. The archived verification snapshot predates this follow-up.
+
+Evidence is preserved in
+`benchmarks/runtime-matrix/results/static-primitive-calculations-20261014.tar.gz`:
+280,344 bytes, 210 content files plus manifest, SHA-256
+`12d08080091a5e044660c1b8c5f848f88b3214031671777c314ae241b46d24cc`.
+Fresh extraction verifies all hashes. It contains the original failure,
+before/after compiler sources, paired deploy trees, plans, recipe and checks.
+No model trial, AI-token reduction, version bump or release is claimed.
+
+## Validated Effect Capability Exclusions (2026-10-13, unreleased)
+
+The unchanged colonni blog migration reproduces an output failure: locale and
+canvas effects with empty state maps and no captured setters still emit
+`new Set` and `queueMicrotask` in their effect context. Native clipboard/tab
+handlers own their state separately. The existing browser journey must retain
+canvas/ref cleanup, locale selection, tabs, clipboard and static-sibling output.
+
+Boundary review before implementation: project a conservative optional
+`effects.stateWrites = false` only when every effect in the existing runtime
+family has an empty state map and no nested serialized setter. Named state
+reads conservatively retain writes; missing proof retains the generic path.
+Use existing RouteIR capture data, CapabilityIR validation/family union and
+runtime-codegen defines to remove only the effect-context write scheduler.
+No source normalization, public API, new semantic primitive or ownership rule
+is needed. Mixed families and captured setters must retain the current writer;
+generic source and families without an explicit false proof retain the writer.
+
+Implementation uses an optional false capability proof and validated codegen
+sections. It removes the entire state-write block and setter method instead
+of relying on minification to delete unused local closures. The initial
+define-only candidate left an unused flush function behind; the final source
+selection eliminates that dead code and keeps writing controls byte-identical.
+The unchanged generic helper retains its original behavior, with two comments
+marking the removable section.
+
+The investigation continues into owned entries. An unchanged conditional-effect
+fixture first fails an assertion because it ships keyed-row registration without
+any keyed effects. A real GSAP navigation fixture independently exposes the same
+unused path. Both ordinary and navigable entry generators now omit list-template
+maps, row registrations, dynamic row disposal and list-item scope work when no
+effect is keyed or item-dependent. Ordinary entries also omit their unused
+row-ref resolver. Mixed and item-dependent entries retain their existing path;
+dependency comparison, cleanup, stale-write invalidation and navigation lifetime
+are unchanged. No source restructuring or package-specific runtime is introduced.
+
+Paired clean builds of eleven maintained fixtures retain identical RouteIR,
+file counts and path shapes. HTML is equal after normalizing the expected
+runtime-family hash changes caused by the new capability proof. Measured total
+JavaScript reductions use the same per-file `gzipSync()` calculation in both
+arms:
+
+| Fixture | Raw bytes removed | Gzip bytes removed |
+|---|---:|---:|
+| colonni locale/MDX/canvas migration | 493 | 259 |
+| package-owned effect | 253 | 138 |
+| conditional effects | 990 | 388 |
+| CodeMirror editor | 990 | 392 |
+| GSAP lifecycle with navigation | 623 | 233 |
+| navigation-owned effects | 623 | 233 |
+| Worker effects | 253 | 141 |
+
+The complete deploy manifests for `effects`, `effect-cleanup`, `keyed-effects`
+and `project-application` are byte-identical. All thirteen C2 deploy files are
+also byte-identical: its conservative state-mapping proof keeps the writer and
+its keyed effects keep row ownership. These savings therefore do not close the
+C2 restoration latency gap or establish an AI-token benefit.
+
+Checks pass: `npm run check` (250 pages), required-Chrome standalone 1/1 plus
+remaining **357/357 with zero skips**, and package smoke. Existing browser
+journeys exercise locale choice, clipboard/tabs/canvas cleanup, conditional
+replacement, GSAP/CodeMirror disposal and mixed keyed navigation. Two new
+compiler tests cover writer/readonly unions, nested captured setters, forged
+capability proofs, missing codegen anchors, and ordinary/keyed/item-dependent
+entry selection in both navigation modes. No assertion or test deadline is
+relaxed. Default/AI starter output stays four identical files at 9,758 raw /
+3,741 aggregate gzip bytes.
+
+Accounting: semantic primitives +0; compiler passes +0; core compiler LOC +9
+across the existing projection and codegen owners; generic runtime source +2
+comment lines; runtime concepts +0; normalization/adapter rules +0; application
+fixture source changes +0. One optional CapabilityIR exclusion fact is added.
+The initial artifact-copy attempt mixed core module identities and failed before
+comparison; the retained comparison copies each fixture inside its own frozen
+compiler package so build-time hook ownership is consistent.
+
+The verified archive is
+`benchmarks/runtime-matrix/results/effect-exclusions-20261013-verified.tar.gz`:
+2,801,952 bytes, 414 content files plus manifest, SHA-256
+`d7252985a3fcd0015d70387d8bc5b201a0b646357947f791a696c79926b7c6a5`.
+Fresh extraction verifies every content hash. It contains before/after artifacts,
+RouteIR, source snapshots, intermediate candidate reports and reproduction
+scripts. Timing experiments remain separate from these deterministic savings.
+
+An additional Medusa-shaped static-configuration probe was rejected at build
+time by the existing direct-state-argument boundary before it could exercise an
+evaluator-only capture. Thus no runtime capture-loss bug was established; that
+unadmitted syntax is not silently enabled or claimed supported by this packet.
+
+## Lightweight Publication Mock And Full Verification Closure (2026-10-13)
+
+The publication-step regression executes the real workflow shell block with
+mocked npm/sleep commands. Its former npm mock started Node for every lookup:
+3 retry, 15 delayed-processing, 120 rejected and 120 mismatched calls, or 258
+extra Node startups. Under load the error-exhaustion case had exceeded its
+unchanged 30-second subprocess deadline. An isolated run of the original test
+passes in 15.580 seconds, so the failure is not claimed to occur every time.
+
+The mock now uses `/bin/sh` builtins to validate and log the same three arguments,
+count calls, emit the same stdout/stderr and return the same exit codes. The
+actual workflow, 120-attempt bound, five-second sleep arguments, no-sleep-after-
+exhaustion assertion, package sequencing and all deadlines stay intact.
+The focused regression passes in 4.564 seconds. This before/after observation
+is not a controlled speed benchmark; removing 258 mock interpreter startups
+is the deterministic change. The fixture's package-version `node -p` reads
+continue to execute the real Node command.
+
+Worker, conditional-effect and keyed-effect browser checks pass 3/3 in a focused
+run. No production or framework-test change is made for the earlier pending-
+promise cancellation, whose precise cause remains unproven. Final verification
+uses the ordinary parallel test schedule and its existing per-test budgets:
+
+```sh
+npm run check && KUDZU_REQUIRE_CHROME=1 CHROME_BIN=/usr/bin/google-chrome npm test && npm run test:package && git diff --check
+```
+
+Check passes at 250 pages. The standalone Project browser contract passes 1/1;
+the remaining suite passes **355/355 with zero failures, cancellations or skips**,
+including the new effect-capture test and both PID/lookup corrections. The
+remaining suite takes 572.310 seconds; the terminal tool waits up to 900 seconds
+for this combined command, rather than terminating it at the earlier outer
+600-second limit. Repository test deadlines are unchanged. Package smoke passes;
+default/AI apps retain four identical files at 9,758 raw / 3,741 gzip bytes and
+1,828-byte guidance. Earlier failures and rejected performance candidates remain
+recorded. This closes the local verification blocker, not the isolated-host
+performance prerequisite or the AI-delivery gate. No compiler, generator,
+browser runtime, public API, package version or release changes are included.
+
+## Test-Only Quick PID Inspection (2026-10-13)
+
+The effect-context verification repeats the managed-check test's 30-second
+cancellation even with browser tests disabled (343 passes, one cancellation,
+eleven skips in the remaining suite). The production helper already uses its
+Linux `/proc` subtree, but the test itself performs six single-PID `ps -p`
+lookups across its cleanup/ownership paths, including the child test script.
+Linux procps offers `-q` quick-PID selection without the process-table scan.
+
+Seven alternating pairs query the same live Node PID and process group with
+the same `pid=`, `pgid=` and `stat=` fields. PID/group identity agrees; process
+state can change between sequential samples. Raw milliseconds:
+
+```text
+ps -p [1362.501,1202.005,1200.457,1401.036,1577.939,1206.832,1284.079]
+ps -q [4.549,3.747,6.03,5.74,5.243,4.931,4.073]
+```
+
+Medians are 1,284.079 and 4.931 ms on this process-heavy host. This measures
+one diagnostic operation, not application speed or AI-token cost. Every PID
+lookup in the test now uses `-q` on Linux and retains `-p` elsewhere. Its Linux
+shim rejects both `-A` and `-p`: the old test first fails its sibling assertion,
+then all five managed-check/capture tests pass after the option change. The
+existing state/group, descendant, sibling and permission-error assertions and
+all deadlines stay unchanged. No generator or application source changes.
+
+Final verification: `npm run check` passes (250 pages). Required-Chrome
+`npm test` passes the standalone Project journey, all managed-check tests
+(including the formerly cancelled case in 9.308 seconds) and the new capture
+test. The full suite is still incomplete: framework tests end with a pending-
+promise cancellation and the mocked publication-error exhaustion test times
+out instead of returning its expected failure code. The remaining summary is
+316 passes, one failure, one cancellation and no skips; the outer command then
+reaches its 600-second limit. Mocked E401 messages are fixture output, not an
+actual npm credential failure. Preserve these results and finish the full
+verification in a controlled environment; this fix does not certify the suite.
+
+## Effect Context Attribution And Rejected Capture Construction (2026-10-13)
+
+The next C2 diagnostic keeps released 0.16.48 source at `3272843` and instruments
+only a scratch build's effect entry, context, deserializer and exported setup
+handlers. The complete original journey passes. During 999 restored rows,
+record creation costs about 0.2 ms, context creation 4.5 ms (including 2.9 ms
+deserialization), authored setup 5.6 ms, invocation 13.7 ms and effect mounting
+17.1 ms. These are overlapping, instrumented inclusive times from one profile;
+per-call clocks perturb execution and do not quantify recoverable savings.
+They do not support adding an effect-record cache.
+
+A focused context regression now verifies own `__proto__`/`constructor`
+capture names, null-prototype captured objects, live direct/nested state,
+same-turn setter batching, cancellation of queued commits and captured setter
+authority after release, and preservation of the serialized input. It passes
+both the original helper and the candidate. It is a private runtime regression,
+not a claim of new React source compatibility.
+
+The scratch-only candidate shallow-copies serialized captures and deserializes
+their own keys in place, replacing the `Object.entries().map()`/`fromEntries()`
+intermediates and reusing one state-reader closure per context. It creates no
+shared cache or new lifetime. The frozen protocol allows output simplification
+only without a repeatable material operation loss; a latency claim additionally
+requires a 5% restore median gain, an improved paired median and 16/21 faster
+pairs. One build warm-up, seven alternating cold builds and 21 fresh alternating
+profiles per revision complete all 42 unchanged C2 journeys, including ref/state
+ownership, cleanup, remount, accessibility, resilience and zero-JS static routes.
+
+| Metric | Baseline | Candidate |
+|---|---:|---:|
+| Row restore median | 85.7 ms | 92.8 ms |
+| Row filter median | 18.9 ms | 20.9 ms |
+| Row reverse median | 39.8 ms | 48.0 ms |
+| Conditional mount median | 2.4 ms | 3.1 ms |
+| JavaScript raw / gzip | 43,593 / 16,406 B | 43,589 / 16,399 B |
+| Cold build median | 1,588.587 ms | 1,937.868 ms |
+
+The paired restore difference is **+7.1 ms**, with only **8/21** faster candidate
+pairs. The 4 raw / 7 gzip byte saving does not justify adoption amid these adverse
+observations. The candidate is **not applied**. Shared-host contention prevents
+a causal slowdown or isolated-host performance claim: final load averages reach
+19.4 / 19.05 / 16.03 on six logical CPUs. Do not select favorable attempts or
+keep proposing timing-driven runtime changes under this uncontrolled load.
+
+```text
+baseline restore [69.6,90,127.8,113.1,75.6,89.8,82.3,74.4,111.3,81.6,65.5,102.9,133.1,79.8,80.4,122.6,85.7,95.4,87.7,65.7,57.8]
+candidate restore [96,72.8,92.8,108.1,124.7,131.3,89.4,91.3,69.3,139.9,79.2,94.1,88,86.9,112.7,116.7,104.2,82.3,159.2,91.6,60.5]
+```
+
+Commands are `node /tmp/opencode/profile-kudzu-effect-phases-01648.mjs` and
+`node /tmp/opencode/compare-kudzu-effect-context.mjs`. Comparison completes in
+351.1 seconds within its 480-second bound, on Node 24.14.0, Chrome 152.0.7977.64,
+Linux 7.0.0-38-generic x64 and Intel i5-9500. This compares two Kudzu revisions,
+not competing frameworks. The manifest-verified local archive
+`benchmarks/runtime-matrix/results/effect-context-trial-20261013.tar.gz`
+contains 82 content files plus manifest, 351,034 bytes, SHA-256
+`46287638ef6ad5c6dec53fafb253cc38a4761236ee5a3cd0cd67ec3882066fcb`.
+Fresh extraction verifies every content hash, including the instrumented
+artifacts, candidate, protocols, raw samples and capture regression.
+
+Production compiler/runtime LOC, passes, semantic primitives, runtime concepts
+and browser-byte delta remain zero. One meaningful helper regression is added;
+no package version, public API, source restructuring or AI-cost claim changes.
+Further latency work needs controlled host conditions and a frozen comparison,
+not another speculative scope/record cache. Offline ownership work can reuse
+the new capture regression while that measurement prerequisite is unresolved.
+
+## C2 Phase Attribution And Rejected Row-Marker Preparation (2026-10-13)
+
+Starting from released 0.16.48 at `3272843`, a scratch compiler adds clocks
+around existing list, binding and lifecycle functions. The original complete
+C2 acceptance remains unchanged; no instrumented source enters the repository
+runtime. One initial diagnostic attributes owned-row restoration as follows:
+
+| Phase | Calls | Inclusive time |
+|---|---:|---:|
+| Row state/ref ownership initialization | 999 | 4.2 ms |
+| Structural row filling | 999 | 7.2 ms |
+| Binding mount | 1 | 6.4 ms |
+| DOM lifecycle attachment, including bindings | 1 | 14.3 ms |
+| Complete list update, including the phases above | 1 | 35.0 ms |
+| Acceptance's forced layout | 1 | 23.9 ms |
+
+A separate detailed sample observes 999 clone calls totaling 2.3 ms and splits
+text fill, item attributes and row IDs into 2.2, 4.5 and 5.3 ms. Its full list
+update/layout are 50.2/33.7 ms; the extra per-call clocks perturb execution, so
+these are not comparative latency results or additive independent savings.
+An earlier detailed capture missed the row-ID segment boundary and combined
+attributes with IDs; that capture is preserved but not used for this split.
+
+The selected scratch-only candidate prepares split strings for immutable
+compiler-owned `data-k-*` row markers once in the existing part plan, then
+joins the current key path while cloning. Ordinary IDs and ARIA references
+retain current-value substitution. The predeclared acceptance requires at
+least a 5% restore median improvement, an improved paired median, 16/21 faster
+pairs and no established material loss in other operations. It is tested with
+one build warm-up, seven alternating clean builds and 21 fresh alternating
+Chrome profiles per revision, without phase clocks. All 42 complete C2
+journeys pass original behavior, accessibility, identity, cleanup, remount,
+delayed/missing-script and JavaScript-free static-sibling checks.
+
+| Metric | Baseline | Candidate |
+|---|---:|---:|
+| Owned row restore median | 59.5 ms | 61.6 ms |
+| Owned row filter median | 12.3 ms | 12.1 ms |
+| Row update median | 2.6 ms | 2.8 ms |
+| Row removal median | 3.1 ms | 3.3 ms |
+| Row append median | 3.2 ms | 3.4 ms |
+| JavaScript raw / aggregate gzip | 43,593 / 16,406 B | 43,663 / 16,429 B |
+| Clean build median | 948.005 ms | 920.136 ms |
+
+Restore paired candidate-minus-baseline median is **+1.3 ms**; only **9/21**
+pairs are faster. The candidate fails its declared benefit gate and grows
+JavaScript by 70 raw / 23 gzip bytes. **Reject it.** Do not cherry-pick its
+faster profiles, claim the overlapping build medians as a gain or replace the
+owned-row journey with simpler rows. No production implementation is changed.
+
+```text
+baseline restore [62.3,57.3,58.7,58.5,75.3,58,61.3,78.6,55.4,63.6,58.5,63.2,63.7,61.1,67.3,59,59.5,57.7,64.1,57.5,59]
+candidate restore [55,61.2,74,69.3,63.1,64.8,59.6,58.3,58.4,62.7,57.7,112.3,57.2,55.1,71.1,86.8,57.9,61.6,65.4,58,64.5]
+```
+
+Commands: `node /tmp/opencode/profile-kudzu-c2-phases-01648.mjs` and
+`node /tmp/opencode/compare-kudzu-c2-row-markers.mjs`. The copied runner keeps
+its original acceptance and uses a 480-second outer deadline. The comparison
+completes in 289.9 seconds on Node 24.14.0, Chrome 152.0.7977.64, Linux
+7.0.0-38-generic x64, Intel i5-9500 with six logical CPUs. This shared host is
+not isolated; final load averages are 9.82 / 7.89 / 5.68. No cross-framework,
+isolated-host or AI-cost conclusion follows.
+
+The manifest-verified archive is
+`benchmarks/runtime-matrix/results/row-marker-trial-20261013.tar.gz`: 369,472
+bytes, 125 content files plus manifest, SHA-256
+`c513aca9c1eec47ed7313a07c5ccfbd9d0acd0bcbe05c2516265552d6acf66dd`.
+Fresh extraction verifies every content hash. It retains the phase captures,
+instrumented sources, candidate, protocols, raw comparison and both deploy trees.
+Production semantic primitives, compiler passes/LOC, runtime concepts and
+browser-byte deltas are all zero. No public support or package version changes.
+Next investigate the existing owned-effect attachment within the measured
+14.3 ms lifecycle phase; distinguish record/context setup from authored effect
+work before proposing any shared cache or generated shortcut.
+
+Verification after the documentation update: `npm run check` passes (250 pages).
+Required-Chrome `npm test` passes its standalone Project contract and 353 of
+354 remaining tests; the unchanged managed-check timeout/interruption test is
+cancelled at its 30-second deadline. Its focused rerun passes in 16.423 seconds.
+Retain the complete-run cancellation: the focused pass does not certify the
+parallel suite or attribute the timeout's cause. No production source, test
+deadline or assertion changed during this investigation.
+
 ## 0.16.48 Release Receipts (2026-10-13)
 
 The user-authorized transaction is complete at immutable commit

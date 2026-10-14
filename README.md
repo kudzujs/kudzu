@@ -12,9 +12,9 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 *Watch: React-shaped TSX to static HTML and route-specific ESM in 22 seconds.*
 
-> Experimental `0.16.x`: the compiler API and supported TSX surface may change.
+> Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.16.48](https://github.com/kudzujs/kudzu/releases/tag/v0.16.48).** Binding setup uses one native attribute read per selected property and removes temporary arrays and name conversion. Measured JavaScript savings are 53 raw / 43 gzip bytes in C2 and 153 / 119 in Project, with unchanged HTML, route plans and application behavior. The 21-profile comparison does not establish faster row restoration. Generator `create-kudzu@0.1.160` is unchanged. No reliable AI-token saving is established; the AI-cost/1.0 gates remain blocked.
+**Current release: [0.17.0](https://github.com/kudzujs/kudzu/releases/tag/v0.17.0).** Selected calculation effect dependencies accept static primitive configuration alongside at least two direct state inputs, reusing existing normalization and evaluators. Proven read-only effects omit state-write machinery, and ordinary owned effects omit keyed-row machinery. Measured fixture savings range from 253 to 990 raw JavaScript bytes without new runtime concepts. Generator `create-kudzu@0.1.161` targets core `^0.17.0`. Restoration latency and AI-cost/1.0 gates remain unresolved.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)
@@ -177,6 +177,7 @@ ordinary React-shaped TSX
 - React Bootstrap `Row` and `Col` with children, static classes, and numeric literal `Col` breakpoints erase to native Bootstrap grid markup; applications retain ownership of Bootstrap CSS.
 - Browser-only query data uses owned effects with application loading/error/data state; URL-derived dependencies, stale-response isolation, keyed results, and recovery require no query package runtime.
 - Only TypeScript modules reachable from pages are compiled. Imported immutable direct maps can fold to static HTML, while direct fields from relative structured calculations reevaluate through route binding ESM.
+- A selected primitive calculation field can be the sole effect dependency with at least two direct state inputs plus static primitive arguments. Strings, finite numbers except negative zero, booleans, null, and const aliases normalized to those literals add no signals or calculation runtime. Object/array configuration, mutable locals, composed arguments, undefined/non-finite values, and parameter defaults/rest remain unsupported.
 - Package imports used directly inside JSX event callbacks are removed from build modules and retained only in bundled route handler ESM.
 - A named or aliased React Router `useNavigate()` top-level binding lowers direct nested-callback calls with safe static root-relative destinations to native `location.assign()` or `location.replace()` navigation.
 - Unsupported nearby patterns fail during the build with a source location and actionable boundary.

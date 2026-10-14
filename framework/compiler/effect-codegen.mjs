@@ -303,6 +303,7 @@ ${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRe
 }
 
 function printOwnedNavigableEffectEntry(effects, output, handlerModules, assetsDirectory, runtimeDirectory, base) {
+  const hasLists = effects.some(effect => effect.list || effect.itemDependencies?.length)
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
   const hasDependencyEvaluators = effects.some(effect => effect.dependencyEvaluators?.length)
@@ -331,18 +332,18 @@ function mount(lifetime) {
   const selectedEffects = effects.map((effect, index) => ({ effect, index })).filter(entry => entry.effect.lifetime === lifetime)
   const records = new Set()
   const owners = new Map()
-  const listTemplates = new Map()
+  ${hasLists ? `const listTemplates = new Map()
   const registrations = new WeakMap()
-  const dependencies = new Map()
+  ` : ""}const dependencies = new Map()
   const pending = new Set()
   const startedCleanups = new Set()
   let scheduled = false
   for (const template of selectedEffects) {
-    if (template.effect.list) listTemplates.set(template.effect.owner, template)
-    else {
+    ${hasLists ? `if (template.effect.list) listTemplates.set(template.effect.owner, template)
+    else {` : ""}
       const record = createRecord(template, !template.effect.owner)
       if (template.effect.owner) owners.set(template.effect.owner, record)
-    }
+    ${hasLists ? "}" : ""}
   }
   const unsubscribeCommitter = selectedEffects.some(({ effect }) => effect.dependencies?.length) ? __kRuntime.registerCommitter(id => {
     if (!active) return
@@ -371,18 +372,18 @@ function mount(lifetime) {
       dependencies.set(id, subscribers)
     }
   }
-  function unregisterDependencies(record) {
+  ${hasLists ? `function unregisterDependencies(record) {
     for (const id of record.effect.dependencies ?? []) {
       const subscribers = dependencies.get(id)
       subscribers?.delete(record)
       if (!subscribers?.size) dependencies.delete(id)
     }
   }
-  function mountOwned(root) {
+  ` : ""}function mountOwned(root) {
     if (!active) return
     for (const marker of matching(root)) {
       if (!marker.isConnected) continue
-      if (marker.dataset.kEffects) {
+      ${hasLists ? `if (marker.dataset.kEffects) {
         if (registrations.has(marker)) continue
         const rowRecords = JSON.parse(marker.dataset.kEffects).flatMap(owner => {
           const template = listTemplates.get(owner)
@@ -395,25 +396,25 @@ function mount(lifetime) {
         if (rowRecords.length) registrations.set(marker, rowRecords)
         continue
       }
-      const record = owners.get(marker.dataset.kEffect)
+      ` : ""}const record = owners.get(marker.dataset.kEffect)
       if (record && !record.mounted) mountRecord(record, marker)
     }
   }
   function unmountOwned(root) {
     if (!active) return
     for (const marker of matching(root)) {
-      const rowRecords = registrations.get(marker)
+      ${hasLists ? `const rowRecords = registrations.get(marker)
       if (rowRecords) {
         for (const record of rowRecords) unmountRecord(record, true)
         registrations.delete(marker)
         continue
       }
-      const record = owners.get(marker.dataset.kEffect)
+      ` : ""}const record = owners.get(marker.dataset.kEffect)
       if (record?.marker === marker) unmountRecord(record)
     }
   }
   function matching(root) {
-    const selector = "template[data-k-effect],[data-k-effects]"
+    const selector = ${JSON.stringify(hasLists ? "template[data-k-effect],[data-k-effects]" : "template[data-k-effect]")}
     return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
   }
   function mountRecord(record, marker) {
@@ -426,16 +427,16 @@ function mount(lifetime) {
     if (record.disposal) record.disposal.then(begin)
     else begin()
   }
-  function unmountRecord(record, dynamic = false) {
+  function unmountRecord(record${hasLists ? ", dynamic = false" : ""}) {
     if (!record.mounted) return
     record.mounted = false
     record.marker = undefined
     record.version++
     pending.delete(record)
-    if (dynamic) {
+    ${hasLists ? `if (dynamic) {
       unregisterDependencies(record)
       records.delete(record)
-    }
+    }` : ""}
     void cleanup(record)
   }
   function start(record) {
@@ -505,9 +506,9 @@ ${hasDependencyExpressions || hasDependencyEvaluators ? printDerivedDependencyRe
     record.token = token
     try {
       const effect = record.effect
-      const scope = effect.list
+      const scope = ${hasLists ? `effect.list
         ? Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, value?.type === "list-item" ? JSON.parse(record.marker.dataset.kEffectItem) : value]))
-        : effect.scope
+        : effect.scope` : "effect.scope"}
       const result = modules.get(effect.module)[effect.handler](createEffectContext(__kRuntime.browserState, effect.states, __kRuntime.commitDom, scope, () => active && token.active && record.token === token))
       if (effect.cleanup && typeof result === "function") record.cleanup = result
       else if (result && typeof result.then === "function") result.catch(error => console.error(error))
@@ -572,6 +573,7 @@ function printDerivedDependencyRead(state, hasExpressions, hasEvaluators) {
 }
 
 function printOwnedEffectEntry(imports, effects, entries) {
+  const hasLists = effects.some(effect => effect.list || effect.itemDependencies?.length)
   const hasItemDependencies = effects.some(effect => effect.itemDependencies?.length)
   const hasOrdinaryDependencies = effects.some(effect => effect.dependencies?.length)
   const hasDependencyExpressions = effects.some(effect => effect.dependencyExpressions?.length)
@@ -582,12 +584,12 @@ function printOwnedEffectEntry(imports, effects, entries) {
   return `${imports.join("\n")}
 const effects = ${inlineJson(effects)}
 const modules = new Map([${entries}])
-${hasItemDependencies ? "let order = 0\n" : ""}const records = effects.map((effect, index) => effect.list ? undefined : createRecord(effect, index)).filter(Boolean)
-const listTemplates = new Map(effects.map((effect, index) => effect.list ? [effect.owner, { effect, index }] : undefined).filter(Boolean))
-const owners = new Map(records.filter(record => record.effect.owner).map(record => [record.effect.owner, record]))
-const listRegistrations = new WeakMap()
+${hasItemDependencies ? "let order = 0\n" : ""}const records = ${hasLists ? "effects.map((effect, index) => effect.list ? undefined : createRecord(effect, index)).filter(Boolean)" : "effects.map((effect, index) => createRecord(effect, index))"}
+${hasLists ? `const listTemplates = new Map(effects.map((effect, index) => effect.list ? [effect.owner, { effect, index }] : undefined).filter(Boolean))
+` : ""}const owners = new Map(records.filter(record => record.effect.owner).map(record => [record.effect.owner, record]))
+${hasLists ? `const listRegistrations = new WeakMap()
 const listOwnerSets = new Map()
-const mountedRecords = new Set(records.filter(record => record.mounted))
+` : ""}const mountedRecords = new Set(records.filter(record => record.mounted))
 const dependencies = new Map()
 const pending = new Set()
 let scheduled = false
@@ -611,14 +613,14 @@ function registerDependencies(record) {
   dependencies.set(id, subscribers)
   }
 }
-function unregisterDependencies(record) {
+${hasLists ? `function unregisterDependencies(record) {
   for (const id of record.effect.dependencies ?? []) {
     const subscribers = dependencies.get(id)
     subscribers?.delete(record)
     if (!subscribers?.size) dependencies.delete(id)
   }
 }
-${hasItemDependencies ? `if (${hasOrdinaryDependencies}) ` : ""}__kRuntime.registerCommitter(id => {
+` : ""}${hasItemDependencies ? `if (${hasOrdinaryDependencies}) ` : ""}__kRuntime.registerCommitter(id => {
   if (!active) return
   for (const record of dependencies.get(id) ?? []) if (record.mounted) pending.add(record)
   schedule()
@@ -631,7 +633,7 @@ ${hasItemDependencies ? `for (const listState of new Set(effects.filter(effect =
 ` : ""}__kRuntime.registerMountHook(root => {
   if (!active) return
   for (const marker of matching(root)) {
-    if (marker.dataset.kEffects) {
+    ${hasLists ? `if (marker.dataset.kEffects) {
       if (listRegistrations.has(marker)) continue
        const encoded = marker.dataset.kEffects
        let effectOwners = listOwnerSets.get(encoded)
@@ -650,7 +652,7 @@ ${hasItemDependencies ? `for (const listState of new Set(effects.filter(effect =
       listRegistrations.set(marker, rowRecords)
       continue
     }
-    const record = owners.get(marker.dataset.kEffect)
+    ` : ""}const record = owners.get(marker.dataset.kEffect)
     if (!record?.mounted) mount(record, marker)
   }
 }, "effects")
@@ -659,17 +661,17 @@ __kRuntime.registerUnmountHook(root => {
     if (!active) return
     active = false
     pending.clear()
-    for (const record of [...mountedRecords]) unmount(record, record.effect.list)
+    for (const record of [...mountedRecords]) unmount(record${hasLists ? ", record.effect.list" : ""})
     return
   }
   for (const marker of matching(root)) {
-    const rowRecords = listRegistrations.get(marker)
+    ${hasLists ? `const rowRecords = listRegistrations.get(marker)
     if (rowRecords) {
       for (const record of rowRecords) unmount(record, true)
       listRegistrations.delete(marker)
       continue
     }
-    const record = owners.get(marker.dataset.kEffect)
+    ` : ""}const record = owners.get(marker.dataset.kEffect)
     if (record?.marker === marker) unmount(record)
   }
 }, "effects")
@@ -679,10 +681,10 @@ addEventListener("pagehide", event => {
   if (!event.persisted) __kRuntime.unmountDom(document)
 })
 function matching(root) {
-  const selector = "template[data-k-effect],[data-k-effects]"
+  const selector = ${JSON.stringify(hasLists ? "template[data-k-effect],[data-k-effects]" : "template[data-k-effect]")}
   return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
 }
-function mount(record, marker, fresh = false) {
+function mount(record, marker${hasLists ? ", fresh = false" : ""}) {
   record.mounted = true
   record.marker = marker
   mountedRecords.add(record)
@@ -691,14 +693,14 @@ function mount(record, marker, fresh = false) {
     if (!active || !record.mounted || record.version !== version || !marker.isConnected) return
     start(record)
   })
-  else if (fresh || active && marker.isConnected) start(record)
+  else if (${hasLists ? "fresh || " : ""}active && marker.isConnected) start(record)
 }
-function unmount(record, dynamic = false) {
+function unmount(record${hasLists ? ", dynamic = false" : ""}) {
   if (!record.mounted) return
   record.mounted = false
   record.marker = undefined
   mountedRecords.delete(record)
-  if (dynamic) unregisterDependencies(record)
+  ${hasLists ? "if (dynamic) unregisterDependencies(record)" : ""}
   record.version++
   pending.delete(record)
   invokeCleanup(record)
@@ -769,17 +771,17 @@ function invoke(record) {
   record.token = token
   try {
     const effect = record.effect
-    const scope = effect.list
+    const scope = ${hasLists ? `effect.list
       ? Object.fromEntries(Object.entries(effect.scope).map(([name, value]) => [name, value?.type === "list-item" ? __kRuntime.listItems.get(record.marker) : value]))
-      : effect.scope
-    const marker = record.marker
+      : effect.scope` : "effect.scope"}
+    ${hasLists ? `const marker = record.marker
     ${hasRowRef ? "const rowPath = effect.list ? __kRuntime.listRowPaths.get(marker) : undefined" : ""}
     const resolveRef = id => {
       if (!marker?.isConnected) return null
       const resolved = ${hasRowRef ? 'id.replace("$k", rowPath)' : "id"}
       return marker.dataset.kRef === resolved ? marker : [...marker.querySelectorAll("[data-k-ref]")].find(node => node.dataset.kRef === resolved) ?? null
     }
-    const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, scope, () => active && token.active && record.token === token, effect.list ? resolveRef : undefined))
+    ` : ""}const result = modules.get(effect.module)[effect.handler](createEffectContext(browserState, effect.states, commitDom, scope, () => active && token.active && record.token === token${hasLists ? ", effect.list ? resolveRef : undefined" : ""}))
     if (effect.cleanup && typeof result === "function") record.cleanup = result
     else if (result && typeof result.then === "function") result.catch(error => console.error(error))
   } catch (error) {

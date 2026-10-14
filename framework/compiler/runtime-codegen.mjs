@@ -16,10 +16,15 @@ export function generateCoreRuntime(source, capabilityIR) {
 export function generateEffectRuntime(source, capabilityIR) {
   assertCapabilityIR(capabilityIR)
   const { captures, effects } = capabilityIR
+  let runtime = effects.captures ? replaceRequired(source, '"./serialization.js"', '"./kudzu-serialization.js"', "serialization import", "effect-runtime.js") : replaceRequired(source, /^import[^\n]+\n/, "", "serialization import", "effect-runtime.js")
+  if (effects.stateWrites === false) runtime = replaceSequenceRequired(runtime, [
+    [/  \/\* effect-state-writes \*\/[\s\S]*?  \/\* effect-state-writes-end \*\/\n/, "", "unused effect state writes"],
+    ["    set(name, value) {\n      setId(stateIds[name], value)\n    }\n", "", "unused effect setter"]
+  ], "effect-runtime.js")
   return {
-    source: effects.captures ? replaceRequired(source, '"./serialization.js"', '"./kudzu-serialization.js"', "serialization import", "effect-runtime.js") : replaceRequired(source, /^import[^\n]+\n/, "", "serialization import", "effect-runtime.js"),
+    source: runtime,
     define: {
-      "globalThis.__KUDZU_CAPTURE_SETTER__": String(captures.setter),
+      "globalThis.__KUDZU_CAPTURE_SETTER__": String(effects.stateWrites !== false && captures.setter),
       "globalThis.__KUDZU_EFFECT_CAPTURES__": String(effects.captures)
     }
   }

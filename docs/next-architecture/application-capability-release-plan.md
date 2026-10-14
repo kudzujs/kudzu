@@ -10,6 +10,114 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+User-authorized release transaction (2026-10-14): core 0.17.0 combines the
+accepted effect-output specialization and static-primitive compatibility slice;
+create-kudzu 0.1.161 targets ^0.17.0. This public compatibility expansion is
+the actual minor release boundary. Historical planned 0.17+ packet labels remain
+evidence identifiers, not claims of publication. The user now authorizes commit,
+push, exact-commit CI, tag and release. Publication still requires passing CI;
+the earlier failed local runs remain recorded. The AI-cost/1.0 gate stays blocked.
+
+Static-primitive slice verification (2026-10-14): the new Medusa preference
+route and existing Medusa/Mercury browser journeys pass, preserving two signals,
+selected-value equality and exactly-once cleanup. Four unchanged controls emit
+byte-identical deploys; the newly admitted source uses the same runtime/RouteIR
+as its old supported recipe with +16 raw / +7 gzip application bytes. Check and
+package smoke pass. Full required-Chrome verification stops at the existing
+Project deadline on the heavily loaded shared host. The user chooses local
+continuation over a remote verification PR; serial non-browser checks pass
+347 tests with eleven explicit skips. Full Chrome remains pending, and these
+results do not certify a release or AI-cost improvement. See `PERFORMANCE.md`
+for the preserved failure, boundaries and verified archive. The unchanged
+Project Chrome contract later passes alone in 66.823 seconds, but the subsequent
+default remaining suite is incomplete with multiple timeout/startup failures
+and a 900-second tool limit as shared-host load rises above 109. Preserve this
+partial run; local full-Chrome verification remains the blocker.
+
+The user's continuous-development direction explicitly extends the unreleased
+work with a separate bounded static-primitive calculation slice. A maintained
+Medusa reduction passes a const preferred-color setting alongside its two state
+inputs and uses selected availability as an effect dependency. It first fails
+the direct-state-only argument guard. Existing const normalization now admits
+static strings, finite numbers except negative zero, booleans and null without
+extra signals, capture state, IR kinds or browser runtime. The focused browser
+journey proves selected-value equality and cleanup; mutable/composed arguments,
+object/array configuration, non-finite/undefined values and defaults/rest retain
+their diagnostics. This is a primitive-only extension, not support for the
+earlier static-object probe. Complete output and full-suite gates before release;
+version metadata remains unchanged.
+
+Validated framework improvement (2026-10-13, unreleased): stateless locale/canvas
+effects first reproduce unnecessary state-write scheduler output. An optional
+CapabilityIR false proof removes that block only when all effect state mappings
+are empty and no serialized setter is captured; unknown/mixed owners retain
+the writer. A second failing output assertion proves ordinary conditional and
+GSAP navigation effects ship unused keyed ownership. Existing entry generators
+now exclude those maps, registrations, scope rewrites and disposal paths when
+there are no keyed or item-dependent effects. Colonni saves 493 raw / 259 gzip
+bytes, conditional effects 990 / 388, CodeMirror 990 / 392, GSAP 623 / 233, and
+Worker effects 253 / 141. Eleven fixture pairs preserve RouteIR and HTML content;
+four stateful/keyed controls and all thirteen C2 files are byte-identical.
+Check, required-Chrome 1 + 357 tests without skips and package smoke pass.
+No primitive, pass, runtime concept or public authoring change is added; core
+compiler growth is nine lines. Preserve the detailed evidence in `PERFORMANCE.md`.
+This is an actual output/capability improvement; restoration latency and AI cost
+remain separate unresolved gates. A probed static configuration argument in a
+selected calculation is rejected by the existing source boundary, not proven
+to be a runtime capture-loss bug. Release metadata remains unchanged.
+
+Local verification closure (2026-10-13): the publication-test npm mock now uses
+shell builtins rather than 258 repeated Node startups. It still executes the
+actual workflow block and preserves retry/exhaustion, stdout/stderr, exit-code,
+package-order and sleep assertions and deadlines. Worker/conditional/keyed
+effect browser checks pass 3/3 without changing their implementation. The final
+default-schedule required-Chrome run passes standalone 1/1 plus 355/355 with
+zero skips, and check/package smoke pass. This validates the accumulated PID
+lookup correction, effect-capture regression and lighter publication mock;
+earlier failures remain historical rather than being attributed to a proven
+single cause. Production sources and release versions are unchanged. Further
+latency work still requires controlled measurement conditions; neither this
+closure nor the rejected candidates authorize a cache, semantic or model trial.
+
+The verification follow-up (2026-10-13) identifies a separate test-only cost:
+seven alternating same-PID Linux lookups take median 1,284.079 ms with `ps -p`
+versus 4.931 ms with quick-PID `-q`. All six PID lookup sites in the managed-
+check test now use Linux quick mode; other platforms, ownership assertions and
+deadlines are unchanged. A rejecting shim fails before the correction and
+passes after it. The focused five-test helper/capture run passes; the subsequent
+required-Chrome run passes managed cleanup but retains a separate framework
+cancellation and mocked publication-test timeout. Check passes. No application
+or generator code changes, and full-suite verification remains pending under
+controlled conditions. See `PERFORMANCE.md` for raw observations and failures.
+
+Effect attribution follow-up (2026-10-13) completes the next profile: record
+creation is about 0.2 ms versus context preparation 4.5 ms and authored setup
+5.6 ms in one instrumented C2 restore. A capture-construction candidate passes
+the new own-name/live-state/released-setter regression and all 42 C2 journeys,
+but its 21-pair restore medians are 85.7/92.8 ms, paired delta +7.1 ms and only
+8/21 faster pairs. Its 4 raw / 7 gzip byte saving is insufficient grounds for
+adoption; production source remains unchanged. Preserve the new regression
+and complete evidence in `PERFORMANCE.md`. With shared-host load reaching
+19.4 on six logical CPUs, stop timing-driven candidate selection until controlled
+measurement conditions are available. No effect cache, new semantic, package
+release, cross-framework speedup or AI-token saving follows from this packet.
+
+Next investigation (2026-10-13) completes C2 phase attribution without changing
+application source or acceptance: one diagnostic records list update/lifecycle
+attachment/forced layout at 35.0/14.3/23.9 ms, with overlapping phase costs.
+The resulting internal row-marker pre-split candidate fails its preregistered
+21-pair comparison: restore medians are 59.5/61.6 ms, paired delta +1.3 ms,
+only 9/21 faster pairs, and +70 raw / +23 gzip bytes. All 42 journeys pass
+behavior, but the optimization is rejected and never applied to production.
+Raw evidence and the instrumentation caveats are preserved in `PERFORMANCE.md`.
+Do not rerun this candidate on selected fast samples. The next exact profile
+target is owned-effect record/context setup versus authored effect work inside
+lifecycle attachment. Existing ownership and cleanup remain mandatory; this
+does not authorize an effect cache, new semantic or package release.
+Check passes; the unchanged required-Chrome suite records one managed-check
+deadline cancellation (353 remaining tests pass), followed by a passing focused
+rerun. Preserve that failure rather than declaring a new full-suite pass.
+
 Core `0.16.48` is complete (2026-10-13): exact commit
 `96bdf74f5166340bbc6d345f2656819f99f81fa8` passes [Node 22 and required-Chrome
 CI](https://github.com/kudzujs/kudzu/actions/runs/38209033549), [protected npm

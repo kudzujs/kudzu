@@ -66,10 +66,17 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.160` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.16.36`.
+`create-kudzu@0.1.161` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.0`.
 
 ## Release Boundary
+
+The user-authorized 0.17.0 transaction combines the accepted effect-output
+specialization and static-primitive calculation compatibility expansion. This
+minor marks the public compiler boundary; historical planned 0.17+ labels remain
+packet identifiers. Generator 0.1.161 advances its core range to ^0.17.0.
+Exact-commit CI, protected publication and delivery verification remain required.
+The independent AI-delivery/1.0 gate remains blocked.
 
 Core `0.16.48` is released for the measured binding-mount output simplification.
 Exact commit `96bdf74` passes [Node 22/Chrome CI](https://github.com/kudzujs/kudzu/actions/runs/38209033549),

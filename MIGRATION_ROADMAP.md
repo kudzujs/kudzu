@@ -42,6 +42,12 @@ ordinary React-shaped TSX
 
 Kudzu is a general migration compiler. Shops, dashboards, documentation, blogs, landing pages, forms, and administration screens are outcomes built on the same compiler model. No application category defines Kudzu's architecture.
 
+Selected calculation effect dependencies retain at least two direct state inputs
+and may also use static strings, finite numbers other than negative zero,
+booleans and null, including const aliases normalized to those literals. These
+settings stay in the existing evaluator rather than becoming authored or hidden
+state. Object/array configuration and dynamic arguments remain separate boundaries.
+
 Syntax compatibility does not mean reproducing React wholesale. Kudzu accepts the statically analyzable subset it can lower to build-time output and direct browser capabilities. Unsupported nearby patterns must fail at build time with a file, line, and actionable explanation.
 
 ## Version Outcomes
