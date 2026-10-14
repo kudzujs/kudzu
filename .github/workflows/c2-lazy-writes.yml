@@ -1,0 +1,35 @@
+name: C2 lazy write-set comparison
+
+on:
+  push:
+    branches:
+      - perf/c2-lazy-writes-0170
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      KUDZU_REQUIRE_CHROME: "1"
+      CHROME_BIN: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: node test/c2-lazy-writes.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c2-lazy-writes-${{ github.sha }}
+          path: c2-results/
+          if-no-files-found: warn

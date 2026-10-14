@@ -1,5 +1,82 @@
 # Performance Records
 
+## C2 Lazy Effect Write-Set Diagnostic (2026-10-14, not adopted)
+
+Starting at released source `f5b38b43154d799058ac094dbedf4496055e2b3e`
+(core 0.17.0), the next ownership trace finds a concrete unnecessary allocation.
+The restored OwnedRow effect has an empty state map, a row ref and a list-item
+capture. It only marks its DOM node and returns cleanup. Other effects in the
+same runtime family retain dependency state maps, so the family-level read-only
+exclusion cannot remove the write scheduler. `createEffectContext()` therefore
+allocates a change Set even for each read-only row invocation.
+
+A scratch-only candidate changes `const changed = new Set()` to `let changed`
+and initializes it with `changed ??= new Set()` immediately before the existing
+`changed.add(id)`. `flush` remains reachable only through an active setter after
+allocation; state writes stay immediate, each invocation retains its own Set,
+and batching, cleanup invalidation and late-setter authority are unchanged.
+No records, scopes, DOM nodes or removed row state are cached.
+
+The original effect-context regression passes both uninstrumented arms, including
+live/nested captures, own prototype-sensitive names, null prototypes, same-turn
+batching and revoked setters/queued commits. The first scratch spelling began a
+line with a parenthesized expression and failed that regression through automatic
+semicolon insertion; a separate assignment statement corrects it. This failed
+attempt was not applied to production or counted as a successful candidate.
+
+One fresh Chrome profile per arm passes the complete unchanged C2 acceptance,
+identity, cleanup/remount, accessibility, resilience and zero-JavaScript sibling
+checks in the existing runner. Allocation counters, reset before each operation,
+show **999 baseline versus 0 candidate write Sets during rowRestore**. This is a
+count diagnostic, not a latency comparison; the instrumented timings in raw.json
+are ineligible as speed evidence. The diagnostic completes in 19.4 seconds.
+
+After removing instrumentation, clean builds retain identical RouteIR, all HTML
+and twelve of thirteen deploy files. Only `kudzu-effect.js` changes. Total C2 JS
+is 43,593 / 16,406 raw/gzip bytes at baseline and 43,597 / 16,410 in the candidate
+(**+4 raw / +4 gzip**). Consequently this cannot be accepted as output reduction.
+Shared-host load is 31.97/18.61/30.58 at intake and 20.66/20.34/24.28 later on
+six logical CPUs; no timing-driven production change is adopted under that load.
+
+Next gate: use the frozen uninstrumented candidate on a controlled host with one
+discarded build warm-up, seven alternating builds and 21 alternating fresh Chrome
+profiles per arm. Retain every original journey and failed sample. Require at
+least 5% rowRestore median improvement, improved paired median, at least 16/21
+faster pairs and no established >5% loss in other operations before adoption.
+Reject if this gain does not justify the added branch/bytes; do not select fast
+samples or repeat previously rejected capture/row-marker candidates.
+
+Production primitives, core passes/LOC, runtime concepts and browser-byte deltas
+are all zero. The scratch candidate adds one runtime source line, no concepts,
+and changes no fixture source. Reproduction and comparison use the existing
+runner with only target/output selection and allocation counters changed.
+The local archive `benchmarks/runtime-matrix/results/c2-lazy-writes-20261014.tar.gz`
+contains source snapshots, regression logs, generated runner, frozen protocol,
+counts, complete raw diagnostic, uninstrumented deploys, RouteIR and 208 content
+hashes, all verified after fresh extraction. SHA256:
+`8d4e89148541886f54f8b5293b64a6200d30cbec9b7abc9fd66d0c82573399e0`.
+No version, release, React compatibility, restoration-latency or AI-cost claim
+changes. Controlled-host timing remains the outstanding acceptance gate.
+
+Repository verification: `npm run check` passes (251 pages). `npm test` passes
+the standalone Project contract, then records 317 passes, one failure and two
+cancellations in the incomplete remaining suite: the adapter checkpoint assertion
+returns 1 instead of 0, role-only browser actions exceed their 60-second deadline,
+and framework tests stop with a pending-promise cancellation. The combined tool
+also reaches its 900-second limit. Their exact causes are not established by
+this diagnostic; no assertion or timeout is relaxed and no full-suite pass is
+claimed. Production source and tests remain identical to the released revision.
+
+Follow-up admission check (2026-10-14): the requested next comparison remains
+blocked before any samples are collected. Load averages rise from
+72.44/69.69/64.45 to 104.41/83.26/70.26. Ten-second `os.cpus()` deltas show
+100% busy on five logical CPUs and 99.8% on the sixth. Linux CPU pressure reports
+`some avg10=95.19 avg60=94.29 avg300=92.31`, confirming runnable-task contention
+rather than relying on load average alone. No unrelated process is stopped,
+no timing threshold is weakened, and no new timing run or candidate is selected.
+The frozen 21-pair comparison needs a separate quiet execution host or a later
+verified quiet local window.
+
 ## 0.17.0 Release Receipts (2026-10-14)
 
 Core 0.17.0 and create-kudzu 0.1.161 are delivered from exact commit

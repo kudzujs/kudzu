@@ -10,6 +10,25 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 remote measurement (2026-10-14): the user authorizes using an independent
+GitHub Actions runner after local CPU pressure reaches 95% and all six CPUs are
+saturated. Branch `perf/c2-lazy-writes-0170` freezes the existing C2 source and
+runner, runs ordinary check/test first, then measures uninstrumented baseline and
+scratch candidate in alternating order (seven builds, 21 fresh profiles each).
+No acceptance function or timeout is relaxed; raw samples, partial progress,
+source hashes and failure records are retained as workflow artifacts. Production
+remains at v0.17.0 pending the predeclared acceptance decision.
+
+C2 follow-up (2026-10-14): a scratch lazy effect write-Set candidate removes
+999 unused change-set allocations during row restoration. Both arms pass the
+existing effect-context regression and complete unchanged C2 browser acceptance.
+Uninstrumented RouteIR/HTML remain identical; C2 JS grows 4 raw / 4 gzip bytes.
+Shared-host load still prevents admissible latency evidence, so production is
+unchanged and the candidate is not adopted. `PERFORMANCE.md` records the verified
+208-file archive and frozen controlled-host 21-pair acceptance protocol. Next
+work is that specific measurement gate, not a cache or another speculative
+runtime rewrite. The separate AI-cost/1.0 gate remains blocked.
+
 Release closure (2026-10-14): core 0.17.0 / generator 0.1.161 are published
 from `c627432` after exact-commit Node 22/package and required-Chrome CI
 38502782176 and user-approved publication 38503401446. Registry integrity,
