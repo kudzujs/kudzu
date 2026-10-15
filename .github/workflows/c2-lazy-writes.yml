@@ -1,4 +1,4 @@
-name: C2 DOM phase attribution
+name: C2 binding descriptor comparison
 
 on:
   push:
@@ -26,10 +26,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: node test/c2-dom-phases.mjs
+      - run: node test/c2-binding-descriptors.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: c2-dom-phases-${{ github.sha }}
-          path: c2-dom-results/
+          name: c2-binding-${{ github.sha }}
+          path: c2-binding-results/
           if-no-files-found: warn

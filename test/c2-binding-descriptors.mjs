@@ -8,16 +8,16 @@ import { fileURLToPath } from "node:url"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
-const results = join(root, "c2-results")
-const scratch = await mkdtemp(join(tmpdir(), "c2-lazy-writes-"))
+const results = join(root, "c2-binding-results")
+const scratch = await mkdtemp(join(tmpdir(), "c2-binding-descriptors-"))
 await mkdir(results)
 const original = await readFile(join(workspace, "run.mjs"), "utf8")
-const runtime = await readFile(join(root, "framework/effect-runtime.js"), "utf8")
+const runtime = await readFile(join(root, "framework/binding-runtime.js"), "utf8")
 const replace = (source, before, after) => {
   assert.equal(source.split(before).length, 2, `Expected one source anchor: ${before}`)
   return source.replace(before, after)
 }
-const candidate = replace(replace(runtime, "const changed = new Set()", "let changed"), "changed.add(id)", "changed ??= new Set()\n    changed.add(id)")
+const candidate = replace(runtime, 'descriptors.push(...JSON.parse(node.dataset.kBindAttrs).map(({ target, ...descriptor }) => [target, descriptor]))', 'for (const descriptor of JSON.parse(node.dataset.kBindAttrs)) descriptors.push([descriptor.target, descriptor])')
 const sha256 = value => createHash("sha256").update(value).digest("hex")
 const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()
 assert.equal(execFileSync("git", ["diff", "v0.17.0", "--", "framework", "bin", "package.json", "package-lock.json"], { cwd: root, encoding: "utf8" }), "", "Freeze the released production baseline")
@@ -25,6 +25,7 @@ const version = JSON.parse(await readFile(join(root, "package.json"))).version
 const protocol = {
   commit, baseline: "Released 0.17.0 production sources; candidate is scratch-only",
   runnerSha256: sha256(original), runtimeSha256: sha256(runtime), candidateSha256: sha256(candidate),
+  change: "Avoid copying attribute descriptor objects and the temporary mapped array during binding mount; preserve parsing, ordering and patching",
   primary: "rowRestore", profiles: 21, buildWarmups: 1, measuredBuilds: 7,
   order: "Alternate baseline/candidate order each round; fresh browser profile per sample",
   acceptance: "Unchanged full C2 journey, identity, cleanup, accessibility, resilience, static siblings",
@@ -34,8 +35,8 @@ const protocol = {
   initialLoad: loadavg(), cpu: cpus().map(cpu => cpu.model)
 }
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
-await writeFile(join(results, "baseline-effect-runtime.js"), runtime)
-await writeFile(join(results, "candidate-effect-runtime.js"), candidate)
+await writeFile(join(results, "baseline-binding-runtime.js"), runtime)
+await writeFile(join(results, "candidate-binding-runtime.js"), candidate)
 
 try {
   for (const arm of ["baseline", "candidate"]) {
@@ -45,7 +46,7 @@ try {
     await symlink(join(root, "node_modules"), join(compiler, "node_modules"))
     await cp(join(workspace, "kudzu/src"), join(compiler, "fixture/src"), { recursive: true })
     await cp(join(workspace, "kudzu/tsconfig.json"), join(compiler, "fixture/tsconfig.json"))
-    if (arm === "candidate") await writeFile(join(compiler, "framework/effect-runtime.js"), candidate)
+    if (arm === "candidate") await writeFile(join(compiler, "framework/binding-runtime.js"), candidate)
     await mkdir(join(compiler, "test"))
     await cp(join(root, "test/effect-context.test.mjs"), join(compiler, "test/effect-context.test.mjs"))
     const log = execFileSync(process.execPath, ["--test", "test/effect-context.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 15000 })
@@ -90,7 +91,7 @@ try {
   const changed = []
   for (const path of baselineFiles) if (!(await readFile(join(results, "baseline-dist", path))).equals(await readFile(join(results, "candidate-dist", path)))) changed.push(path)
   assert.equal(changed.length, 1)
-  assert.match(changed[0], /\/kudzu-effect\.js$/)
+  assert.match(changed[0], /\/kudzu-binding\.js$/)
   summary.changedFiles = changed
   await writeFile(join(results, "decision.json"), JSON.stringify(summary, null, 2))
   console.log(JSON.stringify(summary, null, 2))
