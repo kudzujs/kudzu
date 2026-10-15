@@ -1,5 +1,46 @@
 # Performance Records
 
+## C2 Remote Lazy Write-Set Decision: Rejected
+
+[Run 38533262105](https://github.com/kudzujs/kudzu/actions/runs/38533262105)
+at `d864a94dbf4b5b9aebfc1b86bb0e756d407bd9cc` completes check, ordinary
+required-Chrome tests, both effect-context regressions and all 42 unchanged C2
+journeys. One discarded build warm-up and seven measured builds per arm precede
+21 alternating fresh browser profiles per arm. The production baseline remains
+byte-identical to v0.17.0; only the scratch candidate changes the write Set.
+
+| Metric | Baseline | Candidate |
+|---|---:|---:|
+| Row restore median | 54.3 ms | 57.0 ms |
+| Row filter median | 13.1 ms | 13.3 ms |
+| Row reverse median | 29.5 ms | 30.0 ms |
+| Build median | 720.175 ms | 716.286 ms |
+| JS raw / gzip bytes | 43,593 / 16,406 | 43,597 / 16,410 |
+
+The primary paired median difference is +3.1 ms; the candidate is faster in
+only 4/21 pairs and slower in 17/21. It fails the preregistered improvement gate
+and is **rejected**, despite removing 999 unused allocations. No repeat run or
+favorable-sample selection is authorized by this result. No production runtime,
+semantic primitive, core pass, core LOC, public capability or package version
+changes. All HTML and RouteIR are identical; only the effect runtime file differs.
+
+Environment: GitHub ubuntu-24.04 VM, four AMD EPYC 7763 logical CPUs, Linux
+6.17.0-1022-azure x64, Node 24.21.0, Chrome 154.0.8037.97. Final load averages
+are 0.90/1.76/1.37. This is a two-revision comparison on one hosted VM, not a
+dedicated-physical-host or cross-framework superiority claim. Both arms retain
+identity, cleanup/remount, accessibility, delayed/missing scripts and zero-JS
+static-sibling acceptance. Earlier failed local suite runs remain historical;
+the exact remote branch passes its complete check/test workflow.
+
+All raw samples, protocol, generated runner, uninstrumented runtime sources,
+deploys, plans, partial-progress record and workflow receipt are preserved in
+`benchmarks/runtime-matrix/results/c2-lazy-writes-remote-38533262105.tar.gz`, SHA256
+`c93134b8897dc51e4a01dcb1e0a51844c058920bed771da919fe545fdfee1fc6`.
+The remote workflow artifact contains the original result files. The next C2
+investigation should attribute the remaining DOM insertion/layout cost on the
+same hosted environment before choosing another runtime change; it must not
+reopen this rejected allocation candidate or infer savings from allocation counts.
+
 ## C2 Lazy Effect Write-Set Diagnostic (2026-10-14, not adopted)
 
 Starting at released source `f5b38b43154d799058ac094dbedf4496055e2b3e`

@@ -10,6 +10,15 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 remote closure: run 38533262105 at `d864a94` passes check, required-Chrome
+tests and all 42 C2 journeys. Lazy write Sets fail the frozen performance gate:
+restore median 54.3 to 57.0 ms, paired median +3.1 ms, only 4/21 faster pairs,
+and +4 raw/gzip bytes. Reject the scratch candidate and retain production 0.17.0.
+Raw evidence and environment are recorded in `PERFORMANCE.md`. Next investigate
+DOM insertion/layout attribution on the hosted runner before selecting another
+change; allocation reduction alone is not performance evidence. Do not rerun
+this rejected candidate to select favorable samples.
+
 C2 remote measurement (2026-10-14): the user authorizes using an independent
 GitHub Actions runner after local CPU pressure reaches 95% and all six CPUs are
 saturated. Branch `perf/c2-lazy-writes-0170` freezes the existing C2 source and
