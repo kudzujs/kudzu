@@ -1,4 +1,4 @@
-name: C2 lazy write-set comparison
+name: C2 DOM phase attribution
 
 on:
   push:
@@ -26,10 +26,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: node test/c2-lazy-writes.mjs
+      - run: node test/c2-dom-phases.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: c2-lazy-writes-${{ github.sha }}
-          path: c2-results/
+          name: c2-dom-phases-${{ github.sha }}
+          path: c2-dom-results/
           if-no-files-found: warn
