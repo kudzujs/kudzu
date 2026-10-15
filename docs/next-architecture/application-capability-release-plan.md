@@ -10,6 +10,15 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 next diagnostic and trial: hosted phase run 38689028950 passes three full
+journeys and locates native insertion at 0.4–0.6 ms, forced layout at 18.3–22.9 ms,
+and binding mount at 4.0–8.0 ms. A separate descriptor-copy removal trial in
+38689704912 passes all 42 journeys but fails the frozen speed gate (restore
+41.8/41.3 ms, paired +0.2 ms, 9/21 faster). Reject as a latency candidate despite
+5 raw/gzip bytes saved; production stays unchanged. Detailed evidence is in
+`PERFORMANCE.md`. Further work needs lifecycle/binding subphase attribution;
+neither rejected candidate authorizes a cache or changed benchmark content.
+
 C2 remote closure: run 38533262105 at `d864a94` passes check, required-Chrome
 tests and all 42 C2 journeys. Lazy write Sets fail the frozen performance gate:
 restore median 54.3 to 57.0 ms, paired median +3.1 ms, only 4/21 faster pairs,

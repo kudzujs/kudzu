@@ -1,5 +1,56 @@
 # Performance Records
 
+## Hosted C2 DOM Attribution And Binding Descriptor Trial
+
+[Phase run 38689028950](https://github.com/kudzujs/kudzu/actions/runs/38689028950)
+at `8832461` passes check, required-Chrome tests and three unchanged C2 journeys.
+Scratch instrumentation wraps existing functions and native clone/insert calls;
+it never enters production. During row restoration:
+
+| Inclusive phase | Profile 1 | Profile 2 | Profile 3 |
+|---|---:|---:|---:|
+| cloneNode, 999 calls | 1.9 ms | 1.9 ms | 1.5 ms |
+| Row hook initialization, 999 calls | 2.3 ms | 3.2 ms | 2.6 ms |
+| Structural fill, 999 calls | 7.4 ms | 6.9 ms | 6.9 ms |
+| insertBefore, 2 calls | 0.4 ms | 0.6 ms | 0.4 ms |
+| Binding mount | 8.0 ms | 4.0 ms | 5.2 ms |
+| Lifecycle mount including bindings | 17.1 ms | 9.6 ms | 12.6 ms |
+| List update including lifecycle | 36.2 ms | 28.7 ms | 30.9 ms |
+| Acceptance's forced layout | 22.9 ms | 18.3 ms | 21.9 ms |
+
+These nested timings overlap and per-call clocks perturb execution; they are
+attribution rather than recoverable savings. Native insertion is already batched
+and small. Layout is material, but removing visible rows, changing CSS/content or
+delaying required completion would change the comparison contract.
+
+The binding phase motivates one bounded scratch-only trial: replace attribute
+descriptor `.map(({ target, ...descriptor }) => [target, descriptor])` plus spread
+with an ordinary loop retaining the parsed descriptor. This removes object-rest
+copies and an intermediate array while preserving JSON parsing, descriptor order,
+binding registration and initial DOM patching. It is distinct from previously
+rejected attribute-write skipping and row-marker preparation.
+
+[Comparison 38689704912](https://github.com/kudzujs/kudzu/actions/runs/38689704912)
+at `c3fc13a` passes baseline check/tests and all 42 baseline/candidate C2 journeys
+after seven alternating builds per arm and 21 alternating fresh profiles. The
+candidate does **not** meet the frozen speed gate: restore medians 41.8/41.3 ms,
+paired median +0.2 ms, only 9/21 faster pairs (11 slower, one tied). JS decreases
+only 5 raw / 5 gzip bytes (43,593/16,406 to 43,588/16,401). Preserve this result as
+a rejected latency candidate, not an adopted output optimization under a changed
+post-hoc gate. HTML, RouteIR and every deploy file except binding runtime match.
+Do not compare these absolute times with the previous hosted VM's 54.3 ms.
+
+Production primitives, core passes/LOC, runtime concepts, browser bytes and
+fixture-source deltas remain zero. No new release or speed/AI-cost claim follows.
+The remaining question is lifecycle/binding registration work versus layout;
+further candidates require finer attribution, not another allocation-only guess.
+Raw workflow artifacts are also preserved locally:
+
+- `benchmarks/runtime-matrix/results/c2-dom-38689028950.tar.gz`, SHA256
+  `ff07fd9904d97a63028695ecb6e953b92083ca5a08fd4b084718db4d4872d2f5`.
+- `benchmarks/runtime-matrix/results/c2-binding-38689704912.tar.gz`, SHA256
+  `e436afb253028c6bd22016a820eeb52576b9337e3bff6a085a76efa4b56edc33`.
+
 ## C2 Remote Lazy Write-Set Decision: Rejected
 
 [Run 38533262105](https://github.com/kudzujs/kudzu/actions/runs/38533262105)
