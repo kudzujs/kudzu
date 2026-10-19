@@ -23,15 +23,16 @@ try {
   await symlink(join(root,"node_modules"),join(compiler,"node_modules"))
   await cp(join(workspace,"kudzu/src"),join(compiler,"fixture/src"),{recursive:true})
   await cp(join(workspace,"kudzu/tsconfig.json"),join(compiler,"fixture/tsconfig.json"))
-  for (const [file, names] of [["list-runtime.js", ["updateList", "fillStructuralListParts", "initializeGeneralRowHooks"]], ["binding-runtime.js", ["mountBindings"]], ["shared-runtime.js", ["mountDom", "unmountDom"]]]) {
+  for (const [file, names] of [["list-runtime.js", ["updateList", "fillStructuralListParts", "initializeGeneralRowHooks"]], ["binding-runtime.js", ["mountBindings", "matching", "register", "patchBinding", "textBindingStarts"]], ["shared-runtime.js", ["mountDom", "unmountDom"]], ["effect-runtime.js", ["createEffectContext"]], ["serialization.js", ["deserialize"]]]) {
     let source = await readFile(join(compiler,"framework",file),"utf8")
     const ast = ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS)
     const nodes = ast.statements.filter(node => ts.isFunctionDeclaration(node) && names.includes(node.name?.text))
     assert.equal(nodes.length,names.length)
     for (const node of nodes.reverse()) {
       const start = node.body.getStart(ast)+1, end = node.body.end-1
-      source = source.slice(0,start) + `const __phaseStart=performance.now();try{${source.slice(start,end)}}finally{const p=globalThis.__c2Phases??={};const m=p[${JSON.stringify(node.name.text)}]??={calls:0,milliseconds:0};m.calls++;m.milliseconds+=performance.now()-__phaseStart;}` + source.slice(end)
+      source = source.slice(0,start) + `const __phaseStart=performance.now();try{${source.slice(start,end)}}finally{const p=globalThis.__c2Phases??={};const m=p[${JSON.stringify(file+":"+node.name.text)}]??={calls:0,milliseconds:0};m.calls++;m.milliseconds+=performance.now()-__phaseStart;}` + source.slice(end)
     }
+    if (file === "shared-runtime.js") source = replace(source, "entry.mount(root)", '{const start=performance.now();try{entry.mount(root)}finally{const p=globalThis.__c2Phases??={};const m=p["mount:"+entry.capability]??={calls:0,milliseconds:0};m.calls++;m.milliseconds+=performance.now()-start}}')
     await writeFile(join(compiler,"framework",file),source)
     await writeFile(join(results,file),source)
   }
@@ -44,7 +45,7 @@ try {
   runner = replace(runner,"const versions = await frameworkVersions()",'const versions={kudzu:"0.17.0"}')
   runner = replace(runner,"const browserProfiles = check ? 1 : Number(process.env.BENCHMARK_PROFILES ?? 7)","const browserProfiles = 3")
   runner = replace(runner,'["--headless=new","--remote-debugging-port=0"','["--headless=new","--no-sandbox","--remote-debugging-port=0"')
-  const hooks = `for(const name of ["cloneNode","insertBefore","appendChild"]){const original=Node.prototype[name];Node.prototype[name]=function(...args){const start=performance.now();try{return original.apply(this,args)}finally{const p=globalThis.__c2Phases??={};const m=p[name]??={calls:0,milliseconds:0};m.calls++;m.milliseconds+=performance.now()-start}};}`
+  const hooks = `for(const [owner,names] of [[Node.prototype,["cloneNode","insertBefore","appendChild"]],[JSON,["parse"]],[Element.prototype,["getAttribute","setAttribute","querySelectorAll"]]])for(const name of names){const original=owner[name];owner[name]=function(...args){const start=performance.now();try{return original.apply(this,args)}finally{const p=globalThis.__c2Phases??={};const m=p["native:"+name]??={calls:0,milliseconds:0};m.calls++;m.milliseconds+=performance.now()-start}};}`
   runner = replace(runner,"source: initialReadyScript()",`source: ${JSON.stringify(hooks)} + initialReadyScript()`)
   runner = replace(runner,"      operations[name] = await evaluate(send, operationExpression(name), true)",`      await evaluate(send,"globalThis.__c2Phases={}")
       operations[name] = await evaluate(send, operationExpression(name), true)
