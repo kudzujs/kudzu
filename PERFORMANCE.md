@@ -1,5 +1,61 @@
 # Performance Records
 
+## C2 Lifecycle Subphase Attribution (2026-10-20)
+
+The interrupted local watch is resumed without rerunning the experiment.
+[Run 39343690398](https://github.com/kudzujs/kudzu/actions/runs/39343690398),
+commit `576a8eb`, passes check, required-Chrome tests and all three instrumented
+C2 journeys. Production is still v0.17.0. Scratch instrumentation adds namespaced
+clocks for binding search/register/patch/text discovery, individual lifecycle
+hooks, effect context creation and capture deserialization, plus native attribute
+and JSON operations. It preserves the complete original acceptance contract.
+
+| Row restore subphase | Calls per profile | Observed inclusive ms range |
+|---|---:|---:|
+| Binding marker search | 1 | 0.5 |
+| Native element querySelectorAll, whole operation | 2 | 0.2–0.3 |
+| Native getAttribute, whole operation | 11,988 | 4.9–8.3 |
+| Native setAttribute, whole operation | 7,992 | 7.5–9.8 |
+| JSON.parse, whole operation | 1,998 | 1.3–1.8 |
+| Binding register | 1,998 | 1.1–3.3 |
+| Binding patch | 1,998 | 2.9–3.5 |
+| Text binding discovery | 1 | 0.1–0.2 |
+| Complete binding mount | 1 | 17.0–25.1 |
+| Capture deserialization | 1,998 | 1.2–1.3 |
+| Effect context construction | 999 | 2.8–3.4 |
+| Complete effect mount | 1 | 8.7–10.3 |
+| Complete lifecycle mount | 1 | 25.8–35.4 |
+| Complete list update | 1 | 50.6–69.7 |
+| Forced layout | 1 | 19.4–26.8 |
+
+The counters are stable across all three profiles. Attribute counters cover the
+whole operation, including structural filling and row-ID replacement, and must
+not be attributed solely to bindings. Source review confirms row markers read
+their current attribute then replace `$k`; binding mount parses and registers
+two state-driven attributes per restored row and immediately patches them.
+Removing those initial patches is the already rejected write-skipping candidate,
+not a new optimization. Marker pre-splitting, scope reconstruction, lazy write
+Sets and descriptor copying also remain closed by their recorded comparisons.
+
+Native-method instrumentation greatly inflates the binding/list totals relative
+to coarser profiles; per-call clocks and wrapper dispatch are inside their parent
+timings. Do not subtract these overlapping values to invent an unmeasured
+"other work" bottleneck, compare them across runners, or claim recoverable speed.
+Search is a small part of the observed path, so this does not justify a DOM-query
+cache. No new runtime candidate is admitted from this heavily perturbed timing.
+The next useful diagnostic is a sampling CPU profile scoped to rowRestore on
+uninstrumented output, retaining original completion/layout and acceptance,
+before any additional optimization is proposed.
+
+Environment: four Intel Xeon Platinum 8370C logical CPUs, Linux
+6.17.0-1022-azure x64, Node 24.21.0, Chrome 155.0.8059.39. Raw profiles, generated
+instrumented source/runner and workflow receipt are preserved in
+`benchmarks/runtime-matrix/results/c2-lifecycle-39343690398.tar.gz`, SHA256
+`766472d818a4f081a7f32808080cf394741353ae1bc59b74234a70778eda5a6f`.
+Production compiler/runtime LOC, passes, semantic primitives, runtime concepts,
+browser bytes and fixture changes remain zero. This closes attribution only;
+restoration latency and AI-cost gates remain open.
+
 ## Hosted C2 DOM Attribution And Binding Descriptor Trial
 
 [Phase run 38689028950](https://github.com/kudzujs/kudzu/actions/runs/38689028950)

@@ -10,6 +10,15 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 lifecycle subphase closure (2026-10-20): run 39343690398 at `576a8eb`
+passes check, required-Chrome tests and three full journeys. Counters confirm
+1,998 binding registrations/patches and 999 effect contexts on restore; search
+accounts for only two native element queries. Native attribute wrappers greatly
+perturb parent timing, so no optimization is selected from those inflated totals.
+`PERFORMANCE.md` records exact counts, inclusive ranges and the raw archive.
+Next use sampling CPU attribution scoped to restore on uninstrumented output;
+do not resurrect rejected write-skipping/allocation candidates or add a DOM cache.
+
 C2 next diagnostic and trial: hosted phase run 38689028950 passes three full
 journeys and locates native insertion at 0.4–0.6 ms, forced layout at 18.3–22.9 ms,
 and binding mount at 4.0–8.0 ms. A separate descriptor-copy removal trial in

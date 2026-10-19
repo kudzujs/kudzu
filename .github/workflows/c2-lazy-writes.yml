@@ -1,4 +1,4 @@
-name: C2 lifecycle subphase attribution
+name: C2 restore sampling profile
 
 on:
   push:
@@ -26,10 +26,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: node test/c2-dom-phases.mjs
+      - run: node test/c2-restore-profile.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: c2-lifecycle-${{ github.sha }}
-          path: c2-dom-results/
+          name: c2-profile-${{ github.sha }}
+          path: c2-profile-results/
           if-no-files-found: warn
