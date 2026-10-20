@@ -18,7 +18,10 @@ undefined tombstone after release until unmount. C2 output saves 52 raw/7 gzip
 bytes, HTML/plan remain identical, lifetime regression and 42 journeys pass,
 and no established operation regression is detected. Speed gate fails (paired
 restore +0.5 ms, 10/21 faster); adopt for size/simplicity only. The adopted source
-matches measured source after minification; full adopted check/tests follow.
+matches measured source after minification. Adopted check and full required-Chrome
+tests pass in run 39357807096 at `136c47e`, after updating the exact project-app
+output contract (−114 deploy bytes; static help remains zero-JavaScript). Initial
+snapshot failure 39357558077 is retained in the performance record.
 Restoration latency and AI-cost gates remain unresolved. Next work must use fresh
 evidence rather than rerun closed candidates. Archives are in `PERFORMANCE.md`.
 

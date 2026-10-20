@@ -24,7 +24,15 @@ fixture content is unchanged; one ownership regression test is added.
 The branch workflow now validates the adopted runtime with check and required
 Chrome tests, rather than rerunning a completed experiment. Reproduce the frozen
 comparison at `94edf51`; older scratch runners intentionally assert v0.17.0.
-Adopted full-suite validation is recorded below when complete.
+Adopted validation initially fails in run 39357558077 at the exact project-app
+output contract: the smaller runtime correctly changes byte counts and hash.
+Local reproduction yields the same raw bytes/hash; updating that contract gives
+[run 39357807096](https://github.com/kudzujs/kudzu/actions/runs/39357807096)
+at `136c47e`, passing `npm run check` and full required-Chrome `npm test`.
+Project-app deploy output drops 190,272 → 190,158 bytes (−114); its five interactive
+routes save 31–52 raw JS bytes each and `/help` remains zero-JavaScript. Local
+gzip output drops 57,868 → 57,847 (−21); existing zlib tolerances remain unchanged.
+The failure is preserved as evidence rather than counted as a passing run.
 
 Archives under `benchmarks/runtime-matrix/results/`:
 - `c2-registration-39356334670.tar.gz`, SHA256
