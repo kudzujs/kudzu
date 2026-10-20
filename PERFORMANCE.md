@@ -1,5 +1,26 @@
 # Performance Records
 
+## Independent Search Confirmation: Rejected
+
+Run [39355082851](https://github.com/kudzujs/kudzu/actions/runs/39355082851)
+at `5fc3fb4` independently predeclares searchRestore as the primary endpoint for
+the first-child candidate. Check, tests and all 42 journeys pass. Search medians
+are 38.8/38.9 ms, paired +0.1 ms, 10/21 faster and 11 slower. Row restoration is
+54.5/54.1 ms with 11/21 faster. No operation meets the frozen regression criterion,
+but the primary improvement gate fails. The earlier exploratory search benefit
+does not replicate; close this candidate for both restore endpoints. Do not pool
+different VMs or rerun to select favorable samples. Raw/gzip growth remains
++87/+18 bytes and production remains unchanged. Raw results are retained in the
+hosted artifact and `/tmp/opencode/c2-search-39355082851/`.
+
+Next experiment predeclares a distinct size/simplification gate: binding lifetime
+membership currently duplicates a WeakSet and registration WeakMap. A scratch
+candidate uses WeakMap membership, preserving released-but-mounted membership
+with an undefined value until unmount. The lifetime regression must pass for both
+arms; full C2 acceptance, identical HTML/plan, smaller raw AND gzip output, and no
+established >5% operation regression are required. The original speed gate is
+reported separately, never inferred from the size gate.
+
 ## Matched Rendering And First-Child Trial Closure
 
 [Matched run 39348268906](https://github.com/kudzujs/kudzu/actions/runs/39348268906)
