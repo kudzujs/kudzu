@@ -10,6 +10,15 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 sampling closure (2026-10-20): run 39344559021 at `aa3733b` passes check,
+required-Chrome tests and three unchanged journeys with uninstrumented output.
+Sampling repeatedly locates 5.0–5.7 ms of leaf weight in binding mount and
+24.6–29.9 ms in the completion/layout callback, with substantial unattributed
+program samples. These are attribution weights, not benchmark improvements;
+no runtime change is selected. Next use a browser timeline to distinguish native
+style/layout from completion-predicate work rather than guessing from `(program)`.
+Raw profiles and interpretation limits are retained in `PERFORMANCE.md`.
+
 C2 lifecycle subphase closure (2026-10-20): run 39343690398 at `576a8eb`
 passes check, required-Chrome tests and three full journeys. Counters confirm
 1,998 binding registrations/patches and 999 effect contexts on restore; search

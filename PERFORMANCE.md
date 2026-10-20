@@ -1,5 +1,46 @@
 # Performance Records
 
+## Uninstrumented C2 Restore Sampling (2026-10-20)
+
+[Run 39344559021](https://github.com/kudzujs/kudzu/actions/runs/39344559021)
+at `aa3733b` passes check, required-Chrome tests and three complete C2 journeys.
+The runtime source and output are uninstrumented v0.17.0. CDP CPU sampling at
+100 microseconds surrounds only the existing rowRestore operation; completion,
+forced layout and subsequent validation remain unchanged. The profiler itself
+has overhead and the CDP start/stop envelope includes unattributed program/idle
+samples, so its duration is not a replacement benchmark result.
+
+Summing `timeDeltas` by sampled leaf frame yields these diagnostic weights:
+
+| Leaf frame | Profile 1 | Profile 2 | Profile 3 |
+|---|---:|---:|---:|
+| Completion observer `done` | 29.875 ms | 24.578 ms | 25.867 ms |
+| `mountBindings` (emitted W) | 4.977 ms | 5.007 ms | 5.708 ms |
+| `updateList` (emitted O) | 3.951 ms | 2.343 ms | 2.674 ms |
+| `fillStructuralListParts` (emitted se) | 1.991 ms | 3.533 ms | 3.436 ms |
+| Native setAttribute | 3.030 ms | 3.906 ms | 3.732 ms |
+| Garbage collector | 3.319 ms | 1.269 ms | 3.009 ms |
+| Unattributed `(program)` | 35.835 ms | 27.137 ms | 30.094 ms |
+
+Function identities are checked against emitted function bodies at profile
+line/column locations, not inferred from minified names alone. `done` contains
+the completion predicate and forced layout, so its full weight is not claimed
+as layout alone. `(program)` is likewise not assigned to layout or framework
+work without tracing evidence. Leaf weights do not include child frames and
+must not be compared directly with previous inclusive per-function clocks.
+
+This corroborates binding mount as a recurring JavaScript cost while showing
+that no single small capture/registration allocation explains total restore.
+It does not justify a new candidate, cache, fixture rewrite or benchmark timing
+change. Before pursuing native-rendering work, the next diagnostic must use a
+browser timeline trace to separate style/layout from the completion predicate
+and unattributed sampling time. Previously rejected candidates remain closed.
+Raw `.cpuprofile` files, exact emitted artifacts, protocol and full acceptance
+results are retained in the workflow artifact and local
+`benchmarks/runtime-matrix/results/c2-profile-39344559021.tar.gz`.
+Production semantics, compiler passes/LOC, runtime concepts and browser bytes
+remain unchanged. No speed or AI-cost improvement is claimed.
+
 ## C2 Lifecycle Subphase Attribution (2026-10-20)
 
 The interrupted local watch is resumed without rerunning the experiment.
