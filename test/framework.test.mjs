@@ -147,7 +147,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.match(docs, /Compiler architecture.*ordered normalization passes.*route-specific capability ESM/s)
   assert.ok(docs.includes(`@kudzujs/core@^${version} typescript`))
   assert.ok(docs.includes(`Current ${version} release evidence`))
-  assert.match(docs, /R19 AI-authoring confirmation did not reproduce.*1\.0\.0.*blocked/s)
+  assert.match(docs, /separate speed gate does not.*AI-cost improvements remain unproven.*1\.0\.0.*blocked/s)
   assert.match(docs, /138\.2 ms.*39\.6 \/ 5\.8 ms.*Kudzu 0\.16\.8.*4\.2-9\.9 KiB.*15 \/ 18/s)
   assert.ok(examples.includes(`Release ${version}`) && examples.includes(`v${version}`))
   assert.match(examples, /KUDZU EXAMPLE CATALOG/)
