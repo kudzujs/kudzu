@@ -1,5 +1,23 @@
 # Performance Records
 
+## 0.17.1 Release Transaction
+
+- Main includes accepted binding consolidation and generator 0.1.162 targeting
+  core ^0.17.1. Annotated tag `v0.17.1` and the published GitHub release point to
+  `18384530782be80e45795d1ef24bca702d5bdaa5`.
+- Exact-commit [CI 39361436721](https://github.com/kudzujs/kudzu/actions/runs/39361436721)
+  passes Node 22 check/tests/package smoke and Node 24 required-Chrome check/tests.
+  Earlier release CI 39360007883 and 39360658977 exposed stale release links and
+  evidence/banner assertions; those failures were fixed before tagging.
+- [Publication 39361960399](https://github.com/kudzujs/kudzu/actions/runs/39361960399)
+  is awaiting the protected `npm` environment approval. Registry publication and
+  fresh registry installs are not yet verified; GitHub release is not an npm receipt.
+- Website build and Wrangler dry run pass. Worker `kudzu` deployment version
+  `c78acdba-454a-4928-b846-744e26973db2` serves the release build. Public `/`, `/docs`,
+  `/releases/0.17.1`, `/example`, and `/example/blog/personal` all return 200 and
+  byte-identical HTML to the local release build. Hash receipts and the accepted
+  registration/rejected search experiment archives are attached to the GitHub release.
+
 ## Binding Lifetime Consolidation: Size Gate Passed
 
 [Run 39356334670](https://github.com/kudzujs/kudzu/actions/runs/39356334670)

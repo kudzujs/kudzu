@@ -77,6 +77,11 @@ with release/remount authority preserved. The predeclared size gate passes;
 the separate speed gate does not. Generator 0.1.162 targets ^0.17.1.
 Exact-commit CI, protected publication and delivery verification remain required.
 
+Tag `v0.17.1` and GitHub release now identify `1838453`; exact-commit CI
+39361436721 and five public website HTML comparisons pass. Publication run
+39361960399 is waiting for protected npm environment approval. Registry release
+and fresh registry installs remain pending; see `PERFORMANCE.md` for receipts.
+
 Core 0.17.0 and generator 0.1.161 are released from `c627432`: exact-commit
 [CI](https://github.com/kudzujs/kudzu/actions/runs/38502782176),
 [publication](https://github.com/kudzujs/kudzu/actions/runs/38503401446), registry
