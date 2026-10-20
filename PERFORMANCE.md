@@ -1,5 +1,19 @@
 # Performance Records
 
+## Conditional Membership Follow-up Protocol
+
+After 0.17.1, source review identifies duplicate mounted-condition WeakSet and
+registration WeakMap membership. The scratch candidate reserves WeakMap presence
+before evaluator loading and retains an undefined value after state release until
+DOM unmount. The existing C2 conditional-child journey and a new baseline-passing
+pending-evaluator/release/remount test define behavior; no fixture is simplified.
+Baseline is v0.17.1. Seven alternating measured builds and 21 fresh browser pairs
+retain the full C2 acceptance and failure reporting. The predeclared size gate
+requires both raw and gzip reductions, identical HTML/plan and no established
+operation regression (>5% median loss and >=16/21 slower). The separate speed gate
+still requires >=5% primary median improvement, negative paired median and
+>=16/21 faster. No result or adoption is implied before measurement.
+
 ## 0.17.1 Release Transaction
 
 - Main includes accepted binding consolidation and generator 0.1.162 targeting

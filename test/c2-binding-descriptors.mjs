@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
-const results = join(root, "c2-registration-results")
+const results = join(root, "c2-condition-results")
 const scratch = await mkdtemp(join(tmpdir(), "c2-binding-descriptors-"))
 await mkdir(results)
 const original = await readFile(join(workspace, "run.mjs"), "utf8")
@@ -17,21 +17,21 @@ const replace = (source, before, after) => {
   assert.equal(source.split(before).length, 2, `Expected one source anchor: ${before}`)
   return source.replace(before, after)
 }
-let candidate = replace(runtime, "const mountedBindings = new WeakSet()\n", "")
-assert.equal(candidate.split("mountedBindings.has(node)").length, 3)
-assert.equal(candidate.match(/^\s*mountedBindings\.(add|delete)\(node\)\n/gm)?.length, 4)
-candidate = candidate.replaceAll("mountedBindings.has(node)", "bindingRegistrations.has(node)").replace(/^\s*mountedBindings\.(add|delete)\(node\)\n/gm, "\n")
-candidate = replace(candidate, "bindingRegistrations.delete(binding.node)", "bindingRegistrations.set(binding.node, undefined)")
+let candidate = replace(runtime, "const mountedConditions = globalThis.__KUDZU_CONDITIONS__ && new WeakSet()\n", "")
+candidate = replace(candidate, "mountedConditions.has(start)", "conditionRegistrations.has(start)")
+candidate = replace(candidate, "mountedConditions.add(start)", "conditionRegistrations.set(start, undefined)")
+candidate = replace(candidate, "    mountedConditions.delete(start)\n", "")
+candidate = replace(candidate, "conditionRegistrations.delete(condition.start)", "conditionRegistrations.set(condition.start, undefined)")
 const sha256 = value => createHash("sha256").update(value).digest("hex")
 const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim()
-assert.equal(execFileSync("git", ["diff", "v0.17.0", "--", "framework", "bin", "package.json", "package-lock.json"], { cwd: root, encoding: "utf8" }), "", "Freeze the released production baseline")
+assert.equal(execFileSync("git", ["diff", "v0.17.1", "--", "framework", "bin", "package.json", "package-lock.json"], { cwd: root, encoding: "utf8" }), "", "Freeze the released production baseline")
 const version = JSON.parse(await readFile(join(root, "package.json"))).version
 const protocol = {
-  commit, baseline: "Released 0.17.0 production sources; candidate is scratch-only",
+  commit, baseline: "Released 0.17.1 production sources; candidate is scratch-only",
   runnerSha256: sha256(original), runtimeSha256: sha256(runtime), candidateSha256: sha256(candidate),
-  change: "Use registration WeakMap membership instead of duplicate mounted WeakSet; release retains an undefined tombstone until DOM unmount",
+  change: "Use condition registration WeakMap membership instead of duplicate mounted WeakSet; reserve membership before async evaluation and retain it after state release until DOM unmount",
   primary: "rowRestore", profiles: 21, buildWarmups: 1, measuredBuilds: 7,
-  hypothesis: "Reduce duplicate ownership bookkeeping and shipped bytes while preserving release/remount semantics. Size adoption requires both raw and gzip reduction and no established operation regression; speed is reported separately.",
+  hypothesis: "Reduce condition ownership bookkeeping and shipped bytes while preserving pending evaluation and release/remount semantics. Size adoption requires both raw and gzip reduction and no established operation regression; speed is reported separately.",
   order: "Alternate baseline/candidate order each round; fresh browser profile per sample",
   acceptance: "Unchanged full C2 journey, identity, cleanup, accessibility, resilience, static siblings",
   decision: "Size gate: raw and gzip decrease, unchanged plan/HTML, full acceptance and lifetime regression pass; reject any operation with >5% median loss and >=16/21 slower pairs. Separate speed gate: >=5% primary median improvement, negative paired median, >=16/21 faster pairs.",
@@ -53,8 +53,8 @@ try {
     await cp(join(workspace, "kudzu/tsconfig.json"), join(compiler, "fixture/tsconfig.json"))
     if (arm === "candidate") await writeFile(join(compiler, "framework/binding-runtime.js"), candidate)
     await mkdir(join(compiler, "test"))
-    await cp(join(root, "test/binding-lifetime.test.mjs"), join(compiler, "test/binding-lifetime.test.mjs"))
-    const log = execFileSync(process.execPath, ["--test", "test/binding-lifetime.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 15000 })
+    for (const test of ["binding-lifetime", "condition-lifetime"]) await cp(join(root, `test/${test}.test.mjs`), join(compiler, `test/${test}.test.mjs`))
+    const log = execFileSync(process.execPath, ["--test", "test/binding-lifetime.test.mjs", "test/condition-lifetime.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 15000 })
     await writeFile(join(results, `${arm}-regression.log`), log)
   }
   const targets = ["baseline", "candidate"].map(id => ({ id, label: id, architecture: "pre-rendered HTML with route capabilities", compiler: join(scratch, id), root: join(scratch, id, "fixture"), dist: join(scratch, id, "fixture/dist") }))

@@ -1,9 +1,9 @@
-name: C2 adopted runtime validation
+name: C2 condition membership comparison
 
 on:
   push:
     branches:
-      - perf/c2-lazy-writes-0170
+      - perf/condition-membership-0171
 
 permissions:
   contents: read
@@ -26,3 +26,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - run: node test/c2-binding-descriptors.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c2-condition-${{ github.sha }}
+          path: c2-condition-results/
+          if-no-files-found: warn

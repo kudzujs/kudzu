@@ -10,6 +10,18 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+Active follow-up after released 0.17.1: consolidate conditional mounted membership
+into the existing condition registration WeakMap. The real C2 conditional-child
+journey already exercises mount, cleanup and remount; source inspection finds a
+second WeakSet with the same DOM lifetime. Unlike bindings, conditions must reserve
+membership before async evaluator loading. A baseline-passing focused regression
+checks duplicate mount while pending, branch-state release, blocked reacquisition,
+and explicit remount. Scratch comparison uses v0.17.1, seven measured builds and
+21 alternating fresh profiles. Adoption requires reduced raw AND gzip bytes,
+unchanged HTML/plan, complete acceptance and no operation with >5% median loss
+and >=16/21 slower pairs. The original speed gate remains separate. No compiler
+semantics, public API or fixture-content changes are proposed.
+
 C2 binding lifetime consolidation: independent search confirmation 39355082851
 fails (38.8/38.9 ms, 10/21 faster); close the first-child candidate completely.
 Distinct predeclared size experiment 39356334670 at `94edf51` passes: eliminate
