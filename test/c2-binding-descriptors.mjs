@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
-const results = join(root, "c2-child-results")
+const results = join(root, "c2-search-results")
 const scratch = await mkdtemp(join(tmpdir(), "c2-binding-descriptors-"))
 await mkdir(results)
 const original = await readFile(join(workspace, "run.mjs"), "utf8")
@@ -32,7 +32,8 @@ const protocol = {
   commit, baseline: "Released 0.17.0 production sources; candidate is scratch-only",
   runnerSha256: sha256(original), runtimeSha256: sha256(runtime), candidateSha256: sha256(candidate),
   change: "Use firstElementChild for zero-index structural paths; preserve indexed lookup for other children, descriptors and all writes",
-  primary: "rowRestore", profiles: 21, buildWarmups: 1, measuredBuilds: 7,
+  primary: "searchRestore", profiles: 21, buildWarmups: 1, measuredBuilds: 7,
+  hypothesis: "Independent confirmation of the exploratory searchRestore result from run 39349068082; that rowRestore trial remains rejected. No repeated runs to select favorable samples.",
   order: "Alternate baseline/candidate order each round; fresh browser profile per sample",
   acceptance: "Unchanged full C2 journey, identity, cleanup, accessibility, resilience, static siblings",
   decision: "Require >=5% primary median improvement, negative paired median, >=16/21 faster pairs; reject any other operation with >5% median loss and >=16/21 slower pairs",
@@ -82,7 +83,7 @@ try {
     assert.equal(b.samples.length, 21)
     return [name, { baseline: a.median, candidate: b.median, relativeChange: b.median / a.median - 1, pairedMedian: median(b.samples.map((value, i) => value - a.samples[i])), faster: b.samples.filter((value, i) => value < a.samples[i]).length, slower: b.samples.filter((value, i) => value > a.samples[i]).length }]
   }))
-  const primary = operations.rowRestore
+   const primary = operations[protocol.primary]
   const regressions = Object.entries(operations).filter(([, value]) => value.relativeChange > .05 && value.slower >= 16).map(([name]) => name)
   const accepted = primary.relativeChange <= -.05 && primary.pairedMedian < 0 && primary.faster >= 16 && !regressions.length
   const summary = { accepted, primary, regressions, operations, finalLoad: loadavg(), javascript: Object.fromEntries(Object.entries(report.targets).map(([id, target]) => [id, target.artifacts.js])) }
