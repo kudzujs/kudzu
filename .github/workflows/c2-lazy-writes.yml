@@ -1,4 +1,4 @@
-name: C2 restore rendering timeline
+name: C2 matched rendering timeline
 
 on:
   push:
@@ -24,12 +24,13 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix benchmarks/runtime-matrix/react
       - run: npm run check
       - run: npm test
       - run: node test/c2-restore-profile.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: c2-timeline-${{ github.sha }}
-          path: c2-timeline-results/
+          name: c2-matched-${{ github.sha }}
+          path: c2-matched-results/
           if-no-files-found: warn
