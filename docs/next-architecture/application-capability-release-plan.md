@@ -15,7 +15,8 @@ size gate and 42 complete journeys: −15 raw/−10 gzip C2 bytes, unchanged HTM
 and no established operation regression. The separate speed gate fails (restore
 58.0/59.3 ms, paired +1.4 ms, 9/21 faster). Adopt for size/simplicity only; matched
 minified source and updated project-app output contract save 45 deploy bytes.
-Full adopted check/tests are pending. The release version remains 0.17.1 until
+Full adopted check, required-Chrome tests and package smoke pass in run
+39384594237 at `81c61f5`. The release version remains 0.17.1 until
 a separate release transaction; no speed or AI-cost improvement is claimed.
 
 Follow-up protocol after released 0.17.1: consolidate conditional mounted membership

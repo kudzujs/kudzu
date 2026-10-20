@@ -18,7 +18,11 @@ Its exact output contract is updated without changing gzip tolerances.
 Semantic primitives, compiler passes/LOC, normalization rules and runtime concepts
 all remain unchanged; runtime source is −1 net line including the pending-owner
 comment. One focused lifetime test is added; application fixture content is
-unchanged. Full adopted-runtime validation follows before completion.
+unchanged. Full adopted-runtime validation passes in
+[39384594237](https://github.com/kudzujs/kudzu/actions/runs/39384594237) at
+`81c61f5`: `npm run check`, required-Chrome `npm test`, and `npm run test:package`.
+This completes implementation on the investigation branch; no new release is
+published by this packet.
 
 Raw artifacts and receipt are archived locally at
 `benchmarks/runtime-matrix/results/c2-condition-39383236646.tar.gz`, SHA256
