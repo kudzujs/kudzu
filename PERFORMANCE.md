@@ -1,5 +1,48 @@
 # Performance Records
 
+## Matched Rendering And First-Child Trial Closure
+
+[Matched run 39348268906](https://github.com/kudzujs/kudzu/actions/runs/39348268906)
+at `91b6055` passes check, tests and three complete journeys per target on one VM.
+Both targets restore to body height 64,907 at viewport 780 × 493; each style
+update reports 2,997 elements. The row container has 2,002 elements for Kudzu
+and 2,000 for React, so this is matched application content, not identical DOM.
+
+| Native event (ms), profiles 1/2/3 | Kudzu | React |
+|---|---|---|
+| UpdateLayoutTree | 6.031 / 7.249 / 6.770 | 5.603 / 10.786 / 8.045 |
+| Layout | 14.629 / 14.622 / 15.358 | 15.335 / 14.109 / 21.004 |
+
+These diagnostic traces show substantial rendering cost in both implementations.
+Three traced profiles do not establish a speed ranking or prove identical cost.
+They do not justify reducing benchmark content or removing forced completion.
+
+[First-child run 39349068082](https://github.com/kudzujs/kudzu/actions/runs/39349068082)
+at `4ddbd17` tests scratch-only zero-index structural path lookup through
+`firstElementChild`, retaining `children[index]` otherwise. Check, tests and all
+42 C2 journeys pass. Seven measured builds and 21 alternating browser pairs use
+the existing frozen acceptance gate. Row restoration medians are **42.0 / 42.4 ms**
+(baseline/candidate), paired median **+0.3 ms**, with **9 faster, 11 slower, 1 tied**.
+The candidate is rejected. Output grows from 43,593/16,406 raw/gzip bytes to
+43,680/16,424 (**+87/+18**); only the list runtime artifact changes.
+
+Search restoration is an exploratory secondary observation: 34.0 / 30.1 ms,
+paired −3.8 ms, 18/21 faster pairs. It cannot replace the predeclared rowRestore
+endpoint after results are known. Any search-specific follow-up needs a separate
+predeclared hypothesis and independent validation; this trial remains rejected.
+No established other-operation regression is flagged by the frozen gate, which
+does not imply every operation is unchanged. Production remains v0.17.0 with
+zero semantic primitive, compiler pass/LOC, runtime concept or browser-byte delta.
+The C2 restoration and AI-cost gates remain unresolved.
+
+Archives in `benchmarks/runtime-matrix/results/` retain raw results and workflow
+receipts (local ignored files; hosted artifacts also retain experiment output):
+
+- `c2-matched-39348268906.tar.gz`, SHA256
+  `ce32338a5ddda65fd20dfe1f6b282d9d4a4e233f73268a48227d8c36cc60972a`.
+- `c2-child-39349068082.tar.gz`, SHA256
+  `829de58eb462933d1f4907d8c4daa49d8a5654095f99500e4363f9e849968501`.
+
 ## C2 Native Rendering Timeline (2026-10-20)
 
 [Run 39345368910](https://github.com/kudzujs/kudzu/actions/runs/39345368910)

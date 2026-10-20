@@ -10,6 +10,18 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 matched rendering and child-lookup closure: runs 39348268906 (`91b6055`)
+and 39349068082 (`4ddbd17`) pass check, tests and complete acceptance journeys.
+Matched traces show substantial native rendering work in both React and Kudzu,
+with equal body height and style element counts; three profiles are diagnostic.
+The scratch firstElementChild candidate fails the frozen restore gate: 42.0/42.4
+ms, paired +0.3 ms, 9/21 faster, +87 raw/+18 gzip bytes. Reject it for C2 restore.
+Search restoration improves as a secondary observation (34.0/30.1 ms, 18/21
+faster), requiring an independent predeclared search-specific follow-up before
+any adoption claim. Do not relabel this failed trial or rerun it for favorable
+restore samples. Production remains unchanged; evidence and archive hashes are
+in `PERFORMANCE.md`. Restoration and independent AI-cost gates remain open.
+
 C2 timeline closure (2026-10-20): run 39345368910 at `b560cb5` passes check,
 required-Chrome tests and three full journeys. Completion predicates total
 0.335–0.458 ms; the forced read contains exactly one style update (7.411–8.909 ms)
