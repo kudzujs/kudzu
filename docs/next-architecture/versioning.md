@@ -79,8 +79,9 @@ Exact-commit CI, protected publication and delivery verification remain required
 
 Tag `v0.17.1` and GitHub release now identify `1838453`; exact-commit CI
 39361436721 and five public website HTML comparisons pass. Publication run
-39361960399 is waiting for protected npm environment approval. Registry release
-and fresh registry installs remain pending; see `PERFORMANCE.md` for receipts.
+39361960399 succeeds after user approval. Registry integrity matches local packs;
+fresh default/AI registry installs resolve core 0.17.1 and pass checks, with
+equivalent deploy output after project-name normalization. See `PERFORMANCE.md`.
 
 Core 0.17.0 and generator 0.1.161 are released from `c627432`: exact-commit
 [CI](https://github.com/kudzujs/kudzu/actions/runs/38502782176),

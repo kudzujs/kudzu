@@ -10,8 +10,13 @@
   Earlier release CI 39360007883 and 39360658977 exposed stale release links and
   evidence/banner assertions; those failures were fixed before tagging.
 - [Publication 39361960399](https://github.com/kudzujs/kudzu/actions/runs/39361960399)
-  is awaiting the protected `npm` environment approval. Registry publication and
-  fresh registry installs are not yet verified; GitHub release is not an npm receipt.
+  succeeds after user approval of the protected `npm` environment. Registry
+  versions are core 0.17.1 and create-kudzu 0.1.162; both registry SHA512 integrity
+  values match local packs. Fresh registry-generated default and `--ai` apps
+  resolve core 0.17.1 and pass `npm run check`. Their four deploy files match after
+  normalizing project names; the initial exact comparison correctly differed in
+  generated name metadata. The static about page has no script. Registry receipt
+  is attached to the GitHub release as `registry-receipt.json`.
 - Website build and Wrangler dry run pass. Worker `kudzu` deployment version
   `c78acdba-454a-4928-b846-744e26973db2` serves the release build. Public `/`, `/docs`,
   `/releases/0.17.1`, `/example`, and `/example/blog/personal` all return 200 and
