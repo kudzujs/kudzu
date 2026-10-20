@@ -66,10 +66,16 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.161` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.0`.
+`create-kudzu@0.1.162` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.1`.
 
 ## Release Boundary
+
+The user-authorized 0.17.1 patch releases the accepted binding lifetime
+consolidation: −52 raw/−7 gzip C2 bytes and −114 project-app deploy bytes,
+with release/remount authority preserved. The predeclared size gate passes;
+the separate speed gate does not. Generator 0.1.162 targets ^0.17.1.
+Exact-commit CI, protected publication and delivery verification remain required.
 
 Core 0.17.0 and generator 0.1.161 are released from `c627432`: exact-commit
 [CI](https://github.com/kudzujs/kudzu/actions/runs/38502782176),

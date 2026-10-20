@@ -1,5 +1,18 @@
 # Kudzu Releases
 
+## 0.17.1 - Smaller Binding Lifetime Tracking
+
+- Removes duplicate mounted-binding WeakSet membership, reusing the registration
+  WeakMap. Released bindings retain a tombstone until DOM unmount, preserving
+  revoked authority and explicit remount behavior.
+- Saves 52 raw / 7 gzip JavaScript bytes in C2 and 114 raw deploy bytes in the
+  project application. Static help still ships zero JavaScript.
+- Adds a release/remount regression. The 42-journey comparison passes the
+  predeclared size gate, with unchanged HTML/plan and no established operation
+  regression. It does not pass the separate speed gate; no latency gain is claimed.
+- Publishes create-kudzu 0.1.162 targeting core ^0.17.1. Public APIs and supported
+  migration syntax are unchanged. Rejected experiments remain in PERFORMANCE.md.
+
 ## 0.17.0 - Static Calculation Configuration and Lean Effects
 
 - Selected calculation effect dependencies accept strings, finite numbers other
