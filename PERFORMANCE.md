@@ -1,5 +1,37 @@
 # Performance Records
 
+## Binding Lifetime Consolidation: Size Gate Passed
+
+[Run 39356334670](https://github.com/kudzujs/kudzu/actions/runs/39356334670)
+at `94edf51` passes check, tests, lifetime regression on both arms and 42 complete
+C2 journeys. The predeclared size gate passes: raw JS 43,593 → 43,541 (**−52**),
+gzip 16,406 → 16,399 (**−7**), identical HTML and plan, only the binding runtime
+artifact changes, and no operation meets the established regression criterion.
+The separate speed gate fails: restore medians 56.9/55.7 ms, paired +0.5 ms,
+10/21 faster and 11 slower. This is a size/simplification adoption, not a speed
+claim; it does not close restoration latency or AI-cost gates.
+
+The adopted implementation removes duplicate mounted-binding WeakSet membership.
+The registration WeakMap holds existing registrations, or an undefined tombstone
+after state release until DOM unmount. Deleting the entry on release would allow
+an incidental mount to reacquire revoked ownership; the regression explicitly
+checks repeated mount, release, blocked remount, explicit unmount/remount and
+subsequent commits. Minified adopted source matches the measured scratch source
+after comments/whitespace are removed. No new semantic primitives, compiler
+passes or runtime concepts; production runtime changes are −4 net lines. Existing
+fixture content is unchanged; one ownership regression test is added.
+
+The branch workflow now validates the adopted runtime with check and required
+Chrome tests, rather than rerunning a completed experiment. Reproduce the frozen
+comparison at `94edf51`; older scratch runners intentionally assert v0.17.0.
+Adopted full-suite validation is recorded below when complete.
+
+Archives under `benchmarks/runtime-matrix/results/`:
+- `c2-registration-39356334670.tar.gz`, SHA256
+  `c854a5eaf8a6197ea09d6faf64b5e1534db97733a55589708945d21869bf7452`.
+- `c2-search-39355082851.tar.gz`, SHA256
+  `fa80f84b1947f34266a8002ffd42c81b635c74a7e47d1afe9b55eaf3ba35f2d4`.
+
 ## Independent Search Confirmation: Rejected
 
 Run [39355082851](https://github.com/kudzujs/kudzu/actions/runs/39355082851)

@@ -1,4 +1,4 @@
-name: C2 registration ownership comparison
+name: C2 adopted runtime validation
 
 on:
   push:
@@ -24,13 +24,5 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
-      - run: npm ci --prefix benchmarks/runtime-matrix/react
       - run: npm run check
       - run: npm test
-      - run: node test/c2-binding-descriptors.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: c2-registration-${{ github.sha }}
-          path: c2-registration-results/
-          if-no-files-found: warn

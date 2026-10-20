@@ -5,7 +5,6 @@ import { serializeStyle } from "./style.js"
 const imports = new Map()
 const bindingTargets = new Map()
 const conditionTargets = globalThis.__KUDZU_CONDITIONS__ && new Map()
-const mountedBindings = new WeakSet()
 const mountedConditions = globalThis.__KUDZU_CONDITIONS__ && new WeakSet()
 const bindingRegistrations = new WeakMap()
 const conditionRegistrations = globalThis.__KUDZU_CONDITIONS__ && new WeakMap()
@@ -67,8 +66,7 @@ if (typeof document !== "undefined") mountDom(document)
 
 function mountBindings(root) {
   if (globalThis.__KUDZU_ELEMENT_BINDINGS__ !== false) for (const node of matching(root, bindingSelector)) {
-    if (mountedBindings.has(node)) continue
-    mountedBindings.add(node)
+    if (bindingRegistrations.has(node)) continue
     const registrations = []
     bindingRegistrations.set(node, registrations)
     const descriptors = []
@@ -98,10 +96,9 @@ function mountBindings(root) {
   }
   if (globalThis.__KUDZU_TEXT_BINDINGS__) {
     for (const node of textBindingStarts(root)) {
-      if (mountedBindings.has(node)) continue
+      if (bindingRegistrations.has(node)) continue
       const descriptor = textDescriptors[Number(node.data.slice("k-text:".length))]
       if (!descriptor) continue
-      mountedBindings.add(node)
       const registrations = []
       bindingRegistrations.set(node, registrations)
       if (descriptor.state) {
@@ -182,13 +179,11 @@ function unmountBindings(root) {
   if (globalThis.__KUDZU_ELEMENT_BINDINGS__ !== false) for (const node of matching(root, bindingSelector)) {
     for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
     bindingRegistrations.delete(node)
-    mountedBindings.delete(node)
   }
   if (globalThis.__KUDZU_TEXT_BINDINGS__) {
     for (const node of textBindingStarts(root)) {
       for (const [id, binding] of bindingRegistrations.get(node) ?? []) bindingTargets.get(id)?.delete(binding)
       bindingRegistrations.delete(node)
-      mountedBindings.delete(node)
     }
   }
 }
@@ -206,7 +201,8 @@ function unmountConditions(root) {
 function releaseBindings(id) {
   for (const binding of bindingTargets.get(id) ?? []) {
     for (const [bindingId, entry] of bindingRegistrations.get(binding.node) ?? []) bindingTargets.get(bindingId)?.delete(entry)
-    bindingRegistrations.delete(binding.node)
+    // Keep mounted membership until unmount so released bindings cannot regain authority.
+    bindingRegistrations.set(binding.node, undefined)
   }
   bindingTargets.delete(id)
   if (!globalThis.__KUDZU_CONDITIONS__) return

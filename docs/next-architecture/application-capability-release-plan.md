@@ -10,6 +10,18 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 binding lifetime consolidation: independent search confirmation 39355082851
+fails (38.8/38.9 ms, 10/21 faster); close the first-child candidate completely.
+Distinct predeclared size experiment 39356334670 at `94edf51` passes: eliminate
+duplicate WeakSet membership using registration WeakMap presence, retaining an
+undefined tombstone after release until unmount. C2 output saves 52 raw/7 gzip
+bytes, HTML/plan remain identical, lifetime regression and 42 journeys pass,
+and no established operation regression is detected. Speed gate fails (paired
+restore +0.5 ms, 10/21 faster); adopt for size/simplicity only. The adopted source
+matches measured source after minification; full adopted check/tests follow.
+Restoration latency and AI-cost gates remain unresolved. Next work must use fresh
+evidence rather than rerun closed candidates. Archives are in `PERFORMANCE.md`.
+
 C2 matched rendering and child-lookup closure: runs 39348268906 (`91b6055`)
 and 39349068082 (`4ddbd17`) pass check, tests and complete acceptance journeys.
 Matched traces show substantial native rendering work in both React and Kudzu,
