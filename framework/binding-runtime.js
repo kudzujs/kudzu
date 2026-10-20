@@ -5,7 +5,6 @@ import { serializeStyle } from "./style.js"
 const imports = new Map()
 const bindingTargets = new Map()
 const conditionTargets = globalThis.__KUDZU_CONDITIONS__ && new Map()
-const mountedConditions = globalThis.__KUDZU_CONDITIONS__ && new WeakSet()
 const bindingRegistrations = new WeakMap()
 const conditionRegistrations = globalThis.__KUDZU_CONDITIONS__ && new WeakMap()
 const textDescriptors = globalThis.__KUDZU_TEXT_BINDINGS__ && typeof document !== "undefined" ? JSON.parse(document.body.dataset.kTextBindings ?? "[]") : []
@@ -123,8 +122,9 @@ function mountBindings(root) {
 
 function mountConditions(root) {
   for (const start of matching(root, "template[data-k-if]")) {
-    if (mountedConditions.has(start)) continue
-    mountedConditions.add(start)
+    if (conditionRegistrations.has(start)) continue
+    // Reserve membership while the evaluator loads, before subscriptions exist.
+    conditionRegistrations.set(start, undefined)
     const descriptor = JSON.parse(start.dataset.kIf)
     const end = findEnd(start, descriptor.id)
     const truthy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgTrue : start.content.querySelector("template[data-k-true]")
@@ -194,7 +194,6 @@ function unmountConditions(root) {
     for (const [id, condition] of registration?.registrations ?? []) conditionTargets.get(id)?.delete(condition)
     if (globalThis.__KUDZU_CONDITION_STATE__ !== false && registration?.condition) unmountConditionStates(registration.condition, registration.condition.current === "true")
     conditionRegistrations.delete(start)
-    mountedConditions.delete(start)
   }
 }
 
@@ -210,7 +209,7 @@ function releaseBindings(id) {
     const registration = conditionRegistrations.get(condition.start)
     for (const [conditionId, entry] of registration?.registrations ?? []) conditionTargets.get(conditionId)?.delete(entry)
     if (globalThis.__KUDZU_CONDITION_STATE__ !== false) unmountConditionStates(condition, condition.current === "true")
-    conditionRegistrations.delete(condition.start)
+    conditionRegistrations.set(condition.start, undefined)
   }
   conditionTargets.delete(id)
 }

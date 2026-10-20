@@ -1,4 +1,4 @@
-name: C2 condition membership comparison
+name: C2 conditional runtime validation
 
 on:
   push:
@@ -26,10 +26,4 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: node test/c2-binding-descriptors.mjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: c2-condition-${{ github.sha }}
-          path: c2-condition-results/
-          if-no-files-found: warn
+      - run: npm run test:package

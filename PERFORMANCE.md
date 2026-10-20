@@ -2,6 +2,30 @@
 
 ## Conditional Membership Follow-up Protocol
 
+**Result:** [39383236646](https://github.com/kudzujs/kudzu/actions/runs/39383236646)
+at `e17cc4f` passes check/tests, both lifetime regressions in both arms, seven
+measured builds and all 42 C2 journeys. The size gate passes: raw JS 43,541 →
+43,526 (−15), gzip 16,399 → 16,389 (−10), identical HTML/plan and only the binding
+artifact changes. No operation meets the frozen regression criterion. The speed
+gate fails: restore 58.0/59.3 ms, paired +1.4 ms, 9/21 faster, 12 slower.
+Conditional mount is 2.3/2.4 ms, paired 0; unmount is 1.3/1.4 ms, paired −0.1 ms
+with 7 slower pairs. These observations do not establish faster execution.
+
+Adopt for size/simplification only. The minified adopted source matches the
+measured scratch source. Project-app deploy shrinks another 45 raw/29 local gzip
+bytes; each interactive route saves 15 raw bytes and static help remains zero JS.
+Its exact output contract is updated without changing gzip tolerances.
+Semantic primitives, compiler passes/LOC, normalization rules and runtime concepts
+all remain unchanged; runtime source is −1 net line including the pending-owner
+comment. One focused lifetime test is added; application fixture content is
+unchanged. Full adopted-runtime validation follows before completion.
+
+Raw artifacts and receipt are archived locally at
+`benchmarks/runtime-matrix/results/c2-condition-39383236646.tar.gz`, SHA256
+`3943c86552c0b4208274226e3dd36b106ebb095409af587f599e4a456a68dd9c`.
+The hosted workflow also retains the raw experiment. Reproduction uses `e17cc4f`;
+the frozen scratch runner intentionally rejects subsequent production changes.
+
 After 0.17.1, source review identifies duplicate mounted-condition WeakSet and
 registration WeakMap membership. The scratch candidate reserves WeakMap presence
 before evaluator loading and retains an undefined value after state release until

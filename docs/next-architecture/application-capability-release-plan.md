@@ -10,7 +10,15 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-Active follow-up after released 0.17.1: consolidate conditional mounted membership
+Conditional follow-up result: run 39383236646 at `e17cc4f` passes the predeclared
+size gate and 42 complete journeys: −15 raw/−10 gzip C2 bytes, unchanged HTML/plan,
+and no established operation regression. The separate speed gate fails (restore
+58.0/59.3 ms, paired +1.4 ms, 9/21 faster). Adopt for size/simplicity only; matched
+minified source and updated project-app output contract save 45 deploy bytes.
+Full adopted check/tests are pending. The release version remains 0.17.1 until
+a separate release transaction; no speed or AI-cost improvement is claimed.
+
+Follow-up protocol after released 0.17.1: consolidate conditional mounted membership
 into the existing condition registration WeakMap. The real C2 conditional-child
 journey already exercises mount, cleanup and remount; source inspection finds a
 second WeakSet with the same DOM lifetime. Unlike bindings, conditions must reserve
