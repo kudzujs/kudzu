@@ -10,6 +10,15 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+C2 timeline closure (2026-10-20): run 39345368910 at `b560cb5` passes check,
+required-Chrome tests and three full journeys. Completion predicates total
+0.335–0.458 ms; the forced read contains exactly one style update (7.411–8.909 ms)
+and one layout (18.440–20.816 ms). No repeated layout thrashing is demonstrated.
+Keep completion/layout acceptance intact and do not infer a compiler fix from
+native rendering cost. The next evidence gap is a matched React DOM/rendering
+trace on the same hosted VM, not another allocation-only candidate. Raw traces,
+thread/interval assertions and interpretation limits are in `PERFORMANCE.md`.
+
 C2 sampling closure (2026-10-20): run 39344559021 at `aa3733b` passes check,
 required-Chrome tests and three unchanged journeys with uninstrumented output.
 Sampling repeatedly locates 5.0–5.7 ms of leaf weight in binding mount and

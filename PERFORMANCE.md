@@ -1,5 +1,51 @@
 # Performance Records
 
+## C2 Native Rendering Timeline (2026-10-20)
+
+[Run 39345368910](https://github.com/kudzujs/kudzu/actions/runs/39345368910)
+at `b560cb5` passes check, required-Chrome tests and three complete C2 journeys.
+The emitted runtime is unchanged v0.17.0. The diagnostic harness adds only marks
+around the existing completion predicate and forced `document.body.offsetHeight`
+read, and records `devtools.timeline,blink.user_timing` around rowRestore.
+
+| Timed region | Profile 1 | Profile 2 | Profile 3 |
+|---|---:|---:|---:|
+| Completion predicate, both calls combined | 0.342 ms | 0.458 ms | 0.335 ms |
+| Forced offsetHeight read | 26.664 ms | 28.151 ms | 28.324 ms |
+| UpdateLayoutTree inside that read | 8.138 ms | 8.909 ms | 7.411 ms |
+| Layout inside that read | 18.440 ms | 19.149 ms | 20.816 ms |
+
+Assertions over raw trace events confirm exactly two predicate pairs, one forced
+read pair, one UpdateLayoutTree and one Layout on the marked renderer thread.
+Both native events lie entirely inside the forced-read interval and do not
+overlap each other. Each profile reports 2,997 style elements, 5,004 dirty layout
+objects, 13,509 total layout objects and `partialLayout: false`, with a document
+layout root. The trace therefore resolves the earlier callback attribution:
+completion-query work is small, and the expensive portion is native style/layout.
+It does not show repeated synchronous layout thrashing in this operation.
+
+The layout is already deferred until after the state/list/lifecycle work. Removing
+the forced read would change the benchmark completion contract rather than
+reduce time to a rendered result. Changing content, CSS containment, visible row
+count or introducing virtualization would likewise need independent application
+evidence and matched benchmark contracts; none is authorized by these timings.
+The remaining JavaScript work is still material, but allocation-only candidates
+already failed their comparisons. This closes the native-rendering attribution
+question without inventing another runtime optimization or relaxing acceptance.
+Next C2 work should establish a matched React rendering/DOM trace on the same VM
+before asserting which portion of this native cost is Kudzu-specific. Retain the
+same content and accessibility checks; absolute times across prior VMs are not
+comparable. This baseline-only trace does not establish cross-framework parity.
+
+Environment: four AMD EPYC 9V74 logical CPUs, Node 24.21.0, Chrome 155.0.8059.39,
+Linux 6.17.0-1022-azure x64. Trace collection and marks have overhead; three
+diagnostic samples are not a comparative performance gate. Source fixture,
+production primitives, compiler passes/LOC, runtime concepts and output-byte
+deltas remain zero. No speed, release or AI-cost claim is added.
+Raw traces, derived attribution, exact output, protocol and workflow receipt are
+preserved in `benchmarks/runtime-matrix/results/c2-timeline-39345368910.tar.gz`,
+SHA256 `aed9d26ef9c62ea1b4b2c4de67fd5049582a0cc014a929a58c51971d861946ff`.
+
 ## Uninstrumented C2 Restore Sampling (2026-10-20)
 
 [Run 39344559021](https://github.com/kudzujs/kudzu/actions/runs/39344559021)
