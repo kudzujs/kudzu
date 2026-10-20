@@ -1,4 +1,4 @@
-name: C2 restore sampling profile
+name: C2 restore rendering timeline
 
 on:
   push:
@@ -30,6 +30,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: c2-profile-${{ github.sha }}
-          path: c2-profile-results/
+          name: c2-timeline-${{ github.sha }}
+          path: c2-timeline-results/
           if-no-files-found: warn

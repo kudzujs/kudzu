@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
-const results = join(root, "c2-profile-results")
+const results = join(root, "c2-timeline-results")
 const compiler = await mkdtemp(join(tmpdir(), "c2-restore-profile-"))
 await mkdir(results)
 const replace = (source, before, after) => {
@@ -15,7 +15,7 @@ const replace = (source, before, after) => {
   return source.replace(before, after)
 }
 assert.equal(execFileSync("git", ["diff", "v0.17.0", "--", "framework", "bin", "package.json", "package-lock.json"], {cwd:root,encoding:"utf8"}), "")
-const protocol = { purpose: "Sampling CPU attribution of rowRestore on uninstrumented output, not speed comparison", profiles: 3, source: "v0.17.0", samplingIntervalMicroseconds: 100, initialLoad: loadavg(), caveats: ["Sampling also has overhead", "Hosted VM is not dedicated physical hardware", "Native rendering may appear as unattributed samples"], acceptance: "Original complete C2 journey and resilience; no changed content or assertions" }
+const protocol = { purpose: "Timeline attribution of rowRestore: completion predicate versus native style/layout", profiles: 3, source: "v0.17.0", initialLoad: loadavg(), caveats: ["Tracing and harness marks have overhead", "Hosted VM is not dedicated physical hardware", "Nested timeline durations overlap"], acceptance: "Original complete C2 journey and resilience; unchanged output and conditions; harness adds only user-timing marks" }
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 try {
   for (const path of ["framework", "bin", "package.json"]) await cp(join(root,path), join(compiler,path), {recursive:true})
@@ -31,17 +31,26 @@ try {
   runner = replace(runner,"const versions = await frameworkVersions()",'const versions={kudzu:"0.17.0"}')
   runner = replace(runner,"const browserProfiles = check ? 1 : Number(process.env.BENCHMARK_PROFILES ?? 7)","const browserProfiles = 3")
   runner = replace(runner,'["--headless=new","--remote-debugging-port=0"','["--headless=new","--no-sandbox","--remote-debugging-port=0"')
-  runner = replace(runner,"      operations[name] = await evaluate(send, operationExpression(name), true)",`      if(name === "rowRestore") {
-        await send("Profiler.enable")
-        await send("Profiler.setSamplingInterval", {interval:100})
-        await send("Profiler.start")
+  runner = replace(runner,"      operations[name] = await evaluate(send, operationExpression(name), true)",`      let traceEvents, traceDone, traceTimer
+      if(name === "rowRestore") {
+        traceEvents=[]
+        traceDone=new Promise((resolve,reject)=>{
+          traceTimer=setTimeout(()=>reject(new Error("Trace completion deadline")),15000)
+          client.onEvent(message=>{
+            if(message.method==="Tracing.dataCollected") traceEvents.push(...message.params.value)
+            if(message.method==="Tracing.tracingComplete") {clearTimeout(traceTimer);resolve()}
+          })
+        })
+        await client.send("Tracing.start",{categories:"devtools.timeline,blink.user_timing",transferMode:"ReportEvents"})
       }
       operations[name] = await evaluate(send, operationExpression(name), true)
       if(name === "rowRestore") {
-        const {profile: cpuProfile} = await send("Profiler.stop")
-        await writeFile(join(resultsDirectory, profile+"-rowRestore.cpuprofile"),JSON.stringify(cpuProfile))
-        await send("Profiler.disable")
+        await client.send("Tracing.end")
+        await traceDone
+        await writeFile(join(resultsDirectory, profile+"-rowRestore.trace.json"),JSON.stringify({traceEvents}))
       }`)
+  runner = replace(runner,'if (!(${operation[1]})) return;', 'if ("${name}" === "rowRestore") performance.mark("c2-predicate-start"); const complete=(${operation[1]}); if ("${name}" === "rowRestore") performance.mark("c2-predicate-end"); if (!complete) return;')
+  runner = replace(runner,'document.body.offsetHeight; resolve(Number((performance.now() - started).toFixed(3)))', 'if ("${name}" === "rowRestore") performance.mark("c2-layout-start"); document.body.offsetHeight; if ("${name}" === "rowRestore") performance.mark("c2-layout-end"); resolve(Number((performance.now() - started).toFixed(3)))')
   await writeFile(join(results,"runner.mjs"),runner)
   execFileSync(process.execPath,[join(results,"runner.mjs"),"--check"],{cwd:root,stdio:"inherit",timeout:180000})
   await cp(join(compiler,"fixture/dist"),join(results,"dist"),{recursive:true})
