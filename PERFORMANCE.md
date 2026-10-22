@@ -1,5 +1,32 @@
 # Performance Records
 
+## Keyed Condition Revision Correctness (2026-10-23)
+
+A new ordinary TSX fixture combines keyed item conditions with a direct primitive
+parent-state row attribute. One button replaces the row data and selects it in
+the same turn. Chrome on `8b0c2b1` preserves the row and updates its label/ARIA
+state but never renders the expected detail. `updateListExpressions()` advances
+the shared row revision, cancelling the in-flight condition from the collection
+update without rescheduling it.
+
+Move condition evaluation into the existing `fillListExpressions()` path, so
+every new row-expression revision also schedules the current item conditions.
+Existing revision checks still reject stale work. The regression verifies show,
+hide, repeated show, retained row identity and retained detail DOM during
+parent-only selection toggles. Its static sibling has no scripts; the prior 15
+pending-evaluator browser cases remain in the same test. No new compiler syntax,
+semantic primitive, pass or runtime concept is introduced; runtime LOC is +1
+for the explanation comment.
+
+Isolated builds against `8b0c2b1` preserve file paths and all HTML. Only emitted
+`kudzu-list.js` changes. The new regression is 23,479 raw JS bytes in both arms,
+local gzip 8,601 → 8,602 (+1). C2 remains 43,433 raw, local gzip 16,416 → 16,418
+(+2). The project-app output hash/contract stays identical. These are output
+measurements, not timing or superiority claims. Sources, paired builds and
+`summary.json` are retained in `/tmp/opencode/keyed-condition-revision-hDU1Rs/`;
+the old-runtime Chrome failure is retained in its `baseline/browser-failure.log`.
+Current focused Chrome acceptance passes; full hosted validation follows.
+
 ## Native Chrome Pending-Evaluator Regression (2026-10-23)
 
 The gated evaluator journey now runs in a real Chrome document with native

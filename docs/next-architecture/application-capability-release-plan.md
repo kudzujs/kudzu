@@ -10,6 +10,16 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+Active keyed-condition correctness packet (2026-10-23): a compiled ordinary TSX
+fixture reproduces missing detail DOM when a keyed collection and parent-selected
+state change in one turn. Parent expression commits advance a shared row revision
+but previously left invalidated condition callbacks unscheduled. Reuse the existing
+expression path to reschedule conditions for that revision; retain stale-work
+checks and branch identity. Chrome show/hide/re-entry and parent-only toggle
+checks pass; static sibling remains zero JS. Matched builds retain raw JS sizes
+(regression 23,479; C2 43,433), with +1/+2 local gzip bytes respectively. No new
+semantic or runtime concept; full hosted check/Chrome/package validation follows.
+
 Browser closure follow-up (2026-10-23): the pending evaluator suite now exercises
 15 cases against real native Chrome DOM and module loading, including visible
 output, physical detach/reinsert, latest-state commits and complete state cleanup.

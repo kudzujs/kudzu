@@ -650,13 +650,6 @@ function fillListParts(root, parts, item, revision, index = 0, previous) {
     }
   }
   fillListExpressions(root, parts, item, revision, index)
-  if (__KUDZU_LIST_CONDITIONS__) {
-    for (const [marker, descriptor] of parts.conditions) {
-      evaluate(descriptor, item, index).then(value => {
-        if (revisions.get(root) === revision && marker.isConnected) updateListCondition(marker, descriptor.kind, value, item, index)
-      }).catch(error => console.error(error))
-    }
-  }
 }
 
 function fillListExpressions(root, parts, item, revision, index) {
@@ -674,6 +667,14 @@ function fillListExpressions(root, parts, item, revision, index) {
           if (revisions.get(root) === revision && node.isConnected) patchBinding(node, target, value)
         }).catch(error => console.error(error))
       }
+    }
+  }
+  // Parent-state commits invalidate the shared row revision, including pending conditions.
+  if (__KUDZU_LIST_CONDITIONS__) {
+    for (const [marker, descriptor] of parts.conditions) {
+      evaluate(descriptor, item, index).then(value => {
+        if (revisions.get(root) === revision && marker.isConnected) updateListCondition(marker, descriptor.kind, value, item, index)
+      }).catch(error => console.error(error))
     }
   }
 }
