@@ -16,7 +16,9 @@ A scratch checkout of the prior runtime at `2feeb29` fails in Chrome with
 `/tmp/opencode/pending-browser-baseline-GFZ6Mc/failure.log`. The current runtime
 passes all fifteen cases with no browser or console errors. The browser test
 joins `npm test`, respects explicit browser skips and requires Chrome when the
-suite requires it. Full hosted validation follows. No production code, output
+suite requires it. Full hosted validation passes in
+[39873923218](https://github.com/kudzujs/kudzu/actions/runs/39873923218) at
+`1a4ec11`: check, required-Chrome tests and package smoke. No production code, output
 bytes, compiler semantics or performance claim changes in this coverage packet.
 
 ## Pending Evaluator State Release Follow-up (2026-10-22)

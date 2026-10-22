@@ -15,7 +15,8 @@ Browser closure follow-up (2026-10-23): the pending evaluator suite now exercise
 output, physical detach/reinsert, latest-state commits and complete state cleanup.
 The old runtime at `2feeb29` fails the same browser test; current runtime passes.
 This adds executable browser coverage without changing production code or bytes.
-Full hosted check/Chrome/package validation follows.
+Full hosted check, required-Chrome tests and package smoke pass in run
+39873923218 at `1a4ec11`.
 
 Pending-state release follow-up (2026-10-22): four subcases fail on `2feeb29`
 because evaluator dependencies are registered only after module arrival. Move
