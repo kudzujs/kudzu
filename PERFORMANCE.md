@@ -23,7 +23,11 @@ runtime file differs; HTML, file paths and other deploy files are identical.
 The project-app deploy grows 104 raw/70 local gzip bytes; interactive routes grow
 30–44 raw bytes each, and static help remains zero-JavaScript. The exact contract
 is updated without changing tolerances. This is an explicit correctness cost,
-not a byte or latency optimization. Full check/Chrome/package validation follows.
+not a byte or latency optimization. Full validation passes in
+[39697858251](https://github.com/kudzujs/kudzu/actions/runs/39697858251) at
+`8f49998`: `npm run check`, required-Chrome `npm test`, and `npm run test:package`.
+The six new delayed-module cases run as deterministic Node lifetime tests; the
+existing complete Chrome journeys also pass. No new latency comparison is claimed.
 
 ## Conditional Membership Follow-up Protocol
 

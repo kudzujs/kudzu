@@ -17,7 +17,9 @@ connectivity before subscribing or patching. Condition registration exists befor
 loading so pending initial branch state is released on unmount. The focused
 regression passes; C2 adds 40 raw/31 local gzip bytes with identical HTML and only
 the binding runtime changed. No semantic/compiler/runtime concept is added;
-this is a correctness cost, not performance acceptance. Full validation pending.
+this is a correctness cost, not performance acceptance. Full check, required-Chrome
+tests and package smoke pass in run 39697858251 at `8f49998`. The six new delay
+cases are deterministic Node lifecycle tests; no new timing claim is made.
 
 Conditional follow-up result: run 39383236646 at `e17cc4f` passes the predeclared
 size gate and 42 complete journeys: −15 raw/−10 gzip C2 bytes, unchanged HTML/plan,
