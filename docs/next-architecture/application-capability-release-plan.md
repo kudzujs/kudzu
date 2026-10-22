@@ -10,6 +10,15 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+Active correctness follow-up (2026-10-22): a six-case gated-evaluator regression
+fails on `e999b3a` for attribute/text/condition callbacks arriving after DOM
+unmount or same-node remount. Require current registration identity as well as
+connectivity before subscribing or patching. Condition registration exists before
+loading so pending initial branch state is released on unmount. The focused
+regression passes; C2 adds 40 raw/31 local gzip bytes with identical HTML and only
+the binding runtime changed. No semantic/compiler/runtime concept is added;
+this is a correctness cost, not performance acceptance. Full validation pending.
+
 Conditional follow-up result: run 39383236646 at `e17cc4f` passes the predeclared
 size gate and 42 complete journeys: −15 raw/−10 gzip C2 bytes, unchanged HTML/plan,
 and no established operation regression. The separate speed gate fails (restore

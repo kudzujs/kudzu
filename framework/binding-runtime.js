@@ -83,7 +83,7 @@ function mountBindings(root) {
         continue
       }
       loadEvaluator(descriptor).then(evaluator => {
-        if (!node.isConnected) return
+        if (!node.isConnected || bindingRegistrations.get(node) !== registrations) return
         const binding = { node, target, read: evaluator.read }
         for (const id of evaluator.stateIds) {
           register(bindingTargets, id, binding)
@@ -108,7 +108,7 @@ function mountBindings(root) {
         continue
       }
       loadEvaluator(descriptor).then(evaluator => {
-        if (!node.isConnected) return
+        if (!node.isConnected || bindingRegistrations.get(node) !== registrations) return
         const binding = { node, target: "text", read: evaluator.read }
         for (const id of evaluator.stateIds) {
           register(bindingTargets, id, binding)
@@ -131,16 +131,17 @@ function mountConditions(root) {
     const falsy = globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg ? start.dataset.kSvgFalse : start.content.querySelector("template[data-k-false]")
     if (!end || !truthy || !falsy) continue
     const condition = { start, end, truthy, falsy, svg: globalThis.__KUDZU_SVG_CONDITIONS__ && descriptor.svg, kind: descriptor.kind, current: conditionKey(descriptor.kind, descriptor.initial), mount: globalThis.__KUDZU_CONDITION_MOUNTS__ !== false && descriptor.mount, owned: globalThis.__KUDZU_CONDITION_STATE__ !== false && descriptor.owned }
+    const registrations = []
+    const registration = { condition, registrations }
+    conditionRegistrations.set(start, registration)
     if (globalThis.__KUDZU_CONDITION_STATE__ !== false) mountConditionStates(condition, Boolean(descriptor.initial), false)
     const mount = evaluator => {
-      if (!start.isConnected) return
+      if (!start.isConnected || conditionRegistrations.get(start) !== registration) return
       condition.read = evaluator.read
-      const registrations = []
       for (const id of evaluator.stateIds) {
         register(conditionTargets, id, condition)
         registrations.push([id, condition])
       }
-      conditionRegistrations.set(start, { condition, registrations })
       updateCondition(condition)
     }
     if (descriptor.state) mount({ read: () => browserState.get(descriptor.state), stateIds: [descriptor.state] })

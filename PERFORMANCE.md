@@ -1,5 +1,30 @@
 # Performance Records
 
+## Pending Evaluator DOM Authority Fix (2026-10-22)
+
+The next correctness investigation reproduces six failures on `e999b3a`: delayed
+attribute, text and condition evaluators register after explicit DOM unmount while
+the node remains connected, and register twice after the same node is remounted.
+The previous guard only checked `isConnected`. A deterministic gated-module test
+observes stale evaluator reads (1 instead of 0) and duplicate reads (2 instead of
+1). It also checks subsequent commits for stale subscriptions.
+
+Both binding paths now compare their captured registration array with the current
+WeakMap entry. Conditions publish their existing condition/registration record
+before awaiting evaluator loading, and compare that record's identity on arrival.
+Pending-condition unmount consequently releases its initial branch state too.
+No loader, cancellation scheduler, new map, compiler pass or semantic primitive
+is introduced. This addresses DOM unmount/replacement, not cancellation of module
+imports or arbitrary asynchronous application code.
+
+Focused lifetime tests pass after the fix. Relative to `e999b3a`, C2 raw JS grows
+43,526 → 43,566 (+40); local gzip grows 16,389 → 16,420 (+31). Only the binding
+runtime file differs; HTML, file paths and other deploy files are identical.
+The project-app deploy grows 104 raw/70 local gzip bytes; interactive routes grow
+30–44 raw bytes each, and static help remains zero-JavaScript. The exact contract
+is updated without changing tolerances. This is an explicit correctness cost,
+not a byte or latency optimization. Full check/Chrome/package validation follows.
+
 ## Conditional Membership Follow-up Protocol
 
 **Result:** [39383236646](https://github.com/kudzujs/kudzu/actions/runs/39383236646)
