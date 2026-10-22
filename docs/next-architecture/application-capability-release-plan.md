@@ -18,7 +18,8 @@ work before the same state ID can be recreated. Share the attribute/text loading
 path; no new map or runtime concept. Fifteen gated lifetime cases pass. C2 saves
 133 raw/4 local gzip bytes versus the prior fix, while the project-app deploy
 saves 49 raw but adds 59 gzip bytes; record this as a correctness tradeoff. Full
-check/Chrome/package validation is pending.
+check, required-Chrome tests and package smoke pass in run 39701753035 at
+`2b64956`. No new latency or release claim follows from this correctness fix.
 
 Correctness follow-up (2026-10-22): a six-case gated-evaluator regression
 fails on `e999b3a` for attribute/text/condition callbacks arriving after DOM

@@ -30,7 +30,10 @@ is 190,217 → 190,168 raw (−49), but local gzip grows 57,888 → 57,947 (+59)
 Its larger interactive family saves 133 raw bytes while three smaller routes
 grow 42 each; static help stays zero-JavaScript. Preserve these mixed deltas as a
 correctness tradeoff, not a universal size or speed improvement. Output snapshots
-are updated with unchanged gzip tolerances. Full validation is pending.
+are updated with unchanged gzip tolerances. Full validation passes in
+[39701753035](https://github.com/kudzujs/kudzu/actions/runs/39701753035) at
+`2b64956`: check, required-Chrome tests and package smoke. No latency measurement
+or new release is claimed by this implementation packet.
 
 ## Pending Evaluator DOM Authority Fix (2026-10-22)
 
