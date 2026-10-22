@@ -1,5 +1,24 @@
 # Performance Records
 
+## Native Chrome Pending-Evaluator Regression (2026-10-23)
+
+The gated evaluator journey now runs in a real Chrome document with native
+attribute targets, text comment ranges and conditional template ranges. Fifteen
+cases cover unmount with physical detach/reinsert, same-node remount, state
+release/recreation, release then explicit remount, and state commits while module
+evaluation is gated. Assertions check visible DOM values, one live conditional
+branch, exact reader counts, latest-state initialization and zero remaining test
+state after cleanup. A small allowlisted HTTP server serves the runtime source;
+this is browser runtime integration, not a new compiler acceptance claim.
+
+A scratch checkout of the prior runtime at `2feeb29` fails in Chrome with
+`attribute-release: initial reads: 1 !== 0`. The failure is preserved at
+`/tmp/opencode/pending-browser-baseline-GFZ6Mc/failure.log`. The current runtime
+passes all fifteen cases with no browser or console errors. The browser test
+joins `npm test`, respects explicit browser skips and requires Chrome when the
+suite requires it. Full hosted validation follows. No production code, output
+bytes, compiler semantics or performance claim changes in this coverage packet.
+
 ## Pending Evaluator State Release Follow-up (2026-10-22)
 
 On `2feeb29`, the expanded gated-module test reproduces four failing subcases:
