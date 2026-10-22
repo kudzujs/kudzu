@@ -42,7 +42,7 @@ function commitBindings(id) {
   if (bindings) {
     for (const binding of bindings) {
       if (!binding.node.isConnected) bindings.delete(binding)
-      else patchBinding(binding.node, binding.target, binding.read())
+      else if (binding.read) patchBinding(binding.node, binding.target, binding.read())
     }
   }
   if (!globalThis.__KUDZU_CONDITIONS__) return
@@ -82,15 +82,7 @@ function mountBindings(root) {
         patchBinding(node, target, binding.read())
         continue
       }
-      loadEvaluator(descriptor).then(evaluator => {
-        if (!node.isConnected || bindingRegistrations.get(node) !== registrations) return
-        const binding = { node, target, read: evaluator.read }
-        for (const id of evaluator.stateIds) {
-          register(bindingTargets, id, binding)
-          registrations.push([id, binding])
-        }
-        patchBinding(node, target, binding.read())
-      }).catch(error => console.error(error))
+      mountBindingEvaluator(node, target, descriptor, registrations)
     }
   }
   if (globalThis.__KUDZU_TEXT_BINDINGS__) {
@@ -107,17 +99,23 @@ function mountBindings(root) {
         patchBinding(node, "text", binding.read())
         continue
       }
-      loadEvaluator(descriptor).then(evaluator => {
-        if (!node.isConnected || bindingRegistrations.get(node) !== registrations) return
-        const binding = { node, target: "text", read: evaluator.read }
-        for (const id of evaluator.stateIds) {
-          register(bindingTargets, id, binding)
-          registrations.push([id, binding])
-        }
-        patchBinding(node, "text", binding.read())
-      }).catch(error => console.error(error))
+      mountBindingEvaluator(node, "text", descriptor, registrations)
     }
   }
+}
+
+function mountBindingEvaluator(node, target, descriptor, registrations) {
+  const binding = { node, target }
+  // Register dependencies before loading so state release also revokes pending work.
+  for (const id of bindingStateIds(descriptor)) {
+    register(bindingTargets, id, binding)
+    registrations.push([id, binding])
+  }
+  loadEvaluator(descriptor).then(evaluator => {
+    if (!node.isConnected || bindingRegistrations.get(node) !== registrations) return
+    binding.read = evaluator.read
+    patchBinding(node, target, binding.read())
+  }).catch(error => console.error(error))
 }
 
 function mountConditions(root) {
@@ -134,22 +132,23 @@ function mountConditions(root) {
     const registrations = []
     const registration = { condition, registrations }
     conditionRegistrations.set(start, registration)
+    for (const id of descriptor.state ? [descriptor.state] : bindingStateIds(descriptor)) {
+      register(conditionTargets, id, condition)
+      registrations.push([id, condition])
+    }
     if (globalThis.__KUDZU_CONDITION_STATE__ !== false) mountConditionStates(condition, Boolean(descriptor.initial), false)
     const mount = evaluator => {
       if (!start.isConnected || conditionRegistrations.get(start) !== registration) return
       condition.read = evaluator.read
-      for (const id of evaluator.stateIds) {
-        register(conditionTargets, id, condition)
-        registrations.push([id, condition])
-      }
       updateCondition(condition)
     }
-    if (descriptor.state) mount({ read: () => browserState.get(descriptor.state), stateIds: [descriptor.state] })
+    if (descriptor.state) mount({ read: () => browserState.get(descriptor.state) })
     else loadEvaluator(descriptor).then(mount).catch(error => console.error(error))
   }
 }
 
 function updateCondition(condition) {
+  if (!condition.read) return
   const value = condition.read()
   const next = conditionKey(condition.kind, value)
   if (next === condition.current) return
@@ -171,7 +170,7 @@ function updateCondition(condition) {
   const select = globalThis.__KUDZU_VALUE_BINDINGS__ !== false && condition.start.closest("select[data-k-bind-value]")
   if (select) {
     for (const binding of new Set((bindingRegistrations.get(select) ?? []).map(([, entry]) => entry))) {
-      patchBinding(binding.node, binding.target, binding.read())
+      if (binding.read) patchBinding(binding.node, binding.target, binding.read())
     }
   }
 }

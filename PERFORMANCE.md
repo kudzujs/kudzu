@@ -1,5 +1,37 @@
 # Performance Records
 
+## Pending Evaluator State Release Follow-up (2026-10-22)
+
+On `2feeb29`, the expanded gated-module test reproduces four failing subcases:
+attribute/text evaluators survive state release while their DOM remains mounted,
+and pending conditions retain initial branch state after release (with or without
+later remount). DOM registration identity alone cannot observe a state release
+that happens before dependencies are registered.
+
+Register evaluator dependencies in the existing target maps before loading.
+Pending entries have no reader, so ordinary commits and select synchronization
+wait; module arrival reads current state only if registration ownership still
+matches. Releasing any dependency now uses existing release logic to remove the
+subscriptions and invalidate pending ownership, even if the same state ID is
+recreated. The attribute/text loading path is shared to keep this fix in one
+place. Conditions use the same early-registration ordering. Import errors retain
+their existing error handling; imports themselves are not cancelled.
+
+All 15 gated attribute/text/condition cases pass, including ordinary pending
+commits, DOM unmount/remount, state release/recreation, explicit remount after
+release, branch-state cleanup and pending select synchronization. These are Node
+lifetime regressions. Compiler semantics, passes, APIs and runtime concepts remain
+unchanged; runtime source is −1 net line. No new registry or scheduler is added.
+
+Compared with `2feeb29`, C2 JS is 43,566 → 43,433 raw (−133) and 16,420 → 16,416
+local gzip (−4). Only the binding runtime differs from the archived conditional
+candidate; HTML and all other output files remain identical. Project-app deploy
+is 190,217 → 190,168 raw (−49), but local gzip grows 57,888 → 57,947 (+59).
+Its larger interactive family saves 133 raw bytes while three smaller routes
+grow 42 each; static help stays zero-JavaScript. Preserve these mixed deltas as a
+correctness tradeoff, not a universal size or speed improvement. Output snapshots
+are updated with unchanged gzip tolerances. Full validation is pending.
+
 ## Pending Evaluator DOM Authority Fix (2026-10-22)
 
 The next correctness investigation reproduces six failures on `e999b3a`: delayed

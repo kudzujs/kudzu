@@ -10,7 +10,17 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-Active correctness follow-up (2026-10-22): a six-case gated-evaluator regression
+Pending-state release follow-up (2026-10-22): four subcases fail on `2feeb29`
+because evaluator dependencies are registered only after module arrival. Move
+registration before loading using existing target maps; commits/select sync skip
+entries until their reader exists. Existing release logic now revokes pending
+work before the same state ID can be recreated. Share the attribute/text loading
+path; no new map or runtime concept. Fifteen gated lifetime cases pass. C2 saves
+133 raw/4 local gzip bytes versus the prior fix, while the project-app deploy
+saves 49 raw but adds 59 gzip bytes; record this as a correctness tradeoff. Full
+check/Chrome/package validation is pending.
+
+Correctness follow-up (2026-10-22): a six-case gated-evaluator regression
 fails on `e999b3a` for attribute/text/condition callbacks arriving after DOM
 unmount or same-node remount. Require current registration identity as well as
 connectivity before subscribing or patching. Condition registration exists before
