@@ -57,10 +57,16 @@ all samples and the failure; recovered deploy trees match both reported artifact
 hashes. The `replaceOwnedRowIds` recursive attribute visitor is the largest
 candidate list leaf (65/70/68 samples, 13.991/13.617/13.985 ms sampled weights).
 Evidence and archive hash are recorded in `PERFORMANCE.md`.
-Next packet: inspect a narrower row-ID replacement traversal, freeze its adoption
-gate before changing runtime code, and verify current-value fills, IDs, nested
-ownership, conditions/effects and input preservation before independent hosted
-timing. Sampling is not a speed gate; do not revive the rejected root-map trial.
+Active packet: remove the per-element attribute-array copy in the direct
+`replaceOwnedRowIds` visitor using indexed NamedNodeMap access. Attribute values
+change but attribute membership and traversal order remain unchanged, including
+template contents. Trial only against pinned 0.17.4: 21 alternating fresh profiles,
+>=5% lower initial-DOM median, negative paired median, >=16/21 faster pairs, no
+operation regression under the >5% and >=16/21 slower gate, full checks and
+delayed-update/lifetime regressions. Report raw/gzip bytes separately. Reject if
+the gate fails; do not repeat for favorable samples. Sampling is not a speed gate;
+the rejected root-map trial remains rejected. No new semantic primitive, compiler
+pass, runtime concept or authored fixture shape is proposed.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
