@@ -5,6 +5,7 @@ on:
     branches:
       - perf/initial-mount-0174
       - perf/initial-cpu-0174
+      - perf/row-id-traversal-0174
 
 permissions:
   contents: read
@@ -27,7 +28,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: node test/c2-initial-mount.mjs --cpu
+      - run: node test/c2-initial-mount.mjs ${{ github.ref_name == 'perf/row-id-traversal-0174' && '--row-ids' || '--cpu' }}
       - uses: actions/upload-artifact@v6
         if: always()
         with:
