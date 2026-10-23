@@ -1,5 +1,29 @@
 # Performance Records
 
+## 0.17.3 Delivery Verification (2026-10-23)
+
+Core 0.17.3 and create-kudzu 0.1.164 are published from immutable tag `v0.17.3`
+at `7a4bdc631ce7b852b9d5d556e96b54350d394222`. Exact-commit
+[CI 39881544182](https://github.com/kudzujs/kudzu/actions/runs/39881544182)
+passes Node 22 checks/tests/package smoke and Node 24 required-Chrome tests.
+User-approved protected [publication 39882169965](https://github.com/kudzujs/kudzu/actions/runs/39882169965)
+passes its checks/tests/package smoke and verifies both published versions.
+Earlier Chrome startup/timeout failures remain recorded below.
+
+Fresh registry-generated default and `--ai` apps resolve core 0.17.3 and pass
+TypeScript/build checks. Both installs report zero audit vulnerabilities. Their
+four deploy files and artifact manifests match after project-name normalization;
+both static about routes have no script/modulepreload markers, and AI guidance
+exists. Registry SHA512 matches local release tarballs for both packages.
+
+Website build/dry-run/deployment completes at Worker version
+`1839fe3f-81bd-4f78-a1ba-808cb7ea99dc`. Public `/`, `/docs`,
+`/releases/0.17.3`, `/example` and `/example/blog/personal` return HTTP 200 and
+byte-identical HTML to the local build. Website and registry JSON receipts are
+attached to the [release](https://github.com/kudzujs/kudzu/releases/tag/v0.17.3),
+with local files in `/tmp/opencode/release-0173-verification/`. Delivery is complete;
+restoration latency and independent AI-cost/1.0 gates remain unresolved.
+
 ## Pending Calculated-List Ownership And Initial Values (2026-10-23)
 
 The compiled `pending-list-source` fixture uses ordinary object state, a keyed

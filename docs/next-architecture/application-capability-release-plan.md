@@ -10,7 +10,7 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
-Active pending-list-source correctness packet (2026-10-23): compiled object-state
+Released pending-list-source correctness packet (2026-10-23, 0.17.3): compiled object-state
 keyed rows retain their counter if unmounted/remounted before the source evaluator
 loads, and the initial structural shortcut leaves old text after a pending source
 update. Early list registration reuses existing row cleanup; loaded calculated
@@ -18,7 +18,11 @@ sources bypass the initial no-fill shortcut. Chrome reproduces both failures and
 passes release/remount/latest-value/final-cleanup checks after the two-line fix.
 Static sibling stays zero JS. C2 adds 48 raw/10 local gzip bytes; project deploy
 adds 96 raw/15 local gzip. No compiler, semantic or runtime concept is added.
-Full release validation follows; no speed or AI-cost claim is made.
+Exact-commit CI 39881544182 and protected npm publication 39882169965 pass.
+Core 0.17.3/generator 0.1.164 registry integrity, fresh default/AI installs and
+website delivery are verified; receipts are attached to `v0.17.3` and recorded
+in `PERFORMANCE.md`. No speed or AI-cost claim is made. Further work requires
+fresh failing evidence rather than reopening closed latency candidates.
 
 Released keyed-condition correctness packet (2026-10-23, 0.17.2): a compiled ordinary TSX
 fixture reproduces missing detail DOM when a keyed collection and parent-selected

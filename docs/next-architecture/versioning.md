@@ -72,10 +72,14 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 ## Release Boundary
 
 The 0.17.3 patch fixes pending calculated-list row-state cleanup and initial
-latest-value rendering. Generator 0.1.164 targets ^0.17.3. Compiled Chrome
-regressions pass; exact-commit CI, protected publication and delivery verification
-are required before completion. Output byte costs are recorded in `PERFORMANCE.md`;
-no semantic primitive, runtime concept or speed improvement is claimed.
+latest-value rendering. Generator 0.1.164 targets ^0.17.3. Delivery is complete
+at immutable tag `v0.17.3` (`7a4bdc6`): exact-commit CI 39881544182 and
+user-approved protected publication 39882169965 pass. Registry SHA512 matches
+local release packs; fresh default/AI apps resolve 0.17.3 and pass checks/builds.
+Website Worker `1839fe3f-81bd-4f78-a1ba-808cb7ea99dc` serves verified HTML.
+Receipts are attached to the GitHub release. Output byte costs and retained
+startup failures are recorded in `PERFORMANCE.md`; no semantic primitive,
+runtime concept or speed improvement is claimed.
 
 The user-authorized 0.17.2 patch bundles conditional membership consolidation,
 pending evaluator DOM/state revocation and keyed condition revision correctness.
