@@ -138,7 +138,8 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
   assert.ok(listScript)
   // Delay just the list capability while the real native buttons remain usable.
   assets.set("/direct/index.html", directHtml.replace(listScript[0], ""))
-  assets.set(listScript[1], "await new Promise(resolve => { globalThis.releaseDirectList = resolve });\n" + assets.get(listScript[1]))
+  const directListSource = assets.get(listScript[1])
+  assets.set(listScript[1], "await new Promise(resolve => { globalThis.releaseDirectList = resolve });\n" + directListSource)
   await navigate("/direct/index.html")
   const direct = await evaluate(cdp, `(async () => {
     await Promise.all([...document.querySelectorAll("script[type=module]")].map(script => import(script.src)))
@@ -166,6 +167,49 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     return { before, first, second: root.title, retained: document.querySelector("li") === root, note: input.value }
   })()`)
   assert.deepEqual(direct, { before: "Initial", first: { text: "First update", title: "First update" }, second: "Second update", retained: true, note: "Keep my note" }, "array updates before list loading must reach retained rows")
+  assets.set(listScript[1], directListSource)
+  const ownedHtml = assets.get("/owned/index.html")
+  const ownedList = ownedHtml.match(/<script type="module" src="([^"]+\/kudzu-list.js)"><\/script>/)
+  assert.ok(ownedList)
+  assets.set("/owned/index.html", ownedHtml.replace(ownedList[0], ""))
+  assets.set(ownedList[1], "await new Promise(resolve => { globalThis.releaseOwnedList = resolve });\n" + assets.get(ownedList[1]))
+  await navigate("/owned/index.html")
+  const owned = await evaluate(cdp, `(async () => {
+    const runtime = await import(document.querySelector('script[src$="/kudzu.js"]').src)
+    const root = document.querySelector("li"), input = root.querySelector("input")
+    const id = input.id
+    input.value = "Keep owned note"
+    const descriptor = JSON.parse(document.querySelector("template[data-k-list]").dataset.kList)
+    const loading = import(${JSON.stringify(ownedList[1])})
+    const wait = async predicate => {
+      const deadline = Date.now() + 5000
+      while (!predicate()) {
+        if (Date.now() > deadline) throw new Error("Owned row did not settle: " + predicate.toString() + " " + root.outerHTML)
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+    }
+    await wait(() => globalThis.releaseOwnedList)
+    document.querySelector("[data-update]").click()
+    await wait(() => runtime.browserState.get(descriptor.state)[0].label === "Latest")
+    const before = root.querySelector("[data-label]").textContent
+    globalThis.releaseOwnedList()
+    await loading
+    await Promise.all([...document.querySelectorAll("script[type=module]")].map(script => import(script.src)))
+    await wait(() => root.dataset.ready === "true" && root.title === "Latest")
+    const initial = { before, retained: root === document.querySelector("li"), idRetained: input.id === id, label: root.querySelector("label").htmlFor === id, note: input.value, text: root.querySelector("[data-label]").textContent }
+    root.querySelector("[data-count]").click()
+    await wait(() => root.querySelector("[data-count]").textContent === "1")
+    document.querySelector("[data-remove]").click()
+    await wait(() => !document.querySelector("li") && document.querySelector("[data-cleanup]").textContent === "cleaned")
+    document.querySelector("[data-add]").click()
+    await wait(() => document.querySelector("li")?.dataset.ready === "true")
+    const added = document.querySelector("li"), addedInput = added.querySelector("input")
+    const clone = { fresh: added !== root, differentId: addedInput.id !== id, resolved: !addedInput.id.includes("$k"), label: added.querySelector("label").htmlFor === addedInput.id, count: added.querySelector("[data-count]").textContent, title: added.title }
+    added.querySelector("[data-count]").click()
+    await wait(() => added.querySelector("[data-count]").textContent === "1")
+    return { initial, clone }
+  })()`)
+  assert.deepEqual(owned, { initial: { before: "Initial", retained: true, idRetained: true, label: true, note: "Keep owned note", text: "Latest" }, clone: { fresh: true, differentId: true, resolved: true, label: true, count: "0", title: "Added" } }, "pre-rendered IDs remain scoped while late values and cloned ownership update")
   assert.deepEqual(cdp.exceptions, [])
   assert.deepEqual(cdp.consoleErrors, [])
 })

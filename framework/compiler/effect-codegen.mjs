@@ -18,6 +18,7 @@ function printEffectEntry(effects, output, handlerModules, assetsDirectory, runt
       ? `import * as __kRuntime from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, runtimeName)))}\nconst { browserState, commitDom } = __kRuntime`
       : `import { browserState, commitDom } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, runtimeName)))}`,
     `import { createEffectContext } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-effect.js")))}`,
+    ...(effects.some(effect => effect.list) ? [`import ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-list.js")))}`] : []),
     ...(hasDependencyExpressions ? [`import { evaluateCollectionExpression as __kEvaluateDependency } from ${JSON.stringify(relativeModulePath(output, join(runtimeDirectory, "kudzu-collection-selector.js")))}`] : []),
     ...(paramPath ? [`import ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, paramPath)))}`] : []),
     ...modules.map((module, index) => `import * as __kEffectModule${index} from ${JSON.stringify(relativeModulePath(output, join(assetsDirectory, module.path)))}`)

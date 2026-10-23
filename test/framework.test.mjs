@@ -3903,6 +3903,7 @@ test("owns effects rendered by imported keyed row components", async t => {
   const plan = JSON.parse(await readFile(new URL("./fixtures/keyed-effects/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes.find(route => route.route === "/")
   assert.match(html, /data-k-effects=/)
   assert.match(entry, /kEffectItem/)
+  assert.match(entry, /import["'][^"']*kudzu-list\.js["']/, "list-owned effects wait for row ownership")
   assert.match(entry, /Keyed row effect template was not emitted/, "keyed effects retain their registration path")
   assert.match(entry, /registerListItemHook/)
   assert.match(itemOnlyEntry, /registerListItemHook/)
@@ -3949,6 +3950,7 @@ test("runs mount effect cleanup once on document disposal", async t => {
   const runtime = await readRuntime("effect-cleanup", "kudzu.js")
   const plan = JSON.parse(await readFile(new URL("./fixtures/effect-cleanup/.kudzu/kudzu-plan.json", import.meta.url), "utf8")).routes[0]
   assert.match(entry, /registerUnmountHook.*pagehide/s)
+  assert.doesNotMatch(entry, /kudzu-list\.js/, "ordinary effects do not load list capabilities")
   assert.doesNotMatch(runtime, /registerUnmountHook/)
   assert.deepEqual(plan.effects.map(effect => effect.cleanup), [true, true, true])
 

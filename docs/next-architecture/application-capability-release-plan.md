@@ -119,6 +119,18 @@ are already resolved and which arrival-time fills can introduce placeholders.
 Only then consider avoiding initial work without per-row caches. Do not revive
 the rejected planned-attribute cache or substitute script timing for readiness.
 
+Active correctness packet: the pre-rendered-ID proof fixture exposed a separate
+ordering failure. With only the list capability delayed, an owned row effect runs
+before listRowPaths is initialized, resolves its existing DOM ref to null and never
+performs setup. The new owned.tsx Chrome journey reproduces this on 0.17.4 while
+also proving arrival-time labels, input/ID identity, row state, removal cleanup and
+fresh cloned IDs. Add an ESM dependency from list-owned effect entries to the
+existing list capability, matching native module ownership rather than a loader.
+Static/non-list effects must remain excluded. Gate on the real delayed-ref
+regression, full check/tests/package smoke and unchanged complete C2 journeys;
+report startup/operation and byte costs without claiming superiority. This
+correctness fix takes priority over the still-unresolved startup optimization.
+
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
 and seven measured builds after one warmup. Primary regression threshold is >5%
