@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: node test/c2-initial-mount.mjs
+      - run: node test/c2-initial-mount.mjs --trial
       - uses: actions/upload-artifact@v6
         if: always()
         with:

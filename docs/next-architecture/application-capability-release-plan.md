@@ -25,7 +25,21 @@ Local full checks/Chrome/package smoke and exact-commit CI 39892764055 pass.
 Protected npm publication 39893415294, registry integrity, fresh default/AI
 installs and website verification complete. Receipts and the raw paired evidence
 archive are attached to `v0.17.4`; see `PERFORMANCE.md`.
-Active evidence packet: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
+Completed attribution measurement: run 39899715106 at `ad47e2a` passes full tests,
+42 untraced and six traced journeys. Startup regression is confirmed on that VM:
+283.8 → 305.6 ms, 18/21 slower, with script CPU +20.408 ms paired median. Raw
+results survive a trace-parser duplicate-readiness-mark assertion; repaired offline
+analysis uses the final same-navigation mark matching the recorded readiness.
+No timing samples are rerun or discarded. See `PERFORMANCE.md`.
+
+Active scratch trial: `test/c2-initial-mount.mjs --trial` fills every initially
+matching structural row from current state, then reuses roots/order rather than
+the general placement path. Against 0.17.4, adoption requires >=5% lower startup
+median, negative paired median, >=16/21 faster pairs, no gated interaction loss,
+both delayed-update/lifetime regressions and all unchanged C2 journeys. Reject a
+failed gate; production stays unchanged until acceptance.
+
+Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
 and seven measured builds after one warmup. Primary regression threshold is >5%
 higher initial complete-DOM median plus at least 16/21 slower pairs; failure to

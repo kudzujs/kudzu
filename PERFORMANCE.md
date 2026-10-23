@@ -1,5 +1,36 @@
 # Performance Records
 
+## Hosted Initial-Mount Attribution (2026-10-23)
+
+Run [39899715106](https://github.com/kudzujs/kudzu/actions/runs/39899715106)
+at `ad47e2a` passes check and full required-Chrome tests, then all 42 untraced
+and six separately traced C2 journeys. Pinned 0.17.3/0.17.4 initial-DOM medians
+are 283.8/305.6 ms (+7.68%), paired median +12.4 ms, 18/21 slower pairs: the
+predeclared startup regression gate is met. Load script CPU is 79.887/99.167 ms,
+paired +20.408, 20/21 slower; task CPU is 277.914/299.343 ms. Layout medians
+67.847/68.817 and style 28.259/29.844 ms have only 10/21 slower pairs each.
+No interaction operation meets the predeclared regression gate, including restore
+(55.8/58.9 ms, 15/21 slower). This establishes a startup cost on this hosted VM,
+not universal cross-framework ranking.
+
+The run fails only in post-processing: the unchanged readiness observer and
+DOMContentLoaded callback both produce readiness marks. Raw traces and samples
+are intact. The parser now selects the final same-navigation/main-thread mark,
+matching the harness's last readiness value within 1 ms; all six saved traces
+pass offline reprocessing without rerunning or replacing samples. ESM evaluation
+is reported under `v8.evaluateModule`, separately from classic `EvaluateScript`.
+Trace categories overlap and are inclusive, not additive. Saved original artifacts
+and repaired attribution are in `/tmp/opencode/c2-initial-mount-39899715106/`.
+
+A separate scratch-only trial is predeclared: initially matching structural keys
+still fill every row from current state, then retain their existing root map and
+order instead of traversing general placement. This does not restore the incorrect
+no-fill behavior. Compare against released 0.17.4 with 21 alternating profiles,
+requiring >=5% lower startup median, negative paired median, >=16/21 faster pairs,
+no gated operation regression, passing delayed-update/lifetime regressions in both
+arms, and unchanged full C2 acceptance. Reject if the speed gate fails; byte changes
+remain separate. Production runtime is unchanged while the trial runs.
+
 ## 0.17.4 Delivery Verification (2026-10-23)
 
 Core 0.17.4 and create-kudzu 0.1.165 are published from immutable tag `v0.17.4`
