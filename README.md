@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.4](https://github.com/kudzujs/kudzu/releases/tag/v0.17.4).** Array updates made before the list runtime arrives now reach visible row text and attributes on mounting. The compiler output preserves row identity and uncontrolled input values. Removing the incorrect initial shortcut saves 264 raw JavaScript bytes in C2; static siblings remain JavaScript-free. Generator `create-kudzu@0.1.165` targets core `^0.17.4`. Initial mounting performs necessary row writes; no speed improvement is claimed. Restoration latency and AI-cost/1.0 gates remain unresolved.
+**Current release: [0.17.5](https://github.com/kudzujs/kudzu/releases/tag/v0.17.5).** List-owned effects now wait for row ownership initialization through an explicit ESM dependency. Delayed list loading no longer makes effects miss existing DOM refs. Chrome verifies current row values, stable IDs, uncontrolled inputs, state, cleanup and fresh clones. C2 adds 50 raw / 7 level-9 gzip bytes; project-app output is unchanged. Generator `create-kudzu@0.1.166` targets core `^0.17.5`. No speed improvement is claimed; startup, restoration and AI-cost/1.0 gates remain unresolved.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

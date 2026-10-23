@@ -119,7 +119,7 @@ are already resolved and which arrival-time fills can introduce placeholders.
 Only then consider avoiding initial work without per-row caches. Do not revive
 the rejected planned-attribute cache or substitute script timing for readiness.
 
-Active correctness packet: the pre-rendered-ID proof fixture exposed a separate
+Accepted correctness packet (0.17.5): the pre-rendered-ID proof fixture exposed a separate
 ordering failure. With only the list capability delayed, an owned row effect runs
 before listRowPaths is initialized, resolves its existing DOM ref to null and never
 performs setup. The new owned.tsx Chrome journey reproduces this on 0.17.4 while
@@ -130,6 +130,13 @@ Static/non-list effects must remain excluded. Gate on the real delayed-ref
 regression, full check/tests/package smoke and unchanged complete C2 journeys;
 report startup/operation and byte costs without claiming superiority. This
 correctness fix takes priority over the still-unresolved startup optimization.
+
+Fix `5d1ff7a` passes the baseline-failing regression, full checks and package
+smoke. Hosted 39919299100 passes all 48 C2 journeys and reports initial DOM
+318.0/319.3 ms, no gated operation regression, +50 raw/+7 level-9 gzip bytes;
+project-app output is unchanged. One codegen import, no runtime primitive/pass
+or new loader. Core 0.17.5 / generator 0.1.166 release transaction is active;
+exact-commit CI, protected publication and delivery verification are next.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm

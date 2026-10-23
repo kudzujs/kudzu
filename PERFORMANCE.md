@@ -1,5 +1,42 @@
 # Performance Records
 
+## 0.17.5: Row Ownership Before Effects (2026-10-23)
+
+Pre-rendered-ID correctness investigation exposes a real 0.17.4 failure: delaying
+only the list module lets a row effect run before listRowPaths initializes. It
+resolves its already-rendered ref as null and never performs setup. The new
+`pending-list-source/owned.tsx` Chrome journey fails on baseline and passes with
+one explicit ESM dependency from list-owned effect entries to `kudzu-list.js`.
+It also proves current late-arriving values, retained DOM/IDs/input, label links,
+row counter updates, removal cleanup and fresh cloned refs/IDs/state. Ordinary
+effects retain list exclusion. No source syntax, semantic primitive, compiler pass,
+loader, runtime cache or browser runtime concept is added; codegen adds one line,
+runtime implementation is unchanged, and one regression page is added.
+
+Local check, 377 tests plus project-app journey, and package smoke pass. Hosted
+run [39919299100](https://github.com/kudzujs/kudzu/actions/runs/39919299100)
+at `d558cf8` compares pinned v0.17.4 and fix `5d1ff7a`: full checks, baseline prior
+lifetime regressions, candidate extended regressions, 42 untraced and six traced
+C2 journeys pass. The new baseline failure is retained separately rather than
+requiring a known-broken release to pass the new test.
+
+Initial DOM 318.0/319.3 ms, paired −11.6 ms, 14/21 faster; script CPU
+101.515/100.612 ms, paired −2.219 ms. No operation meets the >5% and >=16/21
+slower regression gate. Build medians 740.534/748.662 ms. This characterizes
+correctness cost and does not establish speed superiority or statistical equality.
+C2 adds 50 raw/7 level-9 gzip bytes (43,267/16,342 total JS); only its effect
+entry differs. Project-app files, raw/gzip and deterministic digest are unchanged.
+Host: AMD EPYC 7763 (four logical CPUs), Node 24.21.0, Chrome 155.0.8059.39,
+Linux 6.17.0-1022-azure. Compare arms within this run only.
+
+Evidence archive `c2-effect-order-39919299100.tar.gz`, SHA256
+`cca9b64a69241007b91a780fd6f4798f9ecf62e9f397996a9645d20db71cef98`, retains
+raw profiles, traces, deploy trees, protocol, regression logs, baseline failure,
+local full tests and package smoke. Core 0.17.5 / generator 0.1.166 delivery is
+pending exact release-commit CI, protected publication and independent verification.
+Earlier rejected optimization trials remain rejected; startup/restoration and
+independent AI-cost/1.0 gates remain unresolved.
+
 ## Row-Owner Visit Counts And Rejected Planned Attributes (2026-10-23)
 
 `test/c2-initial-mount.mjs --visits` adds diagnostic counters only to scratch

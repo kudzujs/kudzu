@@ -66,10 +66,17 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.165` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.4`.
+`create-kudzu@0.1.166` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.5`.
 
 ## Release Boundary
+
+The 0.17.5 patch orders list-owned effects after list initialization using an
+explicit native ESM dependency. The delayed DOM-ref regression, full checks,
+package smoke and hosted cost characterization 39919299100 pass. C2 adds
+50 raw/7 level-9 gzip bytes; project output is unchanged. Generator 0.1.166
+targets ^0.17.5. Exact release-commit CI, protected publication and delivery
+verification remain required; no speed claim or 1.0 acceptance follows.
 
 The 0.17.4 patch removes the incorrect initial no-fill shortcut so ordinary array
 updates made before list runtime arrival reach retained row text and attributes.

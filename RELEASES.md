@@ -1,5 +1,20 @@
 # Kudzu Releases
 
+## 0.17.5 - Row Ownership Before Effects
+
+- Makes list-owned effect entries depend on the existing list capability, so row
+  state/ref paths initialize before setup even when list loading is delayed.
+- Fixes a compiled Chrome regression where an effect saw a null ref despite its
+  row already existing in HTML. Verifies late values, stable IDs/labels and input,
+  row state, removal cleanup and correctly scoped fresh clones.
+- Uses native ESM ordering; no loader, runtime registry or semantic primitive is
+  added. Ordinary effects and zero-JavaScript siblings remain excluded.
+- Full checks, package smoke and 48 hosted C2 journeys pass. C2 adds 50 raw / 7
+  level-9 gzip bytes; project-app output is unchanged. Initial-DOM medians are
+  318.0/319.3 ms, with no gated operation regression; no speed claim is made.
+- Publishes create-kudzu 0.1.166 targeting core ^0.17.5. Startup/restoration
+  superiority and independent AI-cost/1.0 gates remain unresolved.
+
 ## 0.17.4 - Current Rows After Delayed Runtime Loading
 
 - Applies array updates made before list runtime arrival to retained row text and
