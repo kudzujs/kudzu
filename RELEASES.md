@@ -1,5 +1,18 @@
 # Kudzu Releases
 
+## 0.17.3 - Reliable Calculated List Mounting
+
+- Registers calculated lists before evaluator loading so unmount releases row
+  state immediately and explicit same-node remount initializes fresh counters.
+- Applies current source values on initial evaluation instead of assuming that
+  matching row keys imply the pre-rendered content is still current.
+- Adds a compiled TSX Chrome regression for pending loading, row-state release,
+  remount, latest-value rendering and final cleanup; static sibling stays zero-JS.
+- C2 adds 48 raw / 10 local gzip JavaScript bytes; project-app deploy adds 96 raw
+  / 15 local gzip bytes. This is a correctness cost, not a speed improvement.
+- Publishes create-kudzu 0.1.164 targeting core ^0.17.3. No new public API,
+  compiler syntax, semantic primitive or browser runtime concept is introduced.
+
 ## 0.17.2 - Reliable Pending Evaluators and Keyed Conditions
 
 - Prevents late attribute, text and condition evaluators from subscribing or

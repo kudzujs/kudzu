@@ -66,10 +66,16 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.163` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.2`.
+`create-kudzu@0.1.164` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.3`.
 
 ## Release Boundary
+
+The 0.17.3 patch fixes pending calculated-list row-state cleanup and initial
+latest-value rendering. Generator 0.1.164 targets ^0.17.3. Compiled Chrome
+regressions pass; exact-commit CI, protected publication and delivery verification
+are required before completion. Output byte costs are recorded in `PERFORMANCE.md`;
+no semantic primitive, runtime concept or speed improvement is claimed.
 
 The user-authorized 0.17.2 patch bundles conditional membership consolidation,
 pending evaluator DOM/state revocation and keyed condition revision correctness.

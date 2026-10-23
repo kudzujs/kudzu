@@ -1,5 +1,38 @@
 # Performance Records
 
+## Pending Calculated-List Ownership And Initial Values (2026-10-23)
+
+The compiled `pending-list-source` fixture uses ordinary object state, a keyed
+row component with its own counter, and a conditional list. Its browser regression
+gates the source evaluator module and isolates the list lifecycle (the native
+handler entry, which eagerly imports that same module, is omitted from this
+diagnostic document). On 0.17.2, unmount before evaluator arrival leaves row state
+alive, and explicit same-node remount retains the old counter. Register the list
+before starting the asynchronous load so existing unmount cleanup can release it.
+
+The same test changes source data while loading. The initial structural fast path
+previously assumes matching keys mean HTML is current, leaving the old label even
+after the evaluator reads new data. Exclude loaded source evaluators from this
+initial no-fill shortcut. Chrome now verifies row-state release, fresh remount,
+latest source text and final cleanup. The static sibling has no scripts. The prior
+15 binding lifetime cases and keyed-condition journey still pass.
+
+No semantic primitive, core compiler pass/LOC, public API or runtime concept is
+added. Production change: one added registration statement and one fast-path
+guard. Matched 0.17.2/candidate builds preserve every output path and all HTML;
+only `kudzu-list.js` differs. Regression JS is 25,929 → 25,977 raw / 9,851 → 9,859
+local gzip. C2 is 43,433 → 43,481 raw / 16,418 → 16,428 local gzip. Project-app
+deploy is 190,168 → 190,264 raw / 57,947 → 57,962 local gzip, still 42 files.
+The output contract is updated to the measured hash. These are correctness costs,
+not latency improvements; no speed trial or AI-cost claim is made.
+
+Paired builds, `summary.json` and the old-runtime Chrome failure are retained in
+`/tmp/opencode/pending-list-source-eekG36/`. Local `npm run check` and package
+smoke pass. Required-Chrome `npm test` passes the project journey and 376/377
+remaining tests; the existing navigation Chrome process times out under concurrent
+load, then passes in isolation. Preserve that failure; exact-commit hosted release
+validation must pass before tagging.
+
 ## 0.17.2 Delivery Verification (2026-10-23)
 
 Core 0.17.2 and create-kudzu 0.1.163 are published from immutable release commit

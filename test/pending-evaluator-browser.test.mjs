@@ -89,6 +89,50 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     })()`)
     assert.deepEqual(observation, { retained: true, branchRetained: true, label, detail }, `same-turn list and parent-state update: ${action}`)
   }
+  const pendingFixture = new URL("./fixtures/pending-list-source/", import.meta.url)
+  t.after(async () => {
+    for (const path of ["dist", ".kudzu"]) await rm(new URL(path, pendingFixture), { recursive: true, force: true })
+  })
+  execFileSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: pendingFixture, timeout: 30000 })
+  const pendingDist = new URL("dist/", pendingFixture)
+  for (const path of await readdir(pendingDist, { recursive: true })) {
+    if (!path.endsWith(".js") && !path.endsWith(".html")) continue
+    let source = await readFile(new URL(path, pendingDist), "utf8")
+    // Isolate list loading: the native handler entry eagerly imports the same module.
+    if (path === "index.html") source = source.replace(/<script type="module" src="\/assets\/native\/index.js"><\/script>/, "")
+    if (path === "assets/handlers/pages/index.js") source = "await new Promise(resolve => { globalThis.releaseListSource = resolve });\n" + source
+    assets.set(path === "index.html" ? "/pending-list/" : `/${path}`, source)
+  }
+  assert.doesNotMatch(assets.get("/static/index.html"), /<script/)
+  await navigate("/pending-list/")
+  const pending = await evaluate(cdp, `(async () => {
+    const runtime = await import(document.querySelector('script[src$="/kudzu.js"]').src)
+    await Promise.all([...document.querySelectorAll("script[type=module]")].map(script => import(script.src)))
+    const deadline = Date.now() + 5000
+    while (!globalThis.releaseListSource) {
+      if (Date.now() > deadline) throw new Error("List evaluator did not start loading")
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    const root = document.querySelector("ul")
+    const descriptor = JSON.parse(root.querySelector("template[data-k-list]").dataset.kList)
+    const rowState = descriptor.rowStates[0].id.replace("$k", encodeURIComponent("number:1"))
+    root.querySelector("button").click()
+    const before = runtime.browserState.get(rowState)
+    runtime.unmountDom(root, ["lists"])
+    const released = !runtime.browserState.has(rowState)
+    runtime.mountDom(root, ["lists"])
+    const remounted = runtime.browserState.get(rowState)
+    const sourceState = descriptor.source.states.data
+    runtime.browserState.set(sourceState, { items: [{ id: 1, label: "Latest" }] })
+    runtime.commitDom(sourceState)
+    globalThis.releaseListSource()
+    await import(descriptor.source.module)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const latest = root.querySelector("li span").textContent
+    runtime.unmountDom(root, ["lists"])
+    return { before, released, remounted, latest, finallyReleased: !runtime.browserState.has(rowState) }
+  })()`)
+  assert.deepEqual(pending, { before: 1, released: true, remounted: 0, latest: "Latest", finallyReleased: true }, "pending list source releases row state before same-node remount")
   assert.deepEqual(cdp.exceptions, [])
   assert.deepEqual(cdp.consoleErrors, [])
 })

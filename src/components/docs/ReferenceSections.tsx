@@ -59,7 +59,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.17.2 release evidence</strong><span>Delayed evaluators retain DOM and source-state ownership across release and remount. Keyed conditions settle when row data and parent selection change in one turn. Native Chrome regressions verify the fixes; output sizes have mixed deltas and no speed improvement is claimed. Restoration latency and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.2">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a> for the separate evidence.</span></div>
+    <div className="docs-callout"><strong>Current 0.17.3 release evidence</strong><span>Calculated lists release row state while evaluator loading is pending and render the latest source values on arrival. Native Chrome regressions verify release, fresh remount and current text. The fixes add a measured byte cost and no speed improvement is claimed. Restoration latency and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.3">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a> for the separate evidence.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

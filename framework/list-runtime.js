@@ -97,6 +97,7 @@ function mountLists(root) {
       ownedLists.set(list.owner, lists)
       listRegistrations.set(start, { list, owner: list.owner })
     } else if (descriptor.source) {
+      listRegistrations.set(start, { states: [], list })
       if (descriptor.children) updateList(list)
       const load = {}
       listLoads.set(start, load)
@@ -180,7 +181,7 @@ function updateList(list) {
     keys.add(token)
     entries.push({ item, index, key, token, value: referenceOnly ? item : seededValue === undefined ? JSON.stringify(item) : seededValue })
   }
-  if (list.items === undefined && list.parts.directFill && entries.length === list.roots.size) {
+  if (list.items === undefined && !list.sourceEvaluator && list.parts.directFill && entries.length === list.roots.size) {
     const roots = __KUDZU_LIST_STABLE_FAST_PATHS__ ? list.orderedRoots : [...list.roots.values()]
     if (entries.every((entry, index) => list.roots.get(entry.token) === roots[index])) {
       for (let index = 0; index < entries.length; index++) {
