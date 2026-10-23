@@ -32,12 +32,18 @@ results survive a trace-parser duplicate-readiness-mark assertion; repaired offl
 analysis uses the final same-navigation mark matching the recorded readiness.
 No timing samples are rerun or discarded. See `PERFORMANCE.md`.
 
-Active scratch trial: `test/c2-initial-mount.mjs --trial` fills every initially
+Rejected scratch trial: `test/c2-initial-mount.mjs --trial` fills every initially
 matching structural row from current state, then reuses roots/order rather than
 the general placement path. Against 0.17.4, adoption requires >=5% lower startup
 median, negative paired median, >=16/21 faster pairs, no gated interaction loss,
-both delayed-update/lifetime regressions and all unchanged C2 journeys. Reject a
-failed gate; production stays unchanged until acceptance.
+both delayed-update/lifetime regressions and all unchanged C2 journeys. Run
+39901189209 at `c35d534` passes all validation but fails the speed gate:
+282.4/285.8 ms, paired −1.3 ms, only 11/21 faster, +262 raw/+89 level-9 gzip
+bytes. Reject; production remains 0.17.4. Archives for both runs are attached to
+that release with hashes and host differences recorded in `PERFORMANCE.md`.
+Next packet is initial-mount sampling CPU attribution on uninstrumented release
+output. Module-level traces identify extra script time but do not identify a
+function; no additional runtime candidate is authorized yet.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm

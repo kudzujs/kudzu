@@ -29,7 +29,40 @@ no-fill behavior. Compare against released 0.17.4 with 21 alternating profiles,
 requiring >=5% lower startup median, negative paired median, >=16/21 faster pairs,
 no gated operation regression, passing delayed-update/lifetime regressions in both
 arms, and unchanged full C2 acceptance. Reject if the speed gate fails; byte changes
-remain separate. Production runtime is unchanged while the trial runs.
+remain separate. Production runtime is unchanged.
+
+Trial [39901189209](https://github.com/kudzujs/kudzu/actions/runs/39901189209)
+at `c35d534` passes check, full required-Chrome tests, both compiled lifetime/
+delayed-update regressions, 42 untraced and six traced C2 journeys. It **fails the
+frozen speed gate**: initial DOM 282.4/285.8 ms, paired median −1.3 ms, only
+11/21 faster. Load script CPU 95.992/93.488 ms does not establish an improvement
+(12/21 faster). No interaction meets the regression gate. Candidate C2 output
+grows 43,217 → 43,479 raw JS bytes and 16,335 → 16,424 gzip at harness level 9.
+Reject the candidate; do not rerun it for selected favorable samples or substitute
+the CPU observation for the failed primary gate. Core remains released 0.17.4.
+
+Both runs use Node 24.21.0, Chrome 155.0.8059.39 and Linux 6.17.0-1022-azure,
+but the attribution VM is AMD EPYC 7763 and the trial VM is Intel Xeon Platinum
+8370C (four logical CPUs each). Compare arms only within a run, not absolute
+times between hosts. Original traced ESM evaluation is 72.438–77.774 ms versus
+90.976–102.378 ms; layout/style have overlapping intervals. These inclusive
+totals identify a script-cost area, not the responsible function. The next bounded
+diagnostic is initial-mount CPU sampling on uninstrumented release output before
+selecting another implementation. Do not reintroduce the stale initial-value bug.
+
+Both archives are attached to the existing `v0.17.4` GitHub release:
+
+- `c2-initial-mount-39899715106.tar.gz`: SHA256
+  `127974ba96fbc1f4edfed442847be6a4b7e2a25c8b63b395ccd93bf5a0e7f442`.
+  Includes the original parser failure and repaired offline attribution.
+- `c2-initial-fill-39901189209.tar.gz`: SHA256
+  `c15171452dcf67566f6450f38ff80f80664e4e572ab596cbc9084715dd93bb08`.
+  Includes the rejected scratch source, protocol, complete samples, traces,
+  regression logs and both deploy trees.
+
+Only investigation tooling and evidence changed; no new npm release or website
+deployment is needed. Semantic primitives, compiler passes/LOC, runtime concepts
+and production browser bytes are unchanged by this investigation.
 
 ## 0.17.4 Delivery Verification (2026-10-23)
 
