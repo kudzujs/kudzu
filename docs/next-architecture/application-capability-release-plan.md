@@ -57,7 +57,7 @@ all samples and the failure; recovered deploy trees match both reported artifact
 hashes. The `replaceOwnedRowIds` recursive attribute visitor is the largest
 candidate list leaf (65/70/68 samples, 13.991/13.617/13.985 ms sampled weights).
 Evidence and archive hash are recorded in `PERFORMANCE.md`.
-Active packet: remove the per-element attribute-array copy in the direct
+Rejected packet: remove the per-element attribute-array copy in the direct
 `replaceOwnedRowIds` visitor using indexed NamedNodeMap access. Attribute values
 change but attribute membership and traversal order remain unchanged, including
 template contents. Trial only against pinned 0.17.4: 21 alternating fresh profiles,
@@ -67,6 +67,15 @@ delayed-update/lifetime regressions. Report raw/gzip bytes separately. Reject if
 the gate fails; do not repeat for favorable samples. Sampling is not a speed gate;
 the rejected root-map trial remains rejected. No new semantic primitive, compiler
 pass, runtime concept or authored fixture shape is proposed.
+
+Run 39906191247 at `b62cafb` passes all validation but fails that adoption gate:
+300.6/291.0 ms, −3.19%, paired −5.0 ms, only 13/21 faster; +31 raw/+17 gzip
+bytes. Production and exact project-app contracts remain unchanged. Full evidence,
+including local candidate validation, is attached to 0.17.4; see `PERFORMANCE.md`.
+Next packet: investigate reusing existing template part locations to reduce the
+number of visited attributes, prove initial/cloned/conditional-template ID
+correctness, then freeze an independent trial gate. Do not rerun either rejected
+candidate or claim the allocation reduction is a measured speed improvement.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm

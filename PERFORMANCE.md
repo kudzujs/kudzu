@@ -1,5 +1,40 @@
 # Performance Records
 
+## Rejected Indexed Row-ID Traversal (2026-10-23)
+
+Gate frozen at `69e03b8`, trial implementation `b62cafb`, hosted run
+[39906191247](https://github.com/kudzujs/kudzu/actions/runs/39906191247).
+The scratch candidate replaces `[...node.attributes]` with indexed NamedNodeMap
+access in the direct `replaceOwnedRowIds` visitor. It preserves value replacement,
+attribute membership/order, child/template traversal and all first-value fills.
+
+Against pinned 0.17.4, initial complete-DOM medians are 300.6/291.0 ms (−3.19%),
+paired median −5.0 ms, 13/21 faster: **reject**, below the predeclared >=5% and
+>=16/21 faster adoption gate. Script CPU is 93.131/92.754 ms, paired −1.172 ms,
+13/21 faster. No interaction meets the regression gate; row restore is 53.3/55.2
+ms, 15/21 slower. Seven measured build medians are 709.309/711.905 ms. C2 JS
+grows 43,217/43,248 raw and 16,335/16,352 level-9 gzip bytes. Do not adopt or
+rerun this candidate for favorable samples; array-allocation reduction alone does
+not establish a speed win.
+
+Hosted check/full tests, both arms' delayed-update/lifetime tests, 42 untraced and
+six traced C2 journeys pass. Local candidate check and full tests also pass after
+temporarily updating the exact project-app output expectations (+31 raw bytes);
+the initial expected hash/byte assertion failure and changed values are recorded
+in `local-validation.md`, and the successful full log is retained. The temporary
+runtime and contract edits were reverted before the hosted run. Production remains
+0.17.4 with no compiler LOC/pass, semantic primitive, runtime concept, fixture or
+browser-byte change. No release/deployment is required.
+
+Host: AMD EPYC 7763 (four logical CPUs), Node 24.21.0, Chrome 155.0.8059.39,
+Linux 6.17.0-1022-azure. Compare arms within this run only. Archive attached to
+`v0.17.4`: `c2-row-ids-39906191247.tar.gz`, SHA256
+`3bbb8b1f3f39005fc038a8b9f9edb9272c1e42914b70915dd62ba779bb151da5`.
+Next investigation should reduce visited ID locations using existing template
+part plans, rather than only changing traversal syntax. It needs separate
+correctness proof for initial rows, clones and conditional template contents,
+and a new frozen independent gate before adoption.
+
 ## Initial-Mount CPU Attribution (2026-10-23)
 
 Run [39903856944](https://github.com/kudzujs/kudzu/actions/runs/39903856944)
