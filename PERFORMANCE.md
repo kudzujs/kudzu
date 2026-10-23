@@ -1,5 +1,40 @@
 # Performance Records
 
+## Rejected Hook-Free ID Registration Gate (2026-10-23)
+
+Protocol frozen at `bf687ad`, scratch implementation `4ea26fd`, hosted run
+[39908509063](https://github.com/kudzujs/kudzu/actions/runs/39908509063).
+One line gates direct row-ID replacement registration with existing `hasRowHooks`.
+Ownership paths and current-value fills remain intact. Full local candidate check
+and tests pass after temporarily updating four exact project-app output values
+(+6 raw bytes); the initial contract assertion failure and successful test log
+are retained. Runtime and contract edits were reverted before hosted execution.
+Hosted check/full tests, both delayed-update/lifetime arms, 42 untraced and six
+traced complete C2 journeys pass.
+
+Initial-DOM medians 293.8/293.6 ms, paired +2.3 ms, only 9/21 faster: **reject**
+under the frozen >=5%, negative paired median and >=16/21 faster gate. Script
+CPU 94.564/92.857 ms, paired −1.788 ms, 11/21 faster cannot replace that primary
+failure. No interaction meets the regression gate. Build medians 691.009/697.686
+ms; C2 JS 43,217/43,223 raw and 16,335/16,340 level-9 gzip bytes.
+
+Post-result source inspection corrects the hypothesis: although C2's 2,000
+hook-free search rows register direct replacement, they enter
+`updateStaticFilterList`, which returns before general filling/ID traversal.
+Removing their registration therefore does not remove the sampled visitor work.
+The CPU report identifies a function, not which list owns its cost. Before any
+further candidate, count actual visitor entries/elements/attributes by list owner
+on pinned output in a separate diagnostic run. Instrumented counts are not timing
+evidence. Do not rerun this rejected candidate for favorable samples.
+
+Host: AMD EPYC 9V74 (four logical CPUs), Node 24.21.0, Chrome 155.0.8059.39,
+Linux 6.17.0-1022-azure. Compare arms within this run, not prior hosts. Evidence
+attached to `v0.17.4`: `c2-row-ownership-39908509063.tar.gz`, SHA256
+`4cfa1af6122f3abfa8ead17af10873582c7c9b09801f14fab3a0c3c974f09185`.
+No production source, semantic primitive, compiler LOC/pass, runtime concept,
+fixture contract or browser bytes changed. Production stays 0.17.4; no new
+release/deployment is required, and startup regression remains unresolved.
+
 ## Rejected Indexed Row-ID Traversal (2026-10-23)
 
 Gate frozen at `69e03b8`, trial implementation `b62cafb`, hosted run

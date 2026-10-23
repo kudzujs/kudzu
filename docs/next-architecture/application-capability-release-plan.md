@@ -72,7 +72,7 @@ Run 39906191247 at `b62cafb` passes all validation but fails that adoption gate:
 300.6/291.0 ms, −3.19%, paired −5.0 ms, only 13/21 faster; +31 raw/+17 gzip
 bytes. Production and exact project-app contracts remain unchanged. Full evidence,
 including local candidate validation, is attached to 0.17.4; see `PERFORMANCE.md`.
-Active packet: inspection before template-plan caching found that initial mount
+Rejected packet: inspection before template-plan caching found that initial mount
 registers direct ID replacement even for rows without rowStates/rowRefs/rowIds/
 rowConditions. C2's 2,000 search rows have none; cloned rows already use
 `hasRowHooks`. Gate only `directRowReplacements.add(root)` with that existing
@@ -83,6 +83,18 @@ delayed-update/lifetime arms. Compare pinned 0.17.4 with 21 alternating profiles
 no operation regression under >5% and >=16/21 slower. Report bytes separately;
 reject a failed gate without rerunning for favorable samples. No template cache,
 semantic primitive, compiler pass or new runtime concept is needed for this trial.
+
+Run 39908509063 at `4ea26fd` passes all validation but fails adoption:
+293.8/293.6 ms, paired +2.3 ms, 9/21 faster; +6 raw/+5 gzip bytes. Critically,
+post-result inspection shows C2's hook-free search list takes the existing static
+filter path and never enters general row-ID traversal at initial mount. The
+registration hypothesis did not target the sampled visitor cost. Preserve the
+failed candidate and correction; production stays 0.17.4. See `PERFORMANCE.md`
+for complete evidence and archive hash.
+Next packet is diagnostic only: count actual visitor entries/elements/attributes
+by list owner on pinned release output, retain complete C2 acceptance, and use
+counts only to locate work, never to claim timing gains. Do not select another
+runtime candidate until ownership of the sampled traversal is confirmed.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
