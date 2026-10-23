@@ -31,7 +31,11 @@ Paired builds, `summary.json` and the old-runtime Chrome failure are retained in
 smoke pass. Required-Chrome `npm test` passes the project journey and 376/377
 remaining tests; the existing navigation Chrome process times out under concurrent
 load, then passes in isolation. Preserve that failure; exact-commit hosted release
-validation must pass before tagging.
+validation must pass before tagging. Hosted run 39880927314 at `ecb4559` passes
+Node 22 checks/tests/package smoke, but its Chrome job exits during the initial
+project browser startup with empty stdout before the journey pass marker. The
+matching project journey passed locally. The token cannot rerun Actions jobs
+(HTTP 403); this evidence update triggers a fresh full CI on unchanged code.
 
 ## 0.17.2 Delivery Verification (2026-10-23)
 
