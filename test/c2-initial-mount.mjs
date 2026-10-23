@@ -23,8 +23,9 @@ if (process.argv[2] === "--summarize-traces") {
 }
 const trial = process.argv[2] === "--trial"
 const rowIds = process.argv[2] === "--row-ids"
+const rowOwnership = process.argv[2] === "--row-ownership"
 const cpu = process.argv[2] === "--cpu"
-assert.equal(process.argv.length, trial || rowIds || cpu ? 3 : 2)
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -36,7 +37,7 @@ const replace = (source, before, after) => {
   return source.replace(before, after)
 }
 const sha256 = value => createHash("sha256").update(value).digest("hex")
-const revisions = { baseline: trial || rowIds ? "v0.17.4" : "v0.17.3", candidate: "v0.17.4" }
+const revisions = { baseline: trial || rowIds || rowOwnership ? "v0.17.4" : "v0.17.3", candidate: "v0.17.4" }
 for (const tag of Object.values(revisions)) assert.equal(execFileSync("git", ["diff", tag, "--", "benchmarks/runtime-matrix/kudzu/src", "benchmarks/runtime-matrix/kudzu/tsconfig.json"], { cwd: root, encoding: "utf8" }), "", "C2 fixture must match both release tags")
 const commits = Object.fromEntries(Object.entries(revisions).map(([arm, tag]) => [arm, execFileSync("git", ["rev-parse", `${tag}^{commit}`], { cwd: root, encoding: "utf8" }).trim()]))
 const protocol = {
@@ -48,8 +49,8 @@ const protocol = {
   acceptance: "Unchanged complete C2 journey, row identity, cleanup, accessibility, delayed/missing scripts and zero-JS sibling",
   limits: "Readiness includes harness predicates and a forced layout; CDP load deltas extend through initial validation. Trace categories can overlap and must not be summed as exclusive costs. No runtime candidate is authorized by this diagnostic alone."
 }
-if (trial || rowIds) protocol.trial = {
-  change: rowIds ? "Replace direct row-ID attribute-array copying with indexed NamedNodeMap traversal; preserve all elements, attributes and template contents" : "For initially matching structural keys, fill every retained row from current items, then reuse existing roots instead of performing general placement and rebuilding root maps",
+if (trial || rowIds || rowOwnership) protocol.trial = {
+  change: rowOwnership ? "Register direct ID replacement only for hasRowHooks descriptors; retain ownership paths and first-value fills" : rowIds ? "Replace direct row-ID attribute-array copying with indexed NamedNodeMap traversal; preserve all elements, attributes and template contents" : "For initially matching structural keys, fill every retained row from current items, then reuse existing roots instead of performing general placement and rebuilding root maps",
   gate: "At least 5% lower initial-DOM median, negative paired median, at least 16/21 faster pairs, no operation regression under the existing >5% and 16/21 slower gate, both lifetime suites and all C2 journeys pass",
   limits: "Scratch candidate only. Reject without production adoption if the predeclared speed gate fails; raw/gzip sizes remain separately reported."
 }
@@ -68,6 +69,12 @@ try {
     await mkdir(compiler)
     const archive = execFileSync("git", ["archive", tag, "framework", "bin", "package.json"], { cwd: root, maxBuffer: 32 * 1024 * 1024 })
     execFileSync("tar", ["-xf", "-"], { cwd: compiler, input: archive })
+    if (rowOwnership && arm === "candidate") {
+      const path = join(compiler, "framework/list-runtime.js")
+      await writeFile(path, replace(await readFile(path, "utf8"),
+        "  if (direct) directRowReplacements.add(root)",
+        "  if (direct && hasRowHooks(descriptor)) directRowReplacements.add(root)"))
+    }
     if (rowIds && arm === "candidate") {
       const path = join(compiler, "framework/list-runtime.js")
       const source = await readFile(path, "utf8")
@@ -102,7 +109,7 @@ try {
     await cp(join(workspace, "kudzu/tsconfig.json"), join(compiler, "fixture/tsconfig.json"))
     targets.push({ id: arm, label: tag, architecture: "pre-rendered HTML with route capabilities", compiler, root: join(compiler, "fixture"), dist: join(compiler, "fixture/dist") })
     await cp(join(compiler, "framework/list-runtime.js"), join(results, `${arm}-list-runtime.js`))
-    if (trial || rowIds) {
+    if (trial || rowIds || rowOwnership) {
       await mkdir(join(compiler, "test/fixtures"), { recursive: true })
       for (const name of ["pending-evaluator-browser.test.mjs", "browser-cdp.mjs"]) await cp(join(root, "test", name), join(compiler, "test", name))
       for (const name of ["pending-evaluator-browser", "pending-list-source", "list-condition-revision"]) await cp(join(root, "test/fixtures", name), join(compiler, "test/fixtures", name), { recursive: true })
@@ -161,7 +168,7 @@ try {
     load: Object.fromEntries(["scriptMilliseconds", "taskMilliseconds", "layoutMilliseconds", "styleMilliseconds"].map(key => [key, compare(sample => sample.cpu.load[key])])),
     operations: Object.fromEntries(Object.keys(report.targets.baseline.browser.operations).map(key => [key, compare(sample => sample.operations[key])]))
   }
-  if (trial || rowIds) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
+  if (trial || rowIds || rowOwnership) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
   const paths = async directory => (await readdir(directory, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name).slice(directory.length + 1)).sort()
   assert.deepEqual(await paths(targets[0].dist), await paths(targets[1].dist))
   for (const path of await paths(targets[0].dist)) if (!path.endsWith("kudzu-list.js")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
