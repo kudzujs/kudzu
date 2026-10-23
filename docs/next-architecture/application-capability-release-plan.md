@@ -96,6 +96,19 @@ by list owner on pinned release output, retain complete C2 acceptance, and use
 counts only to locate work, never to claim timing gains. Do not select another
 runtime candidate until ownership of the sampled traversal is confirmed.
 
+Local `--visits` diagnostic now completes six C2 journeys: all three 0.17.4
+initial snapshots show only l0, 1,000 visitor entries, 2,000 elements, 10,000
+attributes, zero placeholder replacements. 0.17.3 has no initial visits. This
+confirms the owned-row list, not the search list, as the source of extra scans.
+Active candidate: reuse template-derived eligible attribute locations via existing
+itemParts mapping, falling back to recursive traversal for nested rows, templates,
+list events or dynamically bound ID attributes. Include effect-item metadata.
+Keep all fills and compare current attribute values at those locations. Gate is
+frozen before implementation: pinned 0.17.4, 21 alternating fresh profiles, >=5%
+lower initial-DOM median, negative paired median, >=16/21 faster, no operation
+regression under >5% and >=16/21 slower, full tests and delayed lifetime regressions.
+Report bytes separately; reject a failed gate. No new semantic/runtime primitive.
+
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
 and seven measured builds after one warmup. Primary regression threshold is >5%

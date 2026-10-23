@@ -25,7 +25,8 @@ const trial = process.argv[2] === "--trial"
 const rowIds = process.argv[2] === "--row-ids"
 const rowOwnership = process.argv[2] === "--row-ownership"
 const cpu = process.argv[2] === "--cpu"
-assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu ? 3 : 2)
+const visits = process.argv[2] === "--visits"
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -60,6 +61,12 @@ if (cpu) Object.assign(protocol, {
   attribution: "CDP Profiler with 100 microsecond requested interval, from before navigation through initial readiness validation; collect every leaf and ancestor site, including idle/program/GC samples",
   limits: "Sampling perturbs timing; weights are not exact function durations. Inclusive ancestors overlap. Profiles do not establish speed ranking or justify adopting a candidate. Runtime output remains uninstrumented."
 })
+if (visits) Object.assign(protocol, {
+  primary: "Direct row-ID visitor counts by list owner, not timing", profiles: 3, measuredBuilds: 1, warmupBuilds: 0,
+  regressionGate: null,
+  attribution: "Scratch counters in the direct recursive visitor; snapshot at initial acceptance and after complete journey",
+  limits: "Instrumented output and all timings are diagnostic only. Count actual visited elements/attributes and placeholder-bearing attributes; retain full C2 acceptance."
+})
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 
 try {
@@ -69,6 +76,22 @@ try {
     await mkdir(compiler)
     const archive = execFileSync("git", ["archive", tag, "framework", "bin", "package.json"], { cwd: root, maxBuffer: 32 * 1024 * 1024 })
     execFileSync("tar", ["-xf", "-"], { cwd: compiler, input: archive })
+    if (visits) {
+      const path = join(compiler, "framework/list-runtime.js")
+      let source = await readFile(path, "utf8")
+      source = replace(source, "  const path = listRowPaths.get(root)\n  const replace = node => {", `  const path = listRowPaths.get(root)
+  const owner = ownershipPaths.get(root)[0].split("=")[0]
+  const counts = globalThis.__kudzuRowVisits ??= {}
+  const count = counts[owner] ??= { entries: 0, elements: 0, attributes: 0, placeholders: 0 }
+  count.entries++
+  const replace = node => {
+    count.elements++
+    count.attributes += node.attributes.length`)
+      source = replace(source,
+        '    for (const attribute of [...node.attributes]) if ((attribute.name.startsWith("data-k-") || rowIdAttributes.has(attribute.name)) && attribute.value.includes("$k")) attribute.value = attribute.value.replaceAll("$k", path)',
+        '    for (const attribute of [...node.attributes]) if ((attribute.name.startsWith("data-k-") || rowIdAttributes.has(attribute.name)) && attribute.value.includes("$k")) { count.placeholders++; attribute.value = attribute.value.replaceAll("$k", path) }')
+      await writeFile(path, source)
+    }
     if (rowOwnership && arm === "candidate") {
       const path = join(compiler, "framework/list-runtime.js")
       await writeFile(path, replace(await readFile(path, "utf8"),
@@ -128,6 +151,28 @@ try {
   runner = replace(runner, 'v8CompileMilliseconds:milliseconds("V8CompileDuration")', 'v8CompileMilliseconds:milliseconds("V8CompileDuration"),layoutMilliseconds:milliseconds("LayoutDuration"),styleMilliseconds:milliseconds("RecalcStyleDuration")')
   runner = replace(runner, "        samples[target.id].push(sample)", `        samples[target.id].push(sample)
         await writeFile(join(resultsDirectory, "progress.json"), JSON.stringify(samples))`)
+  if (visits) {
+    runner = replace(runner, "const browserProfiles = check ? 1 : Number(process.env.BENCHMARK_PROFILES ?? 7)", "const browserProfiles = 3")
+    runner = replace(runner, '    const heapAfterLoad = await send("Runtime.getHeapUsage")', `    const visits = { initial: await evaluate(send, "globalThis.__kudzuRowVisits ?? {}") }
+    const heapAfterLoad = await send("Runtime.getHeapUsage")`)
+    runner = replace(runner, '    const heapAfterJourney = await send("Runtime.getHeapUsage")', `    visits.fullJourney = await evaluate(send, "globalThis.__kudzuRowVisits ?? {}")
+    await writeFile(join(resultsDirectory, target.id + "-" + profile + ".visits.json"), JSON.stringify(visits, null, 2))
+    const heapAfterJourney = await send("Runtime.getHeapUsage")`)
+    await writeFile(join(results, "runner.mjs"), runner)
+    execFileSync(process.execPath, [join(results, "runner.mjs"), "--check"], { cwd: root, stdio: "inherit", timeout: 300000 })
+    for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
+    const summaries = []
+    for (const arm of Object.keys(revisions)) for (let profile = 0; profile < 3; profile++) {
+      const counts = JSON.parse(await readFile(join(results, `${arm}-${profile}.visits.json`)))
+      for (const phase of Object.values(counts)) for (const count of Object.values(phase)) {
+        assert.ok(Object.values(count).every(value => Number.isSafeInteger(value) && value >= 0))
+        assert.ok(count.elements >= count.entries && count.attributes >= count.placeholders)
+      }
+      summaries.push({ arm, profile, ...counts })
+    }
+    await writeFile(join(results, "visits.json"), JSON.stringify(summaries, null, 2))
+    process.exit(0)
+  }
   if (cpu) {
     runner = replace(runner, "const browserProfiles = check ? 1 : Number(process.env.BENCHMARK_PROFILES ?? 7)", "const browserProfiles = 3")
     runner = replace(runner, "    await send(\"Page.addScriptToEvaluateOnNewDocument\", { source: initialReadyScript() })", `    await send("Profiler.enable")
