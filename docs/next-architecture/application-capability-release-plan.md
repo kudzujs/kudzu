@@ -72,10 +72,17 @@ Run 39906191247 at `b62cafb` passes all validation but fails that adoption gate:
 300.6/291.0 ms, −3.19%, paired −5.0 ms, only 13/21 faster; +31 raw/+17 gzip
 bytes. Production and exact project-app contracts remain unchanged. Full evidence,
 including local candidate validation, is attached to 0.17.4; see `PERFORMANCE.md`.
-Next packet: investigate reusing existing template part locations to reduce the
-number of visited attributes, prove initial/cloned/conditional-template ID
-correctness, then freeze an independent trial gate. Do not rerun either rejected
-candidate or claim the allocation reduction is a measured speed improvement.
+Active packet: inspection before template-plan caching found that initial mount
+registers direct ID replacement even for rows without rowStates/rowRefs/rowIds/
+rowConditions. C2's 2,000 search rows have none; cloned rows already use
+`hasRowHooks`. Gate only `directRowReplacements.add(root)` with that existing
+predicate, preserving ownership paths and all first-value fills. Before timing,
+verify initial/cloned/conditional/nested ownership with full checks and both
+delayed-update/lifetime arms. Compare pinned 0.17.4 with 21 alternating profiles:
+>=5% lower initial-DOM median, negative paired median, >=16/21 faster pairs,
+no operation regression under >5% and >=16/21 slower. Report bytes separately;
+reject a failed gate without rerunning for favorable samples. No template cache,
+semantic primitive, compiler pass or new runtime concept is needed for this trial.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
