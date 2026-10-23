@@ -1,5 +1,32 @@
 # Performance Records
 
+## 0.17.4 Delivery Verification (2026-10-23)
+
+Core 0.17.4 and create-kudzu 0.1.165 are published from immutable tag `v0.17.4`
+at `00747d562338c4d36e22018516ebb533c1bd6e8a`. Local check, full required-Chrome
+tests and package smoke pass. Exact-commit
+[CI 39892764055](https://github.com/kudzujs/kudzu/actions/runs/39892764055)
+passes Node 22 checks/tests/package smoke and Node 24 required-Chrome tests.
+User-approved protected [publication 39893415294](https://github.com/kudzujs/kudzu/actions/runs/39893415294)
+passes and verifies both registry versions.
+
+Fresh registry-generated default and `--ai` projects resolve 0.17.4 and pass
+TypeScript/build checks, with zero audit vulnerabilities reported at installation.
+Their four deploy files and artifact manifests match after normalizing project
+names only; both static about routes exclude scripts/modulepreloads, and AI
+guidance exists. Both registry SHA512 integrities match local release packs.
+
+Website build, dry-run and deployment complete at Worker version
+`25a91630-d28e-42c6-bb39-96b6e8d85638`. Public `/`, `/docs`,
+`/releases/0.17.4`, `/example` and `/example/blog/personal` return HTTP 200 and
+byte-identical release HTML. Website and registry JSON receipts, plus
+`delayed-array-list-evidence.tar.gz` containing paired builds, baseline failure,
+timing protocol/raw samples and local full-test log, are attached to the
+[GitHub release](https://github.com/kudzujs/kudzu/releases/tag/v0.17.4).
+Local delivery files are in `/tmp/opencode/release-0174-verification/`.
+Delivery is complete. The observed startup cost below remains explicit; no
+latency superiority, statistical tie or independent AI-cost improvement is claimed.
+
 ## Array Updates Before List Runtime Arrival (2026-10-23)
 
 The `pending-list-source/direct` TSX page uses ordinary array state, two native
