@@ -25,10 +25,17 @@ Local full checks/Chrome/package smoke and exact-commit CI 39892764055 pass.
 Protected npm publication 39893415294, registry integrity, fresh default/AI
 installs and website verification complete. Receipts and the raw paired evidence
 archive are attached to `v0.17.4`; see `PERFORMANCE.md`.
-Next evidence packet: characterize the observed initial-mount cost on one hosted
-VM with baseline/candidate source frozen, unchanged complete C2 journeys and
-separate readiness/script/layout attribution. Do not infer a new optimization or
-reopen rejected restore candidates from the seven shared-host samples.
+Active evidence packet: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
+`v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
+and seven measured builds after one warmup. Primary regression threshold is >5%
+higher initial complete-DOM median plus at least 16/21 slower pairs; failure to
+meet it does not establish a statistical tie. All C2 acceptance stays unchanged.
+Untraced load script/task/layout/style CDP deltas accompany the primary metric;
+three separately traced profiles per arm attribute renderer-main-thread startup
+between explicit document-start/readiness marks. Traced timings do not enter the
+gate; overlapping event categories are not additive. Preserve raw data and failures
+as workflow artifacts. Do not infer a new optimization or reopen rejected restore
+candidates from the seven prior shared-host samples.
 
 Released pending-list-source correctness packet (2026-10-23, 0.17.3): compiled object-state
 keyed rows retain their counter if unmounted/remounted before the source evaluator
