@@ -41,9 +41,15 @@ both delayed-update/lifetime regressions and all unchanged C2 journeys. Run
 282.4/285.8 ms, paired −1.3 ms, only 11/21 faster, +262 raw/+89 level-9 gzip
 bytes. Reject; production remains 0.17.4. Archives for both runs are attached to
 that release with hashes and host differences recorded in `PERFORMANCE.md`.
-Next packet is initial-mount sampling CPU attribution on uninstrumented release
-output. Module-level traces identify extra script time but do not identify a
-function; no additional runtime candidate is authorized yet.
+Active packet: `test/c2-initial-mount.mjs --cpu` samples uninstrumented pinned
+0.17.3/0.17.4 output on one hosted VM. Three alternating fresh profiles per arm
+request a 100-microsecond interval from before navigation through initial readiness
+validation; full C2 acceptance remains unchanged. Record all leaf and inclusive
+ancestor sites (including program/idle/GC), minified source locations, raw profiles
+and deploy files. Assert sample/weight conservation and parent-tree validity.
+Sampling weights are not exact function durations or a speed gate. Module-level
+traces identify extra script time but not a function; no additional runtime
+candidate is authorized until this evidence is inspected.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm

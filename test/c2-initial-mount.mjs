@@ -12,7 +12,8 @@ if (process.argv[2] === "--summarize-traces") {
   process.exit(0)
 }
 const trial = process.argv[2] === "--trial"
-assert.equal(process.argv.length, trial ? 3 : 2)
+const cpu = process.argv[2] === "--cpu"
+assert.equal(process.argv.length, trial || cpu ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -41,6 +42,12 @@ if (trial) protocol.trial = {
   gate: "At least 5% lower initial-DOM median, negative paired median, at least 16/21 faster pairs, no operation regression under the existing >5% and 16/21 slower gate, both lifetime suites and all C2 journeys pass",
   limits: "Scratch candidate only. Reject without production adoption if the predeclared speed gate fails; raw/gzip sizes remain separately reported."
 }
+if (cpu) Object.assign(protocol, {
+  primary: "Initial-mount sampled CPU attribution, not a speed gate", profiles: 3, measuredBuilds: 1, warmupBuilds: 0,
+  regressionGate: null,
+  attribution: "CDP Profiler with 100 microsecond requested interval, from before navigation through initial readiness validation; collect every leaf and ancestor site, including idle/program/GC samples",
+  limits: "Sampling perturbs timing; weights are not exact function durations. Inclusive ancestors overlap. Profiles do not establish speed ranking or justify adopting a candidate. Runtime output remains uninstrumented."
+})
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 
 try {
@@ -93,6 +100,27 @@ try {
   runner = replace(runner, 'v8CompileMilliseconds:milliseconds("V8CompileDuration")', 'v8CompileMilliseconds:milliseconds("V8CompileDuration"),layoutMilliseconds:milliseconds("LayoutDuration"),styleMilliseconds:milliseconds("RecalcStyleDuration")')
   runner = replace(runner, "        samples[target.id].push(sample)", `        samples[target.id].push(sample)
         await writeFile(join(resultsDirectory, "progress.json"), JSON.stringify(samples))`)
+  if (cpu) {
+    runner = replace(runner, "const browserProfiles = check ? 1 : Number(process.env.BENCHMARK_PROFILES ?? 7)", "const browserProfiles = 3")
+    runner = replace(runner, "    await send(\"Page.addScriptToEvaluateOnNewDocument\", { source: initialReadyScript() })", `    await send("Profiler.enable")
+    await send("Profiler.setSamplingInterval", { interval: 100 })
+    await send("Profiler.start")
+    await send("Page.addScriptToEvaluateOnNewDocument", { source: initialReadyScript() })`)
+    runner = replace(runner, "    const heapAfterLoad = await send(\"Runtime.getHeapUsage\")", `    const { profile: cpuProfile } = await send("Profiler.stop")
+    await writeFile(join(resultsDirectory, target.id + "-" + profile + ".cpuprofile"), JSON.stringify(cpuProfile))
+    await send("Profiler.disable")
+    const heapAfterLoad = await send("Runtime.getHeapUsage")`)
+    await writeFile(join(results, "runner.mjs"), runner)
+    execFileSync(process.execPath, [join(results, "runner.mjs"), "--check"], { cwd: root, stdio: "inherit", timeout: 300000 })
+    const summaries = []
+    for (const arm of Object.keys(revisions)) for (let profile = 0; profile < 3; profile++) {
+      const data = JSON.parse(await readFile(join(results, `${arm}-${profile}.cpuprofile`)))
+      summaries.push({ arm, profile, ...summarizeCPU(data) })
+    }
+    for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
+    await writeFile(join(results, "cpu-attribution.json"), JSON.stringify(summaries, null, 2))
+    process.exit(0)
+  }
   await writeFile(join(results, "runner.mjs"), runner)
   execFileSync(process.execPath, [join(results, "runner.mjs")], { cwd: root, env: { ...process.env, BENCHMARK_PROFILES: "21" }, stdio: "inherit", timeout: 900000 })
   const report = JSON.parse(await readFile(join(results, "raw.json")))
@@ -144,6 +172,47 @@ try {
 } catch (error) {
   await writeFile(join(results, "failure.json"), JSON.stringify({ error: error.stack, load: loadavg() }, null, 2))
   throw error
+}
+
+function summarizeCPU(profile) {
+  assert.ok(profile.samples.length > 0)
+  assert.equal(profile.samples.length, profile.timeDeltas.length)
+  const nodes = new Map(profile.nodes.map(node => [node.id, node]))
+  assert.equal(nodes.size, profile.nodes.length)
+  const parents = new Map()
+  for (const node of nodes.values()) for (const child of node.children ?? []) {
+    assert.ok(nodes.has(child))
+    assert.equal(parents.has(child), false)
+    parents.set(child, node.id)
+  }
+  const sites = new Map()
+  const site = node => {
+    const frame = node.callFrame
+    const url = /^https?:/.test(frame.url) ? new URL(frame.url).pathname : frame.url
+    const key = JSON.stringify([url, frame.functionName, frame.lineNumber, frame.columnNumber])
+    if (!sites.has(key)) sites.set(key, { url, functionName: frame.functionName, lineNumber: frame.lineNumber, columnNumber: frame.columnNumber, selfMicroseconds: 0, inclusiveMicroseconds: 0, samples: 0 })
+    return sites.get(key)
+  }
+  let sampledMicroseconds = 0
+  for (const [index, id] of profile.samples.entries()) {
+    assert.ok(nodes.has(id))
+    const delta = profile.timeDeltas[index]
+    assert.ok(Number.isFinite(delta) && delta >= 0)
+    sampledMicroseconds += delta
+    const leaf = site(nodes.get(id))
+    leaf.selfMicroseconds += delta
+    leaf.samples++
+    const ancestors = new Set(), seenSites = new Set()
+    for (let parent = id; parent !== undefined; parent = parents.get(parent)) {
+      assert.equal(ancestors.has(parent), false, "CPU profile parent cycle")
+      ancestors.add(parent)
+      const frame = site(nodes.get(parent))
+      if (!seenSites.has(frame)) frame.inclusiveMicroseconds += delta
+      seenSites.add(frame)
+    }
+  }
+  assert.equal([...sites.values()].reduce((sum, frame) => sum + frame.selfMicroseconds, 0), sampledMicroseconds)
+  return { durationMicroseconds: profile.endTime - profile.startTime, sampledMicroseconds, sampleCount: profile.samples.length, sites: [...sites.values()].sort((a, b) => b.selfMicroseconds - a.selfMicroseconds) }
 }
 
 async function summarizeTraces(traces) {
