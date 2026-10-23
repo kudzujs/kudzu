@@ -731,6 +731,11 @@ function listItemPartPlan(template, nested = false, descriptor) {
     expressionAttributes: __KUDZU_LIST_EXPRESSION_ATTRIBUTES__ ? parts.expressionAttributes.map(([node, attributes]) => [location(node), attributes]) : [],
     conditions: __KUDZU_LIST_CONDITIONS__ ? parts.conditions.map(([node, descriptor]) => [location(node), descriptor, node]) : [],
     effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(location) : [],
+    rowIdParts: __KUDZU_GENERAL_ROW_HOOKS__ && hasRowHooks(descriptor) && !nested && !parts.events.length && !parts.conditions.length && !parts.expressions.length && !parts.expressionAttributes.length && !template.querySelector("template") && !parts.attributes.some(([, attributes]) => attributes.some(([name]) => rowIdAttributes.has(name))) ? source.flatMap(node => {
+      const attributes = [...node.attributes].filter(attribute => attribute.name.startsWith("data-k-") || rowIdAttributes.has(attribute.name)).map(attribute => attribute.name)
+      if (parts.effects.includes(node) && !attributes.includes("data-k-effect-item")) attributes.push("data-k-effect-item")
+      return attributes.length ? [[location(node), attributes]] : []
+    }) : undefined,
     rowIds: structural && __KUDZU_GENERAL_ROW_HOOKS__ && hasRowHooks(descriptor) ? source.flatMap(node => {
       const attributes = [...node.attributes].filter(attribute => (attribute.name.startsWith("data-k-") || rowIdAttributes.has(attribute.name)) && attribute.value.includes("$k")).map(attribute => attribute.name)
       return attributes.length ? [[location(node), attributes]] : []
@@ -754,7 +759,8 @@ function mapListItemParts(parts, root, nested = false) {
       expressions: [],
       expressionAttributes: [],
       conditions: [],
-      effects: []
+      effects: [],
+      rowIdParts: __KUDZU_GENERAL_ROW_HOOKS__ ? parts.rowIdParts?.map(([path, attributes]) => [target(path), attributes]) : undefined
     }
     itemParts.set(root, mapped)
     return mapped
@@ -771,7 +777,8 @@ function mapListItemParts(parts, root, nested = false) {
       conditionOwners.set(target[index], root)
       return [target[index], descriptor]
     }) : [],
-    effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(index => target[index]) : []
+    effects: __KUDZU_LIST_EFFECTS__ ? parts.effects.map(index => target[index]) : [],
+    rowIdParts: __KUDZU_GENERAL_ROW_HOOKS__ ? parts.rowIdParts?.map(([index, attributes]) => [target[index], attributes]) : undefined
   }
   itemParts.set(root, mapped)
   return mapped
@@ -1075,6 +1082,14 @@ function initializeGeneralRowHooks(descriptor, key, root, owner, item) {
 function replaceOwnedRowIds(root) {
   if (!directRowReplacements.delete(root)) return replaceRowIds(root, rowReplacements.get(root))
   const path = listRowPaths.get(root)
+  const planned = itemParts.get(root)?.rowIdParts
+  if (planned) {
+    for (const [node, attributes] of planned) for (const name of attributes) {
+      const value = node.getAttribute(name)
+      if (value?.includes("$k")) node.setAttribute(name, value.replaceAll("$k", path))
+    }
+    return
+  }
   const replace = node => {
     for (const attribute of [...node.attributes]) if ((attribute.name.startsWith("data-k-") || rowIdAttributes.has(attribute.name)) && attribute.value.includes("$k")) attribute.value = attribute.value.replaceAll("$k", path)
     for (const child of node.children) replace(child)
