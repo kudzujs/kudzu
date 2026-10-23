@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.1](https://github.com/kudzujs/kudzu/releases/tag/v0.17.1).** Binding lifetime tracking uses one WeakMap instead of duplicate WeakMap/WeakSet membership, preserving state release and explicit DOM remount behavior. C2 saves 52 raw JavaScript bytes (7 gzip); the project application deploy saves 114 raw bytes. Generator `create-kudzu@0.1.162` targets core `^0.17.1`. This is a size and simplification improvement, not a demonstrated speed gain. Restoration latency and AI-cost/1.0 gates remain unresolved.
+**Current release: [0.17.2](https://github.com/kudzujs/kudzu/releases/tag/v0.17.2).** Delayed evaluators cannot regain authority after DOM or source-state release, including same-node remount and state-ID reuse. Keyed conditions now settle correctly when row data and parent selection change in one turn. Native Chrome regressions cover both fixes; static siblings remain JavaScript-free. Generator `create-kudzu@0.1.163` targets core `^0.17.2`. Output sizes have mixed deltas; no speed improvement is claimed. Restoration latency and AI-cost/1.0 gates remain unresolved.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

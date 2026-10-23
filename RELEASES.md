@@ -1,5 +1,22 @@
 # Kudzu Releases
 
+## 0.17.2 - Reliable Pending Evaluators and Keyed Conditions
+
+- Prevents late attribute, text and condition evaluators from subscribing or
+  patching after DOM unmount, same-node remount or source-state release/recreation.
+- Registers pending dependencies before module loading and releases initial
+  conditional branch state when its owner is removed. Pending commits wait for
+  the evaluator and initialize from the latest state.
+- Fixes missing keyed detail content when row data and parent selection change
+  in one turn. Parent-only changes preserve retained detail DOM.
+- Consolidates conditional membership into its existing registration WeakMap.
+  Adds 15 native Chrome lifetime cases and a compiled keyed-condition journey.
+- Compared with 0.17.1, C2 raw JS drops 108 bytes but local gzip grows 19 bytes;
+  project-app deploy grows 10 raw / 100 local gzip bytes. These are correctness
+  tradeoffs, not a universal size or speed claim. Static siblings remain zero-JS.
+- Publishes create-kudzu 0.1.163 targeting core ^0.17.2. No public API, compiler
+  syntax, semantic primitive or browser runtime concept is added.
+
 ## 0.17.1 - Smaller Binding Lifetime Tracking
 
 - Removes duplicate mounted-binding WeakSet membership, reusing the registration
