@@ -27,7 +27,8 @@ const rowOwnership = process.argv[2] === "--row-ownership"
 const cpu = process.argv[2] === "--cpu"
 const visits = process.argv[2] === "--visits"
 const plannedIds = process.argv[2] === "--planned-ids"
-assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds ? 3 : 2)
+const effectOrder = process.argv[2] === "--effect-order"
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -39,7 +40,7 @@ const replace = (source, before, after) => {
   return source.replace(before, after)
 }
 const sha256 = value => createHash("sha256").update(value).digest("hex")
-const revisions = { baseline: trial || rowIds || rowOwnership || plannedIds ? "v0.17.4" : "v0.17.3", candidate: plannedIds ? "b8f5ac1" : "v0.17.4" }
+const revisions = { baseline: trial || rowIds || rowOwnership || plannedIds || effectOrder ? "v0.17.4" : "v0.17.3", candidate: effectOrder ? "5d1ff7a" : plannedIds ? "b8f5ac1" : "v0.17.4" }
 for (const tag of Object.values(revisions)) assert.equal(execFileSync("git", ["diff", tag, "--", "benchmarks/runtime-matrix/kudzu/src", "benchmarks/runtime-matrix/kudzu/tsconfig.json"], { cwd: root, encoding: "utf8" }), "", "C2 fixture must match both release tags")
 const commits = Object.fromEntries(Object.entries(revisions).map(([arm, tag]) => [arm, execFileSync("git", ["rev-parse", `${tag}^{commit}`], { cwd: root, encoding: "utf8" }).trim()]))
 const protocol = {
@@ -67,6 +68,11 @@ if (visits) Object.assign(protocol, {
   regressionGate: null,
   attribution: "Scratch counters in the direct recursive visitor; snapshot at initial acceptance and after complete journey",
   limits: "Instrumented output and all timings are diagnostic only. Count actual visited elements/attributes and placeholder-bearing attributes; retain full C2 acceptance."
+})
+if (effectOrder) Object.assign(protocol, {
+  primary: "Correctness-fix cost characterization; no speed superiority gate",
+  acceptance: "Candidate passes delayed owned-ref regression that fails on baseline; both arms pass prior lifetime tests and unchanged complete C2 acceptance",
+  limits: "One ESM dependency orders list-owned effects after list initialization. Preserve costs and all failures; do not claim a speed improvement from this correctness packet."
 })
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 
@@ -133,9 +139,10 @@ try {
     await cp(join(workspace, "kudzu/tsconfig.json"), join(compiler, "fixture/tsconfig.json"))
     targets.push({ id: arm, label: tag, architecture: "pre-rendered HTML with route capabilities", compiler, root: join(compiler, "fixture"), dist: join(compiler, "fixture/dist") })
     await cp(join(compiler, "framework/list-runtime.js"), join(results, `${arm}-list-runtime.js`))
-    if (trial || rowIds || rowOwnership || plannedIds) {
+    if (trial || rowIds || rowOwnership || plannedIds || effectOrder) {
       await mkdir(join(compiler, "test/fixtures"), { recursive: true })
       for (const name of ["pending-evaluator-browser.test.mjs", "browser-cdp.mjs"]) await cp(join(root, "test", name), join(compiler, "test", name))
+      if (effectOrder && arm === "baseline") await writeFile(join(compiler, "test/pending-evaluator-browser.test.mjs"), execFileSync("git", ["show", "v0.17.4:test/pending-evaluator-browser.test.mjs"], { cwd: root }))
       for (const name of ["pending-evaluator-browser", "pending-list-source", "list-condition-revision"]) await cp(join(root, "test/fixtures", name), join(compiler, "test/fixtures", name), { recursive: true })
       const log = execFileSync(process.execPath, ["--test", "test/pending-evaluator-browser.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 90000 })
       await writeFile(join(results, `${arm}-regression.log`), log)
@@ -217,7 +224,7 @@ try {
   if (trial || rowIds || rowOwnership || plannedIds) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
   const paths = async directory => (await readdir(directory, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name).slice(directory.length + 1)).sort()
   assert.deepEqual(await paths(targets[0].dist), await paths(targets[1].dist))
-  for (const path of await paths(targets[0].dist)) if (!path.endsWith("kudzu-list.js")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
+  for (const path of await paths(targets[0].dist)) if (!(effectOrder ? path === "assets/effects/index.js" : path.endsWith("kudzu-list.js"))) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
   for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
   await writeFile(join(results, "summary.json"), JSON.stringify(summary, null, 2))
 
