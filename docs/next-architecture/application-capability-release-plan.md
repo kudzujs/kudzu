@@ -18,7 +18,8 @@ expression path to reschedule conditions for that revision; retain stale-work
 checks and branch identity. Chrome show/hide/re-entry and parent-only toggle
 checks pass; static sibling remains zero JS. Matched builds retain raw JS sizes
 (regression 23,479; C2 43,433), with +1/+2 local gzip bytes respectively. No new
-semantic or runtime concept; full hosted check/Chrome/package validation follows.
+semantic or runtime concept. Full hosted check, required-Chrome tests and package
+smoke pass in run 39875223521 at `56e25ed`.
 
 Browser closure follow-up (2026-10-23): the pending evaluator suite now exercises
 15 cases against real native Chrome DOM and module loading, including visible

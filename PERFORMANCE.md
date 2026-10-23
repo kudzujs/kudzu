@@ -25,7 +25,9 @@ local gzip 8,601 → 8,602 (+1). C2 remains 43,433 raw, local gzip 16,416 → 16
 measurements, not timing or superiority claims. Sources, paired builds and
 `summary.json` are retained in `/tmp/opencode/keyed-condition-revision-hDU1Rs/`;
 the old-runtime Chrome failure is retained in its `baseline/browser-failure.log`.
-Current focused Chrome acceptance passes; full hosted validation follows.
+Current focused Chrome acceptance passes. Full hosted validation passes in
+[39875223521](https://github.com/kudzujs/kudzu/actions/runs/39875223521) at
+`56e25ed`: `npm run check`, required-Chrome `npm test`, and package smoke.
 
 ## Native Chrome Pending-Evaluator Regression (2026-10-23)
 
