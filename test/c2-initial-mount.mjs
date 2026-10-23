@@ -6,6 +6,16 @@ import { loadavg, tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+if (process.argv[2] === "--summarize-cpu") {
+  assert.equal(process.argv.length, 4)
+  const summaries = []
+  for (const arm of ["baseline", "candidate"]) for (let profile = 0; profile < 3; profile++) {
+    const data = JSON.parse(await readFile(join(process.argv[3], `${arm}-${profile}.cpuprofile`)))
+    summaries.push({ arm, profile, ...summarizeCPU(data) })
+  }
+  await writeFile(join(process.argv[3], "cpu-attribution.json"), JSON.stringify(summaries, null, 2))
+  process.exit(0)
+}
 if (process.argv[2] === "--summarize-traces") {
   assert.equal(process.argv.length, 4)
   await summarizeTraces(process.argv[3])
@@ -112,12 +122,12 @@ try {
     const heapAfterLoad = await send("Runtime.getHeapUsage")`)
     await writeFile(join(results, "runner.mjs"), runner)
     execFileSync(process.execPath, [join(results, "runner.mjs"), "--check"], { cwd: root, stdio: "inherit", timeout: 300000 })
+    for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
     const summaries = []
     for (const arm of Object.keys(revisions)) for (let profile = 0; profile < 3; profile++) {
       const data = JSON.parse(await readFile(join(results, `${arm}-${profile}.cpuprofile`)))
       summaries.push({ arm, profile, ...summarizeCPU(data) })
     }
-    for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
     await writeFile(join(results, "cpu-attribution.json"), JSON.stringify(summaries, null, 2))
     process.exit(0)
   }
@@ -194,10 +204,13 @@ function summarizeCPU(profile) {
     return sites.get(key)
   }
   let sampledMicroseconds = 0
+  const negativeDeltas = []
   for (const [index, id] of profile.samples.entries()) {
     assert.ok(nodes.has(id))
     const delta = profile.timeDeltas[index]
-    assert.ok(Number.isFinite(delta) && delta >= 0)
+    assert.ok(Number.isFinite(delta))
+    // Preserve signed profiler anomalies rather than silently clamping or dropping samples.
+    if (delta < 0) negativeDeltas.push({ index, delta })
     sampledMicroseconds += delta
     const leaf = site(nodes.get(id))
     leaf.selfMicroseconds += delta
@@ -212,7 +225,8 @@ function summarizeCPU(profile) {
     }
   }
   assert.equal([...sites.values()].reduce((sum, frame) => sum + frame.selfMicroseconds, 0), sampledMicroseconds)
-  return { durationMicroseconds: profile.endTime - profile.startTime, sampledMicroseconds, sampleCount: profile.samples.length, sites: [...sites.values()].sort((a, b) => b.selfMicroseconds - a.selfMicroseconds) }
+  assert.equal([...sites.values()].reduce((sum, frame) => sum + frame.samples, 0), profile.samples.length)
+  return { durationMicroseconds: profile.endTime - profile.startTime, sampledMicroseconds, negativeDeltas, weightInterpretation: "Signed raw deltas, not exact durations; inspect negativeDeltas and sample counts", sampleCount: profile.samples.length, sites: [...sites.values()].sort((a, b) => b.selfMicroseconds - a.selfMicroseconds) }
 }
 
 async function summarizeTraces(traces) {

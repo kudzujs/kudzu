@@ -1,5 +1,45 @@
 # Performance Records
 
+## Initial-Mount CPU Attribution (2026-10-23)
+
+Run [39903856944](https://github.com/kudzujs/kudzu/actions/runs/39903856944)
+at `feeb03d` passes check, full required-Chrome tests and six complete C2 journeys
+on pinned 0.17.3/0.17.4. Node 24.21.0, Chrome 155.0.8059.39, AMD EPYC 7763
+(four logical CPUs), Linux 6.17.0-1022-azure. CPU sampling requests 100µs;
+these perturbed profiles are diagnostic, not a speed comparison.
+
+Postprocessing failed on one raw −2µs delta at baseline profile 2, sample 996.
+Offline `--summarize-cpu` now preserves signed deltas and explicitly lists anomalies,
+with sample-count and signed-weight conservation assertions. No clamping, sample
+discarding or rerun occurred. All six original profiles and the failure survive.
+Deploy copying now precedes aggregation so future parser failures retain output.
+For this run, recover deploy trees from run 39899715106: both aggregate artifact
+hashes exactly match this CPU run's `raw.json`; `deploy-provenance.json` records
+the recovery rather than presenting them as newly captured trees.
+
+The candidate's largest list-runtime leaf is the recursive attribute traversal in
+`replaceOwnedRowIds()` (`framework/list-runtime.js:1075`), minified callback `n`
+at zero-based line 0, column 16363. It has 65/70/68 samples and signed leaf weights
+13.991/13.617/13.985 ms. The corresponding baseline callback at column 16627
+has no samples in these profiles; absence of samples is not proof of zero cost.
+The source scans every attribute/child to replace `$k` IDs. `mountLists` (`Se`,
+column 875) inclusive weights are 33.260/30.394/37.786 ms versus
+56.536/52.975/51.584 ms; inclusive ancestors overlap and must not be added to
+leaf weights. Program, idle, GC, harness and all other sites remain in the report.
+
+This supports investigating narrower ID-replacement traversal, not adopting a
+change yet. Preserve current-value first fills, keyed IDs, nested ownership,
+conditions, effects and uncontrolled inputs. Freeze a separate candidate gate
+before implementation/timing; the rejected root-map trial remains rejected.
+Semantic primitives, compiler passes/LOC, runtime concepts, fixtures and production
+browser bytes are unchanged. Startup and restoration superiority remain unresolved.
+
+Repaired tooling passes local `npm run check` and `npm test` (377 tests plus the
+separate project-application test). Original evidence is attached to `v0.17.4` as
+`c2-initial-cpu-39903856944.tar.gz`, SHA256
+`4cf16bd3f1e5274facb6fa937690d096e07eaf71aa1d2ff89f93398a68c45260`.
+No product release or deployment is needed for this diagnostic packet.
+
 ## Hosted Initial-Mount Attribution (2026-10-23)
 
 Run [39899715106](https://github.com/kudzujs/kudzu/actions/runs/39899715106)

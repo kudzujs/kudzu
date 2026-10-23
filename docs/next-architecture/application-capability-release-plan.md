@@ -41,7 +41,7 @@ both delayed-update/lifetime regressions and all unchanged C2 journeys. Run
 282.4/285.8 ms, paired −1.3 ms, only 11/21 faster, +262 raw/+89 level-9 gzip
 bytes. Reject; production remains 0.17.4. Archives for both runs are attached to
 that release with hashes and host differences recorded in `PERFORMANCE.md`.
-Active packet: `test/c2-initial-mount.mjs --cpu` samples uninstrumented pinned
+Completed packet: `test/c2-initial-mount.mjs --cpu` samples uninstrumented pinned
 0.17.3/0.17.4 output on one hosted VM. Three alternating fresh profiles per arm
 request a 100-microsecond interval from before navigation through initial readiness
 validation; full C2 acceptance remains unchanged. Record all leaf and inclusive
@@ -50,6 +50,17 @@ and deploy files. Assert sample/weight conservation and parent-tree validity.
 Sampling weights are not exact function durations or a speed gate. Module-level
 traces identify extra script time but not a function; no additional runtime
 candidate is authorized until this evidence is inspected.
+
+Run 39903856944 passes all six journeys and full checks, then encounters one
+−2µs profiler delta during aggregation. Offline aggregation retains signed weights,
+all samples and the failure; recovered deploy trees match both reported artifact
+hashes. The `replaceOwnedRowIds` recursive attribute visitor is the largest
+candidate list leaf (65/70/68 samples, 13.991/13.617/13.985 ms sampled weights).
+Evidence and archive hash are recorded in `PERFORMANCE.md`.
+Next packet: inspect a narrower row-ID replacement traversal, freeze its adoption
+gate before changing runtime code, and verify current-value fills, IDs, nested
+ownership, conditions/effects and input preservation before independent hosted
+timing. Sampling is not a speed gate; do not revive the rejected root-map trial.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm
