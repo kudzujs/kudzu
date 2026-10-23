@@ -100,7 +100,7 @@ Local `--visits` diagnostic now completes six C2 journeys: all three 0.17.4
 initial snapshots show only l0, 1,000 visitor entries, 2,000 elements, 10,000
 attributes, zero placeholder replacements. 0.17.3 has no initial visits. This
 confirms the owned-row list, not the search list, as the source of extra scans.
-Active candidate: reuse template-derived eligible attribute locations via existing
+Rejected candidate: reuse template-derived eligible attribute locations via existing
 itemParts mapping, falling back to recursive traversal for nested rows, templates,
 list events or dynamically bound ID attributes. Include effect-item metadata.
 Keep all fills and compare current attribute values at those locations. Gate is
@@ -108,6 +108,16 @@ frozen before implementation: pinned 0.17.4, 21 alternating fresh profiles, >=5%
 lower initial-DOM median, negative paired median, >=16/21 faster, no operation
 regression under >5% and >=16/21 slower, full tests and delayed lifetime regressions.
 Report bytes separately; reject a failed gate. No new semantic/runtime primitive.
+
+Candidate `b8f5ac1`, hosted run 39913071277 at `22b2703`: all validation passes,
+but initial DOM 307.9/295.2 ms, −4.12%, paired −7.7 ms and 15/21 faster misses
+the gate. Row removal regresses (2.6/2.9 ms, 16/21 slower). Script CPU improves
+97.278/87.788 ms but is secondary; C2 output grows +683 raw/+166 gzip bytes.
+Restore the 0.17.4 runtime/contract, retain diagnostic tooling and all evidence.
+Next bounded investigation is correctness-first: prove which pre-rendered row IDs
+are already resolved and which arrival-time fills can introduce placeholders.
+Only then consider avoiding initial work without per-row caches. Do not revive
+the rejected planned-attribute cache or substitute script timing for readiness.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm

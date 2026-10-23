@@ -1,5 +1,46 @@
 # Performance Records
 
+## Row-Owner Visit Counts And Rejected Planned Attributes (2026-10-23)
+
+`test/c2-initial-mount.mjs --visits` adds diagnostic counters only to scratch
+pinned releases, retaining complete C2 acceptance. Six local journeys pass;
+all three 0.17.4 initial snapshots contain l0 only: 1,000 entries, 2,000 elements,
+10,000 attributes and **zero** placeholder-bearing attributes. All three 0.17.3
+initial snapshots are empty. The extra traversal belongs to owned rows, not
+search rows. Full-journey snapshots, source and deploy trees are retained. These
+instrumented timings are not performance evidence.
+
+Gate frozen at `3019ee1`; candidate `b8f5ac1` maps template-derived eligible
+attributes through existing itemParts, including effect metadata, with recursive
+fallback for nested rows, conditions/templates, list events, expressions and
+dynamic ID attributes. No first-value fills are omitted. Local candidate check
+and full tests pass after updating measured raw/hash/gzip expectations; both
+earlier baseline assertion failures are retained, with behavior assertions and
+zlib tolerances unchanged. Hosted check/full tests and both delayed-lifetime arms
+also pass, followed by 42 untraced and six traced complete C2 journeys.
+
+Run [39913071277](https://github.com/kudzujs/kudzu/actions/runs/39913071277)
+at `22b2703`: initial DOM 307.9/295.2 ms (−4.12%), paired −7.7 ms, 15/21 faster.
+**Reject** under the frozen >=5% and >=16/21 faster gate. Script CPU
+97.278/87.788 ms, paired −9.847 ms, 18/21 faster supports reduced script cost,
+but cannot substitute for the primary failure. Row removal also meets the
+regression gate: 2.6/2.9 ms, paired +0.3 ms, 16/21 slower. Build medians
+716.928/720.974 ms; C2 JS 43,217/43,900 raw and 16,335/16,501 level-9 gzip.
+Candidate project-app output grows +738 raw/+175 local aggregate gzip bytes.
+Reject the cache and restore the exact 0.17.4 runtime and project-app baseline.
+
+Host: AMD EPYC 7763 (four logical CPUs), Node 24.21.0, Chrome 155.0.8059.39,
+Linux 6.17.0-1022-azure. Archive attached to `v0.17.4`:
+`c2-planned-ids-39913071277.tar.gz`, SHA256
+`8aff5575e42cac8cfa19bafa3b88891aab62d05ae0b5bf34f7e2d90f9cb95c33`.
+It includes local diagnostic output, contract failures, successful candidate
+tests, hosted samples/traces, and complete deploy trees. Production semantic
+primitives, compiler passes/LOC, runtime concepts, fixtures and bytes remain
+unchanged. Startup/restoration gates remain unresolved; no release is warranted.
+Further work must first prove whether pre-rendered ID resolution can eliminate
+initial work without retaining per-row caches or weakening arrival-time fills.
+Do not rerun this candidate or relabel its script improvement as primary success.
+
 ## Rejected Hook-Free ID Registration Gate (2026-10-23)
 
 Protocol frozen at `bf687ad`, scratch implementation `4ea26fd`, hosted run
