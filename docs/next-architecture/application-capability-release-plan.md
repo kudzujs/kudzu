@@ -136,7 +136,16 @@ smoke. Hosted 39919299100 passes all 48 C2 journeys and reports initial DOM
 318.0/319.3 ms, no gated operation regression, +50 raw/+7 level-9 gzip bytes;
 project-app output is unchanged. One codegen import, no runtime primitive/pass
 or new loader. Core 0.17.5 / generator 0.1.166 release transaction is active;
-exact-commit CI, protected publication and delivery verification are next.
+exact-commit CI, protected publication and delivery verification are complete.
+Tag `v0.17.5` is `7439932`; CI 39922108824, user-approved publication 39922959015,
+registry pack integrity, fresh default/AI projects and public website HTML all
+pass. Worker version is `e6894467-2880-489d-8d95-c98c98b447b0`.
+The release-doc push unintentionally reran characterization (39922103500);
+cancellation was denied. Retain its row-append regression (3.2/3.6 ms, 16/21
+slower) alongside the original evidence. No speed claim follows; details and
+durable archives are in `PERFORMANCE.md`. Next work returns to the bounded
+pre-rendered-ID/arrival-time correctness investigation, with this ordering fix
+retained and prior optimization candidates still rejected.
 
 Frozen attribution protocol: `test/c2-initial-mount.mjs` compares pinned `v0.17.3` and
 `v0.17.4` on one hosted VM, using 21 alternating fresh browser profiles per arm

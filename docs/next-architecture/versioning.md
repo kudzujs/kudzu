@@ -75,8 +75,12 @@ The 0.17.5 patch orders list-owned effects after list initialization using an
 explicit native ESM dependency. The delayed DOM-ref regression, full checks,
 package smoke and hosted cost characterization 39919299100 pass. C2 adds
 50 raw/7 level-9 gzip bytes; project output is unchanged. Generator 0.1.166
-targets ^0.17.5. Exact release-commit CI, protected publication and delivery
-verification remain required; no speed claim or 1.0 acceptance follows.
+targets ^0.17.5. Delivery is complete at `v0.17.5` (`7439932`): exact-commit CI
+39922108824 and user-approved publication 39922959015 pass. Registry tarballs
+match local release integrities; fresh default/AI projects pass check/build.
+Website Worker `e6894467-2880-489d-8d95-c98c98b447b0` serves byte-verified HTML.
+Receipts and the duplicate characterization's retained row-append regression are
+recorded in `PERFORMANCE.md`; no speed claim or 1.0 acceptance follows.
 
 The 0.17.4 patch removes the incorrect initial no-fill shortcut so ordinary array
 updates made before list runtime arrival reach retained row text and attributes.

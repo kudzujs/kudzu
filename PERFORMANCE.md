@@ -37,6 +37,32 @@ pending exact release-commit CI, protected publication and independent verificat
 Earlier rejected optimization trials remain rejected; startup/restoration and
 independent AI-cost/1.0 gates remain unresolved.
 
+0.17.5 delivery complete: immutable tag `v0.17.5` points to `7439932`;
+exact-commit Node 22/package and required-Chrome CI
+[39922108824](https://github.com/kudzujs/kudzu/actions/runs/39922108824) passes.
+User-approved protected publication
+[39922959015](https://github.com/kudzujs/kudzu/actions/runs/39922959015) succeeds.
+Both registry SHA512 integrities match local release packs and downloaded
+tarballs; fresh default and `--ai` registry projects resolve core 0.17.5 and pass
+check/build. Website Worker `e6894467-2880-489d-8d95-c98c98b447b0` serves five
+public HTML routes byte-identical to local output, including the new release page.
+Receipts are attached as `release-0175-verification.tar.gz`, SHA256
+`794ec9eb0218cb2953d40a47d5d53cf2b9091f947f25cdbded5456fffa5dc330`.
+
+Release-doc branch push also triggered duplicate characterization run
+[39922103500](https://github.com/kudzujs/kudzu/actions/runs/39922103500).
+Cancellation was denied by token permissions (HTTP 403). Preserve its complete
+results rather than replacing the first run: initial DOM 320.0/315.2 ms, paired
+−3.2 ms, 12/21 faster; script CPU 103.365/102.645 ms. Row append **does** meet
+the regression threshold in this duplicate run (3.2/3.6 ms, paired +0.7 ms,
+16/21 slower). This retained cost does not invalidate the demonstrated ref fix
+or establish a speed win. All journeys pass. The duplicate archive is attached:
+`c2-effect-order-repeat-39922103500.tar.gz`, SHA256
+`b40b1c7ada9cdeac99216e53064a587f50606091531af250104c47710c929822`.
+Local release-doc tests initially caught a missing explicit 1.0-blocked statement
+and an outdated headline assertion; both were corrected, targeted checks and
+exact release-commit full CI pass, and the failure logs remain in the receipts.
+
 ## Row-Owner Visit Counts And Rejected Planned Attributes (2026-10-23)
 
 `test/c2-initial-mount.mjs --visits` adds diagnostic counters only to scratch
