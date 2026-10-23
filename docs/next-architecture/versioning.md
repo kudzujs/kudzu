@@ -66,10 +66,16 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.164` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.3`.
+`create-kudzu@0.1.165` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.4`.
 
 ## Release Boundary
+
+The 0.17.4 patch removes the incorrect initial no-fill shortcut so ordinary array
+updates made before list runtime arrival reach retained row text and attributes.
+Generator 0.1.165 targets ^0.17.4. Exact-commit CI, protected npm publication and
+delivery verification are required. Byte savings and initial-mount cost accounting
+are recorded in `PERFORMANCE.md`; no speed improvement is claimed.
 
 The 0.17.3 patch fixes pending calculated-list row-state cleanup and initial
 latest-value rendering. Generator 0.1.164 targets ^0.17.3. Delivery is complete

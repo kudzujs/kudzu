@@ -181,19 +181,6 @@ function updateList(list) {
     keys.add(token)
     entries.push({ item, index, key, token, value: referenceOnly ? item : seededValue === undefined ? JSON.stringify(item) : seededValue })
   }
-  if (list.items === undefined && !list.sourceEvaluator && list.parts.directFill && entries.length === list.roots.size) {
-    const roots = __KUDZU_LIST_STABLE_FAST_PATHS__ ? list.orderedRoots : [...list.roots.values()]
-    if (entries.every((entry, index) => list.roots.get(entry.token) === roots[index])) {
-      for (let index = 0; index < entries.length; index++) {
-        const entry = entries[index]
-        listItems.set(roots[index], entry.item)
-        if (__KUDZU_LIST_INDEXES__) listIndexes.set(roots[index], index)
-        if (!referenceOnly) list.values.set(entry.token, entry.value)
-      }
-      list.items = items
-      return
-    }
-  }
   if (list.descriptor.key !== null && !list.descriptor.indexed && !list.descriptor.selector && (referenceOnly || list.values.size) && entries.every(entry => {
     const root = list.roots.get(entry.token)
     return !root || (referenceOnly ? listItems.get(root) === entry.item : list.values.get(entry.token) === entry.value)

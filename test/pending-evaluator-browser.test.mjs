@@ -133,6 +133,39 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     return { before, released, remounted, latest, finallyReleased: !runtime.browserState.has(rowState) }
   })()`)
   assert.deepEqual(pending, { before: 1, released: true, remounted: 0, latest: "Latest", finallyReleased: true }, "pending list source releases row state before same-node remount")
+  const directHtml = assets.get("/direct/index.html")
+  const listScript = directHtml.match(/<script type="module" src="([^"]+\/kudzu-list.js)"><\/script>/)
+  assert.ok(listScript)
+  // Delay just the list capability while the real native buttons remain usable.
+  assets.set("/direct/index.html", directHtml.replace(listScript[0], ""))
+  assets.set(listScript[1], "await new Promise(resolve => { globalThis.releaseDirectList = resolve });\n" + assets.get(listScript[1]))
+  await navigate("/direct/index.html")
+  const direct = await evaluate(cdp, `(async () => {
+    await Promise.all([...document.querySelectorAll("script[type=module]")].map(script => import(script.src)))
+    const runtime = await import(document.querySelector('script[src$="/kudzu.js"]').src)
+    const root = document.querySelector("li"), input = root.querySelector("input")
+    input.value = "Keep my note"
+    const descriptor = JSON.parse(document.querySelector("template[data-k-list]").dataset.kList)
+    const loading = import(${JSON.stringify(listScript[1])})
+    const wait = async predicate => {
+      const deadline = Date.now() + 5000
+      while (!predicate()) {
+        if (Date.now() > deadline) throw new Error("Delayed list update timed out")
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+    }
+    await wait(() => globalThis.releaseDirectList)
+    document.querySelector("[data-first]").click()
+    await wait(() => runtime.browserState.get(descriptor.state)[0].label === "First update")
+    const before = root.querySelector("span").textContent
+    globalThis.releaseDirectList()
+    await loading
+    const first = { text: root.querySelector("span").textContent, title: root.title }
+    document.querySelector("[data-second]").click()
+    await wait(() => root.querySelector("span").textContent === "Second update")
+    return { before, first, second: root.title, retained: document.querySelector("li") === root, note: input.value }
+  })()`)
+  assert.deepEqual(direct, { before: "Initial", first: { text: "First update", title: "First update" }, second: "Second update", retained: true, note: "Keep my note" }, "array updates before list loading must reach retained rows")
   assert.deepEqual(cdp.exceptions, [])
   assert.deepEqual(cdp.consoleErrors, [])
 })

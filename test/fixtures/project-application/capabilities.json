@@ -390,26 +390,26 @@
   "baseline": {
     "deploy": {
       "files": 42,
-      "rawBytes": 190264,
-      "aggregateGzipBytes": 57962,
-      "sha256": "a28f584d40436e0d56a36bf771651654fb0388207e871fcdc5835ca2a795ecc7"
+      "rawBytes": 189736,
+      "aggregateGzipBytes": 57796,
+      "sha256": "eab28b8cfc35ba9ddb079dbfcd70036bca3403f83393c8235ca0d2052cf94154"
     },
     "routes": {
       "/app/projects": {
-        "javascriptRawBytes": 67228,
-        "javascriptAggregateGzipBytes": 23261
+        "javascriptRawBytes": 66964,
+        "javascriptAggregateGzipBytes": 23177
       },
       "/app/projects/alpha": {
-        "javascriptRawBytes": 65752,
-        "javascriptAggregateGzipBytes": 22638
+        "javascriptRawBytes": 65488,
+        "javascriptAggregateGzipBytes": 22554
       },
       "/app/projects/[projectId]": {
-        "javascriptRawBytes": 36579,
-        "javascriptAggregateGzipBytes": 13934
+        "javascriptRawBytes": 36315,
+        "javascriptAggregateGzipBytes": 13852
       },
       "/app/projects/[projectId]/issues/[issueId]": {
-        "javascriptRawBytes": 36676,
-        "javascriptAggregateGzipBytes": 13953
+        "javascriptRawBytes": 36412,
+        "javascriptAggregateGzipBytes": 13871
       },
       "/login": {
         "javascriptRawBytes": 9702,

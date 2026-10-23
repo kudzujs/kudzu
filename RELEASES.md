@@ -1,5 +1,19 @@
 # Kudzu Releases
 
+## 0.17.4 - Current Rows After Delayed Runtime Loading
+
+- Applies array updates made before list runtime arrival to retained row text and
+  attributes on initial mounting, even when keys and row count are unchanged.
+- Removes the incorrect 13-line initial no-fill shortcut and reuses existing row
+  updates. Row identity and user-entered uncontrolled input values are preserved.
+- Adds a compiled TSX Chrome journey using real native update buttons while the
+  list capability is delayed; previous lifecycle tests and static exclusion pass.
+- C2 saves 264 raw / 87 local gzip JavaScript bytes; project-app deploy saves
+  528 raw / 166 local gzip bytes. Initial mount performs necessary row writes;
+  these byte savings are not a startup or interaction speed claim.
+- Publishes create-kudzu 0.1.165 targeting core ^0.17.4 without new public APIs,
+  source syntax, semantic primitives or browser runtime concepts.
+
 ## 0.17.3 - Reliable Calculated List Mounting
 
 - Registers calculated lists before evaluator loading so unmount releases row

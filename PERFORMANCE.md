@@ -1,5 +1,43 @@
 # Performance Records
 
+## Array Updates Before List Runtime Arrival (2026-10-23)
+
+The `pending-list-source/direct` TSX page uses ordinary array state, two native
+update buttons, keyed text/title bindings and an uncontrolled input. The Chrome
+journey delays only its list capability while leaving real native handlers
+available. A first button click changes state before list mounting. On 0.17.3,
+the list then retains its original text and title; a later second click works.
+Matching keys incorrectly authorize the initial no-fill shortcut for ordinary
+arrays, just as calculated sources did in the previous packet.
+
+Delete the 13-line shortcut and reuse existing retained-row filling. The test now
+proves the first update appears on capability arrival, subsequent updates work,
+row DOM identity survives and the typed uncontrolled note is preserved. Existing
+pending evaluator and calculated-list journeys pass; the static sibling remains
+zero-JavaScript. This supersedes the calculated-only exclusion from 0.17.3 while
+retaining its early registration fix. No semantic primitive, compiler pass/LOC,
+runtime concept, public API or dependency is added; runtime source loses 13 lines.
+
+Matched 0.17.3/candidate builds retain paths and all HTML; only list runtime files
+change. The three-route regression emits 47,553 → 47,025 raw JS bytes and
+17,756 → 17,587 local gzip. C2 emits 43,481 → 43,217 raw / 16,428 → 16,341 gzip.
+Project deploy is 190,264 → 189,736 raw / 57,962 → 57,796 gzip, still 42 files.
+The initial mount now performs necessary row writes; byte savings do not imply
+faster startup. Seven paired C2 profiles/builds characterize that cost separately
+under a frozen diagnostic-only protocol, without a speed ranking claim.
+
+Paired builds, output summary and baseline Chrome failure are retained in
+`/tmp/opencode/delayed-array-list-uwGbjr/`; timing protocol and raw output are in
+its `timing/` directory. All 14 full C2 journeys (seven profiles per arm), including
+delayed/missing-script resilience, pass. Local diagnostic medians are build
+844.277 → 787.969 ms, initial complete DOM 335.5 → 357.5 ms, load script CPU
+105.784 → 83.386 ms, restore 54.7 → 54.4 ms. Initial DOM is slower in six of seven
+pairs (+22 ms median-of-arms), with broad overlapping ranges (283.2–563.3 versus
+291.7–387.7 ms). This is an observed startup cost, not a proven ranking or a tie;
+shared-host noise and seven profiles do not establish a latency guarantee. The
+correctness fix is retained with that explicit tradeoff. Raw operation samples
+remain in `timing/raw.json`; full release validation follows.
+
 ## 0.17.3 Delivery Verification (2026-10-23)
 
 Core 0.17.3 and create-kudzu 0.1.164 are published from immutable tag `v0.17.3`

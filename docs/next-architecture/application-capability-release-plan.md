@@ -10,6 +10,19 @@ one independently releasable evidence packet to each patch release. Planned
 versions are not completed releases. `package.json`, release notes, tags, and
 registry metadata change only after the matching packet passes every gate.
 
+Active delayed-array-list packet (2026-10-23): a real native button updates array
+state while the list capability is delayed. On 0.17.3 matching keys skip the first
+fill and leave text/title stale. Remove that initial shortcut and reuse retained
+row filling; Chrome verifies arrival-time content, subsequent updates, row identity
+and uncontrolled input preservation. Prior lifetime journeys and static exclusion
+pass. Runtime source loses 13 lines, with no new compiler or runtime concept.
+C2 saves 264 raw/87 local gzip bytes; project deploy saves 528 raw/166 gzip.
+Initial mounting now performs row writes, so a separate seven-profile diagnostic
+records the cost without a speed claim. All 14 C2 journeys pass; local initial-DOM
+medians rise 335.5 → 357.5 ms with overlapping ranges and six of seven slower
+pairs. Retain this startup-cost observation explicitly; no speed/tie claim follows.
+Full release validation follows.
+
 Released pending-list-source correctness packet (2026-10-23, 0.17.3): compiled object-state
 keyed rows retain their counter if unmounted/remounted before the source evaluator
 loads, and the initial structural shortcut leaves old text after a pending source
