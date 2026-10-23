@@ -1,5 +1,31 @@
 # Performance Records
 
+## 0.17.2 Delivery Verification (2026-10-23)
+
+Core 0.17.2 and create-kudzu 0.1.163 are published from immutable release commit
+`b275670da018c7b11a5ebe6bfc6da97f47954bec` (`v0.17.2`). Exact-commit
+[CI 39876644906](https://github.com/kudzujs/kudzu/actions/runs/39876644906)
+passed Node 22 checks/tests/package smoke and Node 24 required-Chrome tests.
+User-approved protected [publication 39877345064](https://github.com/kudzujs/kudzu/actions/runs/39877345064)
+passed its checks, tests and package smoke, then published and verified both versions.
+
+Fresh registry-generated default and `--ai` projects both resolve core 0.17.2
+and pass `npm run check` (TypeScript and build). Both installs report zero audit
+vulnerabilities. Their four deploy files and artifact manifests match after
+normalizing only project names; both static about pages contain no script or
+modulepreload markers, and the AI project includes `AGENTS.md`. Registry SHA512
+integrities match independently packed local release tarballs for both packages.
+
+Website build, deployment dry-run and deployment completed with Worker version
+`e0bd5fcd-112f-48b2-84ac-a9d060f3fe83`. Public `/`, `/docs`,
+`/releases/0.17.2`, `/example` and `/example/blog/personal` return HTTP 200 and
+byte-identical HTML to the local release build. Durable `website-receipt.json`
+and `registry-receipt.json` are attached to the
+[GitHub release](https://github.com/kudzujs/kudzu/releases/tag/v0.17.2);
+local verification files are in `/tmp/opencode/release-0172-verification/`.
+Delivery is complete. These correctness fixes make no speed superiority claim;
+restoration latency and independent AI-cost/1.0 gates remain unresolved.
+
 ## Keyed Condition Revision Correctness (2026-10-23)
 
 A new ordinary TSX fixture combines keyed item conditions with a direct primitive

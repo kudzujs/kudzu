@@ -73,8 +73,14 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 The user-authorized 0.17.2 patch bundles conditional membership consolidation,
 pending evaluator DOM/state revocation and keyed condition revision correctness.
-Generator 0.1.163 targets ^0.17.2. Native Chrome regressions pass; release tagging
-requires exact-commit CI, protected npm publication and delivery verification.
+Generator 0.1.163 targets ^0.17.2. Delivery is complete at immutable tag `v0.17.2`
+(`b275670`): exact-commit CI 39876644906 and user-approved protected publication
+39877345064 pass. Both registry packages match local release SHA512 integrities;
+fresh default/AI installs resolve 0.17.2 and pass checks/builds with matching
+name-normalized deploy output. Website Worker version
+`e0bd5fcd-112f-48b2-84ac-a9d060f3fe83` serves verified release HTML.
+Website and registry receipts are attached to the GitHub release; see
+`PERFORMANCE.md` for the full delivery record.
 This release makes no universal byte reduction or latency claim.
 
 The user-authorized 0.17.1 patch releases the accepted binding lifetime
