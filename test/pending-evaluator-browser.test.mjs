@@ -230,7 +230,7 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
   const resolved = await evaluate(cdp, `(async () => {
     const runtime = await import(document.querySelector('script[src$="/kudzu.js"]').src)
     const descriptor = selector => JSON.parse(document.querySelector(selector + " template[data-k-list]").dataset.kList)
-    const safe = descriptor("[data-resolved]"), dynamic = descriptor("[data-dynamic]"), literal = descriptor("[data-literal]")
+    const safe = descriptor("[data-resolved]")
     const root = document.querySelector("[data-resolved] li"), input = root.querySelector("input"), id = input.id
     input.value = "Keep note"
     const wait = async predicate => {
@@ -247,8 +247,8 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     globalThis.releaseResolvedList()
     await loading
     await wait(() => root.dataset.ready === "true" && root.title === "Latest")
-    const initial = { proof: safe.initialIdsResolved, retained: root === document.querySelector("[data-resolved] li"), id: input.id === id, label: root.querySelector("label").htmlFor === id, note: input.value, text: root.querySelector("[data-label]").textContent }
-    const fallback = { dynamicProof: dynamic.initialIdsResolved, dynamicId: document.querySelector("[data-dynamic] input").id, dynamicLabel: document.querySelector("[data-dynamic] label").htmlFor, literalProof: Boolean(literal.initialIdsResolved), literalId: document.querySelector("[data-literal] li").id }
+    const initial = { retained: root === document.querySelector("[data-resolved] li"), id: input.id === id, label: root.querySelector("label").htmlFor === id, note: input.value, text: root.querySelector("[data-label]").textContent }
+    const fallback = { dynamicId: document.querySelector("[data-dynamic] input").id, dynamicLabel: document.querySelector("[data-dynamic] label").htmlFor, literalId: document.querySelector("[data-literal] li").id }
     root.querySelector("[data-count]").click()
     await wait(() => root.querySelector("[data-count]").textContent === "1")
     document.querySelector("[data-remove]").click()
@@ -262,8 +262,8 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     return { initial, fallback, clone }
   })()`)
   assert.deepEqual(resolved, {
-    initial: { proof: true, retained: true, id: true, label: true, note: "Keep note", text: "Latest" },
-    fallback: { dynamicProof: true, dynamicId: "latest-number%3A1", dynamicLabel: "latest-number%3A1", literalProof: false, literalId: "literal-number%3A1" },
+    initial: { retained: true, id: true, label: true, note: "Keep note", text: "Latest" },
+    fallback: { dynamicId: "latest-number%3A1", dynamicLabel: "latest-number%3A1", literalId: "literal-number%3A1" },
     clone: { fresh: true, id: true, label: true, count: "0" }
   })
   assert.deepEqual(cdp.exceptions, [])

@@ -1,6 +1,6 @@
 # Application Capability Release Plan
 
-Active initial-ID trial: let the build mark direct owned rows only when their
+Rejected initial-ID trial: let the build mark direct owned rows only when their
 complete initial HTML contains no `$k` placeholders. At initial mounting, clear
 replacement registration only for structural row plans with no list events and
 no attributes targeting data-k metadata or DOM ID/IDREFs. Structural plans already
@@ -23,7 +23,26 @@ one appended-row visit and four placeholder attributes across the full journey.
 These instrumented counts locate eliminated work, not speed. Compiler +1 line,
 runtime +3 lines, one new regression page; no pass or semantic/runtime primitive.
 Project output trial costs +169 raw/+65 local aggregate gzip bytes. Next is the
-single frozen, uninstrumented hosted timing comparison against v0.17.6.
+single frozen, uninstrumented hosted timing comparison against v0.17.6 (completed
+below).
+
+Hosted 40259544715 at `b194eb6` passes all checks and 48 C2 journeys, but rejects
+candidate `4c7173c`: initial DOM 271.3/264.8 ms (−2.40%), paired −18.4 ms and
+15/21 faster misses both the >=5% and >=16/21 gates. No operation regresses under
+the frozen gate. Script CPU 87.568/76.099 ms (20/21 faster) is secondary and cannot
+replace readiness. C2 costs +168 raw/+65 level-9 gzip JS, +26 raw/+28 gzip HTML.
+Restore compiler/runtime and exact project-app contract byte-for-byte to 0.17.6;
+retain the delayed ID/IDREF/template/clone behavior fixture without candidate-only
+descriptor assertions. Restored full checks and package smoke pass. Archive and
+hash are in `PERFORMANCE.md`, attached to v0.17.6. No new version is released.
+
+Next packet is offline readiness attribution using this run's already-recorded
+traces and load metrics: locate parsing, style/layout, module evaluation and the
+final same-navigation readiness marker relative to the accepted initial-DOM
+predicate. Do not add independent category medians as a wall-clock decomposition,
+rerun the rejected trial, relax the gate or pick another runtime optimization
+before identifying the remaining readiness cost. The removed visitor is a proven
+CPU cost, but its removal alone did not meet the product's startup gate.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

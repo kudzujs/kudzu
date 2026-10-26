@@ -1,5 +1,56 @@
 # Performance Records
 
+## Rejected Build-Proven Initial-ID Trial (2026-10-26)
+
+Candidate `4c7173c` lets renderList mark direct owned rows only when the complete
+initial HTML contains no `$k` placeholders. Mounting clears initial direct-ID
+replacement registration only for structural plans without list-event or
+ID/IDREF/data-k attribute fills. Every current-value fill and clone registration
+remains. This is a build proof, not the rejected per-row attribute cache.
+Trial cost: compiler +1 LOC, runtime +3 LOC, no new compiler pass, semantic
+primitive or browser runtime concept; one reduced regression page is added.
+
+`--resolved-visits` completes six local C2 journeys. All three baseline initial
+snapshots report l0 only: 1,000 entries, 2,000 elements, 10,000 attributes, zero
+placeholder attributes. Candidate initial snapshots are empty. Both arms retain
+one added-row visit with two elements, 12 attributes and four replacements.
+The delayed fixture also proves current values, ID/label/input identity, state,
+refs, cleanup, clones, dynamic ID/IDREF fallback and literal-template fallback;
+the retained repeated-event regression passes. Instrumented counts prove work
+removal, not speed. Local candidate full check/tests/package smoke pass after
+updating its measured project-app artifact contract; the initial contract failure
+is preserved. Project output trial cost is +169 raw/+65 local aggregate gzip.
+
+Frozen adoption gate: >=5% lower initial-DOM median, negative paired median,
+>=16/21 faster pairs, no operation >5% and >=16/21 slower; all unchanged journeys
+must pass. Hosted [40259544715](https://github.com/kudzujs/kudzu/actions/runs/40259544715)
+at `b194eb6` compares pinned v0.17.6 against `4c7173c`, passing full checks,
+both lifetime suites and 42 untraced plus six traced C2 journeys. It **fails**
+adoption: initial DOM 271.3/264.8 ms, −2.40%, paired −18.4 ms, 15/21 faster.
+No operation meets the regression gate. Script CPU 87.568/76.099 ms, paired
+−9.009 ms, 20/21 faster is a secondary result and cannot replace readiness.
+Load task medians 255.892/241.438 ms, layout 49.421/49.828 ms, style
+22.132/22.065 ms are separate diagnostics, not additive wall-clock accounting.
+Build medians 602.340/597.106 ms. No timing rerun was used to seek a better result.
+
+C2 JS 43,267 → 43,435 raw (+168), hosted level-9 gzip 16,343 → 16,408 (+65).
+HTML 688,281 → 688,307 raw (+26), gzip 69,741 → 69,769 (+28). All other files
+remain byte-identical. Host: AMD EPYC 9V74 (four logical CPUs), Node 24.21.0,
+Chrome 155.0.8059.39, Linux 6.17.0-1022-azure. Compare arms within this run only.
+
+Reject and restore compiler/runtime and exact project-app contract to v0.17.6.
+Retain the behavior fixture without candidate-only proof assertions and keep the
+candidate pinned in the diagnostic harness. Restored full checks, 377 tests plus
+project journey and package smoke pass. No release or npm version change follows.
+Archive `c2-initial-id-proof-40259544715.tar.gz`, SHA256
+`c65b2948eda1cb54e54ea45bc604dc8323eda1cbcf6095d169725a188a13572a`, attached
+to v0.17.6, includes all raw profiles/traces/deploy files, local visitor diagnostics,
+candidate and restored checks, package smoke and the old-contract failure.
+
+Next: offline attribution of the remaining readiness path from these existing
+traces, including parsing, layout/style and module ordering relative to the final
+same-navigation marker. Do not revive this trial or substitute CPU for readiness.
+
 ## 0.17.6: Retained Row Event Captures (2026-10-26)
 
 The initial-ID correctness investigation finds another real 0.17.5 failure:

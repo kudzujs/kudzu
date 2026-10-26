@@ -54,9 +54,6 @@ function mountLists(root) {
     const lifecycle = listLifecycle(descriptor, templateRoot)
     if (__KUDZU_LIST_ROW_HOOKS__) for (let index = 0; index < roots.length; index++) initializeGeneralRowHooks(descriptor, descriptor.keys[index], roots[index], nested?.owner)
     const parts = listItemPartPlan(templateRoot, descriptor.nested, descriptor)
-    if (__KUDZU_GENERAL_ROW_HOOKS__ && descriptor.initialIdsResolved && parts.structural && !parts.events.length && parts.attributes.every(([, attributes]) => attributes.every(([target]) => !target.startsWith("data-k-") && !rowIdAttributes.has(target)))) {
-      for (const root of roots) directRowReplacements.delete(root)
-    }
     const staticRows = __KUDZU_STATIC_COLLECTIONS__ && descriptor.static && parts.directFill ? new Map() : undefined
     for (const root of roots) {
       if (__KUDZU_LIST_CONDITIONS__ && descriptor.conditions) {
