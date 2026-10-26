@@ -1,6 +1,6 @@
 # Application Capability Release Plan
 
-Active correctness packet (2026-10-26): the initial-ID investigation reproduces
+Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row
 state after delayed initial loading, but a second same-key item update restores
 the template's unresolved `s1:$k` state ID and subsequent clicks miss the row.
@@ -10,6 +10,15 @@ ordering fix. Gate on delayed initial/repeated/cloned event behavior, existing
 conditional/nested tests, full check/tests and package smoke. Report byte and
 benchmark costs as correctness evidence, not a startup improvement. The initial
 traversal optimization remains unaccepted; prior failed trials stay rejected.
+
+Fix `c25c4f8` passes local full checks and package smoke. Hosted 40247507915
+reproduces the new failure on 0.17.5 and passes the candidate regression and all
+48 C2 journeys. No gated operation regression; no speed claim. Runtime +6 net
+LOC, no compiler pass/semantic/runtime concept; C2 +0 raw/+1 level-9 gzip,
+project output +94 raw/+37 local aggregate gzip. Core 0.17.6 / generator 0.1.167
+delivery is next: exact-commit CI, protected publication and independent receipts.
+After delivery, return to initial-ID traversal proof with repeated event filling
+covered; do not revive rejected caches or skip arrival-time values.
 
 This is the authoritative execution plan from `0.10.0` through `1.0.0`. It
 replaces the provisional `0.10` normalize, `0.11` diagnostics, and `0.12`

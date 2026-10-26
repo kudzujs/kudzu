@@ -66,10 +66,18 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.166` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.5`.
+`create-kudzu@0.1.167` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.6`.
 
 ## Release Boundary
+
+The 0.17.6 patch resolves direct-row event templates through existing ownership
+before current item capture, fixing state/ref loss after repeated same-key updates.
+Full checks, package smoke and hosted 40247507915 pass, including the recorded
+0.17.5 baseline failure and all 48 C2 journeys. Project output +94 raw/+37 local
+gzip; C2 +0 raw/+1 level-9 gzip. Generator 0.1.167 targets ^0.17.6. Exact-commit
+CI, protected publication and independent delivery verification remain required.
+Initial traversal and the independent 1.0 gates remain unresolved.
 
 The 0.17.5 patch orders list-owned effects after list initialization using an
 explicit native ESM dependency. The delayed DOM-ref regression, full checks,

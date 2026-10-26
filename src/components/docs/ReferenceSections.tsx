@@ -59,7 +59,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.17.5 release evidence</strong><span>List-owned effects wait for row ownership before setup, preserving refs when the list capability arrives late. Chrome verifies current values, stable IDs, input preservation, state and cleanup. C2 adds 50 raw / 7 level-9 gzip bytes; project-app output is unchanged and no speed improvement is claimed. Startup regression remains unresolved. Restoration latency and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.5">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
+    <div className="docs-callout"><strong>Current 0.17.6 release evidence</strong><span>Item-capturing row handlers retain scoped state and refs through repeated same-key updates. Chrome verifies delayed loading, current captures, row identity, cleanup and fresh clones. Project-app output adds 94 raw bytes; C2 raw JavaScript is unchanged and no speed improvement is claimed. Startup regression remains unresolved. Restoration latency and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.6">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

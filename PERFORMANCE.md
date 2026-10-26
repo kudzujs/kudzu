@@ -1,5 +1,47 @@
 # Performance Records
 
+## 0.17.6: Retained Row Event Captures (2026-10-26)
+
+The initial-ID correctness investigation finds another real 0.17.5 failure:
+`fillListParts` reconstructs item-capturing native handlers from an unscoped
+template on every item update, but direct row-ID replacement is consumed after
+the first fill. A second same-key update restores `s1:$k`; clicking the retained
+row no longer changes its scoped state. The extended delayed-list fixture proves
+the failure and the fix, including state reads/writes, captured DOM refs, current
+item labels, cleanup and fresh cloned handlers.
+
+Fix `c25c4f8` resolves direct-row event templates through the existing owner path
+before adding current item captures. Nested replacement maps retain their existing
+path. Runtime source adds six net lines; no compiler pass/LOC, semantic primitive,
+public syntax, cache or runtime concept is added. One existing fixture is extended.
+The 0.17.5 effect-order fix and all initial arrival-time fills remain intact.
+
+Local check, project-app journey, 377 tests and package smoke pass. Hosted run
+[40247507915](https://github.com/kudzujs/kudzu/actions/runs/40247507915) at
+`415f614` repeats the new baseline failure on pinned v0.17.5, passes the extended
+candidate regression and both prior lifetime suites, then passes 42 untraced and
+six traced complete C2 journeys. Initial DOM 229.4/221.3 ms, paired −3.0 ms,
+12/21 faster; script CPU 76.652/77.932 ms, paired −0.079 ms. No operation meets
+the >5% and >=16/21 slower regression gate. Build medians 449.962/448.679 ms.
+This is correctness cost characterization, not a speed win or statistical tie.
+Host: AMD EPYC 9V45 (four logical CPUs), Node 24.21.0, Chrome 155.0.8059.39,
+Linux 6.17.0-1022-azure; compare arms within this run only.
+
+C2 raw JS remains 43,267 bytes, hosted level-9 gzip 16,342 → 16,343. Project-app
+output stays at 42 files, 189,736 → 189,830 raw bytes (+94), local aggregate gzip
+57,796 → 57,833 (+37); digest is
+`f85429fec060f30dafc90545be6b5720c45bf8e2ec9f4d33c16c043ed2f91d34`.
+The public sibling remains zero-JavaScript. The first local full run stopped at
+the expected old artifact contract mismatch; that failure is retained along with
+the updated exact contract and passing checks. No failed timing was rerun.
+
+Evidence archive `c2-row-events-40247507915.tar.gz`, SHA256
+`e6cea37ca23809f7c2f3ba87c89214ad0dec39bc5839115776883a2459a8dc83`, retains
+the failing baseline regression, passing regressions, all raw profiles, traces,
+deploy output and local check/package logs. Core 0.17.6 / generator 0.1.167 is
+pending exact-release-commit CI and protected publication. Initial-ID traversal,
+startup/restoration superiority and independent AI-cost/1.0 gates remain unresolved.
+
 ## 0.17.5: Row Ownership Before Effects (2026-10-23)
 
 Pre-rendered-ID correctness investigation exposes a real 0.17.4 failure: delaying

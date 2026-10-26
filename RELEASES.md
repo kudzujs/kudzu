@@ -1,5 +1,20 @@
 # Kudzu Releases
 
+## 0.17.6 - Reliable Events After Row Updates
+
+- Fixes item-capturing handlers that lost their row state/ref IDs after a second
+  same-key update. Direct-row event templates now resolve through existing owner
+  paths before current item captures are inserted.
+- Extends the delayed-list Chrome regression with repeated item/state/ref updates
+  and fresh cloned handlers, retaining ID/input identity and removal cleanup.
+- Adds no semantic primitive, compiler pass or browser runtime concept. Existing
+  nested replacement ownership and effect initialization ordering are retained.
+- Full checks, package smoke and 48 hosted C2 journeys pass. Project-app output
+  adds 94 raw / 37 local aggregate gzip bytes; C2 raw JS is unchanged (+1 level-9
+  gzip byte). No gated operation regression was measured; no speed claim is made.
+- Publishes create-kudzu 0.1.167 targeting core ^0.17.6. Initial-ID traversal,
+  restoration superiority and AI-cost/1.0 gates remain unresolved.
+
 ## 0.17.5 - Row Ownership Before Effects
 
 - Makes list-owned effect entries depend on the existing list capability, so row
