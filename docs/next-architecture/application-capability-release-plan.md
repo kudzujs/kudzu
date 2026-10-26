@@ -15,6 +15,16 @@ package smoke and all unchanged C2 journeys pass. Report compiler/runtime LOC,
 HTML/JS raw/gzip costs and all failed evidence. Reject a failed gate without
 rerunning for favorable samples; prior rejected candidates remain rejected.
 
+Candidate `4c7173c`: local full checks, 377 tests/project journey and package
+smoke pass. `--resolved-visits` completes six unchanged C2 journeys: baseline
+initial l0 visits are 1,000 entries/2,000 elements/10,000 attributes/0 replacements
+in all three profiles; candidate initial visits are empty. Both arms retain the
+one appended-row visit and four placeholder attributes across the full journey.
+These instrumented counts locate eliminated work, not speed. Compiler +1 line,
+runtime +3 lines, one new regression page; no pass or semantic/runtime primitive.
+Project output trial costs +169 raw/+65 local aggregate gzip bytes. Next is the
+single frozen, uninstrumented hosted timing comparison against v0.17.6.
+
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row
 state after delayed initial loading, but a second same-key item update restores
