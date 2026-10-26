@@ -28,7 +28,8 @@ const cpu = process.argv[2] === "--cpu"
 const visits = process.argv[2] === "--visits"
 const plannedIds = process.argv[2] === "--planned-ids"
 const effectOrder = process.argv[2] === "--effect-order"
-assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder ? 3 : 2)
+const rowEvents = process.argv[2] === "--row-events"
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -40,7 +41,7 @@ const replace = (source, before, after) => {
   return source.replace(before, after)
 }
 const sha256 = value => createHash("sha256").update(value).digest("hex")
-const revisions = { baseline: trial || rowIds || rowOwnership || plannedIds || effectOrder ? "v0.17.4" : "v0.17.3", candidate: effectOrder ? "5d1ff7a" : plannedIds ? "b8f5ac1" : "v0.17.4" }
+const revisions = { baseline: rowEvents ? "v0.17.5" : trial || rowIds || rowOwnership || plannedIds || effectOrder ? "v0.17.4" : "v0.17.3", candidate: rowEvents ? "c25c4f8" : effectOrder ? "5d1ff7a" : plannedIds ? "b8f5ac1" : "v0.17.4" }
 for (const tag of Object.values(revisions)) assert.equal(execFileSync("git", ["diff", tag, "--", "benchmarks/runtime-matrix/kudzu/src", "benchmarks/runtime-matrix/kudzu/tsconfig.json"], { cwd: root, encoding: "utf8" }), "", "C2 fixture must match both release tags")
 const commits = Object.fromEntries(Object.entries(revisions).map(([arm, tag]) => [arm, execFileSync("git", ["rev-parse", `${tag}^{commit}`], { cwd: root, encoding: "utf8" }).trim()]))
 const protocol = {
@@ -73,6 +74,11 @@ if (effectOrder) Object.assign(protocol, {
   primary: "Correctness-fix cost characterization; no speed superiority gate",
   acceptance: "Candidate passes delayed owned-ref regression that fails on baseline; both arms pass prior lifetime tests and unchanged complete C2 acceptance",
   limits: "One ESM dependency orders list-owned effects after list initialization. Preserve costs and all failures; do not claim a speed improvement from this correctness packet."
+})
+if (rowEvents) Object.assign(protocol, {
+  primary: "Correctness-fix cost characterization; no speed superiority gate",
+  acceptance: "Baseline reproduces second-update row event failure; candidate passes delayed/repeated/cloned state and ref regression; both arms pass prior lifetime tests and complete unchanged C2 journeys",
+  limits: "Direct-row event templates resolve through existing ownership before current item capture. Preserve all costs and failures; no initial traversal or speed improvement is claimed."
 })
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 
@@ -139,11 +145,23 @@ try {
     await cp(join(workspace, "kudzu/tsconfig.json"), join(compiler, "fixture/tsconfig.json"))
     targets.push({ id: arm, label: tag, architecture: "pre-rendered HTML with route capabilities", compiler, root: join(compiler, "fixture"), dist: join(compiler, "fixture/dist") })
     await cp(join(compiler, "framework/list-runtime.js"), join(results, `${arm}-list-runtime.js`))
-    if (trial || rowIds || rowOwnership || plannedIds || effectOrder) {
+    if (trial || rowIds || rowOwnership || plannedIds || effectOrder || rowEvents) {
       await mkdir(join(compiler, "test/fixtures"), { recursive: true })
       for (const name of ["pending-evaluator-browser.test.mjs", "browser-cdp.mjs"]) await cp(join(root, "test", name), join(compiler, "test", name))
       if (effectOrder && arm === "baseline") await writeFile(join(compiler, "test/pending-evaluator-browser.test.mjs"), execFileSync("git", ["show", "v0.17.4:test/pending-evaluator-browser.test.mjs"], { cwd: root }))
       for (const name of ["pending-evaluator-browser", "pending-list-source", "list-condition-revision"]) await cp(join(root, "test/fixtures", name), join(compiler, "test/fixtures", name), { recursive: true })
+      if (rowEvents && arm === "baseline") {
+        let failure
+        try {
+          execFileSync(process.execPath, ["--test", "test/pending-evaluator-browser.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 90000 })
+        } catch (error) { failure = error }
+        assert.equal(failure?.status, 1, "baseline must reproduce the row-event failure")
+        const log = `${failure.stdout}\n${failure.stderr}`
+        await writeFile(join(results, "baseline-row-event-failure.log"), log)
+        assert.match(log, /Owned row did not settle:.*12/)
+        assert.match(log, /s1:\$k/)
+        await writeFile(join(compiler, "test/pending-evaluator-browser.test.mjs"), execFileSync("git", ["show", "v0.17.5:test/pending-evaluator-browser.test.mjs"], { cwd: root }))
+      }
       const log = execFileSync(process.execPath, ["--test", "test/pending-evaluator-browser.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 90000 })
       await writeFile(join(results, `${arm}-regression.log`), log)
     }
