@@ -630,7 +630,12 @@ function fillListParts(root, parts, item, revision, index = 0, previous) {
     }
   }
   if (__KUDZU_LIST_EVENTS__) {
-    for (const [node, events] of parts.events) {
+    for (let [node, events] of parts.events) {
+      if (__KUDZU_GENERAL_ROW_HOOKS__) {
+        let owner = root
+        while (owner && !listRowPaths.has(owner)) owner = owner.parentElement
+        if (owner && !rowReplacements.has(owner)) events = events.replaceAll("$k", listRowPaths.get(owner))
+      }
       for (const [event, native] of JSON.parse(events)) {
         native.scope = Object.fromEntries(Object.entries(native.scope).map(([name, value]) => [name, value?.type === "list-item" ? serializeItem(item) : value?.type === "list-index" ? index : value]))
         node.dataset[`kNative${capitalize(event)}`] = JSON.stringify(native)

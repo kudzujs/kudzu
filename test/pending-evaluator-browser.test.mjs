@@ -199,6 +199,12 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     const initial = { before, retained: root === document.querySelector("li"), idRetained: input.id === id, label: root.querySelector("label").htmlFor === id, note: input.value, text: root.querySelector("[data-label]").textContent }
     root.querySelector("[data-count]").click()
     await wait(() => root.querySelector("[data-count]").textContent === "1")
+    root.querySelector("[data-item-count]").click()
+    await wait(() => root.querySelector("[data-count]").textContent === "7" && root.dataset.clicked === "Latest")
+    document.querySelector("[data-update-again]").click()
+    await wait(() => root.title === "Again")
+    root.querySelector("[data-item-count]").click()
+    await wait(() => root.querySelector("[data-count]").textContent === "12" && root.dataset.clicked === "Again")
     document.querySelector("[data-remove]").click()
     await wait(() => !document.querySelector("li") && document.querySelector("[data-cleanup]").textContent === "cleaned")
     document.querySelector("[data-add]").click()
@@ -207,6 +213,8 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     const clone = { fresh: added !== root, differentId: addedInput.id !== id, resolved: !addedInput.id.includes("$k"), label: added.querySelector("label").htmlFor === addedInput.id, count: added.querySelector("[data-count]").textContent, title: added.title }
     added.querySelector("[data-count]").click()
     await wait(() => added.querySelector("[data-count]").textContent === "1")
+    added.querySelector("[data-item-count]").click()
+    await wait(() => added.querySelector("[data-count]").textContent === "6" && added.dataset.clicked === "Added")
     return { initial, clone }
   })()`)
   assert.deepEqual(owned, { initial: { before: "Initial", retained: true, idRetained: true, label: true, note: "Keep owned note", text: "Latest" }, clone: { fresh: true, differentId: true, resolved: true, label: true, count: "0", title: "Added" } }, "pre-rendered IDs remain scoped while late values and cloned ownership update")

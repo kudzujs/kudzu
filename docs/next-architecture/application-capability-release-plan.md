@@ -1,5 +1,16 @@
 # Application Capability Release Plan
 
+Active correctness packet (2026-10-26): the initial-ID investigation reproduces
+a retained-row event failure on 0.17.5. An item-capturing handler updates row
+state after delayed initial loading, but a second same-key item update restores
+the template's unresolved `s1:$k` state ID and subsequent clicks miss the row.
+Resolve direct-row event templates through the existing owner path before adding
+current item captures. Preserve nested replacement ownership and the 0.17.5 ESM
+ordering fix. Gate on delayed initial/repeated/cloned event behavior, existing
+conditional/nested tests, full check/tests and package smoke. Report byte and
+benchmark costs as correctness evidence, not a startup improvement. The initial
+traversal optimization remains unaccepted; prior failed trials stay rejected.
+
 This is the authoritative execution plan from `0.10.0` through `1.0.0`. It
 replaces the provisional `0.10` normalize, `0.11` diagnostics, and `0.12`
 adapter ordering recorded in the completed 0.9 packet. Those tools remain in
