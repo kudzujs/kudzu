@@ -36,13 +36,23 @@ retain the delayed ID/IDREF/template/clone behavior fixture without candidate-on
 descriptor assertions. Restored full checks and package smoke pass. Archive and
 hash are in `PERFORMANCE.md`, attached to v0.17.6. No new version is released.
 
-Next packet is offline readiness attribution using this run's already-recorded
-traces and load metrics: locate parsing, style/layout, module evaluation and the
-final same-navigation readiness marker relative to the accepted initial-DOM
-predicate. Do not add independent category medians as a wall-clock decomposition,
-rerun the rejected trial, relax the gate or pick another runtime optimization
-before identifying the remaining readiness cost. The removed visitor is a proven
-CPU cost, but its removal alone did not meet the product's startup gate.
+Offline readiness attribution completed (2026-10-27) using only this run's six
+existing traces. The tested analyzer conserves per-profile wall time without
+double-counting nested spans and keeps both readiness marks. Layout accounts for
+44.094–52.527 ms, style 16.394–24.397 ms; the final ready callbacks contain only
+0.420–0.976 ms of layout. Module evaluation ends 1.113–2.064 ms before final
+readiness, but its trace events have no URLs. Uncovered time is not proven idle
+or network waiting. Full results, reproduction and limitations are in
+[`c2-readiness-attribution-0176.md`](./c2-readiness-attribution-0176.md).
+
+Next packet is diagnostic-only module-body start/end marks on scratch copies of
+pinned v0.17.6 ESM, correlated with readiness/layout and unchanged full C2
+acceptance. Preserve native dependency order and distinguish synchronous module
+evaluation from dependency and later async work. Instrumented time cannot pass a
+speed gate. Do not add category medians, rerun the rejected trial, relax readiness
+or choose another runtime optimization before module ownership is identified.
+The removed visitor is a proven CPU cost, but its removal alone did not meet the
+product's startup gate. Compiler/runtime and published versions remain unchanged.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

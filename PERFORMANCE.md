@@ -1,5 +1,37 @@
 # Performance Records
 
+## Offline Readiness Attribution (2026-10-27)
+
+Completed the next diagnostic packet without collecting any new browser sample.
+`test/c2-readiness-attribution.mjs` reads the six existing traces from 40259544715,
+validates final same-navigation marks against stored readiness, and partitions
+each renderer interval without double-counting nested duration spans. Input hashes
+and exact per-profile microsecond conservation are recorded. Unit tests cover
+overlap, clipping, gaps, invalid durations, other threads and duplicate/navigation
+mark handling. Full per-profile tables and next diagnostic scope are in
+[`c2-readiness-attribution-0176.md`](docs/next-architecture/c2-readiness-attribution-0176.md).
+
+Observed layout is 44.094–52.527 ms and style 16.394–24.397 ms; only
+0.420–0.976 ms layout lies inside ready callbacks. All ready callbacks total
+2.731–3.687 ms inclusively. Every trace has two ready marks, separated by
+0.303–0.440 ms around DOMContentLoaded. Module evaluation ends 1.113–2.064 ms
+before the final mark, but all its events omit URLs; adjacent compile URLs do
+not prove module ownership. The pre-start interval (22.7–37.0 ms) and uncovered
+spans (12.944–29.855 ms) cannot be assigned to networking or idle time from these
+categories. Duration spans are wall time, not CPU self time.
+
+These six instrumented diagnostic traces do not replace the failed 21-pair gate.
+No runtime/semantic primitive, compiler pass/LOC, browser byte or package version
+changes. Next is scratch-only module-body marking to identify evaluation owners;
+there is not yet evidence to select another product optimization.
+
+Local `npm run check`, project-app journey and all 379 tests pass. Evidence is
+attached to v0.17.6 as `readiness-attribution-40259544715.tar.gz`, SHA256
+`2491efa437e84a7470193418f5b81df4bb9f830d6ec962b3e20955b38b14624c`.
+It contains the analyzer/tests, per-profile JSON with original input hashes,
+report and check logs. Original traces remain in the previously attached archive;
+the analysis does not modify them. No new release/deployment is required.
+
 ## Rejected Build-Proven Initial-ID Trial (2026-10-26)
 
 Candidate `4c7173c` lets renderList mark direct owned rows only when the complete
