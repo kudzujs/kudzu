@@ -990,6 +990,7 @@ async function renderList(node, namespace, selectValue) {
       renderContext.listRowRoot = renderContext.listRoot
       current += await renderNode(node.render(item, index), namespace, selectValue)
     }
+    if ((descriptor.rowStates || descriptor.rowRefs || descriptor.rowIds) && !descriptor.nested && !node.ownerField && !current.includes("$k")) descriptor.initialIdsResolved = true
     if (!node.ownerField || ownerTemplate && !rowList.planned) {
       renderContext.lists.push(descriptor)
       retainDescriptorHandlers(descriptor.source)

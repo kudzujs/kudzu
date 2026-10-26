@@ -220,4 +220,52 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
   assert.deepEqual(owned, { initial: { before: "Initial", retained: true, idRetained: true, label: true, note: "Keep owned note", text: "Latest" }, clone: { fresh: true, differentId: true, resolved: true, label: true, count: "0", title: "Added" } }, "pre-rendered IDs remain scoped while late values and cloned ownership update")
   assert.deepEqual(cdp.exceptions, [])
   assert.deepEqual(cdp.consoleErrors, [])
+  assets.set(ownedList[1], assets.get(ownedList[1]).replace("await new Promise(resolve => { globalThis.releaseOwnedList = resolve });\n", ""))
+  const resolvedHtml = assets.get("/resolved/index.html")
+  const resolvedList = resolvedHtml.match(/<script type="module" src="([^"]+\/kudzu-list.js)"><\/script>/)
+  assert.ok(resolvedList)
+  assets.set("/resolved/index.html", resolvedHtml.replace(resolvedList[0], ""))
+  assets.set(resolvedList[1], "await new Promise(resolve => { globalThis.releaseResolvedList = resolve });\n" + assets.get(resolvedList[1]))
+  await navigate("/resolved/index.html")
+  const resolved = await evaluate(cdp, `(async () => {
+    const runtime = await import(document.querySelector('script[src$="/kudzu.js"]').src)
+    const descriptor = selector => JSON.parse(document.querySelector(selector + " template[data-k-list]").dataset.kList)
+    const safe = descriptor("[data-resolved]"), dynamic = descriptor("[data-dynamic]"), literal = descriptor("[data-literal]")
+    const root = document.querySelector("[data-resolved] li"), input = root.querySelector("input"), id = input.id
+    input.value = "Keep note"
+    const wait = async predicate => {
+      const deadline = Date.now() + 5000
+      while (!predicate()) {
+        if (Date.now() > deadline) throw new Error("Resolved row did not settle: " + predicate.toString())
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+    }
+    const loading = import(${JSON.stringify(resolvedList[1])})
+    await wait(() => globalThis.releaseResolvedList)
+    document.querySelector("[data-update]").click()
+    await wait(() => runtime.browserState.get(safe.state)[0].label === "Latest")
+    globalThis.releaseResolvedList()
+    await loading
+    await wait(() => root.dataset.ready === "true" && root.title === "Latest")
+    const initial = { proof: safe.initialIdsResolved, retained: root === document.querySelector("[data-resolved] li"), id: input.id === id, label: root.querySelector("label").htmlFor === id, note: input.value, text: root.querySelector("[data-label]").textContent }
+    const fallback = { dynamicProof: dynamic.initialIdsResolved, dynamicId: document.querySelector("[data-dynamic] input").id, dynamicLabel: document.querySelector("[data-dynamic] label").htmlFor, literalProof: Boolean(literal.initialIdsResolved), literalId: document.querySelector("[data-literal] li").id }
+    root.querySelector("[data-count]").click()
+    await wait(() => root.querySelector("[data-count]").textContent === "1")
+    document.querySelector("[data-remove]").click()
+    await wait(() => !document.querySelector("[data-resolved] li") && document.querySelector("[data-cleanup]").textContent === "cleaned")
+    document.querySelector("[data-add]").click()
+    await wait(() => document.querySelector("[data-resolved] li")?.dataset.ready === "true")
+    const added = document.querySelector("[data-resolved] li"), addedId = added.querySelector("input").id
+    const clone = { fresh: added !== root, id: addedId !== id && !addedId.includes("$k"), label: added.querySelector("label").htmlFor === addedId, count: added.querySelector("[data-count]").textContent }
+    added.querySelector("[data-count]").click()
+    await wait(() => added.querySelector("[data-count]").textContent === "1")
+    return { initial, fallback, clone }
+  })()`)
+  assert.deepEqual(resolved, {
+    initial: { proof: true, retained: true, id: true, label: true, note: "Keep note", text: "Latest" },
+    fallback: { dynamicProof: true, dynamicId: "latest-number%3A1", dynamicLabel: "latest-number%3A1", literalProof: false, literalId: "literal-number%3A1" },
+    clone: { fresh: true, id: true, label: true, count: "0" }
+  })
+  assert.deepEqual(cdp.exceptions, [])
+  assert.deepEqual(cdp.consoleErrors, [])
 })

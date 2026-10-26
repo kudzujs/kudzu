@@ -1,5 +1,20 @@
 # Application Capability Release Plan
 
+Active initial-ID trial: let the build mark direct owned rows only when their
+complete initial HTML contains no `$k` placeholders. At initial mounting, clear
+replacement registration only for structural row plans with no list events and
+no attributes targeting data-k metadata or DOM ID/IDREFs. Structural plans already
+exclude expressions, conditions, range text and rewritten effect-item metadata.
+Keep every arrival-time value fill, all clone registration and existing nested
+ownership. This is a descriptor proof, not a per-row cache or a no-fill shortcut.
+Before timing, prove delayed current values, repeated events, clone IDs/state/refs,
+dynamic ID/IDREF fallback and template-placeholder fallback. Freeze the adoption
+gate against v0.17.6: >=5% lower initial-DOM median, negative paired median,
+>=16/21 faster pairs, no >5% plus >=16/21-slower operation regression; full checks,
+package smoke and all unchanged C2 journeys pass. Report compiler/runtime LOC,
+HTML/JS raw/gzip costs and all failed evidence. Reject a failed gate without
+rerunning for favorable samples; prior rejected candidates remain rejected.
+
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row
 state after delayed initial loading, but a second same-key item update restores
