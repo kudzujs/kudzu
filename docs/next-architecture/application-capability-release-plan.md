@@ -16,8 +16,11 @@ reproduces the new failure on 0.17.5 and passes the candidate regression and all
 48 C2 journeys. No gated operation regression; no speed claim. Runtime +6 net
 LOC, no compiler pass/semantic/runtime concept; C2 +0 raw/+1 level-9 gzip,
 project output +94 raw/+37 local aggregate gzip. Core 0.17.6 / generator 0.1.167
-delivery is next: exact-commit CI, protected publication and independent receipts.
-After delivery, return to initial-ID traversal proof with repeated event filling
+delivery is complete: tag `v0.17.6` at `487a156`, exact-commit CI 40248991167,
+user-approved publication 40249445874, registry integrity and fresh default/AI
+installation checks all pass. Worker `37da9034-2284-4934-89f5-1679c226efac` serves
+five byte-verified public routes; archives and hashes are in `PERFORMANCE.md`.
+Next, return to initial-ID traversal proof with repeated event filling
 covered; do not revive rejected caches or skip arrival-time values.
 
 This is the authoritative execution plan from `0.10.0` through `1.0.0`. It

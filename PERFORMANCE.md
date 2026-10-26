@@ -42,6 +42,20 @@ deploy output and local check/package logs. Core 0.17.6 / generator 0.1.167 is
 pending exact-release-commit CI and protected publication. Initial-ID traversal,
 startup/restoration superiority and independent AI-cost/1.0 gates remain unresolved.
 
+0.17.6 delivery complete: tag `v0.17.6` is immutable at
+`487a1566d23c6226974f919beb943d088142763b`. Exact-commit Node 22/package and
+required-Chrome CI [40248991167](https://github.com/kudzujs/kudzu/actions/runs/40248991167)
+passes. User-approved protected publication
+[40249445874](https://github.com/kudzujs/kudzu/actions/runs/40249445874) succeeds.
+Both npm tarball SHA512 integrities match local release packs; fresh default and
+`--ai` registry projects resolve core 0.17.6 and pass check/build. Website Worker
+`37da9034-2284-4934-89f5-1679c226efac` serves five public HTML routes byte-identical
+to local output, including `/releases/0.17.6/`. Delivery receipts are attached as
+`release-0176-verification.tar.gz`, SHA256
+`9d50b3391601c9b60ee96fdc73d95c9dd5a9ee827859c7ff0952f2fe1128f183`.
+Pinned-comparison workflow paths now require a harness/workflow change, avoiding
+the prior release-documentation duplicate run. The original comparison is retained.
+
 ## 0.17.5: Row Ownership Before Effects (2026-10-23)
 
 Pre-rendered-ID correctness investigation exposes a real 0.17.4 failure: delaying
