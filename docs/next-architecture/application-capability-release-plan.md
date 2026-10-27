@@ -84,14 +84,23 @@ journeys pass. C2 costs +8 raw/+3 gzip JS; HTML is identical. Product runtime an
 exact project contract are restored to 0.17.6. The external pre-load attribute
 recovery test remains; restored check/384 tests/package smoke pass. No release.
 
-Next packet is an offline HTML byte census on pinned C2 and project-application
-output, separating authored content, state seeds and repeated compiler binding/
-ownership metadata. Relate payload contributors to the preserved readiness
-partitions without equating byte counts with time savings. Select no compiler
-candidate unless an existing specialization can remove proven repeated work
-without dropping content/ownership or adding browser reconstruction. No new
-runtime primitive is authorized. General binding write skipping, attribute
-registration, first-fill list comparison and ID exclusion remain rejected.
+Offline HTML census complete: C2 has 481,736 metadata bytes (70.02% of `/`),
+project HTML 41,042 (62.84% across six pages). Exact repeated encoded values are
+only 6,051/1,506 bytes; distinct row state IDs prevent simple binding deduplication.
+The row-restore handler's tagged `initialRows` capture is 80,806 bytes. Plain-array
+substitution aliases contexts and is rejected. Omitting only false
+`nullPrototype` defaults in a copied descriptor saves 22,000 bytes while preserving
+independent decoding and prototype/own-key behavior. This is offline feasibility,
+not a product/speed result. Full check/386 tests pass; report and preserved inputs
+are in [`html-byte-census-0176.md`](./html-byte-census-0176.md).
+
+Next bounded candidate is build-time omission of false `nullPrototype` capture
+flags through the unchanged decoder default. Keep true flags, tagged records,
+context isolation, live capture semantics and diagnostics; no dictionary/cache or
+browser reconstruction. The packet freezes correctness/output/full/package checks
+and one hosted 21-pair comparison with the unchanged >=5%/negative-paired/16-of-21
+startup gate. Byte savings cannot override failure. General binding write skipping,
+attribute registration, first-fill list comparison and ID exclusion stay rejected.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

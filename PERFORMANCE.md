@@ -1,5 +1,37 @@
 # Performance Records
 
+## Offline 0.17.6 HTML Byte Census (2026-10-27)
+
+Pinned C2 baseline output from run 40450942360 and a fresh archived 0.17.6 project
+build are measured without another browser run. Project deploy digest matches
+the released 42-file/189,830-byte contract. The source-span analyzer conserves
+UTF-8 bytes, retains original attribute whitespace/encoded values, excludes fake
+markers in raw-text elements/comments, and records per-file SHA256/gzip sizes.
+
+C2 `/`: 687,976 raw / 69,512 gzip bytes; metadata 481,736 (70.02%). All project
+HTML: 65,308 raw / 11,729 aggregate gzip; metadata 41,042 (62.84%). Exact repeated
+encoded values total only 6,051/1,506 bytes within each name/page. C2's 2,006 generic
+binding descriptors are all distinct; deleting ownership markers is not valid
+deduplication. Residual source includes content and generated structural markup,
+not proven pure authored bytes. No category-gzip sums or byte-to-time inference.
+
+The restore handler captures `initialRows` in 80,806 tagged JSON bytes. Plain JSON
+would be smaller but aliases decoder contexts, so that shortcut fails a direct
+assertion-based semantic check. Omitting only false `nullPrototype` defaults in a
+copied descriptor reduces it to 58,806 bytes, preserving values, independent
+decodes, null prototypes and own special keys through the unchanged decoder.
+This authorizes a bounded compiler-only candidate, not adoption. Actual output and
+the frozen >=5%/negative-paired/16-of-21 startup gate remain unmeasured.
+
+Full check/386 tests plus project journey pass. No production source, semantic
+primitive, compiler pass/LOC, runtime concept, browser byte or version changes.
+Per-page/category results, input provenance, limits, readiness relation and next
+candidate packet: [`html-byte-census-0176.md`](docs/next-architecture/html-byte-census-0176.md).
+Evidence attached to v0.17.6: `html-byte-census-0176.tar.gz`, SHA256
+`deb8387465bfb805b0e6b0b8421c06e108192d23dbbad20fb7af3e4b3b180b2e`.
+It preserves both input deploys, pinned compiler/fixture source, build receipt,
+per-page census, capture/prototype assertions, analyzer tests and full-check logs.
+
 ## Rejected First-Fill List Attribute Comparison (2026-10-27)
 
 Gate frozen in `f87287b`, candidate `44a87cc`, harness `6e17b73`, hosted
