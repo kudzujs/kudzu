@@ -11,6 +11,7 @@ on:
       - perf/resolved-row-ids-0174
       - fix/retained-row-events-0175
       - perf/initial-id-proof-0176
+      - perf/attribute-bindings-0176
     # Pinned comparisons run when their harness changes, not on release-doc pushes.
     paths:
       - test/c2-initial-mount.mjs
@@ -37,7 +38,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: node test/c2-initial-mount.mjs ${{ github.ref_name == 'perf/initial-id-proof-0176' && '--resolved-ids' || github.ref_name == 'fix/retained-row-events-0175' && '--row-events' || github.ref_name == 'perf/resolved-row-ids-0174' && '--effect-order' || github.ref_name == 'perf/row-id-visits-0174' && '--planned-ids' || github.ref_name == 'perf/row-id-ownership-0174' && '--row-ownership' || github.ref_name == 'perf/row-id-traversal-0174' && '--row-ids' || '--cpu' }}
+      - run: node test/c2-initial-mount.mjs ${{ github.ref_name == 'perf/attribute-bindings-0176' && '--attribute-bindings' || github.ref_name == 'perf/initial-id-proof-0176' && '--resolved-ids' || github.ref_name == 'fix/retained-row-events-0175' && '--row-events' || github.ref_name == 'perf/resolved-row-ids-0174' && '--effect-order' || github.ref_name == 'perf/row-id-visits-0174' && '--planned-ids' || github.ref_name == 'perf/row-id-ownership-0174' && '--row-ownership' || github.ref_name == 'perf/row-id-traversal-0174' && '--row-ids' || '--cpu' }}
       - uses: actions/upload-artifact@v6
         if: always()
         with:
