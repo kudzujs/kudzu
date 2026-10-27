@@ -32,6 +32,16 @@ It contains the analyzer/tests, per-profile JSON with original input hashes,
 report and check logs. Original traces remain in the previously attached archive;
 the analysis does not modify them. No new release/deployment is required.
 
+Exact-commit CI 40423424188 passes Node 22/package smoke, but its Chrome lane
+fails the existing Worker effect test with `Execution context was destroyed`.
+The Worker helper launched a navigating page and evaluated after a fixed 500 ms
+delay. Delaying only its first HTML response by 1.5 seconds reproduces that exact
+failure locally. The helper now starts at about:blank, reuses the existing CDP
+transport and waits for the load lifecycle event matching Page.navigate's loader
+ID before evaluating. The delayed-response regression passes with the fix; full
+check and 379 tests/project journey pass again. This is test synchronization,
+not a Worker product change or a timing rerun. Failure logs are retained.
+
 ## Rejected Build-Proven Initial-ID Trial (2026-10-26)
 
 Candidate `4c7173c` lets renderList mark direct owned rows only when the complete

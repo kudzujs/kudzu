@@ -5,6 +5,7 @@ import { spawn, spawnSync } from "node:child_process"
 import { gzipSync } from "node:zlib"
 import { createConnection } from "node:net"
 import test from "node:test"
+import { CDP, evaluate } from "./browser-cdp.mjs"
 import { build, normalizeNavigation, specializeRuntime, writeRouteEntry } from "../framework/build.mjs"
 import { __kUseRouteMatch, behavior, conditional, createContext, list, listConditional, nativeBehavior, renderPage, useContext, useEffect, useId, useParams, useRef, useState } from "../framework/core.mjs"
 import { jsx } from "../framework/jsx-runtime.mjs"
@@ -6582,7 +6583,9 @@ http.createServer((request, response) => {
   const relative = url.pathname.replace(/^\\/dash\\/?/, "")
   const file = path.join(root, !relative || relative.endsWith("/") ? relative + "index.html" : path.extname(relative) ? relative : relative + "/index.html")
   response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
-  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+  const stream = () => fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+  if (url.pathname === "/dash/dashboard" && counts.get(url.pathname) === 1) return setTimeout(stream, 1500)
+  stream()
 }).listen(port, "127.0.0.1", () => console.log("ready"))
 `
   const server = spawn(process.execPath, ["-e", serverSource, output.pathname, String(port)], { stdio: ["ignore", "pipe", "pipe"] })
@@ -6726,36 +6729,45 @@ try {
 
 async function evaluateInChrome(chrome, url, expression, port, profile) {
   await mkdir(profile, { recursive: true })
-  const browser = spawn(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--user-data-dir=${profile.pathname}`, `--remote-debugging-port=${port}`, url], { stdio: "ignore" })
+  const browser = spawn(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", `--user-data-dir=${profile.pathname}`, `--remote-debugging-port=${port}`, "about:blank"], { stdio: "ignore" })
   try {
     let target
     for (let index = 0; index < 100 && !target; index++) {
       try {
         const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then(response => response.json())
-        target = targets.find(entry => entry.type === "page" && entry.url === url)
+        target = targets.find(entry => entry.type === "page" && entry.url === "about:blank")
       } catch {}
       if (!target) await new Promise(resolve => setTimeout(resolve, 50))
     }
     if (!target) throw new Error("Chrome DevTools target did not start")
-    await new Promise(resolve => setTimeout(resolve, 500))
-    const socket = new WebSocket(target.webSocketDebuggerUrl)
-    await new Promise((resolve, reject) => {
-      socket.addEventListener("open", resolve, { once: true })
-      socket.addEventListener("error", reject, { once: true })
-    })
+    const cdp = new CDP(target.webSocketDebuggerUrl)
+    let timer, loaderId, resolveLoaded
+    const loadedIds = new Set()
+    const onLoad = event => {
+      const message = JSON.parse(event.data)
+      if (message.method !== "Page.lifecycleEvent" || message.params.name !== "load") return
+      loadedIds.add(message.params.loaderId)
+      if (message.params.loaderId === loaderId) resolveLoaded()
+    }
     try {
-      const result = await new Promise((resolve, reject) => {
-        socket.addEventListener("message", event => {
-          const message = JSON.parse(event.data)
-          if (message.id !== 1) return
-          if (message.error || message.result?.exceptionDetails) reject(new Error(JSON.stringify(message.error ?? message.result.exceptionDetails)))
-          else resolve(message.result.result.value)
-        })
-        socket.send(JSON.stringify({ id: 1, method: "Runtime.evaluate", params: { expression, awaitPromise: true, returnByValue: true } }))
+      await cdp.send("Page.enable")
+      await cdp.send("Page.setLifecycleEventsEnabled", { enabled: true })
+      const loaded = new Promise((resolve, reject) => {
+        resolveLoaded = resolve
+        timer = setTimeout(() => reject(new Error("Worker document did not load")), 15000)
       })
-      return result
+      cdp.socket.addEventListener("message", onLoad)
+      await Promise.all([loaded, cdp.send("Page.navigate", { url }).then(result => {
+        assert.equal(result.errorText, undefined)
+        assert.ok(result.loaderId)
+        loaderId = result.loaderId
+        if (loadedIds.has(loaderId)) resolveLoaded()
+      })])
+      return await evaluate(cdp, expression)
     } finally {
-      socket.close()
+      clearTimeout(timer)
+      cdp.socket.removeEventListener("message", onLoad)
+      cdp.socket.close()
     }
   } finally {
     browser.kill()
