@@ -76,13 +76,22 @@ dataset writes change values. Full check/384 tests pass. See
 [`c2-dom-writes-0176.md`](./c2-dom-writes-0176.md), including limits and the
 preserved initial missing-resilience-helper failure.
 
-Next bounded candidate is first-fill list attribute comparison through the
-existing `patchBinding` force-write flag. Preserve differing arrival-time values,
-later retained-item writes, all IDs/clones and lifetime behavior. The packet
-freezes focused/full/package checks and one hosted 21-pair adoption comparison
-against 0.17.6 with the unchanged >=5%/negative-paired/16-of-21 gate. Counts are
-not speed proof. General binding write skipping, attribute registration and ID
-exclusion remain rejected; do not rerun them for favorable samples.
+First-fill list attribute comparison `44a87cc` is rejected by hosted 40450942360:
+initial DOM 325.1/315.0 ms (−3.11%), paired −8.1 ms, 14/21 faster. Eliminating
+exactly 2,000 initial same-value calls does not meet the >=5% and >=16/21 gates.
+No operation meets the regression gate; full checks, both lifetime arms and 48 C2
+journeys pass. C2 costs +8 raw/+3 gzip JS; HTML is identical. Product runtime and
+exact project contract are restored to 0.17.6. The external pre-load attribute
+recovery test remains; restored check/384 tests/package smoke pass. No release.
+
+Next packet is an offline HTML byte census on pinned C2 and project-application
+output, separating authored content, state seeds and repeated compiler binding/
+ownership metadata. Relate payload contributors to the preserved readiness
+partitions without equating byte counts with time savings. Select no compiler
+candidate unless an existing specialization can remove proven repeated work
+without dropping content/ownership or adding browser reconstruction. No new
+runtime primitive is authorized. General binding write skipping, attribute
+registration, first-fill list comparison and ID exclusion remain rejected.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

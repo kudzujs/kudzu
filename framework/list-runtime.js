@@ -625,7 +625,7 @@ function fillListParts(root, parts, item, revision, index = 0, previous) {
     for (const [node, attributes] of parts.attributes) {
       for (const [target, field] of attributes) {
         if (previous && Object.is(previous[field], item?.[field])) continue
-        patchBinding(node, target, item?.[field], previous !== undefined)
+        patchBinding(node, target, item?.[field], true)
       }
     }
   }

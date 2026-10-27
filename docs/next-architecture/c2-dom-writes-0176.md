@@ -92,3 +92,24 @@ and 14,039 full-journey operations (4,008 equal, 10,031 changed). Exactly 2,000
 same-value initial list attribute calls disappear; changed writes are unchanged.
 Other emitted modules and HTML match the released baseline. This validates the
 removed work, not speed; the uninstrumented hosted gate still decides adoption.
+
+## Hosted outcome: rejected
+
+Run [40450942360](https://github.com/kudzujs/kudzu/actions/runs/40450942360),
+harness `6e17b73`, candidate `44a87cc`: full checks, both delayed/lifetime arms,
+42 uninstrumented and six traced complete C2 journeys pass. Initial-DOM medians
+are 325.1/315.0 ms (−3.11%), paired median −8.1 ms, 14/21 faster. Both the >=5%
+and >=16/21 gates fail: **reject** without reruns or relaxation. No operation
+meets the regression gate. Script CPU 101.581/98.615 ms, paired −2.978 ms,
+15/21 faster is secondary. Removing 2,000 calls is not sufficient adoption proof.
+
+C2 JS costs +8 raw/+3 level-9 gzip bytes (43,267/16,343 → 43,275/16,346).
+HTML is byte-identical. Build medians are 736.731/725.738 ms. Host: AMD EPYC
+7763 (four logical CPUs), Linux 6.17.0-1022-azure x64, Node 24.21.0,
+Chrome 155.0.8059.39. Compare arms within this run, not previous hosts.
+
+Restore list runtime and exact project output contract byte-for-byte to v0.17.6.
+The external pre-load DOM attribute recovery fixture stays. Restored full check,
+384 tests plus project journey and both package smokes pass. Production semantic
+primitives, compiler passes/LOC, runtime concepts and browser-byte deltas are zero.
+No release/tag/publication/deployment follows this rejected trial.

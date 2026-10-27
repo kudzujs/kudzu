@@ -1,5 +1,41 @@
 # Performance Records
 
+## Rejected First-Fill List Attribute Comparison (2026-10-27)
+
+Gate frozen in `f87287b`, candidate `44a87cc`, harness `6e17b73`, hosted
+[40450942360](https://github.com/kudzujs/kudzu/actions/runs/40450942360).
+One line reuses the existing current-DOM comparison for first generic list fills,
+retaining differing arrival-time values and subsequent forced writes. A separate
+diagnostic completes six C2 journeys and removes exactly 2,000 initial same-value
+attribute calls: initial operations 5,008 → 3,008, changed operations stay 1,002;
+full journey 16,039 → 14,039, changed operations stay 10,031 in all three profiles.
+Counts are not speed evidence.
+
+Local full checks/384 tests/package smoke, hosted full checks, both delayed and
+lifetime arms and all 48 uninstrumented/traced C2 journeys pass. The extended
+fixture restores an externally changed DOM attribute before list loading even
+when its logical item field has not changed; repeated state/ref/ID clone behavior
+also passes on baseline and candidate.
+
+Initial DOM 325.1/315.0 ms (−3.11%), paired −8.1 ms, 14/21 faster: **reject**
+under the frozen >=5% and >=16/21 gates. No reruns or relaxed thresholds. Script
+CPU 101.581/98.615 ms, paired −2.978 ms, 15/21 faster is secondary. No operation
+meets the regression gate. Build medians 736.731/725.738 ms. C2 costs +8 raw/+3
+level-9 gzip JS, byte-identical HTML; project trial +16 raw/+7 local aggregate gzip.
+One runtime-line substitution, zero net source LOC, compiler passes/LOC and
+semantic/runtime concepts. Host: AMD EPYC 7763 (four logical CPUs), Linux
+6.17.0-1022-azure x64, Node 24.21.0, Chrome 155.0.8059.39.
+
+Runtime and exact project output contract are restored to v0.17.6; the external
+attribute recovery fixture remains. Restored full check/384 tests/project journey
+and both package smokes pass. No new release/tag/npm publication/deployment;
+startup improvement remains unresolved. Details and limitations are in
+[`c2-dom-writes-0176.md`](docs/next-architecture/c2-dom-writes-0176.md).
+Evidence attached to v0.17.6: `c2-initial-list-attrs-40450942360.tar.gz`, SHA256
+`12dfcead26c14edfe3554a9076c83730b49a483cfb02a6044253f9aebda64edc`.
+Archive preserves the candidate write census, all hosted raw samples/traces,
+both deploy trees, pinned protocol, regression logs and local/restored checks.
+
 ## Pinned Initial DOM Write Census (2026-10-27)
 
 `--dom-writes` instruments only scratch v0.17.6 output while retaining every
