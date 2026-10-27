@@ -75,3 +75,28 @@ its static route remains zero-JS. The candidate is not adopted: the separately
 pinned hosted comparison is still required. The C2 emitted property set is
 `class`, `value`, `style` (three probes per attribute-only node); the original
 archived diagnostic's reference to five described the unspecialized source.
+
+## Hosted outcome: rejected
+
+Candidate `9cb3853a063277730560b43774614e1d6d6e54e3`, harness `a1c7e89`,
+run [40443460003](https://github.com/kudzujs/kudzu/actions/runs/40443460003).
+Full checks and both lifetime arms pass, followed by 42 uninstrumented and six
+traced complete C2 journeys. Initial-DOM medians are 286.7/275.1 ms (−4.05%),
+paired median −11.6 ms, 16/21 faster pairs. The >=5% median requirement fails:
+**reject**, without reruns or relaxation. Script CPU 97.370/90.796 ms,
+paired −4.259 ms, 16/21 faster, is secondary and cannot replace the primary gate.
+No operation meets the frozen regression gate. Row restore median is 5.30%
+higher but only 10/21 pairs are slower; this is not proof of a statistical tie.
+
+C2 JS grows 43,267 → 43,319 raw and 16,343 → 16,361 level-9 gzip bytes;
+HTML remains byte-identical at 688,281 raw / 69,741 gzip. Build medians are
+673.059/667.788 ms. Host: Intel Xeon Platinum 8370C (four logical CPUs),
+Node 24.21.0, Chrome 155.0.8059.39, Linux 6.17.0-1022-azure x64.
+Only compare arms within this run.
+
+Product runtime and project artifact contract are restored byte-for-byte to
+v0.17.6; mixed-binding regression coverage stays. Restored full check, 382 tests
+plus the project journey and both package smokes pass. No product semantic,
+compiler, runtime-concept or browser-byte delta remains. No tag, npm publication
+or website deployment follows the rejected trial. Startup improvement remains
+unresolved; the next diagnostic packet is in the application capability plan.

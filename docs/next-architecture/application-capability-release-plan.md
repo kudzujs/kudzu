@@ -61,13 +61,20 @@ self weights are 8,877/5,992/6,716 µs; its replays within list/effect entries a
 only about 0.6–1.1 ms inclusive. The ID visitor remains expensive but its rejected
 exclusion stays rejected. See [`c2-module-cpu-0176.md`](./c2-module-cpu-0176.md).
 
-Next bounded candidate is attribute-only binding registration: avoid irrelevant
-property-marker reads and temporary copied attribute descriptors/tuples. Preserve
-all value fills and ownership. The packet freezes mixed-binding lifetime tests,
-full checks/package smoke and one hosted uninstrumented comparison against 0.17.6
-using the unchanged >=5%, negative paired median, >=16/21 faster adoption gate.
-Reject a failed gate without reruns; no release until adoption. No product edit
-or speed claim is part of the CPU diagnostic itself.
+Attribute-binding candidate `9cb3853` is rejected by hosted run 40443460003:
+initial DOM 286.7/275.1 ms (−4.05%), paired −11.6 ms, 16/21 faster. It misses the
+frozen >=5% median gate despite passing the other criteria. No operation meets
+the regression gate. Full checks, package smoke, mixed-binding delayed/lifetime
+coverage and all 48 C2 journeys pass. C2 costs +52 raw/+18 gzip JS; HTML is
+identical. Restore product source and exact artifact contract to 0.17.6, retaining
+tests and evidence. Restored checks/382 tests/package smoke pass; no new release.
+
+Next bounded packet is diagnostic-only initial DOM write counts on scratch pinned
+0.17.6 output: distinguish binding/list text and attribute writes by owner and
+whether the current DOM already has the requested value. Keep every fill, native
+dependency ordering, complete C2 acceptance and raw counts. Counts are not speed
+proof; choose no product candidate until they identify a distinct cost. Do not
+rerun rejected attribute registration or ID exclusion for favorable samples.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

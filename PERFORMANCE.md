@@ -1,5 +1,37 @@
 # Performance Records
 
+## Rejected Attribute-Only Binding Registration (2026-10-27)
+
+CPU evidence and gate frozen at `17fa0da`; candidate `9cb3853`, pinned harness
+`a1c7e89`, hosted [40443460003](https://github.com/kudzujs/kudzu/actions/runs/40443460003).
+The candidate avoids irrelevant property-marker reads on attribute-only nodes and
+temporary attribute descriptor copies/tuples. Mixed state/evaluator bindings pass
+delayed loading, duplicate mount, commits, release and remount on both baseline
+and candidate. Local full checks/382 tests/package smoke and hosted full checks,
+both lifetime arms and 48 unchanged C2 journeys pass.
+
+Initial DOM 286.7/275.1 ms (−4.05%), paired −11.6 ms, 16/21 faster: **reject**
+because the frozen >=5% median gate fails. No rerun or gate relaxation. Script
+CPU 97.370/90.796 ms, paired −4.259 ms, 16/21 faster is secondary. No operation
+meets the regression gate; row restore median rises 5.30%, but only 10/21 pairs
+are slower, which does not establish a tie. Build medians 673.059/667.788 ms.
+
+C2 JS +52 raw/+18 level-9 gzip bytes; HTML stays byte-identical. Project output
+trial +186 raw/+68 local aggregate gzip bytes; source runtime +2 net LOC, compiler
+LOC/passes, semantic primitives and runtime concepts +0. Host is Xeon Platinum
+8370C (four logical CPUs), Node 24.21.0, Chrome 155.0.8059.39, Linux
+6.17.0-1022-azure x64. Full details are in
+[`c2-module-cpu-0176.md`](docs/next-architecture/c2-module-cpu-0176.md).
+
+Product runtime and exact project artifact contract are restored to v0.17.6;
+mixed-binding regression coverage remains. Restored full checks/382 tests and
+package smoke pass. Production remains core 0.17.6 / generator 0.1.167; no new
+tag, npm publication or website deployment. Startup improvement is unresolved.
+Evidence `c2-attribute-bindings-40443460003.tar.gz` is attached to v0.17.6,
+SHA256 `eb6a51592814292c26ded0f166712c39878ac384315addb6fdbbbadda03c40f3`.
+It preserves the pinned protocol, all raw samples/traces, both deploy trees,
+regression logs, hosted log, local candidate/restored checks and package smokes.
+
 ## Pinned Function-Level CPU Attribution (2026-10-27)
 
 `--module-cpu` completes six unchanged local C2 journeys on pinned v0.17.6,
