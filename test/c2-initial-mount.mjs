@@ -37,7 +37,8 @@ const modules = process.argv[2] === "--modules" || moduleCPU
 const attributeBindings = process.argv[2] === "--attribute-bindings"
 const initialListAttrs = process.argv[2] === "--initial-list-attrs" || process.argv[2] === "--list-attrs-writes"
 const domWrites = process.argv[2] === "--dom-writes" || process.argv[2] === "--list-attrs-writes"
-assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules || attributeBindings || domWrites || initialListAttrs ? 3 : 2)
+const captureDefaults = process.argv[2] === "--capture-defaults"
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules || attributeBindings || domWrites || initialListAttrs || captureDefaults ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -53,6 +54,7 @@ const revisions = { baseline: resolvedIds ? "v0.17.6" : rowEvents ? "v0.17.5" : 
 if (modules || domWrites) Object.assign(revisions, { baseline: "v0.17.6", candidate: "v0.17.6" })
 if (attributeBindings) Object.assign(revisions, { baseline: "v0.17.6", candidate: "9cb3853a063277730560b43774614e1d6d6e54e3" })
 if (initialListAttrs) Object.assign(revisions, { baseline: "v0.17.6", candidate: "44a87ccad0bcef462de13416cd20ccaf6149b719" })
+if (captureDefaults) Object.assign(revisions, { baseline: "v0.17.6", candidate: "a3a445df58e4558d6ad020a92197ea2604e06ddb" })
 for (const tag of Object.values(revisions)) assert.equal(execFileSync("git", ["diff", tag, "--", "benchmarks/runtime-matrix/kudzu/src", "benchmarks/runtime-matrix/kudzu/tsconfig.json"], { cwd: root, encoding: "utf8" }), "", "C2 fixture must match both release tags")
 const commits = Object.fromEntries(Object.entries(revisions).map(([arm, tag]) => [arm, execFileSync("git", ["rev-parse", `${tag}^{commit}`], { cwd: root, encoding: "utf8" }).trim()]))
 const protocol = {
@@ -64,8 +66,8 @@ const protocol = {
   acceptance: "Unchanged complete C2 journey, row identity, cleanup, accessibility, delayed/missing scripts and zero-JS sibling",
   limits: "Readiness includes harness predicates and a forced layout; CDP load deltas extend through initial validation. Trace categories can overlap and must not be summed as exclusive costs. No runtime candidate is authorized by this diagnostic alone."
 }
-if (trial || rowIds || rowOwnership || plannedIds || attributeBindings || initialListAttrs || resolvedIds && !visits) protocol.trial = {
-  change: initialListAttrs ? "Use existing current-DOM attribute comparison on first generic list fills; preserve differing arrival-time values and later retained-item forced writes" : attributeBindings ? "Skip property-marker reads on attribute-only nodes; retain parsed attribute descriptors without per-descriptor copies or target tuples; preserve current-value fills and ownership" : resolvedIds ? "Build proves initial HTML has no placeholders; skip initial direct-row replacement only for structural plans without event or ID/metadata attribute fills; preserve all value fills and clone registration" : plannedIds ? "Reuse template-derived eligible attribute locations through existing itemParts; retain recursive fallback and all first-value fills" : rowOwnership ? "Register direct ID replacement only for hasRowHooks descriptors; retain ownership paths and first-value fills" : rowIds ? "Replace direct row-ID attribute-array copying with indexed NamedNodeMap traversal; preserve all elements, attributes and template contents" : "For initially matching structural keys, fill every retained row from current items, then reuse existing roots instead of performing general placement and rebuilding root maps",
+if (trial || rowIds || rowOwnership || plannedIds || attributeBindings || initialListAttrs || captureDefaults || resolvedIds && !visits) protocol.trial = {
+  change: captureDefaults ? "Omit only false nullPrototype capture flags at build time; preserve true flags, tagged records and unchanged browser decoding" : initialListAttrs ? "Use existing current-DOM attribute comparison on first generic list fills; preserve differing arrival-time values and later retained-item forced writes" : attributeBindings ? "Skip property-marker reads on attribute-only nodes; retain parsed attribute descriptors without per-descriptor copies or target tuples; preserve current-value fills and ownership" : resolvedIds ? "Build proves initial HTML has no placeholders; skip initial direct-row replacement only for structural plans without event or ID/metadata attribute fills; preserve all value fills and clone registration" : plannedIds ? "Reuse template-derived eligible attribute locations through existing itemParts; retain recursive fallback and all first-value fills" : rowOwnership ? "Register direct ID replacement only for hasRowHooks descriptors; retain ownership paths and first-value fills" : rowIds ? "Replace direct row-ID attribute-array copying with indexed NamedNodeMap traversal; preserve all elements, attributes and template contents" : "For initially matching structural keys, fill every retained row from current items, then reuse existing roots instead of performing general placement and rebuilding root maps",
   gate: "At least 5% lower initial-DOM median, negative paired median, at least 16/21 faster pairs, no operation regression under the existing >5% and 16/21 slower gate, both lifetime suites and all C2 journeys pass",
   limits: "Scratch candidate only. Reject without production adoption if the predeclared speed gate fails; raw/gzip sizes remain separately reported."
 }
@@ -170,8 +172,13 @@ try {
     targets.push({ id: arm, label: tag, architecture: "pre-rendered HTML with route capabilities", compiler, root: join(compiler, "fixture"), dist: join(compiler, "fixture/dist") })
     await cp(join(compiler, "framework/list-runtime.js"), join(results, `${arm}-list-runtime.js`))
     if (attributeBindings) await cp(join(compiler, "framework/binding-runtime.js"), join(results, `${arm}-binding-runtime.js`))
-    if (trial || rowIds || rowOwnership || plannedIds || effectOrder || rowEvents || resolvedIds || attributeBindings || initialListAttrs) {
+    if (trial || rowIds || rowOwnership || plannedIds || effectOrder || rowEvents || resolvedIds || attributeBindings || initialListAttrs || captureDefaults) {
       await mkdir(join(compiler, "test/fixtures"), { recursive: true })
+      if (captureDefaults) {
+        for (const name of ["capture-defaults.test.mjs", "effect-context.test.mjs"]) await cp(join(root, "test", name), join(compiler, "test", name))
+        const log = execFileSync(process.execPath, ["--test", ...(arm === "baseline" ? ["--test-skip-pattern=^capture output"] : []), "test/capture-defaults.test.mjs", "test/effect-context.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 30000 })
+        await writeFile(join(results, `${arm}-capture-regression.log`), log)
+      }
       for (const name of ["pending-evaluator-browser.test.mjs", "browser-cdp.mjs"]) await cp(join(root, "test", name), join(compiler, "test", name))
       if (effectOrder && arm === "baseline") await writeFile(join(compiler, "test/pending-evaluator-browser.test.mjs"), execFileSync("git", ["show", "v0.17.4:test/pending-evaluator-browser.test.mjs"], { cwd: root }))
       for (const name of ["pending-evaluator-browser", "pending-list-source", "list-condition-revision"]) await cp(join(root, "test/fixtures", name), join(compiler, "test/fixtures", name), { recursive: true })
@@ -302,10 +309,10 @@ try {
       load: Object.fromEntries(["scriptMilliseconds", "taskMilliseconds", "layoutMilliseconds", "styleMilliseconds"].map(key => [key, compare(sample => sample.cpu.load[key])])),
       operations: Object.fromEntries(Object.keys(report.targets.baseline.browser.operations).map(key => [key, compare(sample => sample.operations[key])]))
     }
-    if (trial || rowIds || rowOwnership || plannedIds || resolvedIds || attributeBindings || initialListAttrs) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
+    if (trial || rowIds || rowOwnership || plannedIds || resolvedIds || attributeBindings || initialListAttrs || captureDefaults) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
     const paths = async directory => (await readdir(directory, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name).slice(directory.length + 1)).sort()
     assert.deepEqual(await paths(targets[0].dist), await paths(targets[1].dist))
-    for (const path of await paths(targets[0].dist)) if (!(attributeBindings ? path.endsWith("kudzu-binding.js") : effectOrder ? path === "assets/effects/index.js" : path.endsWith("kudzu-list.js") || resolvedIds && path === "index.html")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
+    for (const path of await paths(targets[0].dist)) if (!(captureDefaults ? path === "index.html" : attributeBindings ? path.endsWith("kudzu-binding.js") : effectOrder ? path === "assets/effects/index.js" : path.endsWith("kudzu-list.js") || resolvedIds && path === "index.html")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
     for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
     await writeFile(join(results, "summary.json"), JSON.stringify(summary, null, 2))
   }
