@@ -41,6 +41,12 @@ transport and waits for the load lifecycle event matching Page.navigate's loader
 ID before evaluating. The delayed-response regression passes with the fix; full
 check and 379 tests/project journey pass again. This is test synchronization,
 not a Worker product change or a timing rerun. Failure logs are retained.
+Fix `15593ac` passes exact-commit Node 22/package and required-Chrome CI
+[40425117818](https://github.com/kudzujs/kudzu/actions/runs/40425117818).
+Supplemental archive `readiness-worker-ci-repair.tar.gz`, SHA256
+`fd64894cde74dc46f4d7912665ad366c37bcdbe7630d3151a76f7ebca52898e6`, attached
+to v0.17.6, preserves the initial CI failure, deterministic local failure,
+test-only patch, passing delayed regression and final local full checks.
 
 ## Rejected Build-Proven Initial-ID Trial (2026-10-26)
 
