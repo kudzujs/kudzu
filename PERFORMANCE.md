@@ -31,6 +31,9 @@ It retains the protocol, six raw traces, both deploy trees, original/marked modu
 hashes, per-profile attribution, analyzer sources/tests and validation logs.
 Final instrumentation reproduces all recorded module files byte-for-byte, and
 the final analyzer reproduces all three recorded attribution objects offline.
+Exact implementation commit `67f3f19` passes Node 22/package smoke and
+required-Chrome CI [40428763750](https://github.com/kudzujs/kudzu/actions/runs/40428763750).
+No release tag, npm publication or website deployment is needed for this diagnostic.
 
 ## Offline Readiness Attribution (2026-10-27)
 
