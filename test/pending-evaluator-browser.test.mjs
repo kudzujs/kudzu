@@ -71,7 +71,7 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
   }
   await navigate("/")
   const results = await evaluate(cdp, 'import("/journey.js").then(module => module.run()).catch(error => ({ error: error.message }))')
-  assert.deepEqual(results, ["attribute", "text", "condition"].flatMap(kind => ["unmount", "remount", "release", "release-remount", "commit"].map(action => `${kind}-${action}`)))
+  assert.deepEqual(results, ["attribute", "mixed", "text", "condition"].flatMap(kind => ["unmount", "remount", "release", "release-remount", "commit"].map(action => `${kind}-${action}`)))
   await navigate("/list/")
   await evaluate(cdp, 'Promise.all([...document.querySelectorAll("script[type=module]")].map(script => import(script.src)))')
   await evaluate(cdp, 'globalThis.retainedRow = document.querySelector("[data-row]"); true')

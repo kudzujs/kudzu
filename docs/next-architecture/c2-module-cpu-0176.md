@@ -33,8 +33,8 @@ the visitor's sampled cost.
 
 ## Next candidate, frozen before product edits
 
-Investigate attribute-only binding registration: avoid the five property-marker
-reads on nodes with no property binding, and retain parsed attribute descriptors
+Investigate attribute-only binding registration: avoid property-marker reads on
+nodes with no property binding (C2 emits three property kinds), and retain parsed attribute descriptors
 instead of copying each object and constructing temporary target/descriptor pairs.
 The fixture is the existing C2 application with many attribute-bound keyed rows
 and mixed property/attribute bindings. This changes discovery/allocation only:
@@ -57,3 +57,21 @@ negative paired median, at least 16/21 faster pairs, and no operation median ove
 without rerunning for favorable samples if this gate fails. Sampling alone does
 not predict that this small candidate will pass. No version bump is authorized
 until adoption.
+
+## Candidate validation
+
+The mixed-binding journey passes on released 0.17.6 before the product edit, and
+on the candidate afterward. It combines delayed evaluator-backed input value and
+generic attribute bindings with direct truthy class state, and checks duplicate
+mount, delayed current values, commits, release and remount. Focused binding,
+evaluator, browser and compiler-specialization tests pass. Full `npm run check`,
+382 tests plus the project application journey, and both package smokes pass.
+CPU-diagnostic full checks also pass.
+
+Candidate changes only the binding runtime (+2 net source lines); compiler LOC,
+passes, semantic primitives and runtime concepts are unchanged. Exact measured
+project output grows by 186 raw / 68 local aggregate gzip bytes across 42 files;
+its static route remains zero-JS. The candidate is not adopted: the separately
+pinned hosted comparison is still required. The C2 emitted property set is
+`class`, `value`, `style` (three probes per attribute-only node); the original
+archived diagnostic's reference to five described the unspecialized source.

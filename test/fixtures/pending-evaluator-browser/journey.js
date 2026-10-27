@@ -7,7 +7,7 @@ export async function run() {
   const check = (actual, expected, message) => {
     if (actual !== expected) throw new Error(`${message}: ${JSON.stringify(actual)} !== ${JSON.stringify(expected)}`)
   }
-  for (const kind of ["attribute", "text", "condition"]) {
+  for (const kind of ["attribute", "mixed", "text", "condition"]) {
     for (const action of ["unmount", "remount", "release", "release-remount", "commit"]) {
       const id = `${kind}-${action}`
       let resolve
@@ -24,10 +24,15 @@ export async function run() {
     const { id, kind, action } = descriptor
     const active = action === "remount" || action === "release-remount" || action === "commit"
     const capability = kind === "condition" ? "conditions" : "bindings"
-    const root = document.createElement("div")
-    if (kind === "attribute") {
+    const root = document.createElement(kind === "mixed" ? "input" : "div")
+    if (kind === "attribute" || kind === "mixed") {
       root.dataset.kBindAttrs = JSON.stringify([{ ...descriptor, target: "data-value" }])
       root.dataset.value = "initial"
+      if (kind === "mixed") {
+        root.dataset.kBindValue = JSON.stringify(descriptor)
+        root.dataset.kBindClass = JSON.stringify({ state: id, truthy: "on", falsy: "off" })
+        root.value = "initial"
+      }
     } else if (kind === "text") root.innerHTML = `<!--k-text:${index}-->initial<!--k-text-end-->`
     else {
       root.innerHTML = '<template><template data-k-true><b data-branch="true">true</b></template><template data-k-false><b data-branch="false">false</b></template></template><b data-branch="false">false</b><template></template>'
@@ -35,11 +40,13 @@ export async function run() {
       root.lastElementChild.dataset.kIfEnd = id
     }
     document.body.append(root)
-    const value = () => kind === "attribute" ? root.dataset.value : root.textContent
+    const value = () => kind === "attribute" || kind === "mixed" ? root.dataset.value : root.textContent
     const initial = kind === "condition" ? "false" : "initial"
     browserState.set(id, true)
     browserState.set(`${id}-other`, 0)
     mountDom(root, [capability])
+    mountDom(root, [capability])
+    if (kind === "mixed") check(root.className, "on", `${id}: direct property mount`)
     if (action.startsWith("release")) {
       releaseState(`${id}-other`)
       if (kind === "condition") check(browserState.has(`${id}-child`), false, `${id}: released child`)
@@ -60,12 +67,15 @@ export async function run() {
     globalThis.__pendingGates[id].resolve()
     await loadEvaluator(descriptor)
     await new Promise(resolve => setTimeout(resolve, 0))
-    check(globalThis.__pendingReads[id], active ? 1 : 0, `${id}: initial reads`)
+    const bindings = kind === "mixed" ? 2 : 1
+    check(globalThis.__pendingReads[id], active ? bindings : 0, `${id}: initial reads`)
     check(value(), active ? String(latest) : initial, `${id}: output after loading`)
+    if (kind === "mixed") check(root.value, active ? String(latest) : initial, `${id}: property after loading`)
     browserState.set(id, !latest)
     commitDom(id, !latest)
-    check(globalThis.__pendingReads[id], active ? 2 : 0, `${id}: commit reads`)
+    check(globalThis.__pendingReads[id], active ? bindings * 2 : 0, `${id}: commit reads`)
     check(value(), active ? String(!latest) : initial, `${id}: output after commit`)
+    if (kind === "mixed") check(root.value, active ? String(!latest) : initial, `${id}: property after commit`)
     if (kind === "condition") check(root.querySelectorAll("[data-branch]").length, 1, `${id}: one live branch`)
     unmountDom(root, [capability])
     root.remove()

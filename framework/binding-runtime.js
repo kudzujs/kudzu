@@ -9,7 +9,8 @@ const bindingRegistrations = new WeakMap()
 const conditionRegistrations = globalThis.__KUDZU_CONDITIONS__ && new WeakMap()
 const textDescriptors = globalThis.__KUDZU_TEXT_BINDINGS__ && typeof document !== "undefined" ? JSON.parse(document.body.dataset.kTextBindings ?? "[]") : []
 const bindingTypes = ["class", "disabled", "value", "checked", "style"]
-const bindingSelector = [...bindingTypes.map(target => `[data-k-bind-${target}]`), "[data-k-bind-attrs]"].join(",")
+const propertyBindingSelector = bindingTypes.map(target => `[data-k-bind-${target}]`).join(",")
+const bindingSelector = `${propertyBindingSelector},[data-k-bind-attrs]`
 
 export function patchBinding(node, target, value) {
   if (globalThis.__KUDZU_TEXT_BINDINGS__ && target === "text") {
@@ -69,12 +70,13 @@ function mountBindings(root) {
     const registrations = []
     bindingRegistrations.set(node, registrations)
     const descriptors = []
-    if (globalThis.__KUDZU_PROPERTY_BINDINGS__ !== false) for (const target of bindingTypes) {
+    if (globalThis.__KUDZU_PROPERTY_BINDINGS__ !== false && node.matches(propertyBindingSelector)) for (const target of bindingTypes) {
       const encoded = node.getAttribute(`data-k-bind-${target}`)
-      if (encoded !== null) descriptors.push([target, JSON.parse(encoded)])
+      if (encoded !== null) descriptors.push({ ...JSON.parse(encoded), target })
     }
-    if (globalThis.__KUDZU_ATTRIBUTE_BINDINGS__ !== false && node.dataset.kBindAttrs) descriptors.push(...JSON.parse(node.dataset.kBindAttrs).map(({ target, ...descriptor }) => [target, descriptor]))
-    for (const [target, descriptor] of descriptors) {
+    if (globalThis.__KUDZU_ATTRIBUTE_BINDINGS__ !== false && node.dataset.kBindAttrs) descriptors.push(...JSON.parse(node.dataset.kBindAttrs))
+    for (const descriptor of descriptors) {
+      const target = descriptor.target
       if (descriptor.state) {
         const binding = { node, target, read: Object.hasOwn(descriptor, "truthy") ? () => browserState.get(descriptor.state) ? descriptor.truthy : descriptor.falsy : () => browserState.get(descriptor.state) }
         register(bindingTargets, descriptor.state, binding)
