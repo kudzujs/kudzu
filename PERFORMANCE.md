@@ -35,6 +35,9 @@ Evidence attached to v0.17.6: `c2-initial-list-attrs-40450942360.tar.gz`, SHA256
 `12dfcead26c14edfe3554a9076c83730b49a483cfb02a6044253f9aebda64edc`.
 Archive preserves the candidate write census, all hosted raw samples/traces,
 both deploy trees, pinned protocol, regression logs and local/restored checks.
+Restored commit `878d5b1` passes required-Chrome and Node 22/package-smoke CI
+[40452802657](https://github.com/kudzujs/kudzu/actions/runs/40452802657).
+Product runtime, package versions and exact project contract match v0.17.6.
 
 ## Pinned Initial DOM Write Census (2026-10-27)
 
