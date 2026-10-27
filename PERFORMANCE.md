@@ -1,5 +1,37 @@
 # Performance Records
 
+## Pinned Module-Body Attribution (2026-10-27)
+
+`test/c2-initial-mount.mjs --modules` completes six local C2 journeys: three
+fresh original and three marked scratch profiles, both pinned to v0.17.6. It
+marks each emitted synchronous ESM body without wrapping functions or changing
+dependency order; top-level await is rejected. Tests prove dependency-first
+execution and later-callback exclusion. The original module hashes match the
+baseline and HTML is byte-identical. Eleven modules have paired renderer/navigation
+marks before readiness in all three instrumented profiles. No raw sample is rerun.
+
+List initialization body takes 43.022/42.630/41.815 ms, binding
+18.650/18.375/13.475 ms, effect entry 9.625/10.624/10.492 ms. The effect helper
+itself is only 0.026/0.014/0.017 ms. These are synchronous body **wall** times,
+including callees and GC; no layout/style span occurs inside the module windows.
+Module order alone does not identify expensive functions, because mountDom calls
+already-registered hooks. Next is scoped CPU attribution of binding/list callees.
+
+Instrumentation adds +2,002 raw/+839 level-9 gzip JS bytes in scratch only;
+HTML stays identical and the static sibling remains zero-JS. Product compiler,
+runtime, semantic primitives, package versions and output remain unchanged.
+Local check, 381 tests plus project-app journey pass. Full per-module values,
+raw readiness observations, environment and reproduction are in
+[`c2-module-attribution-0176.md`](docs/next-architecture/c2-module-attribution-0176.md).
+This is not a speed comparison and does not reopen the rejected initial-ID trial.
+
+Evidence `c2-module-bodies-0176.tar.gz` is attached to v0.17.6, SHA256
+`1bf59f61ca1d081a39f35fe68a3f0ac6af0887440c9ae4676f8e548cd51adaf6`.
+It retains the protocol, six raw traces, both deploy trees, original/marked module
+hashes, per-profile attribution, analyzer sources/tests and validation logs.
+Final instrumentation reproduces all recorded module files byte-for-byte, and
+the final analyzer reproduces all three recorded attribution objects offline.
+
 ## Offline Readiness Attribution (2026-10-27)
 
 Completed the next diagnostic packet without collecting any new browser sample.

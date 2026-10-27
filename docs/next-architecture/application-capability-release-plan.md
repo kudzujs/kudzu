@@ -45,14 +45,23 @@ readiness, but its trace events have no URLs. Uncovered time is not proven idle
 or network waiting. Full results, reproduction and limitations are in
 [`c2-readiness-attribution-0176.md`](./c2-readiness-attribution-0176.md).
 
-Next packet is diagnostic-only module-body start/end marks on scratch copies of
-pinned v0.17.6 ESM, correlated with readiness/layout and unchanged full C2
-acceptance. Preserve native dependency order and distinguish synchronous module
-evaluation from dependency and later async work. Instrumented time cannot pass a
-speed gate. Do not add category medians, rerun the rejected trial, relax readiness
-or choose another runtime optimization before module ownership is identified.
-The removed visitor is a proven CPU cost, but its removal alone did not meet the
-product's startup gate. Compiler/runtime and published versions remain unchanged.
+Module-body attribution completed (2026-10-27): `--modules` runs three fresh
+profiles each of original and marked scratch v0.17.6 output. All six C2 journeys
+pass; both HTML files are identical, original module hashes match and all eleven
+modules have paired same-navigation marks. List body 41.815–43.022 ms, binding
+13.475–18.650 ms, effect entry 9.625–10.624 ms; no layout/style span occurs within
+these bodies. Times include synchronous callees and GC, not CPU self time.
+Instrumentation costs +2,002 raw/+839 level-9 gzip bytes only in scratch output.
+Local full checks/381 tests pass; report and limits are in
+[`c2-module-attribution-0176.md`](./c2-module-attribution-0176.md).
+
+Next packet is diagnostic CPU sampling on pinned 0.17.6, correlated with these
+module windows to identify binding/list mount callees and repeated hooks.
+`mountDom(document)` invokes already-registered hooks, so module ownership is not
+function ownership. Keep raw samples and complete C2 acceptance; no product
+optimization is selected yet. Instrumented times cannot replace a frozen speed
+gate. The initial-ID trial stays rejected. Compiler/runtime and versions remain
+unchanged.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

@@ -94,3 +94,7 @@ until that ownership is known. A later candidate still needs a separate frozen,
 uninstrumented comparison.
 
 Product compiler/runtime, package versions and deploy output remain unchanged.
+
+Follow-up: the module-body diagnostic is now complete; see
+[`c2-module-attribution-0176.md`](./c2-module-attribution-0176.md) for the named
+owners, preserved raw observations and next bounded CPU attribution packet.

@@ -5,6 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:
 import { loadavg, tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { moduleAttribution } from "./c2-module-marks.mjs"
 
 if (process.argv[2] === "--summarize-cpu") {
   assert.equal(process.argv.length, 4)
@@ -30,7 +31,8 @@ const plannedIds = process.argv[2] === "--planned-ids"
 const effectOrder = process.argv[2] === "--effect-order"
 const rowEvents = process.argv[2] === "--row-events"
 const resolvedIds = process.argv[2] === "--resolved-ids" || process.argv[2] === "--resolved-visits"
-assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds ? 3 : 2)
+const modules = process.argv[2] === "--modules"
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -43,6 +45,7 @@ const replace = (source, before, after) => {
 }
 const sha256 = value => createHash("sha256").update(value).digest("hex")
 const revisions = { baseline: resolvedIds ? "v0.17.6" : rowEvents ? "v0.17.5" : trial || rowIds || rowOwnership || plannedIds || effectOrder ? "v0.17.4" : "v0.17.3", candidate: resolvedIds ? "4c7173c" : rowEvents ? "c25c4f8" : effectOrder ? "5d1ff7a" : plannedIds ? "b8f5ac1" : "v0.17.4" }
+if (modules) Object.assign(revisions, { baseline: "v0.17.6", candidate: "v0.17.6" })
 for (const tag of Object.values(revisions)) assert.equal(execFileSync("git", ["diff", tag, "--", "benchmarks/runtime-matrix/kudzu/src", "benchmarks/runtime-matrix/kudzu/tsconfig.json"], { cwd: root, encoding: "utf8" }), "", "C2 fixture must match both release tags")
 const commits = Object.fromEntries(Object.entries(revisions).map(([arm, tag]) => [arm, execFileSync("git", ["rev-parse", `${tag}^{commit}`], { cwd: root, encoding: "utf8" }).trim()]))
 const protocol = {
@@ -80,6 +83,12 @@ if (rowEvents) Object.assign(protocol, {
   primary: "Correctness-fix cost characterization; no speed superiority gate",
   acceptance: "Baseline reproduces second-update row event failure; candidate passes delayed/repeated/cloned state and ref regression; both arms pass prior lifetime tests and complete unchanged C2 journeys",
   limits: "Direct-row event templates resolve through existing ownership before current item capture. Preserve all costs and failures; no initial traversal or speed improvement is claimed."
+})
+if (modules) Object.assign(protocol, {
+  primary: "Diagnostic synchronous module-body attribution; no speed gate", profiles: 3, measuredBuilds: 1, warmupBuilds: 0,
+  regressionGate: null,
+  attribution: "Both arms pin v0.17.6; baseline is unmodified, candidate adds body start/end marks to emitted ESM. Native dependency order and full C2 acceptance remain unchanged.",
+  limits: "Marked wall time is not CPU self time or a speed comparison. Module bodies exclude dependency evaluation and later async callbacks; top-level await is rejected. Preserve all traces, marks and artifact hashes."
 })
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 
@@ -222,31 +231,33 @@ try {
     await writeFile(join(results, "cpu-attribution.json"), JSON.stringify(summaries, null, 2))
     process.exit(0)
   }
-  await writeFile(join(results, "runner.mjs"), runner)
-  execFileSync(process.execPath, [join(results, "runner.mjs")], { cwd: root, env: { ...process.env, BENCHMARK_PROFILES: "21" }, stdio: "inherit", timeout: 900000 })
-  const report = JSON.parse(await readFile(join(results, "raw.json")))
-  const median = values => values.toSorted((a, b) => a - b)[Math.floor(values.length / 2)]
-  const compare = read => {
-    const a = report.targets.baseline.browser.rawProfiles.map(read)
-    const b = report.targets.candidate.browser.rawProfiles.map(read)
-    assert.equal(a.length, 21)
-    assert.equal(b.length, 21)
-    assert.ok([...a, ...b].every(Number.isFinite))
-    const slower = b.filter((value, index) => value > a[index]).length
-    const relativeChange = median(a) === 0 ? null : median(b) / median(a) - 1
-    return { baseline: median(a), candidate: median(b), pairedMedian: median(b.map((value, index) => value - a[index])), slower, faster: b.filter((value, index) => value < a[index]).length, relativeChange, regressionGate: relativeChange > .05 && slower >= 16 }
+  if (!modules) {
+    await writeFile(join(results, "runner.mjs"), runner)
+    execFileSync(process.execPath, [join(results, "runner.mjs")], { cwd: root, env: { ...process.env, BENCHMARK_PROFILES: "21" }, stdio: "inherit", timeout: 900000 })
+    const report = JSON.parse(await readFile(join(results, "raw.json")))
+    const median = values => values.toSorted((a, b) => a - b)[Math.floor(values.length / 2)]
+    const compare = read => {
+      const a = report.targets.baseline.browser.rawProfiles.map(read)
+      const b = report.targets.candidate.browser.rawProfiles.map(read)
+      assert.equal(a.length, 21)
+      assert.equal(b.length, 21)
+      assert.ok([...a, ...b].every(Number.isFinite))
+      const slower = b.filter((value, index) => value > a[index]).length
+      const relativeChange = median(a) === 0 ? null : median(b) / median(a) - 1
+      return { baseline: median(a), candidate: median(b), pairedMedian: median(b.map((value, index) => value - a[index])), slower, faster: b.filter((value, index) => value < a[index]).length, relativeChange, regressionGate: relativeChange > .05 && slower >= 16 }
+    }
+    const summary = {
+      initial: compare(sample => sample.initialDomReadyMilliseconds),
+      load: Object.fromEntries(["scriptMilliseconds", "taskMilliseconds", "layoutMilliseconds", "styleMilliseconds"].map(key => [key, compare(sample => sample.cpu.load[key])])),
+      operations: Object.fromEntries(Object.keys(report.targets.baseline.browser.operations).map(key => [key, compare(sample => sample.operations[key])]))
+    }
+    if (trial || rowIds || rowOwnership || plannedIds || resolvedIds) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
+    const paths = async directory => (await readdir(directory, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name).slice(directory.length + 1)).sort()
+    assert.deepEqual(await paths(targets[0].dist), await paths(targets[1].dist))
+    for (const path of await paths(targets[0].dist)) if (!(effectOrder ? path === "assets/effects/index.js" : path.endsWith("kudzu-list.js") || resolvedIds && path === "index.html")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
+    for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
+    await writeFile(join(results, "summary.json"), JSON.stringify(summary, null, 2))
   }
-  const summary = {
-    initial: compare(sample => sample.initialDomReadyMilliseconds),
-    load: Object.fromEntries(["scriptMilliseconds", "taskMilliseconds", "layoutMilliseconds", "styleMilliseconds"].map(key => [key, compare(sample => sample.cpu.load[key])])),
-    operations: Object.fromEntries(Object.keys(report.targets.baseline.browser.operations).map(key => [key, compare(sample => sample.operations[key])]))
-  }
-  if (trial || rowIds || rowOwnership || plannedIds || resolvedIds) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
-  const paths = async directory => (await readdir(directory, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name).slice(directory.length + 1)).sort()
-  assert.deepEqual(await paths(targets[0].dist), await paths(targets[1].dist))
-  for (const path of await paths(targets[0].dist)) if (!(effectOrder ? path === "assets/effects/index.js" : path.endsWith("kudzu-list.js") || resolvedIds && path === "index.html")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
-  for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
-  await writeFile(join(results, "summary.json"), JSON.stringify(summary, null, 2))
 
   const traces = join(results, "traces")
   await mkdir(traces)
@@ -267,9 +278,27 @@ try {
     const heapAfterLoad = await send("Runtime.getHeapUsage")`)
   traced = replace(traced, "    globalThis.__runtimeMatrixReady = null;", '    performance.mark("c2-initial-start"); globalThis.__runtimeMatrixReady = null;')
   traced = replace(traced, "globalThis.__runtimeMatrixReady = performance.now();", 'globalThis.__runtimeMatrixReady = performance.now(); performance.mark("c2-initial-ready");')
+  if (modules) {
+    traced = `import { instrumentModules } from ${JSON.stringify(new URL("./c2-module-marks.mjs", import.meta.url).href)}\n` + traced
+    traced = replace(traced, "  return measured ? { milliseconds, peakRssBytes, output: await measureArtifacts(target.dist) } : null", `  if (target.id === "candidate") await instrumentModules(target.dist, ${JSON.stringify(join(results, "module-manifest.json"))})
+  return measured ? { milliseconds, peakRssBytes, output: await measureArtifacts(target.dist) } : null`)
+  }
   await writeFile(join(traces, "runner.mjs"), traced)
   execFileSync(process.execPath, [join(traces, "runner.mjs"), "--check"], { cwd: root, stdio: "inherit", timeout: 300000 })
   await summarizeTraces(traces)
+  if (modules) {
+    const manifest = JSON.parse(await readFile(join(results, "module-manifest.json")))
+    const report = JSON.parse(await readFile(join(traces, "raw.json")))
+    const attribution = []
+    for (let profile = 0; profile < 3; profile++) {
+      const bytes = await readFile(join(traces, `candidate-${profile}.trace.json`))
+      attribution.push({ profile, traceSha256: sha256(bytes), ...moduleAttribution(JSON.parse(bytes).traceEvents, report.targets.candidate.browser.rawProfiles[profile].initialDomReadyMilliseconds, manifest) })
+    }
+    for (const entry of manifest) assert.equal(sha256(await readFile(join(targets[0].dist, entry.path))), entry.originalSha256)
+    for (const path of ["index.html", "static/index.html"]) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)))
+    for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
+    await writeFile(join(results, "module-attribution.json"), JSON.stringify(attribution, null, 2))
+  }
 } catch (error) {
   await writeFile(join(results, "failure.json"), JSON.stringify({ error: error.stack, load: loadavg() }, null, 2))
   throw error
