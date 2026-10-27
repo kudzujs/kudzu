@@ -85,3 +85,10 @@ updates, repeated item/state/ref handlers and cloned ID/IDREF/state checks pass.
 Full check/384 tests plus project journey and package smokes pass. Project output
 cost is +16 raw / +7 local aggregate gzip bytes across the same 42 files; the
 static route stays zero-JS. Adoption is still pending the frozen comparison.
+
+Pinned candidate `44a87cc` passes six further C2 journeys with `--list-attrs-writes`.
+Every marked profile now has 3,008 initial operations (2,006 equal, 1,002 changed)
+and 14,039 full-journey operations (4,008 equal, 10,031 changed). Exactly 2,000
+same-value initial list attribute calls disappear; changed writes are unchanged.
+Other emitted modules and HTML match the released baseline. This validates the
+removed work, not speed; the uninstrumented hosted gate still decides adoption.
