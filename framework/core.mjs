@@ -474,7 +474,7 @@ function serializeCapture(name, value, seen) {
       if (!("value" in descriptor)) throw new Error(`Native capture "${name}" is not serializable: accessor`)
       entries.push([key, serializeCapture(name, descriptor.value, seen)])
     }
-    const serialized = { type: "object", nullPrototype: prototype === null, value: entries }
+    const serialized = { type: "object", ...(prototype === null ? { nullPrototype: true } : {}), value: entries }
     renderContext?.captureCache.set(value, serialized)
     return serialized
   } finally {

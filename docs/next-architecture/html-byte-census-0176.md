@@ -116,3 +116,18 @@ median, negative paired median, >=16/21 faster, no operation >5% higher with
 This census passes full check and 386 tests plus the project journey. Semantic
 primitives, compiler passes/LOC, runtime concepts and production browser bytes
 change by zero. No release or deployment is required for the offline report.
+
+## False-default candidate validation (2026-10-28)
+
+One build-time `serializeCapture()` line now omits false prototype flags, retaining
+true flags. No browser source, encoding tag, compiler pass or semantic/runtime
+concept changes; net compiler LOC is zero. The output assertion fails on released
+source before editing, while native/effect context isolation, ordinary/null
+prototypes, nested own keys, undefined/special numbers and cycle/accessor/symbol/
+non-plain diagnostics already pass. Candidate output and all semantic assertions
+pass afterward. Existing live-state/setter/evaluator tests also pass.
+
+Full check, 388 tests plus project journey and both package smokes pass. Project
+output is 42 files, 189,566 raw / 57,819 local aggregate gzip bytes: −264/−14.
+All route JS totals stay unchanged; the exact contract records the new digest.
+Adoption still requires the frozen uninstrumented hosted startup comparison.
