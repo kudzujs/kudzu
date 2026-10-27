@@ -31,6 +31,9 @@ Evidence `c2-attribute-bindings-40443460003.tar.gz` is attached to v0.17.6,
 SHA256 `eb6a51592814292c26ded0f166712c39878ac384315addb6fdbbbadda03c40f3`.
 It preserves the pinned protocol, all raw samples/traces, both deploy trees,
 regression logs, hosted log, local candidate/restored checks and package smokes.
+Restored commit `c3cbb4f` passes required-Chrome and Node 22/package-smoke CI
+[40445266115](https://github.com/kudzujs/kudzu/actions/runs/40445266115).
+Runtime, package versions and exact project contract match v0.17.6 byte-for-byte.
 
 ## Pinned Function-Level CPU Attribution (2026-10-27)
 
