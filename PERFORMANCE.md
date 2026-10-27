@@ -31,6 +31,9 @@ Evidence attached to v0.17.6: `html-byte-census-0176.tar.gz`, SHA256
 `deb8387465bfb805b0e6b0b8421c06e108192d23dbbad20fb7af3e4b3b180b2e`.
 It preserves both input deploys, pinned compiler/fixture source, build receipt,
 per-page census, capture/prototype assertions, analyzer tests and full-check logs.
+Exact commit `9d03cd8` passes required-Chrome and Node 22/package-smoke CI
+[40473132302](https://github.com/kudzujs/kudzu/actions/runs/40473132302).
+Product source/output remains byte-identical to 0.17.6; no tag or deployment.
 
 ## Rejected First-Fill List Attribute Comparison (2026-10-27)
 
