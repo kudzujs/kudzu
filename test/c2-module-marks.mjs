@@ -64,3 +64,39 @@ export function moduleAttribution(events, readiness, manifest) {
   for (let i = 1; i < modules.length; i++) assert.ok(modules[i].startMilliseconds >= modules[i - 1].endMilliseconds, "synchronous ESM bodies must not overlap")
   return { readiness: readinessReport, modules, notObservedBeforeReadiness: manifest.filter(entry => !modules.some(module => module.path === entry.path)).map(entry => entry.path) }
 }
+
+export function attributeCPU(profile, modules, start) {
+  assert.equal(profile.samples.length, profile.timeDeltas.length)
+  const nodes = new Map(profile.nodes.map(node => [node.id, node])), parents = new Map()
+  assert.equal(nodes.size, profile.nodes.length)
+  for (const node of profile.nodes) for (const child of node.children ?? []) {
+    assert.ok(nodes.has(child) && !parents.has(child))
+    parents.set(child, node.id)
+  }
+  const sites = new Map(), negativeDeltas = []
+  let time = profile.startTime, total = 0
+  for (const [index, id] of profile.samples.entries()) {
+    const delta = profile.timeDeltas[index]
+    assert.ok(Number.isFinite(delta) && nodes.has(id))
+    if (delta < 0) negativeDeltas.push({ index, delta })
+    time += delta
+    total += delta
+    const window = modules.find(module => time >= start + module.startMilliseconds * 1000 && time < start + module.endMilliseconds * 1000)?.path ?? "outside-module-bodies"
+    const ancestors = new Set(), frames = new Set()
+    for (let current = id; current !== undefined; current = parents.get(current)) {
+      assert.ok(!ancestors.has(current), "CPU parent cycle")
+      ancestors.add(current)
+      const frame = nodes.get(current).callFrame
+      const url = /^https?:/.test(frame.url) ? new URL(frame.url).pathname : frame.url
+      const key = JSON.stringify([window, url, frame.functionName, frame.lineNumber, frame.columnNumber])
+      if (!sites.has(key)) sites.set(key, { window, url, functionName: frame.functionName, lineNumber: frame.lineNumber, columnNumber: frame.columnNumber, samples: 0, selfMicroseconds: 0, inclusiveMicroseconds: 0 })
+      const site = sites.get(key)
+      if (current === id) { site.samples++; site.selfMicroseconds += delta }
+      if (!frames.has(key)) site.inclusiveMicroseconds += delta
+      frames.add(key)
+    }
+  }
+  assert.equal([...sites.values()].reduce((sum, site) => sum + site.samples, 0), profile.samples.length)
+  assert.equal([...sites.values()].reduce((sum, site) => sum + site.selfMicroseconds, 0), total)
+  return { samples: profile.samples.length, sampledMicroseconds: total, negativeDeltas, sites: [...sites.values()].sort((a, b) => b.selfMicroseconds - a.selfMicroseconds) }
+}

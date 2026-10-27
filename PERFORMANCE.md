@@ -1,5 +1,27 @@
 # Performance Records
 
+## Pinned Function-Level CPU Attribution (2026-10-27)
+
+`--module-cpu` completes six unchanged local C2 journeys on pinned v0.17.6,
+with requested 100 µs sampling and scratch module marks. Original JS hashes and
+both HTML files match. Sample counts and signed self weights are conserved,
+including negative deltas and every outside-window sample. Inclusive ancestor
+weights overlap; instrumented weights are not function durations or speed proof.
+
+`mountBindings` self weights: 8,877/5,992/6,716 µs; inclusive:
+17,000/11,120/11,207 µs. Replays during list/effect entry contribute only about
+0.6–1.1 ms inclusive. The direct ID attribute visitor contributes
+11,977/11,171/11,181 µs self, but its previously rejected exclusion remains
+rejected. Source locations, environment, limitations and the next frozen
+attribute-binding registration packet are recorded in
+[`c2-module-cpu-0176.md`](docs/next-architecture/c2-module-cpu-0176.md).
+No semantic primitive, compiler pass/LOC, runtime concept, product browser byte
+or package version changes in this diagnostic.
+Evidence attached to v0.17.6: `c2-module-cpu-0176.tar.gz`, SHA256
+`1dc9950a1a4be8e4a3ec785554946708182375501a02a429569321520dd273c4`.
+It retains all six CPU profiles/traces, raw journeys, both deploy trees, module
+hashes/windows, signed attribution, and the analyzer/harness sources and tests.
+
 ## Pinned Module-Body Attribution (2026-10-27)
 
 `test/c2-initial-mount.mjs --modules` completes six local C2 journeys: three

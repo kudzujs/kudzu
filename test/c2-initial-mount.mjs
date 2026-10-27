@@ -5,7 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:
 import { loadavg, tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { moduleAttribution } from "./c2-module-marks.mjs"
+import { attributeCPU, moduleAttribution } from "./c2-module-marks.mjs"
 
 if (process.argv[2] === "--summarize-cpu") {
   assert.equal(process.argv.length, 4)
@@ -31,7 +31,8 @@ const plannedIds = process.argv[2] === "--planned-ids"
 const effectOrder = process.argv[2] === "--effect-order"
 const rowEvents = process.argv[2] === "--row-events"
 const resolvedIds = process.argv[2] === "--resolved-ids" || process.argv[2] === "--resolved-visits"
-const modules = process.argv[2] === "--modules"
+const moduleCPU = process.argv[2] === "--module-cpu"
+const modules = process.argv[2] === "--modules" || moduleCPU
 assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
@@ -90,6 +91,7 @@ if (modules) Object.assign(protocol, {
   attribution: "Both arms pin v0.17.6; baseline is unmodified, candidate adds body start/end marks to emitted ESM. Native dependency order and full C2 acceptance remain unchanged.",
   limits: "Marked wall time is not CPU self time or a speed comparison. Module bodies exclude dependency evaluation and later async callbacks; top-level await is rejected. Preserve all traces, marks and artifact hashes."
 })
+if (moduleCPU) protocol.attribution += " Sample CPU at requested 100-microsecond interval in both arms; correlate candidate sample timestamps with marked body windows. Preserve signed deltas and all outside-window samples; sampling weights are not exact function durations."
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 
 try {
@@ -283,6 +285,16 @@ try {
     traced = replace(traced, "  return measured ? { milliseconds, peakRssBytes, output: await measureArtifacts(target.dist) } : null", `  if (target.id === "candidate") await instrumentModules(target.dist, ${JSON.stringify(join(results, "module-manifest.json"))})
   return measured ? { milliseconds, peakRssBytes, output: await measureArtifacts(target.dist) } : null`)
   }
+  if (moduleCPU) {
+    traced = replace(traced, '    const cpuBefore = await performanceMetrics(send)', `    await send("Profiler.enable")
+    await send("Profiler.setSamplingInterval", { interval: 100 })
+    await send("Profiler.start")
+    const cpuBefore = await performanceMetrics(send)`)
+    traced = replace(traced, '    await client.send("Tracing.end")', `    const { profile: cpuProfile } = await send("Profiler.stop")
+    await writeFile(join(resultsDirectory, target.id + "-" + profile + ".cpuprofile"), JSON.stringify(cpuProfile))
+    await send("Profiler.disable")
+    await client.send("Tracing.end")`)
+  }
   await writeFile(join(traces, "runner.mjs"), traced)
   execFileSync(process.execPath, [join(traces, "runner.mjs"), "--check"], { cwd: root, stdio: "inherit", timeout: 300000 })
   await summarizeTraces(traces)
@@ -292,7 +304,15 @@ try {
     const attribution = []
     for (let profile = 0; profile < 3; profile++) {
       const bytes = await readFile(join(traces, `candidate-${profile}.trace.json`))
-      attribution.push({ profile, traceSha256: sha256(bytes), ...moduleAttribution(JSON.parse(bytes).traceEvents, report.targets.candidate.browser.rawProfiles[profile].initialDomReadyMilliseconds, manifest) })
+      const events = JSON.parse(bytes).traceEvents
+      const result = moduleAttribution(events, report.targets.candidate.browser.rawProfiles[profile].initialDomReadyMilliseconds, manifest)
+      if (moduleCPU) {
+        const cpu = JSON.parse(await readFile(join(traces, `candidate-${profile}.cpuprofile`)))
+        const start = events.find(event => event.name === "c2-initial-start").ts
+        assert.ok(cpu.startTime <= start && cpu.endTime >= start + result.readiness.intervalMilliseconds * 1000, "CPU and trace clocks must cover the same readiness window")
+        result.cpu = attributeCPU(cpu, result.modules, start)
+      }
+      attribution.push({ profile, traceSha256: sha256(bytes), ...result })
     }
     for (const entry of manifest) assert.equal(sha256(await readFile(join(targets[0].dist, entry.path))), entry.originalSha256)
     for (const path of ["index.html", "static/index.html"]) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)))

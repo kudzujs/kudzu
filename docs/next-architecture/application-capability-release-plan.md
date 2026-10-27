@@ -55,13 +55,19 @@ Instrumentation costs +2,002 raw/+839 level-9 gzip bytes only in scratch output.
 Local full checks/381 tests pass; report and limits are in
 [`c2-module-attribution-0176.md`](./c2-module-attribution-0176.md).
 
-Next packet is diagnostic CPU sampling on pinned 0.17.6, correlated with these
-module windows to identify binding/list mount callees and repeated hooks.
-`mountDom(document)` invokes already-registered hooks, so module ownership is not
-function ownership. Keep raw samples and complete C2 acceptance; no product
-optimization is selected yet. Instrumented times cannot replace a frozen speed
-gate. The initial-ID trial stays rejected. Compiler/runtime and versions remain
-unchanged.
+Function-level CPU diagnostics complete: six pinned 0.17.6 C2 journeys pass.
+Signed sample weights and outside-window samples are conserved. `mountBindings`
+self weights are 8,877/5,992/6,716 µs; its replays within list/effect entries are
+only about 0.6–1.1 ms inclusive. The ID visitor remains expensive but its rejected
+exclusion stays rejected. See [`c2-module-cpu-0176.md`](./c2-module-cpu-0176.md).
+
+Next bounded candidate is attribute-only binding registration: avoid irrelevant
+property-marker reads and temporary copied attribute descriptors/tuples. Preserve
+all value fills and ownership. The packet freezes mixed-binding lifetime tests,
+full checks/package smoke and one hosted uninstrumented comparison against 0.17.6
+using the unchanged >=5%, negative paired median, >=16/21 faster adoption gate.
+Reject a failed gate without reruns; no release until adoption. No product edit
+or speed claim is part of the CPU diagnostic itself.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

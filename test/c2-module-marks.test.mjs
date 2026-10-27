@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { markModule, moduleAttribution } from "./c2-module-marks.mjs"
+import { attributeCPU, markModule, moduleAttribution } from "./c2-module-marks.mjs"
 
 test("module marks preserve native dependency-first execution and exclude later callbacks", async () => {
   const data = source => `data:text/javascript,${encodeURIComponent(source)}`
@@ -26,4 +26,14 @@ test("module attribution verifies paired marks and leaves later modules unobserv
   assert.deepEqual(result.modules[0].totalsMicroseconds, { "v8.evaluateModule": 2000 })
   assert.deepEqual(result.notObservedBeforeReadiness, ["later.js"])
   assert.throws(() => moduleAttribution(events.filter(event => event.name !== "c2-module-end:one.js"), 4, manifest))
+})
+
+test("CPU window attribution conserves signed weights and attributes inclusive callees", () => {
+  const frame = name => ({ url: "", functionName: name, lineNumber: 0, columnNumber: 0 })
+  const profile = { startTime: 1000, nodes: [{ id: 1, callFrame: frame("root"), children: [2] }, { id: 2, callFrame: frame("leaf") }], samples: [2, 2, 1], timeDeltas: [100, -2, 300] }
+  const result = attributeCPU(profile, [{ path: "one.js", startMilliseconds: 0, endMilliseconds: .2 }], 1000)
+  assert.equal(result.sampledMicroseconds, 398)
+  assert.deepEqual(result.negativeDeltas, [{ index: 1, delta: -2 }])
+  assert.equal(result.sites.find(site => site.window === "one.js" && site.functionName === "root").inclusiveMicroseconds, 98)
+  assert.equal(result.sites.find(site => site.window === "outside-module-bodies").selfMicroseconds, 300)
 })
