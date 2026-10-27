@@ -69,12 +69,20 @@ coverage and all 48 C2 journeys pass. C2 costs +52 raw/+18 gzip JS; HTML is
 identical. Restore product source and exact artifact contract to 0.17.6, retaining
 tests and evidence. Restored checks/382 tests/package smoke pass; no new release.
 
-Next bounded packet is diagnostic-only initial DOM write counts on scratch pinned
-0.17.6 output: distinguish binding/list text and attribute writes by owner and
-whether the current DOM already has the requested value. Keep every fill, native
-dependency ordering, complete C2 acceptance and raw counts. Counts are not speed
-proof; choose no product candidate until they identify a distinct cost. Do not
-rerun rejected attribute registration or ID exclusion for favorable samples.
+DOM-write census complete: all six pinned C2 journeys pass. Each marked profile
+records 5,008 initial operations, 4,006 with equal before/after values. l0 has
+2,000 equal binding writes and 2,000 equal list attribute writes; its 1,000 effect
+dataset writes change values. Full check/384 tests pass. See
+[`c2-dom-writes-0176.md`](./c2-dom-writes-0176.md), including limits and the
+preserved initial missing-resilience-helper failure.
+
+Next bounded candidate is first-fill list attribute comparison through the
+existing `patchBinding` force-write flag. Preserve differing arrival-time values,
+later retained-item writes, all IDs/clones and lifetime behavior. The packet
+freezes focused/full/package checks and one hosted 21-pair adoption comparison
+against 0.17.6 with the unchanged >=5%/negative-paired/16-of-21 gate. Counts are
+not speed proof. General binding write skipping, attribute registration and ID
+exclusion remain rejected; do not rerun them for favorable samples.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

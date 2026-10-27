@@ -6,6 +6,7 @@ import { loadavg, tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { attributeCPU, moduleAttribution } from "./c2-module-marks.mjs"
+import { installWriteCounter } from "./c2-dom-writes.mjs"
 
 if (process.argv[2] === "--summarize-cpu") {
   assert.equal(process.argv.length, 4)
@@ -34,7 +35,8 @@ const resolvedIds = process.argv[2] === "--resolved-ids" || process.argv[2] === 
 const moduleCPU = process.argv[2] === "--module-cpu"
 const modules = process.argv[2] === "--modules" || moduleCPU
 const attributeBindings = process.argv[2] === "--attribute-bindings"
-assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules || attributeBindings ? 3 : 2)
+const domWrites = process.argv[2] === "--dom-writes"
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules || attributeBindings || domWrites ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -47,7 +49,7 @@ const replace = (source, before, after) => {
 }
 const sha256 = value => createHash("sha256").update(value).digest("hex")
 const revisions = { baseline: resolvedIds ? "v0.17.6" : rowEvents ? "v0.17.5" : trial || rowIds || rowOwnership || plannedIds || effectOrder ? "v0.17.4" : "v0.17.3", candidate: resolvedIds ? "4c7173c" : rowEvents ? "c25c4f8" : effectOrder ? "5d1ff7a" : plannedIds ? "b8f5ac1" : "v0.17.4" }
-if (modules) Object.assign(revisions, { baseline: "v0.17.6", candidate: "v0.17.6" })
+if (modules || domWrites) Object.assign(revisions, { baseline: "v0.17.6", candidate: "v0.17.6" })
 if (attributeBindings) Object.assign(revisions, { baseline: "v0.17.6", candidate: "9cb3853a063277730560b43774614e1d6d6e54e3" })
 for (const tag of Object.values(revisions)) assert.equal(execFileSync("git", ["diff", tag, "--", "benchmarks/runtime-matrix/kudzu/src", "benchmarks/runtime-matrix/kudzu/tsconfig.json"], { cwd: root, encoding: "utf8" }), "", "C2 fixture must match both release tags")
 const commits = Object.fromEntries(Object.entries(revisions).map(([arm, tag]) => [arm, execFileSync("git", ["rev-parse", `${tag}^{commit}`], { cwd: root, encoding: "utf8" }).trim()]))
@@ -94,6 +96,12 @@ if (modules) Object.assign(protocol, {
   limits: "Marked wall time is not CPU self time or a speed comparison. Module bodies exclude dependency evaluation and later async callbacks; top-level await is rejected. Preserve all traces, marks and artifact hashes."
 })
 if (moduleCPU) protocol.attribution += " Sample CPU at requested 100-microsecond interval in both arms; correlate candidate sample timestamps with marked body windows. Preserve signed deltas and all outside-window samples; sampling weights are not exact function durations."
+if (domWrites) Object.assign(protocol, {
+  primary: "Diagnostic invoked DOM writes and equal before/after values; no speed gate", profiles: 3, measuredBuilds: 1, warmupBuilds: 0,
+  regressionGate: null,
+  attribution: "Both arms pin v0.17.6. Scratch candidate wraps emitted attribute methods and text/data/value/checked/className/dataset assignments, preserving every invocation. Group by source module, list owner, target and connectedness; retain initial and full-journey counts.",
+  limits: "Same value does not prove redundant semantics (text replacement, focus, observers and property side effects may matter). Counts are invoked operations, not MutationRecords. Parser, style subproperties, text insertion/removal and structural DOM operations are outside this bounded census. Instrumented timings are not speed evidence."
+})
 await writeFile(join(results, "protocol.json"), JSON.stringify(protocol, null, 2))
 
 try {
@@ -192,7 +200,40 @@ try {
   runner = replace(runner, '["--headless=new","--remote-debugging-port=0"', '["--headless=new","--no-sandbox","--remote-debugging-port=0"')
   runner = replace(runner, 'v8CompileMilliseconds:milliseconds("V8CompileDuration")', 'v8CompileMilliseconds:milliseconds("V8CompileDuration"),layoutMilliseconds:milliseconds("LayoutDuration"),styleMilliseconds:milliseconds("RecalcStyleDuration")')
   runner = replace(runner, "        samples[target.id].push(sample)", `        samples[target.id].push(sample)
-        await writeFile(join(resultsDirectory, "progress.json"), JSON.stringify(samples))`)
+         await writeFile(join(resultsDirectory, "progress.json"), JSON.stringify(samples))`)
+  if (domWrites) {
+    runner = `import { instrumentDirectory } from ${JSON.stringify(new URL("./c2-dom-writes.mjs", import.meta.url).href)}\n` + runner
+    runner = replace(runner, "const browserProfiles = check ? 1 : Number(process.env.BENCHMARK_PROFILES ?? 7)", "const browserProfiles = 3")
+    runner = replace(runner, "  return measured ? { milliseconds, peakRssBytes, output: await measureArtifacts(target.dist) } : null", `  if (target.id === "candidate") await instrumentDirectory(target.dist, ${JSON.stringify(join(results, "write-manifest.json"))})
+  return measured ? { milliseconds, peakRssBytes, output: await measureArtifacts(target.dist) } : null`)
+    runner = replace(runner, '    await send("Page.addScriptToEvaluateOnNewDocument", { source: initialReadyScript() })', `    if (target.id === "candidate") await send("Page.addScriptToEvaluateOnNewDocument", { source: ${JSON.stringify(`(${installWriteCounter})()`)} })
+    await send("Page.addScriptToEvaluateOnNewDocument", { source: initialReadyScript() })`)
+    runner = replace(runner, '    await send("Fetch.enable", { patterns:', `    if (target.id === "candidate") await send("Page.addScriptToEvaluateOnNewDocument", { source: ${JSON.stringify(`(${installWriteCounter})()`)} })
+    await send("Fetch.enable", { patterns:`)
+    runner = replace(runner, '    const heapAfterLoad = await send("Runtime.getHeapUsage")', `    const writes = { initial: await evaluate(send, "globalThis.__c2Writes ?? {}") }
+    const heapAfterLoad = await send("Runtime.getHeapUsage")`)
+    runner = replace(runner, '    const heapAfterJourney = await send("Runtime.getHeapUsage")', `    writes.fullJourney = await evaluate(send, "globalThis.__c2Writes ?? {}")
+    await writeFile(join(resultsDirectory, target.id + "-" + profile + ".writes.json"), JSON.stringify(writes, null, 2))
+    const heapAfterJourney = await send("Runtime.getHeapUsage")`)
+    await writeFile(join(results, "runner.mjs"), runner)
+    execFileSync(process.execPath, [join(results, "runner.mjs"), "--check"], { cwd: root, stdio: "inherit", timeout: 300000 })
+    const manifest = JSON.parse(await readFile(join(results, "write-manifest.json")))
+    for (const entry of manifest) assert.equal(sha256(await readFile(join(targets[0].dist, entry.path))), entry.originalSha256)
+    for (const path of ["index.html", "static/index.html"]) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)))
+    for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
+    for (let profile = 0; profile < 3; profile++) {
+      const baseline = JSON.parse(await readFile(join(results, `baseline-${profile}.writes.json`)))
+      assert.deepEqual(baseline, { initial: {}, fullJourney: {} })
+      const candidate = JSON.parse(await readFile(join(results, `candidate-${profile}.writes.json`)))
+      assert.ok(Object.keys(candidate.initial).length)
+      for (const phase of Object.values(candidate)) for (const count of Object.values(phase)) {
+        assert.ok(Object.values(count).every(value => Number.isSafeInteger(value) && value >= 0))
+        assert.equal(count.calls, count.same + count.changed)
+      }
+      for (const [key, count] of Object.entries(candidate.initial)) for (const field of ["calls", "same", "changed"]) assert.ok(candidate.fullJourney[key][field] >= count[field])
+    }
+    process.exit(0)
+  }
   if (visits) {
     runner = replace(runner, "const browserProfiles = check ? 1 : Number(process.env.BENCHMARK_PROFILES ?? 7)", "const browserProfiles = 3")
     runner = replace(runner, '    const heapAfterLoad = await send("Runtime.getHeapUsage")', `    const visits = { initial: await evaluate(send, "globalThis.__kudzuRowVisits ?? {}") }

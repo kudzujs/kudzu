@@ -1,5 +1,28 @@
 # Performance Records
 
+## Pinned Initial DOM Write Census (2026-10-27)
+
+`--dom-writes` instruments only scratch v0.17.6 output while retaining every
+original write. All six C2 journeys pass; original module hashes and both HTML
+files match. Each of three marked profiles records 5,008 initial operations:
+4,006 equal before/after values and 1,002 changed. l0 accounts for 2,000 equal
+binding attribute writes, 2,000 equal list attribute writes and 1,000 changed
+effect dataset writes. Full journeys each total 16,039 operations, 6,008 equal
+and 10,031 changed. Counts are invocations, not time savings or MutationRecords.
+
+The initial attempt omitted the helper in the separate delayed-script target;
+its timeout and partial results are preserved. The repaired harness injects the
+same helper there and retains unchanged acceptance. Unit tests prove single
+evaluation, return values, actual same-value invocation and owner grouping.
+Full checks/384 tests plus project journey pass. Scratch JS adds 2,687 raw/362
+gzip bytes plus a CDP-injected helper; product output and versions are unchanged.
+Method, limits and the distinct first-fill list-attribute candidate gate are in
+[`c2-dom-writes-0176.md`](docs/next-architecture/c2-dom-writes-0176.md).
+Evidence attached to v0.17.6: `c2-dom-writes-0176.tar.gz`, SHA256
+`8b9edf861256a403b8aff026d637579e36298792cd80943cf757927ba075f07f`.
+Archive includes all counts, both deploy trees, manifests, raw journeys, sources,
+validation logs and the failed helper-injection attempt.
+
 ## Rejected Attribute-Only Binding Registration (2026-10-27)
 
 CPU evidence and gate frozen at `17fa0da`; candidate `9cb3853`, pinned harness
