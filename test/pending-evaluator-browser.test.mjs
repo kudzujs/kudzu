@@ -179,6 +179,7 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     const root = document.querySelector("li"), input = root.querySelector("input")
     const id = input.id
     input.value = "Keep owned note"
+    root.dataset.itemId = "external-before-list-load"
     const descriptor = JSON.parse(document.querySelector("template[data-k-list]").dataset.kList)
     const loading = import(${JSON.stringify(ownedList[1])})
     const wait = async predicate => {
@@ -196,7 +197,7 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     await loading
     await Promise.all([...document.querySelectorAll("script[type=module]")].map(script => import(script.src)))
     await wait(() => root.dataset.ready === "true" && root.title === "Latest")
-    const initial = { before, retained: root === document.querySelector("li"), idRetained: input.id === id, label: root.querySelector("label").htmlFor === id, note: input.value, text: root.querySelector("[data-label]").textContent }
+    const initial = { before, retained: root === document.querySelector("li"), idRetained: input.id === id, label: root.querySelector("label").htmlFor === id, note: input.value, text: root.querySelector("[data-label]").textContent, itemId: root.dataset.itemId }
     root.querySelector("[data-count]").click()
     await wait(() => root.querySelector("[data-count]").textContent === "1")
     root.querySelector("[data-item-count]").click()
@@ -210,14 +211,14 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     document.querySelector("[data-add]").click()
     await wait(() => document.querySelector("li")?.dataset.ready === "true")
     const added = document.querySelector("li"), addedInput = added.querySelector("input")
-    const clone = { fresh: added !== root, differentId: addedInput.id !== id, resolved: !addedInput.id.includes("$k"), label: added.querySelector("label").htmlFor === addedInput.id, count: added.querySelector("[data-count]").textContent, title: added.title }
+    const clone = { fresh: added !== root, differentId: addedInput.id !== id, resolved: !addedInput.id.includes("$k"), label: added.querySelector("label").htmlFor === addedInput.id, count: added.querySelector("[data-count]").textContent, title: added.title, itemId: added.dataset.itemId }
     added.querySelector("[data-count]").click()
     await wait(() => added.querySelector("[data-count]").textContent === "1")
     added.querySelector("[data-item-count]").click()
     await wait(() => added.querySelector("[data-count]").textContent === "6" && added.dataset.clicked === "Added")
     return { initial, clone }
   })()`)
-  assert.deepEqual(owned, { initial: { before: "Initial", retained: true, idRetained: true, label: true, note: "Keep owned note", text: "Latest" }, clone: { fresh: true, differentId: true, resolved: true, label: true, count: "0", title: "Added" } }, "pre-rendered IDs remain scoped while late values and cloned ownership update")
+  assert.deepEqual(owned, { initial: { before: "Initial", retained: true, idRetained: true, label: true, note: "Keep owned note", text: "Latest", itemId: "1" }, clone: { fresh: true, differentId: true, resolved: true, label: true, count: "0", title: "Added", itemId: "2" } }, "first fill repairs external attributes while late values, IDs and cloned ownership update")
   assert.deepEqual(cdp.exceptions, [])
   assert.deepEqual(cdp.consoleErrors, [])
   assets.set(ownedList[1], assets.get(ownedList[1]).replace("await new Promise(resolve => { globalThis.releaseOwnedList = resolve });\n", ""))

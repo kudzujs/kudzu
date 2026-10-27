@@ -11,7 +11,7 @@ function Row({ item }: { item: { id: number; label: string } }) {
       if (output) output.textContent = "cleaned"
     }
   }, [])
-  return <li ref={ref} title={item.label}>
+  return <li ref={ref} title={item.label} data-item-id={item.id}>
     <span data-label>{item.label}</span>
     <label htmlFor={id}>Note</label><input id={id} />
     <button data-count onClick={() => setCount(count + 1)}>{count}</button>

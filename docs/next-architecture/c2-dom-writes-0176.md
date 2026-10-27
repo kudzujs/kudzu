@@ -76,3 +76,12 @@ against v0.17.6. Freeze adoption at >=5% lower initial-DOM median, negative pair
 median, >=16/21 faster pairs, and no operation >5% higher with >=16/21 slower
 pairs. Keep complete acceptance and all raw results. Reject without favorable
 reruns if the gate fails; counts alone cannot establish a speed improvement.
+
+Candidate validation: one runtime-line substitution, no net source LOC, compiler
+pass or semantic/runtime concept. The extended owned-row fixture changes a DOM
+attribute externally before list loading while its logical field stays unchanged;
+both released and candidate runtimes restore the current item value. Delayed
+updates, repeated item/state/ref handlers and cloned ID/IDREF/state checks pass.
+Full check/384 tests plus project journey and package smokes pass. Project output
+cost is +16 raw / +7 local aggregate gzip bytes across the same 42 files; the
+static route stays zero-JS. Adoption is still pending the frozen comparison.
