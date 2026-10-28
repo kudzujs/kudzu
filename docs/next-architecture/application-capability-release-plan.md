@@ -102,14 +102,22 @@ Full checks, capture semantics, both lifetime arms and 48 C2 journeys pass.
 Compiler and exact project contract are restored; semantic regression stays.
 Restored check/387 tests/package smoke pass. No release or output-only re-gating.
 
-Next packet is a read-only startup-budget decision review across the preserved
-trials and trace partitions. Compare each trial within its own host, retain all
-failures, and distinguish call/byte/CPU reductions from readiness gains. Before
-another product edit, identify a distinct critical-path cost with evidence rather
-than another field/loop reduction inferred from counts alone. No new primitive,
-runtime reconstruction or benchmark weakening is authorized. General binding write
-skipping, attribute registration, first-fill comparison, false capture-default
-omission and ID exclusion remain rejected.
+Read-only startup-budget review is complete: all eight trials remain rejected.
+All 24 preserved 0.17.6 traces show five preloaded entry modules and six eager
+static dependencies requested later. This proves delayed discovery, not a
+recoverable readiness budget; renderer ResourceFinish delivery must not be
+confused with reported network completion. No new benchmark runs or product edits.
+
+Next bounded packet tests native modulepreloads for the existing document entry
+scripts' exact emitted eager closure. First freeze a failing baseline output test
+and ownership/base/static/lazy/Worker coverage; preserve JS bytes and native ESM
+ordering. Both HTML write paths precede final bundling, and capability-derived
+artifact requirements are not an exact import graph. Follow the scope and frozen
+21-pair adoption protocol in
+[`startup-budget-review-0176.md`](./startup-budget-review-0176.md).
+No speedup or release is established. General binding write skipping, attribute
+registration, first-fill comparison, false capture-default omission and ID
+exclusion remain rejected; no new primitive or benchmark weakening is authorized.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

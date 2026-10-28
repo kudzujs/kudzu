@@ -1,5 +1,33 @@
 # Performance Records
 
+## Startup Budget Decision Review (2026-10-28)
+
+Rechecked the raw 21-pair medians, paired changes and faster-pair counts of eight
+preserved startup trials. All remain rejected; planned ID attributes additionally
+fail `rowRemove`. Within each trial, 2–6 pairs reduce script CPU without improving
+readiness. No cross-host absolute comparison or new benchmark run was used.
+
+All 24 existing traces from the four 0.17.6 trials conserve their marked readiness
+partitions and show the same discovery pattern: five explicitly preloaded entries,
+six later script-initiated eager dependencies, each verified against the emitted
+static import graph and matching renderer/frame/document. Baseline first dependency
+sends are +85.564…130.121 ms; latest entry network finishes +10.993…31.839 ms.
+These overlapping intervals are not a recoverable speedup estimate. Renderer
+ResourceFinish delivery can lag reported network completion substantially.
+
+Next bounded experiment: native preload hints for the exact existing eager graph,
+with static/lazy/Worker/route ownership exclusions and unchanged JS/ESM execution.
+Freeze output/correctness coverage and the original uninstrumented 21-pair gate
+before product edits. Full decision, ledger, causal limits and packet:
+[`startup-budget-review-0176.md`](docs/next-architecture/startup-budget-review-0176.md).
+This review changes zero product LOC, passes, semantic/runtime concepts or browser
+bytes. Core 0.17.6 / generator 0.1.167 remain deployed; no release follows a review.
+Review assertions, `npm run check`, and all 387 tests plus project journey pass.
+Evidence attached to v0.17.6: `startup-budget-0176.tar.gz`, SHA256
+`339a03d97c36208080c1c0c2a5c9d259ad599bf8f3fa83cd1b2932a17b1d1001`.
+Contains the review script/results, input hashes/archive receipts, pinned analyzer
+and inspected build/report sources, source revision, decision report and check logs.
+
 ## Rejected False Capture-Default Omission (2026-10-28)
 
 Candidate `a3a445d`, harness `0bdc75a`, hosted
