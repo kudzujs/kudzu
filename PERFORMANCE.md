@@ -30,6 +30,9 @@ Evidence attached to v0.17.6: `c2-capture-defaults-40605304361.tar.gz`, SHA256
 `a051eb5a95ccb953d602e8293c7c3f6baf69d67f3c258a54a3d93fe3ffbdd0b4`.
 Archive retains all raw samples/traces, both deploys, pinned protocol and sources,
 the initial assertion failure, capture/lifetime logs and local/restored checks.
+Restored commit `7ea4744` passes required-Chrome and Node 22/package-smoke CI
+[40607370303](https://github.com/kudzujs/kudzu/actions/runs/40607370303).
+Product compiler/runtime, versions and exact project contract match v0.17.6.
 
 ## Offline 0.17.6 HTML Byte Census (2026-10-27)
 
