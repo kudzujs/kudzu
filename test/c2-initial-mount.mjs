@@ -38,7 +38,8 @@ const attributeBindings = process.argv[2] === "--attribute-bindings"
 const initialListAttrs = process.argv[2] === "--initial-list-attrs" || process.argv[2] === "--list-attrs-writes"
 const domWrites = process.argv[2] === "--dom-writes" || process.argv[2] === "--list-attrs-writes"
 const captureDefaults = process.argv[2] === "--capture-defaults"
-assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules || attributeBindings || domWrites || initialListAttrs || captureDefaults ? 3 : 2)
+const eagerPreloads = process.argv[2] === "--eager-preloads"
+assert.equal(process.argv.length, trial || rowIds || rowOwnership || cpu || visits || plannedIds || effectOrder || rowEvents || resolvedIds || modules || attributeBindings || domWrites || initialListAttrs || captureDefaults || eagerPreloads ? 3 : 2)
 const root = fileURLToPath(new URL("..", import.meta.url))
 const workspace = join(root, "benchmarks/runtime-matrix")
 const results = join(root, "c2-initial-mount-results")
@@ -55,6 +56,7 @@ if (modules || domWrites) Object.assign(revisions, { baseline: "v0.17.6", candid
 if (attributeBindings) Object.assign(revisions, { baseline: "v0.17.6", candidate: "9cb3853a063277730560b43774614e1d6d6e54e3" })
 if (initialListAttrs) Object.assign(revisions, { baseline: "v0.17.6", candidate: "44a87ccad0bcef462de13416cd20ccaf6149b719" })
 if (captureDefaults) Object.assign(revisions, { baseline: "v0.17.6", candidate: "a3a445df58e4558d6ad020a92197ea2604e06ddb" })
+if (eagerPreloads) Object.assign(revisions, { baseline: "v0.17.6", candidate: "405877a111ebb388b3e43d36807e8806dcdc9a0e" })
 for (const tag of Object.values(revisions)) assert.equal(execFileSync("git", ["diff", tag, "--", "benchmarks/runtime-matrix/kudzu/src", "benchmarks/runtime-matrix/kudzu/tsconfig.json"], { cwd: root, encoding: "utf8" }), "", "C2 fixture must match both release tags")
 const commits = Object.fromEntries(Object.entries(revisions).map(([arm, tag]) => [arm, execFileSync("git", ["rev-parse", `${tag}^{commit}`], { cwd: root, encoding: "utf8" }).trim()]))
 const protocol = {
@@ -66,11 +68,12 @@ const protocol = {
   acceptance: "Unchanged complete C2 journey, row identity, cleanup, accessibility, delayed/missing scripts and zero-JS sibling",
   limits: "Readiness includes harness predicates and a forced layout; CDP load deltas extend through initial validation. Trace categories can overlap and must not be summed as exclusive costs. No runtime candidate is authorized by this diagnostic alone."
 }
-if (trial || rowIds || rowOwnership || plannedIds || attributeBindings || initialListAttrs || captureDefaults || resolvedIds && !visits) protocol.trial = {
+if (trial || rowIds || rowOwnership || plannedIds || attributeBindings || initialListAttrs || captureDefaults || eagerPreloads || resolvedIds && !visits) protocol.trial = {
   change: captureDefaults ? "Omit only false nullPrototype capture flags at build time; preserve true flags, tagged records and unchanged browser decoding" : initialListAttrs ? "Use existing current-DOM attribute comparison on first generic list fills; preserve differing arrival-time values and later retained-item forced writes" : attributeBindings ? "Skip property-marker reads on attribute-only nodes; retain parsed attribute descriptors without per-descriptor copies or target tuples; preserve current-value fills and ownership" : resolvedIds ? "Build proves initial HTML has no placeholders; skip initial direct-row replacement only for structural plans without event or ID/metadata attribute fills; preserve all value fills and clone registration" : plannedIds ? "Reuse template-derived eligible attribute locations through existing itemParts; retain recursive fallback and all first-value fills" : rowOwnership ? "Register direct ID replacement only for hasRowHooks descriptors; retain ownership paths and first-value fills" : rowIds ? "Replace direct row-ID attribute-array copying with indexed NamedNodeMap traversal; preserve all elements, attributes and template contents" : "For initially matching structural keys, fill every retained row from current items, then reuse existing roots instead of performing general placement and rebuilding root maps",
   gate: "At least 5% lower initial-DOM median, negative paired median, at least 16/21 faster pairs, no operation regression under the existing >5% and 16/21 slower gate, both lifetime suites and all C2 journeys pass",
   limits: "Scratch candidate only. Reject without production adoption if the predeclared speed gate fails; raw/gzip sizes remain separately reported."
 }
+if (eagerPreloads) protocol.trial.change = "Preload only existing emitted eager static dependencies of document entry scripts; preserve JS bytes, script order, lazy packages, Worker exclusion and static siblings"
 if (cpu) Object.assign(protocol, {
   primary: "Initial-mount sampled CPU attribution, not a speed gate", profiles: 3, measuredBuilds: 1, warmupBuilds: 0,
   regressionGate: null,
@@ -172,7 +175,7 @@ try {
     targets.push({ id: arm, label: tag, architecture: "pre-rendered HTML with route capabilities", compiler, root: join(compiler, "fixture"), dist: join(compiler, "fixture/dist") })
     await cp(join(compiler, "framework/list-runtime.js"), join(results, `${arm}-list-runtime.js`))
     if (attributeBindings) await cp(join(compiler, "framework/binding-runtime.js"), join(results, `${arm}-binding-runtime.js`))
-    if (trial || rowIds || rowOwnership || plannedIds || effectOrder || rowEvents || resolvedIds || attributeBindings || initialListAttrs || captureDefaults) {
+    if (trial || rowIds || rowOwnership || plannedIds || effectOrder || rowEvents || resolvedIds || attributeBindings || initialListAttrs || captureDefaults || eagerPreloads) {
       await mkdir(join(compiler, "test/fixtures"), { recursive: true })
       if (captureDefaults) {
         for (const name of ["capture-defaults.test.mjs", "effect-context.test.mjs"]) await cp(join(root, "test", name), join(compiler, "test", name))
@@ -310,10 +313,21 @@ try {
       load: Object.fromEntries(["scriptMilliseconds", "taskMilliseconds", "layoutMilliseconds", "styleMilliseconds"].map(key => [key, compare(sample => sample.cpu.load[key])])),
       operations: Object.fromEntries(Object.keys(report.targets.baseline.browser.operations).map(key => [key, compare(sample => sample.operations[key])]))
     }
-    if (trial || rowIds || rowOwnership || plannedIds || resolvedIds || attributeBindings || initialListAttrs || captureDefaults) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
+    if (trial || rowIds || rowOwnership || plannedIds || resolvedIds || attributeBindings || initialListAttrs || captureDefaults || eagerPreloads) summary.accepted = summary.initial.relativeChange <= -.05 && summary.initial.pairedMedian < 0 && summary.initial.faster >= 16 && !Object.values(summary.operations).some(value => value.regressionGate)
     const paths = async directory => (await readdir(directory, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name).slice(directory.length + 1)).sort()
     assert.deepEqual(await paths(targets[0].dist), await paths(targets[1].dist))
-    for (const path of await paths(targets[0].dist)) if (!(captureDefaults ? path === "index.html" : attributeBindings ? path.endsWith("kudzu-binding.js") : effectOrder ? path === "assets/effects/index.js" : path.endsWith("kudzu-list.js") || resolvedIds && path === "index.html")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
+    for (const path of await paths(targets[0].dist)) if (!(captureDefaults || eagerPreloads ? path === "index.html" : attributeBindings ? path.endsWith("kudzu-binding.js") : effectOrder ? path === "assets/effects/index.js" : path.endsWith("kudzu-list.js") || resolvedIds && path === "index.html")) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)), path)
+    if (eagerPreloads) {
+      const html = await Promise.all(targets.map(target => readFile(join(target.dist, "index.html"), "utf8")))
+      const strip = source => source.replaceAll(/<link rel="modulepreload" href="[^"]+">/g, "")
+      assert.equal(strip(html[0]), strip(html[1]))
+      for (const [index, source] of html.entries()) {
+        const preloads = [...source.matchAll(/<link rel="modulepreload" href="([^"]+)">/g)].map(match => match[1].slice(1))
+        assert.equal(preloads.length, index ? 11 : 5)
+        assert.equal(new Set(preloads).size, preloads.length)
+        if (index) assert.deepEqual(preloads.sort(), (await paths(targets[index].dist)).filter(path => path.endsWith(".js")).sort())
+      }
+    }
     for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
     await writeFile(join(results, "summary.json"), JSON.stringify(summary, null, 2))
   }
