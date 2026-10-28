@@ -94,13 +94,22 @@ independent decoding and prototype/own-key behavior. This is offline feasibility
 not a product/speed result. Full check/386 tests pass; report and preserved inputs
 are in [`html-byte-census-0176.md`](./html-byte-census-0176.md).
 
-Next bounded candidate is build-time omission of false `nullPrototype` capture
-flags through the unchanged decoder default. Keep true flags, tagged records,
-context isolation, live capture semantics and diagnostics; no dictionary/cache or
-browser reconstruction. The packet freezes correctness/output/full/package checks
-and one hosted 21-pair comparison with the unchanged >=5%/negative-paired/16-of-21
-startup gate. Byte savings cannot override failure. General binding write skipping,
-attribute registration, first-fill list comparison and ID exclusion stay rejected.
+False capture-default omission `a3a445d` is rejected by hosted 40605304361:
+initial DOM 214.0/208.9 ms (−2.38%), paired −3.1 ms, 13/21 faster. It misses the
+>=5% and >=16/21 gates despite reducing C2 HTML by 22,198 raw/35 gzip bytes.
+JS and static sibling are byte-identical; no operation meets the regression gate.
+Full checks, capture semantics, both lifetime arms and 48 C2 journeys pass.
+Compiler and exact project contract are restored; semantic regression stays.
+Restored check/387 tests/package smoke pass. No release or output-only re-gating.
+
+Next packet is a read-only startup-budget decision review across the preserved
+trials and trace partitions. Compare each trial within its own host, retain all
+failures, and distinguish call/byte/CPU reductions from readiness gains. Before
+another product edit, identify a distinct critical-path cost with evidence rather
+than another field/loop reduction inferred from counts alone. No new primitive,
+runtime reconstruction or benchmark weakening is authorized. General binding write
+skipping, attribute registration, first-fill comparison, false capture-default
+omission and ID exclusion remain rejected.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

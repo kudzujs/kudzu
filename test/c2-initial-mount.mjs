@@ -176,6 +176,7 @@ try {
       await mkdir(join(compiler, "test/fixtures"), { recursive: true })
       if (captureDefaults) {
         for (const name of ["capture-defaults.test.mjs", "effect-context.test.mjs"]) await cp(join(root, "test", name), join(compiler, "test", name))
+        await writeFile(join(compiler, "test/capture-defaults.test.mjs"), execFileSync("git", ["show", `${revisions.candidate}:test/capture-defaults.test.mjs`], { cwd: root }))
         const log = execFileSync(process.execPath, ["--test", ...(arm === "baseline" ? ["--test-skip-pattern=^capture output"] : []), "test/capture-defaults.test.mjs", "test/effect-context.test.mjs"], { cwd: compiler, encoding: "utf8", timeout: 30000 })
         await writeFile(join(results, `${arm}-capture-regression.log`), log)
       }

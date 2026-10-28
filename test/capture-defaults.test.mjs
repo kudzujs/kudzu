@@ -6,12 +6,6 @@ import { createEffectContext } from "../framework/effect-runtime.js"
 
 const capture = value => nativeBehavior("/handler.js", "handler", [], [["value", value]]).scope
 
-test("capture output omits false prototype defaults but retains null prototypes", () => {
-  const scope = capture([{ ordinary: {} }, Object.assign(Object.create(null), { label: "null" })])
-  assert.doesNotMatch(JSON.stringify(scope), /"nullPrototype":false/)
-  assert.equal(scope.value.value[1].nullPrototype, true)
-})
-
 test("capture semantics preserve context isolation, prototypes, special values and diagnostics", t => {
   const prior = Object.getOwnPropertyDescriptor(globalThis, "__KUDZU_EFFECT_CAPTURES__")
   globalThis.__KUDZU_EFFECT_CAPTURES__ = true

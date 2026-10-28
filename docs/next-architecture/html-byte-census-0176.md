@@ -131,3 +131,30 @@ Full check, 388 tests plus project journey and both package smokes pass. Project
 output is 42 files, 189,566 raw / 57,819 local aggregate gzip bytes: −264/−14.
 All route JS totals stay unchanged; the exact contract records the new digest.
 Adoption still requires the frozen uninstrumented hosted startup comparison.
+
+## Hosted outcome: rejected (2026-10-28)
+
+Candidate `a3a445d`, harness `0bdc75a`, hosted
+[40605304361](https://github.com/kudzujs/kudzu/actions/runs/40605304361).
+Full checks, capture semantics/live-effect tests, both delayed-list lifetime arms,
+42 uninstrumented and six traced C2 journeys pass. Baseline excludes only the
+candidate-only omission assertion, which was separately reproduced failing before
+implementation. That exact output test remains pinned to the trial commit for
+future reproduction; the final tree retains semantic regression coverage.
+
+Initial-DOM medians 214.0/208.9 ms (−2.38%), paired −3.1 ms, 13/21 faster:
+**reject** under both the >=5% and >=16/21 gates. No operation meets the regression
+gate. Script CPU 70.989/70.443 ms, paired −0.183 ms, 11/21 faster is secondary.
+Build medians 445.013/440.501 ms. C2 HTML decreases 688,281 → 666,083 raw and
+69,741 → 69,706 level-9 gzip bytes (−22,198/−35); every JS file and the static
+sibling are byte-identical. Repeated default strings already compress well.
+
+Host: AMD EPYC 9V45 (four logical CPUs), Linux 6.17.0-1022-azure x64,
+Node 24.21.0, Chrome 155.0.8059.39. Compare arms within this run only. No favorable
+rerun or conversion to an output-only adoption gate is permitted.
+
+Compiler and exact project output contract are restored to v0.17.6. Restored full
+check, 387 tests plus project journey, and both package smokes pass. The capture
+isolation/prototype/special-value/diagnostic regression remains. No product LOC,
+semantic primitive, compiler pass, runtime concept, browser byte or version delta
+remains; no release, npm publication or deployment follows the rejected trial.

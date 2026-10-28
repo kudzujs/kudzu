@@ -1,5 +1,36 @@
 # Performance Records
 
+## Rejected False Capture-Default Omission (2026-10-28)
+
+Candidate `a3a445d`, harness `0bdc75a`, hosted
+[40605304361](https://github.com/kudzujs/kudzu/actions/runs/40605304361).
+One compiler-side line omits only false `nullPrototype` capture flags through the
+unchanged decoder default. Native/effect capture isolation, ordinary/null
+prototypes, nested own special keys, undefined/special numbers and source
+diagnostics pass; existing live-state/setter tests pass. The candidate-only output
+assertion is reproduced failing on baseline and passing on candidate. Both arms
+pass shared semantic/lifetime tests; all 48 C2 journeys and hosted full checks pass.
+
+Initial DOM 214.0/208.9 ms (−2.38%), paired −3.1 ms, 13/21 faster: **reject**.
+Both the frozen >=5% and >=16/21 gates fail. No operation meets the regression
+gate. Script CPU 70.989/70.443 ms, paired −0.183 ms, 11/21 faster is secondary.
+Build medians 445.013/440.501 ms. C2 HTML −22,198 raw/−35 level-9 gzip bytes;
+all JS and static sibling files stay identical. Project trial output −264 raw/
+−14 local aggregate gzip bytes. No net compiler LOC or new pass/semantic/runtime
+concept. Host: AMD EPYC 9V45 (four logical CPUs), Linux 6.17.0-1022-azure x64,
+Node 24.21.0, Chrome 155.0.8059.39. No cross-host timing comparisons or reruns.
+
+Compiler and exact project output contract are restored to v0.17.6. Retain the
+semantic regression, not the failed candidate's omission assertion; historical
+harness reproduction reads that assertion from the pinned candidate commit.
+Restored check/387 tests/project journey and package smokes pass. No new release,
+tag, npm publication or deployment, and no post-hoc output-only adoption gate.
+Full record: [`html-byte-census-0176.md`](docs/next-architecture/html-byte-census-0176.md).
+Evidence attached to v0.17.6: `c2-capture-defaults-40605304361.tar.gz`, SHA256
+`a051eb5a95ccb953d602e8293c7c3f6baf69d67f3c258a54a3d93fe3ffbdd0b4`.
+Archive retains all raw samples/traces, both deploys, pinned protocol and sources,
+the initial assertion failure, capture/lifetime logs and local/restored checks.
+
 ## Offline 0.17.6 HTML Byte Census (2026-10-27)
 
 Pinned C2 baseline output from run 40450942360 and a fresh archived 0.17.6 project
