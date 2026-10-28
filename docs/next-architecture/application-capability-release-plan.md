@@ -108,16 +108,24 @@ static dependencies requested later. This proves delayed discovery, not a
 recoverable readiness budget; renderer ResourceFinish delivery must not be
 confused with reported network completion. No new benchmark runs or product edits.
 
-Next bounded packet tests native modulepreloads for the existing document entry
-scripts' exact emitted eager closure. First freeze a failing baseline output test
-and ownership/base/static/lazy/Worker coverage; preserve JS bytes and native ESM
-ordering. Both HTML write paths precede final bundling, and capability-derived
-artifact requirements are not an exact import graph. Follow the scope and frozen
-21-pair adoption protocol in
-[`startup-budget-review-0176.md`](./startup-budget-review-0176.md).
-No speedup or release is established. General binding write skipping, attribute
-registration, first-fill comparison, false capture-default omission and ID
-exclusion remain rejected; no new primitive or benchmark weakening is authorized.
+Eager preload candidate `405877a` is rejected by hosted 40651024837: initial DOM
+349.5/341.8 ms (−2.20%), paired −7.7 ms, 11/21 faster. Dependency requests move
+from +102…124 ms to before the start mark, but readiness still fails both adoption
+gates. No operation regression gate fires; build medians increase 5.89%. All JS
+is identical, HTML adds 494 raw/80 gzip bytes, full checks and all journeys pass.
+Product and exact project output contract are restored to 0.17.6; retain
+graph-boundary/cache/base/lazy/Worker regression coverage. Restored check/388 tests
+and package smokes pass. No release or favorable rerun.
+
+Next packet is a read-only renderer scheduling review of the six preserved
+preload-trial traces: account for work after network completion through module
+evaluation/readiness, attribute parsing/style/layout to proven owners where
+possible, and label unknowns. No content/DOM/accessibility/readiness changes or
+new product candidate before a distinct cost is proven. See
+[`eager-preload-trial-0176.md`](./eager-preload-trial-0176.md).
+General binding write skipping, attribute registration, first-fill comparison,
+false capture-default omission, ID exclusion and eager preloading remain rejected;
+no new primitive or benchmark weakening is authorized.
 
 Accepted correctness packet (2026-10-26, 0.17.6): the initial-ID investigation reproduces
 a retained-row event failure on 0.17.5. An item-capturing handler updates row

@@ -3,7 +3,6 @@ import { cp, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
 import { build as bundle, transform } from "esbuild"
-import ts from "typescript"
 import { createEffectCodegen } from "./compiler/effect-codegen.mjs"
 import { createCompatibilityReport } from "./compiler/compatibility-registry.mjs"
 import { createDiagnosticError, diagnosticEnvelope, normalizeDiagnosticError } from "./compiler/diagnostics.mjs"
@@ -522,19 +521,6 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   if (!releaseRoutePlans) await writePrettyJson(join(workDirectory, "kudzu-plan.json"), { routes: plans, rewrites: sortedRewrites })
   const artifacts = createRouteArtifactReport(routeRecords, { base, handlerMetafile, outputDirectory, navigationAssets, runtimeFamilies: runtimePlan.families, runtimeFamilyByRecord, workerReferences: renderedWorkerReferences, workerOutputs })
   await writePrettyJson(join(workDirectory, "kudzu-artifacts.json"), artifacts)
-  // Resolve hints only after specialization and bundling have finalized the eager graph.
-  const preloadGraph = new Map((await walk(assetsDirectory)).filter(file => file.endsWith(".js") && !file.startsWith(join(assetsDirectory, "workers") + sep)).map(file => {
-    const href = assetPath(base, relative(outputDirectory, file).replaceAll(sep, "/"))
-    return [new URL(href, "https://kudzu.invalid").href, { file, href: escapeAttribute(href) }]
-  }))
-  const preloadEntries = new Map([...preloadGraph].map(([url, module]) => [module.href, url]))
-  for (const record of routeRecords) {
-    if (!runtimeFamilyByRecord.has(record) && !Object.keys(record.entries).length) continue
-    const file = join(outputDirectory, record.output, "index.html")
-    const html = await readFile(file, "utf8")
-    const preloaded = await preloadDependencies(html, preloadGraph, preloadEntries)
-    if (preloaded !== html) await writeFile(file, preloaded)
-  }
   const emittedCssFiles = new Set()
   for (const file of cssFiles.filter(file => renderedStyleUrls.has(assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)))) {
     const output = join(assetsDirectory, relative(sourceDirectory, file))
@@ -770,31 +756,6 @@ function preloadModules(html) {
   if (!scripts.length) return html
   const links = [...new Set(scripts.map(match => match[1]))].map(href => `<link rel="modulepreload" href="${href}">`).join("")
   return html.replace(scripts[0][0], `${links}${scripts[0][0]}`)
-}
-
-async function preloadDependencies(html, graph, byHref) {
-  const scripts = [...html.matchAll(/<script type="module"[^>]* src="([^"]+)"[^>]*><\/script>/g)]
-  if (!scripts.length) return html
-  const existing = new Set([...html.matchAll(/<link rel="modulepreload" href="([^"]+)">/g)].map(match => match[1]))
-  const visited = new Set()
-  const added = []
-  const visit = async url => {
-    if (visited.has(url) || !graph.has(url)) return
-    visited.add(url)
-    const module = graph.get(url)
-    if (!existing.has(module.href)) {
-      existing.add(module.href)
-      added.push(`<link rel="modulepreload" href="${module.href}">`)
-    }
-    if (!module.imports) {
-      const source = ts.createSourceFile(module.file, await readFile(module.file, "utf8"), ts.ScriptTarget.Latest, false, ts.ScriptKind.JS)
-      if (source.parseDiagnostics.length) throw new Error(`Cannot parse emitted module for preloading: ${module.file}`)
-      module.imports = source.statements.filter(node => (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)).map(node => new URL(node.moduleSpecifier.text, url).href)
-    }
-    for (const imported of module.imports) await visit(imported)
-  }
-  for (const script of scripts) await visit(byHref.get(script[1]))
-  return added.length ? html.replace(scripts[0][0], `${added.join("")}${scripts[0][0]}`) : html
 }
 
 function inlineQueryFormCarry(html, plan) {

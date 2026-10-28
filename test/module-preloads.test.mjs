@@ -6,7 +6,7 @@ import ts from "typescript"
 import { buildWithSession } from "../framework/build.mjs"
 import { createProjectSession } from "../framework/compiler/project-session.mjs"
 
-test("preloads only the emitted eager document graph in clean and cached builds", async t => {
+test("keeps module preloads within the eager document graph in clean and cached builds", async t => {
   for (const [source, base] of [["../../benchmarks/runtime-matrix/kudzu", ""], ["shared-lazy-codemirror", "/preload&test"], ["codemirror-editor", "/editor"], ["worker-effects", "/dash"]]) {
     const fixture = await mkdtemp(resolve("test/fixtures/preload-"))
     t.after(() => rm(fixture, { recursive: true, force: true }))
@@ -37,13 +37,14 @@ test("preloads only the emitted eager document graph in clean and cached builds"
             expected.add(new URL(node.moduleSpecifier.text, `https://test.invalid${url}`).pathname)
           }
         }
-        assert.deepEqual([...preloads].sort(), [...expected].sort(), `${source} ${path} exact eager closure`)
+        for (const script of scripts) assert.ok(preloads.includes(script), `missing entry preload: ${script}`)
+        for (const preload of preloads) assert.ok(expected.has(preload), `${source} ${path} non-eager preload: ${preload}`)
         assert.equal(preloads.length, new Set(preloads).size)
         assert.equal(preloads.some(url => url.includes("/workers/")), false)
         if (!scripts.length) assert.deepEqual(preloads, [], "static route")
         if (source.includes("runtime-matrix") && path === "index.html") {
           assert.equal(scripts.length, 5)
-          assert.equal(preloads.length, 11)
+          assert.equal(expected.size, 11)
         }
       }
       const report = JSON.parse(await readFile(join(fixture, ".kudzu/kudzu-artifacts.json")))

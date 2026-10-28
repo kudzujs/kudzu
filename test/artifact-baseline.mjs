@@ -62,12 +62,7 @@ for (const [name, directory] of fixtures) {
     }
     const scripts = matches(html.text, /<script\b[^>]*type="module"[^>]*src="([^"]+)"/g)
     const preloads = matches(html.text, /<link\b[^>]*rel="modulepreload"[^>]*href="([^"]+)"/g)
-    assert.equal(preloads.length, new Set(preloads).size, "duplicate preload")
-    for (const script of scripts) assert.ok(preloads.includes(script), `missing entry preload: ${script}`)
-    for (const preload of preloads) {
-      const reasons = owned.get(preload.slice(1))
-      assert.ok([...(reasons ?? [])].some(reason => ["runtime-entry", "runtime-requirement", "handler-entry", "handler-chunk"].includes(reason)), `non-eager preload: ${preload}`)
-    }
+    assert.deepEqual(preloads, scripts, `${name} ${route.route} modulepreload mismatch`)
     const assets = [...owned].sort(([left], [right]) => left.localeCompare(right)).map(([path, reasons]) => ({ path, reasons: [...reasons].sort(), ...fileRecord(files.get(path)) }))
     const eagerAssets = assets.filter(asset => !asset.reasons.includes("lazy-handler-chunk"))
     const lazyAssets = assets.filter(asset => asset.reasons.includes("lazy-handler-chunk"))

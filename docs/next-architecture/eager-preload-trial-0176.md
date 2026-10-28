@@ -40,8 +40,73 @@ entry-only preload assertion is updated for eager ownership, but the unrelated
 artifact-report mismatch is not counted as a passing check. Exact emitted-graph
 tests and five-fixture output comparisons are independent of that assumption.
 
-Next: pin this candidate and the harness; run one hosted, uninstrumented 21-pair
+Frozen before measurement: pin this candidate and the harness; run one hosted, uninstrumented 21-pair
 comparison against 0.17.6, plus separate diagnostic traces. Require >=5% lower
 initial-DOM median, negative paired median, >=16/21 faster pairs and no operation
 >5% worse with >=16/21 slower pairs. Both lifetime arms and every C2 journey must
 pass. Preserve failed measurements; no favorable rerun or output-only re-gating.
+
+## Hosted outcome: rejected
+
+Candidate `405877a`, harness `4529929`, hosted
+[40651024837](https://github.com/kudzujs/kudzu/actions/runs/40651024837).
+Required-Chrome full checks, both delayed-list lifetime arms, 42 uninstrumented
+and six separately traced complete C2 journeys pass. The harness verifies every
+non-HTML file is identical, stripped HTML is identical, and candidate C2 has
+exactly one preload for every one of its 11 JS files versus five baseline entries.
+
+Initial DOM medians **349.5 / 341.8 ms (−2.20%)**, paired −7.7 ms, **11/21** faster.
+Both >=5% and >=16/21 adoption gates fail. No operation meets the regression gate.
+Script CPU 112.544 / 113.067 ms (+0.46%), paired +0.334 ms, 9/21 faster. Build
+medians 791.483 / 838.110 ms (+5.89%): the candidate adds measurable build work.
+HTML 688,281 / 688,775 raw and 69,741 / 69,821 level-9 gzip bytes; JS remains
+43,267 raw / 16,343 gzip in 11 files. Host: AMD EPYC 7763 (four logical CPUs),
+Linux 6.17.0-1022-azure x64, Node 24.21.0, Chrome 155.0.8059.39. These arms are
+compared only within this host/run, not against earlier trial absolute timings.
+
+### Did discovery move?
+
+Yes. `discovery.mjs` validates the six traces against the marked renderer,
+navigation frame and origin, conserves each marked interval through the existing
+partition analyzer, and records both network finish and renderer-delivery times.
+The six non-entry dependencies change from script initiators to parser-initiated
+link preloads. All times below are relative to each profile's start mark:
+
+| Arm/profile | Dependency sends ms | Last dependency network finish ms | Marked readiness interval ms |
+| --- | --- | --- | --- |
+| baseline 0 | +102.287…109.378 | +119.523 | 256.445 |
+| baseline 1 | +105.018…105.681 | +117.026 | 272.205 |
+| baseline 2 | +123.402…124.029 | +136.571 | 255.894 |
+| candidate 0 | −5.822…−5.371 | +37.094 | 276.648 |
+| candidate 1 | −5.968…−5.619 | +19.179 | 273.515 |
+| candidate 2 | −5.238…−3.883 | +38.643 | 265.700 |
+
+The intended discovery change happened, but it did not pass the readiness gate.
+For example, candidate 0 completes dependency networking at +37.094 ms, yet its
+first recorded module evaluation begins +122.254 ms and the marked interval ends
+at +276.648 ms. Candidate 1 evaluates long module spans earlier but still finishes
+near its baseline interval. These are scheduling observations, not causal proof
+that a particular module or layout accounts for the remainder. Evaluation spans
+lack URLs; do not infer identities or sum overlapping spans/network intervals.
+The three traced samples per arm are diagnostic and cannot replace the 21-pair
+uninstrumented result. No favorable rerun is authorized.
+
+### Restoration and next packet
+
+Build source, optional artifact-runner source and exact project contract are
+restored to 0.17.6. Retain graph-boundary/cache/base/shared-package/Worker regression
+coverage, not the candidate-only assertion requiring all eager dependencies to be
+preloaded. The original exact-closure assertion remains pinned in `405877a`.
+Restored check, 388 tests plus project journey and package smokes pass. Net product
+LOC, passes, semantic/runtime concepts and browser bytes are zero. No release,
+version, npm publication or deployment follows this rejected experiment.
+
+Next packet is a read-only renderer scheduling review using these six preserved
+traces: partition work between reported dependency network completion and module
+evaluation/readiness, identify whether repeated HTML/style/layout work belongs
+to document parsing, application code or acceptance callbacks where trace evidence
+allows, and mark unattributed work explicitly. Do not turn the removed discovery
+gap into an idle-time estimate, change matched content/DOM/accessibility, weaken
+readiness, or propose another product change before a distinct cost is proven.
+The optional artifact report's pre-existing missing-style requirement remains a
+separate tooling defect; it is not startup-speed evidence.

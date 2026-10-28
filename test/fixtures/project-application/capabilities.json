@@ -390,9 +390,9 @@
   "baseline": {
     "deploy": {
       "files": 42,
-      "rawBytes": 191670,
-      "aggregateGzipBytes": 57972,
-      "sha256": "045bef5886a6c11a1373459290a89551c05d013bb018def42f505d3a3acbf48a"
+      "rawBytes": 189830,
+      "aggregateGzipBytes": 57833,
+      "sha256": "f85429fec060f30dafc90545be6b5720c45bf8e2ec9f4d33c16c043ed2f91d34"
     },
     "routes": {
       "/app/projects": {

@@ -1,5 +1,44 @@
 # Performance Records
 
+## Rejected Eager Module Preloads (2026-10-28)
+
+Candidate `405877a`, harness `4529929`, hosted
+[40651024837](https://github.com/kudzujs/kudzu/actions/runs/40651024837).
+The failing baseline closure test identifies six missing eager preloads. Candidate
+post-emission static-graph traversal adds native hints after bundling, excluding
+lazy-only imports, Workers and unrelated routes. Clean/cached/incremental builds,
+base escaping, shared eager/lazy packages and static siblings pass. Independent
+five-fixture output comparison proves only preload tags differ; all JS is identical.
+
+Initial DOM **349.5/341.8 ms (−2.20%)**, paired −7.7 ms, **11/21 faster: reject**.
+The frozen >=5% and >=16/21 gates fail; no operation meets the regression gate.
+Script CPU 112.544/113.067 ms (+0.46%), paired +0.334 ms, 9/21 faster. Build
+medians 791.483/838.110 ms (+5.89%). C2 HTML +494 raw/+80 level-9 gzip bytes;
+JS stays 43,267 raw/16,343 gzip. Project trial output +1,840 raw/+139 local
+aggregate gzip bytes, with unchanged route JS. Host: AMD EPYC 7763 (four logical
+CPUs), Linux 6.17.0-1022-azure x64, Node 24.21.0, Chrome 155.0.8059.39.
+
+Separate traces confirm all six requests move from script-initiated +102…124 ms
+to parser-initiated links before the start mark; last dependency network finish
+moves from +117…137 ms to +19…39 ms. This does not establish a readiness speedup.
+Record renderer ResourceFinish delivery separately; conserve marked intervals,
+and never sum overlapping spans or compare absolute timing across hosted runs.
+No favorable rerun. Full check/388 tests, both lifetime arms, 48 C2 journeys and
+local package smokes pass.
+
+Build source, artifact-runner source and exact project contract are restored to
+0.17.6; boundary/cache/ownership tests stay, while candidate-only exact-preload
+assertions remain pinned historically. Restored check/388 tests/project journey
+and package smokes pass. No net product LOC, semantic pass, primitive, runtime
+concept or browser-byte delta; no release/tag/npm publication/deployment.
+The optional artifact-baseline runner's missing project `kudzu-style.js` requirement
+was reproduced on released source and remains a separate known tooling defect.
+Full report: [`eager-preload-trial-0176.md`](docs/next-architecture/eager-preload-trial-0176.md).
+Evidence attached to v0.17.6: `c2-eager-preloads-40651024837.tar.gz`, SHA256
+`0b91048ce3c22b036451af477c1b5cd3929f333a47c41e6be8f4352f4cd9ec08`.
+Preserves raw samples, six traces, both deploys, pinned protocol/sources, output
+assertion failure, five-fixture comparison, discovery analysis and validation logs.
+
 ## Startup Budget Decision Review (2026-10-28)
 
 Rechecked the raw 21-pair medians, paired changes and faster-pair counts of eight
