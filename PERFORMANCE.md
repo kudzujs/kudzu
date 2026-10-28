@@ -38,6 +38,10 @@ Evidence attached to v0.17.6: `c2-eager-preloads-40651024837.tar.gz`, SHA256
 `0b91048ce3c22b036451af477c1b5cd3929f333a47c41e6be8f4352f4cd9ec08`.
 Preserves raw samples, six traces, both deploys, pinned protocol/sources, output
 assertion failure, five-fixture comparison, discovery analysis and validation logs.
+Restored commit `d95b08c` passes required-Chrome and Node 22/package-smoke CI
+[40653479177](https://github.com/kudzujs/kudzu/actions/runs/40653479177).
+Downloaded release evidence matches the recorded archive SHA256. Product source,
+versions and exact project contract match v0.17.6.
 
 ## Startup Budget Decision Review (2026-10-28)
 
