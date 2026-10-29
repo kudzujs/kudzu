@@ -75,8 +75,9 @@ The 0.17.7 patch corrects reported style-helper requirements to match existing
 family specialization. A compiled ten-route regression and all 13 artifact
 fixtures pass; their deploy output is byte-identical to 0.17.6. This is a report
 correctness fix with zero browser cost, not a startup optimization. Generator
-0.1.168 targets ^0.17.7. Release delivery is pending exact-commit CI, protected
-publication, registry/fresh-install verification and website deployment.
+0.1.168 targets ^0.17.7. Tag/release `v0.17.7` points to `8af2e2e`; exact-commit CI
+40805368846 passes. Protected publication 40806146908 awaits fresh approval;
+registry/fresh-install verification and website deployment remain pending.
 
 The 0.17.6 patch resolves direct-row event templates through existing ownership
 before current item capture, fixing state/ref loss after repeated same-key updates.

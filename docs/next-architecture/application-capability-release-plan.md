@@ -142,9 +142,11 @@ and passes afterward, covering plain/styled bindings and lists, shared/navigatio
 families, base paths and static output. All 13 artifact fixtures pass with exactly
 unchanged deploy bytes; report changes remove only absent style requirements.
 Full check/389 tests/project journey and package smokes pass. Generator 0.1.168
-targets core ^0.17.7. Delivery is active: exact-commit CI, tag/release, protected npm
-publication, registry/fresh-install verification and website deployment remain
-required before closing this packet. No new speed comparison is needed or claimed.
+targets core ^0.17.7. Tag/release `v0.17.7` points to `8af2e2e` with exact-commit
+CI 40805368846 passing. Delivery remains active: protected npm publication
+40806146908 awaits fresh approval; registry/fresh-install verification and website
+deployment are required before closing this packet. No new speed comparison is
+needed or claimed.
 General binding write skipping, attribute registration, first-fill comparison,
 false capture-default omission, ID exclusion and eager preloading remain rejected;
 no new primitive or benchmark weakening is authorized.

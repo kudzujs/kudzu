@@ -31,6 +31,17 @@ change with zero net reporting LOC, semantic primitives/passes, runtime concepts
 or application browser bytes. No timing experiment or speed improvement is claimed;
 all rejected startup candidates and independent AI-cost/1.0 gates remain unresolved.
 Exact-commit CI, tag/release and publication/deployment receipts follow below.
+Release commit `8af2e2e` passes required-Chrome and Node 22/package-smoke CI
+[40805368846](https://github.com/kudzujs/kudzu/actions/runs/40805368846).
+Annotated tag and GitHub release `v0.17.7` are published. Protected npm workflow
+[40806146908](https://github.com/kudzujs/kudzu/actions/runs/40806146908) awaits fresh
+environment approval; registry/fresh-install verification and deployment are
+pending. No npm completion is claimed.
+Evidence `artifact-style-0177.tar.gz` is attached to v0.17.7; downloaded SHA256
+matches `1c190702b59777db8fcbf6d7740edd306b4f3ea16587d3133ac2e40f8c74d346`.
+Includes both failure reproductions, the 13-fixture report and exact-byte proof,
+comparison-harness failures, source hashes, check/test/package/CI receipts and
+local core/generator tarballs with integrity metadata.
 
 ## Renderer Invalidation Attribution (2026-10-29)
 
