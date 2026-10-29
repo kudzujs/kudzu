@@ -35,6 +35,10 @@ Evidence attached to v0.17.6: `c2-render-invalidations-40800976322.tar.gz`, SHA2
 Contains raw traces/journeys, both deploys, frozen protocol, mark manifest,
 dependency-order and invalidation analysis, original args/resolved source,
 input/source hashes, pinned helper sources and validation/hosted logs.
+Main commit `39ce8e1` passes required-Chrome and Node 22/package-smoke CI
+[40802523397](https://github.com/kudzujs/kudzu/actions/runs/40802523397).
+Downloaded archive SHA256 matches; product source and exact project contract
+remain identical to v0.17.6.
 
 ## Renderer Scheduling Review After Rejected Preloads (2026-10-29)
 
