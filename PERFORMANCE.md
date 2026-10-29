@@ -32,6 +32,9 @@ Evidence attached to v0.17.6: `renderer-scheduling-0176.tar.gz`, SHA256
 Archive contains the review script/results/log, original-event context and windows,
 pinned analyzer/runner/fixture source, provenance/input hashes and validation logs.
 Raw traces remain in the referenced, hash-pinned eager-preload trial archive.
+Commit `15730b5` passes required-Chrome and Node 22/package-smoke CI
+[40792086031](https://github.com/kudzujs/kudzu/actions/runs/40792086031).
+Downloaded evidence matches its recorded SHA256; production source is unchanged.
 
 ## Rejected Eager Module Preloads (2026-10-28)
 
