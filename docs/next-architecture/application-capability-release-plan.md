@@ -117,12 +117,20 @@ Product and exact project output contract are restored to 0.17.6; retain
 graph-boundary/cache/base/lazy/Worker regression coverage. Restored check/388 tests
 and package smokes pass. No release or favorable rerun.
 
-Next packet is a read-only renderer scheduling review of the six preserved
-preload-trial traces: account for work after network completion through module
-evaluation/readiness, attribute parsing/style/layout to proven owners where
-possible, and label unknowns. No content/DOM/accessibility/readiness changes or
-new product candidate before a distinct cost is proven. See
-[`eager-preload-trial-0176.md`](./eager-preload-trial-0176.md).
+Renderer scheduling review is complete over the six preserved preload-trial
+traces. Candidate networking finishes 67.962–85.160 ms before first module
+evaluation; those conserved windows contain document parsing/rendering, not a
+proven network wait. First modules follow final parsing by about 1 ms. Only
+0.735–1.942 ms of style/layout per profile is nested inside the readiness callback;
+large deferred render passes have no invalidation stacks in these traces.
+
+Next packet is scratch-only invalidation/module-body attribution on pinned
+0.17.6: three diagnostic profiles per arm, identical tracing categories,
+unmarked/marked released output and unchanged complete C2 acceptance. Reuse marks,
+collect invalidation stacks where Chrome provides them, and retain unknowns;
+instrumented timing is not adoption evidence. No new product candidate or 21-pair
+run before a distinct avoidable cost is proven. Follow
+[`renderer-scheduling-review-0176.md`](./renderer-scheduling-review-0176.md).
 General binding write skipping, attribute registration, first-fill comparison,
 false capture-default omission, ID exclusion and eager preloading remain rejected;
 no new primitive or benchmark weakening is authorized.

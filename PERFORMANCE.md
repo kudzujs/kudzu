@@ -1,5 +1,38 @@
 # Performance Records
 
+## Renderer Scheduling Review After Rejected Preloads (2026-10-29)
+
+Read-only analysis of all six preserved traces from hosted 40651024837. No new
+benchmark samples or product changes. The candidate's final script networking
+precedes first module evaluation by 67.962–85.160 ms. Exact per-profile partitions
+attribute 29.284–51.566 ms of those windows to style/layout and 15.998–22.876 ms
+to HTML parsing; these ranges are not additive medians or recoverable speedups.
+Final parsing ends 0.996–1.418 ms before candidate module evaluation, with
+`domInteractive` in between. All five head entries are non-async native modules.
+
+Large style/layout spans execute outside recorded script stacks. Only
+0.735–1.942 ms per profile is nested inside the harness `ready()` callback. The
+large post-module render pass varies in scheduling, but absent invalidation
+events/stacks prevent identifying which writes caused it. Module evaluations lack
+URLs. Uncovered time is not proven idle; reported network completion is distinct
+from renderer ResourceFinish delivery. All disjoint windows reconstruct every
+category of the original marked readiness partition exactly.
+
+No optimization is selected. The next bounded packet adds diagnostic invalidation
+tracking to existing scratch module-body marks on pinned 0.17.6, preserving full
+C2 acceptance and excluding instrumented timing from adoption evidence. Report:
+[`renderer-scheduling-review-0176.md`](docs/next-architecture/renderer-scheduling-review-0176.md).
+Zero semantic primitives, core passes/LOC, runtime concepts, browser bytes or
+benchmark delta; no release, tag, npm publication or deployment.
+Review conservation/frame/parser assertions, `npm run check`, and 388 tests plus
+project journey pass. No new browser benchmark was run; normal regression tests
+remain part of validation.
+Evidence attached to v0.17.6: `renderer-scheduling-0176.tar.gz`, SHA256
+`59696ef8a611e753aa1a55e2b963aeab1ccd19df704a96bba36faf4e3869b284`.
+Archive contains the review script/results/log, original-event context and windows,
+pinned analyzer/runner/fixture source, provenance/input hashes and validation logs.
+Raw traces remain in the referenced, hash-pinned eager-preload trial archive.
+
 ## Rejected Eager Module Preloads (2026-10-28)
 
 Candidate `405877a`, harness `4529929`, hosted
