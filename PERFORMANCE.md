@@ -1,5 +1,39 @@
 # Performance Records
 
+## Actual Budget Complete Intake (2026-10-29)
+
+The `0.19.5` sparse-workspace blocker is resolved at upstream commit
+`87e33e49eb4d666c33e0c0f172faf340d1b7aa0a`. Complete codeload SHA256 is
+`0f1287f65f391c23eb5a4759aaa0a023dfeb5223e5df1e8ddbf617ea89fb0cd7`.
+Node 24.14.0 / checked-in Yarn 4.17.1 immutable install and the original browser
+build (`--skip-translations`, no unpinned locale fetch) pass without tracked
+upstream source changes. The manifest graph resolves all workspace dependencies
+across 14 packages. The package-code denominator is 1,958 tracked JS/TS-family
+files / 295,885 lines, explicitly including tests/configs/scripts and excluding
+root tooling/non-code assets/dependencies; it is not a migration retention ratio.
+All 166 browser build files are sized and SHA256-hashed in the inventory.
+
+Playwright 1.61.1 / Chromium 149.0.7827.55 passes the two unchanged upstream
+onboarding tests serially with retries disabled: empty budget -> All Accounts /
+0.00, and Actual import -> visible budget table / Ally Savings 1,772.80 / Roth
+IRA 2,745.81. Archive-only Lage build failure (missing Git metadata) and first
+browser attempt (missing installed browser) are preserved before the successful
+setup. These are upstream functional checks, not Kudzu migration, persistence,
+cleanup, visual, performance or AI-cost proof.
+
+The [intake packet](docs/next-architecture/actual-budget-complete-intake.md)
+selects local budget creation and real worker/database ownership for the next
+reduction. Compiler edits require an executable failing fixture first; no Redux,
+Query, component or database runtime is authorized. Semantic primitives, core
+passes/LOC, runtime concepts, Kudzu browser bytes and package versions change by
+zero. The startup and independent AI-cost/1.0 gates remain unresolved.
+`npm run check` and the project journey plus 389 tests pass. Complete intake
+evidence is attached to v0.17.7 as `actual-budget-intake-0177.tar.gz`; its uploaded
+and downloaded SHA256 matches
+`db2e4a6de2aca3a66053a598fca57aecc541dfe2ee8cb61c58fb952672e68999`.
+The archive includes the original complete source tarball and all inventory,
+failure, setup, build, upstream acceptance and Kudzu verification receipts.
+
 ## 0.17.7 Artifact Follow-Up Census (2026-10-29)
 
 Read-only continuation at `e5512764adc15ecada3950acc4d0e78f0c6ac8ae`, Node

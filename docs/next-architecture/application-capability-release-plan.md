@@ -1,5 +1,13 @@
 # Application Capability Release Plan
 
+Current next packet (2026-10-29): Actual Budget `0.19.5` intake resumes from a
+complete workspace at the original pinned commit. Immutable install, production
+browser build and two unchanged upstream onboarding journeys pass. The missing
+workspace blocker is resolved; the next evidence-ready work is the local-budget
+creation reduction in [the intake session packet](./actual-budget-complete-intake.md).
+It must preserve real worker/database behavior and reproduce a source failure
+before compiler work. This is not a migrated-app claim or a new release.
+
 Latest continuation (2026-10-29): after completing 0.17.7 delivery, a read-only
 artifact census attempts all 266 existing fixture roots with `src/pages`.
 The 119 successful builds contain 247 routes; all reported JS paths exist and
@@ -1510,8 +1518,9 @@ login
 -> logout
 ```
 
-Actual Budget remains deferred until a complete pinned workspace and executable
-dependency graph are available.
+Actual Budget's complete pinned workspace, manifest dependency graph and first
+upstream browser journeys are now available; follow the bounded intake packet
+above before claiming migration support.
 
 ## `0.10.x`: Local And Shared State
 
@@ -3168,7 +3177,7 @@ consumed.
 - **Done condition:** a later packet is authorized, or deferral is recorded with
   no compatibility claim.
 
-Deferred by the stop condition. The pinned MIT revision
+Initially deferred by the stop condition. The pinned MIT revision
 `87e33e49eb4d666c33e0c0f172faf340d1b7aa0a` remains only a sparse desktop-client
 acquisition: 810 TS/TSX modules, 163,344 LOC, and 80 route declarations without
 the workspace tooling, component library, core backend, Yarn release, database,
@@ -3179,6 +3188,17 @@ denominator. No later application packet, compatibility claim, compiler work,
 runtime, package adapter, public API, version, or release is authorized. Intake
 may resume only from a complete pinned workspace and executable dependency
 graph.
+
+**Updated result (2026-10-29):** complete source at that same commit now installs
+with checked-in Yarn 4.17.1 and the immutable lockfile, builds the browser app
+with upstream's `--skip-translations` option, and passes the original empty-budget
+and Actual-import/expected-balance tests in Chromium. Fourteen workspaces resolve
+all declared workspace dependencies; 1,958 tracked package JS/TS-family files and
+295,885 lines provide an explicit inventory denominator, not a retained-source
+percentage. Missing Git metadata and browser setup failures are retained. Intake
+is complete; [the next bounded packet](./actual-budget-complete-intake.md) must
+reduce local budget creation with its actual worker/database lifecycle before
+proposing compiler changes. No production source or package version changes.
 
 ## `0.20.x`: AI Tooling And Delivery Cost
 
