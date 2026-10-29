@@ -1,5 +1,41 @@
 # Performance Records
 
+## Renderer Invalidation Attribution (2026-10-29)
+
+Hosted [40800976322](https://github.com/kudzujs/kudzu/actions/runs/40800976322),
+harness `da2cb94`. Both arms pin 0.17.6; candidate means scratch module-body marks.
+Three diagnostic profiles per arm use identical invalidation/stack categories.
+Full check/388 tests and all six complete C2 journeys pass. Source hashes, equal
+static import graphs, dependency-before-importer body ordering, all 11 observed
+modules, unchanged HTML and exact readiness partitions are verified.
+
+Every profile records 13,509 no-stack layout additions: 13,508 inside browser
+style-tree construction and one in document parsing. Six stack-bearing records
+resolve to two application effect text replacements and the harness's later
+attachment of those same node IDs. Emitted source locations identify
+`[data-effect-setup]` and `[data-child-setup]`; marked events belong to the effects
+entry body. Final layout inside `ready` is 0.500–1.169 ms. Binding/list bodies
+contain no tracked invalidations; this does not negate earlier proven DOM writes
+or establish that tracking captures every invalidation.
+
+No avoidable runtime producer is established for large initial tree rendering.
+Startup candidate search pauses instead of repeating diagnostics or weakening
+the workload. Next evidence-ready maintenance packet fixes the separately proven
+reported-but-unemitted style artifact requirement, with identical deploy bytes.
+Report: [`render-invalidation-attribution-0176.md`](docs/next-architecture/render-invalidation-attribution-0176.md).
+
+Host: AMD EPYC 7763 (four logical CPUs), Linux 7.0.0-1017-azure x64,
+Node 24.22.1, Chrome 156.0.8078.47. Versions differ from the earlier preload trial;
+do not compare absolute timings or transfer detailed caller conclusions between
+runs. Trace/mark overhead is not speed evidence. Zero product source, semantic
+primitives/passes, runtime concepts or deployed browser-byte delta; no release,
+tag, npm publication or deployment. Local check/388 tests and marker tests pass.
+Evidence attached to v0.17.6: `c2-render-invalidations-40800976322.tar.gz`, SHA256
+`8de591d85051979ff36351bc7d89183a387124b822dbff9d32e123869fd09578`.
+Contains raw traces/journeys, both deploys, frozen protocol, mark manifest,
+dependency-order and invalidation analysis, original args/resolved source,
+input/source hashes, pinned helper sources and validation/hosted logs.
+
 ## Renderer Scheduling Review After Rejected Preloads (2026-10-29)
 
 Read-only analysis of all six preserved traces from hosted 40651024837. No new

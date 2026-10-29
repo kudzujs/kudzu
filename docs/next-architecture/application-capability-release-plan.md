@@ -124,13 +124,24 @@ proven network wait. First modules follow final parsing by about 1 ms. Only
 0.735–1.942 ms of style/layout per profile is nested inside the readiness callback;
 large deferred render passes have no invalidation stacks in these traces.
 
-Next packet is scratch-only invalidation/module-body attribution on pinned
-0.17.6: three diagnostic profiles per arm, identical tracing categories,
-unmarked/marked released output and unchanged complete C2 acceptance. Reuse marks,
-collect invalidation stacks where Chrome provides them, and retain unknowns;
-instrumented timing is not adoption evidence. No new product candidate or 21-pair
-run before a distinct avoidable cost is proven. Follow
-[`renderer-scheduling-review-0176.md`](./renderer-scheduling-review-0176.md).
+Invalidation/module-body diagnosis is complete in hosted 40800976322: both arms
+pin 0.17.6, three profiles each, same trace categories, six complete journeys pass.
+Each trace has two application effect text replacements, linked by stack/source
+and node ID to the readiness callback's 0.500–1.169 ms final layout. The 13,509
+no-stack initial layout additions occur in browser style-tree construction/parser
+contexts; binding/list bodies have no tracked invalidations. Missing/coalesced
+events do not prove absence of writes. No avoidable runtime producer is established.
+The startup optimization lane pauses; no further trace or speed candidate is
+authorized absent new evidence. See
+[`render-invalidation-attribution-0176.md`](./render-invalidation-attribution-0176.md).
+
+Next evidence-ready packet is correctness-only artifact reporting: reproduce and
+fix the project route/family's reported-but-unemitted `kudzu-style.js` requirement
+using existing capability facts. Cover style-free/styled bindings, list styles,
+shared/navigation families and the full artifact fixture set; require identical
+deploy bytes and full checks/package smokes. Follow the bounded packet in the
+invalidation report. This is not a startup optimization or permission for a graph
+rewrite, and requires no new 21-pair comparison.
 General binding write skipping, attribute registration, first-fill comparison,
 false capture-default omission, ID exclusion and eager preloading remain rejected;
 no new primitive or benchmark weakening is authorized.
