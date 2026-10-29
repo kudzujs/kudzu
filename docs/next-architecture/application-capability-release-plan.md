@@ -1,5 +1,17 @@
 # Application Capability Release Plan
 
+Latest continuation (2026-10-29): after completing 0.17.7 delivery, a read-only
+artifact census attempts all 266 existing fixture roots with `src/pages`.
+The 119 successful builds contain 247 routes; all reported JS paths exist and
+all 913 parsed relative static ESM import/re-export edges belong to their route's
+reported eager graph. The 147 build rejections are retained and excluded from
+verification; negative-fixture expectations are not re-scored. No further report
+failure is reproduced, so no product change or new release is selected.
+See `PERFORMANCE.md` for evidence and scope. Startup optimization remains paused;
+the next implementation requires a separate reproducible correctness failure or
+new evidence for an incomplete gate, not another rejected speed trial or model
+batch. Historical next-step language below does not reopen completed packets.
+
 Rejected initial-ID trial: let the build mark direct owned rows only when their
 complete initial HTML contains no `$k` placeholders. At initial mounting, clear
 replacement registration only for structural row plans with no list events and

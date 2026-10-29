@@ -1,5 +1,39 @@
 # Performance Records
 
+## 0.17.7 Artifact Follow-Up Census (2026-10-29)
+
+Read-only continuation at `e5512764adc15ecada3950acc4d0e78f0c6ac8ae`, Node
+24.14.0 / TypeScript 5.9.3, broadens the completed 13-fixture report check to
+every existing fixture root containing `src/pages`. Of 266 attempted fixture
+builds, 119 succeed and 147 reject; all rejection messages are retained, and
+rejected fixtures are excluded from the verified denominator rather than counted
+as passing. This census does not reassess the negative-fixture expectations.
+
+The 119 successful fixtures contain 247 routes. Every reported runtime entry,
+runtime requirement, handler entry/eager/lazy chunk and Worker entry/chunk exists
+in deploy output after removing its configured runtime-family base prefix.
+Parsing emitted ESM with TypeScript finds 913 route-attributed relative static
+import/re-export edges, all present in the corresponding reported eager graph.
+The initial regex probe misread four TypeScript-package strings as imports;
+the AST check excludes those strings and native dynamic imports, with a small
+assert-based parser self-check. Both probe results remain in the evidence.
+
+No further artifact discrepancy is reproduced. This closes a correctness
+investigation, not a product patch: zero production compiler/runtime LOC,
+semantic primitives, passes, runtime concepts or browser-byte changes; no new
+fixture, benchmark timing, package version or release is warranted. Dynamic
+import behavior, browser ownership and performance are not re-proven by this
+static census. Existing release tests retain their separate evidence.
+
+Reproduction scripts and complete outcomes are archived as
+`artifact-followup-0177.tar.gz` on v0.17.7. Run `audit-artifact-files.mjs` from the
+repository root, then `check-report-closure.mjs`; scratch results use
+`/tmp/opencode`. Startup trials remain paused and AI-cost/1.0 remains blocked
+until a separate reproducible failure or distinct evidence-backed correction.
+Archive upload/download SHA256 matches
+`de9bff190c90e7f3e0f4fb4ff9f00d75735fe5e9fbce1629f3e68c6935d80d54`.
+`npm run check` and the project journey plus all 389 tests pass after this review.
+
 ## 0.17.7 Artifact Style Requirement Correction (2026-10-29)
 
 Both `routeRuntimeEdges()` and `familyRuntimeRequirements()` treated any binding
