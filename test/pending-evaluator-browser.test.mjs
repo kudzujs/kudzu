@@ -89,6 +89,37 @@ test("Chrome preserves evaluator ownership and keyed condition revisions", { tim
     })()`)
     assert.deepEqual(observation, { retained: true, branchRetained: true, label, detail }, `same-turn list and parent-state update: ${action}`)
   }
+  await navigate("/parent-only/index.html")
+  await evaluate(cdp, 'Promise.all([...document.querySelectorAll("script[type=module]")].map(script => import(script.src)))')
+  for (const [action, busy, label] of [["load", false, "Ready"], ["busy", true, "Working"], ["ready", false, "Recovered"], ["refresh", true, "Refreshing"], ["ready", false, "Recovered"]]) {
+    const observation = await evaluate(cdp, `(async () => {
+      const previous = document.querySelector("[data-row]")
+      document.querySelector("[data-${action}]").click()
+      const deadline = Date.now() + 3000
+      while (!document.querySelector("[data-row]") || document.querySelector("[data-open]").disabled !== ${busy} || document.querySelector("[data-label]").textContent !== ${JSON.stringify(label)}) {
+        if (Date.now() > deadline) throw new Error("Delayed keyed row missed parent-only state")
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+      const row = document.querySelector("[data-row]")
+      return { retained: previous === null || previous === row, className: row.className, ariaBusy: row.getAttribute("aria-busy"), outer: document.querySelector("[data-outer]").disabled }
+    })()`)
+    assert.deepEqual(observation, { retained: true, className: busy ? "busy" : "ready", ariaBusy: String(busy), outer: busy })
+  }
+  assert.equal(await evaluate(cdp, `(async () => {
+    const previous = document.querySelector("[data-row]")
+    const wait = async predicate => {
+      const deadline = Date.now() + 3000
+      while (!predicate()) {
+        if (Date.now() > deadline) throw new Error("Parent-only keyed ownership did not settle")
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+    }
+    document.querySelector("[data-remove]").click()
+    await wait(() => !document.querySelector("[data-row]"))
+    document.querySelector("[data-load]").click()
+    await wait(() => document.querySelector("[data-open]")?.disabled === false && document.querySelector("[data-label]")?.textContent === "Ready")
+    return document.querySelector("[data-row]") !== previous
+  })()`), true)
   const pendingFixture = new URL("./fixtures/pending-list-source/", import.meta.url)
   t.after(async () => {
     for (const path of ["dist", ".kudzu"]) await rm(new URL(path, pendingFixture), { recursive: true, force: true })

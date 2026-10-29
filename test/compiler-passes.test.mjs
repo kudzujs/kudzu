@@ -32,6 +32,21 @@ import { createZustandPass } from "../framework/compiler/zustand-pass.mjs"
 
 const handlerLowering = createHandlerLowering({ cloneAst: node => node, synthesizeTree: node => node })
 
+test("parent-only keyed values retain nested and impure expression diagnostics", () => {
+  const file = resolve("src/pages/parent-only-invalid.tsx")
+  for (const [jsx, message] of [
+    ['items.map(item => <li key={item.id}>{item.children.map(child => <button key={child.id} disabled={busy}>Open</button>)}</li>)', /Nested keyed list item expressions cannot read parent state/],
+    ['items.map(item => <li key={item.id}><button disabled={check(busy)}>Open</button></li>)', /Derived keyed list item expressions cannot call arbitrary functions/]
+  ]) {
+    const source = `import { useState } from "@kudzujs/core"; export default function Page() { const [items, setItems] = useState([{ id: "a", children: [{ id: "b" }] }]); const [busy, setBusy] = useState(false); return <main><button onClick={() => { setBusy(!busy); setItems([...items]) }}>Update</button><ul>{${jsx}}</ul></main> }`
+    assert.throws(() => compileSource(file, new Set([file]), new Map([[file, source]]), new Set(), new Map(), ""), error => {
+      assert.match(error.message, /parent-only-invalid\.tsx:\d+:\d+/)
+      assert.match(error.message, message)
+      return true
+    })
+  }
+})
+
 test("bounds inspection sections after deterministic blocker ordering", () => {
   const ready = createInspectionReport({
     sourceFiles: Array.from({ length: 101 }, (_, index) => `src/module-${String(100 - index).padStart(3, "0")}.ts`),

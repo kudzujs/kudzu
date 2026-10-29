@@ -2843,9 +2843,9 @@ function validateKeyedList(parts, sourceFile, setters, rowStates, componentSpeci
         analysis.values.push({ node: node.expression, value: { field } })
         return
       }
-      if (referencesIdentifier(expression, item) || parts.index && referencesIdentifier(expression, parts.index)) {
-        const states = referencedStateNames(expression, setters, expression, bindingIndex)
-        for (const rowState of rowStates) states.delete(rowState.state)
+      const states = referencedStateNames(expression, setters, expression, bindingIndex)
+      for (const rowState of parts.rowStates ?? rowStates) states.delete(rowState.state)
+      if (referencesIdentifier(expression, item) || parts.index && referencesIdentifier(expression, parts.index) || states.size) {
         if (parts.nested && states.size) fail(node, "Nested keyed list item expressions cannot read parent state")
         validateListExpression(expression, item, node, fail, parts.index, states)
         if (ts.isJsxAttribute(node.parent) && ["ref", "dangerouslysetinnerhtml"].includes(node.parent.name.text.toLowerCase())) fail(node, `Keyed list item ${node.parent.name.text} is not supported`)

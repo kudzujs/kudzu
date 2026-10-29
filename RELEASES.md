@@ -1,5 +1,22 @@
 # Kudzu Releases
 
+## 0.17.8 - Parent State in New Rows
+
+- Fixes parent-only text and attributes in delayed keyed rows. Values such as
+  `disabled={busy}` now use existing keyed expression ownership, so added rows
+  receive current parent state and continue updating without losing DOM identity.
+- Preserves row-local state and the existing nested-parent/purity boundaries.
+  Adds no semantic primitive, compiler pass or browser runtime source change.
+- A compiled Chrome regression covers delayed insertion, parent-only updates,
+  same-key refresh, error recovery and fresh remount. The authorizing Actual
+  Budget reduction uses its real Worker/SQLite backend and proves local budget
+  creation/open, missing-budget recovery, reload persistence and owner cleanup.
+- All 13 existing artifact-baseline deploy trees are byte-identical. The corrected
+  Actual reduction adds 1,355 raw / 441 aggregate gzip JS bytes; no speed or
+  whole-application migration claim is made.
+- Generator 0.1.169 targets core ^0.17.8. Startup/restoration superiority and
+  independent AI-cost/1.0 gates remain unresolved.
+
 ## 0.17.7 - Accurate Style Artifact Reports
 
 - Corrects route and runtime-family requirements that reported `kudzu-style.js`

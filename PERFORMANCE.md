@@ -1,5 +1,36 @@
 # Performance Records
 
+## 0.17.8 Parent-Only Values in Delayed Keyed Rows (2026-10-29)
+
+The real Actual Budget reduction at pinned upstream
+`87e33e49eb4d666c33e0c0f172faf340d1b7aa0a` reproduced a disabled Open budget
+button after parent `busy` cleared. An independent compiled Chrome fixture
+fails on 0.17.7 with `Delayed keyed row missed parent-only state` before the fix.
+`validateKeyedList()` now discovers parent signals even without an item/index
+reference, excludes row-local state, and reuses existing keyed expression
+ownership. Semantic primitives +0, passes +0, net core LOC +0, runtime concepts
++0 and runtime source changes +0. No generic database or component runtime.
+
+The Actual journey passes real creation/open, missing-budget recovery, reload
+persistence, conditional cleanup/remount and pagehide cleanup of Workers and
+listeners. Its static sibling requests no JS. The backend, SQLite WASM/data and
+extracted unchanged absurd-sql worker are upstream public assets, not generated
+Kudzu Worker graph entries. Full application migration, multi-tab coordination
+and locale behavior are outside this evidence.
+
+Same-path baseline/candidate builds isolate the source-compiler change. All 13
+existing artifact-baseline deploy trees are byte-identical. The regression
+fixture totals change from 46,295 raw / 17,571 aggregate gzip JS bytes to
+47,655 / 17,888 (+1,360 / +317). Actual totals, including unchanged upstream
+backend JS, change from 3,622,883 / 796,119 to 3,624,238 / 796,560
+(+1,355 / +441). These are correctness costs, not timing benchmarks or speed
+claims. Startup/restoration and independent AI-cost/1.0 gates remain unresolved.
+
+`npm run check`, the project journey plus all 390 tests, both package smokes,
+all 13 artifact-baseline fixtures and required-Chrome regression pass. The final
+real DB journey also passes. Core 0.17.8 / generator 0.1.169 are aligned.
+Exact-commit CI, evidence attachment and protected npm delivery are pending.
+
 ## Actual Budget Complete Intake (2026-10-29)
 
 The `0.19.5` sparse-workspace blocker is resolved at upstream commit

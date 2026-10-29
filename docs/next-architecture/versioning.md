@@ -66,10 +66,20 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.168` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.7`.
+`create-kudzu@0.1.169` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.8`.
 
 ## Release Boundary
+
+The 0.17.8 patch fixes parent-only reactive text and attributes in delayed keyed
+rows through existing list expression ownership. The real Actual Budget local
+database reduction and an independent compiled Chrome regression authorize this
+correctness fix. No runtime source, semantic primitive or compiler pass is added;
+core LOC changes by zero. Existing 13 artifact deploy trees are identical;
+the corrected Actual reduction adds 1,355 raw / 441 aggregate gzip JS bytes.
+Generator 0.1.169 targets ^0.17.8. Full check, 390 tests plus project journey,
+package smokes, artifact validation and required Chrome pass; delivery is pending.
+This does not establish speed improvements or a whole-application migration.
 
 The 0.17.7 patch corrects reported style-helper requirements to match existing
 family specialization. A compiled ten-route regression and all 13 artifact

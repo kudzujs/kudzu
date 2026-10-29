@@ -1,5 +1,27 @@
 # Application Capability Release Plan
 
+Active correctness packet: the real Actual Budget worker/database reduction
+creates and reads a persisted budget, but its delayed keyed row keeps
+`disabled={busy}` after a failed open clears the parent busy state. An independent
+compiled Chrome regression reproduces parent-only text/attribute failures before
+compiler edits. `validateKeyedList()` recognizes parent signals only when the
+expression also names the item/index; parent-only values fall into ordinary
+binding registration and miss cloned rows. Route those proven parent signals
+through existing keyed expression ownership, preserving row-local state and
+the primitive/nested rejection boundaries. No new runtime, evaluator or primitive.
+Gate on delayed insertion, same-key updates, error recovery, removal/remount,
+negative boundaries, full checks/package smoke and the actual DB journey;
+record browser-byte costs without claiming speed or whole-app migration.
+
+Candidate result (`0.17.8`, generator `0.1.169`): the actual DB journey and the
+independent compiled regression pass; nested-parent and impure expressions retain
+source diagnostics. Semantic primitives +0, core passes +0, net core LOC +0,
+runtime concepts +0; runtime sources unchanged. All 13 existing artifact deploy
+trees are identical. Corrected Actual JS adds 1,355 raw / 441 aggregate gzip
+bytes; independent regression fixture adds 1,360 / 317. Full check, 390 tests
+plus project journey, package smokes, artifact validation and required Chrome
+pass. Delivery is pending; detailed evidence is recorded in `PERFORMANCE.md`.
+
 Current next packet (2026-10-29): Actual Budget `0.19.5` intake resumes from a
 complete workspace at the original pinned commit. Immutable install, production
 browser build and two unchanged upstream onboarding journeys pass. The missing

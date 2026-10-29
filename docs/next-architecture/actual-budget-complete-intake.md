@@ -61,6 +61,17 @@ must not be compared with this workspace as if it migrated the application.
 
 ## Next bounded packet: local budget creation boundary
 
+Follow-up: the executable local database reduction reproduced a delayed keyed
+row whose `disabled={busy}` failed to recover when parent state cleared.
+The 0.17.8 candidate routes parent-only values through existing list-expression
+ownership. Actual's original backend, SQLite WASM/data and unchanged extracted
+absurd-sql IDB worker now pass create/open, missing-budget error recovery, reload
+persistence, conditional release/remount and pagehide cleanup. The independent
+static sibling requests no JavaScript. See `PERFORMANCE.md` for byte accounting
+and release evidence. This reduction uses externally built public Worker assets,
+not compiler-generated Worker graph entries, and proves neither the full app nor
+multi-tab coordination, locale coverage or general Redux/database compatibility.
+
 1. Pin and preserve `src/components/manager/WelcomeScreen.tsx`,
    `src/budgetfiles/budgetfilesSlice.ts`, browser preload/connection setup and their
    reachable dependencies. Keep the original empty-budget acceptance unchanged.

@@ -10,13 +10,13 @@ cd my-app
 npm run dev
 ```
 
-The generated project is a working showcase on `@kudzujs/core@^0.17.7` with reusable components, an interactive state example, a zero-JavaScript static route, page metadata, responsive CSS, and `npm run check`. Configuration remains optional until the app needs custom assets, document defaults, navigation, or build hooks.
+The generated project is a working showcase on `@kudzujs/core@^0.17.8` with reusable components, an interactive state example, a zero-JavaScript static route, page metadata, responsive CSS, and `npm run check`. Configuration remains optional until the app needs custom assets, document defaults, navigation, or build hooks.
 
 Use `--no-install` to create the files without installing dependencies.
 
 ## Optional AI authoring guidance
 
-`create-kudzu@0.1.168` provides optional local AI developer tools with managed check cancellation:
+`create-kudzu@0.1.169` provides optional local AI developer tools with managed check cancellation:
 
 ```bash
 npm create kudzu@latest my-app -- --ai
