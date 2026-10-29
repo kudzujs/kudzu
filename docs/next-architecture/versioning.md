@@ -66,10 +66,17 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.167` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.6`.
+`create-kudzu@0.1.168` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.7`.
 
 ## Release Boundary
+
+The 0.17.7 patch corrects reported style-helper requirements to match existing
+family specialization. A compiled ten-route regression and all 13 artifact
+fixtures pass; their deploy output is byte-identical to 0.17.6. This is a report
+correctness fix with zero browser cost, not a startup optimization. Generator
+0.1.168 targets ^0.17.7. Release delivery is pending exact-commit CI, protected
+publication, registry/fresh-install verification and website deployment.
 
 The 0.17.6 patch resolves direct-row event templates through existing ownership
 before current item capture, fixing state/ref loss after repeated same-key updates.

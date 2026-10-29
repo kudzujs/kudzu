@@ -1,5 +1,18 @@
 # Kudzu Releases
 
+## 0.17.7 - Accurate Style Artifact Reports
+
+- Corrects route and runtime-family requirements that reported `kudzu-style.js`
+  even when style-free binding specialization omitted the module.
+- Uses existing family style facts, preserving styled bindings, styled lists and
+  shared navigation dependencies. No emitter or browser runtime changes.
+- Adds a compiled ten-route regression covering standalone, shared, navigation,
+  base-prefixed and static output. All 13 artifact-baseline fixtures now pass.
+- All 13 fixture deploy trees are byte-identical to 0.17.6; only absent style
+  requirements disappear from their reports. No speed improvement is claimed.
+- Publishes create-kudzu 0.1.168 targeting core ^0.17.7. Startup/restoration
+  superiority and independent AI-cost/1.0 gates remain unresolved.
+
 ## 0.17.6 - Reliable Events After Row Updates
 
 - Fixes item-capturing handlers that lost their row state/ref IDs after a second

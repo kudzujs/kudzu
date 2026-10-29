@@ -155,7 +155,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.ok(blog.includes(`Kudzu ${version}`) && blog.includes(`v${version}`))
   assert.match(blog, /source compiled by the current Kudzu release/)
   assert.ok(html.includes(`class="release-banner" href="/releases/${version}"`))
-  assert.match(html, /Reliable events after row updates/)
+  assert.match(html, /Accurate style artifact reports/)
   assert.match(release, /Kudzu 0\.16\.30.*Patch the target.*Skip the rest/s)
   assert.match(release, /BINDING TARGET SPECIALIZATION.*npm install @kudzujs\/core@\^0\.16\.30/s)
   assert.match(release, /<title>Kudzu 0\.16\.30 - Binding target specialization<\/title>/)

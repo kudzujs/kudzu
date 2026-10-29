@@ -135,13 +135,16 @@ The startup optimization lane pauses; no further trace or speed candidate is
 authorized absent new evidence. See
 [`render-invalidation-attribution-0176.md`](./render-invalidation-attribution-0176.md).
 
-Next evidence-ready packet is correctness-only artifact reporting: reproduce and
-fix the project route/family's reported-but-unemitted `kudzu-style.js` requirement
-using existing capability facts. Cover style-free/styled bindings, list styles,
-shared/navigation families and the full artifact fixture set; require identical
-deploy bytes and full checks/package smokes. Follow the bounded packet in the
-invalidation report. This is not a startup optimization or permission for a graph
-rewrite, and requires no new 21-pair comparison.
+Artifact style reporting is corrected for 0.17.7: both route and family requirements
+now use the same existing style capability facts as emission. The compiled
+ten-route regression reproduces the missing-file failure before the two-line fix
+and passes afterward, covering plain/styled bindings and lists, shared/navigation
+families, base paths and static output. All 13 artifact fixtures pass with exactly
+unchanged deploy bytes; report changes remove only absent style requirements.
+Full check/389 tests/project journey and package smokes pass. Generator 0.1.168
+targets core ^0.17.7. Delivery is active: exact-commit CI, tag/release, protected npm
+publication, registry/fresh-install verification and website deployment remain
+required before closing this packet. No new speed comparison is needed or claimed.
 General binding write skipping, attribute registration, first-fill comparison,
 false capture-default omission, ID exclusion and eager preloading remain rejected;
 no new primitive or benchmark weakening is authorized.

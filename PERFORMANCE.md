@@ -1,5 +1,37 @@
 # Performance Records
 
+## 0.17.7 Artifact Style Requirement Correction (2026-10-29)
+
+Both `routeRuntimeEdges()` and `familyRuntimeRequirements()` treated any binding
+as requiring `kudzu-style.js`, although emission already gates on binding styles
+or list styles. The fix changes those two predicates to existing family style
+facts. Report shape, emitters and all browser runtime sources are unchanged.
+
+Before editing, `test/artifact-baseline.mjs` reproduces a missing style artifact on
+project `/app/projects`; a new compiled ten-route test independently fails on a
+reported nonexistent family helper. Afterward the test covers style-free/styled
+bindings, style-free/styled lists, shared standalone/navigation families, base paths
+and static exclusion. All 13 artifact-baseline fixtures now pass.
+
+An assert-based comparison builds all 13 fixtures twice in the same scratch
+compiler/project paths: released 0.17.6, then that compiler with only the corrected
+report module. Every deploy path and byte is identical. Reports differ only by
+removed nonexistent style requirements; project output remains 42 files, 189,830
+raw / 57,833 local aggregate gzip bytes, digest
+`f85429fec060f30dafc90545be6b5720c45bf8e2ec9f4d33c16c043ed2f91d34`.
+The first comparison attempt exposed path-sensitive package chunk filenames across
+different scratch roots; a second attempt exposed separate core-module render
+contexts. Both harness failures are preserved. The final same-path comparison
+avoids those confounders without normalizing or weakening byte equality.
+
+Full check, 389 tests plus project journey, and both package smokes pass. The
+initial release-copy test failure was wording-only and is preserved. Core 0.17.7 /
+generator 0.1.168 align with generated ^0.17.7 projects. Two reporting predicates
+change with zero net reporting LOC, semantic primitives/passes, runtime concepts,
+or application browser bytes. No timing experiment or speed improvement is claimed;
+all rejected startup candidates and independent AI-cost/1.0 gates remain unresolved.
+Exact-commit CI, tag/release and publication/deployment receipts follow below.
+
 ## Renderer Invalidation Attribution (2026-10-29)
 
 Hosted [40800976322](https://github.com/kudzujs/kudzu/actions/runs/40800976322),

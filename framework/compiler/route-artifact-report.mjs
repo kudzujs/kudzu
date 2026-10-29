@@ -78,7 +78,7 @@ function routeRuntimeEdges(record, capability, family, base, navigationAsset) {
   if (record.capabilities.hasBehaviors || record.capabilities.navigable) add(record.capabilities.usesDependencyRuntime ? "kudzu-deps.js" : "kudzu.js")
   if (record.capabilities.hasBindings) add("kudzu-binding.js")
   if (record.capabilities.hasLists) add("kudzu-list.js")
-  if (record.capabilities.hasBindings || record.capabilities.hasLists && family.capability.lists.styleCount) add("kudzu-style.js")
+  if (record.capabilities.hasBindings && family.capability.bindings.style || record.capabilities.hasLists && family.capability.lists.styleCount) add("kudzu-style.js")
   if (capability.effects.derivedDependencies || record.capabilities.hasLists && family.capability.lists.selectors) add("kudzu-collection-selector.js")
   if (record.capabilities.hasBindings || capability.events.hasNativeHandlers || record.capabilities.hasEffects && family.capability.effects.captures) add("kudzu-serialization.js")
   if (record.capabilities.hasEffects) add("kudzu-effect.js")
@@ -91,7 +91,7 @@ function familyRuntimeRequirements(family, base) {
   const names = [runtime.dependency ? "kudzu-deps.js" : "kudzu.js"]
   if (bindings.count || events.hasNativeHandlers || effects.captures) names.push("kudzu-serialization.js")
   if (effects.any) names.push("kudzu-effect.js")
-  if (bindings.count || lists.styleCount) names.push("kudzu-style.js")
+  if (bindings.style || lists.styleCount) names.push("kudzu-style.js")
   if (bindings.count) names.push("kudzu-binding.js")
   if (effects.derivedDependencies || lists.selectors) names.push("kudzu-collection-selector.js")
   if (lists.count) names.push("kudzu-list.js")
