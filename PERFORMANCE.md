@@ -34,9 +34,26 @@ Exact-commit CI, tag/release and publication/deployment receipts follow below.
 Release commit `8af2e2e` passes required-Chrome and Node 22/package-smoke CI
 [40805368846](https://github.com/kudzujs/kudzu/actions/runs/40805368846).
 Annotated tag and GitHub release `v0.17.7` are published. Protected npm workflow
-[40806146908](https://github.com/kudzujs/kudzu/actions/runs/40806146908) awaits fresh
-environment approval; registry/fresh-install verification and deployment are
-pending. No npm completion is claimed.
+[40806146908](https://github.com/kudzujs/kudzu/actions/runs/40806146908) succeeded
+after environment approval. Registry core 0.17.7 and generator 0.1.168 SHA512
+integrities match the local release packs; downloaded tarballs verify independently.
+Fresh registry-installed default and `--ai` projects resolve core 0.17.7, pass
+checks/builds and the AI check, produce identical deploy trees, and retain a
+zero-JavaScript static sibling with no developer guidance in deploy output.
+
+Website build and Wrangler 4.112.0 dry-run pass. The existing `kudzu` deployment
+already serves 0.17.7: account `7b926889307a823e63524840cb8c7b90`, deployment
+`43ad5153-f03d-4384-929e-f7a51930d5ce`, 100% version
+`48d8a76a-14e8-4553-879f-a48607698023`. Public `/`, `/docs`, `/releases/0.17.7`,
+`/example` and `/example/blog/minimal` all return 200 and exactly match the local
+release-source HTML bytes. No redundant deployment was needed; this records
+verification of the existing deployment, not a new deployment by this session.
+Publication and delivery verification are complete. Fresh-install AI checks do
+not claim browser verification; release browser coverage is recorded above.
+Separate `delivery-0177.tar.gz` is attached to v0.17.7 and download-verified:
+SHA256 `8fdfb4ebda13e974391babb16b710252565dfc4c017ee805d10b906fbdacbff2`.
+It preserves registry metadata/tarballs, assert-based install/site verification,
+publication logs, build/dry-run logs and the existing deployment identity.
 Evidence `artifact-style-0177.tar.gz` is attached to v0.17.7; downloaded SHA256
 matches `1c190702b59777db8fcbf6d7740edd306b4f3ea16587d3133ac2e40f8c74d346`.
 Includes both failure reproductions, the 13-fixture report and exact-byte proof,

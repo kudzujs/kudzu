@@ -76,8 +76,11 @@ family specialization. A compiled ten-route regression and all 13 artifact
 fixtures pass; their deploy output is byte-identical to 0.17.6. This is a report
 correctness fix with zero browser cost, not a startup optimization. Generator
 0.1.168 targets ^0.17.7. Tag/release `v0.17.7` points to `8af2e2e`; exact-commit CI
-40805368846 passes. Protected publication 40806146908 awaits fresh approval;
-registry/fresh-install verification and website deployment remain pending.
+40805368846 passes. Protected publication 40806146908 succeeded; registry tarball
+integrities, fresh default/AI installs and identical deploy output are verified.
+Five public website routes exactly match release-source HTML on existing Worker
+version 48d8a76a-14e8-4553-879f-a48607698023. Delivery is complete; receipts are in
+PERFORMANCE.md.
 
 The 0.17.6 patch resolves direct-row event templates through existing ownership
 before current item capture, fixing state/ref loss after repeated same-key updates.
