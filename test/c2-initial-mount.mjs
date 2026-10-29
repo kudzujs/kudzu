@@ -33,7 +33,8 @@ const effectOrder = process.argv[2] === "--effect-order"
 const rowEvents = process.argv[2] === "--row-events"
 const resolvedIds = process.argv[2] === "--resolved-ids" || process.argv[2] === "--resolved-visits"
 const moduleCPU = process.argv[2] === "--module-cpu"
-const modules = process.argv[2] === "--modules" || moduleCPU
+const invalidations = process.argv[2] === "--invalidations"
+const modules = process.argv[2] === "--modules" || moduleCPU || invalidations
 const attributeBindings = process.argv[2] === "--attribute-bindings"
 const initialListAttrs = process.argv[2] === "--initial-list-attrs" || process.argv[2] === "--list-attrs-writes"
 const domWrites = process.argv[2] === "--dom-writes" || process.argv[2] === "--list-attrs-writes"
@@ -103,6 +104,12 @@ if (modules) Object.assign(protocol, {
   limits: "Marked wall time is not CPU self time or a speed comparison. Module bodies exclude dependency evaluation and later async callbacks; top-level await is rejected. Preserve all traces, marks and artifact hashes."
 })
 if (moduleCPU) protocol.attribution += " Sample CPU at requested 100-microsecond interval in both arms; correlate candidate sample timestamps with marked body windows. Preserve signed deltas and all outside-window samples; sampling weights are not exact function durations."
+if (invalidations) Object.assign(protocol, {
+  primary: "Diagnostic style/layout invalidation provenance and module-body ownership; no speed gate",
+  traceCategories: "devtools.timeline,blink.user_timing,disabled-by-default-devtools.timeline.invalidationTracking,disabled-by-default-devtools.timeline.stack",
+  attribution: "Both arms pin v0.17.6 and use identical invalidation/stack trace categories. Candidate adds only existing scratch module-body marks. Retain raw invalidation args, frame/node IDs, stacks and missing-stack cases; correlate exact marked windows without inferring callers from temporal adjacency.",
+  limits: "Three diagnostic profiles per arm only. Stack tracing and marks perturb scheduling; timing is not adoption evidence. Preserve complete C2 acceptance, ESM order, static output and exact interval conservation. No preload candidate or 21-pair run."
+})
 if (domWrites) Object.assign(protocol, {
   primary: "Diagnostic invoked DOM writes and equal before/after values; no speed gate", profiles: 3, measuredBuilds: 1, warmupBuilds: 0,
   regressionGate: null,
@@ -343,7 +350,7 @@ try {
       if (message.method === "Tracing.dataCollected") traceEvents.push(...message.params.value)
       if (message.method === "Tracing.tracingComplete") completeTrace()
     })
-    await client.send("Tracing.start", { categories: "devtools.timeline,blink.user_timing", transferMode: "ReportEvents" })
+    await client.send("Tracing.start", { categories: ${JSON.stringify(protocol.traceCategories ?? "devtools.timeline,blink.user_timing")}, transferMode: "ReportEvents" })
     const cpuBefore = await performanceMetrics(send)`)
   traced = replace(traced, "    const heapAfterLoad = await send(\"Runtime.getHeapUsage\")", `    await client.send("Tracing.end")
     await Promise.race([traceDone, new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error("Trace completion deadline")), 15000); timer.unref() })])
@@ -386,6 +393,7 @@ try {
       attribution.push({ profile, traceSha256: sha256(bytes), ...result })
     }
     for (const entry of manifest) assert.equal(sha256(await readFile(join(targets[0].dist, entry.path))), entry.originalSha256)
+    if (invalidations) for (const entry of manifest) assert.equal(sha256(await readFile(join(targets[1].dist, entry.path))), entry.markedSha256)
     for (const path of ["index.html", "static/index.html"]) assert.deepEqual(await readFile(join(targets[0].dist, path)), await readFile(join(targets[1].dist, path)))
     for (const target of targets) await cp(target.dist, join(results, `${target.id}-dist`), { recursive: true })
     await writeFile(join(results, "module-attribution.json"), JSON.stringify(attribution, null, 2))
