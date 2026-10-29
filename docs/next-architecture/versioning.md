@@ -78,7 +78,10 @@ correctness fix. No runtime source, semantic primitive or compiler pass is added
 core LOC changes by zero. Existing 13 artifact deploy trees are identical;
 the corrected Actual reduction adds 1,355 raw / 441 aggregate gzip JS bytes.
 Generator 0.1.169 targets ^0.17.8. Full check, 390 tests plus project journey,
-package smokes, artifact validation and required Chrome pass; delivery is pending.
+package smokes, artifact validation and required Chrome pass. Exact-commit CI
+40831332077 passes; tag/release v0.17.8 points to 60456f7 and its evidence archive
+is download/hash-verified. Publication 40832096276 awaits npm approval;
+registry/fresh-install and public-site delivery verification remain pending.
 This does not establish speed improvements or a whole-application migration.
 
 The 0.17.7 patch corrects reported style-helper requirements to match existing

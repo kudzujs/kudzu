@@ -29,7 +29,18 @@ claims. Startup/restoration and independent AI-cost/1.0 gates remain unresolved.
 `npm run check`, the project journey plus all 390 tests, both package smokes,
 all 13 artifact-baseline fixtures and required-Chrome regression pass. The final
 real DB journey also passes. Core 0.17.8 / generator 0.1.169 are aligned.
-Exact-commit CI, evidence attachment and protected npm delivery are pending.
+Exact-commit [CI 40831332077](https://github.com/kudzujs/kudzu/actions/runs/40831332077)
+passes on `60456f72d23c6060519bc390d2bc916e3c7de895` (Node 22/package smoke
+and Node 24/required Chrome). Annotated tag and GitHub release `v0.17.8` point
+to that commit. Evidence `parent-state-0178.tar.gz` is attached and its uploaded
+and downloaded SHA256 matches
+`d08baf1f9ac8ede75c1d8195c3c4c8f5b6f6c5f1034e72fe4c2b9142560929f6`.
+It retains the real reduced source/assets, configurable staging/browser scripts,
+baseline and setup/test failures, corrected journeys, output comparisons, local
+checks, package tarballs and CI receipts. Website build and Wrangler dry-run pass.
+Protected publication [40832096276](https://github.com/kudzujs/kudzu/actions/runs/40832096276)
+awaits fresh npm environment approval. Registry/fresh-install and public-site
+delivery verification remain pending.
 
 ## Actual Budget Complete Intake (2026-10-29)
 
