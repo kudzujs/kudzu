@@ -74,6 +74,8 @@ publication is recorded in `PERFORMANCE.md`.
 
 ## Next bounded investigation
 
+Completed in the [archive-import continuation](./actual-budget-archive-import.md).
+
 Follow the already reproduced upstream Actual archive-import onboarding journey
 (`packages/desktop-client/e2e/onboarding.test.ts:94`) through native file input
 and the real backend import protocol. Preserve the original checked-in archive

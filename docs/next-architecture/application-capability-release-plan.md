@@ -1,5 +1,16 @@
 # Application Capability Release Plan
 
+Latest continuation (2026-11-02): Actual archive import passes on 0.17.8 through
+native File/ArrayBuffer transfer and existing owned effects. The original demo
+archive yields Ally Savings 1,772.80 and Roth IRA 2,745.81 before and after reload.
+Invalid ZIP and injected File read failure recover; buffers detach on transfer;
+late reads after removal cannot post, and cleanup/static exclusion remain proven.
+No framework change or release is required. Generated JS +1,027 raw / +259 gzip.
+See [the import packet](./actual-budget-archive-import.md); full check and the
+project journey plus all 390 tests pass. Archive receipts are in `PERFORMANCE.md`.
+Next bounded investigation: original
+manual transaction mutations, integer amounts and backend-authoritative balances.
+
 Latest continuation (2026-11-02): the Actual local account-mutation reduction
 passes create/rename, nonzero-balance close rejection and recovery, deletion of
 an empty account, retained keyed identity, reload persistence, owner cleanup and
@@ -10,7 +21,7 @@ and the project journey plus all 390 tests pass. Archive receipts are in
 `PERFORMANCE.md`. See
 [the account-mutation packet](./actual-budget-account-mutations.md).
 
-Next bounded investigation: follow the original Actual archive-import onboarding
+Completed investigation: follow the original Actual archive-import onboarding
 journey and its binary Worker payload, preserving the checked-in archive and
 expected balances. Use native file input and existing ownership first. Compiler
 work requires a reproduced failure; no generic archive/database/router runtime

@@ -1,5 +1,28 @@
 # Performance Records
 
+## Actual Budget Archive Import Continuation (2026-11-02)
+
+The [archive-import packet](docs/next-architecture/actual-budget-archive-import.md)
+extends the real account journey with the original pinned Actual demo ZIP. Native
+File reads and ArrayBuffer transfer feed the unchanged backend's `import-budget`;
+Ally Savings 1,772.80 and Roth IRA 2,745.81 match upstream acceptance and survive
+close/reload/reopen. Invalid ZIP, injected File read rejection, recovery, detached
+transfer buffers, late-read cancellation, owner cleanup and static zero-JS all
+pass. No database success stub, compiler change or new release is introduced.
+
+Semantic primitives, core passes/LOC, runtime concepts and adapter rules change
+by zero. Generated JS changes 34,759 raw / 13,221 aggregate gzip ->
+35,786 / 13,480 (+1,027 / +259); including unchanged upstream public backend JS,
+totals change 3,625,785 / 796,861 -> 3,626,812 / 797,120. These are application
+feature costs, not speed results or whole-app migration proof. `npm run check`
+and the project journey plus all 390 tests pass. The fixture, original demo ZIP,
+source references, browser/staging/accounting scripts and verification logs are
+preserved as `actual-import-0178.tar.gz` attached to v0.17.8. Uploaded and
+downloaded SHA256 matches
+`3fd4bd69b32df6c9f948cd10fda2a61a1f3126aaba561b42486e1a9c722e4aa5`.
+The next bounded investigation follows original manual transaction mutations;
+this evidence adds no new package release.
+
 ## Actual Budget Account Mutation Continuation (2026-11-02)
 
 The [connected account reduction](docs/next-architecture/actual-budget-account-mutations.md)
