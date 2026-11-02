@@ -1,6 +1,22 @@
 # Application Capability Release Plan
 
-Active correctness packet: the real Actual Budget worker/database reduction
+Latest continuation (2026-11-02): the Actual local account-mutation reduction
+passes create/rename, nonzero-balance close rejection and recovery, deletion of
+an empty account, retained keyed identity, reload persistence, owner cleanup and
+static exclusion. It uses native forms and existing state/effects with the
+unchanged real backend. No compiler failure or framework change is needed;
+generated application JS grows 1,547 raw / 301 aggregate gzip bytes. Full check
+and the project journey plus all 390 tests pass. Archive receipts are in
+`PERFORMANCE.md`. See
+[the account-mutation packet](./actual-budget-account-mutations.md).
+
+Next bounded investigation: follow the original Actual archive-import onboarding
+journey and its binary Worker payload, preserving the checked-in archive and
+expected balances. Use native file input and existing ownership first. Compiler
+work requires a reproduced failure; no generic archive/database/router runtime
+or new release is authorized merely by adding application evidence.
+
+Completed correctness packet: the real Actual Budget worker/database reduction
 creates and reads a persisted budget, but its delayed keyed row keeps
 `disabled={busy}` after a failed open clears the parent busy state. An independent
 compiled Chrome regression reproduces parent-only text/attribute failures before
@@ -13,7 +29,7 @@ Gate on delayed insertion, same-key updates, error recovery, removal/remount,
 negative boundaries, full checks/package smoke and the actual DB journey;
 record browser-byte costs without claiming speed or whole-app migration.
 
-Candidate result (`0.17.8`, generator `0.1.169`): the actual DB journey and the
+Released result (`0.17.8`, generator `0.1.169`): the actual DB journey and the
 independent compiled regression pass; nested-parent and impure expressions retain
 source diagnostics. Semantic primitives +0, core passes +0, net core LOC +0,
 runtime concepts +0; runtime sources unchanged. All 13 existing artifact deploy
@@ -25,7 +41,7 @@ evidence archive are public. Publication 40832096276 succeeded; registry
 integrities, fresh default/AI installs and five byte-identical public site routes
 verify delivery on 2026-11-02. Detailed evidence is recorded in `PERFORMANCE.md`.
 
-Current next packet (2026-10-29): Actual Budget `0.19.5` intake resumes from a
+Historical intake packet (2026-10-29): Actual Budget `0.19.5` intake resumes from a
 complete workspace at the original pinned commit. Immutable install, production
 browser build and two unchanged upstream onboarding journeys pass. The missing
 workspace blocker is resolved; the next evidence-ready work is the local-budget

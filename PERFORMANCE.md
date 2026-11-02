@@ -1,5 +1,29 @@
 # Performance Records
 
+## Actual Budget Account Mutation Continuation (2026-11-02)
+
+The [connected account reduction](docs/next-architecture/actual-budget-account-mutations.md)
+extends the released 0.17.8 local-budget fixture using original pinned Actual
+`account-create`, `account-update`, `account-close` and `accounts-get` messages.
+Native forms and existing state/effects pass creation, backend nonzero-balance
+close rejection, rename/error recovery, empty-account deletion, retained keyed
+DOM identity, reload persistence and exact Worker/listener cleanup. The static
+sibling requests no JavaScript. Both initial and extended browser journeys pass.
+
+No compiler failure was reproduced: semantic primitives, core passes/LOC,
+runtime concepts, adapters and package versions change by zero. Generated JS
+grows from 33,212 raw / 12,920 aggregate gzip to 34,759 / 13,221 bytes
+(+1,547 / +301). Total JS including byte-identical original public backend assets
+grows from 3,624,238 / 796,560 to 3,625,785 / 796,861 bytes. This is added
+application behavior, not a speed improvement or whole-app migration proof.
+`npm run check` and the project journey plus all 390 tests pass. The account
+fixture, original source references, staging/browser/accounting scripts, output
+hashes and check/test receipts are preserved as `actual-accounts-0178.tar.gz`,
+attached to v0.17.8. Uploaded and downloaded SHA256 matches
+`79e462621ee27b4f610ca9874a4265e98504ad29f863d81f1b157146273e3d84`.
+The next bounded investigation follows the upstream Actual archive-import
+journey and binary Worker payload; this packet adds no new release.
+
 ## 0.17.8 Parent-Only Values in Delayed Keyed Rows (2026-10-29)
 
 The real Actual Budget reduction at pinned upstream

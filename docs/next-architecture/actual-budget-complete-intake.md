@@ -59,11 +59,11 @@ broader denominator. Neither number is a migration numerator; **no migrated
 source-retention percentage is established**. The old sparse 22/906 report probe
 must not be compared with this workspace as if it migrated the application.
 
-## Next bounded packet: local budget creation boundary
+## Completed bounded packet: local budget creation boundary
 
 Follow-up: the executable local database reduction reproduced a delayed keyed
 row whose `disabled={busy}` failed to recover when parent state cleared.
-The 0.17.8 candidate routes parent-only values through existing list-expression
+Released 0.17.8 routes parent-only values through existing list-expression
 ownership. Actual's original backend, SQLite WASM/data and unchanged extracted
 absurd-sql IDB worker now pass create/open, missing-budget error recovery, reload
 persistence, conditional release/remount and pagehide cleanup. The independent
@@ -71,6 +71,10 @@ static sibling requests no JavaScript. See `PERFORMANCE.md` for byte accounting
 and release evidence. This reduction uses externally built public Worker assets,
 not compiler-generated Worker graph entries, and proves neither the full app nor
 multi-tab coordination, locale coverage or general Redux/database compatibility.
+
+The [account-mutation continuation](./actual-budget-account-mutations.md) proves
+real create/rename/closure, error recovery and persistence with no further
+compiler changes. Its next bounded investigation is original archive import.
 
 1. Pin and preserve `src/components/manager/WelcomeScreen.tsx`,
    `src/budgetfiles/budgetfilesSlice.ts`, browser preload/connection setup and their
@@ -97,7 +101,7 @@ workspace UI components, Emotion, responsive hooks and runtime translations.
 Their presence is an inventory finding, not proof that Kudzu supports them or
 that each requires a new semantic primitive.
 
-## Accounting and evidence
+## Original intake accounting and evidence
 
 Semantic primitives, core passes/LOC, runtime concepts and Kudzu browser bytes:
 all **zero change**. No migration fixture or timing result is added. Package
