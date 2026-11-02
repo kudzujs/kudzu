@@ -21,9 +21,9 @@ trees are identical. Corrected Actual JS adds 1,355 raw / 441 aggregate gzip
 bytes; independent regression fixture adds 1,360 / 317. Full check, 390 tests
 plus project journey, package smokes, artifact validation and required Chrome
 pass. Exact-commit CI 40831332077 passes at 60456f7; v0.17.8 and the hash-verified
-evidence archive are public. Publication 40832096276 awaits npm approval;
-registry/fresh-install and public-site verification remain pending. Detailed
-evidence is recorded in `PERFORMANCE.md`.
+evidence archive are public. Publication 40832096276 succeeded; registry
+integrities, fresh default/AI installs and five byte-identical public site routes
+verify delivery on 2026-11-02. Detailed evidence is recorded in `PERFORMANCE.md`.
 
 Current next packet (2026-10-29): Actual Budget `0.19.5` intake resumes from a
 complete workspace at the original pinned commit. Immutable install, production

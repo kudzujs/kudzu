@@ -39,8 +39,21 @@ It retains the real reduced source/assets, configurable staging/browser scripts,
 baseline and setup/test failures, corrected journeys, output comparisons, local
 checks, package tarballs and CI receipts. Website build and Wrangler dry-run pass.
 Protected publication [40832096276](https://github.com/kudzujs/kudzu/actions/runs/40832096276)
-awaits fresh npm environment approval. Registry/fresh-install and public-site
-delivery verification remain pending.
+succeeded after approval. Delivery verification on 2026-11-02 confirms registry
+core 0.17.8 / generator 0.1.169 SHA512 integrities and downloaded tarballs match
+local release packs. Fresh default and AI projects pass checks/builds and the AI
+check, produce four identical deploy files, and retain a zero-JavaScript static
+sibling without developer guidance in output. AI checks do not claim browser
+verification; release browser evidence is recorded above.
+
+The existing `kudzu` deployment `8ff0f939-8535-463b-97f8-8995333e987a`, 100% Worker
+version `aee05a5e-1823-478e-b91a-b56424e46882`, already serves the release.
+Public `/`, `/docs`, `/releases/0.17.8`, `/example` and `/example/blog/minimal`
+return 200 and exactly match local release-source HTML bytes. No new deployment
+was needed. Delivery archive `delivery-0178.tar.gz` is attached and downloaded;
+SHA256 matches `c99ace1eae2fdd2fbb28865c975a5e3b89b49050e3dac35cdc5ea7fd8c721fc4`.
+It preserves publication, registry, fresh-install and public-site receipts and
+their verification scripts. Release delivery is complete.
 
 ## Actual Budget Complete Intake (2026-10-29)
 
