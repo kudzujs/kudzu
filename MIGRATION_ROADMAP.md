@@ -30,6 +30,12 @@ Memos now has a first durable connected slice derived from pinned upstream sourc
 
 Actual Budget's complete workspace is now acquired at the same pinned revision. Immutable installation, production browser build and two original onboarding journeys pass; the explicit package-code inventory contains 1,958 files / 295,885 lines. The local-budget reduction exposed and authorized the 0.17.8 parent-only keyed-state fix. Its [account-mutation continuation](docs/next-architecture/actual-budget-account-mutations.md) proves real creation, rename, safe closure/deletion, backend error recovery, reload persistence and ownership cleanup using existing capabilities. The [archive-import continuation](docs/next-architecture/actual-budget-archive-import.md) preserves original expected balances through native binary Worker transfer, validates failure recovery and cancels late file reads on release. The complete intake resolves the sparse-source blocker; these reductions establish neither a retained-source percentage nor whole-application migration.
 
+The [Actual manual transaction continuation](docs/next-architecture/actual-budget-transactions.md)
+also proves integer-cent add/edit/delete, backend-authoritative balances, retained
+keyed rows and reload persistence through existing capabilities. Export/import
+round-trip is the next bounded evidence packet; no generic database or spreadsheet
+runtime is authorized.
+
 ## North Star
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.

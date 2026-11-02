@@ -1,5 +1,29 @@
 # Performance Records
 
+## Actual Budget Manual Transaction Continuation (2026-11-02)
+
+The [transaction packet](docs/next-architecture/actual-budget-transactions.md)
+uses original batch mutations and transaction/account reads with native forms.
+Integer-cent add/edit/delete produces exact backend balances
+10.00 -> 8.75 -> 7.50 -> 8.55 -> 11.05 -> 10.00. Edited rows retain DOM identity;
+mutations and deletion each survive close/reload/reopen. Existing real import,
+expected balances, error recovery, binary transfer, cleanup and static exclusion
+also pass. The first browser attempt's native `stepMismatch` assumption failed;
+the app's explicit safe-integer validation rejected the fractional cents correctly.
+The failed receipt and corrected observable assertion are retained.
+
+No semantic primitive, core pass/LOC, runtime concept or adapter rule changes.
+Generated JS 35,786 raw / 13,480 aggregate gzip -> 38,334 / 13,933
+(+2,548 / +453). Including byte-identical original public backend JS, totals are
+3,626,812 / 797,120 -> 3,629,360 / 797,573. These are application feature costs;
+no speed, full transaction editor or whole-app migration claim follows.
+`npm run check` and the project journey plus all 390 tests pass. No new release
+is needed. The fixture, original source references, first failed browser receipt,
+final journeys, accounting and full validation logs are preserved as
+`actual-transactions-0178.tar.gz` attached to v0.17.8. Uploaded and downloaded
+SHA256 matches `ca32a5c662649fabd15ae88550ec5a3a24dcb911508c3fa9fb34c1442763bf14`.
+Next is the bounded original export/import round-trip investigation.
+
 ## Actual Budget Archive Import Continuation (2026-11-02)
 
 The [archive-import packet](docs/next-architecture/actual-budget-archive-import.md)

@@ -82,6 +82,8 @@ are recorded in `PERFORMANCE.md`.
 
 ## Next bounded investigation
 
+Completed in the [manual transaction continuation](./actual-budget-transactions.md).
+
 Inspect the original manual transaction add/edit path and backend mutation
 validation before extending this same local database journey. Preserve native
 forms, integer monetary units and backend-authoritative balances; prove exact

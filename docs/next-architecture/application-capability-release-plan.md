@@ -1,5 +1,16 @@
 # Application Capability Release Plan
 
+Latest continuation (2026-11-02): the real Actual manual transaction reduction
+passes add/edit/delete, exact backend balances, keyed row identity and two reload
+persistence checks using native integer-cent forms and existing state/effects.
+An initial native step-validity test assumption failed; explicit app validation
+correctly rejected the fractional amount. The failed harness result is retained.
+No compiler change or release is needed; generated JS +2,548 raw / +453 gzip.
+See [the transaction packet](./actual-budget-transactions.md). Full check and the
+project journey plus all 390 tests pass; archive receipts are in `PERFORMANCE.md`.
+Next bounded investigation is
+original budget export/import round-trip and binary/download ownership.
+
 Latest continuation (2026-11-02): Actual archive import passes on 0.17.8 through
 native File/ArrayBuffer transfer and existing owned effects. The original demo
 archive yields Ally Savings 1,772.80 and Roth IRA 2,745.81 before and after reload.
@@ -8,8 +19,8 @@ late reads after removal cannot post, and cleanup/static exclusion remain proven
 No framework change or release is required. Generated JS +1,027 raw / +259 gzip.
 See [the import packet](./actual-budget-archive-import.md); full check and the
 project journey plus all 390 tests pass. Archive receipts are in `PERFORMANCE.md`.
-Next bounded investigation: original
-manual transaction mutations, integer amounts and backend-authoritative balances.
+That packet's manual transaction follow-up is completed in the transaction
+continuation above.
 
 Latest continuation (2026-11-02): the Actual local account-mutation reduction
 passes create/rename, nonzero-balance close rejection and recovery, deletion of
