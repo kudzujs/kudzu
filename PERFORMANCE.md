@@ -1,5 +1,28 @@
 # Performance Records
 
+## Actual Budget Export/Import Round-Trip (2026-11-02)
+
+The [round-trip packet](docs/next-architecture/actual-budget-export-roundtrip.md)
+exports newly written data through the real Actual backend, downloads the ZIP
+through a native anchor and imports it into a separate empty browser context.
+Original edited transaction ID/notes/-250-cent amount, three transactions and
+balance 8.55 survive restore and reload. Blob URLs are revoked on replacement,
+conditional owner release and pagehide. Prior account/transaction/import, stale
+file-read and static exclusion checks remain passing. Export error/missing-data
+warning paths use explicit synthetic negative replies; successful archives and
+restores use the original backend without stubs.
+
+No semantic primitives, core passes/LOC, runtime concepts or adapter rules change.
+Generated JS 38,334 raw / 13,933 aggregate gzip -> 39,257 / 14,206 (+923 / +273).
+Total including byte-identical public backend JS: 3,629,360 / 797,573 ->
+3,630,283 / 797,846. No speed, whole-app or multi-tab claim follows; no new
+release is needed. `npm run check` and the project journey plus all 390 tests
+pass. The source fixture, downloaded synthetic-data ZIP, upstream references,
+browser/accounting/staging scripts and complete validation logs are attached to
+v0.17.8 as `actual-export-0178.tar.gz`. Uploaded and downloaded SHA256 matches
+`3545309180502d26033baa8e39eb045bac1cdbba66d3aea5ddaf33e8c4077662`.
+Next is original SharedWorker coordination intake before any multi-tab reduction.
+
 ## Actual Budget Manual Transaction Continuation (2026-11-02)
 
 The [transaction packet](docs/next-architecture/actual-budget-transactions.md)

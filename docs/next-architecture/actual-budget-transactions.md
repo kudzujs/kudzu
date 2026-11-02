@@ -85,6 +85,8 @@ receipts are recorded in `PERFORMANCE.md`.
 
 ## Next bounded investigation
 
+Completed in the [export/import round-trip](./actual-budget-export-roundtrip.md).
+
 Follow the original local budget export path and prove export/import round-trip
 of newly written data through the actual backend. Inspect binary reply ownership,
 native download/Blob URL cleanup and warning/error reporting first. Preserve the

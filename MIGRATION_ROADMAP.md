@@ -32,9 +32,11 @@ Actual Budget's complete workspace is now acquired at the same pinned revision. 
 
 The [Actual manual transaction continuation](docs/next-architecture/actual-budget-transactions.md)
 also proves integer-cent add/edit/delete, backend-authoritative balances, retained
-keyed rows and reload persistence through existing capabilities. Export/import
-round-trip is the next bounded evidence packet; no generic database or spreadsheet
-runtime is authorized.
+keyed rows and reload persistence through existing capabilities. The
+[export/import round-trip](docs/next-architecture/actual-budget-export-roundtrip.md)
+restores newly written data in an isolated browser context and verifies Blob URL
+ownership. Next is original SharedWorker coordination intake; no generic database,
+spreadsheet or coordination runtime is authorized.
 
 ## North Star
 

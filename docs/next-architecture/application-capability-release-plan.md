@@ -1,5 +1,16 @@
 # Application Capability Release Plan
 
+Latest continuation (2026-11-02): real Actual export/download/import round-trip
+restores newly written transaction data into a separate empty browser context,
+preserving IDs/content/count/balance across reload. Replacement, conditional
+release and pagehide revoke owned Blob URLs. Synthetic negative replies separately
+prove export error/missing-data warning handling. Existing connected journeys pass;
+no framework change/release is needed. Generated JS +923 raw / +273 gzip. See
+[the round-trip packet](./actual-budget-export-roundtrip.md); full check and the
+project journey plus all 390 tests pass. Archive receipts are in `PERFORMANCE.md`.
+Next is pinned upstream SharedWorker
+coordination intake, before any multi-tab reduction or compatibility claim.
+
 Latest continuation (2026-11-02): the real Actual manual transaction reduction
 passes add/edit/delete, exact backend balances, keyed row identity and two reload
 persistence checks using native integer-cent forms and existing state/effects.
@@ -8,8 +19,7 @@ correctly rejected the fractional amount. The failed harness result is retained.
 No compiler change or release is needed; generated JS +2,548 raw / +453 gzip.
 See [the transaction packet](./actual-budget-transactions.md). Full check and the
 project journey plus all 390 tests pass; archive receipts are in `PERFORMANCE.md`.
-Next bounded investigation is
-original budget export/import round-trip and binary/download ownership.
+Its export/import follow-up is completed in the round-trip continuation above.
 
 Latest continuation (2026-11-02): Actual archive import passes on 0.17.8 through
 native File/ArrayBuffer transfer and existing owned effects. The original demo
