@@ -10,6 +10,11 @@ assertions and the generator dependency expectation were updated to this release
 The correctness and artifact measurements below describe the shipped fixes;
 no timing benchmark was run. Hosted CI and publication are checked after push.
 
+Initial hosted CI 42568232347 passed Node 22/package checks but timed out waiting
+for setup-draft version 3 in the existing Chrome project journey. The same full
+journey passed locally. The available token cannot rerun jobs (HTTP 403), so this
+receipt commit retriggers exact-commit CI before tagging or publication.
+
 ## Public Directory Overlap Validation (2026-11-09, 0.17.9)
 
 A follow-up regression reproduced `publicDir: "dist/assets"` incorrectly passing
