@@ -24,6 +24,9 @@ import { parseDevHost, parseDevPort, startDevServer } from "./dev-server.mjs"
 export { parseDevHost, parseDevPort }
 export { specializeRuntime }
 
+// Node's module cache outlives individual ProjectSessions.
+const buildGenerations = new Map()
+
 async function loadConfig(root) {
   for (const name of ["kudzu.config.mjs", "kudzu.config.js"]) {
     const file = join(root, name)
@@ -91,8 +94,9 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
 async function buildInto(project, outputDirectory, { changedFiles, minify, quiet, retainCache, explanationRoute }) {
   const { root, sourceDirectory, pagesDirectory, workDirectory } = project
   const previous = retainCache ? project.buildCache : undefined
-  project.buildGeneration = (project.buildGeneration ?? 0) + 1
-  project.buildDirectory = project.buildGeneration > 1 ? join(workDirectory, "build", String(project.buildGeneration)) : workDirectory
+  const generation = (buildGenerations.get(root) ?? 0) + 1
+  buildGenerations.set(root, generation)
+  project.buildGeneration = generation
   const { collectClientModules, compileClientModule, compiledPath, compileSourceAsync, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
   const config = await loadConfig(root)
   const base = normalizeBase(config.base)
@@ -227,7 +231,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
     const sourceStyleUrls = stylesByPage.get(pageFile).map(file => assetPath(base, `assets/${relative(sourceDirectory, file).replaceAll(sep, "/")}`)).filter(url => !globalStyleUrlSet.has(url))
     const styleUrls = [...sourceStyleUrls, ...globalStyleUrls]
     const compiledFile = compiledPath(pageFile)
-    const module = await import(`${pathToFileURL(compiledFile).href}?v=${Date.now()}`)
+    const module = await import(`${pathToFileURL(compiledFile).href}?v=${generation}`)
     if (typeof module.default !== "function") throw new Error(`${relative(root, pageFile)} must export a default component`)
     if (Object.hasOwn(module, "layout") && typeof module.layout !== "function") throw layoutExportError(pageFile, sourceIndex.get(pageFile))
 
@@ -929,8 +933,10 @@ export async function dev({ port = parseDevPort(process.env.PORT), host = parseD
   if (typeof host !== "string" || !host.trim()) throw new Error(`Invalid dev server host: ${host}`)
   const project = createProjectSession(projectRoot)
   const { root, sourceDirectory, workDirectory, outputDirectory } = project
-  const base = normalizeBase((await loadConfig(root)).base)
-  return startDevServer({ build: options => buildWithSession(project, options), port, host, base, sourceDirectory, workDirectory, outputDirectory })
+  const config = await loadConfig(root)
+  const base = normalizeBase(config.base)
+  const publicDirectory = normalizePublicDirectory(config.publicDir, project)
+  return startDevServer({ build: options => buildWithSession(project, options), port, host, base, sourceDirectory, publicDirectory, workDirectory, outputDirectory })
 }
 
 function inlineJson(value) {
@@ -1096,7 +1102,9 @@ function normalizePublicDirectory(value, { root, outputDirectory, workDirectory 
   if (value === undefined) return join(root, "public")
   if (typeof value !== "string" || !value) throw new Error("kudzu.config publicDir must be a non-empty directory path")
   const directory = resolve(root, value)
-  if (directory === outputDirectory || directory === workDirectory) throw new Error("kudzu.config publicDir cannot be dist or .kudzu")
+  if ([outputDirectory, workDirectory].some(target => directory === target || directory.startsWith(join(target, sep)) || target.startsWith(join(directory, sep)))) {
+    throw new Error("kudzu.config publicDir cannot overlap dist or .kudzu")
+  }
   return directory
 }
 
@@ -1235,7 +1243,7 @@ function sameRuntimePrecedence(left, right) {
 }
 
 function routeFromPage(file, params = {}, pagesDirectory) {
-  const page = relative(pagesDirectory, file).replace(/\\/g, "/").replace(/\.tsx$/, "")
+  const page = pageRoutePattern(file, pagesDirectory)
   if (page.includes("[...")) throw new Error(`Catch-all routes are not supported: ${page}`)
   const filled = page.replace(/\[([^\]]+)\]/g, (_, name) => {
     if (!Object.hasOwn(params, name)) throw new Error(`Missing param "${name}" for route ${page}`)
@@ -1243,7 +1251,7 @@ function routeFromPage(file, params = {}, pagesDirectory) {
     if (!value || value === "." || value === ".." || /[\\/\0?#]/.test(value)) throw new Error(`Invalid param "${name}" for route ${page}`)
     return value
   })
-  return filled === "index" ? "" : filled.replace(/\/index$/, "")
+  return filled
 }
 
 function isPlainRecord(value) {

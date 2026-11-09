@@ -2,7 +2,7 @@ export type StateSetter<T> = (value: T | ((previous: T) => T)) => void
 export type Reducer<State, Action> = (state: State, action: Action) => State
 export type Dispatch<Action> = (action: Action) => void
 export type EffectCleanup = () => void | Promise<void>
-export type EffectDependency = string | number | boolean | null
+export type EffectDependency = string | number | boolean | null | readonly unknown[]
 export const Fragment: unique symbol
 
 export function useId(): string

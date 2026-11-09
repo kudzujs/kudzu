@@ -111,6 +111,7 @@ is introduced.
 - Runtime generators intentionally specialize readable authored sources through exact anchors; every required anchor fails closed, but a future generator format may remove this transitional dependency.
 - Source reachability and source compilation remain in one session-bound compiler factory because both consume the same normalization and import graph contracts. ModuleSymbol resolution is stable across canonical and cloned trees; unsupported export syntax remains intentionally narrow.
 - Incremental development still reads the source tree, rebuilds graph closure, and emits a complete rollback-safe staging directory. It avoids unaffected compilation and build-time JSX execution; finer filesystem and artifact-write invalidation is not yet justified.
+- Build-module URL generations advance per project root across sessions in one process, so Node's transitive ESM cache cannot revive a previous build. Physical paths stay fixed to preserve relative `import.meta.url` resolution. Development watches both source and configured public assets, including directories created after startup.
 - Imported declarations resolve by ModuleSymbol and source-local SiteId. Specialized and compiler-synthesized trees still use conservative name/scope fallback where the source-local binding index does not own the complete AST.
 
 These are future simplification opportunities, not incomplete Goal A contracts. Goal A changed no source support, browser output semantics, or browser architecture.

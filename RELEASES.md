@@ -1,5 +1,22 @@
 # Kudzu Releases
 
+## 0.17.9 - Event and Build Correctness
+
+- Optimized commands preserve native bubbling, handler order and propagation
+  cancellation across core, dependency and shared runtime families. Conditional
+  and keyed owners attach and remove element listeners through existing hooks.
+- Repeated builds invalidate transitive ESM caches while preserving physical
+  module paths and relative `import.meta.url` resolution.
+- Static route parameters retain the value `index`; public effect dependency
+  types accept arrays already supported by the compiler.
+- Development watches public asset creation, updates, deletion and rapid directory
+  replacement, including configured external directories.
+- Rejects public directories overlapping output or scratch, preserving previous
+  deploy files on failure. Similarly prefixed sibling directories remain valid.
+- Generator 0.1.170 targets core ^0.17.9. Regression coverage includes Chrome and
+  zero-JavaScript static siblings. Artifact deltas are in PERFORMANCE.md;
+  no timing improvement or new runtime concept is claimed.
+
 ## 0.17.8 - Parent State in New Rows
 
 - Fixes parent-only text and attributes in delayed keyed rows. Values such as

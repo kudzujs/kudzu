@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
-import { readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { join, resolve } from "node:path"
 import { createServer } from "node:http"
 import test from "node:test"
 import { parseDevHost, parseDevPort } from "../framework/build.mjs"
@@ -11,6 +12,46 @@ const fixture = new URL("./fixtures/dev/", import.meta.url)
 const source = new URL("src/pages/index.tsx", fixture)
 const output = new URL("dist/index.html", fixture)
 const command = new URL("../bin/kudzu.mjs", import.meta.url).pathname
+
+test("dev rebuilds public assets on creation, modification and deletion", { timeout: 60000 }, async () => {
+  for (const publicDir of ["public", "static/files", "../external/public"]) {
+    const workspace = await mkdtemp(resolve("test/fixtures/dev-public-"))
+    const root = join(workspace, "app")
+    let server
+    let events
+    try {
+      await mkdir(join(root, "src/pages"), { recursive: true })
+      await writeFile(join(root, "src/pages/index.tsx"), "export default function Page() { return <p>Public assets</p> }")
+      if (publicDir !== "public") await writeFile(join(root, "kudzu.config.mjs"), `export default { publicDir: ${JSON.stringify(publicDir)} }`)
+      server = spawn(process.execPath, [command, "dev"], { cwd: root, env: { ...process.env, PORT: "0" }, stdio: ["ignore", "pipe", "pipe"] })
+      const url = await serverUrl(server)
+      const client = clientState(await (await fetch(url)).text())
+      events = await eventStream(`${url}/__kudzu_reload?session=${client.session}&revision=${client.revision}`)
+      const asset = join(root, publicDir, "message.txt")
+      await mkdir(join(root, publicDir), { recursive: true })
+      await writeFile(asset, "before")
+      await events.next("reload")
+      await poll(async () => (await (await fetch(`${url}/message.txt`)).text()) === "before")
+      await writeFile(asset, "after")
+      await poll(async () => (await (await fetch(`${url}/message.txt`)).text()) === "after")
+      await rm(asset)
+      await poll(async () => (await fetch(`${url}/message.txt`)).status === 404)
+      for (let generation = 0; generation < 3; generation++) {
+        await rm(join(root, publicDir), { recursive: true })
+        await mkdir(join(root, publicDir), { recursive: true })
+        await writeFile(asset, `recreated-${generation}`)
+        await poll(async () => (await (await fetch(`${url}/message.txt`)).text()) === `recreated-${generation}`)
+      }
+    } finally {
+      events?.close()
+      if (server?.exitCode === null) {
+        server.kill()
+        await once(server, "exit")
+      }
+      await rm(workspace, { recursive: true, force: true })
+    }
+  }
+})
 
 test("parses PORT as a strict decimal integer", () => {
   assert.equal(parseDevPort(undefined), 3000)

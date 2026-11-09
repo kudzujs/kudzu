@@ -1,5 +1,95 @@
 # Performance Records
 
+## 0.17.9 Release Validation (2026-11-09)
+
+Core 0.17.9 and generator 0.1.170 package/lock versions, generated dependency,
+release page and current site links are aligned. Final local `npm run check`
+passes with 260 pages; `npm test` passes the project journey plus 396 tests,
+with no skips. `npm run test:package` passes for both packages. Two release-copy
+assertions and the generator dependency expectation were updated to this release.
+The correctness and artifact measurements below describe the shipped fixes;
+no timing benchmark was run. Hosted CI and publication are checked after push.
+
+## Public Directory Overlap Validation (2026-11-09, 0.17.9)
+
+A follow-up regression reproduced `publicDir: "dist/assets"` incorrectly passing
+validation. The existing exact-path rejection now also rejects ancestors and
+descendants of `dist` and `.kudzu`, avoiding copying generated output or scratch
+back into deploy artifacts. Coverage includes project/filesystem roots, preservation
+of the previous deploy on rejection, and valid similarly prefixed sibling paths.
+Build source net LOC +2; no new pass, runtime concept, dependency or browser bytes.
+Focused build-output tests, `npm run check`, and all 397 tests pass without skips.
+Performance timing and deployment were not run for this validation-only change.
+
+## Audit Correctness Fixes (2026-11-09, 0.17.9)
+
+Five independently reproduced failures now have regression coverage:
+
+- Nested optimized event commands previously ran only the closest handler in
+  core, dependency and shared runtime families. Commands now use native element
+  listeners; shared DOM mount/unmount hooks attach and remove the same listener.
+  Chrome covers bubbling, mixed native/command ordering, propagation cancellation,
+  direct-true commands, conditional remount, keyed insertion/retention/release and
+  a zero-JavaScript sibling (`test/event-propagation.test.mjs`). No listener registry
+  or new capability is added. Keyed command templates reuse the existing mount
+  fact and cannot use the cleanup-skipping fast-release path.
+- Static parameter value `index` was incorrectly removed as a filename suffix.
+  File-route normalization now precedes substitution; root, nested and directory
+  index routes coexist in `test/build-output.test.mjs`.
+- Fresh programmatic build sessions reused Node's cached transitive modules.
+  Build generations now advance per project root across sessions in the process;
+  later build-module imports and re-exports carry that version in their URL query.
+  Physical module paths stay fixed so `import.meta.url` relative paths retain
+  their meaning. A changed re-exported value must reach the next HTML.
+- The public effect dependency type now accepts arrays already supported by the
+  compiler. The array-effect-dependency fixture participates in typecheck and build.
+- Public asset edits were outside the dev watcher. Default, nested configured and
+  external public directories now cover creation, edit, deletion and recreation.
+  Nonrecursive parent/ancestor watches detect replacement even when deletion and
+  recreation happen before the next stat; existing directories also get recursive
+  content watches. Installation-race checks avoid missed ancestor creation without
+  recursively watching node_modules or generated output.
+
+Semantic primitives +0; normalization/core passes +0; runtime concepts +0.
+Build/render source LOC +7, source compiler LOC +4, browser runtime source LOC -8,
+dev server LOC +35, type declaration net LOC +0. No dependency or release version
+changes.
+
+The first full run passed the project journey and 393/395 remaining tests. It
+exposed the initial directory-versioning approach breaking build-time relative
+URLs, plus an obsolete assertion requiring command rows to skip unmount cleanup.
+URL-query versioning replaces directory versioning; the flat-row ownership test
+now requires cleanup while retaining its existing browser assertions.
+The second full run exposed a rapid public-directory replacement race; parent
+watches and repeated immediate replacement coverage close that gap. The final
+run passes all 396 tests (project journey plus 395 tests), with zero skips;
+`npm run check` and `npm run test:package` also pass on the final code.
+
+The connected project fixture retains 42 deploy files. Its exact output contract
+is refreshed for the corrected event delivery; behavior assertions are retained.
+Deploy raw bytes change 189,830 -> 189,551 (-279). Each of its five interactive
+route closures drops 93 raw JS bytes; `/help` retains zero JS. Aggregate deploy
+gzip is 57,739 B (committed prior baseline 57,833 B; gzip varies with zlib).
+The package smoke's default and AI starters remain byte-identical to each other;
+their four-file output changes 9,758 -> 9,784 raw B (+26), with aggregate gzip
+3,741 -> 3,738 B (-3). Native listener installation costs are not timed here;
+these are correctness and artifact measurements, not a startup speed claim.
+
+The original audit reproductions were also rebuilt at their unchanged scratch
+paths, comparing retained pre-fix artifacts on the same Node/zlib environment:
+
+| Event fixture family | JS raw before/after | Aggregate gzip before/after |
+| --- | ---: | ---: |
+| Core | 768 / 794 B (+26) | 442 / 439 B (-3) |
+| Shared | 5,784 / 5,691 B (-93) | 2,765 / 2,734 B (-31) |
+| Dependency | 2,466 / 2,596 B (+130) | 1,494 / 1,530 B (+36) |
+
+The dependency path now also handles direct-true commands, which previously had
+no listener in that family. All three families retain the optimized command ABI.
+
+Verification commands: `npm run check`, `npm test`, `npm run test:package`, plus
+the focused event propagation and public-directory lifecycle regressions.
+
 ## Actual Budget Export/Import Round-Trip (2026-11-02)
 
 The [round-trip packet](docs/next-architecture/actual-budget-export-roundtrip.md)

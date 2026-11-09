@@ -118,39 +118,22 @@ if (typeof document !== "undefined") {
   mountText(document)
 
   const eventNames = ["click", "input", "change"]
-  for (const eventName of eventNames) {
-    const directName = `kSetTrue${capitalize(eventName)}`
-    const commandsName = `kOn${capitalize(eventName)}`
-    const selector = `[data-k-set-true-${eventName}],[data-k-on-${eventName}]`
-    document.addEventListener(eventName, event => {
-      const direct = event.target.dataset?.[directName]
-      if (direct) {
-        browserState.set(direct, true)
-        commitDom(direct, true)
-        return
-      }
-      const commands = event.target.dataset?.[commandsName]
-      if (commands) {
-        applyCommands(browserState, JSON.parse(commands), commitDom)
-        return
-      }
-      const target = event.target.closest?.(selector)
-      if (!target) return
-      const inheritedDirect = target.dataset[directName]
-      if (inheritedDirect) {
-        browserState.set(inheritedDirect, true)
-        commitDom(inheritedDirect, true)
-        return
-      }
-      applyCommands(browserState, JSON.parse(target.dataset[commandsName]), commitDom)
-    })
+  const listener = event => {
+    const target = event.currentTarget
+    const direct = target.getAttribute(`data-k-set-true-${event.type}`)
+    if (direct) {
+      browserState.set(direct, true)
+      commitDom(direct, true)
+    } else applyCommands(browserState, JSON.parse(target.getAttribute(`data-k-on-${event.type}`)), commitDom)
   }
+  const listen = (root, method) => {
+    for (const eventName of eventNames) for (const node of matching(root, `[data-k-set-true-${eventName}],[data-k-on-${eventName}]`)) node[method](eventName, listener)
+  }
+  registerMountHook(root => listen(root, "addEventListener"))
+  registerUnmountHook(root => listen(root, "removeEventListener"))
+  listen(document, "addEventListener")
 }
 
 function matching(root, selector) {
   return [...(root.matches?.(selector) ? [root] : []), ...(root.querySelectorAll?.(selector) ?? [])]
-}
-
-function capitalize(value) {
-  return value[0].toUpperCase() + value.slice(1)
 }

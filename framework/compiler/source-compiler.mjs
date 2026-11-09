@@ -29,7 +29,6 @@ import { createZustandPass } from "./zustand-pass.mjs"
 
 export function createSourceCompiler(project) {
 const { root, sourceDirectory, pagesDirectory, workDirectory, workerCompiler, modules, counters, timings } = project
-const buildDirectory = project.buildDirectory ?? workDirectory
 const { ordinaryRuntimeDependencies, resolveSourceImport, runtimeModuleReference } = project.graph
 const parseSourceFile = (file, source) => modules.read(file, source).sourceFile
 const importFreeModules = new Map()
@@ -121,7 +120,7 @@ function createPlainModuleTransformer(file, sourceFiles) {
   return context => sourceFile => context.factory.updateSourceFile(sourceFile, sourceFile.statements.map(statement => {
     if ((!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) || !runtimeModuleReference(statement) || !statement.moduleSpecifier || !ts.isStringLiteral(statement.moduleSpecifier) || !statement.moduleSpecifier.text.startsWith(".")) return statement
     const target = resolveSourceImport(file, statement.moduleSpecifier.text, sourceFiles)
-    const specifier = context.factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target)))
+    const specifier = context.factory.createStringLiteral(buildModulePath(file, target))
     if (ts.isImportDeclaration(statement)) return context.factory.updateImportDeclaration(statement, statement.modifiers, statement.importClause, specifier, statement.attributes)
     return context.factory.updateExportDeclaration(statement, statement.modifiers, statement.isTypeOnly, statement.exportClause, specifier, statement.attributes)
   }))
@@ -2028,13 +2027,13 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
         if (!runtimeModuleReference(node)) return node
         if (isStaticImport(node.moduleSpecifier.text)) return staticImportEntry(node, sourceFile, file, staticFiles, importedAssets, cssModules, base, factory)?.replacement
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
-        return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
+        return factory.updateImportDeclaration(node, node.modifiers, node.importClause, factory.createStringLiteral(buildModulePath(file, target)), node.attributes)
       }
 
       if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text.startsWith(".")) {
         if (!runtimeModuleReference(node)) return node
         const target = resolveSourceImport(file, node.moduleSpecifier.text, sourceFiles)
-        return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(relativeModulePath(compiledPath(file), compiledPath(target))), node.attributes)
+        return factory.updateExportDeclaration(node, node.modifiers, node.isTypeOnly, node.exportClause, factory.createStringLiteral(buildModulePath(file, target)), node.attributes)
       }
 
       const effectAlias = ts.isCallExpression(node) && ts.isIdentifier(node.expression) ? node.expression.text : undefined
@@ -3825,7 +3824,12 @@ function clientModulePath(file) {
 }
 
 function compiledPath(file) {
-  return join(buildDirectory, relative(sourceDirectory, file)).replace(/\.(?:ts|tsx)$/, ".mjs")
+  return join(workDirectory, relative(sourceDirectory, file)).replace(/\.(?:ts|tsx)$/, ".mjs")
+}
+
+function buildModulePath(from, to) {
+  const path = relativeModulePath(compiledPath(from), compiledPath(to))
+  return project.buildGeneration > 1 ? `${path}?v=${project.buildGeneration}` : path
 }
 
 const compileEventCommand = createCommandSpecializer({ isPrimitiveLiteral: isPrimitiveDefaultLiteral })

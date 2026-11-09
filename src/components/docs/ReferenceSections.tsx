@@ -59,7 +59,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.17.8 release evidence</strong><span>Delayed keyed rows now update parent-only text and attributes through existing list ownership. A real Actual Budget Worker/SQLite reduction proves creation, recovery, reload persistence and cleanup. Existing 13 artifact fixtures retain identical deploy output; runtime sources are unchanged and no speed improvement is claimed. Startup, restoration and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.8">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
+    <div className="docs-callout"><strong>Current 0.17.9 release evidence</strong><span>Native event propagation, repeated-build freshness, route parameters, array dependency types and public asset lifecycle have regression coverage. Public directories overlapping build output or scratch are rejected; no speed improvement is claimed. Startup, restoration and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.9">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

@@ -10,6 +10,70 @@ import { createProjectSession } from "../framework/compiler/project-session.mjs"
 const cli = resolve("bin/kudzu.mjs")
 const verificationHint = "Browser behavior and accessibility need verification: https://kudzujs.cloud/docs#build"
 
+test("fresh build sessions reload changed transitive build modules", async t => {
+  const root = await mkdtemp(resolve("test/fixtures/rebuild-modules-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, "src/pages"), { recursive: true })
+  await writeFile(join(root, "src/pages/index.tsx"), 'import { label, assetUrl } from "../barrel"; export default function Page() { return <p title={assetUrl}>{label}</p> }')
+  await writeFile(join(root, "src/barrel.ts"), 'export { label, assetUrl } from "./data"')
+  for (const label of ["before", "after"]) {
+    await writeFile(join(root, "src/data.ts"), `export const label = ${JSON.stringify(label)}; export const assetUrl = new URL("../public/example.txt", import.meta.url).pathname`)
+    await buildProject({ root, quiet: true })
+    const html = await readFile(join(root, "dist/index.html"), "utf8")
+    assert.match(html, new RegExp(`>${label}</p>`))
+    assert.ok(html.includes(`title="${root}/public/example.txt"`), "build generations must preserve import.meta.url path depth")
+  }
+})
+
+test("static parameters named index remain URL segments", async t => {
+  const root = await mkdtemp(resolve("test/fixtures/index-parameter-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, "src/pages/articles"), { recursive: true })
+  await mkdir(join(root, "src/pages/nested/[slug]"), { recursive: true })
+  const dynamic = 'export function getStaticPaths() { return [{ params: { slug: "index" } }] }; export default function Page() { return <p>Article index</p> }'
+  await writeFile(join(root, "src/pages/index.tsx"), 'export default function Page() { return <p>Home</p> }')
+  await writeFile(join(root, "src/pages/[slug].tsx"), dynamic)
+  await writeFile(join(root, "src/pages/articles/index.tsx"), 'export default function Page() { return <p>Articles</p> }')
+  await writeFile(join(root, "src/pages/articles/[slug].tsx"), dynamic)
+  await writeFile(join(root, "src/pages/nested/[slug]/index.tsx"), dynamic)
+  await buildProject({ root, quiet: true })
+  const plan = JSON.parse(await readFile(join(root, ".kudzu/kudzu-plan.json"), "utf8"))
+  assert.deepEqual(plan.routes.map(route => route.route).sort(), ["/", "/articles", "/articles/index", "/index", "/nested/index"])
+  for (const route of ["index", "articles/index", "nested/index"]) assert.match(await readFile(join(root, "dist", route, "index.html"), "utf8"), /<p>Article index<\/p>/)
+})
+
+test("public array effect dependencies compile through existing effect ownership", async t => {
+  const root = resolve("test/fixtures/array-effect-dependency")
+  t.after(() => Promise.all(["dist", ".kudzu"].map(path => rm(join(root, path), { recursive: true, force: true }))))
+  await buildProject({ root, quiet: true })
+  const plan = JSON.parse(await readFile(join(root, ".kudzu/kudzu-plan.json"), "utf8"))
+  assert.deepEqual(plan.routes[0].effects[0].dependencies, [plan.routes[0].states[0].id])
+})
+
+test("rejects public directories overlapping build output and scratch", async t => {
+  const root = await mkdtemp(resolve("test/fixtures/public-overlap-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, "src/pages"), { recursive: true })
+  await writeFile(join(root, "src/pages/index.tsx"), 'export default function Page() { return <p>Preserved</p> }')
+  await buildProject({ root, quiet: true })
+  const expected = await fileManifest(join(root, "dist"))
+  for (const publicDir of ["dist/assets", ".kudzu/cache", ".", "..", resolve("/"), "dist", ".kudzu"]) {
+    await writeFile(join(root, "kudzu.config.mjs"), `export default { publicDir: ${JSON.stringify(publicDir)} }`)
+    const result = spawnSync(process.execPath, [cli, "build"], { cwd: root, encoding: "utf8" })
+    assert.notEqual(result.status, 0, publicDir)
+    assert.match(result.stderr, /publicDir cannot overlap dist or \.kudzu/, publicDir)
+    assert.deepEqual(await fileManifest(join(root, "dist")), expected)
+  }
+  for (const publicDir of ["dist-public", ".kudzu-public"]) {
+    await mkdir(join(root, publicDir))
+    await writeFile(join(root, publicDir, "asset.txt"), publicDir)
+    await writeFile(join(root, "kudzu.config.mjs"), `export default { publicDir: ${JSON.stringify(publicDir)} }`)
+    const result = spawnSync(process.execPath, [cli, "build"], { cwd: root, encoding: "utf8" })
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(await readFile(join(root, "dist/asset.txt"), "utf8"), publicDir)
+  }
+})
+
 test("stages output and rejects public artifact collisions", { timeout: 120_000 }, async t => {
   const fixture = await mkdtemp(resolve("test/fixtures/output-safety-"))
   t.after(() => rm(fixture, { recursive: true, force: true }))

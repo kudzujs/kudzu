@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.8](https://github.com/kudzujs/kudzu/releases/tag/v0.17.8).** Delayed keyed rows now keep parent-only text and attributes reactive, including `disabled={busy}`. The compiler reuses existing keyed expression ownership; runtime sources are unchanged. A real Actual Budget Worker/SQLite reduction verifies creation, error recovery, reload persistence and cleanup. Existing 13 artifact fixtures retain identical deploy output. Generator `create-kudzu@0.1.169` targets core `^0.17.8`. No speed or whole-application migration claim is made; startup, restoration and AI-cost/1.0 gates remain unresolved.
+**Current release: [0.17.9](https://github.com/kudzujs/kudzu/releases/tag/v0.17.9).** Fixes native event propagation, repeated-build module freshness, `index` route parameters, array effect dependency types and public asset watching. Public directories overlapping build output or scratch are rejected before copying. Generator `create-kudzu@0.1.170` targets core `^0.17.9`. Browser artifact deltas are recorded in `PERFORMANCE.md`; no speed or whole-application migration claim is made.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

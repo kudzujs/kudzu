@@ -23,11 +23,13 @@ if(typeof document!=="undefined"){
   for(const node of document.querySelectorAll("[data-k-text]"))browserState.set(node.dataset.kText,JSON.parse(node.dataset.kValue))
 
   const eventNames = ["click", "input", "change"]
-  for(const eventName of eventNames)document.addEventListener(eventName,event=>{
-      const target=event.target.closest(`[data-k-set-true-${eventName}],[data-k-on-${eventName}]`)
-      if(!target)return
+  for(const eventName of eventNames){
+    const listener=event=>{
+      const target=event.currentTarget
       const direct=target.getAttribute(`data-k-set-true-${eventName}`)
       if(direct){browserState.set(direct,true);commitDom(direct,true)}
       else applyCommands(browserState,JSON.parse(target.getAttribute(`data-k-on-${eventName}`)),commitDom)
-    })
+    }
+    for(const node of document.querySelectorAll(`[data-k-set-true-${eventName}],[data-k-on-${eventName}]`))node.addEventListener(eventName,listener)
+  }
 }

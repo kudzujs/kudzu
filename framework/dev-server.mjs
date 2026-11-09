@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { readFile, stat, watch } from "node:fs/promises"
 import { createServer } from "node:http"
-import { extname, join, resolve, sep } from "node:path"
+import { dirname, extname, join, resolve, sep } from "node:path"
 import { browserPath, withBase } from "./compiler/path-helpers.mjs"
 import { stateSchema } from "./dev-state.js"
 
@@ -19,7 +19,7 @@ export function parseDevHost(value) {
   return value?.trim() || "127.0.0.1"
 }
 
-export async function startDevServer({ build, port, host, base, sourceDirectory, workDirectory, outputDirectory }) {
+export async function startDevServer({ build, port, host, base, sourceDirectory, publicDirectory, workDirectory, outputDirectory }) {
   let buildError
   let revision = 0
   const session = randomUUID()
@@ -111,12 +111,47 @@ export async function startDevServer({ build, port, host, base, sourceDirectory,
     } while (pending)
     rebuilding = false
   }
-  const watcher = watch(sourceDirectory, { recursive: true })
-  for await (const event of watcher) {
-    changedFile = event.filename
-    changedFiles.add(event.filename)
+  const directories = publicDirectory === sourceDirectory || publicDirectory.startsWith(`${sourceDirectory}${sep}`) ? [sourceDirectory] : [sourceDirectory, publicDirectory]
+  await Promise.all(directories.map(directory => watchDirectory(directory, file => {
+    changedFile = file
+    changedFiles.add(file)
     clearTimeout(timer)
     timer = setTimeout(rebuild, 80)
+  })))
+}
+
+async function watchDirectory(directory, changed) {
+  for (;;) {
+    let ancestor = dirname(directory)
+    let missing
+    while (!await exists(ancestor)) {
+      missing = ancestor
+      ancestor = dirname(ancestor)
+    }
+    const controller = new AbortController()
+    try {
+      // A parent watch detects replacement even when the directory is recreated before stat().
+      const observe = async (root, recursive) => {
+        for await (const event of watch(root, { recursive, signal: controller.signal })) {
+          const file = event.filename == null ? undefined : resolve(root, event.filename)
+          if (file && file !== directory && !file.startsWith(`${directory}${sep}`) && !directory.startsWith(`${file}${sep}`)) continue
+          changed(file)
+          if (!recursive || file === directory) break
+        }
+      }
+      const watchers = [observe(ancestor, false)]
+      if (await exists(directory)) watchers.push(observe(directory, true))
+      // Ancestor creation may race watcher installation.
+      if (missing && await exists(missing)) {
+        changed(directory)
+        controller.abort()
+      }
+      await Promise.race(watchers)
+    } catch (error) {
+      if (error.code !== "ENOENT" && error.name !== "AbortError") throw error
+    } finally {
+      controller.abort()
+    }
   }
 }
 

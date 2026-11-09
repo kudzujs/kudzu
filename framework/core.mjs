@@ -956,7 +956,8 @@ async function renderList(node, namespace, selectValue) {
     renderContext.listRoot = templateRoot
     renderContext.listRowRoot = templateRoot
     const template = await renderNode(node.render({}, 0), namespace, selectValue)
-    if (template.includes("data-k-native-") || template.includes("data-k-effects=") || template.includes("data-k-list=")) descriptor.mount = true
+    const commandEvents = template.includes("data-k-on-") || template.includes("data-k-set-true-")
+    if (commandEvents || template.includes("data-k-native-") || template.includes("data-k-effects=") || template.includes("data-k-list=")) descriptor.mount = true
     if (template.includes("data-k-list=")) descriptor.nested = true
     if (template.includes("data-k-effects=")) descriptor.effects = true
     if (templateRoot.conditions) descriptor.conditions = true
@@ -976,7 +977,7 @@ async function renderList(node, namespace, selectValue) {
       descriptor.mount = true
     }
     if (renderContext.listRowIds.length) descriptor.rowIds = renderContext.listRowIds.map(({ id }) => id)
-    if (descriptor.rowStates && !descriptor.effects && !descriptor.nested && !template.includes("data-k-text")) descriptor.fastRelease = true
+    if (descriptor.rowStates && !descriptor.effects && !descriptor.nested && !commandEvents && !template.includes("data-k-text")) descriptor.fastRelease = true
     const valueSeed = node.ownerField || node.keyField === null ? undefined : listSeed(node.values, renderContext.listFields)
     const seed = node.selector.length ? undefined : valueSeed
     if (seed) descriptor.seed = seed

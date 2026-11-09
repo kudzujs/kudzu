@@ -66,10 +66,17 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.169` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.8`.
+`create-kudzu@0.1.170` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.9`.
 
 ## Release Boundary
+
+The 0.17.9 patch fixes event propagation, repeated-build module freshness, index
+parameters, array effect dependency types and public asset lifecycle/overlap
+validation. Existing native listeners and ownership hooks provide the behavior;
+no semantic primitive or runtime concept is added. Generator 0.1.170 targets
+^0.17.9. Artifact measurements and regression results are in PERFORMANCE.md;
+no speed or whole-application migration improvement is claimed.
 
 The 0.17.8 patch fixes parent-only reactive text and attributes in delayed keyed
 rows through existing list expression ownership. The real Actual Budget local
