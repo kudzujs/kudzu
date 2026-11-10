@@ -1,5 +1,23 @@
 # Kudzu Releases
 
+## 0.17.10 - Safe Custom Hook Aliases
+
+- Allows identifier aliases for state, setters and directly bound returned
+  callbacks from supported zero-argument relative custom hooks. Callers can
+  select `data: payees` without renaming the hook's internal state.
+- Preserves independent state across repeated calls and avoids capturing
+  callback-local names, including nested parameters, destructuring, loops and
+  catch bindings. Object keys and assignment defaults keep their meaning.
+- Existing state/setter pairing and direct shorthand return rules remain.
+  Defaults/rest/computed keys, duplicate fields, Context/private-timer aliases
+  and general parameterized query hooks remain unsupported.
+- Reuses existing signals, binding analysis and handler specialization: no new
+  semantic primitive, compiler pass, browser runtime or dependency. The simple
+  canonical comparison has identical deploy output; the collision comparison
+  retains identical HTML/runtime and equal raw/gzip handler sizes.
+- Generator 0.1.171 targets core ^0.17.10. Browser regressions preserve state
+  isolation and zero-JavaScript static output. Performance timing is unmeasured.
+
 ## 0.17.9 - Event and Build Correctness
 
 - Optimized commands preserve native bubbling, handler order and propagation

@@ -50,6 +50,53 @@ test("public array effect dependencies compile through existing effect ownership
   assert.deepEqual(plan.routes[0].effects[0].dependencies, [plan.routes[0].states[0].id])
 })
 
+test("custom hook aliases retain canonical output and reject ambiguous bindings", async t => {
+  const root = await mkdtemp(resolve("test/fixtures/hook-alias-output-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, "src/pages"), { recursive: true })
+  const hook = 'import { useState } from "react"; export function useData() { const [data, setData] = useState(0); const increment = () => { setData(data + 1) }; return { data, setData, increment } }'
+  const page = binding => `import { useData } from "../hook"; export default function Page() { const { ${binding} } = useData(); return <button onClick={advance}>{value}</button> }`
+  for (const source of [hook, hook.replace("setData(data + 1)", "const value = 2; setData(data + value)")]) {
+    await writeFile(join(root, "src/hook.ts"), source)
+    await writeFile(join(root, "src/pages/index.tsx"), page("data: value, setData: setValue, increment: advance"))
+    await buildProject({ root, quiet: true })
+    const aliased = await fileManifest(join(root, "dist"))
+    const canonical = source.replace(/\bvalue\b/g, "innerValue").replace(/\b(data|setData|increment)\b/g, name => ({ data: "value", setData: "setValue", increment: "advance" })[name])
+    await writeFile(join(root, "src/hook.ts"), canonical)
+    await writeFile(join(root, "src/pages/index.tsx"), page("value, setValue, advance"))
+    await buildProject({ root, quiet: true })
+    const manual = await fileManifest(join(root, "dist"))
+    if (source === hook) assert.deepEqual(manual, aliased, "aliases must ship the same files as a manually renamed hook")
+    else {
+      const handler = "assets/handlers/pages/index.js"
+      const modules = [aliased[handler], manual[handler]].map(contents => Buffer.from(contents, "base64"))
+      assert.equal(modules[0].length, modules[1].length)
+      t.diagnostic(`Collision alias/manual handler: raw ${modules.map(code => code.length).join("/")} B; gzip ${modules.map(code => gzipSync(code).length).join("/")} B`)
+      for (const code of modules) {
+        let value = 3
+        const { handler0 } = await import(`data:text/javascript;base64,${code.toString("base64")}`)
+        handler0({ get: () => value, set: (name, next) => { assert.equal(name, "value"); value = next } })
+        assert.equal(value, 5, "local value=2 must not capture the aliased state value=3")
+      }
+      delete aliased[handler]
+      delete manual[handler]
+      assert.deepEqual(manual, aliased, "HTML, runtime and entry modules remain identical; minified handler symbol names may differ")
+    }
+  }
+  await writeFile(join(root, "src/hook.ts"), hook)
+  for (const [binding, diagnostic] of [
+    ["data: value = 0, setData: setValue", /without defaults or rest/],
+    ["data: value, ...rest", /without defaults or rest/],
+    ['["data"]: value, setData: setValue', /identifier fields/],
+    ["data: value, data: other, setData: setValue", /destructured only once/],
+    ["data: value", /destructured together/],
+    ["missing: value", /does not directly return/]
+  ]) {
+    await writeFile(join(root, "src/pages/index.tsx"), page(binding))
+    await assert.rejects(buildProject({ root, quiet: true }), diagnostic)
+  }
+})
+
 test("rejects public directories overlapping build output and scratch", async t => {
   const root = await mkdtemp(resolve("test/fixtures/public-overlap-"))
   t.after(() => rm(root, { recursive: true, force: true }))

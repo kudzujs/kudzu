@@ -1,5 +1,58 @@
 # Performance Records
 
+## 0.17.10 Release Validation (2026-11-10)
+
+Core 0.17.10 and generator 0.1.171 package/lock versions, generator dependency,
+release notes/page and current site links are aligned. Final local validation
+passes `npm run check` (261 pages), the project journey plus 398 tests with zero
+skips, and both package smokes. The combined alias/capture-avoidance packet below
+is the release scope. No browser runtime source or dependency was added;
+compiler net LOC is +37. Hosted exact-commit CI gates tagging/publication.
+
+## Hook Alias Capture Avoidance (2026-11-10, 0.17.10)
+
+The new destination-name collision probe fails before the fix: aliasing a hook's
+`data` to `payees` can bind its captured state to a callback-local `payees`.
+The existing substitution helper now uses binding identity to rename only
+conflicting locals, retaining nested scopes, property keys and assignment defaults.
+Chrome covers state/setter collisions, nested parameters, destructuring, loops,
+catch bindings and a deliberately occupied generated-looking name.
+
+Semantic primitives/passes/runtime concepts +0; browser runtime source +0.
+Source compiler LOC +30 for this continuation, +37 for the combined alias work.
+The simple alias/canonical fixture remains byte-identical. The collision fixture
+has identical HTML/runtime/entry files; its handler differs only in a minifier
+function name and measures 69 raw / 80 gzip B for both variants. Both handlers
+execute correctly from state 3 to state 5. The initial exact-handler-hash mismatch
+is retained as a test-assumption failure, not a compiler size regression.
+
+The expanded connected fixture ships 5 JS files / 5,555 raw / 2,790 aggregate gzip B;
+the +554 / +201 over its prior version covers five additional test callbacks.
+Its static sibling remains zero-JS. Final check/build (260 pages), all 399 tests
+without skips and package smokes pass. No timing or release/deployment ran.
+See the [packet](docs/next-architecture/custom-hook-result-aliases.md).
+
+## Custom Hook Result Aliases (2026-11-09, accepted for 0.17.10)
+
+The independently reduced Actual Budget consumer alias pattern initially failed
+with the shorthand-only diagnostic. Ordinary relative hook state, setter and
+callback fields now select identifier aliases through existing state registration
+and callback substitution. A callback-local shadow probe exposed malformed native
+capture output during development; lexical checks and cloned-parent restoration
+resolve it. The browser regression verifies two independent calls, latest values,
+setter/reset aliases and local shadowing. Unsupported defaults/rest/computed keys,
+duplicates, missing pairs and unknown fields retain diagnostics.
+
+Semantic primitives +0; passes +0; source compiler net LOC +7; runtime source and
+concepts +0. The connected fixture ships 5 JS files, 5,001 raw / 2,589 aggregate
+gzip B; its static sibling ships zero JS. Alias and manually renamed canonical
+forms emit identical deploy files (zero byte delta). Timing is unmeasured.
+`npm run check` (260 pages), all 399 tests with no skips, and package smokes pass.
+Core/generator remain 0.17.9/0.1.170. See the
+[session packet](docs/next-architecture/custom-hook-result-aliases.md) for scope
+and provenance; query-package, Context/private-timer alias and whole-app support
+are not established by this reduction.
+
 ## 0.17.9 Release Validation (2026-11-09)
 
 Core 0.17.9 and generator 0.1.170 package/lock versions, generated dependency,

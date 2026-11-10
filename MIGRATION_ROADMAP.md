@@ -40,6 +40,14 @@ spreadsheet or coordination runtime is authorized.
 
 ## North Star
 
+The user-requested [custom-hook result alias packet](docs/next-architecture/custom-hook-result-aliases.md)
+now preserves identifier aliases for ordinary relative state hooks. Selected state,
+setter and callback fields bind to consumer-local names without rewriting the hook;
+independent calls and lexical callback locals retain ownership. This uses existing
+signals and handler substitution, adds no browser runtime, and does not authorize
+parameterized query hooks or Context/private-timer aliases. The original
+SharedWorker intake remains the next application-coordination investigation.
+
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
 
 ```text

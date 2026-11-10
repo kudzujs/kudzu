@@ -1,5 +1,25 @@
 # Application Capability Release Plan
 
+Composition follow-up (2026-11-10, accepted for 0.17.10): destination-name collisions now
+use binding-aware local renaming in the existing clone helper. Nested parameters,
+destructuring keys/defaults, loop/catch scopes and occupied generated-looking
+names preserve behavior. All 399 tests pass; total source compiler net LOC is +37
+for the alias packet. Runtime concepts remain unchanged; the collision comparison
+has equal raw/gzip handler sizes with equivalent execution, while minified names
+may differ. The packet records the pre-fix failure and exact validation limits.
+The user requested release of the completed packet; generator 0.1.171 targets
+core ^0.17.10. Final version-aligned build/check, 399 tests and package smokes pass.
+
+User-requested composition continuation (2026-11-09, unreleased): the bounded
+[custom-hook result alias packet](./custom-hook-result-aliases.md) preserves
+identifier-renamed state/setter/callback fields from supported relative hooks.
+The original consumer pattern is pinned to Actual Budget; the provider is an
+independent state-hook reduction, not a query-package compatibility claim.
+Chrome, canonical-output equivalence, negative boundaries and the full 399-test
+suite pass. No new pass or runtime concept; source compiler net LOC +7.
+This closes the independent composition packet; the SharedWorker intake below
+remains queued and no release is selected by this change alone.
+
 Latest continuation (2026-11-02): real Actual export/download/import round-trip
 restores newly written transaction data into a separate empty browser context,
 preserving IDs/content/count/balance across reload. Replacement, conditional

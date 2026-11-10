@@ -66,10 +66,18 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.170` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.9`.
+`create-kudzu@0.1.171` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.10`.
 
 ## Release Boundary
+
+The 0.17.10 patch preserves identifier aliases for state, setters and callbacks
+from supported relative custom hooks. Existing binding analysis avoids capturing
+callback-local names; no semantic primitive, pass or runtime concept is added.
+The source compiler changes by +37 net LOC. The simple canonical-output pair is
+byte-identical; the collision pair preserves identical HTML/runtime and equal
+raw/gzip handler sizes with equivalent execution. Generator 0.1.171 targets
+^0.17.10. Context/private-timer aliases remain unsupported; timing is unmeasured.
 
 The 0.17.9 patch fixes event propagation, repeated-build module freshness, index
 parameters, array effect dependency types and public asset lifecycle/overlap

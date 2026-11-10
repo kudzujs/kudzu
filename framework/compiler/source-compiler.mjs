@@ -713,11 +713,14 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           if (!isLocalConst(node) || !ts.isObjectBindingPattern(node.name) || node.initializer.arguments.length) throw sourceNodeError(node, sourceFile, "Relative custom hooks must initialize one top-level const object destructuring with no arguments")
           const hook = resolveCustomHook(importBindings.get(callName), node.initializer)
           const names = new Set()
+          const localNames = new Map()
           for (const element of node.name.elements) {
-            if (element.dotDotDotToken || element.propertyName || element.initializer || !ts.isIdentifier(element.name)) throw sourceNodeError(element, sourceFile, "Relative custom hook results must use direct identifier shorthand without aliases, defaults, or rest")
-            const name = element.name.text
+            if (element.dotDotDotToken || element.initializer || !ts.isIdentifier(element.name) || element.propertyName && (!ts.isIdentifier(element.propertyName) || hook.context || hook.privateStates.size)) throw sourceNodeError(element, sourceFile, "Relative custom hook results require identifier fields and local names without defaults or rest; Context and private-timer result aliases remain unsupported")
+            const name = (element.propertyName ?? element.name).text
             if (!hook.fields.has(name)) throw sourceNodeError(element, sourceFile, `Relative custom hook does not directly return ${JSON.stringify(name)}`)
+            if (names.has(name)) throw sourceNodeError(element, sourceFile, `Relative custom hook result ${JSON.stringify(name)} must be destructured only once`)
             names.add(name)
+            localNames.set(name, element.name.text)
           }
           const owner = nearestFunction(node)
           if (!owner) throw sourceNodeError(node, sourceFile, "Relative custom hooks cannot be used outside a Kudzu component")
@@ -729,7 +732,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               if (callback) for (const state of referencedStateNames(callback.body, hook.states, callback)) requiredContextStates.add(state)
             }
           }
-          const contextSubstitutions = new Map()
+          const contextSubstitutions = new Map([...localNames].filter(([name, local]) => name !== local).map(([name, local]) => [name, factory.createIdentifier(local)]))
           const contextSharedStates = new Map()
           for (const [setter, state] of hook.states) {
             if (hook.context) {
@@ -773,16 +776,20 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
             }
             if (names.has(setter) !== names.has(state)) throw sourceNodeError(node.name, sourceFile, `Relative custom hook state ${JSON.stringify(state)} and setter ${JSON.stringify(setter)} must be destructured together`)
             if (names.has(setter)) {
-              setters.set(setter, state)
-              registerState(owner, state, setter, "custom-hook", node)
+              setters.set(localNames.get(setter), localNames.get(state))
+              registerState(owner, localNames.get(state), localNames.get(setter), "custom-hook", node)
             }
           }
           settersByFunction.set(owner, setters)
           for (const name of names) {
             if (hook.callbacks.has(name)) {
               const callback = contextSubstitutions.size ? substituteClone(hook.callbacks.get(name), contextSubstitutions, factory, context) : hook.callbacks.get(name)
+              if (contextSubstitutions.size) {
+                ts.setParentRecursive(callback, false)
+                callback.parent = hook.callbacks.get(name).parent
+              }
               const callbacks = customHookFunctionsByOwner.get(owner) ?? new Map()
-              callbacks.set(name, callback)
+              callbacks.set(localNames.get(name), callback)
               customHookFunctionsByOwner.set(owner, callbacks)
               if (hook.context) {
                 const reducers = reducersByFunction.get(owner) ?? new Map()
@@ -3274,12 +3281,42 @@ function isEventOnlyComponentLocal(root, name) {
 }
 
 function substituteClone(root, substitutions, factory, context) {
+  const index = isFunctionLike(root) ? createBindingIndex(root) : undefined
+  const locals = new Map()
+  if (index) {
+    // Renaming a capture must not bind it to a callback-local name.
+    const targets = new Set([...substitutions.values()].filter(ts.isIdentifier).map(node => node.text))
+    const bindings = index.bindings()
+    const occupied = new Set([...bindings.map(binding => binding.debugName), ...targets])
+    for (const binding of bindings) {
+      if (!targets.has(binding.debugName) || ["global", "unresolved"].includes(binding.declarationKind)) continue
+      let name = `__kLocal_${binding.debugName}`
+      while (occupied.has(name)) name += "_"
+      occupied.add(name)
+      locals.set(binding.slot, name)
+    }
+  }
+  const localName = node => {
+    if (!index || !locals.size) return undefined
+    const parent = node.parent
+    const declaration = parent?.name === node && (ts.isVariableDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent) || ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) || ts.isClassDeclaration(parent) || ts.isClassExpression(parent))
+    const binding = declaration ? index.resolveBinding(node) : index.resolveReference(node)
+    return binding && locals.get(binding.slot)
+  }
   const visit = (node, shadowed = new Set()) => {
     if (ts.isTypeNode(node)) return cloneAst(node, factory, context)
-    if (ts.isShorthandPropertyAssignment(node) && substitutions.has(node.name.text) && !shadowed.has(node.name.text)) {
+    if (ts.isShorthandPropertyAssignment(node) && localName(node.name)) {
+      const name = factory.createIdentifier(localName(node.name))
+      return factory.createPropertyAssignment(cloneAst(node.name, factory, context), node.objectAssignmentInitializer ? factory.createAssignment(name, visit(node.objectAssignmentInitializer, shadowed)) : name)
+    }
+    if (ts.isBindingElement(node) && !node.propertyName && !node.dotDotDotToken && ts.isIdentifier(node.name) && localName(node.name) && ts.isObjectBindingPattern(node.parent)) {
+      return factory.updateBindingElement(node, node.dotDotDotToken, cloneAst(node.name, factory, context), factory.createIdentifier(localName(node.name)), node.initializer && visit(node.initializer, shadowed))
+    }
+    if (ts.isIdentifier(node) && localName(node)) return factory.createIdentifier(localName(node))
+    if (ts.isShorthandPropertyAssignment(node) && substitutions.has(node.name.text) && !shadowed.has(node.name.text) && (!isFunctionLike(root) || !isShadowedIdentifier(node.name, root))) {
       return factory.createPropertyAssignment(cloneAst(node.name, factory, context), cloneAst(substitutions.get(node.name.text), factory, context))
     }
-    if (ts.isIdentifier(node) && substitutions.has(node.text) && !shadowed.has(node.text) && isReferenceIdentifier(node) && !isJsxSyntaxIdentifier(node)) {
+    if (ts.isIdentifier(node) && substitutions.has(node.text) && !shadowed.has(node.text) && (!isFunctionLike(root) || !isShadowedIdentifier(node, root)) && isReferenceIdentifier(node) && !isJsxSyntaxIdentifier(node)) {
       return cloneAst(substitutions.get(node.text), factory, context)
     }
     const nextShadowed = isFunctionLike(node)

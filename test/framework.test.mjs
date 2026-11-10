@@ -155,7 +155,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.ok(blog.includes(`Kudzu ${version}`) && blog.includes(`v${version}`))
   assert.match(blog, /source compiled by the current Kudzu release/)
   assert.ok(html.includes(`class="release-banner" href="/releases/${version}"`))
-  assert.match(html, /Event and build correctness/)
+  assert.match(html, /Safe custom hook aliases/)
   assert.match(release, /Kudzu 0\.16\.30.*Patch the target.*Skip the rest/s)
   assert.match(release, /BINDING TARGET SPECIALIZATION.*npm install @kudzujs\/core@\^0\.16\.30/s)
   assert.match(release, /<title>Kudzu 0\.16\.30 - Binding target specialization<\/title>/)
@@ -2648,11 +2648,25 @@ test("migrates aliased and member React hooks from a Vite-shaped app", async t =
   if (chrome) await runReactViteAppBrowserTest(fixture, chrome)
 })
 
-test("rejects aliased relative custom hook results", () => {
+test("specializes aliased custom hook states, setters and callbacks independently", async t => {
+  const fixture = new URL("./fixtures/custom-hook-alias", import.meta.url)
+  t.after(() => Promise.all(["dist", ".kudzu"].map(path => rm(new URL(`${fixture.href}/${path}`), { recursive: true, force: true }))))
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const html = await readFile(new URL(`${fixture.href}/dist/index.html`), "utf8")
+  assert.match(html, /id="payees"><span[^>]*>First/)
+  assert.match(html, /id="other"><span[^>]*>First/)
+  assert.doesNotMatch(await readFile(new URL(`${fixture.href}/dist/static/index.html`), "utf8"), /<script|modulepreload/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome && !process.env.KUDZU_SKIP_BROWSER) await runCustomHookAliasBrowserTest(fixture, chrome)
+  else if (process.env.KUDZU_REQUIRE_CHROME) throw new Error("Chrome is required for custom hook alias validation")
+})
+
+test("rejects defaulted relative custom hook result aliases", () => {
   const fixture = new URL("./fixtures/custom-hook-alias-invalid", import.meta.url)
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.notEqual(result.status, 0)
-  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Relative custom hook results must use direct identifier shorthand without aliases, defaults, or rest/)
+  assert.match(`${result.stdout}\n${result.stderr}`, /src\/pages\/index\.tsx:\d+:\d+ Relative custom hook results require identifier fields and local names without defaults or rest/)
 })
 
 test("rejects dynamic private custom-hook timer delays", () => {
@@ -4875,6 +4889,50 @@ http.createServer((request, response) => {
   } finally {
     server.kill()
   }
+}
+
+async function runCustomHookAliasBrowserTest(fixture, chrome) {
+  const output = new URL("./dist/", `${fixture.href}/`)
+  const htmlUrl = new URL("index.html", output)
+  const html = await readFile(htmlUrl, "utf8")
+  await writeFile(htmlUrl, html.replace("</body>", '<script type="module" src="/browser-test.js"></script></body>'))
+  await writeFile(new URL("browser-test.js", output), `
+try {
+  await Promise.all([...document.querySelectorAll('script[type="module"]')].filter(script => !script.src.endsWith('/browser-test.js')).map(script => import(script.src)))
+  const click = async id => { document.getElementById(id).click(); await new Promise(resolve => setTimeout(resolve, 20)) }
+  const check = (first, second) => {
+    if (document.getElementById("payees").textContent !== first || document.getElementById("other").textContent !== second) throw new Error("state-isolation")
+  }
+  await click("rename"); await click("rename"); check("First!!", "First")
+  await click("other-rename"); check("First!!", "First!")
+  await click("set"); check("Selected", "First!")
+  await click("rename"); check("Selected!", "First!")
+  await click("other-set"); check("Selected!", "Other")
+  await click("reset"); check("First", "Other")
+  await click("shadow"); check("Local", "Other")
+  await click("collision"); check("Local suffix", "Other")
+  await click("scoped"); check("Local suffix!reserved", "Other")
+  await click("setter-collision"); check("LOCAL SUFFIX!RESERVED", "Other")
+  await click("loop-scope"); check("LOCAL SUFFIX!RESERVED!?", "Other")
+  await click("assignment"); check("LOCAL SUFFIX!RESERVED!?fallback", "Other")
+  document.body.dataset.browserTest = "pass"
+} catch (error) { document.body.dataset.browserTest = "fail-" + error.message }
+`)
+  const port = nextBrowserPort()
+  const server = spawn(process.execPath, ["-e", `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+http.createServer((request, response) => {
+  const file = path.join(process.argv[1], request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(Number(process.argv[2]), "127.0.0.1")
+`, output.pathname, String(port)], { stdio: "ignore" })
+  try {
+    await waitForServer(port)
+    const browser = spawnSync(chrome, ["--headless=new", "--no-sandbox", "--disable-gpu", "--virtual-time-budget=2000", "--dump-dom", `http://127.0.0.1:${port}/`], { encoding: "utf8", timeout: 15000 })
+    assert.equal(browser.status, 0, browser.stderr)
+    assert.match(browser.stdout, /data-browser-test="pass"/)
+  } finally { server.kill() }
 }
 
 async function runParameterizedDebounceBrowserTest(fixture, chrome) {
