@@ -155,7 +155,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.ok(blog.includes(`Kudzu ${version}`) && blog.includes(`v${version}`))
   assert.match(blog, /source compiled by the current Kudzu release/)
   assert.ok(html.includes(`class="release-banner" href="/releases/${version}"`))
-  assert.match(html, /Shared Context hook aliases/)
+  assert.match(html, /Native SharedWorker effects/)
   assert.match(release, /Kudzu 0\.16\.30.*Patch the target.*Skip the rest/s)
   assert.match(release, /BINDING TARGET SPECIALIZATION.*npm install @kudzujs\/core@\^0\.16\.30/s)
   assert.match(release, /<title>Kudzu 0\.16\.30 - Binding target specialization<\/title>/)
@@ -3328,6 +3328,73 @@ test("compiles actions returned through a relative Context hook", async t => {
   assert.doesNotMatch(staticHtml, /<script|data-k-/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runContextActionsBrowserTest(fixture, chrome)
+})
+
+test("preserves native SharedWorker ports through owned effect cleanup", async t => {
+  const fixture = new URL("./fixtures/shared-worker", import.meta.url)
+  const output = new URL("./dist/", `${fixture.href}/`)
+  t.after(async () => {
+    for (const directory of ["dist", ".kudzu"]) await rm(new URL(`./${directory}`, `${fixture.href}/`), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  assert.doesNotMatch(await readFile(new URL("static/index.html", output), "utf8"), /<script|data-k-/)
+  const html = await readFile(new URL("index.html", output), "utf8")
+  await writeFile(new URL("unsupported.html", output), html.replace("<head>", '<head><script>window.SharedWorker = undefined</script>'))
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (!chrome) return
+  await writeFile(new URL("probe.html", output), '<body><script type="module" src="/probe.js"></script></body>')
+  await writeFile(new URL("probe.js", output), `
+const waitFor = async (test, label) => {
+  for (let i = 0; i < 200; i++) {
+    if (test()) return
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+  throw new Error(label)
+}
+const open = (url = "/") => { const frame = document.createElement("iframe"); frame.src = url; document.body.append(frame); return frame }
+const role = frame => frame.contentDocument?.querySelector("[data-role]")?.textContent
+const toggle = frame => frame.contentDocument.querySelector("[data-toggle]").click()
+try {
+  const first = open()
+  await waitFor(() => role(first) === "LEADER", "first-leader")
+  const second = open()
+  await waitFor(() => role(second) === "FOLLOWER", "second-follower")
+  toggle(first)
+  await waitFor(() => role(first) === undefined && role(second) === "LEADER", "cleanup-promotion")
+  toggle(first)
+  await waitFor(() => role(first) === "FOLLOWER", "fresh-remount")
+  toggle(second)
+  await waitFor(() => role(second) === undefined && role(first) === "LEADER", "surviving-port")
+  toggle(first)
+  await waitFor(() => role(first) === undefined, "last-release")
+  toggle(second)
+  await waitFor(() => role(second) === "LEADER", "empty-coordinator-rejoin")
+  const unsupported = open("/unsupported.html")
+  await waitFor(() => role(unsupported) === "unsupported", "native-feature-detection")
+  document.body.dataset.browserTest = "pass"
+} catch (error) { document.body.dataset.browserTest = "fail-" + error.message }
+`)
+  const port = nextBrowserPort()
+  const server = spawn(process.execPath, ["-e", `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path")
+http.createServer((request, response) => {
+  const file = path.join(process.argv[1], request.url === "/" ? "index.html" : request.url.slice(1))
+  response.setHeader("content-type", file.endsWith(".js") ? "text/javascript" : "text/html")
+  fs.createReadStream(file).on("error", () => { response.statusCode = 404; response.end() }).pipe(response)
+}).listen(Number(process.argv[2]), "127.0.0.1")
+`, output.pathname, String(port)], { stdio: "ignore" })
+  try {
+    await waitForServer(port)
+    const result = await evaluateInChrome(chrome, `http://127.0.0.1:${port}/probe.html`, `(async () => {
+      for (let i = 0; i < 800; i++) {
+        if (document.body.dataset.browserTest) return document.body.dataset.browserTest
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      return "timeout"
+    })()`, nextBrowserPort(), new URL("./chrome-profile/", output))
+    assert.equal(result, "pass")
+  } finally { server.kill() }
 })
 
 test("compiles aliased Context states and actions without changing shared identities", async t => {

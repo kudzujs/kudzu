@@ -59,7 +59,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.17.11 release evidence</strong><span>Supported Context hooks accept state, setter and action aliases while retaining Provider identity and shared state. Chrome covers CRUD, repeated consumers and hidden-name collisions; no speed improvement is claimed. Startup, restoration and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.11">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
+    <div className="docs-callout"><strong>Current 0.17.12 release evidence</strong><span>Native SharedWorker construction and feature detection stay in browser effects. Real port-sharing, conditional cleanup, remount and fallback regressions pass without a coordinator runtime; no speed improvement is claimed. Startup, restoration and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.12">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

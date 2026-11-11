@@ -1,5 +1,21 @@
 # Performance Records
 
+## Native SharedWorker Constructor (2026-11-11)
+
+The [intake packet](docs/next-architecture/actual-shared-worker-intake.md) records
+44 passing original coordinator tests, an original reopened-budget two-tab handoff,
+and the preserved fresh-create leader/follower failure. A compiled native-port
+fixture exposes erroneous build-time capture of `SharedWorker`. One known-global
+entry fixes it; core net LOC/passes/semantic primitives/runtime concepts +0,
+runtime source/browser-runtime bytes unchanged. Existing effect cleanup owns ports.
+The fixture ships 7 JS files / 11,238 raw / 5,376 aggregate gzip B, including
+438 raw / 256 gzip B of public application coordinator code; static sibling has
+zero JS. All 402 tests pass. Timing/cross-framework comparisons were not rerun;
+this is not proof of safe multi-tab Actual database writes.
+Final 0.17.12/0.1.173 check builds 263 pages, all 402 tests pass without skips,
+and package smokes pass. The packet retains the initial dev-watch timeout and
+release-copy assertion failure as well as the failed virtual-time worker probe.
+
 ## Context Result Aliases (2026-11-11)
 
 The [packet](docs/next-architecture/context-result-aliases.md) records a pre-fix

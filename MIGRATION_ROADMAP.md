@@ -35,8 +35,11 @@ also proves integer-cent add/edit/delete, backend-authoritative balances, retain
 keyed rows and reload persistence through existing capabilities. The
 [export/import round-trip](docs/next-architecture/actual-budget-export-roundtrip.md)
 restores newly written data in an isolated browser context and verifies Blob URL
-ownership. Next is original SharedWorker coordination intake; no generic database,
-spreadsheet or coordination runtime is authorized.
+ownership. The [SharedWorker intake](docs/next-architecture/actual-shared-worker-intake.md)
+proves original reopened-budget leader/follower handoff and fixes native
+SharedWorker capture analysis through the existing global binding list.
+Fresh-create lobby reassociation remains an upstream gate before multi-tab writes;
+no generic database, spreadsheet or coordination runtime is authorized.
 
 ## North Star
 
@@ -48,8 +51,9 @@ signals and handler substitution, adds no browser runtime, and does not authoriz
 parameterized query hooks or private-timer aliases. The subsequent
 [Context alias packet](docs/next-architecture/context-result-aliases.md) supports
 identifier aliases for selected Context state, setters and actions while keeping
-Provider identities and repeated-consumer sharing. The original
-SharedWorker intake remains the next application-coordination investigation.
+Provider identities and repeated-consumer sharing. The original SharedWorker
+intake now records reopened-budget handoff; fresh-create reassociation is the
+next application-coordination investigation.
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
 

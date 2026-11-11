@@ -1,5 +1,14 @@
 # Application Capability Release Plan
 
+SharedWorker continuation: [original intake and constructor fix](./actual-shared-worker-intake.md).
+All 44 original coordinator tests pass. The original production app proves
+reopened-budget follower sharing and leader-close promotion; joining immediately
+after budget creation instead exposes a retained upstream lobby-association
+failure. A separate compiled native-port fixture fails build before adding
+SharedWorker to known globals, then passes cleanup/remount/fallback via existing
+effects. One compiler line changes, net LOC/passes/runtime concepts +0; all 402
+tests pass. Next investigate original fresh-create reassociation before DB writes.
+
 Composition continuation (2026-11-11): the [Context alias packet](./context-result-aliases.md)
 extends the existing result-name mapping to shared state/setters/actions. Actual's
 Context-backed dispatch alias provides the consumer evidence; the reduced CRUD

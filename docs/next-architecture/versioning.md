@@ -66,10 +66,16 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.172` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.11`.
+`create-kudzu@0.1.173` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.12`.
 
 ## Release Boundary
+
+The 0.17.12 patch recognizes SharedWorker as a native browser global in existing
+capture analysis. One line changes with zero net LOC, passes or runtime concepts.
+Existing effects own application ports; public worker code remains application
+code. Generator 0.1.173 targets ^0.17.12. Original Actual fresh-create coordination
+remains an independent recorded failure, not a framework compatibility claim.
 
 The 0.17.11 patch extends result aliases to supported Context hooks while
 preserving Provider state/action identities and repeated-consumer sharing.

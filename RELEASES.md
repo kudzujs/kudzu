@@ -1,5 +1,20 @@
 # Kudzu Releases
 
+## 0.17.12 - Native SharedWorker Effects
+
+- Recognizes native `SharedWorker` as a browser global, fixing an erroneous
+  build-time capture in inline effects, including `typeof` feature detection.
+- Existing effect ownership handles port listeners, start, application messages
+  and close cleanup. Real browser coverage verifies shared leader/follower
+  transport, conditional cleanup, remount and unsupported-browser fallback.
+- One known-global entry changes; no pass, runtime concept or dependency is added.
+  Public worker code/protocols remain application-owned. Relative TypeScript
+  SharedWorker bundling and Vite `?sharedworker` imports are outside this patch.
+- Original Actual coordinator tests and reopened-budget handoff pass; a separate
+  fresh-create lobby-association failure remains recorded, not fixed or hidden.
+- Generator 0.1.173 targets core ^0.17.12. Static output remains zero-JavaScript;
+  no speed or safe whole-application multi-tab migration claim is made.
+
 ## 0.17.11 - Shared Context Hook Aliases
 
 - Supported relative Context hooks accept identifier aliases for state, setters
