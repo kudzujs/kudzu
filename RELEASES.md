@@ -1,5 +1,19 @@
 # Kudzu Releases
 
+## 0.17.11 - Shared Context Hook Aliases
+
+- Supported relative Context hooks accept identifier aliases for state, setters
+  and actions. Provider field/action identities remain stable across consumers.
+- Repeated hook calls share state; action-only selections receive private state
+  bindings without colliding with selected aliases or consumer locals.
+- Existing capture-avoiding substitution preserves callback-local names.
+  Defaults, rest, computed/string keys, duplicate selections, setter-only
+  selections and private-timer aliases remain unsupported.
+- Five compiler lines change with zero net LOC, new passes, runtime concepts or
+  dependencies. Static siblings remain JavaScript-free.
+- Generator 0.1.172 targets core ^0.17.11. Browser CRUD/sharing and source-located
+  negative regressions pass; timing improvements are not claimed.
+
 ## 0.17.10 - Safe Custom Hook Aliases
 
 - Allows identifier aliases for state, setters and directly bound returned

@@ -155,7 +155,7 @@ test("builds TSX into HTML and behavior commands without React", async () => {
   assert.ok(blog.includes(`Kudzu ${version}`) && blog.includes(`v${version}`))
   assert.match(blog, /source compiled by the current Kudzu release/)
   assert.ok(html.includes(`class="release-banner" href="/releases/${version}"`))
-  assert.match(html, /Safe custom hook aliases/)
+  assert.match(html, /Shared Context hook aliases/)
   assert.match(release, /Kudzu 0\.16\.30.*Patch the target.*Skip the rest/s)
   assert.match(release, /BINDING TARGET SPECIALIZATION.*npm install @kudzujs\/core@\^0\.16\.30/s)
   assert.match(release, /<title>Kudzu 0\.16\.30 - Binding target specialization<\/title>/)
@@ -3325,6 +3325,25 @@ test("compiles actions returned through a relative Context hook", async t => {
   assert.deepEqual(source.moduleIR.signals.map(signal => signal.reference.kind), ["shared-state", "shared-state"])
   assert.ok(source.componentAnalysis.owners.flatMap(owner => owner.states).every(state => state.owner.kind === "module-symbol"))
   assert.deepEqual(plan.routes[0].states.map(state => state.name), ["notes", "activeId"])
+  assert.doesNotMatch(staticHtml, /<script|data-k-/)
+  const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
+  if (chrome) await runContextActionsBrowserTest(fixture, chrome)
+})
+
+test("compiles aliased Context states and actions without changing shared identities", async t => {
+  const fixture = new URL("./fixtures/context-action-alias", import.meta.url)
+  t.after(async () => {
+    for (const directory of ["dist", ".kudzu"]) await rm(new URL(`./${directory}`, `${fixture.href}/`), { recursive: true, force: true })
+  })
+  const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
+  const source = inspectSourceResult(fixture, "src/pages/index.tsx")
+  assert.deepEqual(source.moduleIR.sharedStates.map(state => state.field), ["notes", "activeId"])
+  assert.deepEqual(source.moduleIR.sharedActions.map(action => action.name), ["createNote", "renameNote", "deleteNote", "selectNote"])
+  assert.ok(source.moduleIR.signals.every(signal => signal.reference.kind === "shared-state"))
+  const handlers = await readFile(new URL("./dist/assets/handlers/pages/index.js", `${fixture.href}/`), "utf8")
+  assert.doesNotMatch(handlers, /createContext|useContext|NotesContext/)
+  const staticHtml = await readFile(new URL("./dist/static/index.html", `${fixture.href}/`), "utf8")
   assert.doesNotMatch(staticHtml, /<script|data-k-/)
   const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"].find(path => path && existsSync(path))
   if (chrome) await runContextActionsBrowserTest(fixture, chrome)
@@ -6950,6 +6969,14 @@ try {
   await wait()
   rows = document.querySelectorAll("[data-note]")
   if (rows.length !== 1 || rows[0].dataset.note !== "2" || document.querySelector("[data-active]").textContent !== "0") throw new Error("delete")
+  if (document.querySelector("[data-setter]")) {
+    document.querySelector("[data-setter]").click()
+    await wait()
+    if (document.querySelector("[data-active]").textContent !== "7" || document.querySelector("[data-mirrored]").textContent !== "7") throw new Error("aliased-setter-sharing")
+    document.querySelector("[data-action-only]").click()
+    await wait()
+    if (document.querySelector("[data-active]").textContent !== "0" || document.querySelector("[data-mirrored]").textContent !== "0") throw new Error("action-only-sharing")
+  }
   document.body.dataset.browserTest = "pass"
 } catch (error) {
   document.body.dataset.browserTest = "fail-" + error.message

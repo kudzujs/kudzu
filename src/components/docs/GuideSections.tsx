@@ -9,7 +9,7 @@ cd my-app
 npm install
 npm run dev`} />
     <p>To add Kudzu to an existing project, install <code>@kudzujs/core</code> and <code>typescript</code>, configure TypeScript with <code>jsxImportSource: "@kudzujs/core"</code>, and add these scripts to <code>package.json</code>:</p>
-    <CodeBlock language="shell" code={`npm install @kudzujs/core@^0.17.10 typescript`} />
+    <CodeBlock language="shell" code={`npm install @kudzujs/core@^0.17.11 typescript`} />
     <CodeBlock language="text" code={`{
   "scripts": {
     "dev": "kudzu dev",
@@ -471,7 +471,7 @@ function App() {
     <Toolbar />
   </ThemeContext.Provider>
 }`} />
-    <p>Context objects may contain state, setters, nested plain data, and static fields. Consumers may destructure or rename properties. A zero-argument relative custom hook may also directly return <code>useContext(Context)</code> for one local or named relative Context module whose single Provider value is a shorthand object of Provider-owned state/setter pairs and synchronous actions. Direct or nested-handler action calls compile into concrete state operations; action-required state/setter fields that are not publicly selected use compiler-owned collision-free aliases, so same-named consumer locals remain valid. Action functions and the Provider tree do not ship. Dynamic Provider values, multiple Providers, action aliases, and private action captures remain unsupported. Ordinary nested Providers with serializable values remain independent.</p>
+    <p>Context objects may contain state, setters, nested plain data, and static fields. Consumers may destructure or rename properties. A zero-argument relative custom hook may also directly return <code>useContext(Context)</code> for one local or named relative Context module whose single Provider value is a shorthand object of Provider-owned state/setter pairs and synchronous actions. Selected state, setters and actions accept identifier aliases while repeated consumers share the same Provider state. Direct or nested-handler action calls compile into concrete state operations; action-required state/setter fields that are not publicly selected use compiler-owned collision-free aliases, so same-named consumer locals remain valid. Action functions and the Provider tree do not ship. Dynamic Provider values, multiple Providers, and private action captures remain unsupported. Ordinary nested Providers with serializable values remain independent.</p>
     <h3 id="effects">Effects</h3>
     <p>Browser-only work can use an inline <code>useEffect</code> callback with a literal dependency array. Kudzu emits that callback as route-specific ESM and patches only state-bound DOM; it does not ship or rerun the component.</p>
     <CodeBlock code={`const [items, setItems] = useState([])

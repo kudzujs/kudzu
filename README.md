@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.10](https://github.com/kudzujs/kudzu/releases/tag/v0.17.10).** Supported relative custom hooks now allow identifier aliases for state, setters and returned callbacks. Repeated calls retain independent state, and compiler substitutions avoid capturing callback-local names. No browser runtime is added; Context/private-timer aliases remain unsupported. Generator `create-kudzu@0.1.171` targets core `^0.17.10`. Regression and artifact evidence is recorded in `PERFORMANCE.md`; no speed or whole-application migration claim is made.
+**Current release: [0.17.11](https://github.com/kudzujs/kudzu/releases/tag/v0.17.11).** Supported Context-returning hooks now allow identifier aliases for state, setters and actions. Repeated consumers retain shared Provider state, and hidden setter names avoid consumer collisions. No browser runtime is added; private-timer aliases remain unsupported. Generator `create-kudzu@0.1.172` targets core `^0.17.11`. Regression and artifact evidence is recorded in `PERFORMANCE.md`; no speed or whole-application migration claim is made.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

@@ -66,10 +66,16 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Generator Versions
 
-`create-kudzu@0.1.171` retains the explicit install instructions, provides opt-in
-`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.10`.
+`create-kudzu@0.1.172` retains the explicit install instructions, provides opt-in
+`--ai` developer tools with managed cancellation, and targets `@kudzujs/core@^0.17.11`.
 
 ## Release Boundary
+
+The 0.17.11 patch extends result aliases to supported Context hooks while
+preserving Provider state/action identities and repeated-consumer sharing.
+Five compiler lines change with zero net LOC, new passes or runtime concepts.
+Generator 0.1.172 targets ^0.17.11. Private-timer aliases remain unsupported;
+the evidence packet records browser regression coverage and artifact accounting.
 
 The 0.17.10 patch preserves identifier aliases for state, setters and callbacks
 from supported relative custom hooks. Existing binding analysis avoids capturing

@@ -45,7 +45,10 @@ now preserves identifier aliases for ordinary relative state hooks. Selected sta
 setter and callback fields bind to consumer-local names without rewriting the hook;
 independent calls and lexical callback locals retain ownership. This uses existing
 signals and handler substitution, adds no browser runtime, and does not authorize
-parameterized query hooks or Context/private-timer aliases. The original
+parameterized query hooks or private-timer aliases. The subsequent
+[Context alias packet](docs/next-architecture/context-result-aliases.md) supports
+identifier aliases for selected Context state, setters and actions while keeping
+Provider identities and repeated-consumer sharing. The original
 SharedWorker intake remains the next application-coordination investigation.
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.

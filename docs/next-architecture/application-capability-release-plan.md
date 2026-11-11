@@ -1,5 +1,12 @@
 # Application Capability Release Plan
 
+Composition continuation (2026-11-11): the [Context alias packet](./context-result-aliases.md)
+extends the existing result-name mapping to shared state/setters/actions. Actual's
+Context-backed dispatch alias provides the consumer evidence; the reduced CRUD
+fixture verifies sharing, action-only selection and hidden/local name collisions.
+Five compiler lines change with zero net LOC, passes or runtime concepts added.
+All 401 tests pass. Original SharedWorker coordination remains the next intake.
+
 Composition follow-up (2026-11-10, accepted for 0.17.10): destination-name collisions now
 use binding-aware local renaming in the existing clone helper. Nested parameters,
 destructuring keys/defaults, loop/catch scopes and occupied generated-looking

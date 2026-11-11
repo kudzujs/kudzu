@@ -1,5 +1,19 @@
 # Performance Records
 
+## Context Result Aliases (2026-11-11)
+
+The [packet](docs/next-architecture/context-result-aliases.md) records a pre-fix
+Context alias diagnostic and passing compiled CRUD/state-sharing journeys.
+Core compiler net LOC +0 (five lines changed), semantic primitives/passes/runtime
+concepts +0, runtime source and runtime browser-byte delta +0. Existing Context
+fixture: 6 JS files / 22,582 raw / 8,217 aggregate gzip B. The alias fixture adds
+two exercised controls and a repeated consumer: 6 files / 22,665 raw / 8,243 gzip B.
+That +83/+26 is expanded fixture behavior, not matched compiler overhead.
+Static sibling remains zero-JS; check and 401 tests pass without skips.
+Cross-framework and latency/build timing benchmarks were not rerun.
+Version-aligned 0.17.11/0.1.172 validation passes check/build (262 pages),
+all 401 tests without skips and both package smokes.
+
 ## 0.17.10 Release Validation (2026-11-10)
 
 Core 0.17.10 and generator 0.1.171 package/lock versions, generator dependency,

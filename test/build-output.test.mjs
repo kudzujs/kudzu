@@ -97,6 +97,28 @@ test("custom hook aliases retain canonical output and reject ambiguous bindings"
   }
 })
 
+test("Context aliases retain source diagnostics for ambiguous selections", async t => {
+  const root = await mkdtemp(resolve("test/fixtures/context-alias-invalid-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, "src/pages"), { recursive: true })
+  for (const file of ["notes.tsx", "useNotes.ts"]) await writeFile(join(root, "src", file), await readFile(resolve("test/fixtures/context-action-alias/src", file)))
+  for (const [binding, diagnostic] of [
+    ["activeId: selected = 0", /without defaults or rest/],
+    ["activeId: selected, ...rest", /without defaults or rest/],
+    ['["activeId"]: selected', /identifier fields/],
+    ["activeId: selected, activeId: other", /destructured only once/],
+    ["setActiveId: choose", /requires state "activeId" to be destructured/],
+    ["missing: selected", /does not directly return/]
+  ]) {
+    await writeFile(join(root, "src/pages/index.tsx"), `import { NotesProvider } from "../notes"; import { useNotes } from "../useNotes"; function Notes() { const { ${binding} } = useNotes(); return <p>Notes</p> }; export default function Page() { return <NotesProvider><Notes /></NotesProvider> }`)
+    await assert.rejects(buildProject({ root, quiet: true }), error => {
+      assert.match(error.message, /src\/pages\/index\.tsx:\d+:\d+/)
+      assert.match(error.message, diagnostic)
+      return true
+    })
+  }
+})
+
 test("rejects public directories overlapping build output and scratch", async t => {
   const root = await mkdtemp(resolve("test/fixtures/public-overlap-"))
   t.after(() => rm(root, { recursive: true, force: true }))

@@ -715,7 +715,7 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
           const names = new Set()
           const localNames = new Map()
           for (const element of node.name.elements) {
-            if (element.dotDotDotToken || element.initializer || !ts.isIdentifier(element.name) || element.propertyName && (!ts.isIdentifier(element.propertyName) || hook.context || hook.privateStates.size)) throw sourceNodeError(element, sourceFile, "Relative custom hook results require identifier fields and local names without defaults or rest; Context and private-timer result aliases remain unsupported")
+            if (element.dotDotDotToken || element.initializer || !ts.isIdentifier(element.name) || element.propertyName && (!ts.isIdentifier(element.propertyName) || hook.privateStates.size)) throw sourceNodeError(element, sourceFile, "Relative custom hook results require identifier fields and local names without defaults or rest; private-timer result aliases remain unsupported")
             const name = (element.propertyName ?? element.name).text
             if (!hook.fields.has(name)) throw sourceNodeError(element, sourceFile, `Relative custom hook does not directly return ${JSON.stringify(name)}`)
             if (names.has(name)) throw sourceNodeError(element, sourceFile, `Relative custom hook result ${JSON.stringify(name)} must be destructured only once`)
@@ -740,8 +740,8 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
               if (!names.has(state) && !requiredContextStates.has(state)) continue
               const privateFields = customHookPrivateFields.get(node) ?? []
               const localName = field => {
-                if (names.has(field)) return field
-                const occupied = name => owner.parameters.some(parameter => bindingNames(parameter.name).includes(name)) || owner.body.statements.some(statement => statement !== node.parent.parent && statementDeclaresName(statement, name))
+                if (names.has(field)) return localNames.get(field)
+                const occupied = name => [...localNames.values()].includes(name) || setters.has(name) || [...setters.values()].includes(name) || owner.parameters.some(parameter => bindingNames(parameter.name).includes(name)) || owner.body.statements.some(statement => statement !== node.parent.parent && statementDeclaresName(statement, name))
                 if (!occupied(field)) return field
                 let index = 0
                 let local
@@ -798,12 +798,12 @@ function createKudzuTransformer({ semantic, handlerUrl, file, sourceFiles, sourc
                 const anchor = [...hook.states.values()].find(state => referenced.has(state))
                 const sharedState = contextSharedStates.get(anchor)
                 if (!sharedState) {
-                  reducers.set(name, { sourceKind: "Context", directImplementation: callback, states })
+                  reducers.set(localNames.get(name), { sourceKind: "Context", directImplementation: callback, states })
                   reducersByFunction.set(owner, reducers)
                   continue
                 }
                 const action = registerSharedAction(moduleIR, { state: sharedState.slot, name })
-                reducers.set(name, { state: contextSubstitutions.get(anchor)?.text ?? anchor, sourceKind: "Context", sharedAction: { ...action, directImplementation: callback, states } })
+                reducers.set(localNames.get(name), { state: contextSubstitutions.get(anchor)?.text ?? anchor, sourceKind: "Context", sharedAction: { ...action, directImplementation: callback, states } })
                 reducersByFunction.set(owner, reducers)
               }
             }
