@@ -1,5 +1,22 @@
 # Performance Records
 
+## Actual Created-Budget Association Candidate
+
+The [packet](docs/next-architecture/actual-created-budget-association.md) identifies
+an upstream-only coordinator fault: existing leaders never rekey from lobby/old
+budget after creation, and map changes omit role notifications. Two new tests
+fail before correction; 44 original plus seven regression cases pass against a
+separate candidate. A worker-only proxy substitution in the original production
+app proves fresh-create follower assignment, one backend, close promotion and
+reload persistence without the previous reload workaround. Original tracked
+source remains unchanged; this is explicitly patched-upstream evidence.
+External coordinator net LOC +2. Kudzu primitives/passes/LOC/runtime/browser bytes
++0; no timing or multi-tab mutation safety claim, package bump or release.
+Evidence: [actual-created-budget-association.tar.gz](https://github.com/kudzujs/kudzu/releases/download/v0.17.12/actual-created-budget-association.tar.gz),
+SHA256 `5872f2c423a47e978d4e8e119f8e2598dff7070db0196d5a5e1535d310222325`.
+Repository check passes; initial managed-check termination assertion failure is
+retained, and the subsequent full run passes all 402 tests without skips.
+
 ## Native SharedWorker Constructor (2026-11-11)
 
 The [intake packet](docs/next-architecture/actual-shared-worker-intake.md) records

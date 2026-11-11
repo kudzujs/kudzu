@@ -1,0 +1,24 @@
+--- a/packages/loot-core/src/platform/client/browser-server/coordinator.ts
++++ b/packages/loot-core/src/platform/client/browser-server/coordinator.ts
+@@ -443,9 +443,11 @@
+       budgetGroups.delete(oldGroupId);
+       budgetGroups.set(newBudgetId, oldGroup);
+       portToBudget.set(leaderPort, newBudgetId);
++      leaderPort.postMessage({ type: '__role-change', role: 'LEADER', budgetId: newBudgetId });
+ 
+       for (const p of oldGroup.followers) {
+         portToBudget.set(p, newBudgetId);
++        p.postMessage({ type: '__role-change', role: 'FOLLOWER', budgetId: newBudgetId });
+       }
+ 
+       logger.log(
+@@ -612,8 +614,8 @@
+                 workerMsg.type === 'reply' &&
+                 name === 'load-prefs' &&
+                 portBudget &&
+-                portBudget.startsWith('__creating-') &&
+                 workerMsg.result &&
++                typeof (workerMsg.result as Record<string, unknown>).id === 'string' &&
+                 (workerMsg.result as Record<string, unknown>).id
+               ) {
+                 handleBudgetLoaded(

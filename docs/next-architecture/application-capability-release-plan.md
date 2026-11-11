@@ -1,5 +1,13 @@
 # Application Capability Release Plan
 
+Created-budget continuation: the [upstream correction candidate](./actual-created-budget-association.md)
+reproduces stale lobby/previous-budget association in two failing tests. Rekeying
+successful preferences for every leader group and notifying roles passes 51
+coordinator tests and an original-app candidate-only worker substitution journey
+without the reload workaround. Kudzu source/runtime/version unchanged; no release.
+Next prove real follower mutations across handoff with that explicitly pinned
+upstream correction before claiming multi-tab write safety.
+
 SharedWorker continuation: [original intake and constructor fix](./actual-shared-worker-intake.md).
 All 44 original coordinator tests pass. The original production app proves
 reopened-budget follower sharing and leader-close promotion; joining immediately

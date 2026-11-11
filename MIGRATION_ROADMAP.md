@@ -38,7 +38,9 @@ restores newly written data in an isolated browser context and verifies Blob URL
 ownership. The [SharedWorker intake](docs/next-architecture/actual-shared-worker-intake.md)
 proves original reopened-budget leader/follower handoff and fixes native
 SharedWorker capture analysis through the existing global binding list.
-Fresh-create lobby reassociation remains an upstream gate before multi-tab writes;
+The [created-budget correction candidate](docs/next-architecture/actual-created-budget-association.md)
+reproduces and repairs stale upstream group IDs in a separate candidate, including
+role notifications, without changing Kudzu. Multi-tab writes remain gated;
 no generic database, spreadsheet or coordination runtime is authorized.
 
 ## North Star
@@ -52,8 +54,9 @@ parameterized query hooks or private-timer aliases. The subsequent
 [Context alias packet](docs/next-architecture/context-result-aliases.md) supports
 identifier aliases for selected Context state, setters and actions while keeping
 Provider identities and repeated-consumer sharing. The original SharedWorker
-intake now records reopened-budget handoff; fresh-create reassociation is the
-next application-coordination investigation.
+intake now records reopened-budget handoff and a separately validated upstream
+fresh-create correction. Real follower mutations across leadership handoff are
+the next application-coordination investigation.
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
 
