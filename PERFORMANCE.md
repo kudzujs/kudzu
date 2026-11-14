@@ -1,5 +1,34 @@
 # Performance Records
 
+## Actual Coordination Through Kudzu (2026-11-14)
+
+The [packet](docs/next-architecture/actual-kudzu-coordination.md) connects
+completed, pre-delivery-held and post-commit-reply-held follower writes to an
+application compiled by registry-installed core 0.17.14. All three real-backend
+browser cases pass: one terminal reply/error, uncertainty lockout, reload/readback,
+preserved account identity and 1,000-cent balance, unique cross-tab request IDs,
+conditional/pagehide resource cleanup and an HTML-only static sibling.
+
+All 65 original public assets remain unchanged. Generated route JavaScript is
+31,661 raw / 12,673 aggregate gzip bytes; the explicitly patched coordinator is
+11,187 / 3,455 bytes; total JS is 3,633,874 / 799,768 bytes. These are absolute
+application costs, not an equivalent-behavior performance comparison.
+Semantic primitives/core passes/core LOC/runtime concepts: +0. No npm version
+or tag is added because released core already compiles the journey.
+
+Evidence: [actual-kudzu-coordination.tar.gz](https://github.com/kudzujs/kudzu/releases/download/v0.17.14/actual-kudzu-coordination.tar.gz),
+uploaded/downloaded SHA256
+`22e00d4c82586796903c3c308865330920809cfd7a4bae1b07dc1f01aa7ea2ba`.
+Includes source, exact package lock, public assets, dist, executable probes,
+browser/accounting receipts, patches, licenses and repository check logs.
+
+`npm run check` and the final project journey plus 393 tests pass; nine
+Linux-only smoke tests skip locally. The first test invocation incorrectly
+required Linux Chrome on macOS; the next hit a dev-server reload timeout.
+Both failures are retained. The isolated dev suite and subsequent full suite
+pass. Abrupt leader loss/heartbeat eviction is the next upstream evidence gate;
+crash durability and exactly-once execution remain unverified.
+
 ## Actual Pending Request Handoff (2026-11-14)
 
 The [packet](docs/next-architecture/actual-pending-request-handoff.md) reproduces
