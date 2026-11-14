@@ -66,3 +66,8 @@ mutation failure or explicitly bounded success before changing any framework
 semantics. Do not infer retry/exactly-once guarantees from this completed-write run.
 
 Evidence publication and repository checks are recorded in `PERFORMANCE.md`.
+
+The [pending-request continuation](./actual-pending-request-handoff.md) now
+reproduces both undelivered and committed-but-unacknowledged writes and validates
+an upstream candidate that reports uncertainty instead of silently losing the
+pending promise. It does not replay requests or guarantee write recovery.

@@ -43,7 +43,11 @@ reproduces and repairs stale upstream group IDs in a separate candidate, includi
 role notifications, without changing Kudzu. The
 [follower account handoff](docs/next-architecture/actual-follower-handoff.md)
 proves a completed follower creation survives graceful leader closure and reload
-with that candidate. In-flight and crash-time writes remain gated;
+with that candidate. The
+[pending-request continuation](docs/next-architecture/actual-pending-request-handoff.md)
+reproduces lost settlement before delivery and after commit, and validates a
+separate upstream candidate that reports uncertainty without replaying writes.
+In-flight recovery and crash-time writes remain gated;
 no generic database, spreadsheet or coordination runtime is authorized.
 
 ## North Star
@@ -59,8 +63,10 @@ identifier aliases for selected Context state, setters and actions while keeping
 Provider identities and repeated-consumer sharing. The original SharedWorker
 intake now records reopened-budget handoff and a separately validated upstream
 fresh-create correction. Completed follower account creation now survives graceful
-handoff and reload. Pending-request ownership during leader loss is the next
-bounded application-coordination investigation.
+handoff and reload. Pending-request loss now has a browser-proven upstream
+uncertain-outcome correction candidate. The next bounded investigation reduces
+these two journeys into existing Kudzu effect/port ownership and application
+status, with explicit reload/readback before retry.
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
 
