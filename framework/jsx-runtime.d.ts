@@ -16,10 +16,20 @@ export namespace JSX {
     onBlur?: (event: TargetedEvent<Target, FocusEvent>) => unknown
     onChange?: (event: TargetedEvent<Target>) => unknown
     onClick?: (event: TargetedEvent<Target, MouseEvent>) => unknown
+    onCompositionStart?: (event: TargetedEvent<Target, CompositionEvent>) => unknown
+    onCompositionEnd?: (event: TargetedEvent<Target, CompositionEvent>) => unknown
+    onDrop?: (event: TargetedEvent<Target, DragEvent>) => unknown
     onFocus?: (event: TargetedEvent<Target, FocusEvent>) => unknown
     onInput?: (event: TargetedEvent<Target, InputEvent>) => unknown
     onKeyDown?: (event: TargetedEvent<Target, KeyboardEvent>) => unknown
     onKeyUp?: (event: TargetedEvent<Target, KeyboardEvent>) => unknown
+    onMouseEnter?: (event: TargetedEvent<Target, MouseEvent>) => unknown
+    onMouseLeave?: (event: TargetedEvent<Target, MouseEvent>) => unknown
+    onPaste?: (event: TargetedEvent<Target, ClipboardEvent>) => unknown
+    onPointerDown?: (event: TargetedEvent<Target, PointerEvent>) => unknown
+    onPointerMove?: (event: TargetedEvent<Target, PointerEvent>) => unknown
+    onPointerUp?: (event: TargetedEvent<Target, PointerEvent>) => unknown
+    onScroll?: (event: TargetedEvent<Target>) => unknown
     onSubmit?: (event: TargetedEvent<Target, SubmitEvent>) => unknown
   }
 

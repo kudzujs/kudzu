@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.13](https://github.com/kudzujs/kudzu/releases/tag/v0.17.13).** JSX event types distinguish the handler's `currentTarget` from a potentially different `target`. Known HTML boolean attributes reject strings such as `disabled="false"`. Use `event.currentTarget.value` for input handlers or narrow the native target. Unlisted attributes remain open for migration compatibility. Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range. No runtime code or browser capability changes.
+**Current release: [0.17.14](https://github.com/kudzujs/kudzu/releases/tag/v0.17.14).** JSX now infers native pointer down/move/up, composition start/end, paste, drop, scroll, and mouse enter/leave event types. Existing game and windowing examples no longer need manual annotations for these events. `currentTarget` retains the handler element type; native `target` still requires narrowing. Unlisted attributes remain open for migration compatibility. Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range. No runtime code or browser capability changes.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

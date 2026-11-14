@@ -71,6 +71,14 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The 0.17.14 patch closes native interaction event inference gaps reduced from
+the existing Lupin, windowing and tooltip fixtures. Ten declaration lines add
+contextual types using the existing TargetedEvent helper; source annotations
+can be removed without a compiler/runtime change. Generator 0.1.173 retains
+^0.17.12. The independent Actual completed-write evidence advances only that
+bounded investigation, not general coordination support. Publication requires
+exact-commit CI and the normal release gates.
+
 The 0.17.13 patch corrects native JSX target types and validates known HTML
 boolean attributes. This is a type-only correctness packet; compiler passes,
 semantic primitives, runtime source and browser capabilities are unchanged.
