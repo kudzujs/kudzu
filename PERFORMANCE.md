@@ -1,5 +1,35 @@
 # Performance Records
 
+## Actual Pending Request Handoff (2026-11-14)
+
+The [packet](docs/next-architecture/actual-pending-request-handoff.md) reproduces
+lost settlement for a follower's real account creation at two deterministic
+barriers: before backend delivery and after the real backend reply. On leader
+closure the restored follower has no terminal response in either baseline case;
+reload distinguishes no account/0.00 from a committed account/10.00.
+
+A separate pinned-upstream candidate adds ten coordinator lines to return one
+uncertain-outcome Error through the existing protocol before discarding request
+tracking. Both browser cases receive the visible error, preserve the correct
+database outcome and perform no automatic replay. Two initial unit regressions
+fail before this patch; the final suite passes 44 original + seven creation +
+four pending-request regressions (55 total). The original upstream checkout
+remains clean, and the patch applies with `git apply --check`.
+
+Kudzu semantic primitives/core passes/LOC/runtime concepts/browser bytes: +0.
+No timing or exactly-once guarantee is claimed. Generic upstream notification
+copy still asks users to retry; the candidate detail explicitly requires reload
+and data inspection first. Full application reconciliation and crash/heartbeat
+behavior remain outside this result.
+
+Evidence: [actual-pending-request-handoff.tar.gz](https://github.com/kudzujs/kudzu/releases/download/v0.17.14/actual-pending-request-handoff.tar.gz),
+SHA256 `be22efc1477d05d1e0d3c6e53fdc4ca3107a72df86c64372b6c4bb8eec80c6ad`.
+Includes all four browser receipts, executable barrier probe, both bundles,
+reproducible candidate builder, unit report, candidate source/tests, prior asset
+manifest, pinned patches and license. The candidate builder reproduces the
+tested bundle byte-for-byte. `npm run check` passes (265 pages).
+This upstream-only packet consumes no new npm version or tag.
+
 ## 0.17.14 Native Interaction Event Inference (2026-11-14)
 
 Baseline: `865b7f6` (core 0.17.13). Existing Lupin canvas/IME/clipboard/drop and

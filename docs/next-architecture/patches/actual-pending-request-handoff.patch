@@ -1,0 +1,19 @@
+--- a/packages/loot-core/src/platform/client/browser-server/coordinator.ts
++++ b/packages/loot-core/src/platform/client/browser-server/coordinator.ts
+@@ -321,6 +321,16 @@
+       group.backendConnected = false;
+       group.pendingConnect = false;
+       group.restoreBudgetId = budgetToRestore || null;
++      // A lost reply cannot distinguish an unstarted operation from a committed write.
++      for (const [id, target] of group.requestToPort) {
++        if (connectedPorts.includes(target)) {
++          target.postMessage({
++            type: 'error',
++            id,
++            error: new Error('The backend leader changed. This operation may have completed. Reload and check your data before trying again.'),
++          });
++        }
++      }
+       group.requestToPort.clear();
+       group.requestNames.clear();
+       group.requestBudgetIds.clear();
