@@ -129,7 +129,7 @@ test("managed check timeout and interruption stop its descendants without killin
       await mkdir(join(root, "bin"))
       await writeFile(join(root, "bin/ps"), process.platform === "linux"
         ? '#!/bin/sh\nif [ "$1" = "-A" ] || [ "$1" = "-p" ]; then echo "process-table scan forbidden" >&2; exit 99; fi\nexec /usr/bin/ps "$@"\n'
-        : '#!/bin/sh\nsleep 1.2\nexec /usr/bin/ps "$@"\n', { mode: 0o755 })
+        : '#!/bin/sh\nsleep 1.2\nexec /bin/ps "$@"\n', { mode: 0o755 })
     }
     const helper = new URL("../packages/create-kudzu/ai.mjs", import.meta.url).href
     const inspectionFailure = mode === "inspection-error" ? `import fs from 'node:fs';import{syncBuiltinESMExports}from'node:module';const original=fs.readdirSync;fs.readdirSync=(path,...args)=>{if(String(path).startsWith('/proc/'))throw Object.assign(new Error('proc inspection denied'),{code:'EACCES'});return original(path,...args)};syncBuiltinESMExports();` : ""
@@ -148,7 +148,7 @@ test("managed check timeout and interruption stop its descendants without killin
       if (mode === "signal") outer.kill("SIGTERM")
       assert.equal(await exited, 0, stderr)
       const { result, siblingAlive } = JSON.parse(stdout)
-      assert.equal(siblingAlive, true)
+      assert.equal(siblingAlive, true, JSON.stringify({ mode, result, stderr }))
       assert.equal(result.passed, false)
       assert.equal(result.timedOut, mode !== "signal")
       assert.equal(result.interrupted, mode === "signal" ? "SIGTERM" : null)

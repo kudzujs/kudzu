@@ -1,5 +1,21 @@
 # Kudzu Releases
 
+## 0.17.13 - Native JSX Type Safety
+
+- Corrects intrinsic event types: `currentTarget` retains the handler element
+  type, while `target` retains the native event type and may be a descendant.
+  Use `event.currentTarget.value` for input handlers or narrow `event.target`.
+- Rejects strings for known HTML boolean attributes such as `disabled`,
+  `checked`, `required`, and `multiple`, including attribute spreads.
+- Preserves nullable boolean removal, ARIA/data values, SVG attributes and custom
+  elements. Unlisted attributes remain open; this is not full attribute validation.
+- Adds a strict TypeScript regression covering valid and invalid TSX.
+  No compiler pass, runtime code, dependency or browser capability changes.
+- Repairs macOS validation: the managed-process test uses `/bin/ps`, and the
+  list harness emulates foreground focus and bounds its animation-frame wait.
+- Generator 0.1.173 retains its compatible core ^0.17.12 range.
+  No runtime performance or broader React compatibility improvement is claimed.
+
 ## 0.17.12 - Native SharedWorker Effects
 
 - Recognizes native `SharedWorker` as a browser global, fixing an erroneous
