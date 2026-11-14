@@ -105,3 +105,7 @@ boundary and require reload/readback before any user retry. A compiler change
 still requires an actual failing reduced fixture. Abrupt process crashes,
 heartbeat eviction, concurrent conflicting writes, automatic reconciliation
 and exactly-once guarantees remain unverified.
+
+The [Kudzu coordination reduction](./actual-kudzu-coordination.md) now closes
+that next gate on released core 0.17.14, including explicit uncertainty lockout,
+reload/readback, native port/Worker cleanup and an HTML-only static sibling.
