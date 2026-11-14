@@ -26,7 +26,11 @@ improvement is claimed.
 `npm run check` passes (265 pages); both package smokes pass. The independent
 Actual investigation initially hit a harness-imposed 120-second full-test limit;
 its unlimited rerun passes the project journey plus 393 tests, with nine
-Linux-only skips. The final release-tree full suite is checked separately.
+Linux-only skips. The first release-tree run and PR CI exposed a stale homepage
+release-title assertion, now updated to the new title. Initial Node 22 CI also
+timed out polling the existing dev-server asset test; this is retained in
+[run 43547224732](https://github.com/kudzujs/kudzu/actions/runs/43547224732).
+The corrected release tree must pass the full suite and exact-commit CI.
 
 ## Actual Follower Account Handoff (2026-11-14)
 
