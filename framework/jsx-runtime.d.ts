@@ -4,9 +4,13 @@ export namespace JSX {
 
   type TargetedEvent<Target extends EventTarget, NativeEvent extends Event = Event> = NativeEvent & {
     currentTarget: Target
-    target: EventTarget & Target
   }
 
+  type HTMLBooleanAttributes = {
+    [Name in "allowFullScreen" | "async" | "autoFocus" | "autoPlay" | "checked" | "controls" | "default" | "defer" | "disabled" | "formNoValidate" | "inert" | "loop" | "multiple" | "muted" | "noValidate" | "open" | "playsInline" | "readOnly" | "required" | "reversed" | "selected"]?: boolean | null
+  }
+
+  // shortcut: preserve unlisted attributes for migration input until a complete HTML/SVG attribute contract is available.
   type IntrinsicProps<Target extends EventTarget> = Record<string, unknown> & {
     children?: Children
     onBlur?: (event: TargetedEvent<Target, FocusEvent>) => unknown
@@ -24,7 +28,7 @@ export namespace JSX {
   }
 
   type IntrinsicElements = {
-    [Name in keyof HTMLElementTagNameMap]: IntrinsicProps<HTMLElementTagNameMap[Name]>
+    [Name in keyof HTMLElementTagNameMap]: IntrinsicProps<HTMLElementTagNameMap[Name]> & HTMLBooleanAttributes
   } & {
     [Name in keyof SVGElementTagNameMap]: IntrinsicProps<SVGElementTagNameMap[Name]>
   } & {

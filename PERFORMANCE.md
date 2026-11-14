@@ -1,5 +1,43 @@
 # Performance Records
 
+## 0.17.13 Native JSX Type Safety (2026-11-14)
+
+Baseline: `c898266` (core 0.17.12). The patch changes JSX declarations only:
+native `target` is no longer asserted to be the handler element, and known HTML
+boolean attributes reject strings. Core semantic/compiler/runtime LOC, passes,
+semantic primitives, runtime concepts and dependencies change by zero.
+`framework/jsx-runtime.d.ts` changes by +4 net lines. Unlisted attributes remain
+open; no general HTML/SVG validation or broader React compatibility is claimed.
+
+On Node v24.14.0, Darwin 25.5.0 arm64 / Apple M4, the strict TypeScript regression
+and `npm run check` pass (264 site pages). Both package smokes pass, including
+the generated default/AI project comparison: four identical deploy files,
+9,784 raw / 3,738 aggregate gzip bytes. Generator 0.1.173 remains unchanged.
+
+`node test/artifact-baseline.mjs` was run independently on the baseline and
+candidate. All 13 fixture reports are deeply equal, including deploy SHA-256,
+file counts, route ownership, raw/gzip sizes and static controls. Artifact raw
+and gzip deltas are zero. The SHA-256 of `JSON.stringify(report.fixtures)` is
+`ab69ae0516cd89e05ed19f182bd6c580de29cd72b9ffaf5ca38fd8593653c2a1`
+for both runs. Release-site copy and its added release page are outside this
+fixture comparison. No latency or cross-framework timing comparison was run.
+
+Browser validation uses Google Chrome 157.0.8103.78. Initial failures are retained:
+Linux-only smoke checks cannot run in required-Chrome mode on macOS; some tests
+require an explicit `CHROME_BIN`. Release-copy assertions were aligned. The
+managed-process test incorrectly called `/usr/bin/ps` on macOS; `/bin/ps` fixes
+its missing-command failure. The list test advanced to range 101-200 but hung
+on an animation frame with `document.visibilityState === "hidden"`. Its harness
+now uses CDP foreground focus emulation and retains the timeout through the
+animation frame. Both isolated regressions pass. No old/new timing comparison
+uses the changed harness conditions. Exact-commit Linux Chrome CI remains a
+publication prerequisite.
+
+Final local `CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+npm test` passes the project journey and 393 tests, with zero failures and nine
+Linux-only browser-smoke skips. `npm run check`, both package smokes and
+`git diff --check` pass. The skipped platform-specific coverage is required in CI.
+
 ## Actual Created-Budget Association Candidate
 
 The [packet](docs/next-architecture/actual-created-budget-association.md) identifies

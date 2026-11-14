@@ -81,6 +81,8 @@ async function browserRun(port, strategy) {
     cdp = new CDP(`ws://127.0.0.1:${debugPort}${browserPath}`)
     const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" })
     const { sessionId } = await cdp.send("Target.attachToTarget", { targetId, flatten: true })
+    // Headless macOS can keep the target hidden and suspend animation frames.
+    await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true }, sessionId)
     await cdp.send("Runtime.enable", {}, sessionId)
     await cdp.send("HeapProfiler.enable", {}, sessionId)
     const pathname = strategy === "direct" ? "/" : `/${strategy}/`
@@ -101,7 +103,7 @@ async function browserRun(port, strategy) {
       const timeout = setTimeout(() => { observer.disconnect(); resolve(-1) }, 30000)
       const observer = new MutationObserver(() => {
         if (!document.querySelector('[data-project="150"]')) return
-        observer.disconnect(); clearTimeout(timeout); requestAnimationFrame(() => resolve(performance.now() - started))
+        observer.disconnect(); requestAnimationFrame(() => { clearTimeout(timeout); resolve(performance.now() - started) })
       })
       observer.observe(document.querySelector("[data-project-list]"), { childList: true })
       ${strategy === "windowing" ? 'const target = document.querySelector("[data-scroll-window]"); target.scrollTop = 4000; target.dispatchEvent(new Event("scroll"))' : acceptance ? "" : 'document.querySelector("[data-next]").click()'}
@@ -172,7 +174,7 @@ try {
     fixture: "10,000 project direct DOM, pagination, and bounded-window decision",
     ...(acceptance ? { acceptance: { keyboard: true, focus: true, releasedState: true, staticExclusion } } : {}),
     environment: { node: process.version, platform: process.platform, arch: process.arch, chrome: spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.trim() },
-    methodology: `${runs} rotating fresh Chrome profiles per strategy; forced GC before heap usage`,
+    methodology: `${runs} rotating fresh Chrome profiles per strategy; CDP foreground focus emulation; forced GC before heap usage`,
     medianBudgetMs,
     strategies: Object.fromEntries(Object.entries(samples).map(([strategy, values]) => [strategy, {
       loadMs: summarize(values.map(value => value.loadMs)),

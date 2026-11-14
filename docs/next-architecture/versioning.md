@@ -71,6 +71,13 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The 0.17.13 patch corrects native JSX target types and validates known HTML
+boolean attributes. This is a type-only correctness packet; compiler passes,
+semantic primitives, runtime source and browser capabilities are unchanged.
+Generator 0.1.173 retains its compatible ^0.17.12 range. Unlisted attributes
+remain open. Publication requires exact-commit CI and the normal release gates;
+this patch does not advance the application migration queue.
+
 The 0.17.12 patch recognizes SharedWorker as a native browser global in existing
 capture analysis. One line changes with zero net LOC, passes or runtime concepts.
 Existing effects own application ports; public worker code remains application
