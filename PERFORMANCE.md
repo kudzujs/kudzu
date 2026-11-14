@@ -1,5 +1,55 @@
 # Performance Records
 
+## 0.17.14 Native Interaction Event Inference (2026-11-14)
+
+Baseline: `865b7f6` (core 0.17.13). Existing Lupin canvas/IME/clipboard/drop and
+large-list windowing handlers required manual event annotations; the tooltip
+fixture also uses mouse enter/leave. Removing those annotations in a strict
+TypeScript reduction reproduces implicit-any diagnostics and unused negative
+assertions before the fix. Ten declaration lines reuse `TargetedEvent` for the
+ten observed event names. Positive HTML/SVG controls and negative event-property
+and native-target checks now pass.
+
+Semantic primitives +0; compiler passes +0; compiler/runtime LOC +0; declaration
+LOC +10; runtime concepts +0; dependencies +0. Two existing fixture sources drop
+manual annotations, one strict typing regression is extended, and the existing
+tooltip fixture supplies the third artifact control. No new compiler fixture or
+timing comparison is introduced.
+
+The three fixtures' complete emitted HTML/CSS/JS/JSON inventories have identical
+paths, SHA256 hashes, raw and aggregate gzip bytes against their baseline source.
+Both variants use the unchanged compiler/runtime. The first isolated artifact
+attempt stopped on missing scratch package resolution; the corrected runner
+links the same local core package for both variants and passes. No performance
+improvement is claimed.
+
+`npm run check` passes (265 pages); both package smokes pass. The independent
+Actual investigation initially hit a harness-imposed 120-second full-test limit;
+its unlimited rerun passes the project journey plus 393 tests, with nine
+Linux-only skips. The first release-tree run and PR CI exposed a stale homepage
+release-title assertion, now updated to the new title. Initial Node 22 CI also
+timed out polling the existing dev-server asset test; this is retained in
+[run 43547224732](https://github.com/kudzujs/kudzu/actions/runs/43547224732).
+The corrected release tree must pass the full suite and exact-commit CI.
+
+## Actual Follower Account Handoff (2026-11-14)
+
+The [packet](docs/next-architecture/actual-follower-handoff.md) proves a completed
+follower-originated account creation retains its ID, name and 10.00 balance
+through graceful leader closure, promotion and reload in pinned Actual's
+production app with the previously retained coordinator candidate. Fresh
+immutable install/build passes; tracked upstream remains clean. Chrome
+157.0.8103.78 uses its normal user agent, a fresh context and real backend.
+Two pre-mutation harness selector failures and the final passing receipt are
+retained. No in-flight/crash-time write safety or timing improvement is claimed.
+Kudzu primitives/passes/core LOC/runtime concepts/browser bytes: +0.
+
+Evidence: [actual-follower-handoff.tar.gz](https://github.com/kudzujs/kudzu/releases/download/v0.17.13/actual-follower-handoff.tar.gz),
+SHA256 `833a612ffd5b5109e85a5aff62093157f91272dc72b6ee15cc782d12acc81269`.
+Contains the executable probe, all three receipts, build manifest, candidate
+bundle, pinned correction patch and upstream license. No new npm version or tag
+is consumed by this upstream-only investigation.
+
 ## 0.17.13 Native JSX Type Safety (2026-11-14)
 
 Baseline: `c898266` (core 0.17.12). The patch changes JSX declarations only:

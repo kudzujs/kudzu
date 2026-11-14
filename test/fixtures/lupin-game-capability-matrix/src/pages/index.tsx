@@ -118,12 +118,12 @@ export default function GameCapabilityPage() {
         value={answer}
         onInput={event => setAnswer(event.currentTarget.value)}
         onCompositionStart={() => setComposing(true)}
-        onCompositionEnd={(event: CompositionEvent & { currentTarget: HTMLInputElement }) => {
+        onCompositionEnd={event => {
           setComposing(false)
           setAnswer(event.currentTarget.value)
         }}
-        onPaste={(event: ClipboardEvent) => event.preventDefault()}
-        onDrop={(event: DragEvent) => event.preventDefault()}
+        onPaste={event => event.preventDefault()}
+        onDrop={event => event.preventDefault()}
       />
       <button type="submit">제출</button>
     </form>
@@ -147,8 +147,8 @@ export default function GameCapabilityPage() {
       height="360"
       tabIndex={0}
       aria-label="실시간 게임 보드"
-      onPointerDown={(event: PointerEvent & { currentTarget: HTMLCanvasElement }) => event.currentTarget.setPointerCapture(event.pointerId)}
-      onPointerMove={(event: PointerEvent & { currentTarget: HTMLCanvasElement }) => {
+      onPointerDown={event => event.currentTarget.setPointerCapture(event.pointerId)}
+      onPointerMove={event => {
         if (event.buttons !== 1) return
         const rect = event.currentTarget.getBoundingClientRect()
         const x = Math.round(event.clientX - rect.left)
@@ -169,7 +169,7 @@ export default function GameCapabilityPage() {
           body: JSON.stringify({ roomId: "office", name: "Lupin", key: event.key }),
         })
       }}
-      onPointerUp={(event: PointerEvent & { currentTarget: HTMLCanvasElement }) => event.currentTarget.releasePointerCapture(event.pointerId)}
+      onPointerUp={event => event.currentTarget.releasePointerCapture(event.pointerId)}
     />
     <ul>{snapshot.players.map(player => <li key={player.id} data-player={player.id}>
       {player.name}: {player.score}

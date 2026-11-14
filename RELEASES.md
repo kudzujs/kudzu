@@ -1,5 +1,20 @@
 # Kudzu Releases
 
+## 0.17.14 - Native Interaction Event Inference
+
+- Infer native events for `onPointerDown`, `onPointerMove`, `onPointerUp`,
+  `onCompositionStart`, `onCompositionEnd`, `onPaste`, `onDrop`, `onScroll`,
+  `onMouseEnter` and `onMouseLeave` on known HTML and SVG elements.
+- Remove manual event annotations from the existing Lupin game and windowing
+  examples. Strict TypeScript coverage rejects wrong event properties and unsafe
+  native target accesses while preserving element-specific `currentTarget`.
+- Ten declaration lines change; no compiler pass, semantic primitive, runtime
+  code, dependency or new browser capability is added. Unlisted props remain open.
+- Record patched-upstream Actual follower account persistence across graceful
+  leader shutdown and reload separately from framework compatibility.
+- Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range.
+  No timing improvement, whole-app migration or in-flight write safety is claimed.
+
 ## 0.17.13 - Native JSX Type Safety
 
 - Corrects intrinsic event types: `currentTarget` retains the handler element

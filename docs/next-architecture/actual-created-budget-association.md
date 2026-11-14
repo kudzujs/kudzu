@@ -74,6 +74,10 @@ has been verified. Next: apply the explicitly pinned upstream correction only in
 the migration evidence environment, then prove a real account mutation from the
 follower survives leader shutdown and reload before claiming multi-tab write safety.
 
+That completed-write gate now passes in the
+[follower account handoff continuation](./actual-follower-handoff.md).
+In-flight writes and crash recovery remain unverified.
+
 Repository checks: `npm run check` passes (263 pages). The first full test run
 fails one existing managed-check descendant-termination assertion (`live check
 descendant ...: R`); no corresponding product/test code changed. The full rerun
