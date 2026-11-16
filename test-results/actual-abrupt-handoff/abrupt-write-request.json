@@ -1,0 +1,310 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "mode": "request",
+  "fixed": false,
+  "loss": "CDP Page.crash",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "arch": "x64",
+  "candidateSha256": "1b521c3bf6491ec2ecd5ba1934f2d7c051ee6beffd2b6d08e90263191fb6d1d0",
+  "candidateRequests": [
+    "/static/shared-browser-server-C7q_DhZs.js",
+    "/static/shared-browser-server-C7q_DhZs.js"
+  ],
+  "protocol": [
+    {
+      "tab": "leader",
+      "at": 1794793148227,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "leader",
+      "at": 1794793148227,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "leader",
+      "at": 1794793151030,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793151820,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "UNASSIGNED"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793151842,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "FOLLOWER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793157976,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793157976,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793167976,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793167976,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793167976,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793167976,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793169189,
+      "direction": "event",
+      "type": "beforeunload"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793169189,
+      "direction": "out",
+      "type": "tab-closing"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793169196,
+      "direction": "event",
+      "type": "pagehide"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793169196,
+      "direction": "event",
+      "type": "unload"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793169382,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793169382,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793170018,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    }
+  ],
+  "events": [
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 1 tab(s), 1 unassigned, groups: [none]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Elected leader for \"__lobby\" (0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: __lobby)"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-b3be812)"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget loaded: \"My-Finances-b3be812\" (leader + 0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: UNASSIGNED"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: FOLLOWER (budget: My-Finances-b3be812)"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-b3be812\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-b3be812\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Leader left budget \"My-Finances-b3be812\" — promoting follower"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Elected leader for \"My-Finances-b3be812\" (0 follower(s))"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-b3be812)"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Backend connected, restoring budget \"My-Finances-b3be812\""
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab connected — 1 tab(s), 1 unassigned, groups: [none]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Elected leader for \"__lobby\" (0 follower(s))"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: __lobby)"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-b3be812)"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Lobby leader now on budget \"My-Finances-b3be812\" — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3be812\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3be812\": leader + 0 follower(s)]"
+    }
+  ],
+  "steps": [
+    "new-budget-follower-without-dedicated-backend",
+    "follower-mutation-request-held-at-leader",
+    "leader-renderer-crashed-without-graceful-close",
+    "natural-heartbeat-promotes-surviving-follower",
+    "restored-backend-but-mutation-has-no-terminal-response",
+    "undelivered-account-is-absent"
+  ],
+  "pass": true,
+  "browser": "152.0.7977.64",
+  "held": {
+    "id": "d2715a1c-7833-415f-909b-9fee29262150",
+    "name": "account-create",
+    "args": {
+      "name": "Follower Checking",
+      "balance": 10,
+      "offBudget": false
+    },
+    "undoTag": "9ab4585a-593b-4858-9dd8-f8b72e387cb8",
+    "catchErrors": false
+  },
+  "beforeClose": {
+    "id": "d2715a1c-7833-415f-909b-9fee29262150",
+    "replies": [],
+    "terminalErrors": []
+  },
+  "promotionAfterCrashMs": 16884,
+  "afterPromotion": {
+    "id": "d2715a1c-7833-415f-909b-9fee29262150",
+    "replies": [],
+    "terminalErrors": []
+  },
+  "visibleAfterPromotion": "My Finances\nBudget\nReports\nSchedules\nMore\nAll accounts\n0.00\nAdd account\nNo server\nHelp\nA new version of Actual is available!\nVersion v26.11.0 of Actual was recently released.\nOpen changelog\nAll Accounts\n0.00\nFilter\nDate\nAccount\nPayee\nNotes\nCategory\nPayment\nDeposit\n✓\nLet's add your first account. Accounts hold your transactions, like everyday spending, savings, credit cards, or cash. You can connect to your bank to import transactions automatically, or add them yourself.\nAdd account\nYou can add more accounts at any time from the sidebar.\nAdd account\nOnce the account is created, you can also import QIF/OFX/QFX files into it.\nName:\nOff budget\nOff-budget accounts (like investments, loans, or your house) are tracked but not part of your spending budget.\nThis cannot be changed later. See Accounts Overview for more information.\nBalance:\nCancel\nCreate",
+  "readback": {
+    "balance": "0.00",
+    "accountCount": 0
+  }
+}

@@ -1,0 +1,228 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "mode": "reply",
+  "fixed": true,
+  "spreadsheetFixed": true,
+  "spreadsheetSourceSha256": "38e31e5b7baf9f5284a9689a91058b483b64cea483bcfbe582d64c65e416ffff",
+  "loss": "CDP Page.crash",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "arch": "x64",
+  "candidateSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "candidateRequests": [
+    "/static/shared-browser-server-C7q_DhZs.js",
+    "/static/shared-browser-server-C7q_DhZs.js"
+  ],
+  "protocol": [
+    {
+      "tab": "leader",
+      "at": 1794797469818,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "leader",
+      "at": 1794797469819,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "leader",
+      "at": 1794797472076,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797472904,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "UNASSIGNED"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797472924,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "FOLLOWER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797479703,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797479703,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797489716,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797489716,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797489718,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794797489718,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    }
+  ],
+  "events": [
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 1 tab(s), 1 unassigned, groups: [none]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Elected leader for \"__lobby\" (0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: __lobby)"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-c9420e1)"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget loaded: \"My-Finances-c9420e1\" (leader + 0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-c9420e1\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-c9420e1\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: UNASSIGNED"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: FOLLOWER (budget: My-Finances-c9420e1)"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-c9420e1\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-c9420e1\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Leader left budget \"My-Finances-c9420e1\" — promoting follower"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Elected leader for \"My-Finances-c9420e1\" (0 follower(s))"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-c9420e1)"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Backend connected, restoring budget \"My-Finances-c9420e1\""
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-c9420e1\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-c9420e1\": leader + 0 follower(s)]"
+    }
+  ],
+  "steps": [
+    "new-budget-follower-without-dedicated-backend",
+    "follower-mutation-reply-held-at-leader",
+    "leader-renderer-crashed-without-graceful-close",
+    "natural-heartbeat-promotes-surviving-follower"
+  ],
+  "pass": false,
+  "browser": "152.0.7977.64",
+  "held": {
+    "type": "reply",
+    "id": "7328c2c1-e102-4886-9752-c5464576991c",
+    "result": "46242ac0-e68c-4c73-bf85-2b5a6e996160",
+    "mutated": true,
+    "undoTag": "a974ebbe-39bd-4487-a8e8-dfa198e154c1"
+  },
+  "beforeClose": {
+    "id": "7328c2c1-e102-4886-9752-c5464576991c",
+    "sent": 1,
+    "replies": [],
+    "terminalErrors": []
+  },
+  "promotionAfterCrashMs": 16919,
+  "error": "Error: expect(locator).toBeVisible() failed\n\nLocator: getByText('Unable to refresh balances. Reload and check your data before making changes.', { exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n  - Expect \"to.be.visible\" with timeout 5000ms\n  - waiting for getByText('Unable to refresh balances. Reload and check your data before making changes.', { exact: true })\n\n    at captureRawStack (/tmp/opencode/actual-spreadsheet-candidate/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-spreadsheet-candidate/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toBeVisible (/tmp/opencode/actual-spreadsheet-candidate/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /home/kft/Documents/etc/kudzu/test/actual-abrupt-handoff.mjs:181:29",
+  "pages": [
+    {
+      "url": "http://127.0.0.1:3148/accounts",
+      "text": ""
+    },
+    {
+      "url": "http://127.0.0.1:3148/accounts",
+      "text": "My Finances\nBudget\nReports\nSchedules\nMore\nAll accounts\n10.00\nOn budget\n10.00\nFollower Checking\n10.00\nAdd account\nNo server\nHelp\nThere was an error creating the account. Please try again.\nThe backend leader changed. This operation may have completed. Reload and check your data before trying again.\nA new version of Actual is available!\nVersion v26.11.0 of Actual was recently released.\nOpen changelog\nAll Accounts\n10.00\nAdd New\nFilter\nDate\nAccount\nPayee\nNotes\nCategory\nPayment\nDeposit\n✓\nNo transactions\nAdd account\nOnce the account is created, you can also import QIF/OFX/QFX files into it.\nName:\nOff budget\nOff-budget accounts (like investments, loans, or your house) are tracked but not part of your spending budget.\nThis cannot be changed later. See Accounts Overview for more information.\nBalance:\nCancel\nCreate"
+    }
+  ]
+}

@@ -71,6 +71,12 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The user-requested 0.17.16 evidence release records pinned Actual renderer-crash
+handoff and a separate upstream spreadsheet error-handling correction. Browser
+and unit receipts retain both reproduced failures and passing correction cases.
+No Kudzu compiler/runtime implementation changes. Generator 0.1.173 retains
+^0.17.12. Exact-commit CI and normal release gates still apply.
+
 The 0.17.15 patch fixes development configuration reloads. Successful builds
 update serving paths and public-directory watchers together; failed builds retain
 the previous paths. Config creation, updates, deletion and recovery are covered

@@ -1,0 +1,13 @@
+
+ RUN  v4.1.10 /tmp/opencode/actual-spreadsheet-candidate/packages/desktop-client
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/hooks/useSpreadsheet.test.tsx (3 tests) 283ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  11:49:59
+   Duration  3.54s (transform 1.22s, setup 2.39s, import 146ms, tests 283ms, environment 603ms)
+

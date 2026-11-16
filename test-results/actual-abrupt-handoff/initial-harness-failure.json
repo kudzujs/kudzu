@@ -1,0 +1,227 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "mode": "reply",
+  "fixed": true,
+  "loss": "CDP Page.crash",
+  "node": "v24.14.0",
+  "candidateRequests": [
+    "/static/shared-browser-server-C7q_DhZs.js",
+    "/static/shared-browser-server-C7q_DhZs.js"
+  ],
+  "protocol": [
+    {
+      "tab": "leader",
+      "at": 1794792981767,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "leader",
+      "at": 1794792981767,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "leader",
+      "at": 1794792984649,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794792985391,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "UNASSIGNED"
+    },
+    {
+      "tab": "follower",
+      "at": 1794792985408,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "FOLLOWER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794792991649,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794792991649,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793001660,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793001662,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793001662,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793001662,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    }
+  ],
+  "events": [
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 1 tab(s), 1 unassigned, groups: [none]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Elected leader for \"__lobby\" (0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: __lobby)"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-b3c2aca)"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget loaded: \"My-Finances-b3c2aca\" (leader + 0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: UNASSIGNED"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-b3c2aca\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: FOLLOWER (budget: My-Finances-b3c2aca)"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-b3c2aca\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-b3c2aca\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-b3c2aca\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Leader left budget \"My-Finances-b3c2aca\" — promoting follower"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Elected leader for \"My-Finances-b3c2aca\" (0 follower(s))"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-b3c2aca)"
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    }
+  ],
+  "steps": [
+    "new-budget-follower-without-dedicated-backend",
+    "follower-mutation-reply-held-at-leader",
+    "leader-renderer-crashed-without-graceful-close"
+  ],
+  "pass": false,
+  "browser": "152.0.7977.64",
+  "held": {
+    "type": "reply",
+    "id": "c0b88db2-2b07-4673-8f0c-17e404647a9b",
+    "result": "1704c6b3-3431-4860-a371-6b0b7eba4206",
+    "mutated": true,
+    "undoTag": "60b5b9d0-96b9-40bf-bad4-021508292e51"
+  },
+  "beforeClose": {
+    "id": "c0b88db2-2b07-4673-8f0c-17e404647a9b",
+    "replies": []
+  },
+  "error": "TypeError: Cannot read properties of undefined (reading 'includes')\n    at file:///tmp/opencode/actual-abrupt-intake/pending/abrupt-write.mjs:156:95\n    at Array.some (<anonymous>)\n    at expect.poll.timeout (file:///tmp/opencode/actual-abrupt-intake/pending/abrupt-write.mjs:156:42)\n    at /tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12954:25\n    at async raceAgainstDeadline (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:4410:10)\n    at async pollAgainstDeadline (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:4431:22)\n    at async invokePollMatcher (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12951:18)\n    at async file:///tmp/opencode/actual-abrupt-intake/pending/abrupt-write.mjs:156:3",
+  "pages": [
+    {
+      "url": "http://127.0.0.1:3148/accounts",
+      "text": ""
+    },
+    {
+      "url": "http://127.0.0.1:3148/accounts",
+      "text": "My Finances\nBudget\nReports\nSchedules\nMore\nAll accounts\n10.00\nOn budget\n0.00\nFollower Checking\n0.00\nAdd account\nNo server\nHelp\nThere was an error creating the account. Please try again.\nThe backend leader changed. This operation may have completed. Reload and check your data before trying again.\nA new version of Actual is available!\nVersion v26.11.0 of Actual was recently released.\nOpen changelog\nAll Accounts\n10.00\nAdd New\nFilter\nDate\nAccount\nPayee\nNotes\nCategory\nPayment\nDeposit\n✓\nNo transactions\nAdd account\nOnce the account is created, you can also import QIF/OFX/QFX files into it.\nName:\nOff budget\nOff-budget accounts (like investments, loans, or your house) are tracked but not part of your spending budget.\nThis cannot be changed later. See Accounts Overview for more information.\nBalance:\nCancel\nCreate"
+    }
+  ]
+}

@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.15](https://github.com/kudzujs/kudzu/releases/tag/v0.17.15).** The development server rebuilds when `kudzu.config.mjs` or `kudzu.config.js` is created, changed, or deleted. Successful builds synchronize `base` and public-directory watchers; failed builds retain the previous serving paths. Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range. No browser runtime or compiler syntax changes.
+**Current release: [0.17.16](https://github.com/kudzujs/kudzu/releases/tag/v0.17.16).** This evidence release records real renderer-crash and heartbeat handoff checks against pinned Actual Budget. A separate upstream spreadsheet patch handles rejected reads, reports one visible warning, and preserves uncertain mutation outcomes without replay. The patch is retained as migration evidence, not installed into Kudzu or submitted upstream. Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range. No compiler or browser runtime changes.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

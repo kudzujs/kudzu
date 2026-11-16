@@ -1,0 +1,138 @@
+
+ RUN  v4.1.10 /tmp/opencode/actual-spreadsheet-candidate/packages/desktop-client
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+stderr | src/hooks/useSpreadsheet.test.tsx > reports query and shared read failures without replay or unhandled rejection
+REJECTION Error: The backend leader changed. Reload and check your data.
+    at /tmp/opencode/actual-spreadsheet-candidate/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx:44:17
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2955:64
+REJECTION Error: The backend leader changed. Reload and check your data.
+    at /tmp/opencode/actual-spreadsheet-candidate/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx:44:17
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2955:64
+
+stderr | src/hooks/useSpreadsheet.test.tsx > clears a failed read so a later explicit binding can read fresh data
+REJECTION Error: read failed
+    at /tmp/opencode/actual-spreadsheet-candidate/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx:72:16
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2955:64
+
+stderr | src/hooks/useSpreadsheet.test.tsx > does not clear a replacement read when an old read rejects
+REJECTION Error: old read failed
+    at /tmp/opencode/actual-spreadsheet-candidate/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx:91:14
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+    at file:///tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@vitest/runner/dist/chunk-artifact.js:2955:64
+
+ ❯ src/hooks/useSpreadsheet.test.tsx (3 tests | 3 failed) 3032ms
+   × reports query and shared read failures without replay or unhandled rejection 1023ms
+   × clears a failed read so a later explicit binding can read fresh data 1004ms
+   × does not clear a replacement read when an old read rejects 1003ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/hooks/useSpreadsheet.test.tsx > reports query and shared read failures without replay or unhandled rejection
+AssertionError: expected "vi.fn()" to be called 3 times, but got 0 times
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div />[39m
+  [36m</body>[39m
+[36m</html>[39m
+ ❯ src/hooks/useSpreadsheet.test.tsx:47:40
+     45|   query.reject(error);
+     46|   read.reject(error);
+     47|   await waitFor(() => expect(dispatch).toHaveBeenCalledTimes(3));
+       |                                        ^
+     48|   expect(callback).not.toHaveBeenCalled();
+     49|   expect(send).toHaveBeenCalledTimes(2);
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/hooks/useSpreadsheet.test.tsx > clears a failed read so a later explicit binding can read fresh data
+AssertionError: expected "vi.fn()" to be called at least once
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div />[39m
+  [36m</body>[39m
+[36m</html>[39m
+ ❯ src/hooks/useSpreadsheet.test.tsx:73:40
+     71|   result.current.bind('__global', 'balance', oldCallback);
+     72|   first.reject(new Error('read failed'));
+     73|   await waitFor(() => expect(dispatch).toHaveBeenCalled());
+       |                                        ^
+     74|   result.current.bind('__global', 'balance', callback);
+     75|   fresh.resolve({ name: '__global!balance', value: 1000 });
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/hooks/useSpreadsheet.test.tsx > does not clear a replacement read when an old read rejects
+AssertionError: expected "vi.fn()" to be called at least once
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div />[39m
+  [36m</body>[39m
+[36m</html>[39m
+ ❯ src/hooks/useSpreadsheet.test.tsx:92:40
+     90|   result.current.bind('__global', 'balance', callback);
+     91|   old.reject(new Error('old read failed'));
+     92|   await waitFor(() => expect(dispatch).toHaveBeenCalled());
+       |                                        ^
+     93|   const other = vi.fn();
+     94|   result.current.bind('__global', 'balance', other);
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../../actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  11:45:17
+   Duration  6.33s (transform 1.10s, setup 2.36s, import 170ms, tests 3.03s, environment 657ms)
+

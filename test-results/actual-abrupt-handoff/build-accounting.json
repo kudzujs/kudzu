@@ -1,0 +1,13 @@
+{
+  "baseline": {
+    "files": 33,
+    "rawBytes": 12575690,
+    "aggregateGzipBytes": 2852755
+  },
+  "candidate": {
+    "files": 33,
+    "rawBytes": 12576139,
+    "aggregateGzipBytes": 2852909
+  },
+  "note": "Absolute build inventories; not an equivalent-behavior performance comparison. Kudzu core/runtime deltas are zero."
+}

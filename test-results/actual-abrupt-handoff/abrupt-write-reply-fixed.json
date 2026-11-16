@@ -1,0 +1,430 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "mode": "reply",
+  "fixed": true,
+  "loss": "CDP Page.crash",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "arch": "x64",
+  "candidateSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "candidateRequests": [
+    "/static/shared-browser-server-C7q_DhZs.js",
+    "/static/shared-browser-server-C7q_DhZs.js"
+  ],
+  "protocol": [
+    {
+      "tab": "leader",
+      "at": 1794793220063,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "leader",
+      "at": 1794793220065,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "leader",
+      "at": 1794793222870,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793223651,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "UNASSIGNED"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793223671,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "FOLLOWER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793229950,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793229950,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793239967,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793239967,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793239967,
+      "direction": "in",
+      "type": "__heartbeat-ping"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793239967,
+      "direction": "out",
+      "type": "__heartbeat-pong"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793241083,
+      "direction": "event",
+      "type": "beforeunload"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793241083,
+      "direction": "out",
+      "type": "tab-closing"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793241087,
+      "direction": "event",
+      "type": "pagehide"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793241087,
+      "direction": "event",
+      "type": "unload"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793241317,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793241317,
+      "direction": "in",
+      "type": "__become-leader"
+    },
+    {
+      "tab": "follower",
+      "at": 1794793241970,
+      "direction": "in",
+      "type": "__role-change",
+      "role": "LEADER"
+    }
+  ],
+  "events": [
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 1 tab(s), 1 unassigned, groups: [none]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Elected leader for \"__lobby\" (0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: __lobby)"
+    },
+    {
+      "tab": "leader",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-0dce462)"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget loaded: \"My-Finances-0dce462\" (leader + 0 follower(s))"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab connected — 2 tab(s), 1 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: UNASSIGNED"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: FOLLOWER (budget: My-Finances-0dce462)"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-0dce462\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab joined budget \"My-Finances-0dce462\" as follower — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "leader",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 2 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 1 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Leader left budget \"My-Finances-0dce462\" — promoting follower"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Elected leader for \"My-Finances-0dce462\" (0 follower(s))"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-0dce462)"
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    },
+    {
+      "tab": "follower",
+      "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Backend connected, restoring budget \"My-Finances-0dce462\""
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Connected to SharedWorker coordinator"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Tab connected — 1 tab(s), 1 unassigned, groups: [none]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Elected leader for \"__lobby\" (0 follower(s))"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: __lobby)"
+    },
+    {
+      "tab": "follower",
+      "text": "[WorkerBridge] Role: LEADER (budget: My-Finances-0dce462)"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Lobby leader now on budget \"My-Finances-0dce462\" — 1 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    },
+    {
+      "tab": "follower",
+      "text": "[SharedWorker] Budget \"My-Finances-0dce462\" ready — 1 tab(s), 0 unassigned, groups: [\"My-Finances-0dce462\": leader + 0 follower(s)]"
+    }
+  ],
+  "steps": [
+    "new-budget-follower-without-dedicated-backend",
+    "follower-mutation-reply-held-at-leader",
+    "leader-renderer-crashed-without-graceful-close",
+    "natural-heartbeat-promotes-surviving-follower",
+    "uncertain-outcome-error-delivered-and-visible",
+    "committed-account-survives-with-lost-reply"
+  ],
+  "pass": false,
+  "browser": "152.0.7977.64",
+  "held": {
+    "type": "reply",
+    "id": "e1035c36-3910-41d1-9166-34f4cd575dfb",
+    "result": "d5656119-5602-477b-9a5a-e50daae66b48",
+    "mutated": true,
+    "undoTag": "fc39209b-55c2-4c0d-acd5-804b3499f33b"
+  },
+  "beforeClose": {
+    "id": "e1035c36-3910-41d1-9166-34f4cd575dfb",
+    "replies": [],
+    "terminalErrors": []
+  },
+  "promotionAfterCrashMs": 16894,
+  "afterPromotion": {
+    "id": "e1035c36-3910-41d1-9166-34f4cd575dfb",
+    "replies": [
+      {
+        "type": "error",
+        "id": "e1035c36-3910-41d1-9166-34f4cd575dfb",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      }
+    ],
+    "terminalErrors": [
+      {
+        "id": "e1035c36-3910-41d1-9166-34f4cd575dfb",
+        "name": "account-create",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "25b587bb-bc8f-4935-8f05-0bf542a2ad2b",
+        "name": "payees-get",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "5c4b40da-f3f4-4333-838d-af6c1ba72674",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "432ad038-4dcc-4811-baf0-78436bd0428d",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "ef2cdf3c-0eba-4160-91ec-11e01917af7d",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "a438fe4f-c157-4c5d-9993-08e39f89cf4b",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "8af0cab5-9c26-4d90-b367-e8165ad24e81",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "a53809b2-e410-497f-9378-22a29c423400",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "4e2aed42-b565-44e9-83f0-8b2c325a4933",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "5850e894-ee04-4c81-892e-3254bec8ecad",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "cd9b704e-06b2-47b4-9a3a-42be5aa98bbe",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "de2f6ea4-4493-4734-b832-b347310eaadf",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "31eb2bcc-77d6-401d-be94-9df4ee9d2fa3",
+        "name": "create-query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "eb65b82c-04f4-4531-99da-9bf8b05a2b01",
+        "name": "get-cell",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "14a406b3-e5f9-4878-bec6-cc4dc72c9cac",
+        "name": "create-query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "4918a6bd-58ce-45a8-8149-35d8633a8659",
+        "name": "get-cell",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "cfe30f7a-bc62-4130-8338-27a3b0410e51",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      },
+      {
+        "id": "1e07a501-64c3-4883-83f5-2d31258597e8",
+        "name": "query",
+        "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+      }
+    ]
+  },
+  "visibleAfterPromotion": "My Finances\nBudget\nReports\nSchedules\nMore\nAll accounts\n10.00\nOn budget\n0.00\nFollower Checking\n0.00\nAdd account\nNo server\nHelp\nThere was an error creating the account. Please try again.\nThe backend leader changed. This operation may have completed. Reload and check your data before trying again.\nA new version of Actual is available!\nVersion v26.11.0 of Actual was recently released.\nOpen changelog\nAll Accounts\n10.00\nAdd New\nFilter\nDate\nAccount\nPayee\nNotes\nCategory\nPayment\nDeposit\n✓\nNo transactions\nAdd account\nOnce the account is created, you can also import QIF/OFX/QFX files into it.\nName:\nOff budget\nOff-budget accounts (like investments, loans, or your house) are tracked but not part of your spending budget.\nThis cannot be changed later. See Accounts Overview for more information.\nBalance:\nCancel\nCreate",
+  "readback": {
+    "balance": "10.00",
+    "accountCount": 1
+  },
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     error: 'The backend leader changed. This operation may have completed. Reload and check your data before trying again.',\n+     tab: 'follower'\n+   },\n+   {\n+     error: 'The backend leader changed. This operation may have completed. Reload and check your data before trying again.',\n+     tab: 'follower'\n+   },\n+   {\n+     error: 'The backend leader changed. This operation may have completed. Reload and check your data before trying again.',\n+     tab: 'follower'\n+   },\n+   {\n+     error: 'The backend leader changed. This operation may have completed. Reload and check your data before trying again.',\n+     tab: 'follower'\n+   }\n+ ]\n- []\n\n    at file:///home/kft/Documents/etc/kudzu/benchmarks/actual-abrupt-handoff/probe.mjs:193:10",
+  "pages": [
+    {
+      "url": "http://127.0.0.1:3148/accounts",
+      "text": ""
+    },
+    {
+      "url": "http://127.0.0.1:3148/accounts",
+      "text": "My Finances\nBudget\nReports\nSchedules\nMore\nAll accounts\n10.00\nOn budget\n10.00\nFollower Checking\n10.00\nAdd account\nNo server\nHelp\nA new version of Actual is available!\nVersion v26.11.0 of Actual was recently released.\nOpen changelog\nAll Accounts\n10.00\nAdd New\nFilter\nDate\nAccount\nPayee\nNotes\nCategory\nPayment\nDeposit\n✓\n11/16/2026\nFollower Checking\nStarting Balance\nStarting Balances\n10.00"
+    }
+  ]
+}

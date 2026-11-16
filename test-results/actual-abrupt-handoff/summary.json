@@ -1,0 +1,106 @@
+{
+  "upstream": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "pendingArchiveSha256": "be22efc1477d05d1e0d3c6e53fdc4ca3107a72df86c64372b6c4bb8eec80c6ad",
+  "probeSha256": "2541fd66b6fbefaa9c9741f4dc119dd5365810863b144763b1cccef5d5f2331c",
+  "patchSha256": "ef8cb7e0f3dd4d1073f5f06896c0c35c862329c5d8f24daae1fae9665c95afb0",
+  "originalCoordinatorTests": 44,
+  "newSpreadsheetTests": 3,
+  "cases": [
+    {
+      "file": "abrupt-write-request.json",
+      "sha256": "96ee4d4066a9275ec42784ee15fe09a005c76438e4a6ea66a0ed17185d03e43e",
+      "acceptance": true,
+      "spreadsheetFixed": false,
+      "mutationResponses": 0,
+      "pageErrors": 0,
+      "readback": {
+        "balance": "0.00",
+        "accountCount": 0
+      },
+      "observedPromotionMs": 16884
+    },
+    {
+      "file": "abrupt-write-reply.json",
+      "sha256": "2dd914112e9c72acc74930b6e0f37aa8b8f56761a00db8fd70f08366ae572fb5",
+      "acceptance": true,
+      "spreadsheetFixed": false,
+      "mutationResponses": 0,
+      "pageErrors": 0,
+      "readback": {
+        "balance": "10.00",
+        "accountCount": 1
+      },
+      "observedPromotionMs": 17027
+    },
+    {
+      "file": "abrupt-write-request-fixed.json",
+      "sha256": "8ec04dafdb0c0178228f5aa0e3e88a8bf74f9c3052be6963a47a077474c7fa07",
+      "acceptance": true,
+      "spreadsheetFixed": false,
+      "mutationResponses": 1,
+      "pageErrors": 0,
+      "readback": {
+        "balance": "0.00",
+        "accountCount": 0
+      },
+      "observedPromotionMs": 17927
+    },
+    {
+      "file": "abrupt-write-reply-fixed.json",
+      "sha256": "e87350c25d974cd2d9b9b90c4e3232d347ef51fa5a3aeb27842ff997b82e811e",
+      "acceptance": false,
+      "spreadsheetFixed": false,
+      "mutationResponses": 1,
+      "pageErrors": 4,
+      "readback": {
+        "balance": "10.00",
+        "accountCount": 1
+      },
+      "observedPromotionMs": 16894
+    },
+    {
+      "file": "deterministic-pending-read-failure.json",
+      "sha256": "ce2926daa2d5de7d33c8b6dec5e6b80d756e9f86cc8eb6427165ac0d2734ea17",
+      "acceptance": false,
+      "spreadsheetFixed": false,
+      "mutationResponses": 1,
+      "pageErrors": 4,
+      "readback": {
+        "balance": "10.00",
+        "accountCount": 1,
+        "accountHref": "/accounts/5e0cc529-944a-4f54-88c3-fe95e37fae3b"
+      },
+      "observedPromotionMs": 17892
+    },
+    {
+      "file": "abrupt-write-request-fixed-spreadsheet.json",
+      "sha256": "d5fd3159750cc00154d1b7e583821b63959412315383d0c0bd7fa07c4d86a9d7",
+      "acceptance": true,
+      "spreadsheetFixed": true,
+      "mutationResponses": 1,
+      "pageErrors": 0,
+      "readback": {
+        "balance": "0.00",
+        "accountCount": 0
+      },
+      "observedPromotionMs": 15256
+    },
+    {
+      "file": "abrupt-write-reply-fixed-spreadsheet.json",
+      "sha256": "d31cd16b99b4a7df99f0dde91d9c6610d85c225a0c62ef61742bd5782403c98b",
+      "acceptance": true,
+      "spreadsheetFixed": true,
+      "mutationResponses": 1,
+      "pageErrors": 0,
+      "readback": {
+        "balance": "10.00",
+        "accountCount": 1,
+        "accountHref": "/accounts/bbc6a437-60c0-4f92-a42c-f807f5092ca3"
+      },
+      "observedPromotionMs": 16926
+    }
+  ],
+  "status": "corrected-in-separate-pinned-upstream-candidate",
+  "kudzuCoreDelta": 0,
+  "browserRuntimeDelta": 0
+}

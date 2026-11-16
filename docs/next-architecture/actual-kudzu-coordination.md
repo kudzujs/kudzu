@@ -93,9 +93,13 @@ unmeasured. Publication and repository checks are recorded in `PERFORMANCE.md`.
 
 ## Next gate and limits
 
-Before claiming crash recovery, reproduce abrupt leader loss and heartbeat
-eviction in pinned upstream with its original protocol and retained patches.
-Then reduce any proven behavior or failure into this fixture. Current evidence
+The [abrupt leader-loss intake](./actual-abrupt-leader-loss.md) now reproduces
+renderer crashes and natural heartbeat eviction in pinned upstream with the
+retained patches. It preserves uncertain mutation settlement and reload/readback
+and initially exposed uncaught errors from additional pending requests after
+execution. A separate upstream spreadsheet correction now passes both crash
+cases with clean page errors. Next extend this fixture with that proven journey.
+Current Kudzu evidence
 uses graceful tab closure and explicit delivery barriers; it does not establish
 process-crash durability, BFCache restoration, concurrent conflicting writes,
 live query invalidation, automatic retries or exactly-once behavior.

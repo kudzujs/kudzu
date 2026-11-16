@@ -1,0 +1,234 @@
+diff --git a/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx b/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx
+new file mode 100644
+index 0000000..5c2b971
+--- /dev/null
++++ b/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx
+@@ -0,0 +1,118 @@
++import type { Query } from '@actual-app/core/shared/query';
++import { renderHook, waitFor } from '@testing-library/react';
++import { afterEach, beforeEach, expect, it, vi } from 'vitest';
++
++import { SpreadsheetProvider, useSpreadsheet } from './useSpreadsheet';
++
++const { send, dispatch, translate } = vi.hoisted(() => ({
++  send: vi.fn(),
++  dispatch: vi.fn(),
++  translate: (message: string) => message,
++}));
++vi.mock('@actual-app/core/platform/client/connection', () => ({
++  send,
++  listen: () => () => {},
++}));
++vi.mock('#redux', () => ({ useDispatch: () => dispatch }));
++vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
++vi.mock('#notifications/notificationsSlice', () => ({
++  addNotification: (payload: unknown) => ({ type: 'notification', payload }),
++}));
++
++beforeEach(() => vi.clearAllMocks());
++afterEach(() => vi.restoreAllMocks());
++
++function pending() {
++  let resolve!: (value: { name: string; value: number }) => void;
++  let reject!: (error: Error) => void;
++  const promise = new Promise<{ name: string; value: number }>((yes, no) => {
++    resolve = yes;
++    reject = no;
++  });
++  return { promise, resolve, reject };
++}
++
++it('reports query and shared read failures without replay or unhandled rejection', async () => {
++  const query = pending();
++  const read = pending();
++  send.mockImplementation(name =>
++    name === 'create-query' ? query.promise : read.promise,
++  );
++  const { result, unmount } = renderHook(useSpreadsheet, {
++    wrapper: SpreadsheetProvider,
++  });
++  const callback = vi.fn();
++  const binding = {
++    name: 'balance',
++    query: { serialize: () => ({}) } as Query,
++  };
++  const first = result.current.bind('__global', binding, callback);
++  const second = result.current.bind('__global', 'balance', callback);
++  const error = new Error(
++    'The backend leader changed. Reload and check your data.',
++  );
++  query.reject(error);
++  read.reject(error);
++  await waitFor(() => expect(dispatch).toHaveBeenCalledTimes(3));
++  expect(callback).not.toHaveBeenCalled();
++  expect(send).toHaveBeenCalledTimes(2);
++  for (const [action] of dispatch.mock.calls) {
++    expect(action.payload.notification).toMatchObject({
++      id: 'spreadsheet-read-error',
++      type: 'error',
++      sticky: true,
++      pre: error.message,
++    });
++    expect(action.payload.notification.message).toContain('Reload');
++  }
++  first();
++  second();
++  unmount();
++});
++
++it('clears a failed read so a later explicit binding can read fresh data', async () => {
++  const first = pending();
++  const fresh = pending();
++  send.mockReturnValueOnce(first.promise).mockReturnValueOnce(fresh.promise);
++  const { result, unmount } = renderHook(useSpreadsheet, {
++    wrapper: SpreadsheetProvider,
++  });
++  const oldCallback = vi.fn();
++  const callback = vi.fn();
++  result.current.bind('__global', 'balance', oldCallback);
++  first.reject(new Error('read failed'));
++  await waitFor(() => expect(dispatch).toHaveBeenCalled());
++  result.current.bind('__global', 'balance', callback);
++  fresh.resolve({ name: '__global!balance', value: 1000 });
++  await waitFor(() =>
++    expect(callback).toHaveBeenCalledWith({
++      name: '__global!balance',
++      value: 1000,
++    }),
++  );
++  expect(oldCallback).not.toHaveBeenCalled();
++  expect(send).toHaveBeenCalledTimes(2);
++  unmount();
++});
++
++it('does not clear a replacement read when an old read rejects', async () => {
++  const old = pending();
++  const fresh = pending();
++  send.mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
++  const { result, unmount } = renderHook(useSpreadsheet, {
++    wrapper: SpreadsheetProvider,
++  });
++  const release = result.current.bind('__global', 'balance', vi.fn());
++  release();
++  const callback = vi.fn();
++  result.current.bind('__global', 'balance', callback);
++  old.reject(new Error('old read failed'));
++  await waitFor(() => expect(dispatch).toHaveBeenCalled());
++  const other = vi.fn();
++  result.current.bind('__global', 'balance', other);
++  fresh.resolve({ name: '__global!balance', value: 1000 });
++  await waitFor(() => expect(other).toHaveBeenCalledTimes(1));
++  expect(callback).toHaveBeenCalledTimes(1);
++  expect(send).toHaveBeenCalledTimes(2);
++  unmount();
++});
+diff --git a/packages/desktop-client/src/hooks/useSpreadsheet.tsx b/packages/desktop-client/src/hooks/useSpreadsheet.tsx
+index 63096ce..e0a9ffc 100644
+--- a/packages/desktop-client/src/hooks/useSpreadsheet.tsx
++++ b/packages/desktop-client/src/hooks/useSpreadsheet.tsx
+@@ -1,10 +1,14 @@
+ import { createContext, useContext, useEffect, useMemo } from 'react';
+ import type { ReactNode } from 'react';
++import { useTranslation } from 'react-i18next';
+ 
+ import { listen, send } from '@actual-app/core/platform/client/connection';
+ import type { Query } from '@actual-app/core/shared/query';
+ import { LRUCache } from 'lru-cache';
+ 
++import { addNotification } from '#notifications/notificationsSlice';
++import { useDispatch } from '#redux';
++
+ type SpreadsheetContextValue = ReturnType<typeof makeSpreadsheet>;
+ const SpreadsheetContext = createContext<SpreadsheetContextValue | undefined>(
+   undefined,
+@@ -28,7 +32,7 @@ type CellObservers = { [name: string]: CellObserverCallback[] };
+ 
+ const GLOBAL_SHEET_NAME = '__global';
+ 
+-function makeSpreadsheet() {
++function makeSpreadsheet(onError: (error: unknown) => void) {
+   const cellObservers: CellObservers = {};
+   const LRUValueCache = new LRUCache<string, CellCacheValue>({ max: 1200 });
+   const cellCache: CellCache = {};
+@@ -86,7 +90,9 @@ function makeSpreadsheet() {
+       binding = typeof binding === 'string' ? { name: binding } : binding;
+ 
+       if (binding.query) {
+-        void this.createQuery(sheetName, binding.name, binding.query);
++        void this.createQuery(sheetName, binding.name, binding.query).catch(
++          onError,
++        );
+       }
+ 
+       const resolvedName = `${sheetName}!${binding.name}`;
+@@ -103,22 +109,29 @@ function makeSpreadsheet() {
+       }
+ 
+       if (cellCache[resolvedName] != null) {
+-        void cellCache[resolvedName].then(callback);
++        void cellCache[resolvedName].then(callback).catch(onError);
+       } else {
+         const req = this.get(sheetName, binding.name);
+         cellCache[resolvedName] = req;
+ 
+-        void req.then(result => {
+-          // We only want to call the callback if it's still waiting on
+-          // the same request. If we've received a `cells-changed` event
+-          // for this already then it's already been called and we don't
+-          // need to call it again (and potentially could be calling it
+-          // with an old value depending on the order of messages)
+-          if (cellCache[resolvedName] === req) {
+-            LRUValueCache.set(resolvedName, result);
+-            callback(result);
+-          }
+-        });
++        void req
++          .then(result => {
++            // We only want to call the callback if it's still waiting on
++            // the same request. If we've received a `cells-changed` event
++            // for this already then it's already been called and we don't
++            // need to call it again (and potentially could be calling it
++            // with an old value depending on the order of messages)
++            if (cellCache[resolvedName] === req) {
++              LRUValueCache.set(resolvedName, result);
++              callback(result);
++            }
++          })
++          .catch(error => {
++            if (cellCache[resolvedName] === req) {
++              cellCache[resolvedName] = null;
++            }
++            onError(error);
++          });
+       }
+ 
+       return cleanup;
+@@ -149,7 +162,27 @@ type SpreadsheetProviderProps = {
+ };
+ 
+ export function SpreadsheetProvider({ children }: SpreadsheetProviderProps) {
+-  const spreadsheet = useMemo(() => makeSpreadsheet(), []);
++  const dispatch = useDispatch();
++  const { t } = useTranslation();
++  const spreadsheet = useMemo(
++    () =>
++      makeSpreadsheet(error => {
++        dispatch(
++          addNotification({
++            notification: {
++              id: 'spreadsheet-read-error',
++              type: 'error',
++              sticky: true,
++              message: t(
++                'Unable to refresh balances. Reload and check your data before making changes.',
++              ),
++              pre: error instanceof Error ? error.message : String(error),
++            },
++          }),
++        );
++      }),
++    [dispatch, t],
++  );
+ 
+   useEffect(() => {
+     return spreadsheet.listen();

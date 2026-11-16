@@ -1,5 +1,16 @@
 # Application Capability Release Plan
 
+Abrupt leader-loss continuation (2026-11-16): the
+[pinned-upstream intake](./actual-abrupt-leader-loss.md) uses actual renderer
+crashes and the original heartbeat interval. The retained candidate settles the
+uncertain mutation once and readback distinguishes absent from committed accounts,
+but the after-execution case exposes uncaught errors from additional pending
+requests. A separate spreadsheet correction handles all three discarded-promise
+paths and reports one visible warning without replaying writes. Its three unit
+regressions and both real renderer-crash cases pass. Next extend the Kudzu
+coordination reduction with this journey. No compiler/runtime change or
+OS-crash-durability claim.
+
 Created-budget continuation: the [upstream correction candidate](./actual-created-budget-association.md)
 reproduces stale lobby/previous-budget association in two failing tests. Rekeying
 successful preferences for every leader group and notifying roles passes 51

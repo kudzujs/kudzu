@@ -69,9 +69,15 @@ intake now records reopened-budget handoff and a separately validated upstream
 fresh-create correction. Completed follower account creation now survives graceful
 handoff and reload. Pending-request loss now has a browser-proven upstream
 uncertain-outcome correction candidate, and the bounded Kudzu effect/port
-reduction passes with explicit reload/readback before retry. The next gate
-establishes abrupt leader loss and heartbeat eviction in pinned upstream before
-making any crash-recovery claim or extending the reduction.
+reduction passes with explicit reload/readback before retry. The
+[abrupt leader-loss intake](docs/next-architecture/actual-abrupt-leader-loss.md)
+now proves natural heartbeat promotion after a renderer crash and preserves
+mutation uncertainty and reload/readback. Its after-execution candidate exposes
+uncaught errors from additional pending requests. A separate pinned-upstream
+spreadsheet correction now handles those errors, preserves replacement reads,
+and passes both renderer-crash cases without mutation replay or uncaught errors.
+The next gate extends the Kudzu coordination reduction with that proven crash
+journey before claiming compiled-application crash recovery.
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
 

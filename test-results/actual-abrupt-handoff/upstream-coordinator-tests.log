@@ -1,0 +1,10 @@
+
+ RUN  v4.1.10 /tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/packages/loot-core
+
+ ✓ src/platform/client/browser-server/coordinator.test.ts (44 tests) 43ms
+
+ Test Files  1 passed (1)
+      Tests  44 passed (44)
+   Start at  10:36:44
+   Duration  3.36s (transform 693ms, setup 3.16s, import 35ms, tests 43ms, environment 0ms)
+

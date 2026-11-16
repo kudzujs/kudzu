@@ -1,5 +1,20 @@
 # Kudzu Releases
 
+## 0.17.16 - Abrupt Leader-Loss Evidence
+
+- Retain an executable real renderer-crash probe for pinned Actual Budget,
+  preserving the original heartbeat interval and real SQLite backend.
+- Reproduce lost terminal responses and uncaught pending-read errors before
+  correcting the latter in a separate upstream spreadsheet candidate.
+- Catch discarded read/query promises, preserve replacement cache entries and
+  show one visible reload/readback warning through existing notifications.
+- Three upstream unit regressions and both corrected browser cases pass:
+  no uncaught page errors, no mutation replay, and correct persisted account
+  identity/balance after reload.
+- This is a migration-evidence release: the upstream patch is not installed into
+  Kudzu. No compiler, browser runtime or dependency changes. Generator 0.1.173
+  retains ^0.17.12. OS-crash durability and whole-app migration remain unproven.
+
 ## 0.17.15 - Development Config Reload
 
 - Rebuild when `kudzu.config.mjs` or `kudzu.config.js` is created, changed or deleted.

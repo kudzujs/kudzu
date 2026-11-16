@@ -59,7 +59,7 @@ dist/
 export function BenchmarksSection() {
   return <section className="docs-section" id="benchmarks">
     <div className="docs-heading"><span>12</span><div><p>REFERENCE</p><h2>Benchmarks</h2></div></div>
-    <div className="docs-callout"><strong>Current 0.17.15 release evidence</strong><span>Development config creation, updates and deletion trigger rebuilds. Successful builds synchronize base paths and public-directory watchers; invalid config retains previous serving paths until recovery. No browser runtime or compiler syntax changes; no speed improvement is claimed. Startup, restoration and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.15">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
+    <div className="docs-callout"><strong>Current 0.17.16 release evidence</strong><span>Pinned Actual renderer-crash checks preserve heartbeat handoff, uncertain writes and database readback. A separate upstream spreadsheet correction handles pending read failures and reports one visible warning. No Kudzu compiler or browser runtime changes; no speed improvement is claimed. Startup, restoration and AI-cost improvements remain unproven; <code>1.0.0</code> remains blocked. See the <a href="/releases/0.17.16">release notes</a> and <a href="https://github.com/kudzujs/kudzu/blob/main/PERFORMANCE.md">performance records</a>.</span></div>
     <h3>Project application</h3>
     <BenchmarkTable columns={["Strategy", "Load / range median", "Median DOM nodes"]} rows={[
       ["Direct 10,000 rows", "138.2 ms / n/a", "90,023"],

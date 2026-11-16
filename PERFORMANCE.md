@@ -1,5 +1,64 @@
 # Performance Records
 
+## 0.17.16 Upstream Spreadsheet Error Correction
+
+A separate pinned Actual checkout now catches the three discarded spreadsheet
+promise paths, clears failed reads without deleting replacements, and reports one
+visible sticky notification via the existing application notification reducer.
+Three original-configuration Vitest tests fail before the fix and pass afterward.
+The production build and both real renderer-crash cases pass with zero page
+errors, exactly one sent mutation, one uncertainty reply, and correct persisted
+account identity and 0/1,000-cent balances after reload.
+
+The source/test patch is retained in
+`docs/next-architecture/patches/actual-spreadsheet-errors.patch`; original failed
+receipts are preserved beside the `-spreadsheet.json` correction receipts.
+No mutation replay, coordinator change, compiler feature or Kudzu runtime change.
+The user requested a release of this evidence; generator 0.1.173 keeps ^0.17.12.
+The next gate adds the proven renderer-crash journey to the existing Kudzu
+coordination reduction. OS-crash durability and whole-app migration remain unproven.
+
+The initial isolated `tsc` invocation against shared dependency links could not
+resolve upstream declarations. A fresh immutable install followed by the original
+workspace `typecheck`, three unit tests and production `build:browser` all pass.
+
+The final deterministic browser comparison retains the rejected-read failure on
+the uncorrected UI and passes both corrected cases. The first fresh-install run
+had let reads finish before the crash and failed its warning assertion; the
+explicit pending-read barrier and failed receipt are retained.
+
+Release-tree validation passes: `npm run check` builds 267 pages; the project
+journey plus all 403 remaining tests pass without skips; both package smokes pass.
+The entire `framework/` and `bin/` trees are unchanged from 0.17.15.
+
+Release evidence: `actual-abrupt-handoff-0.17.16.tar.gz`, SHA256
+`50461ed58f661acec96a17a69a5230a0947a1965c0084bb8dfcc84e13fa9bd47`.
+The archive contains the probe, source/test patch, receipts including failed runs,
+candidate production build, original coordinator bundles, lockfile and licenses.
+
+## Actual Abrupt Leader Loss Intake (2026-11-16)
+
+The [packet](docs/next-architecture/actual-abrupt-leader-loss.md) crashes the
+original application's leader renderer using CDP `Page.crash`, retaining the
+pinned coordinator's real 10-second heartbeat and SQLite backend. The association
+baseline reproduces lost terminal responses; the retained uncertainty candidate
+settles the mutation once and reload/readback distinguishes an undelivered account
+from a committed 1,000-cent account.
+
+The intake after-execution candidate failed clean browser acceptance:
+additional pending requests reject as uncaught page errors. Preserve this failure
+and the initial probe log-predicate failure; neither is a passing crash-recovery
+claim. All 44 original coordinator unit tests pass. The correction above closes
+this upstream caller gate before the Kudzu reduction gains the crash journey.
+
+Repository validation passes: `npm run check` builds 266 pages, and `npm test`
+passes the project journey plus 403 tests with no skips. These repository checks
+are separate from the intentionally retained external browser acceptance failure.
+
+Semantic primitives/core passes/core LOC/runtime concepts/browser bytes: +0.
+One external browser probe and receipts are retained. No new package, release,
+timing improvement, OS-crash durability or exactly-once guarantee is claimed.
+
 ## 0.17.15 Development Config Reload
 
 The new development-server regression first failed waiting for a reload after
