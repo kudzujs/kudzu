@@ -17,6 +17,11 @@ assertion because the updated release callout omitted the explicit no-speed-clai
 sentence (402/403 tests passed after the project journey). Restore that sentence;
 the corrected commit must pass local checks, package smokes and exact-commit CI.
 
+Corrected local checks, all 404 tests and both package smokes passed. CI run
+43784437319 passed Node 22 but hit `ENOTEMPTY` deleting the existing SharedWorker
+fixture after Chrome teardown. Apply the same bounded filesystem retries already
+used for Chrome profile cleanup to that fixture's final directory cleanup.
+
 ## Actual Coordination Through Kudzu (2026-11-14)
 
 The [packet](docs/next-architecture/actual-kudzu-coordination.md) connects

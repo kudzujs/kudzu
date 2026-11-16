@@ -3334,7 +3334,7 @@ test("preserves native SharedWorker ports through owned effect cleanup", async t
   const fixture = new URL("./fixtures/shared-worker", import.meta.url)
   const output = new URL("./dist/", `${fixture.href}/`)
   t.after(async () => {
-    for (const directory of ["dist", ".kudzu"]) await rm(new URL(`./${directory}`, `${fixture.href}/`), { recursive: true, force: true })
+    for (const directory of ["dist", ".kudzu"]) await rm(new URL(`./${directory}`, `${fixture.href}/`), { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   })
   const result = spawnSync(process.execPath, [new URL("../bin/kudzu.mjs", import.meta.url).pathname, "build"], { cwd: fixture, encoding: "utf8" })
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`)
