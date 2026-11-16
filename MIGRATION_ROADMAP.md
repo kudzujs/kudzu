@@ -51,7 +51,7 @@ The [Kudzu coordination reduction](docs/next-architecture/actual-kudzu-coordinat
 now runs completed and uncertain follower writes through existing owned effects,
 with write lockout until reload/readback, exact port/Worker cleanup and a
 zero-JavaScript static sibling.
-In-flight recovery and crash-time writes remain gated;
+Broader in-flight recovery and full browser/OS crash-time writes remain gated;
 no generic database, spreadsheet or coordination runtime is authorized.
 
 ## North Star
@@ -76,8 +76,15 @@ mutation uncertainty and reload/readback. Its after-execution candidate exposes
 uncaught errors from additional pending requests. A separate pinned-upstream
 spreadsheet correction now handles those errors, preserves replacement reads,
 and passes both renderer-crash cases without mutation replay or uncaught errors.
-The next gate extends the Kudzu coordination reduction with that proven crash
-journey before claiming compiled-application crash recovery.
+The [compiled renderer-crash continuation](docs/next-architecture/actual-kudzu-renderer-crash.md)
+now passes the same three mutation boundaries with natural heartbeat promotion,
+uncertainty lockout, reload/readback and exact surviving-owner cleanup. Current
+registry core emits byte-identical output without source changes. The
+[unchanged upstream BFCache intake](docs/next-architecture/actual-bfcache-intake.md)
+now proves actual leader/follower cache restoration, budget rejoin and
+post-return mutation persistence. It also retains an observed leader cache
+eviction and fresh-document fallback; restoration is not guaranteed. Next extend
+the compiled coordination fixture with that bounded native lifecycle journey.
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
 

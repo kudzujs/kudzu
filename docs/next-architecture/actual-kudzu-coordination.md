@@ -98,8 +98,11 @@ renderer crashes and natural heartbeat eviction in pinned upstream with the
 retained patches. It preserves uncertain mutation settlement and reload/readback
 and initially exposed uncaught errors from additional pending requests after
 execution. A separate upstream spreadsheet correction now passes both crash
-cases with clean page errors. Next extend this fixture with that proven journey.
-Current Kudzu evidence
-uses graceful tab closure and explicit delivery barriers; it does not establish
+cases with clean page errors. The
+[compiled renderer-crash continuation](./actual-kudzu-renderer-crash.md) now
+passes completed and uncertain writes, natural heartbeat promotion,
+reload/readback and surviving-owner cleanup on unchanged 0.17.16 output.
+Current Kudzu evidence uses graceful closure and renderer crashes with explicit
+delivery barriers; it does not establish
 process-crash durability, BFCache restoration, concurrent conflicting writes,
 live query invalidation, automatic retries or exactly-once behavior.

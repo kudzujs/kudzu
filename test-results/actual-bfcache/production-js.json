@@ -1,0 +1,134 @@
+{
+  "data/migrations/1632571489012_remove_cache.js": {
+    "bytes": 3389,
+    "sha256": "c0695cd40c06bcc18f30550286ec0b767ccba7faa2cae5d7a20ed2866eff587f"
+  },
+  "data/migrations/1722717601000_reports_move_selected_categories.js": {
+    "bytes": 1702,
+    "sha256": "78518cb0679e0ca1dddda7f14d2d82fd2d911244dd7c78820ed8bc492221e938"
+  },
+  "data/migrations/1722804019000_create_dashboard_table.js": {
+    "bytes": 1820,
+    "sha256": "965a56eb9a6d6b722583a869f4b0dc3cc77fca177e736bd923ad51dafe04a9e5"
+  },
+  "data/migrations/1723665565000_prefs.js": {
+    "bytes": 1335,
+    "sha256": "cc82555f54a6b3d26c23baae0f8ba90f578667d9015dc5a88dd453ae2b6bb0d8"
+  },
+  "data/migrations/1765518577215_multiple_dashboards.js": {
+    "bytes": 817,
+    "sha256": "61f48407e23d744dc8738031c1b1d07ea75265461ed976a7a662d1f4095a63fa"
+  },
+  "kcab/kcab.worker.C7Thu0FH.js": {
+    "bytes": 3569490,
+    "sha256": "a68db8a029119d4e99045a769d475a2c22c1f073ccab155f476ec17f0acc54d9"
+  },
+  "static/js/AppliedFilters.BsRkwv9m.chunk.js": {
+    "bytes": 26982,
+    "sha256": "6b73f98947b58c015202a42bb71020212ad4cbab0920902b8f3637223b9bc3a5"
+  },
+  "static/js/BackgroundImage.tzJe3h4g.chunk.js": {
+    "bytes": 121859,
+    "sha256": "9a91291517d2c50095765eab3905a0f8ca9a4d22ea18b7cdb178cfb7d99222a9"
+  },
+  "static/js/FormulaEditor.CF38yV_J.chunk.js": {
+    "bytes": 624263,
+    "sha256": "65113753e6e5ae517f67e93d150d47946897f306c29e48a81e23a22867a536c1"
+  },
+  "static/js/ManageRules.Bw2jjYiw.chunk.js": {
+    "bytes": 55115,
+    "sha256": "d23fb75487446933634712efb3ca94b946da53b153ee4904747bf26e003c0f25"
+  },
+  "static/js/PayeeRuleCountLabel.D28VzpeG.chunk.js": {
+    "bytes": 10359,
+    "sha256": "e008d5922a12c12e45fe7655ccaa963afec6590b327484723b17d8c79566ac91"
+  },
+  "static/js/ReportRouter.DwQIZ4h0.chunk.js": {
+    "bytes": 1091383,
+    "sha256": "c6ce888be3936334716be2421bcc5f44ac812d41a8d5cf7314edf59a06b46d18"
+  },
+  "static/js/ScheduleEditForm.D_Tq__9g.chunk.js": {
+    "bytes": 57444,
+    "sha256": "2886a1271c0371d62892a470e39268e07a4a45f66ca1c63b7739a89c6232eeb4"
+  },
+  "static/js/SchedulesTable.ywN9MBae.chunk.js": {
+    "bytes": 125771,
+    "sha256": "9762ac5e1fc44bd546ea8279f27fb10cef6e8d74bdcaba2ee44c882368cac1e3"
+  },
+  "static/js/TransactionEdit.EYOjD0Rm.chunk.js": {
+    "bytes": 176296,
+    "sha256": "4cf53900ac29fe25718c715209651d4573aa6c60b250d30f49e20b4cbeda7a78"
+  },
+  "static/js/TransactionList.DWgKR1FI.chunk.js": {
+    "bytes": 65711,
+    "sha256": "659709c6c8a796a51f28d368dd5e8844935a72b1c43132cfbee49968837ee608"
+  },
+  "static/js/Value.Csf_jRvK.chunk.js": {
+    "bytes": 1628035,
+    "sha256": "78815e417d98c39f0bbc11b68f6b7c90f164e2d8c3745613906dfa1a30fd40d2"
+  },
+  "static/js/bootstrapHyperFormula.Bjyks_QJ.chunk.js": {
+    "bytes": 471,
+    "sha256": "4626ccd105efa9b8ea0c833b1b6bb2dffa2c2bf2a2a0b6905e857a7903d324c4"
+  },
+  "static/js/browser-server.Bn9r7T7W.js": {
+    "bytes": 3089,
+    "sha256": "84c5a2dbb2d71e90555731b2572599a58274694e1add582431fceed0510807e8"
+  },
+  "static/js/chart-theme.COw10FgZ.chunk.js": {
+    "bytes": 520248,
+    "sha256": "8b639196645e894866f863ed255d359104587ff0438a3e09909c79fd4f7bfdf5"
+  },
+  "static/js/client.QxfroWzs.chunk.js": {
+    "bytes": 387791,
+    "sha256": "8de5d60fd37d259cb0f3d133a16ee0603a449070ece2592f199cd7350ff5e236"
+  },
+  "static/js/index.CExb72fA.js": {
+    "bytes": 1198644,
+    "sha256": "0aba5922b8afacbfc63b1c701579dff497d229da1a1138d4c9310db2be10af31"
+  },
+  "static/js/indexeddb-main-thread-worker-e59fee74.B9D89_PE.chunk.js": {
+    "bytes": 13621,
+    "sha256": "b6569cc68c0fcdab1c023bf63add9084073836a088dcaec31db13441cfd65389"
+  },
+  "static/js/narrow.chfCf2h2.chunk.js": {
+    "bytes": 220439,
+    "sha256": "35650a71ab4c3452f6447df09ef773a10d08ccaaf1f796cf39e0ee523d089796"
+  },
+  "static/js/theme.BTyknj3e.chunk.js": {
+    "bytes": 27805,
+    "sha256": "23832b3c557b0f7d64dbbd946ab4d8a5e9eb9fee666c6984aad3f520ae850d90"
+  },
+  "static/js/useDateFormat.YNPOBaS8.chunk.js": {
+    "bytes": 2368057,
+    "sha256": "23244bc05c919c683dfdefd39cdc577dd03bde3f1c532b37201cddc306ab5ca7"
+  },
+  "static/js/useFormatList._ESidR0w.chunk.js": {
+    "bytes": 8798,
+    "sha256": "cffe54bef2a57d00a828411b7daaf6876630ac66ae5443b848ee7fba6d052f8f"
+  },
+  "static/js/useTransactionBatchActions.QKWOjH8Z.chunk.js": {
+    "bytes": 9025,
+    "sha256": "5dae85daef5b202d6aa9e2d57f1b7e82155674144b65b4bf5d977896114b98be"
+  },
+  "static/js/wide.CP6Ylxmp.chunk.js": {
+    "bytes": 211973,
+    "sha256": "693b9d82666465f654a7d28abc0724889d398b0a09aaa57bddfe1ad763ea2175"
+  },
+  "static/js/workbox-window.prod.es5.D5AzH0Wa.chunk.js": {
+    "bytes": 5720,
+    "sha256": "9fcbd9a740f1e90ecda06cd76e53ddfdaede4d0fa9da39c93725593f8a4f5279"
+  },
+  "static/shared-browser-server-C7q_DhZs.js": {
+    "bytes": 10859,
+    "sha256": "01cb8e356714e7d3b244465d4a0eb3a89e3e8c8382859892620649a059391476"
+  },
+  "sw.js": {
+    "bytes": 12263,
+    "sha256": "2bdda54f3971934c07292e0fc18fb654aa19b5844d1fb271a220645ebc3f6b53"
+  },
+  "workbox-2fbc6a65.js": {
+    "bytes": 15116,
+    "sha256": "c7351afad07c7a3f5421b85f64e1e811dfd6ba40cf9d7a82af275179f4e23eb7"
+  }
+}

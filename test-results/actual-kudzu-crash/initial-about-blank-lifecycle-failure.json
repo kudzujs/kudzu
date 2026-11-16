@@ -1,0 +1,43 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "crash",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [
+        "one-backend-and-real-follower"
+      ],
+      "errors": [],
+      "accountID": "305b172b-d34a-4eb9-8536-7d9c8273470e",
+      "requestID": "cc25a889-198e-4812-a00c-64bdaacffecd:mutate",
+      "leaderRequestIDs": [
+        "977a9d1f-63ad-4e0b-b129-6067b510f1e8:create",
+        "ad021e99-6e32-46b9-a4b7-3f0e98767c4b:prefs",
+        "56c0aca4-41a5-45f0-937e-de3832acc2a0:accounts"
+      ],
+      "followerRequestIDs": [
+        "3d335f89-f255-4968-80ea-e10ec41e1443:open",
+        "ffd3da2d-7251-4b96-a8a4-ba095da9e475:prefs",
+        "2904bb98-78d2-4b40-be4e-b879f9c4ed43:accounts",
+        "cc25a889-198e-4812-a00c-64bdaacffecd:mutate",
+        "283dd891-327c-461f-a6ed-425ee92b9226:accounts",
+        "41135455-2dc1-478a-abc4-f27d2614fdbf:balance|305b172b-d34a-4eb9-8536-7d9c8273470e"
+      ],
+      "promotionAfterLossMs": 18516,
+      "lifecycleAtPromotion": [
+        {
+          "tab": "leader",
+          "type": "beforeunload"
+        },
+        {
+          "tab": "follower",
+          "type": "beforeunload"
+        }
+      ]
+    }
+  ],
+  "pass": false,
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   {\n+     tab: 'leader',\n+     type: 'beforeunload'\n+   }\n+ ]\n- []\n\n    at file:///home/kft/Documents/etc/kudzu/test/actual-kudzu-crash.mjs:158:14"
+}

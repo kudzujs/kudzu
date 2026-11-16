@@ -1,5 +1,22 @@
 # Application Capability Release Plan
 
+BFCache intake (2026-11-16): the
+[unchanged pinned Actual probe](./actual-bfcache-intake.md) proves native
+leader/follower restoration, budget-specific rejoin and post-return account
+creation persisted across reload. One earlier leader run was evicted with
+`IgnoreEventAndEvict` and recovered through a fresh document; it is retained as
+a BFCache acceptance failure. Cache eligibility is not guaranteed. Next extend
+the compiled coordination fixture with this bounded lifecycle journey.
+
+Compiled renderer-crash continuation (2026-11-16): the
+[existing coordination reduction](./actual-kudzu-renderer-crash.md) passes three
+crash cases and three graceful controls on registry core 0.17.16. Natural
+heartbeat promotion, uncertainty lockout, no mutation replay, account
+identity/balance readback, surviving-owner cleanup and static exclusion pass.
+All 77 deploy files remain byte-identical; check and all 404 tests pass.
+No compiler/runtime/package change. Next: pinned-upstream BFCache suspend/resume
+intake before expanding the compiled lifecycle claim.
+
 Abrupt leader-loss continuation (2026-11-16): the
 [pinned-upstream intake](./actual-abrupt-leader-loss.md) uses actual renderer
 crashes and the original heartbeat interval. The retained candidate settles the
@@ -7,8 +24,8 @@ uncertain mutation once and readback distinguishes absent from committed account
 but the after-execution case exposes uncaught errors from additional pending
 requests. A separate spreadsheet correction handles all three discarded-promise
 paths and reports one visible warning without replaying writes. Its three unit
-regressions and both real renderer-crash cases pass. Next extend the Kudzu
-coordination reduction with this journey. No compiler/runtime change or
+regressions and both real renderer-crash cases pass. The compiled continuation
+above closes the subsequent coordination journey gate. No compiler/runtime change or
 OS-crash-durability claim.
 
 Created-budget continuation: the [upstream correction candidate](./actual-created-budget-association.md)

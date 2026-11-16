@@ -1,0 +1,397 @@
+{
+  "baselineCore": "0.17.14",
+  "candidateCore": "0.17.16",
+  "sourceIdentical": true,
+  "outputIdentical": true,
+  "generatedJS": {
+    "raw": 31661,
+    "gzip": 12673
+  },
+  "files": {
+    "assets/effects/index.js": {
+      "raw": 3488,
+      "gzip": 1543,
+      "sha256": "648ef1f16fb626cfb81f820eba988deea48f00c94f0ca71e8d392d70af3e3fd3"
+    },
+    "assets/handlers/pages/index.js": {
+      "raw": 3786,
+      "gzip": 1547,
+      "sha256": "92f5e97005361a05df7a1f4cc5e0ed6e62dfe05a80b946e2329540155b88f405"
+    },
+    "assets/native/index.js": {
+      "raw": 183,
+      "gzip": 147,
+      "sha256": "fea6c1a7d9d8db69687117950865f06c34033cb3b1b61ddb558dc6366e23cf62"
+    },
+    "assets/runtime/2ec9e63c0fbdc1bd/kudzu-binding.js": {
+      "raw": 4612,
+      "gzip": 1999,
+      "sha256": "7a3db0738c6388882746d967e1646789d037b2b3f78b04dd07d8d96f90279f3e"
+    },
+    "assets/runtime/2ec9e63c0fbdc1bd/kudzu-effect.js": {
+      "raw": 367,
+      "gzip": 258,
+      "sha256": "51f15a52d27300a646ca5593a817cb1ff1fd87f6dcf8f0074ab1a01ad153e5e9"
+    },
+    "assets/runtime/2ec9e63c0fbdc1bd/kudzu-list.js": {
+      "raw": 14438,
+      "gzip": 4773,
+      "sha256": "110afc88dca8e5155d33aeae3e36aaac237cbb2e4161e308a85bd760d4978f67"
+    },
+    "assets/runtime/2ec9e63c0fbdc1bd/kudzu-native.js": {
+      "raw": 1832,
+      "gzip": 980,
+      "sha256": "218bdf181f12e28be23458bba26488c10d74a4b926208ee947df46ee004a1d2d"
+    },
+    "assets/runtime/2ec9e63c0fbdc1bd/kudzu-serialization.js": {
+      "raw": 748,
+      "gzip": 425,
+      "sha256": "7bee687440659a43fe126563a0c088a0a23a3bac349137db989bf713ab0787e1"
+    },
+    "assets/runtime/2ec9e63c0fbdc1bd/kudzu.js": {
+      "raw": 2207,
+      "gzip": 1001,
+      "sha256": "ea4739df7dc273c217a1371ab10510b0bd9c61a0909632eca2d94114ef00227d"
+    },
+    "browser-server.js": {
+      "raw": 3089,
+      "gzip": 1205,
+      "sha256": "84c5a2dbb2d71e90555731b2572599a58274694e1add582431fceed0510807e8"
+    },
+    "coordinator.js": {
+      "raw": 11187,
+      "gzip": 3455,
+      "sha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c"
+    },
+    "data-file-index.txt": {
+      "raw": 2787,
+      "gzip": 1010,
+      "sha256": "7bc6fe311d023516343afdf2379852511f62d67e7ee6a401407a44d6964901d0"
+    },
+    "data/default-db.sqlite": {
+      "raw": 282624,
+      "gzip": 17725,
+      "sha256": "41f638926c9457a01de4fa21d592196198e928aa1336cd6b9ffccd77d48971b6"
+    },
+    "data/migrations/1548957970627_remove-db-version.sql": {
+      "raw": 52,
+      "gzip": 72,
+      "sha256": "75566e310c4549df79cc1e7899389feae3ac4791f682e4e59b55001b5862e901"
+    },
+    "data/migrations/1550601598648_payees.sql": {
+      "raw": 434,
+      "gzip": 228,
+      "sha256": "586c365eaef01db19345bf6a19430bb0a3a0a42cf219c4be20822ba8acb0bd15"
+    },
+    "data/migrations/1555786194328_remove_category_group_unique.sql": {
+      "raw": 555,
+      "gzip": 225,
+      "sha256": "6afdb7f2a07844ca9263688cf5e601da5e1564a3ed5267545f02a4f40b6d4476"
+    },
+    "data/migrations/1561751833510_indexes.sql": {
+      "raw": 197,
+      "gzip": 113,
+      "sha256": "bd89c7bd8fb82c5fa2662daf5decbfd87bb9538cea826efffab4a3fa44eddc89"
+    },
+    "data/migrations/1567699552727_budget.sql": {
+      "raw": 908,
+      "gzip": 312,
+      "sha256": "1aae0ddff63b14166d6e0f168d351441877bc8e72150e9ec8cedef8b938d9ed4"
+    },
+    "data/migrations/1582384163573_cleared.sql": {
+      "raw": 155,
+      "gzip": 121,
+      "sha256": "083cab3f6f9a286063453100c7d52bab8cb6b7ac16093d42541f9d9614c21bf2"
+    },
+    "data/migrations/1597756566448_rules.sql": {
+      "raw": 157,
+      "gzip": 141,
+      "sha256": "c68499e46db192f7dc60ed42d76cc86e05600594671ecb7a6c7c63c1a0a75174"
+    },
+    "data/migrations/1608652596043_parent_field.sql": {
+      "raw": 260,
+      "gzip": 192,
+      "sha256": "882baf6afadd13374641c0b61b197f67816d83902b9dea245ba9803c01299f8c"
+    },
+    "data/migrations/1608652596044_trans_views.sql": {
+      "raw": 1584,
+      "gzip": 611,
+      "sha256": "dfcfc0e5b938492aa5347b2bc54305f86a6d7a4f8e0682276afc7235af54d289"
+    },
+    "data/migrations/1612625548236_optimize.sql": {
+      "raw": 124,
+      "gzip": 130,
+      "sha256": "54a671df6b90586d1bdaeadf362fccb0518111d5ff9aa702df70d9b5d9f56dbe"
+    },
+    "data/migrations/1614782639336_trans_views2.sql": {
+      "raw": 990,
+      "gzip": 485,
+      "sha256": "61c4602fbad55832ddf7f26e54d356f81d6d019984a0efad76059350286413e9"
+    },
+    "data/migrations/1615745967948_meta.sql": {
+      "raw": 244,
+      "gzip": 158,
+      "sha256": "e63d7cc224c316378a2b3581164a486d8d683f018a2c105d4017c87267643713"
+    },
+    "data/migrations/1616167010796_accounts_order.sql": {
+      "raw": 78,
+      "gzip": 94,
+      "sha256": "68bbe2f018b2da2775a56649f4b337dd5238af81912763d4a68e5e74d099c5bd"
+    },
+    "data/migrations/1618975177358_schedules.sql": {
+      "raw": 603,
+      "gzip": 262,
+      "sha256": "dd61d87ab18faaa102e103cf7225eb8b53ed293a04ae86f48cd65af3a27cc768"
+    },
+    "data/migrations/1632571489012_remove_cache.js": {
+      "raw": 3389,
+      "gzip": 1111,
+      "sha256": "c0695cd40c06bcc18f30550286ec0b767ccba7faa2cae5d7a20ed2866eff587f"
+    },
+    "data/migrations/1679728867040_rules_conditions.sql": {
+      "raw": 92,
+      "gzip": 109,
+      "sha256": "17413daafa800c33c3682828dff4a507087b0eead2ab3fb282515e16ea639e4c"
+    },
+    "data/migrations/1681115033845_add_schedule_name.sql": {
+      "raw": 86,
+      "gzip": 99,
+      "sha256": "489381ca60308fff15412a4ec6ca41bceec4a0c2d1e26ab249f7b0ff62bd8e5f"
+    },
+    "data/migrations/1682974838138_remove_payee_rules.sql": {
+      "raw": 53,
+      "gzip": 73,
+      "sha256": "763455424632da16f6be7db43871e42e69d106a0840a5d38d61f3cb4a1a15f83"
+    },
+    "data/migrations/1685007876842_add_category_hidden.sql": {
+      "raw": 172,
+      "gzip": 125,
+      "sha256": "a7f1b80e4f342593dd7c961bffa5ca23fe59d2f1d694716c8653353aec5a954c"
+    },
+    "data/migrations/1686139660866_remove_account_type.sql": {
+      "raw": 68,
+      "gzip": 88,
+      "sha256": "4456361fae4b67d3243def5cc0650338ee5c9fbebfb977a716c47648e3849d36"
+    },
+    "data/migrations/1688749527273_transaction_filters.sql": {
+      "raw": 190,
+      "gzip": 160,
+      "sha256": "ceb054d06727f4143420dd35653002217640893812146ea14f6c4d825e467e30"
+    },
+    "data/migrations/1688841238000_add_account_type.sql": {
+      "raw": 72,
+      "gzip": 91,
+      "sha256": "265a1475dc01b614943a0b11b6e54d82ce7e53cd796b862f2cce81f0e79190ef"
+    },
+    "data/migrations/1691233396000_add_schedule_next_date_tombstone.sql": {
+      "raw": 101,
+      "gzip": 115,
+      "sha256": "29732bc8279a5d9c111c7b7c4ea7b45b5e2c0f55b59bc4d93a83467d0c657c7c"
+    },
+    "data/migrations/1694438752000_add_goal_targets.sql": {
+      "raw": 220,
+      "gzip": 138,
+      "sha256": "2636f3e7a3d3026fc7c67fab0a0f73cd9a8a14f57dcd4ea7fe762791951c02ac"
+    },
+    "data/migrations/1697046240000_add_reconciled.sql": {
+      "raw": 95,
+      "gzip": 108,
+      "sha256": "24f44f300544351857da9395bbe0ff3b28ab93913fe4d5493f3f7d141665b9ae"
+    },
+    "data/migrations/1704572023730_add_account_sync_source.sql": {
+      "raw": 87,
+      "gzip": 100,
+      "sha256": "a2a942636395d96be80e3c1b915741ae931a152a8f93d7a88f708152ae5ade89"
+    },
+    "data/migrations/1704572023731_add_missing_goCardless_sync_source.sql": {
+      "raw": 150,
+      "gzip": 134,
+      "sha256": "ca03745e86c52850ba1e949555703c5639df443a74864a16e65ea81dfdcd6431"
+    },
+    "data/migrations/1707267033000_reports.sql": {
+      "raw": 700,
+      "gzip": 324,
+      "sha256": "ec40f1db297b92193fa1180680deb9b9f0e104186cc628e8cb5938df24fc7d7a"
+    },
+    "data/migrations/1712784523000_unhide_input_group.sql": {
+      "raw": 89,
+      "gzip": 108,
+      "sha256": "2185eb159c28e269cd0534fd232151102644deccd242736bea23d23f4ea5f942"
+    },
+    "data/migrations/1716359441000_include_current.sql": {
+      "raw": 101,
+      "gzip": 114,
+      "sha256": "0ebb51205c90e85569ed06c6d6e4b47162ef34e6b5da2f73c32da3858442dd63"
+    },
+    "data/migrations/1720310586000_link_transfer_schedules.sql": {
+      "raw": 390,
+      "gzip": 196,
+      "sha256": "a1e3a6a54ea3cd5fed13bdbfce725873bd1a4a24cc6f8abc70ba955f4d8b6ab4"
+    },
+    "data/migrations/1720664867241_add_payee_favorite.sql": {
+      "raw": 100,
+      "gzip": 108,
+      "sha256": "ab21d24c223d4c0257c8d22f0f4d74d585dd7d558e3c7af15973eb31511914e5"
+    },
+    "data/migrations/1720665000000_goal_context.sql": {
+      "raw": 167,
+      "gzip": 123,
+      "sha256": "c4d68449b5b88c4c4ee4ba33d8d8713892b2c7021c0ceff3b626396d2676e5b0"
+    },
+    "data/migrations/1722717601000_reports_move_selected_categories.js": {
+      "raw": 1702,
+      "gzip": 667,
+      "sha256": "78518cb0679e0ca1dddda7f14d2d82fd2d911244dd7c78820ed8bc492221e938"
+    },
+    "data/migrations/1722804019000_create_dashboard_table.js": {
+      "raw": 1820,
+      "gzip": 719,
+      "sha256": "965a56eb9a6d6b722583a869f4b0dc3cc77fca177e736bd923ad51dafe04a9e5"
+    },
+    "data/migrations/1723665565000_prefs.js": {
+      "raw": 1335,
+      "gzip": 716,
+      "sha256": "cc82555f54a6b3d26c23baae0f8ba90f578667d9015dc5a88dd453ae2b6bb0d8"
+    },
+    "data/migrations/1730744182000_fix_dashboard_table.sql": {
+      "raw": 84,
+      "gzip": 104,
+      "sha256": "3db383b10ed9ba43abfb3359a1a6a00cb2c273b8e8686cdd3bfe1755d8cb919d"
+    },
+    "data/migrations/1736640000000_custom_report_sorting.sql": {
+      "raw": 230,
+      "gzip": 163,
+      "sha256": "a60fcd9b4e840c17e2a4a31f30d3ef4bb06bd0b8c0e4af7acba05e768776c9ca"
+    },
+    "data/migrations/1737158400000_add_learn_categories_to_payees.sql": {
+      "raw": 95,
+      "gzip": 110,
+      "sha256": "b0d373722e7f1c347202ce64b7360daa2047e9e6cf58699076d32db98ebfb4c5"
+    },
+    "data/migrations/1738491452000_sorting_rename.sql": {
+      "raw": 513,
+      "gzip": 204,
+      "sha256": "be8434eec826d8482ce8dc937aaa924fb8560d7ee9c6dfd84fd430ca6ab151e2"
+    },
+    "data/migrations/1739139550000_bank_sync_page.sql": {
+      "raw": 136,
+      "gzip": 120,
+      "sha256": "880247b4a518dfcb2fc21ba4af0d280643160b606d90cb52a7d8f26632c46505"
+    },
+    "data/migrations/1740506588539_add_last_reconciled_at.sql": {
+      "raw": 83,
+      "gzip": 100,
+      "sha256": "7e89870f84b4b56af97257448d2fb064ffcae6cbc4c44748b89ffca289a0f76a"
+    },
+    "data/migrations/1745425408000_update_budgetType_pref.sql": {
+      "raw": 170,
+      "gzip": 151,
+      "sha256": "37c59829a0644b94f1df02685d9b8640ec0fa609a9c23899dfcfad000aea8514"
+    },
+    "data/migrations/1749799110000_add_tags.sql": {
+      "raw": 125,
+      "gzip": 126,
+      "sha256": "14c150a64e08fd8150e12c378200092af7b8f4c03069b34360901cb3eb9b7645"
+    },
+    "data/migrations/1749799110001_tags_tombstone.sql": {
+      "raw": 86,
+      "gzip": 102,
+      "sha256": "33c7b597ba290d897bad00b2104e401d380b1bbfafcca1dda7de9f265bf5fa7e"
+    },
+    "data/migrations/1754611200000_add_category_template_settings.sql": {
+      "raw": 319,
+      "gzip": 231,
+      "sha256": "fc95a7ad651687c5e4eec36a89476c8faddc64722b73326e3af80d562bb43f9e"
+    },
+    "data/migrations/1759260219000_add_trim_interval_report_setting.sql": {
+      "raw": 165,
+      "gzip": 145,
+      "sha256": "7b0f3ba004078a0f51a9d18e6e7312f6f54b280216508ae6b1563a44b506ffa7"
+    },
+    "data/migrations/1759842823172_add_isGlobal_to_preferences.sql": {
+      "raw": 47,
+      "gzip": 67,
+      "sha256": "edbfd62ccefd2628c62f27e92caa64894e0e4de3c43baf94424ae3bd1d2d74de"
+    },
+    "data/migrations/1762178745667_rename_csv_skip_lines_pref.sql": {
+      "raw": 212,
+      "gzip": 155,
+      "sha256": "2baf91646869ee97b74e60db0a97df088b799dc395635b62a6ab283d4ae758f2"
+    },
+    "data/migrations/1765518577215_multiple_dashboards.js": {
+      "raw": 817,
+      "gzip": 408,
+      "sha256": "61f48407e23d744dc8738031c1b1d07ea75265461ed976a7a662d1f4095a63fa"
+    },
+    "data/migrations/1768872504000_add_payee_locations.sql": {
+      "raw": 768,
+      "gzip": 313,
+      "sha256": "ebaa4677d62abfd442be138d9cc8778d8fb64132a8ac653f8c3f03a19e9046b5"
+    },
+    "data/migrations/1769000000000_add_custom_upcoming_length.sql": {
+      "raw": 104,
+      "gzip": 116,
+      "sha256": "6868b2ff18e8df85daa317e58cb96e04600a2d215b42334f8681cf2d67e52591"
+    },
+    "data/migrations/1778510362740_add_cleanup_groups_and_def.sql": {
+      "raw": 203,
+      "gzip": 171,
+      "sha256": "b2501d91f82ff56ca1140968c437f1c75ad8bed66b336c0154425b62f2500755"
+    },
+    "data/migrations/1780099200000_add_show_trend_lines_report_setting.sql": {
+      "raw": 103,
+      "gzip": 116,
+      "sha256": "0cd743598eb1d7b85519f537cee8014c1b2a235fe20451897eb4222e308b937f"
+    },
+    "data/migrations/1780327681000_add_tags_hidden.sql": {
+      "raw": 83,
+      "gzip": 97,
+      "sha256": "72174eea71871a9fdd71ecb9780393ae2c3b48419caa23acc68fbe0383245147"
+    },
+    "data/migrations/1780606215000_add_bank_sync_status.sql": {
+      "raw": 84,
+      "gzip": 101,
+      "sha256": "8c80a5ea5649435fbfe89308b0c8a2ff9020553dee676aec1c55f48214497f1d"
+    },
+    "data/migrations/1780606215001_add_performance_indexes.sql": {
+      "raw": 202,
+      "gzip": 136,
+      "sha256": "eb5add27f8bb44c1bd7fe5e14ed20565cd09c7237b03a5f6a7baacb5d7cfdb1f"
+    },
+    "data/migrations/1783004650757_schedule_sort_order.sql": {
+      "raw": 89,
+      "gzip": 105,
+      "sha256": "38cbfbda34ce749f45d145ad8156a054fd20fa477b83c3176127a695315f7687"
+    },
+    "idb-worker.js": {
+      "raw": 9384,
+      "gzip": 2968,
+      "sha256": "e86b86948940f8da967ada3e325f5ab944a973bea223ecd8b19ecb442083c4de"
+    },
+    "index.html": {
+      "raw": 5271,
+      "gzip": 1066,
+      "sha256": "adf58183f7490b6130102687a0bbf286cf72f4147af06503f77503161a98fac1"
+    },
+    "kcab/kcab.worker.C7Thu0FH.js": {
+      "raw": 3569490,
+      "gzip": 775846,
+      "sha256": "a68db8a029119d4e99045a769d475a2c22c1f073ccab155f476ec17f0acc54d9"
+    },
+    "kcab/kcab.worker.C7Thu0FH.js.map": {
+      "raw": 9923633,
+      "gzip": 1902111,
+      "sha256": "fc4aab0ca21742c7e62dee1236f12ec7b11ea080e1d0fa235d3817d9c61a0acb"
+    },
+    "sql-wasm.wasm": {
+      "raw": 1105290,
+      "gzip": 439517,
+      "sha256": "806886f413da1a6acc1db373285adda1b6750c8d434c75a5a6042af0a65cbafd"
+    },
+    "static/index.html": {
+      "raw": 265,
+      "gzip": 207,
+      "sha256": "826f377af1faa10b2d11c3a44a537cf2e2c9bd3725c76b03f60723353a0a3460"
+    }
+  }
+}

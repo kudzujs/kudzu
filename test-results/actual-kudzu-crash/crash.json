@@ -1,0 +1,151 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "crash",
+  "sourceSha256": "042e6ed94d07aa16af1c8fc55ca334ef85f40ccb37b17bbd40eb9d50bd86af7d",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [
+        "one-backend-and-real-follower",
+        "renderer-crash-and-natural-heartbeat-promotion",
+        "reload-readback-reconciles-actual-outcome",
+        "conditional-and-pagehide-release-all-ports-workers-listeners",
+        "static-sibling-requests-only-html"
+      ],
+      "errors": [],
+      "accountID": "019a5948-f420-48c7-aedb-9d1abea5a371",
+      "requestID": "6b623ddc-d42b-4e25-9eff-eaeb12b6c928:mutate",
+      "leaderRequestIDs": [
+        "066d962f-713f-4981-93fd-dfe32f286479:create",
+        "3cf37db8-36f6-43ba-9c16-15bfd6205844:prefs",
+        "d49cbfdb-49d5-4a47-bf51-adc5e7b95e1d:accounts"
+      ],
+      "followerRequestIDs": [
+        "4c8b3c30-3772-4778-a051-41e35f3d2bd4:open",
+        "6c402681-de7b-40f2-ae9c-4ed28e97d94e:prefs",
+        "6b46b4a8-b262-44ac-997d-8b69b5af56a3:accounts",
+        "6b623ddc-d42b-4e25-9eff-eaeb12b6c928:mutate",
+        "0d2c8ae1-dd9a-42b0-8d4b-667c82f9d39e:accounts",
+        "2fb5fb79-d1b9-4784-b134-9287b9e4850d:balance|019a5948-f420-48c7-aedb-9d1abea5a371"
+      ],
+      "promotionAfterLossMs": 18042,
+      "lifecycleAtPromotion": [],
+      "terminal": [
+        {
+          "type": "reply",
+          "id": "6b623ddc-d42b-4e25-9eff-eaeb12b6c928:mutate",
+          "result": "019a5948-f420-48c7-aedb-9d1abea5a371",
+          "mutated": true
+        }
+      ],
+      "sentMutations": 1,
+      "readback": {
+        "count": 1,
+        "balances": [
+          "1000"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "mode": "request",
+      "steps": [
+        "one-backend-and-real-follower",
+        "renderer-crash-and-natural-heartbeat-promotion",
+        "uncertainty-visible-and-retry-disabled",
+        "reload-readback-reconciles-actual-outcome",
+        "conditional-and-pagehide-release-all-ports-workers-listeners",
+        "static-sibling-requests-only-html"
+      ],
+      "errors": [],
+      "held": {
+        "id": "d632b041-053a-4d74-af7e-cc87a5c7b1f6:mutate",
+        "name": "account-create",
+        "args": {
+          "name": "Follower Checking",
+          "balance": 10,
+          "offBudget": false
+        }
+      },
+      "requestID": "d632b041-053a-4d74-af7e-cc87a5c7b1f6:mutate",
+      "leaderRequestIDs": [
+        "2fdc9e03-0671-41ba-88ad-e55fc41677c8:create",
+        "9b955a40-90c7-43e8-9fc0-245eaa47309d:prefs",
+        "ff3502d2-3f81-4572-ac89-6d968de25518:accounts"
+      ],
+      "followerRequestIDs": [
+        "634088e0-12af-4c21-969d-03327463e19e:open",
+        "5c3599b4-07e3-459a-aef1-7b724e8924d4:prefs",
+        "f0ff2382-93d9-4896-b531-02cc689fb6b7:accounts",
+        "d632b041-053a-4d74-af7e-cc87a5c7b1f6:mutate"
+      ],
+      "promotionAfterLossMs": 18515,
+      "lifecycleAtPromotion": [],
+      "terminal": [
+        {
+          "type": "error",
+          "id": "d632b041-053a-4d74-af7e-cc87a5c7b1f6:mutate",
+          "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+        }
+      ],
+      "sentMutations": 1,
+      "readback": {
+        "count": 0,
+        "balances": []
+      },
+      "pass": true
+    },
+    {
+      "mode": "reply",
+      "steps": [
+        "one-backend-and-real-follower",
+        "renderer-crash-and-natural-heartbeat-promotion",
+        "uncertainty-visible-and-retry-disabled",
+        "reload-readback-reconciles-actual-outcome",
+        "conditional-and-pagehide-release-all-ports-workers-listeners",
+        "static-sibling-requests-only-html"
+      ],
+      "errors": [],
+      "held": {
+        "type": "reply",
+        "id": "56f627d6-1b06-444f-b9a6-77bec989489a:mutate",
+        "result": "0f46afc2-0855-4e0b-b7e4-e1f469b00ad0",
+        "mutated": true
+      },
+      "requestID": "56f627d6-1b06-444f-b9a6-77bec989489a:mutate",
+      "leaderRequestIDs": [
+        "dd3ffcc3-d355-4bf3-a2d2-1d781a29a5e5:create",
+        "8bd408f0-83ef-4789-b07e-68b7672d23a3:prefs",
+        "6f8ad6af-8b87-45cd-af07-f71bb7f1b803:accounts"
+      ],
+      "followerRequestIDs": [
+        "b97b12ed-656d-4955-919f-22fd897feeea:open",
+        "ac8741b2-5e94-4724-bd50-20486e3e6c91:prefs",
+        "ec5be9dd-4923-4607-90d1-5d73afe5373f:accounts",
+        "56f627d6-1b06-444f-b9a6-77bec989489a:mutate"
+      ],
+      "promotionAfterLossMs": 18510,
+      "lifecycleAtPromotion": [],
+      "terminal": [
+        {
+          "type": "error",
+          "id": "56f627d6-1b06-444f-b9a6-77bec989489a:mutate",
+          "error": "The backend leader changed. This operation may have completed. Reload and check your data before trying again."
+        }
+      ],
+      "sentMutations": 1,
+      "accountID": "0f46afc2-0855-4e0b-b7e4-e1f469b00ad0",
+      "readback": {
+        "count": 1,
+        "balances": [
+          "1000"
+        ]
+      },
+      "pass": true
+    }
+  ],
+  "pass": true
+}

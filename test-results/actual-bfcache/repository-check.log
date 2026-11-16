@@ -1,0 +1,8 @@
+
+> @kudzujs/core@0.17.16 check
+> tsc --noEmit && tsc -p test/fixtures/tsconfig.json --noEmit && node ./bin/kudzu.mjs build
+
+Built 267 page(s), 2 interactive page(s) into dist/
+Route HTML scan: 184 without script/modulepreload text markers, 83 with markers, 0 unreadable.
+  With markers: "dist/index.html", "dist/docs/index.html", "dist/example/index.html", "dist/example/blog/changelog/index.html", "dist/example/blog/changelog/demo/index.html" (+78 more)
+Browser behavior and accessibility need verification: https://kudzujs.cloud/docs#build

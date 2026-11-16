@@ -1,5 +1,18 @@
 # Kudzu Releases
 
+## 0.17.17 - Crash Recovery and BFCache Evidence
+
+- Prove completed and uncertain follower writes across real renderer crashes in
+  the compiled coordination fixture: natural heartbeat promotion, no replay,
+  reload/readback, exact surviving-owner cleanup and HTML-only static output.
+- Retain byte-identical output across all 77 fixture deploy files.
+- Exercise real BFCache restoration in unchanged pinned upstream Actual, including
+  budget rejoin, post-return account creation and persisted ID/balance readback.
+- Preserve leader cache eviction and fresh-document fallback as distinct outcomes;
+  strict BFCache acceptance has retained failures and restoration is not guaranteed.
+- No compiler, CLI, browser runtime or dependency changes. Generator 0.1.173
+  retains ^0.17.12. Compiled BFCache behavior remains the next evidence gate.
+
 ## 0.17.16 - Abrupt Leader-Loss Evidence
 
 - Retain an executable real renderer-crash probe for pinned Actual Budget,

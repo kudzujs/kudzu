@@ -71,6 +71,12 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The user-requested 0.17.17 evidence release records compiled renderer-crash
+recovery and unchanged-upstream BFCache restoration/fallback. Failed cache
+acceptance remains explicit; compiled BFCache behavior is not yet proven.
+No compiler/runtime implementation change. Generator 0.1.173 retains ^0.17.12.
+Exact-commit CI and normal release gates still apply.
+
 The user-requested 0.17.16 evidence release records pinned Actual renderer-crash
 handoff and a separate upstream spreadsheet error-handling correction. Browser
 and unit receipts retain both reproduced failures and passing correction cases.

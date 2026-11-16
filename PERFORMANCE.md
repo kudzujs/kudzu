@@ -1,5 +1,73 @@
 # Performance Records
 
+## 0.17.17 Release Scope
+
+The user-requested release publishes the two lifecycle packets below. Their
+measurements used registry core 0.17.16 and unchanged pinned upstream; the entire
+`framework/` and `bin/` trees remain unchanged for 0.17.17. Strict upstream
+BFCache acceptance failures remain disclosed. This is an evidence release, not
+a new compiled BFCache capability or a performance improvement.
+
+Final version-aligned validation: check builds 268 pages; all 404 tests pass
+without skips; both package smokes pass. Release evidence:
+`kudzu-lifecycle-0.17.17.tar.gz`, SHA256
+`dc72175b6eacf095301a1329d0f8bfc4e6da0213e546e4a9722cbde4c7eb4ec3`.
+The archive includes probes, passing/failed receipts, fixture source/public/output,
+original upstream build/lockfile, patches, licenses and validation logs.
+
+## Original Actual BFCache Intake (2026-11-16)
+
+The [unchanged-upstream probe](docs/next-architecture/actual-bfcache-intake.md)
+enables native BFCache eligibility in Playwright and tests a plain HTML control
+plus departing leader/follower documents. The full run restores all three from
+cache. Both returned app documents send budget-specific `__resume-tab`, rejoin
+as followers, create one real account and retain its ID/URL and 10.00 balance
+after reload. One survivor backend, no returned follower backend, zero page/HTTP
+errors. Original coordinator tests: 44 pass.
+
+A second full run restores the follower but evicts the leader; both paths still
+pass post-return creation and persisted readback with zero errors. Its nonzero
+strict BFCache result is retained as `repeat.json`. It ran alongside repository
+tests; these runs establish neither timing nor a cache-hit-rate comparison.
+
+The first same-origin away-page experiment was invalid because Actual's service
+worker served the app shell. The corrected eligibility-only run then observed
+a real leader cache eviction (`IgnoreEventAndEvict`) and fresh-document fallback;
+that failed cache-acceptance receipt remains retained. The later passing run
+does not establish guaranteed cache eligibility or a performance improvement.
+
+`test/actual-bfcache.mjs` and `test-results/actual-bfcache/` contain the probe,
+observations and hashes of 33 original production JS files. No upstream or Kudzu
+implementation changes, semantic primitives, passes, runtime concepts or browser
+bytes are added. Next: the same bounded journey through the compiled fixture.
+
+Repository check builds 267 pages and all 404 tests pass without skips.
+These checks do not reclassify the retained external BFCache acceptance failures.
+
+## Compiled Actual Renderer-Crash Continuation (2026-11-16)
+
+The [continuation packet](docs/next-architecture/actual-kudzu-renderer-crash.md)
+passes all three renderer-crash cases on archived 0.17.14 output and all three
+crash plus three graceful controls on a fresh registry-installed 0.17.16 build.
+Every current-build case sends one mutation and receives one terminal response;
+uncertain outcomes lock writes until reload/readback. Persisted account IDs and
+1,000-cent balances survive, undelivered accounts remain absent, and conditional
+removal/pagehide release all surviving ports, workers and application listeners.
+The static sibling requests only HTML. Page/HTTP errors: zero.
+
+All 77 deploy files are byte-identical; generated JS remains 31,661 raw / 12,673
+aggregate gzip bytes. Semantic primitives/core passes/core LOC/runtime concepts:
+**+0**. No application TSX or compiler/runtime changes. The first lifecycle
+assertion counted `about:blank` navigation and is retained as a harness failure;
+the corrected probe filters originating URLs. A first build without installed
+fixture dependencies also failed before the successful exact registry install.
+
+`test/actual-kudzu-crash.mjs` and `test-results/actual-kudzu-crash/` retain the
+executable probe, failures, acceptance receipts and per-file artifact accounting.
+Check builds 267 pages; all 404 tests pass without skips. No new version/release.
+Promotion times are correctness observations, not performance claims. Full
+browser/OS crash durability and exactly-once behavior remain unproven.
+
 ## 0.17.16 Upstream Spreadsheet Error Correction
 
 A separate pinned Actual checkout now catches the three discarded spreadsheet
