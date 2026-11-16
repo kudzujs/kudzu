@@ -1,5 +1,16 @@
 # Kudzu Releases
 
+## 0.17.15 - Development Config Reload
+
+- Rebuild when `kudzu.config.mjs` or `kudzu.config.js` is created, changed or deleted.
+- Apply the successful build's `base` to serving paths and replace public-directory
+  watchers when `publicDir` changes.
+- Preserve previous serving paths after invalid configuration and recover on correction.
+- Add an end-to-end development regression for config lifecycle, base-aware CSS,
+  public asset updates, error recovery and both config file extensions.
+- No compiler syntax, browser runtime or dependency changes. Generator
+  `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range.
+
 ## 0.17.14 - Native Interaction Event Inference
 
 - Infer native events for `onPointerDown`, `onPointerMove`, `onPointerUp`,

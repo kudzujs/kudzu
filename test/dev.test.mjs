@@ -53,6 +53,66 @@ test("dev rebuilds public assets on creation, modification and deletion", { time
   }
 })
 
+test("dev reloads config and keeps serving paths and public watchers in sync", { timeout: 60000 }, async () => {
+  const root = await mkdtemp(resolve("test/fixtures/dev-config-"))
+  const config = join(root, "kudzu.config.mjs")
+  let server
+  let events
+  try {
+    await mkdir(join(root, "src/pages"), { recursive: true })
+    await mkdir(join(root, "public"), { recursive: true })
+    await mkdir(join(root, "static"), { recursive: true })
+    await writeFile(join(root, "src/pages/index.tsx"), 'import "../style.css"; export default function Page() { return <p>Config page</p> }')
+    await writeFile(join(root, "src/style.css"), "p { color: green }")
+    await writeFile(join(root, "public/message.txt"), "default asset")
+    await writeFile(join(root, "static/message.txt"), "custom asset")
+    server = spawn(process.execPath, [command, "dev"], { cwd: root, env: { ...process.env, PORT: "0" }, stdio: ["ignore", "pipe", "pipe"] })
+    const url = await serverUrl(server)
+    const client = clientState(await (await fetch(url)).text())
+    events = await eventStream(`${url}/__kudzu_reload?session=${client.session}&revision=${client.revision}`)
+
+    await writeFile(config, 'export default { base: "/portal", publicDir: "static" }')
+    await events.next("reload")
+    const portal = await (await fetch(`${url}/portal/`)).text()
+    assert.match(portal, /Config page/)
+    assert.match(portal, /href="\/portal\/assets\/style.css"/)
+    assert.equal((await fetch(`${url}/portal/assets/style.css`)).status, 200)
+    assert.equal((await fetch(url)).status, 404)
+    assert.equal(await (await fetch(`${url}/portal/message.txt`)).text(), "custom asset")
+    await writeFile(join(root, "static/message.txt"), "updated asset")
+    await events.next("reload")
+    assert.equal(await (await fetch(`${url}/portal/message.txt`)).text(), "updated asset")
+
+    await writeFile(config, 'export default { base: 42 }')
+    await events.next("build-error")
+    assert.equal(await (await fetch(`${url}/portal/message.txt`)).text(), "updated asset")
+    await writeFile(config, 'export default { base: "/next", publicDir: "static" }')
+    await events.next("reload")
+    assert.match(await (await fetch(`${url}/next/`)).text(), /Config page/)
+    assert.equal((await fetch(`${url}/portal/`)).status, 404)
+
+    await rm(config)
+    await events.next("reload")
+    assert.match(await (await fetch(url)).text(), /Config page/)
+    assert.equal(await (await fetch(`${url}/message.txt`)).text(), "default asset")
+    await writeFile(join(root, "public/message.txt"), "restored watcher")
+    await events.next("reload")
+    assert.equal(await (await fetch(`${url}/message.txt`)).text(), "restored watcher")
+
+    await writeFile(join(root, "kudzu.config.js"), 'export default { base: "/js" }')
+    await events.next("reload")
+    assert.match(await (await fetch(`${url}/js/`)).text(), /href="\/js\/assets\/style.css"/)
+    assert.equal((await fetch(url)).status, 404)
+  } finally {
+    events?.close()
+    if (server?.exitCode === null) {
+      server.kill()
+      await once(server, "exit")
+    }
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test("parses PORT as a strict decimal integer", () => {
   assert.equal(parseDevPort(undefined), 3000)
   assert.equal(parseDevPort(""), 3000)

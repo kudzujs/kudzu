@@ -63,7 +63,7 @@ Reduced Zustand migration stores lower through package-neutral `SharedStateIR` a
 - `compiler/list-runtime-codegen.mjs`: fail-closed keyed-list runtime generation from CapabilityIR list/effect sections.
 - `compiler/worker-compiler.mjs`: relative TypeScript Worker candidate validation, effect rewriting, graph validation, and content-hashed ESM emission.
 - `compiler/zustand-pass.mjs`: reduced Zustand store analysis, diagnostics, and migration normalization.
-- `dev-server.mjs`: development HTTP server, source watching, rebuild serialization, SSE reloads, runtime-route fallback serving, and response-only state restoration injection.
+- `dev-server.mjs`: development HTTP server, source/config watching, rebuild serialization, SSE reloads, runtime-route fallback serving, and response-only state restoration injection. Successful config rebuilds update `base` and replace public-directory watchers; failed rebuilds retain the previous serving paths.
 - `core.mjs`: server-side JSX rendering, state slots, context providers, behavior metadata, and serializable capture validation.
 - `jsx-runtime.mjs`: automatic JSX runtime used by TypeScript.
 - `runtime.js`: command-only runtime for direct state-to-text patches.

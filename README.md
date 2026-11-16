@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.14](https://github.com/kudzujs/kudzu/releases/tag/v0.17.14).** JSX now infers native pointer down/move/up, composition start/end, paste, drop, scroll, and mouse enter/leave event types. Existing game and windowing examples no longer need manual annotations for these events. `currentTarget` retains the handler element type; native `target` still requires narrowing. Unlisted attributes remain open for migration compatibility. Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range. No runtime code or browser capability changes.
+**Current release: [0.17.15](https://github.com/kudzujs/kudzu/releases/tag/v0.17.15).** The development server rebuilds when `kudzu.config.mjs` or `kudzu.config.js` is created, changed, or deleted. Successful builds synchronize `base` and public-directory watchers; failed builds retain the previous serving paths. Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range. No browser runtime or compiler syntax changes.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

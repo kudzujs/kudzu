@@ -19,12 +19,19 @@ export function parseDevHost(value) {
   return value?.trim() || "127.0.0.1"
 }
 
-export async function startDevServer({ build, port, host, base, sourceDirectory, publicDirectory, workDirectory, outputDirectory }) {
+export async function startDevServer({ build, port, host, base, root, sourceDirectory, publicDirectory, workDirectory, outputDirectory }) {
   let buildError
   let revision = 0
+  let watchController
+  const rebuildOutput = async options => {
+    const result = await build(options)
+    base = result.base
+    if (publicDirectory !== result.publicDirectory) watchController?.abort()
+    publicDirectory = result.publicDirectory
+  }
   const session = randomUUID()
   try {
-    await build({ minify: false })
+    await rebuildOutput({ minify: false })
     revision++
   } catch (error) {
     buildError = errorText(error)
@@ -97,7 +104,7 @@ export async function startDevServer({ build, port, host, base, sourceDirectory,
       const changes = [...changedFiles]
       changedFiles.clear()
       try {
-        await build({ changedFiles: changes, quiet: true, minify: false })
+        await rebuildOutput({ changedFiles: changes, quiet: true, minify: false })
         buildError = undefined
         revision++
         console.log(`Rebuilt after ${changedFile ?? "source change"}`)
@@ -111,17 +118,35 @@ export async function startDevServer({ build, port, host, base, sourceDirectory,
     } while (pending)
     rebuilding = false
   }
-  const directories = publicDirectory === sourceDirectory || publicDirectory.startsWith(`${sourceDirectory}${sep}`) ? [sourceDirectory] : [sourceDirectory, publicDirectory]
-  await Promise.all(directories.map(directory => watchDirectory(directory, file => {
+  const changed = file => {
     changedFile = file
     changedFiles.add(file)
     clearTimeout(timer)
     timer = setTimeout(rebuild, 80)
-  })))
+  }
+  for (;;) {
+    watchController = new AbortController()
+    const { signal } = watchController
+    const directories = publicDirectory === sourceDirectory || publicDirectory.startsWith(`${sourceDirectory}${sep}`) ? [sourceDirectory] : [sourceDirectory, publicDirectory]
+    await Promise.all([
+      ...directories.map(directory => watchDirectory(directory, changed, signal)),
+      watchConfig(root, changed, signal)
+    ])
+  }
 }
 
-async function watchDirectory(directory, changed) {
-  for (;;) {
+async function watchConfig(root, changed, signal) {
+  try {
+    for await (const event of watch(root, { signal })) {
+      if (event.filename == null || ["kudzu.config.mjs", "kudzu.config.js"].includes(event.filename)) changed(event.filename == null ? undefined : resolve(root, event.filename))
+    }
+  } catch (error) {
+    if (error.name !== "AbortError") throw error
+  }
+}
+
+async function watchDirectory(directory, changed, signal) {
+  while (!signal.aborted) {
     let ancestor = dirname(directory)
     let missing
     while (!await exists(ancestor)) {
@@ -129,6 +154,9 @@ async function watchDirectory(directory, changed) {
       ancestor = dirname(ancestor)
     }
     const controller = new AbortController()
+    const abort = () => controller.abort()
+    signal.addEventListener("abort", abort, { once: true })
+    if (signal.aborted) controller.abort()
     try {
       // A parent watch detects replacement even when the directory is recreated before stat().
       const observe = async (root, recursive) => {
@@ -150,6 +178,7 @@ async function watchDirectory(directory, changed) {
     } catch (error) {
       if (error.code !== "ENOENT" && error.name !== "AbortError") throw error
     } finally {
+      signal.removeEventListener("abort", abort)
       controller.abort()
     }
   }

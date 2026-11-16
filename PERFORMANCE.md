@@ -1,5 +1,17 @@
 # Performance Records
 
+## 0.17.15 Development Config Reload
+
+The new development-server regression first failed waiting for a reload after
+config creation. The fix watches both config filenames and applies the successful
+build's base/public directory to serving and watcher ownership. Invalid config
+retains previous serving paths; correction and deletion recover without restart.
+Coverage includes base-prefixed CSS, replacement public watchers and `.js` config.
+
+Before release metadata updates, `npm run check` passed with 265 pages and
+`npm test` passed the project journey plus 403 tests, with no skips. No browser
+runtime, compiler syntax or dependency changes; no timing improvement is claimed.
+
 ## Actual Coordination Through Kudzu (2026-11-14)
 
 The [packet](docs/next-architecture/actual-kudzu-coordination.md) connects

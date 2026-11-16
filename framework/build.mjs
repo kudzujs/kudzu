@@ -600,7 +600,7 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
 
   const incremental = { compiledModules, renderedPages }
   return {
-    result: { sourceResults, incremental },
+    result: { sourceResults, incremental, base, publicDirectory },
     inspectionData: { sourceFiles: sourceFiles.map(file => relative(root, file).replaceAll(sep, "/")), sourceResults, compatibility, artifacts },
     explanation,
     htmlSummary,
@@ -936,7 +936,7 @@ export async function dev({ port = parseDevPort(process.env.PORT), host = parseD
   const config = await loadConfig(root)
   const base = normalizeBase(config.base)
   const publicDirectory = normalizePublicDirectory(config.publicDir, project)
-  return startDevServer({ build: options => buildWithSession(project, options), port, host, base, sourceDirectory, publicDirectory, workDirectory, outputDirectory })
+  return startDevServer({ build: options => buildWithSession(project, options), port, host, base, root, sourceDirectory, publicDirectory, workDirectory, outputDirectory })
 }
 
 function inlineJson(value) {

@@ -71,6 +71,13 @@ Keep each patch behavior-preserving and independently reviewable. If a boundary 
 
 ## Release Boundary
 
+The 0.17.15 patch fixes development configuration reloads. Successful builds
+update serving paths and public-directory watchers together; failed builds retain
+the previous paths. Config creation, updates, deletion and recovery are covered
+by a development-server regression. No compiler syntax or browser runtime changes.
+Generator 0.1.173 retains ^0.17.12. Publication requires exact-commit CI and the
+normal release gates.
+
 The 0.17.14 patch closes native interaction event inference gaps reduced from
 the existing Lupin, windowing and tooltip fixtures. Ten declaration lines add
 contextual types using the existing TargetedEvent helper; source annotations
