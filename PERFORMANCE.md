@@ -12,6 +12,11 @@ Before release metadata updates, `npm run check` passed with 265 pages and
 `npm test` passed the project journey plus 403 tests, with no skips. No browser
 runtime, compiler syntax or dependency changes; no timing improvement is claimed.
 
+The first release-tree run built 266 pages but failed the existing documentation
+assertion because the updated release callout omitted the explicit no-speed-claim
+sentence (402/403 tests passed after the project journey). Restore that sentence;
+the corrected commit must pass local checks, package smokes and exact-commit CI.
+
 ## Actual Coordination Through Kudzu (2026-11-14)
 
 The [packet](docs/next-architecture/actual-kudzu-coordination.md) connects
