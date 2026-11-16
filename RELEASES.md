@@ -2,6 +2,9 @@
 
 ## 0.17.17 - Crash Recovery and BFCache Evidence
 
+- Synchronize the existing project browser test with actual reload completion
+  instead of evaluating a reload in the disappearing context and waiting 500 ms.
+
 - Prove completed and uncertain follower writes across real renderer crashes in
   the compiled coordination fixture: natural heartbeat promotion, no replay,
   reload/readback, exact surviving-owner cleanup and HTML-only static output.

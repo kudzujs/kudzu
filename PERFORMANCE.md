@@ -11,9 +11,17 @@ a new compiled BFCache capability or a performance improvement.
 Final version-aligned validation: check builds 268 pages; all 404 tests pass
 without skips; both package smokes pass. Release evidence:
 `kudzu-lifecycle-0.17.17.tar.gz`, SHA256
-`dc72175b6eacf095301a1329d0f8bfc4e6da0213e546e4a9722cbde4c7eb4ec3`.
+`95c7645e8ca4477d8613487e7b5e8b6970fa733a8a6366a090f0023594ed7cc4`.
 The archive includes probes, passing/failed receipts, fixture source/public/output,
 original upstream build/lockfile, patches, licenses and validation logs.
+
+The first release CI at `50107e0` fails the existing project browser journey
+with CDP `Execution context was destroyed`; Node 22 passes. Its issue-form reload
+used `Runtime.evaluate(location.reload())` followed by a fixed 500 ms delay.
+The harness now invokes `Page.reload`, awaits `Page.loadEventFired` with a bounded
+timeout, and asserts a real reload before checking the restored form. Framework
+source and application assertions remain unchanged; the failed CI log is retained.
+After the harness correction, check and all 404 tests pass again without skips.
 
 ## Original Actual BFCache Intake (2026-11-16)
 

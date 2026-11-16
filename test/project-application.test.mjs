@@ -1269,9 +1269,23 @@ async function runIssueFormJourney(chrome, applicationPort) {
     await waitFor('document.querySelector("#setup-summary")?.value === "Navigation-safe summary"')
     assert.equal(await evaluate('!window.__kOldPopover.isConnected && !window.__kOldPopover.matches(":popover-open")'), true)
     assert.equal(await evaluate('document.querySelector("[data-setup-draft]").dataset.setupStep'), "2")
-    await evaluate('location.reload()')
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await send("Page.enable")
+    await new Promise((resolve, reject) => {
+      const finish = error => {
+        clearTimeout(timer)
+        socket.removeEventListener("message", loaded)
+        if (error) reject(error)
+        else resolve()
+      }
+      const loaded = event => {
+        if (JSON.parse(event.data).method === "Page.loadEventFired") finish()
+      }
+      const timer = setTimeout(() => finish(new Error("Issue form reload did not finish")), 10000)
+      socket.addEventListener("message", loaded)
+      send("Page.reload").catch(finish)
+    })
     await waitFor('document.querySelector("#setup-summary")?.value === "Navigation-safe summary" && document.querySelector("[data-session-status]")?.textContent === "authenticated"')
+    assert.equal(await evaluate('performance.getEntriesByType("navigation")[0].type'), "reload")
     await evaluate('document.querySelector("#setup-summary").select()')
     await insert("Conflict-safe summary")
     await waitFor('document.querySelector("[data-setup-status]").textContent === "conflict"')
