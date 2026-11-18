@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.17](https://github.com/kudzujs/kudzu/releases/tag/v0.17.17).** This evidence release proves renderer-crash recovery in the compiled Actual coordination fixture and records native BFCache restoration in unchanged upstream Actual. Leader cache eviction and fresh-document fallback remain explicit: restoration is not guaranteed. No compiler or browser runtime changes. Generator `create-kudzu@0.1.173` retains its compatible core `^0.17.12` range.
+**Current release: [0.17.18](https://github.com/kudzujs/kudzu/releases/tag/v0.17.18).** The dev server restores live reload and serves public `.mjs` files as JavaScript. This site's `npm run deploy` now builds fresh assets before deployment.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

@@ -1,6 +1,6 @@
 {
   "name": "@kudzujs/core",
-  "version": "0.17.17",
+  "version": "0.17.18",
   "description": "HTML-first TSX framework with synchronous state semantics and no virtual DOM",
   "type": "module",
   "license": "MIT",
@@ -63,6 +63,7 @@
     "benchmark:ai-delivery": "node test/ai-delivery-runner.mjs",
     "benchmark:ai-delivery-production": "node test/ai-delivery-production-suite.mjs",
     "prepublishOnly": "npm run check && npm test",
+    "predeploy": "npm run build",
     "deploy": "wrangler deploy",
     "preview": "wrangler dev"
   },

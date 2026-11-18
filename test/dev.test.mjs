@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { createServer } from "node:http"
 import test from "node:test"
+import { Script } from "node:vm"
 import { parseDevHost, parseDevPort } from "../framework/build.mjs"
 import { restoreState, snapshotState, stateSchema } from "../framework/dev-state.js"
 
@@ -301,6 +302,8 @@ test("dev server reports build errors and reloads without changing output HTML",
       return html.includes("First valid build") ? html : undefined
     })
     const firstClient = clientState(served)
+    const clientScript = served.slice(served.lastIndexOf("<script>") + "<script>".length, served.lastIndexOf("</script>"))
+    assert.doesNotThrow(() => new Script(clientScript))
     assert.equal(firstClient.session, initialClient.session)
     assert.equal(firstClient.revision, 1)
     assert.match(served, /const schema=\[\["s0","count"\]\]/)
@@ -315,6 +318,9 @@ test("dev server reports build errors and reloads without changing output HTML",
     assert.match(await helper.text(), /snapshotState/)
 
     const publicPage = await fetch(`${url}/body.html`)
+    const widget = await fetch(`${url}/widget.mjs`)
+    assert.equal(widget.status, 200)
+    assert.match(widget.headers.get("content-type"), /^text\/javascript\b/)
     const publicHtml = await publicPage.text()
     assert.match(publicHtml, /<!-- earlier <\/body> -->[\s\S]*<\/BoDy >\s*<script>[\s\S]*EventSource/)
     assert.equal(publicPage.headers.get("cache-control"), "no-store")

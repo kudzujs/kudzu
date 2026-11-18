@@ -1,5 +1,11 @@
 # Kudzu Releases
 
+## 0.17.18 - Dev reload and module serving
+
+- Fix the syntax error that prevented the dev client from connecting to live reload and displaying build errors.
+- Serve public `.mjs` files as JavaScript so browsers can import them in development.
+- Build this repository's site before `npm run deploy` uploads its static assets.
+
 ## 0.17.17 - Crash Recovery and BFCache Evidence
 
 - Synchronize the existing project browser test with actual reload completion
