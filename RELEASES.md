@@ -1,5 +1,11 @@
 # Kudzu Releases
 
+## 0.17.19 - Dev config recovery and link handling
+
+- `kudzu dev` now stays running when startup configuration is invalid. Save the corrected config to rebuild and serve the site without restarting the process.
+- Enhanced navigation skips malformed links when discovering routes. A bad link no longer stops prefetching valid links on the same page.
+- The repository also records Actual Budget migration tests for pending writes, database recovery, and account-name validation. These cover selected workflows, not the full application.
+
 ## 0.17.18 - Dev reload and module serving
 
 - Fix the syntax error that prevented the dev client from connecting to live reload and displaying build errors.

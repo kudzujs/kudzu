@@ -14,7 +14,7 @@ Kudzu compiles ordinary React-shaped TypeScript and TSX into complete static HTM
 
 > Experimental `0.17.x`: the compiler API and supported TSX surface may change.
 
-**Current release: [0.17.18](https://github.com/kudzujs/kudzu/releases/tag/v0.17.18).** The dev server restores live reload and serves public `.mjs` files as JavaScript. This site's `npm run deploy` now builds fresh assets before deployment.
+**Current release: [0.17.19](https://github.com/kudzujs/kudzu/releases/tag/v0.17.19).** Fixing an invalid startup configuration now recovers the dev server without a restart. Malformed links no longer interrupt prefetching for valid links in enhanced navigation.
 
 - [Documentation](https://kudzujs.cloud/docs)
 - [Installation guide](https://kudzujs.cloud/docs#install)

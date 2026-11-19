@@ -67,9 +67,9 @@ function eligibleAnchor(anchor) {
   if (!anchor) return false
   if (anchor.hasAttribute("download") || anchor.hasAttribute("data-k-native") || !["", "_self"].includes(anchor.target)) return false
   if (anchor.relList?.contains("external")) return false
-  const url = new URL(anchor.href)
-  if (url.hash && url.pathname === location.pathname && url.search === location.search) return false
-  return url.origin === location.origin && Boolean(matchRoute(url.pathname))
+  if (anchor.origin !== location.origin) return false
+  if (anchor.hash && anchor.pathname === location.pathname && anchor.search === location.search) return false
+  return Boolean(matchRoute(anchor.pathname))
 }
 
 function discover() {

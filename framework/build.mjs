@@ -53,7 +53,7 @@ export async function explain({ route, minify = true, root: projectRoot = proces
   return buildWithSession(project, { quiet: true, minify, retainCache: false, explanationRoute: route })
 }
 
-export async function buildWithSession(project, { changedFiles, quiet = false, minify = true, retainCache = true, inspection = false, explanationRoute } = {}) {
+export async function buildWithSession(project, { changedFiles, quiet = false, minify = true, retainCache = true, inspection = false, explanationRoute, onConfig } = {}) {
   const { root, outputDirectory } = project
   const stagedOutput = join(root, ".kudzu-dist-staging")
   const backupOutput = join(root, ".kudzu-dist-backup")
@@ -62,7 +62,7 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   try {
     await recoverOutput(outputDirectory, backupOutput)
     await rm(stagedOutput, { recursive: true, force: true })
-    const { result, pageCount, behaviorCount, cache, inspectionData, explanation, htmlSummary } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache, explanationRoute })
+    const { result, pageCount, behaviorCount, cache, inspectionData, explanation, htmlSummary } = await buildInto(project, stagedOutput, { changedFiles, minify, quiet, retainCache, explanationRoute, onConfig })
     const promoteStarted = project.timings ? performance.now() : 0
     await promoteOutput(stagedOutput, outputDirectory, backupOutput)
     addTiming(project.timings, "writeMs", promoteStarted)
@@ -91,7 +91,7 @@ export async function buildWithSession(project, { changedFiles, quiet = false, m
   }
 }
 
-async function buildInto(project, outputDirectory, { changedFiles, minify, quiet, retainCache, explanationRoute }) {
+async function buildInto(project, outputDirectory, { changedFiles, minify, quiet, retainCache, explanationRoute, onConfig }) {
   const { root, sourceDirectory, pagesDirectory, workDirectory } = project
   const previous = retainCache ? project.buildCache : undefined
   const generation = (buildGenerations.get(root) ?? 0) + 1
@@ -100,10 +100,11 @@ async function buildInto(project, outputDirectory, { changedFiles, minify, quiet
   const { collectClientModules, compileClientModule, compiledPath, compileSourceAsync, layoutExportError, orderSourceStyles, reachableSourceFiles, safeStaticFiles } = createSourceCompiler(project)
   const config = await loadConfig(root)
   const base = normalizeBase(config.base)
+  const publicDirectory = normalizePublicDirectory(config.publicDir, project)
+  onConfig?.({ base, publicDirectory })
   const configuredStyles = normalizeStyles(config.styles, base, project)
   const globalStyleUrls = [...new Set(configuredStyles.urls)]
   const globalStyleUrlSet = new Set(globalStyleUrls)
-  const publicDirectory = normalizePublicDirectory(config.publicDir, project)
   const navigationGroups = normalizeNavigation(config.navigation)
   const navigationByRoute = new Map(navigationGroups.flatMap(group => group.routes.map(route => [route, group])))
   for (const group of navigationGroups) {
@@ -933,10 +934,7 @@ export async function dev({ port = parseDevPort(process.env.PORT), host = parseD
   if (typeof host !== "string" || !host.trim()) throw new Error(`Invalid dev server host: ${host}`)
   const project = createProjectSession(projectRoot)
   const { root, sourceDirectory, workDirectory, outputDirectory } = project
-  const config = await loadConfig(root)
-  const base = normalizeBase(config.base)
-  const publicDirectory = normalizePublicDirectory(config.publicDir, project)
-  return startDevServer({ build: options => buildWithSession(project, options), port, host, base, root, sourceDirectory, publicDirectory, workDirectory, outputDirectory })
+  return startDevServer({ build: options => buildWithSession(project, options), port, host, root, sourceDirectory, workDirectory, outputDirectory })
 }
 
 function inlineJson(value) {

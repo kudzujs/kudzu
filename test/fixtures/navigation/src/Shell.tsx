@@ -41,6 +41,7 @@ export function Shell({ children }: { children?: unknown }) {
       <button data-layout-late onClick={updateLayoutLate}>Late layout</button>
       <span ref={layoutRef} data-layout-ref />
       <nav>
+        <a href="https://example.com:invalid/path">Invalid external link</a>
         <a href="/shop/product">Product</a>
         <a href="/shop/cart">Cart</a>
         <a href="/shop/chart">Chart</a>

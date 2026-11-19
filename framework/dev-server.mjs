@@ -19,16 +19,19 @@ export function parseDevHost(value) {
   return value?.trim() || "127.0.0.1"
 }
 
-export async function startDevServer({ build, port, host, base, root, sourceDirectory, publicDirectory, workDirectory, outputDirectory }) {
+export async function startDevServer({ build, port, host, root, sourceDirectory, workDirectory, outputDirectory }) {
+  let base = ""
+  let publicDirectory = join(root, "public")
   let buildError
   let revision = 0
   let watchController
-  const rebuildOutput = async options => {
-    const result = await build(options)
+  const applyPaths = result => {
     base = result.base
     if (publicDirectory !== result.publicDirectory) watchController?.abort()
     publicDirectory = result.publicDirectory
   }
+  // Before the first successful build, use valid config paths even if rendering fails.
+  const rebuildOutput = async options => applyPaths(await build({ ...options, onConfig: revision === 0 ? applyPaths : undefined }))
   const session = randomUUID()
   try {
     await rebuildOutput({ minify: false })

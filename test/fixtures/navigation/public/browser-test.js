@@ -116,7 +116,7 @@ if (sessionStorage.kNavigationFallback) {
     releaseProduct("fresh")
     await waitFor(() => document.querySelector("[data-product-result]").textContent === "fresh")
     if (location.search !== "?view=full" || location.hash !== "#details" || document.title !== "Product" || document.activeElement.id !== "details") throw new Error("product-location")
-    for (const selector of ['a[href="/shop/outside"]', "a[data-k-native]", "a[data-hash-only]"]) {
+    for (const selector of ['a[href="https://example.com:invalid/path"]', 'a[href="/shop/outside"]', "a[data-k-native]", "a[data-hash-only]"]) {
       let intercepted
       document.addEventListener("click", event => {
         intercepted = event.defaultPrevented
