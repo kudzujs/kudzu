@@ -1,0 +1,63 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "crash",
+  "sourceSha256": "030e26ff61d3d86d5edb6bbeb4d45e81aeacc01f7b94688401d78812f0262cea",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [
+        "one-backend-and-real-follower",
+        "renderer-crash-and-natural-heartbeat-promotion",
+        "reload-readback-reconciles-actual-outcome",
+        "conditional-and-pagehide-release-all-ports-workers-listeners",
+        "static-sibling-requests-only-html"
+      ],
+      "errors": [],
+      "accountID": "1e1dbf20-e388-4d2e-b1f5-52e57c9f1865",
+      "requestID": "28c7fe04-7788-4683-b008-c5d3a8143006:mutate",
+      "leaderRequestIDs": [
+        "eebe00d4-df94-4161-b67d-139b0bab02cd:create",
+        "a8b77a9c-86ae-43b5-8b5c-25c9434c64bd:prefs",
+        "a2be8cc6-b301-46c7-b08e-438039ce5053:accounts"
+      ],
+      "followerRequestIDs": [
+        "dcf2af50-bd55-4ebc-8d10-c17e4bd78e41:open",
+        "03c4048a-23f4-44c1-ae04-00fde896f20d:prefs",
+        "5bc33b42-cbae-4b8f-9f82-6c0c0c805cd9:accounts",
+        "28c7fe04-7788-4683-b008-c5d3a8143006:mutate",
+        "69477467-7540-4f2c-a74e-33ab04ed3ccf:accounts",
+        "23c7cd56-39ab-4aa9-9bc3-2a5c58a02f90:balance|1e1dbf20-e388-4d2e-b1f5-52e57c9f1865"
+      ],
+      "promotionAfterLossMs": 17586,
+      "lifecycleAtPromotion": [],
+      "terminal": [
+        {
+          "type": "reply",
+          "id": "28c7fe04-7788-4683-b008-c5d3a8143006:mutate",
+          "result": "1e1dbf20-e388-4d2e-b1f5-52e57c9f1865",
+          "mutated": true
+        }
+      ],
+      "sentMutations": 1,
+      "readback": {
+        "count": 1,
+        "balances": [
+          "1000"
+        ]
+      },
+      "pass": true
+    },
+    {
+      "mode": "request",
+      "steps": [],
+      "errors": [
+        "Failed to fetch"
+      ]
+    }
+  ],
+  "pass": false,
+  "error": "Error: expect(locator).toBeEnabled() failed\n\nLocator:  getByRole('button', { name: 'Start budgeting' })\nExpected: enabled\nReceived: disabled\nTimeout:  30000ms\n\nCall log:\n  - Expect \"to.be.enabled\" with timeout 30000ms\n  - waiting for getByRole('button', { name: 'Start budgeting' })\n    63 × locator resolved to <button disabled data-k-native-click=\"{\"module\":\"/assets/handlers/pages/index.js\",\"handler\":\"handler0\",\"states\":{\"busy\":\"s2\",\"command\":\"s8\"},\"scope\":{}}\" data-k-bind-disabled=\"{\"module\":\"/assets/handlers/pages/index.js\",\"handler\":\"binding0\",\"states\":{\"busy\":\"s2\",\"uncertain\":\"s3\",\"current\":\"s6\"},\"scope\":{},\"scopeStates\":{},\"scopeBindings\":{}}\">Start budgeting</button>\n       - unexpected value \"disabled\"\n\n    at captureRawStack (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toBeEnabled (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /tmp/opencode/kudzu-pending-01718/diagnose.mjs:127:75"
+}

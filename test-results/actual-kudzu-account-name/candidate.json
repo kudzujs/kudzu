@@ -1,0 +1,22 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "account-name",
+  "sourceSha256": "95737dfaa4558210eb9c069c400576bc508886bfcc0a3dd3961a0b6448c6cefd",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [],
+      "errors": [],
+      "writes": 2,
+      "savedNames": [
+        "Savings",
+        "savings"
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true
+}

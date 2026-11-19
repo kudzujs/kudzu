@@ -1,5 +1,83 @@
 # Performance Records
 
+## Separate Actual BFCache Pending-Settlement Correction (2026-11-17)
+
+The [candidate](docs/next-architecture/actual-bfcache-pending-candidate.md) passes
+both pending-mutation barriers and three completed-operation controls with real
+BFCache restoration and zero page/HTTP errors. Pending writes receive one local
+uncertainty alert, never replay, and preserve one account with the backend's ID
+and 10.00 balance. Port responses remain zero; the browser does not fabricate
+backend completion. The initial completed-operation failure and source-mapped
+diagnostics are preserved; a discarded `PagedQuery.fetchCount()` rejection was
+fixed through its existing error callback.
+
+New upstream production code: +45 net lines; tests: +128 lines. The earlier
+spreadsheet patch is reused unchanged. Semantic primitives, Kudzu core passes/LOC,
+runtime concepts and Kudzu browser bytes: +0. Twenty-seven focused tests, full
+Actual typecheck, scoped lint and build pass.
+
+Full original/candidate JS: 12,575,690 / 2,881,047 to 12,812,207 / 2,932,330
+raw/aggregate gzip bytes (+236,517 / +51,283). This includes a newly generated
+234,775-byte English catalog and the spreadsheet correction; it is not isolated
+lifecycle overhead. The final build follows typecheck and contains 168 files;
+the existing original inventory has 167, including a typecheck cache file.
+Coordinator/backend/IDB assets retain their hashes. No timing benchmark or release.
+
+Final Kudzu check builds 268 pages; all 404 tests pass without skips.
+
+## Original Actual Pending Mutation BFCache Failure (2026-11-17)
+
+The [intake](docs/next-architecture/actual-bfcache-pending.md) holds either backend
+delivery or the real backend reply of a follower account creation, navigates the
+requesting follower away, then releases the original message after two heartbeat
+rounds. Both cached documents restore and rejoin as followers. Each sends one
+mutation but receives zero terminal responses after another heartbeat; the
+creation dialog remains pending. Reload reads one real account with the backend's
+original ID and 10.00 balance. Both browser acceptance commands fail with zero
+page/HTTP errors and are retained; these are not passing settlement results.
+
+The original coordinator removes a departing follower's request target/name
+records and drops subsequent replies without a target. `__resume-tab` restores
+membership but not those records. No upstream or Kudzu implementation change.
+One initial pre-delivery harness attempt matched absent IDs against an unrelated
+push; its receipt is retained and excluded, and the corrected ID match reproduces
+the same actual application failure as the after-execution case.
+
+Semantic primitives/core passes/core LOC/runtime concepts/browser-byte delta: +0.
+One existing external probe gains two pending-operation cases. No timing or
+performance comparison. Next gate: an upstream correction without mutation replay
+before expanding compiled BFCache settlement claims.
+
+Repository check builds 268 pages; all 404 tests pass without skips. The two
+external pending-settlement failures remain explicit and unresolved.
+
+## Compiled Actual BFCache Continuation (2026-11-17)
+
+The [packet](docs/next-architecture/actual-kudzu-bfcache.md) preserves the original
+fixture's two `SharedWorkerMessage` cache evictions and correct fresh-document
+fallback. A 17-line application-owned effect patch stops backend/IDB children
+and posts `tab-closing` on persisted pagehide, then posts `__resume-tab` on
+persisted pageshow. The existing data handshake checks the saved budget before
+enabling writes. No compiler, runtime, coordinator or public-asset change.
+
+Native cache hits and disabled-cache fresh-document controls pass for both roles.
+All four create one account, preserve its ID and 1,000-cent balance after reload,
+release owned ports/workers/listeners on removal/disposal and retain HTML-only
+static output. Restored followers release prior leader backend/IDB ownership.
+Page/HTTP errors: zero.
+
+All 77 deploy paths remain. All 66 public assets and generated runtime files are
+byte-identical. Only effect/handler output changes: 31,661 / 12,673 becomes
+32,082 / 12,778 raw/aggregate gzip JS bytes (+421 / +105). Semantic primitives,
+core passes/LOC, runtime concepts and normalization/adapter rules: +0.
+Reproduction patch, probe, failed baseline and passing receipts are tracked.
+No cache-hit-rate or performance claim; pending-mutation suspension remains gated.
+
+The patched fixture passes all three existing renderer-crash cases without
+mutation replay or page errors. Check builds 268 pages and all 404 repository
+tests pass without skips. The existing registry release compiles the patch;
+no new package version or release is selected by this continuation.
+
 ## 0.17.17 Release Scope
 
 The user-requested release publishes the two lifecycle packets below. Their

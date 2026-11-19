@@ -1,0 +1,19 @@
+--- a/src/pages/index.tsx
++++ b/src/pages/index.tsx
+@@ -182,9 +182,15 @@
+       event.preventDefault()
+       if (busy || uncertain || !current) return
+       const data = new FormData(event.currentTarget)
++      const name = String(data.get("name") ?? "").trim()
++      if (!name || accounts.some(account => account.name === name)) {
++        setError(name ? `Name ${name} already exists.` : "Name cannot be blank.")
++        event.currentTarget.elements.namedItem("name").focus()
++        return
++      }
+       setBusy(true)
+       setError("")
+-      setCommand(JSON.stringify({ id: crypto.randomUUID() + ":mutate", name: "account-create", args: { name: String(data.get("name")), balance: Number(data.get("balance")), offBudget: false } }))
++      setCommand(JSON.stringify({ id: crypto.randomUUID() + ":mutate", name: "account-create", args: { name, balance: Number(data.get("balance")), offBudget: false } }))
+     }}>
+       <label>Account name<input name="name" required /></label>
+       <label>Starting balance<input name="balance" type="number" step="0.01" required defaultValue="10" /></label>

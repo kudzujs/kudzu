@@ -1,5 +1,32 @@
 # Application Capability Release Plan
 
+Pending BFCache candidate (2026-11-17): the
+[separate pinned correction](./actual-bfcache-pending-candidate.md) passes both
+pending delivery barriers and plain/leader/follower completed-operation controls.
+Existing connection handlers settle once on cached return; queued requests are
+known unsent, sent requests remain uncertain. Account creation shows an accessible
+reload/check warning and disables resubmission. A discarded count-query rejection
+is caught in its shared function; earlier spreadsheet error handling is reused.
+Twenty-seven focused tests, full Actual typecheck and production build pass.
+Next: compiled pending-settlement continuation, without a new compiler/runtime.
+
+Pending BFCache mutation intake (2026-11-17): the
+[unchanged-upstream probe](./actual-bfcache-pending.md) reproduces lost completion
+for requests held before delivery and replies held after execution, then released
+while the requesting follower is away. Both cached documents restore and rejoin,
+but receive zero terminal responses; one real account persists with its original
+ID and 10.00 balance. Both acceptance commands fail and are retained. Next:
+separate upstream request-ownership correction, then compiled continuation.
+
+Compiled BFCache continuation (2026-11-17): the
+[existing coordination fixture](./actual-kudzu-bfcache.md) initially loses both
+cached documents to `SharedWorkerMessage`. A 17-line application effect patch
+leaves the coordinator on persisted pagehide and rejoins on persisted pageshow,
+reusing the saved-data handshake. Both roles now pass actual cache restoration
+and disabled-cache fresh-document controls, single mutation persistence and
+owned-resource cleanup. Generated application JS +421 raw / +105 gzip; core
+passes/LOC/runtime concepts +0. Next: upstream pending-mutation suspension intake.
+
 BFCache intake (2026-11-16): the
 [unchanged pinned Actual probe](./actual-bfcache-intake.md) proves native
 leader/follower restoration, budget-specific rejoin and post-return account

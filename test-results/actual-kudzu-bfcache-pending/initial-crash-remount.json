@@ -1,0 +1,55 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "crash",
+  "sourceSha256": "e4da88c216bb937553b6a69d60174b37bceac4fe9756149aa7bd1ba4f8a77b6e",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [
+        "one-backend-and-real-follower",
+        "renderer-crash-and-natural-heartbeat-promotion",
+        "reload-readback-reconciles-actual-outcome"
+      ],
+      "errors": [
+        "Failed to fetch"
+      ],
+      "accountID": "a02cefc8-2545-4296-9401-32faf9f4329d",
+      "requestID": "af84601f-fc52-4b8e-8360-b14a9c1d7f95:mutate",
+      "leaderRequestIDs": [
+        "4f026d2b-02c2-4132-a6cf-69edce1f43e2:create",
+        "e28fb256-0da9-4544-8685-b2b8a921589a:prefs",
+        "25ecf826-695d-4944-9484-7608bf6db6cb:accounts"
+      ],
+      "followerRequestIDs": [
+        "90d6abbf-d664-4e34-99dd-771094801345:open",
+        "0a6fb2cb-23c1-40ca-82b6-70da0be8c680:prefs",
+        "e5d78845-1fbb-4286-b159-c99f791c92ab:accounts",
+        "af84601f-fc52-4b8e-8360-b14a9c1d7f95:mutate",
+        "e816567e-7e57-4dce-9002-31a3d627ed20:accounts",
+        "09f55a3e-8965-4da9-9299-4e51fbb1c3ff:balance|a02cefc8-2545-4296-9401-32faf9f4329d"
+      ],
+      "promotionAfterLossMs": 17752,
+      "lifecycleAtPromotion": [],
+      "terminal": [
+        {
+          "type": "reply",
+          "id": "af84601f-fc52-4b8e-8360-b14a9c1d7f95:mutate",
+          "result": "a02cefc8-2545-4296-9401-32faf9f4329d",
+          "mutated": true
+        }
+      ],
+      "sentMutations": 1,
+      "readback": {
+        "count": 1,
+        "balances": [
+          "1000"
+        ]
+      }
+    }
+  ],
+  "pass": false,
+  "error": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('status')\nExpected: \"Saved data checked\"\nReceived: \"Opening local database\"\nTimeout:  30000ms\n\nCall log:\n  - Expect \"to.have.text\" with timeout 30000ms\n  - waiting for getByRole('status')\n    62 × locator resolved to <p role=\"status\">…</p>\n       - unexpected value \"Opening local database\"\n\n    at captureRawStack (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toHaveText (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /home/kft/Documents/etc/kudzu/test/actual-kudzu-crash.mjs:203:48"
+}

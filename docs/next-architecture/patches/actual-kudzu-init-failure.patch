@@ -1,0 +1,24 @@
+--- a/public/browser-server.js
++++ b/public/browser-server.js
+@@ -91,7 +91,6 @@
+             IDBFailure: err.message.includes('indexeddb-failure'),
+           });
+ 
+-          throw err;
+         });
+       }
+     }
+--- a/src/pages/index.tsx
++++ b/src/pages/index.tsx
+@@ -110,7 +110,10 @@
+           }
+         }
+       } else if (msg.type === "app-init-failure") {
+-        setError("Local database initialization failed")
++        port.postMessage({ name: "__app-init-failure-acknowledged" })
++        setBusy(true)
++        setStatus("Cannot open local database")
++        setError("Check your connection, then select Reload and check data.")
+       } else if (msg.type === "error" || msg.type === "reply" && (msg.error || msg.result?.error)) {
+         setUncertain(true)
+         setBusy(false)

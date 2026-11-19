@@ -102,10 +102,10 @@ Repository validation passes: `npm run check` builds 267 pages and `npm test`
 passes all 404 tests without skips. The external strict BFCache failures remain
 separate from that passing framework suite; no package version or release changes.
 
-The next gate is the same bounded navigation/Back and post-return mutation
-journey in the existing compiled coordination fixture, preserving native cache
-miss/reload fallback. Use existing effects and native `pageshow`/visibility
-handling before considering compiler changes.
+The subsequent [compiled continuation](./actual-kudzu-bfcache.md) now passes the
+same bounded navigation/Back and post-return mutation journey for cache hits and
+fresh-document controls through a 17-line application-effect patch. Its next gate
+is original-upstream pending-mutation suspension intake.
 
 Semantic primitives, core passes/LOC, runtime concepts, adapters and browser
 capability byte deltas: **0**. One external probe is added. No compiler or

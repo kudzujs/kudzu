@@ -104,5 +104,10 @@ passes completed and uncertain writes, natural heartbeat promotion,
 reload/readback and surviving-owner cleanup on unchanged 0.17.16 output.
 Current Kudzu evidence uses graceful closure and renderer crashes with explicit
 delivery barriers; it does not establish
-process-crash durability, BFCache restoration, concurrent conflicting writes,
+process-crash durability, concurrent conflicting writes,
 live query invalidation, automatic retries or exactly-once behavior.
+
+The [compiled BFCache continuation](./actual-kudzu-bfcache.md) separately proves
+cache restoration and fresh-document fallback for both roles, post-return writes
+and surviving-owner cleanup. In-flight mutation settlement during suspension
+remains an upstream intake gate.

@@ -1,0 +1,48 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "crash",
+  "sourceSha256": "e4da88c216bb937553b6a69d60174b37bceac4fe9756149aa7bd1ba4f8a77b6e",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [
+        "one-backend-and-real-follower",
+        "renderer-crash-and-natural-heartbeat-promotion"
+      ],
+      "errors": [
+        "Failed to fetch"
+      ],
+      "accountID": "02e10f7d-cdc9-4e0b-a397-03b249598488",
+      "requestID": "35e7fd2a-8c9b-4476-b115-d22ac7e0cc14:mutate",
+      "leaderRequestIDs": [
+        "066617e0-8021-4022-a4f8-512eb4de58c4:create",
+        "e54bd057-a664-4647-87a6-5a34ba424ec8:prefs",
+        "51b3eff3-d5c2-40d7-b217-3d7be4c01f53:accounts"
+      ],
+      "followerRequestIDs": [
+        "d30caa2a-5be0-4413-9b70-6bb6926dda2b:open",
+        "7cba99c7-6b7d-4ee9-bcf3-3f1676c763f9:prefs",
+        "bcf27087-87f3-439f-ad41-c143896dd3a6:accounts",
+        "35e7fd2a-8c9b-4476-b115-d22ac7e0cc14:mutate",
+        "ed70413d-1e66-481f-b277-55e0ca2d725f:accounts",
+        "22194983-743a-4c64-9c05-4a4764ae0247:balance|02e10f7d-cdc9-4e0b-a397-03b249598488"
+      ],
+      "promotionAfterLossMs": 13845,
+      "lifecycleAtPromotion": [],
+      "terminal": [
+        {
+          "type": "reply",
+          "id": "35e7fd2a-8c9b-4476-b115-d22ac7e0cc14:mutate",
+          "result": "02e10f7d-cdc9-4e0b-a397-03b249598488",
+          "mutated": true
+        }
+      ],
+      "sentMutations": 1
+    }
+  ],
+  "pass": false,
+  "error": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('status')\nExpected: \"Saved data checked\"\nReceived: \"Opening local database\"\nTimeout:  30000ms\n\nCall log:\n  - Expect \"to.have.text\" with timeout 30000ms\n  - waiting for getByRole('status')\n    62 × locator resolved to <p role=\"status\">…</p>\n       - unexpected value \"Opening local database\"\n\n    at captureRawStack (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toHaveText (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /home/kft/Documents/etc/kudzu/test/actual-kudzu-crash.mjs:184:48"
+}

@@ -83,8 +83,26 @@ registry core emits byte-identical output without source changes. The
 [unchanged upstream BFCache intake](docs/next-architecture/actual-bfcache-intake.md)
 now proves actual leader/follower cache restoration, budget rejoin and
 post-return mutation persistence. It also retains an observed leader cache
-eviction and fresh-document fallback; restoration is not guaranteed. Next extend
-the compiled coordination fixture with that bounded native lifecycle journey.
+eviction and fresh-document fallback; restoration is not guaranteed. The
+[compiled BFCache continuation](docs/next-architecture/actual-kudzu-bfcache.md)
+now passes native cache hits and disabled-cache fresh-document controls for both
+roles with post-return mutation persistence and exact surviving-owner cleanup.
+Seventeen application-effect lines reuse native lifecycle events and the existing
+port protocol; no compiler/runtime change. The
+[pending-suspension intake](docs/next-architecture/actual-bfcache-pending.md)
+now reproduces lost terminal responses in unchanged upstream for both delivery
+boundaries: BFCache restoration and persisted account readback pass, but the
+creation dialog stays pending. The
+[separate upstream candidate](docs/next-architecture/actual-bfcache-pending-candidate.md)
+now passes both pending barriers and completed-operation controls with once-only
+local uncertainty, no replay and the same committed account. The
+[compiled pending-settlement fixture](docs/next-architecture/actual-kudzu-bfcache-pending.md)
+now passes both cached-return barriers and the completed-operation control
+using existing effects/protocol. Separate renderer-crash remount evidence is
+tracked with that packet.
+Its [account-name continuation](docs/next-architecture/actual-kudzu-bfcache-pending.md#account-name-validation)
+preserves Actual's blank and duplicate checks in the compiled form, before
+sending a database write.
 
 An AI should be able to migrate ordinary React-shaped TypeScript and TSX to CDN-deployable static HTML, CSS, and only the route-specific ESM capabilities actually used, with minimal source restructuring.
 

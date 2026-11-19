@@ -1,0 +1,102 @@
+{
+  "core": "0.17.18",
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cache": "native",
+  "sourceSha256": "030e26ff61d3d86d5edb6bbeb4d45e81aeacc01f7b94688401d78812f0262cea",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "departing": "follower",
+      "barrier": "request",
+      "errors": [],
+      "notRestored": [],
+      "pass": false,
+      "requestID": "37cfeab2-78c6-49bc-a6cf-d9896d41c1c7:mutate",
+      "committedID": "e29609d8-5164-472c-a8eb-5c34ba8e756f",
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-9116cd6"
+      },
+      "error": "Error: expect(locator).toContainText(expected) failed\n\nLocator: getByRole('alert')\nExpected substring: \"may have completed\"\nReceived string:    \"\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"to.have.text\" with timeout 5000ms\n  - waiting for getByRole('alert')\n    14 × locator resolved to <p role=\"alert\">…</p>\n       - unexpected value \"\"\n\n    at captureRawStack (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toContainText (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /home/kft/Documents/etc/kudzu/test/actual-kudzu-bfcache.mjs:197:50"
+    },
+    {
+      "departing": "follower",
+      "barrier": "reply",
+      "errors": [],
+      "notRestored": [],
+      "pass": false,
+      "requestID": "63144df0-3e01-45c7-9146-189987ea34c0:mutate",
+      "committedID": "79b7c279-6891-4981-8e9a-c4317226cb96",
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-871861a"
+      },
+      "error": "Error: expect(locator).toContainText(expected) failed\n\nLocator: getByRole('alert')\nExpected substring: \"may have completed\"\nReceived string:    \"\"\nTimeout: 5000ms\n\nCall log:\n  - Expect \"to.have.text\" with timeout 5000ms\n  - waiting for getByRole('alert')\n    14 × locator resolved to <p role=\"alert\">…</p>\n       - unexpected value \"\"\n\n    at captureRawStack (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toContainText (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /home/kft/Documents/etc/kudzu/test/actual-kudzu-bfcache.mjs:197:50"
+    },
+    {
+      "departing": "follower",
+      "barrier": "completed",
+      "errors": [],
+      "notRestored": [],
+      "pass": true,
+      "requestID": "f0c4430b-8056-4cf9-aa2e-4d64e18722ee:mutate",
+      "committedID": "6c5d626b-4173-4f27-8956-b39c9c033da6",
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-8fa87e0"
+      },
+      "accountID": "6c5d626b-4173-4f27-8956-b39c9c033da6",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    }
+  ],
+  "pass": false
+}

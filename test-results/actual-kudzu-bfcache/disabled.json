@@ -1,0 +1,104 @@
+{
+  "core": "0.17.17",
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cache": "disabled",
+  "sourceSha256": "030e26ff61d3d86d5edb6bbeb4d45e81aeacc01f7b94688401d78812f0262cea",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "departing": "leader",
+      "errors": [],
+      "notRestored": [
+        {
+          "loaderId": "30F0E37C06866A6972E4AA1FAAD0C2CA",
+          "frameId": "2520007BE5D45DC66DA6F9A6B3134D8B",
+          "notRestoredExplanations": [
+            {
+              "type": "Circumstantial",
+              "reason": "BackForwardCacheDisabled"
+            },
+            {
+              "type": "Circumstantial",
+              "reason": "BackForwardCacheDisabledByCommandLine"
+            }
+          ],
+          "notRestoredExplanationsTree": {
+            "url": "http://127.0.0.1:43237/",
+            "explanations": [
+              {
+                "type": "Circumstantial",
+                "reason": "BackForwardCacheDisabled"
+              },
+              {
+                "type": "Circumstantial",
+                "reason": "BackForwardCacheDisabledByCommandLine"
+              }
+            ],
+            "children": []
+          }
+        }
+      ],
+      "pass": true,
+      "restored": false,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        }
+      ],
+      "accountID": "3cb22128-4519-4955-9a63-428c63ad03c0",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    },
+    {
+      "departing": "follower",
+      "errors": [],
+      "notRestored": [
+        {
+          "loaderId": "153A9EC84C233FAE88888565F4243CA7",
+          "frameId": "6C4F6B4194B9C10CD2F6A915E29106C7",
+          "notRestoredExplanations": [
+            {
+              "type": "Circumstantial",
+              "reason": "BackForwardCacheDisabled"
+            },
+            {
+              "type": "Circumstantial",
+              "reason": "BackForwardCacheDisabledByCommandLine"
+            }
+          ],
+          "notRestoredExplanationsTree": {
+            "url": "http://127.0.0.1:43237/",
+            "explanations": [
+              {
+                "type": "Circumstantial",
+                "reason": "BackForwardCacheDisabled"
+              },
+              {
+                "type": "Circumstantial",
+                "reason": "BackForwardCacheDisabledByCommandLine"
+              }
+            ],
+            "children": []
+          }
+        }
+      ],
+      "pass": true,
+      "restored": false,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        }
+      ],
+      "accountID": "adaa36f5-b0e4-49f1-9fb7-e28dfe9851b7",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    }
+  ],
+  "pass": true
+}

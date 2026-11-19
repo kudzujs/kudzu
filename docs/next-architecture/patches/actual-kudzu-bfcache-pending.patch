@@ -1,0 +1,44 @@
+--- a/src/pages/index.tsx
++++ b/src/pages/index.tsx
+@@ -38,6 +38,11 @@
+     }
+     const suspend = event => {
+       if (!event.persisted) return
++      if (shared.pendingMutation) {
++        shared.pendingMutation = null
++        setUncertain(true)
++        setError("Account creation may have completed. Reload and check saved data before retrying.")
++      }
+       setBusy(true)
+       setStatus("Checking saved data after return")
+       connected = false
+@@ -50,6 +55,10 @@
+     const receive = event => {
+       if (!active) return
+       const msg = event.data
++      if ((msg.type === "reply" || msg.type === "error") && String(msg.id).endsWith(":mutate")) {
++        if (msg.id !== shared.pendingMutation) return
++        shared.pendingMutation = null
++      }
+       if (msg.type === "__heartbeat-ping") {
+         port.postMessage({ type: "__heartbeat-pong" })
+       } else if (msg.type === "__role-change") {
+@@ -153,7 +162,9 @@
+   }, [])
+   useEffect(() => {
+     if (!command) return
+-    backend.current.port.postMessage(JSON.parse(command))
++    const message = JSON.parse(command)
++    backend.current.port.postMessage(message)
++    if (message.name === "account-create") backend.current.pendingMutation = message.id
+   }, [command])
+   return <main>
+     <h1>Shared local budget</h1>
+@@ -166,6 +177,7 @@
+     <button onClick={() => location.reload()}>Reload and check data</button>
+     <form onSubmit={event => {
+       event.preventDefault()
++      if (busy || uncertain || !current) return
+       const data = new FormData(event.currentTarget)
+       setBusy(true)
+       setError("")

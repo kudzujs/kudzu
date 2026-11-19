@@ -1,0 +1,53 @@
+diff --git a/src/pages/index.tsx b/src/pages/index.tsx
+index f3d9f94..b7e5f38 100644
+--- a/src/pages/index.tsx
++++ b/src/pages/index.tsx
+@@ -20,6 +20,7 @@ function Budget() {
+     let active = true
+     let connected = false
+     let remaining = 0
++    let budgetId = localStorage.getItem("actual-kudzu-budget")
+     const request = (id, name, args = {}) => {
+       port.postMessage({ id: crypto.randomUUID() + ":" + id, name, args })
+     }
+@@ -35,6 +36,17 @@ function Budget() {
+       }
+       children = []
+     }
++    const suspend = event => {
++      if (!event.persisted) return
++      setBusy(true)
++      setStatus("Checking saved data after return")
++      connected = false
++      stopBackend()
++      port.postMessage({ type: "tab-closing" })
++    }
++    const resume = event => {
++      if (event.persisted) port.postMessage({ type: "__resume-tab", budgetId })
++    }
+     const receive = event => {
+       if (!active) return
+       const msg = event.data
+@@ -99,6 +111,7 @@ function Budget() {
+         const id = String(msg.id).split(":").pop()
+         if (id === "create" || id === "open") request("prefs", "load-prefs")
+         else if (id === "prefs") {
++          budgetId = msg.result.id
+           localStorage.setItem("actual-kudzu-budget", msg.result.id)
+           setCurrent(msg.result.id)
+           request("accounts", "accounts-get")
+@@ -123,10 +136,14 @@ function Budget() {
+       }
+     }
+     port.addEventListener("message", receive)
++    window.addEventListener("pagehide", suspend)
++    window.addEventListener("pageshow", resume)
+     port.start()
+     port.postMessage({ type: "init", version: "26.8.0", isDev: false, publicUrl: "", hash: "C7Thu0FH" })
+     return () => {
+       active = false
++      window.removeEventListener("pagehide", suspend)
++      window.removeEventListener("pageshow", resume)
+       port.postMessage({ type: "tab-closing" })
+       port.removeEventListener("message", receive)
+       port.close()

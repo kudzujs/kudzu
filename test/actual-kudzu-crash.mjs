@@ -12,11 +12,18 @@ const { chromium, expect } = require('@playwright/test')
 const output = resolve(process.env.RESULT_DIR || 'test-results/actual-kudzu-crash')
 await mkdir(output, { recursive: true })
 const dist = resolve(root, 'dist')
+let interruptMigration = false
+let droppedRequests = 0
 const server = createServer(async (req, res) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
   try {
     let path = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)
+    if (interruptMigration && path === '/data/migrations/1548957970627_remove-db-version.sql') {
+      droppedRequests++
+      res.destroy()
+      return
+    }
     if (!extname(path)) path = path.replace(/\/$/, '') + '/index.html'
     const file = resolve(dist, '.' + path)
     if (!file.startsWith(dist + sep)) throw new Error('outside root')
@@ -31,7 +38,7 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROME_BIN || '/usr/bin/google-chrome', headless: true,
 })
 const loss = process.env.LOSS || 'crash'
-assert.ok(['close', 'crash'].includes(loss))
+assert.ok(['close', 'crash', 'init-failure', 'account-name'].includes(loss))
 const hash = async path => createHash('sha256').update(await readFile(resolve(root, path))).digest('hex')
 const receipt = {
   browser: browser.version(), node: process.version, platform: process.platform, loss,
@@ -40,7 +47,7 @@ const receipt = {
   cases: [], pass: false,
 }
 try {
-  for (const mode of ['complete', 'request', 'reply']) {
+  for (const mode of ['init-failure', 'account-name'].includes(loss) ? ['complete'] : ['complete', 'request', 'reply']) {
     const result = { mode, steps: [], errors: [] }
     receipt.cases.push(result)
     const context = await browser.newContext()
@@ -116,6 +123,7 @@ try {
     const tab = async () => {
       const page = await context.newPage()
       page.on('pageerror', error => result.errors.push(error.message))
+      page.on('requestfailed', request => (result.failedRequests ??= []).push({ path: new URL(request.url()).pathname, error: request.failure()?.errorText }))
       page.on('response', response => { if (response.status() >= 400) result.errors.push(`${response.status()} ${response.url()}`) })
       await page.goto(origin)
       return page
@@ -125,6 +133,63 @@ try {
     await leader.getByRole('button', { name: 'Start budgeting' }).click()
     await expect(leader.locator('[data-budget]')).not.toBeEmpty({ timeout: 30000 })
     await expect(leader.getByRole('status')).toHaveText('Saved data checked')
+    if (loss === 'account-name') {
+      const name = leader.getByLabel('Account name')
+      const submit = leader.getByRole('button', { name: 'Create account', exact: true })
+      const alert = leader.getByRole('alert')
+      const send = async value => { await name.fill(value); await submit.click() }
+      const writes = () => leader.evaluate(() => window.__ports.flatMap(port => port.sent).filter(message => message.name === 'account-create').length)
+      await send('   ')
+      await expect(alert).toHaveText('Name cannot be blank.')
+      await expect(name).toBeFocused()
+      assert.equal(await writes(), 0)
+      await send('  Savings  ')
+      await expect(leader.locator('[data-name]')).toHaveText('Savings')
+      await expect(alert).toBeEmpty()
+      await send(' Savings ')
+      await expect(alert).toHaveText('Name Savings already exists.')
+      await expect(name).toBeFocused()
+      assert.equal(await writes(), 1)
+      await send('savings')
+      await expect(leader.locator('[data-name]')).toHaveCount(2)
+      await expect(alert).toBeEmpty()
+      result.writes = await writes()
+      assert.equal(result.writes, 2)
+      await leader.reload()
+      await expect(leader.getByRole('status')).toHaveText('Saved data checked', { timeout: 30000 })
+      result.savedNames = (await leader.locator('[data-name]').allTextContents()).sort()
+      assert.deepEqual(result.savedNames, ['Savings', 'savings'])
+      assert.deepEqual(result.errors, [])
+      result.pass = true
+      await context.close()
+      continue
+    }
+    if (loss === 'init-failure') {
+      await leader.getByLabel('Account name').fill('Recovery control')
+      const create = leader.getByRole('button', { name: 'Create account', exact: true })
+      await create.click()
+      await expect(leader.locator('[data-balance]')).toHaveText('1000')
+      result.accountID = await leader.locator('[data-account-id]').getAttribute('data-account-id')
+      interruptMigration = true
+      await leader.reload()
+      await expect(leader.getByRole('status')).toHaveText('Cannot open local database', { timeout: 30000 })
+      await expect(leader.getByRole('alert')).toContainText('Reload and check data')
+      await expect(create).toBeDisabled()
+      result.droppedRequests = droppedRequests
+      assert.ok(droppedRequests > 0)
+      interruptMigration = false
+      await leader.getByRole('button', { name: 'Reload and check data' }).click()
+      await expect(leader.getByRole('status')).toHaveText('Saved data checked', { timeout: 30000 })
+      await expect(leader.locator('[data-account-id]')).toHaveCount(1)
+      await expect(leader.locator('[data-account-id]')).toHaveAttribute('data-account-id', result.accountID)
+      await expect(leader.locator('[data-balance]')).toHaveText('1000')
+      await expect(create).toBeEnabled()
+      await expect(leader.getByRole('alert')).toBeEmpty()
+      assert.deepEqual(result.errors, [])
+      result.pass = true
+      await context.close()
+      continue
+    }
     const follower = await tab()
     await expect(follower.locator('[data-role]')).toHaveText('FOLLOWER', { timeout: 30000 })
     await expect(follower.getByRole('status')).toHaveText('Saved data checked')

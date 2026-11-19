@@ -1,0 +1,25 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "init-failure",
+  "sourceSha256": "7f751b12d80e5fa195651bb18cad0b167753338621f3e42a1b8667b8ffd12ff0",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [],
+      "errors": [],
+      "accountID": "c884a887-3577-42df-a5f8-11fe861bf459",
+      "failedRequests": [
+        {
+          "path": "/data/migrations/1548957970627_remove-db-version.sql",
+          "error": "net::ERR_EMPTY_RESPONSE"
+        }
+      ],
+      "droppedRequests": 11,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

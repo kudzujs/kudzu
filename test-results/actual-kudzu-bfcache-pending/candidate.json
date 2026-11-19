@@ -1,0 +1,108 @@
+{
+  "core": "0.17.18",
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cache": "native",
+  "sourceSha256": "e4da88c216bb937553b6a69d60174b37bceac4fe9756149aa7bd1ba4f8a77b6e",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "departing": "follower",
+      "barrier": "request",
+      "errors": [],
+      "notRestored": [],
+      "pass": true,
+      "requestID": "f328c9e4-ef5e-45ca-981e-e48443a15f9a:mutate",
+      "committedID": "f8ee4382-811e-41db-ac0b-c4de8ac4e034",
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-87428fd"
+      },
+      "accountID": "f8ee4382-811e-41db-ac0b-c4de8ac4e034",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    },
+    {
+      "departing": "follower",
+      "barrier": "reply",
+      "errors": [],
+      "notRestored": [],
+      "pass": true,
+      "requestID": "74669651-231b-4ea2-8f06-f008891e498a:mutate",
+      "committedID": "f9bde0bb-3eb6-4e63-ad15-c86adc53af5c",
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-1e69b24"
+      },
+      "accountID": "f9bde0bb-3eb6-4e63-ad15-c86adc53af5c",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    },
+    {
+      "departing": "follower",
+      "barrier": "completed",
+      "errors": [],
+      "notRestored": [],
+      "pass": true,
+      "requestID": "9a355b8b-574c-4397-b64c-6305561bab56:mutate",
+      "committedID": "b94f6c3d-70ad-4a77-9228-aeb5250753bd",
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-a8f271e"
+      },
+      "accountID": "b94f6c3d-70ad-4a77-9228-aeb5250753bd",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    }
+  ],
+  "pass": true
+}

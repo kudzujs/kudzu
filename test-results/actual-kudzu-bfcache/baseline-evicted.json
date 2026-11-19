@@ -1,0 +1,88 @@
+{
+  "core": "0.17.17",
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cache": "native",
+  "sourceSha256": "042e6ed94d07aa16af1c8fc55ca334ef85f40ccb37b17bbd40eb9d50bd86af7d",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "departing": "leader",
+      "errors": [],
+      "notRestored": [
+        {
+          "loaderId": "3595E6F959531CA9BF6C0251870C3233",
+          "frameId": "04AC445B11A85D2276F365BFA48B5E0E",
+          "notRestoredExplanations": [
+            {
+              "type": "Circumstantial",
+              "reason": "SharedWorkerMessage"
+            }
+          ],
+          "notRestoredExplanationsTree": {
+            "url": "http://127.0.0.1:36867/",
+            "explanations": [
+              {
+                "type": "Circumstantial",
+                "reason": "SharedWorkerMessage"
+              }
+            ],
+            "children": []
+          }
+        }
+      ],
+      "pass": true,
+      "restored": false,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        }
+      ],
+      "accountID": "0c75c0d7-0ea0-4638-9bea-26f1c984843c",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    },
+    {
+      "departing": "follower",
+      "errors": [],
+      "notRestored": [
+        {
+          "loaderId": "390E1DA4E85E75930FCE290CCB798FC0",
+          "frameId": "61DEBE467DB71BB443B5F966B5C01AE6",
+          "notRestoredExplanations": [
+            {
+              "type": "Circumstantial",
+              "reason": "SharedWorkerMessage"
+            }
+          ],
+          "notRestoredExplanationsTree": {
+            "url": "http://127.0.0.1:36867/",
+            "explanations": [
+              {
+                "type": "Circumstantial",
+                "reason": "SharedWorkerMessage"
+              }
+            ],
+            "children": []
+          }
+        }
+      ],
+      "pass": true,
+      "restored": false,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        }
+      ],
+      "accountID": "94297355-0741-4303-a708-9a2276d54793",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    }
+  ],
+  "pass": false
+}

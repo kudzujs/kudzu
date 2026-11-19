@@ -1,0 +1,70 @@
+{
+  "core": "0.17.17",
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cache": "native",
+  "sourceSha256": "030e26ff61d3d86d5edb6bbeb4d45e81aeacc01f7b94688401d78812f0262cea",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "departing": "leader",
+      "errors": [],
+      "notRestored": [],
+      "pass": true,
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-a8e60d8"
+      },
+      "accountID": "51d7a3b1-c2bd-4ce6-843a-e5cfe11a1bf9",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    },
+    {
+      "departing": "follower",
+      "errors": [],
+      "notRestored": [],
+      "pass": true,
+      "restored": true,
+      "lifecycle": [
+        {
+          "type": "pageshow",
+          "persisted": false
+        },
+        {
+          "type": "pagehide",
+          "persisted": true
+        },
+        {
+          "type": "pageshow",
+          "persisted": true
+        }
+      ],
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-01f5ba1"
+      },
+      "accountID": "254fb94f-fcdb-4cbc-a5d3-bf53b5d9732d",
+      "mutations": 1,
+      "persistedBalance": 1000,
+      "cleanup": true
+    }
+  ],
+  "pass": true
+}

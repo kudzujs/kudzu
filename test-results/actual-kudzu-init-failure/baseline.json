@@ -1,0 +1,26 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "init-failure",
+  "sourceSha256": "e4da88c216bb937553b6a69d60174b37bceac4fe9756149aa7bd1ba4f8a77b6e",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [],
+      "errors": [
+        "Failed to fetch"
+      ],
+      "accountID": "e85da25d-c29a-45df-ada0-bb76ff4630f6",
+      "failedRequests": [
+        {
+          "path": "/data/migrations/1548957970627_remove-db-version.sql",
+          "error": "net::ERR_EMPTY_RESPONSE"
+        }
+      ]
+    }
+  ],
+  "pass": false,
+  "error": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('status')\nExpected: \"Cannot open local database\"\nReceived: \"Opening local database\"\nTimeout:  30000ms\n\nCall log:\n  - Expect \"to.have.text\" with timeout 30000ms\n  - waiting for getByRole('status')\n    63 × locator resolved to <p role=\"status\">…</p>\n       - unexpected value \"Opening local database\"\n\n    at captureRawStack (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toHaveText (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /home/kft/Documents/etc/kudzu/test/actual-kudzu-crash.mjs:144:48"
+}

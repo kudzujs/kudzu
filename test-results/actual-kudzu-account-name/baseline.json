@@ -1,0 +1,17 @@
+{
+  "browser": "152.0.7977.64",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "loss": "account-name",
+  "sourceSha256": "7f751b12d80e5fa195651bb18cad0b167753338621f3e42a1b8667b8ffd12ff0",
+  "coordinatorSha256": "a33ef88680610bab688d7dbc7eec22bcf8ce75e9a9f35d3a74eed524e123994c",
+  "cases": [
+    {
+      "mode": "complete",
+      "steps": [],
+      "errors": []
+    }
+  ],
+  "pass": false,
+  "error": "Error: expect(locator).toHaveText(expected) failed\n\nLocator:  getByRole('alert')\nExpected: \"Name cannot be blank.\"\nReceived: \"\"\nTimeout:  5000ms\n\nCall log:\n  - Expect \"to.have.text\" with timeout 5000ms\n  - waiting for getByRole('alert')\n    14 × locator resolved to <p role=\"alert\">…</p>\n       - unexpected value \"\"\n\n    at captureRawStack (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright-core/lib/coreBundle.js:3172:17)\n    at callMatcherAsStep (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12877:57)\n    at Object.toHaveText (/tmp/opencode/actual-intake/actual-87e33e49eb4d666c33e0c0f172faf340d1b7aa0a/node_modules/playwright/lib/matchers/expect.js:12867:23)\n    at /home/kft/Documents/etc/kudzu/test/actual-kudzu-crash.mjs:143:27"
+}
