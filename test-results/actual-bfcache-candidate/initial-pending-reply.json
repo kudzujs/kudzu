@@ -1,0 +1,268 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "hold": "reply",
+  "candidate": true,
+  "sourcePatchSha256": "7ebe1c4ed5873b2474496804d0d69d74d71b6c91af6eeebd65a1c87ff2a4c8fa",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cases": [
+    {
+      "departing": "follower",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "11270fd3-5cfd-432a-b3a3-0c35f102667b"
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "11270fd3-5cfd-432a-b3a3-0c35f102667b"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "11270fd3-5cfd-432a-b3a3-0c35f102667b"
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "1d555b60-a95d-43e4-9586-bc633c65566a"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:38639/",
+          "token": "77f8ceb2-51ac-4083-b2d0-20e2f0b66f84"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "__resume-tab",
+          "budgetId": "My-Finances-95ce5e9",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "3ce773b0-3a1f-42b9-96bb-056d8db2ca34"
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "3ce773b0-3a1f-42b9-96bb-056d8db2ca34"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "3ce773b0-3a1f-42b9-96bb-056d8db2ca34"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "8cb95d92-e4f5-4c34-b902-6334247b2ded"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "1d555b60-a95d-43e4-9586-bc633c65566a"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "8cb95d92-e4f5-4c34-b902-6334247b2ded"
+        }
+      ],
+      "notRestored": [],
+      "pass": true,
+      "held": {
+        "type": "reply",
+        "id": "b432e076-6239-4ec0-96c4-c94e86966af5",
+        "result": "b79fa624-719a-4908-8448-5932855db645",
+        "mutated": true,
+        "undoTag": "39ebcbe0-6b16-482d-9a1e-45eb295a5159"
+      },
+      "before": {
+        "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+          }
+        ],
+        "protocol": [],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [
+          "b432e076-6239-4ec0-96c4-c94e86966af5"
+        ],
+        "terminal": [],
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "backendReply": {
+        "type": "reply",
+        "id": "b432e076-6239-4ec0-96c4-c94e86966af5",
+        "result": "b79fa624-719a-4908-8448-5932855db645",
+        "mutated": true,
+        "undoTag": "39ebcbe0-6b16-482d-9a1e-45eb295a5159"
+      },
+      "after": {
+        "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+          }
+        ],
+        "protocol": [
+          {
+            "type": "tab-closing",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+          },
+          {
+            "type": "__resume-tab",
+            "budgetId": "My-Finances-95ce5e9",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+          }
+        ],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [
+          "b432e076-6239-4ec0-96c4-c94e86966af5"
+        ],
+        "terminal": [],
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "restored": true,
+      "returnedRole": "FOLLOWER",
+      "readback": "10.00",
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-95ce5e9",
+        "url": "http://127.0.0.1:3158/accounts",
+        "token": "c1570ffa-7977-4a3c-94bd-73904f400e3b"
+      },
+      "returnedMutation": {
+        "sent": [
+          "b432e076-6239-4ec0-96c4-c94e86966af5"
+        ],
+        "terminal": []
+      },
+      "visibleAfterReturn": "My Finances\nBudget\nReports\nSchedules\nMore\nAll accounts\n10.00\nOn budget\n0.00\nBFCache Checking\n0.00\nAdd account\nNo server\nHelp\nUnable to refresh balances. Reload and check your data before making changes.\nThe page was suspended before the result arrived. Reload and check saved data before trying again.\nA new version of Actual is available!\nVersion v26.11.0 of Actual was recently released.\nOpen changelog\nAll Accounts\n10.00\nAdd New\nFilter\nDate\nAccount\nPayee\nNotes\nCategory\nPayment\nDeposit\n✓\nNo transactions\nAdd account\nOnce the account is created, you can also import QIF/OFX/QFX files into it.\nThe account may have been created while this page was away. Reload and check saved accounts before trying again.\nName:\nOff budget\nOff-budget accounts (like investments, loans, or your house) are tracked but not part of your spending budget.\nThis cannot be changed later. See Accounts Overview for more information.\nBalance:\nCancel\nCreate",
+      "pendingDialog": true,
+      "localOutcome": {
+        "count": 1,
+        "kind": "uncertain",
+        "retryDisabled": true
+      },
+      "createdAccountHref": "/accounts/b79fa624-719a-4908-8448-5932855db645",
+      "pendingReadback": {
+        "persisted": true,
+        "count": 1,
+        "balance": "10.00"
+      }
+    }
+  ],
+  "pass": true,
+  "startSourceSha256": "af811ae137deb70888cb112d50e27d778679ced3009f743269161f26d9aece67",
+  "browser": "152.0.7977.64"
+}

@@ -1,0 +1,42 @@
+
+ RUN  v4.1.10 /tmp/opencode/actual-bfcache-candidate/packages/loot-core
+
+ ❯ src/platform/client/connection/bfcache.test.ts (3 tests | 2 failed) 10027ms
+   × settles suspended requests once, ignores late replies and never replays writes 5013ms
+   ✓ preserves completed requests and ignores non-persisted lifecycle events 10ms
+   × does not send suspended queued requests and identifies them as unexecuted 5002ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/platform/client/connection/bfcache.test.ts > settles suspended requests once, ignores late replies and never replays writes
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/platform/client/connection/bfcache.test.ts:33:1
+     31| }
+     32|
+     33| it('settles suspended requests once, ignores late replies and never re…
+       | ^
+     34|   const { socket, send, receive, lifecycle, opened } = await connectio…
+     35|   receive({ type: 'connect' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/platform/client/connection/bfcache.test.ts > does not send suspended queued requests and identifies them as unexecuted
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/platform/client/connection/bfcache.test.ts:76:1
+     74| });
+     75|
+     76| it('does not send suspended queued requests and identifies them as une…
+       | ^
+     77|   const { socket, send, receive, lifecycle, opened } = await connectio…
+     78|   const pending = send('accounts-get').catch(error => error);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  13:23:58
+   Duration  17.52s (transform 1.95s, setup 7.25s, import 9ms, tests 10.03s, environment 0ms)
+

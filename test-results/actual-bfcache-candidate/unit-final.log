@@ -1,0 +1,10 @@
+
+ RUN  v4.1.10 /tmp/opencode/actual-bfcache-candidate/packages/loot-core
+
+ ✓ src/platform/client/connection/bfcache.test.ts (3 tests) 141ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  13:29:32
+   Duration  11.91s (transform 3.55s, setup 11.12s, import 106ms, tests 141ms, environment 0ms)
+

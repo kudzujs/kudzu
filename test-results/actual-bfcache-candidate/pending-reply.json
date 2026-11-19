@@ -1,0 +1,399 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "hold": "reply",
+  "candidate": true,
+  "sourcePatchSha256": "4b8199de80fa461e58a39ec7a7c68c4a0ef7486ba52fe9c6c163c9901488c7a7",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cases": [
+    {
+      "departing": "follower",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "a6a325c1-ad6d-43bc-812a-996d11b1db29",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a6a325c1-ad6d-43bc-812a-996d11b1db29"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a6a325c1-ad6d-43bc-812a-996d11b1db29",
+          "pending": {
+            "bfbe1bff-0431-43b6-b14e-98ceceba13b7": "query",
+            "aa010610-dd32-45d5-8824-504f83ab751d": "query",
+            "1e79d14e-f52a-4866-b982-9be2ce77bdea": "query",
+            "2a51e2a4-1b6f-41bb-b8df-f063b2f236c9": "query"
+          }
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c7b5d640-fe71-42a8-8b53-6a7432fbdd12",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:36115/",
+          "token": "0305471d-bd0a-42b8-841d-737c8a6baf0f",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+          "pending": {
+            "ef55909c-0c89-48ad-87e4-fc44a19c2787": "account-create",
+            "1fee6dc8-2860-48b1-bf9a-057286902696": "create-query",
+            "5c47ef74-dfeb-46a9-a709-c864d9f09259": "get-cell",
+            "310a2be4-de5d-4d6b-bc2a-e664a1e0199c": "create-query",
+            "8868f9c3-0720-466d-946a-a07c98560f13": "get-cell",
+            "b73467a7-6d5e-421e-891a-9801ea31b963": "query",
+            "beb3dce9-1d8f-4453-bd8c-050c8adc7afc": "query",
+            "4c66b52f-0e36-49af-a57b-1f41d046f200": "query",
+            "ba92037f-9fd8-4dff-93c0-08e1ca5ccd3e": "query",
+            "d7a34f26-e17b-4708-8de4-4236477c50f2": "query"
+          }
+        },
+        {
+          "tab": 1,
+          "type": "__resume-tab",
+          "budgetId": "My-Finances-4cd1bd8",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+          "pending": {
+            "ef55909c-0c89-48ad-87e4-fc44a19c2787": "account-create",
+            "1fee6dc8-2860-48b1-bf9a-057286902696": "create-query",
+            "5c47ef74-dfeb-46a9-a709-c864d9f09259": "get-cell",
+            "310a2be4-de5d-4d6b-bc2a-e664a1e0199c": "create-query",
+            "8868f9c3-0720-466d-946a-a07c98560f13": "get-cell",
+            "b73467a7-6d5e-421e-891a-9801ea31b963": "query",
+            "beb3dce9-1d8f-4453-bd8c-050c8adc7afc": "query",
+            "4c66b52f-0e36-49af-a57b-1f41d046f200": "query",
+            "ba92037f-9fd8-4dff-93c0-08e1ca5ccd3e": "query",
+            "d7a34f26-e17b-4708-8de4-4236477c50f2": "query",
+            "475ac048-c966-4f8e-ba01-b8a0fcf466cf": "sync",
+            "4c2701e1-2ae9-4887-9409-da63e4248df9": "report/get",
+            "4a96b08a-9966-4fb9-b4b5-6f9faabdf1ee": "query",
+            "f0aa4eec-e5be-4f74-8b59-4b6813dc74c9": "query"
+          }
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+          "pending": {
+            "ef55909c-0c89-48ad-87e4-fc44a19c2787": "account-create",
+            "1fee6dc8-2860-48b1-bf9a-057286902696": "create-query",
+            "5c47ef74-dfeb-46a9-a709-c864d9f09259": "get-cell",
+            "310a2be4-de5d-4d6b-bc2a-e664a1e0199c": "create-query",
+            "8868f9c3-0720-466d-946a-a07c98560f13": "get-cell",
+            "b73467a7-6d5e-421e-891a-9801ea31b963": "query",
+            "beb3dce9-1d8f-4453-bd8c-050c8adc7afc": "query",
+            "4c66b52f-0e36-49af-a57b-1f41d046f200": "query",
+            "ba92037f-9fd8-4dff-93c0-08e1ca5ccd3e": "query",
+            "d7a34f26-e17b-4708-8de4-4236477c50f2": "query"
+          }
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "2d2c31b0-0d32-4d8f-8c23-9ba5a5d318ea",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "2d2c31b0-0d32-4d8f-8c23-9ba5a5d318ea"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "2d2c31b0-0d32-4d8f-8c23-9ba5a5d318ea",
+          "pending": {
+            "beec3c15-75e8-4ae7-87ee-7e829f65e8c9": "query",
+            "e6c4d556-4f7d-41c9-9061-5821620beeb1": "query",
+            "9a1d7c00-7fc1-46fe-8aa2-02ee5ab582bd": "query",
+            "280e9eca-83ad-4695-86ba-dae0d798a24d": "load-prefs",
+            "616b264d-25a6-4877-b161-a2499947a973": "query"
+          }
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "12c857ac-5200-422e-922b-95267a10faf6",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c7b5d640-fe71-42a8-8b53-6a7432fbdd12",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "12c857ac-5200-422e-922b-95267a10faf6",
+          "pending": {
+            "b0fb4de6-0c81-4669-bdfa-7e1b894b9016": "query",
+            "8992eaf1-4158-4059-bacf-b0671454a0d3": "query",
+            "178295bf-2cf3-421c-911c-216b421fe90a": "load-prefs",
+            "e4bf2361-9d9f-451c-8098-467f8132d1de": "query"
+          }
+        }
+      ],
+      "notRestored": [],
+      "pass": true,
+      "held": {
+        "type": "reply",
+        "id": "ef55909c-0c89-48ad-87e4-fc44a19c2787",
+        "result": "bbc0b23c-cac2-43a6-bb22-1d973bd9caa1",
+        "mutated": true,
+        "undoTag": "d1ec4b58-7b3d-4bcf-bc13-d355b8b98896"
+      },
+      "before": {
+        "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [
+          "ef55909c-0c89-48ad-87e4-fc44a19c2787"
+        ],
+        "terminal": [],
+        "pending": {
+          "ef55909c-0c89-48ad-87e4-fc44a19c2787": "account-create",
+          "eec2d689-117d-4afb-9f80-6779c682d161": "query",
+          "f8871b1a-3728-41e0-9b6d-db9104c0973c": "query",
+          "ac12a493-9758-4296-b62f-3a3be933739d": "query",
+          "e3796cbb-4e3c-432a-aa8d-0dc9ed6dc2ae": "query",
+          "43ca1cf2-2f5a-423c-9442-0fb53d100187": "query",
+          "a0348d79-3d40-4bdb-87d4-68287ca7d2bd": "query",
+          "1fee6dc8-2860-48b1-bf9a-057286902696": "create-query",
+          "5c47ef74-dfeb-46a9-a709-c864d9f09259": "get-cell",
+          "310a2be4-de5d-4d6b-bc2a-e664a1e0199c": "create-query",
+          "8868f9c3-0720-466d-946a-a07c98560f13": "get-cell",
+          "b73467a7-6d5e-421e-891a-9801ea31b963": "query",
+          "beb3dce9-1d8f-4453-bd8c-050c8adc7afc": "query",
+          "4c66b52f-0e36-49af-a57b-1f41d046f200": "query",
+          "ba92037f-9fd8-4dff-93c0-08e1ca5ccd3e": "query",
+          "d7a34f26-e17b-4708-8de4-4236477c50f2": "query"
+        },
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "backendReply": {
+        "type": "reply",
+        "id": "ef55909c-0c89-48ad-87e4-fc44a19c2787",
+        "result": "bbc0b23c-cac2-43a6-bb22-1d973bd9caa1",
+        "mutated": true,
+        "undoTag": "d1ec4b58-7b3d-4bcf-bc13-d355b8b98896"
+      },
+      "after": {
+        "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+            "pending": {}
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+            "pending": {
+              "ef55909c-0c89-48ad-87e4-fc44a19c2787": "account-create",
+              "1fee6dc8-2860-48b1-bf9a-057286902696": "create-query",
+              "5c47ef74-dfeb-46a9-a709-c864d9f09259": "get-cell",
+              "310a2be4-de5d-4d6b-bc2a-e664a1e0199c": "create-query",
+              "8868f9c3-0720-466d-946a-a07c98560f13": "get-cell",
+              "b73467a7-6d5e-421e-891a-9801ea31b963": "query",
+              "beb3dce9-1d8f-4453-bd8c-050c8adc7afc": "query",
+              "4c66b52f-0e36-49af-a57b-1f41d046f200": "query",
+              "ba92037f-9fd8-4dff-93c0-08e1ca5ccd3e": "query",
+              "d7a34f26-e17b-4708-8de4-4236477c50f2": "query"
+            }
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "be292d2f-18cd-4688-84ea-11fd4096a33e",
+            "pending": {
+              "ef55909c-0c89-48ad-87e4-fc44a19c2787": "account-create",
+              "1fee6dc8-2860-48b1-bf9a-057286902696": "create-query",
+              "5c47ef74-dfeb-46a9-a709-c864d9f09259": "get-cell",
+              "310a2be4-de5d-4d6b-bc2a-e664a1e0199c": "create-query",
+              "8868f9c3-0720-466d-946a-a07c98560f13": "get-cell",
+              "b73467a7-6d5e-421e-891a-9801ea31b963": "query",
+              "beb3dce9-1d8f-4453-bd8c-050c8adc7afc": "query",
+              "4c66b52f-0e36-49af-a57b-1f41d046f200": "query",
+              "ba92037f-9fd8-4dff-93c0-08e1ca5ccd3e": "query",
+              "d7a34f26-e17b-4708-8de4-4236477c50f2": "query",
+              "475ac048-c966-4f8e-ba01-b8a0fcf466cf": "sync",
+              "4c2701e1-2ae9-4887-9409-da63e4248df9": "report/get",
+              "4a96b08a-9966-4fb9-b4b5-6f9faabdf1ee": "query",
+              "f0aa4eec-e5be-4f74-8b59-4b6813dc74c9": "query"
+            }
+          }
+        ],
+        "protocol": [
+          {
+            "type": "tab-closing",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "be292d2f-18cd-4688-84ea-11fd4096a33e"
+          },
+          {
+            "type": "__resume-tab",
+            "budgetId": "My-Finances-4cd1bd8",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "be292d2f-18cd-4688-84ea-11fd4096a33e"
+          }
+        ],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [
+          "ef55909c-0c89-48ad-87e4-fc44a19c2787"
+        ],
+        "terminal": [],
+        "pending": {
+          "ef55909c-0c89-48ad-87e4-fc44a19c2787": "account-create",
+          "1fee6dc8-2860-48b1-bf9a-057286902696": "create-query",
+          "5c47ef74-dfeb-46a9-a709-c864d9f09259": "get-cell",
+          "310a2be4-de5d-4d6b-bc2a-e664a1e0199c": "create-query",
+          "8868f9c3-0720-466d-946a-a07c98560f13": "get-cell",
+          "b73467a7-6d5e-421e-891a-9801ea31b963": "query",
+          "beb3dce9-1d8f-4453-bd8c-050c8adc7afc": "query",
+          "4c66b52f-0e36-49af-a57b-1f41d046f200": "query",
+          "ba92037f-9fd8-4dff-93c0-08e1ca5ccd3e": "query",
+          "d7a34f26-e17b-4708-8de4-4236477c50f2": "query",
+          "b32247e3-33fe-4690-8b6a-fe048327cea4": "query",
+          "c82de1dd-0975-4d14-830a-616fe57eea4a": "query",
+          "e7a23d42-03ba-4a50-99b4-5d9b31edffe2": "query",
+          "3e29a472-4bf7-4d9f-9122-afdfd3ed820f": "load-prefs"
+        },
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "restored": true,
+      "returnedRole": "FOLLOWER",
+      "readback": "10.00",
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-4cd1bd8",
+        "url": "http://127.0.0.1:3158/accounts",
+        "token": "be292d2f-18cd-4688-84ea-11fd4096a33e"
+      },
+      "returnedMutation": {
+        "sent": [
+          "ef55909c-0c89-48ad-87e4-fc44a19c2787"
+        ],
+        "terminal": []
+      },
+      "visibleAfterReturn": "My Finances\nBudget\nReports\nSchedules\nMore\nAll accounts\n10.00\nOn budget\n10.00\nBFCache Checking\n0.00\nAdd account\nNo server\nHelp\nUnable to refresh balances. Reload and check your data before making changes.\nThe page was suspended before the result arrived. Reload and check saved data before trying again.\nA new version of Actual is available!\nVersion v26.11.0 of Actual was recently released.\nOpen changelog\nAll Accounts\n10.00\nAdd New\nFilter\nDate\nAccount\nPayee\nNotes\nCategory\nPayment\nDeposit\n✓\nNo transactions\nAdd account\nOnce the account is created, you can also import QIF/OFX/QFX files into it.\nThe account may have been created while this page was away. Reload and check saved accounts before trying again.\nName:\nOff budget\nOff-budget accounts (like investments, loans, or your house) are tracked but not part of your spending budget.\nThis cannot be changed later. See Accounts Overview for more information.\nBalance:\nCancel\nCreate",
+      "pendingDialog": true,
+      "localOutcome": {
+        "count": 1,
+        "kind": "uncertain",
+        "retryDisabled": true
+      },
+      "createdAccountHref": "/accounts/bbc0b23c-cac2-43a6-bb22-1d973bd9caa1",
+      "pendingReadback": {
+        "persisted": true,
+        "count": 1,
+        "balance": "10.00"
+      }
+    }
+  ],
+  "pass": true,
+  "startSourceSha256": "af811ae137deb70888cb112d50e27d778679ced3009f743269161f26d9aece67",
+  "browser": "152.0.7977.64"
+}

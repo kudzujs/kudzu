@@ -1,0 +1,21 @@
+plugins-service build … queued
+@actual-app/crdt build … queued
+plugins-service build ➔ start
+@actual-app/crdt build ➔ start
+@actual-app/crdt build » skip - e1ffed8b8312f22bd8b041ca5fbbea4af220d122
+@actual-app/core build … queued
+plugins-service build » skip - 30be54c7e4d62a5f8fd35c6e78f8e3173522f548
+@actual-app/core build ➔ start
+@actual-app/core build ✓ done - 2.85s
+@actual-app/web build:browser … queued
+@actual-app/web build:browser ➔ start
+@actual-app/web build:browser ✓ done - 48.47s
+
+Summary
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+@actual-app/web build:browser success, took 48.47s, queued for 0.00s
+@actual-app/core build success, took 2.85s, queued for 0.00s
+success: 2, skipped: 2, pending: 0, aborted: 0, failed: 0
+worker restarts: 0, max worker memory usage: 34.16 MB
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+Took a total of 51.79s to complete. 

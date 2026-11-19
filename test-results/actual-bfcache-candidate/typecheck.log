@@ -1,0 +1,44 @@
+@actual-app/ci-actions typecheck … queued
+@actual-app/components typecheck … queued
+@actual-app/crdt typecheck … queued
+plugins-service typecheck … queued
+@actual-app/ci-actions typecheck ➔ start
+@actual-app/components typecheck ➔ start
+@actual-app/ci-actions typecheck » skip - 4abffe1572c65ffd180f549cc1ca5f2ee3c7fe8c
+@actual-app/crdt typecheck ➔ start
+@actual-app/crdt typecheck » skip - 04e7c6c09bbe2b5ce414b2b7205cb92aae0932da
+@actual-app/core typecheck … queued
+plugins-service typecheck ➔ start
+@actual-app/components typecheck » skip - ffedc162f5a13db6d8584e78ffdb4f8d200bebd3
+@actual-app/core typecheck ➔ start
+plugins-service typecheck ✓ done - 3.78s
+@actual-app/core typecheck ✓ done - 12.74s
+@actual-app/api typecheck … queued
+@actual-app/web typecheck … queued
+@actual-app/api typecheck ➔ start
+@actual-app/web typecheck ➔ start
+@actual-app/api typecheck ✓ done - 9.87s
+@actual-app/cli typecheck … queued
+@actual-app/cli typecheck ➔ start
+@actual-app/cli typecheck ✓ done - 2.25s
+@actual-app/web typecheck ✓ done - 37.08s
+@actual-app/sync-server typecheck … queued
+@actual-app/sync-server typecheck ➔ start
+@actual-app/sync-server typecheck ✓ done - 11.20s
+desktop-electron typecheck … queued
+desktop-electron typecheck ➔ start
+desktop-electron typecheck ✓ done - 4.19s
+
+Summary
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+@actual-app/web typecheck success, took 37.08s, queued for 0.00s
+@actual-app/sync-server typecheck success, took 11.20s, queued for 0.00s
+@actual-app/api typecheck success, took 9.87s, queued for 0.00s
+desktop-electron typecheck success, took 4.19s, queued for 0.00s
+@actual-app/cli typecheck success, took 2.25s, queued for 0.00s
+@actual-app/core typecheck success, took 12.74s, queued for 0.24s
+plugins-service typecheck success, took 3.78s, queued for 0.36s
+success: 7, skipped: 3, pending: 0, aborted: 0, failed: 0
+worker restarts: 0, max worker memory usage: 41.14 MB
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+Took a total of 1m 5.83s to complete. 

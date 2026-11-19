@@ -1,0 +1,1202 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "hold": "",
+  "candidate": true,
+  "sourcePatchSha256": "7ebe1c4ed5873b2474496804d0d69d74d71b6c91af6eeebd65a1c87ff2a4c8fa",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cases": [
+    {
+      "departing": "control",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:43141/",
+          "token": "160ff675-2120-4e84-913d-42ebed857bed",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+          "pending": {}
+        }
+      ],
+      "notRestored": [],
+      "pass": true,
+      "before": {
+        "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": null,
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {},
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "after": {
+        "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+            "pending": {}
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+            "pending": {}
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "04533ece-99d7-4eda-999f-d4ba24876ace",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": null,
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {},
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "restored": true
+    },
+    {
+      "departing": "leader",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "98ea6116-4e42-46a3-9fc7-90d18ab9f792",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "98ea6116-4e42-46a3-9fc7-90d18ab9f792"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "98ea6116-4e42-46a3-9fc7-90d18ab9f792",
+          "pending": {
+            "23c9c703-54a1-446e-96ba-92869eda8cff": {
+              "name": "create-query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.createQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128573)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:127768)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "bb72b712-5e35-463a-bfa3-2eb5c6212097": {
+              "name": "get-cell",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.get (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128432)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128132)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "22d3adc6-266b-4ff3-841f-70e1610dda5a": {
+              "name": "create-query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.createQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128573)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:127768)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "2245b1bc-cd11-4c4a-8380-4a5ddfb8d9b8": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "1fde5a37-3297-4b76-8ac7-4fa4efd7c36f": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "7230639c-528b-4704-b639-62c2d7a956b4": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "070a7d90-cffd-4868-ad49-8501404f899f": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "67959f88-f05f-4e66-a7c5-25052494c66a": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "27ba9c96-b695-48c9-a39c-67da04927ef9": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+            },
+            "991b9565-bae9-4fad-8a39-ef0d3c24a1a2": {
+              "name": "payees-get",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "9e89c932-ff32-4ada-842b-40c45a4a0f04": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "c18d339d-2e07-4370-bffb-12b9469750f0": {
+              "name": "get-categories",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "cb523200-e266-48f3-9bb0-688390a09833": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "40f94149-bd01-4e41-a9db-e485853b0ae7": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+            },
+            "5499ce6b-3018-46ee-be10-9aca33f516bc": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+            }
+          }
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "373c6c74-aa0c-4c2c-99d8-5af0cea25c54",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6"
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:43141/",
+          "token": "05b3b95f-6cad-4ec3-b371-e394921201b7",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "__resume-tab",
+          "budgetId": "My-Finances-f127350",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6"
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+          "pending": {
+            "b42b8454-836a-46cd-9b7d-e2ed8954971c": {
+              "name": "sync",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:332877\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138208\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138987\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:128093\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:152933"
+            },
+            "2178fb66-abf9-48d6-91a5-b694e9867178": {
+              "name": "report/get",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296677)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "c5acd703-ffaf-411c-9793-1a32536761a9": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:297280)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)"
+            },
+            "1c2f541b-0fa0-475a-a462-900149372934": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+            }
+          }
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts/eb737c89-b626-4531-a725-06a4bd8aa4bc",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/eb737c89-b626-4531-a725-06a4bd8aa4bc",
+          "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+          "pending": {
+            "e2ae5820-3e15-4e5a-a7de-6df979d769a4": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "626cd0ad-a9ee-456d-b4d8-387386dcdb51": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at AccountInternal.getFilteredAmount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:2:4402)\n    at Array.onData (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:147785)\n    at PagedQuery.onData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251464)\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252683)"
+            },
+            "7be328da-7818-4db5-8914-65753506cd2c": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at AccountInternal.getFilteredAmount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:2:4402)\n    at Array.onData (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:147785)\n    at PagedQuery.onData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251464)\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252683)"
+            }
+          }
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/eb737c89-b626-4531-a725-06a4bd8aa4bc",
+          "token": "d8c5ce9a-c4e7-4661-8023-a1c83c58df73",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/eb737c89-b626-4531-a725-06a4bd8aa4bc",
+          "token": "d8c5ce9a-c4e7-4661-8023-a1c83c58df73",
+          "pending": {
+            "60646128-f06e-49cc-afca-c1113f01efb1": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "0840907d-9790-459f-9589-fa70741dccfc": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "a641ec08-3ff6-450b-ae43-1a52bc0d8786": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at AccountInternal.getFilteredAmount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:2:4402)\n    at Array.onData (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:147785)\n    at PagedQuery.onData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251464)\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252683)"
+            },
+            "905198bc-1ac5-4f36-9237-af9cb4b474f4": {
+              "name": "load-global-prefs",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:310940\n    at async http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138157\n    at async http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:332945\n    at async http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138157\n    at async http://127.0.0.1:3158/static/js/index.C42bzPK8.js:56:59480"
+            },
+            "9c2a977e-5bb1-4e8d-9c36-51ebeeee7267": {
+              "name": "preferences/get",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:310966\n    at async http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138157\n    at async http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:332945\n    at async http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138157\n    at async http://127.0.0.1:3158/static/js/index.C42bzPK8.js:56:59480"
+            }
+          }
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "373c6c74-aa0c-4c2c-99d8-5af0cea25c54",
+          "pending": {}
+        }
+      ],
+      "notRestored": [],
+      "pass": true,
+      "before": {
+        "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": "LEADER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {},
+        "navigation": [
+          {
+            "type": "reload"
+          }
+        ]
+      },
+      "after": {
+        "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+            "pending": {}
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+            "pending": {}
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6",
+            "pending": {
+              "b42b8454-836a-46cd-9b7d-e2ed8954971c": {
+                "name": "sync",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:332877\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138208\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138987\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:128093\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:152933"
+              },
+              "2178fb66-abf9-48d6-91a5-b694e9867178": {
+                "name": "report/get",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296677)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+              },
+              "c5acd703-ffaf-411c-9793-1a32536761a9": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:297280)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)"
+              },
+              "1c2f541b-0fa0-475a-a462-900149372934": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+              }
+            }
+          }
+        ],
+        "protocol": [
+          {
+            "type": "tab-closing",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6"
+          },
+          {
+            "type": "__resume-tab",
+            "budgetId": "My-Finances-f127350",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6"
+          }
+        ],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {
+          "2178fb66-abf9-48d6-91a5-b694e9867178": {
+            "name": "report/get",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296677)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+          },
+          "c5acd703-ffaf-411c-9793-1a32536761a9": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:297280)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)"
+          },
+          "1c2f541b-0fa0-475a-a462-900149372934": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+          },
+          "7fb72da8-f3b3-4183-bdba-a8a74b5bb2a7": {
+            "name": "load-prefs",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:310782\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138208\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138987\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:128093\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:152933"
+          }
+        },
+        "navigation": [
+          {
+            "type": "reload"
+          }
+        ]
+      },
+      "restored": true,
+      "returnedRole": "FOLLOWER",
+      "readback": "0.00",
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-f127350",
+        "url": "http://127.0.0.1:3158/accounts",
+        "token": "a1cf92b0-546b-4f24-b49b-5a9776bae3d6"
+      },
+      "createdAccountHref": "/accounts/eb737c89-b626-4531-a725-06a4bd8aa4bc",
+      "postReturnMutation": {
+        "persisted": true,
+        "count": 1,
+        "balance": "10.00"
+      }
+    },
+    {
+      "departing": "follower",
+      "errors": [
+        "The page was suspended before the result arrived. Reload and check saved data before trying again."
+      ],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "b0b72c17-6562-4315-a0f8-a7ba22ba63b4",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "b0b72c17-6562-4315-a0f8-a7ba22ba63b4"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "b0b72c17-6562-4315-a0f8-a7ba22ba63b4",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "ca02ec60-0393-44b6-82c7-92a2980e0f91",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:43141/",
+          "token": "abd25129-9263-497b-a79d-4d6ff79ce3e6",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+          "pending": {
+            "a4adba1b-55ff-43e8-bbf3-92b91228dbd1": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "2dbd27eb-40fc-47ca-a27d-d5ab1d68e18e": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "40bccef9-460e-4806-862d-7be30a65a32d": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "73436774-fb7e-4b83-94fb-9cf8d10e88fb": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "dad11ab2-b752-4fb6-a5fb-7e7e4b6827d6": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "96f3a788-dd81-48fb-ae00-f56670ab39e5": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+            },
+            "30964832-0eb8-4523-aeb0-12ae6ab383df": {
+              "name": "payees-get",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "c024bf0d-daac-40ee-8bd1-7c663f10ba66": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "ea300a61-465a-4d7a-8dd8-412e1e45133e": {
+              "name": "get-categories",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "54ca2f06-4086-4657-bcdd-c6452ef7f501": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "01546602-8acc-4c2d-b1c0-f897967a3418": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+            },
+            "56df137c-fca4-41fc-8952-abb66a098e62": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+            }
+          }
+        },
+        {
+          "tab": 1,
+          "type": "__resume-tab",
+          "budgetId": "My-Finances-f8867e3",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+          "pending": {
+            "a4adba1b-55ff-43e8-bbf3-92b91228dbd1": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "2dbd27eb-40fc-47ca-a27d-d5ab1d68e18e": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "40bccef9-460e-4806-862d-7be30a65a32d": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "73436774-fb7e-4b83-94fb-9cf8d10e88fb": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "dad11ab2-b752-4fb6-a5fb-7e7e4b6827d6": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "96f3a788-dd81-48fb-ae00-f56670ab39e5": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+            },
+            "30964832-0eb8-4523-aeb0-12ae6ab383df": {
+              "name": "payees-get",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "c024bf0d-daac-40ee-8bd1-7c663f10ba66": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "ea300a61-465a-4d7a-8dd8-412e1e45133e": {
+              "name": "get-categories",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "54ca2f06-4086-4657-bcdd-c6452ef7f501": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "01546602-8acc-4c2d-b1c0-f897967a3418": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+            },
+            "56df137c-fca4-41fc-8952-abb66a098e62": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+            },
+            "ebebc029-d934-4da5-aa8c-0e26347d035f": {
+              "name": "sync",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:332877\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138208\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138987\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:128093\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:152933"
+            },
+            "b27e40ca-e7d3-422a-aaec-e18c7dcff694": {
+              "name": "report/get",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296677)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "8bc9e16b-99b8-4ab1-bef6-8292607a10aa": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:297280)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)"
+            }
+          }
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts/1dadd9a4-0c6e-4175-831b-cb916f5e2d85",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/1dadd9a4-0c6e-4175-831b-cb916f5e2d85",
+          "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+          "pending": {
+            "a4adba1b-55ff-43e8-bbf3-92b91228dbd1": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "2dbd27eb-40fc-47ca-a27d-d5ab1d68e18e": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "40bccef9-460e-4806-862d-7be30a65a32d": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "73436774-fb7e-4b83-94fb-9cf8d10e88fb": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "dad11ab2-b752-4fb6-a5fb-7e7e4b6827d6": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "96f3a788-dd81-48fb-ae00-f56670ab39e5": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+            },
+            "30964832-0eb8-4523-aeb0-12ae6ab383df": {
+              "name": "payees-get",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "c024bf0d-daac-40ee-8bd1-7c663f10ba66": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "ea300a61-465a-4d7a-8dd8-412e1e45133e": {
+              "name": "get-categories",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+            },
+            "54ca2f06-4086-4657-bcdd-c6452ef7f501": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "01546602-8acc-4c2d-b1c0-f897967a3418": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+            },
+            "56df137c-fca4-41fc-8952-abb66a098e62": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+            },
+            "a033f663-2475-4114-9d44-f70e65322f51": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "d5d95d31-bf7a-44a1-864f-3f46be4a3e6d": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "c5bd6e1d-cafe-47e7-bc3c-bfdb49aea5fc": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "3c7d2629-9149-438f-9825-54ba34303021": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "c5712954-230f-4b87-9553-e7d059d194f5": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "d4609c0e-baa0-4680-9a64-c5c3190c0686": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "0f09a280-abf1-4675-a069-74ac98f4cd7c": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "938cdc25-4180-4192-afdb-b061dbb66aa5": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+            },
+            "05d3d41e-a522-4801-a777-b17ffa0ea68e": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+            },
+            "f06d4eda-cee0-4a4c-90f6-892f87c222ff": {
+              "name": "create-query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.createQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128573)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:127768)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "4941d680-5d82-43c4-9994-7ee6a8b4931a": {
+              "name": "get-cell",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.get (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128432)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128132)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "96b7271b-85ec-4210-8d80-fb9246fed0bf": {
+              "name": "create-query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.createQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128573)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:127768)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "d6274f55-d7ad-4d24-b31d-822ce2c4b59f": {
+              "name": "get-cell",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.get (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128432)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128132)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "7c6d75a9-2e6b-404d-9d4a-ce04b66efa04": {
+              "name": "create-query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.createQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128573)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:127768)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+            },
+            "8becdaba-19ca-422b-8b63-0258f7129996": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "a542dfaa-a88b-41b7-a210-5e9efc544457": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "6546764c-8bc8-4798-9abf-4815c8b925c1": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+            },
+            "7afb06fc-c9f5-4532-accf-2068e9633c1a": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+            },
+            "2f4a633d-f7e8-40d1-8aeb-056ad1b037d7": {
+              "name": "query",
+              "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at AccountInternal.refetchTransactions (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:146451)"
+            }
+          }
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/1dadd9a4-0c6e-4175-831b-cb916f5e2d85",
+          "token": "31dfabc0-1bb9-4e13-96de-12f10c694a5b",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "ca02ec60-0393-44b6-82c7-92a2980e0f91",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/1dadd9a4-0c6e-4175-831b-cb916f5e2d85",
+          "token": "31dfabc0-1bb9-4e13-96de-12f10c694a5b",
+          "pending": {}
+        }
+      ],
+      "notRestored": [],
+      "pass": false,
+      "before": {
+        "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {
+          "40cb0fe3-b07b-4b06-9a14-8eeea5f1d12f": {
+            "name": "get-cell",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.get (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128432)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128132)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+          },
+          "ded7c184-67ed-4644-b26f-a37c559f2b36": {
+            "name": "create-query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at Spreadsheet.createQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:128573)\n    at Spreadsheet.bind (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:127768)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:255873\n    at commitHookEffectListMount (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:197263)\n    at commitLayoutEffectOnFiber (http://127.0.0.1:3158/static/js/client.dQG7UQWX.chunk.js:8:206153)"
+          },
+          "a4adba1b-55ff-43e8-bbf3-92b91228dbd1": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "2dbd27eb-40fc-47ca-a27d-d5ab1d68e18e": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "40bccef9-460e-4806-862d-7be30a65a32d": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "73436774-fb7e-4b83-94fb-9cf8d10e88fb": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "dad11ab2-b752-4fb6-a5fb-7e7e4b6827d6": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "96f3a788-dd81-48fb-ae00-f56670ab39e5": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+          },
+          "30964832-0eb8-4523-aeb0-12ae6ab383df": {
+            "name": "payees-get",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+          },
+          "c024bf0d-daac-40ee-8bd1-7c663f10ba66": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "ea300a61-465a-4d7a-8dd8-412e1e45133e": {
+            "name": "get-categories",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+          },
+          "54ca2f06-4086-4657-bcdd-c6452ef7f501": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "01546602-8acc-4c2d-b1c0-f897967a3418": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+          },
+          "56df137c-fca4-41fc-8952-abb66a098e62": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+          }
+        },
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "after": {
+        "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+            "pending": {}
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+            "pending": {
+              "a4adba1b-55ff-43e8-bbf3-92b91228dbd1": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "2dbd27eb-40fc-47ca-a27d-d5ab1d68e18e": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "40bccef9-460e-4806-862d-7be30a65a32d": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "73436774-fb7e-4b83-94fb-9cf8d10e88fb": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "dad11ab2-b752-4fb6-a5fb-7e7e4b6827d6": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "96f3a788-dd81-48fb-ae00-f56670ab39e5": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+              },
+              "30964832-0eb8-4523-aeb0-12ae6ab383df": {
+                "name": "payees-get",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+              },
+              "c024bf0d-daac-40ee-8bd1-7c663f10ba66": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "ea300a61-465a-4d7a-8dd8-412e1e45133e": {
+                "name": "get-categories",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+              },
+              "54ca2f06-4086-4657-bcdd-c6452ef7f501": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "01546602-8acc-4c2d-b1c0-f897967a3418": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+              },
+              "56df137c-fca4-41fc-8952-abb66a098e62": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+              }
+            }
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d",
+            "pending": {
+              "a4adba1b-55ff-43e8-bbf3-92b91228dbd1": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "2dbd27eb-40fc-47ca-a27d-d5ab1d68e18e": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "40bccef9-460e-4806-862d-7be30a65a32d": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "73436774-fb7e-4b83-94fb-9cf8d10e88fb": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "dad11ab2-b752-4fb6-a5fb-7e7e4b6827d6": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "96f3a788-dd81-48fb-ae00-f56670ab39e5": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+              },
+              "30964832-0eb8-4523-aeb0-12ae6ab383df": {
+                "name": "payees-get",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+              },
+              "c024bf0d-daac-40ee-8bd1-7c663f10ba66": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "ea300a61-465a-4d7a-8dd8-412e1e45133e": {
+                "name": "get-categories",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+              },
+              "54ca2f06-4086-4657-bcdd-c6452ef7f501": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+              },
+              "01546602-8acc-4c2d-b1c0-f897967a3418": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+              },
+              "56df137c-fca4-41fc-8952-abb66a098e62": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+              },
+              "ebebc029-d934-4da5-aa8c-0e26347d035f": {
+                "name": "sync",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:332877\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138208\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138987\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:128093\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:152933"
+              },
+              "b27e40ca-e7d3-422a-aaec-e18c7dcff694": {
+                "name": "report/get",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296677)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+              },
+              "8bc9e16b-99b8-4ab1-bef6-8292607a10aa": {
+                "name": "query",
+                "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:297280)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)"
+              }
+            }
+          }
+        ],
+        "protocol": [
+          {
+            "type": "tab-closing",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d"
+          },
+          {
+            "type": "__resume-tab",
+            "budgetId": "My-Finances-f8867e3",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d"
+          }
+        ],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {
+          "a4adba1b-55ff-43e8-bbf3-92b91228dbd1": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "2dbd27eb-40fc-47ca-a27d-d5ab1d68e18e": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "40bccef9-460e-4806-862d-7be30a65a32d": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "73436774-fb7e-4b83-94fb-9cf8d10e88fb": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "dad11ab2-b752-4fb6-a5fb-7e7e4b6827d6": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "96f3a788-dd81-48fb-ae00-f56670ab39e5": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:313487)\n    at fetchPage (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:166371)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:167000)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)"
+          },
+          "30964832-0eb8-4523-aeb0-12ae6ab383df": {
+            "name": "payees-get",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:289616)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+          },
+          "c024bf0d-daac-40ee-8bd1-7c663f10ba66": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "ea300a61-465a-4d7a-8dd8-412e1e45133e": {
+            "name": "get-categories",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at queryFn (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:2:91301)\n    at Object.fetchFn [as fn] (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:172240)\n    at run (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:164193)\n    at Object.start (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:165002)\n    at Query.fetch (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:173311)"
+          },
+          "54ca2f06-4086-4657-bcdd-c6452ef7f501": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.runLiveQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251830)"
+          },
+          "01546602-8acc-4c2d-b1c0-f897967a3418": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+          },
+          "56df137c-fca4-41fc-8952-abb66a098e62": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.runPagedQuery (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83746)"
+          },
+          "5a6328c8-0443-4544-b2cd-374622110c63": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.onUpdate (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251623)"
+          },
+          "aed7ba54-b539-4927-8719-942f446e275a": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.onUpdate (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251623)"
+          },
+          "c13e8d80-e94d-4f81-8ef3-20ad91895f33": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.onUpdate (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251623)"
+          },
+          "46e902b6-48a3-4721-92c4-cdb3cb617769": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251675\n    at LiveQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at LiveQuery.run (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251661)\n    at LiveQuery.onUpdate (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251623)"
+          },
+          "a12d0589-01d7-4140-9b69-45a5364a0746": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at PagedQuery.fetchCount (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83260)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83447\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)"
+          },
+          "24961a53-e992-45ff-a7d6-3c80b9350448": {
+            "name": "query",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at aqlQuery (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:3:296481)\n    at http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83460\n    at PagedQuery.fetchData (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:252472)\n    at PagedQuery.run (http://127.0.0.1:3158/static/js/wide.B_J4fn7j.chunk.js:1:83399)\n    at PagedQuery.onUpdate (http://127.0.0.1:3158/static/js/Value.DczE-Jc7.chunk.js:22:251623)"
+          },
+          "6b36adaa-3e34-4f58-a113-ce196853d99e": {
+            "name": "load-prefs",
+            "stack": "Error\n    at port.postMessage (<anonymous>:49:110)\n    at WorkerBridge.postMessage (http://127.0.0.1:3158/static/js/index.C42bzPK8.js:2:15860)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105392\n    at new Promise (<anonymous>)\n    at send (http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:105199)\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:310782\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138208\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:138987\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:128093\n    at http://127.0.0.1:3158/static/js/useDateFormat.Clane1LD.chunk.js:1:152933"
+          }
+        },
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "restored": true,
+      "returnedRole": "FOLLOWER",
+      "readback": "0.00",
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-f8867e3",
+        "url": "http://127.0.0.1:3158/accounts",
+        "token": "f9af15d7-9e4e-46e8-aacb-03bada8cea6d"
+      },
+      "createdAccountHref": "/accounts/1dadd9a4-0c6e-4175-831b-cb916f5e2d85",
+      "postReturnMutation": {
+        "persisted": true,
+        "count": 1,
+        "balance": "10.00"
+      },
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'The page was suspended before the result arrived. Reload and check saved data before trying again.'\n+ ]\n- []\n\n    at file:///home/kft/Documents/etc/kudzu/test/actual-bfcache.mjs:263:14"
+    }
+  ],
+  "pass": false,
+  "startSourceSha256": "af811ae137deb70888cb112d50e27d778679ced3009f743269161f26d9aece67",
+  "browser": "152.0.7977.64"
+}

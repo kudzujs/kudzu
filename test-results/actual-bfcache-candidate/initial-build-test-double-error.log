@@ -1,0 +1,31 @@
+plugins-service build … queued
+@actual-app/crdt build … queued
+plugins-service build ➔ start
+@actual-app/crdt build ➔ start
+plugins-service build ✓ done - 1.57s
+@actual-app/crdt build ✓ done - 2.50s
+@actual-app/core build … queued
+@actual-app/core build ➔ start
+@actual-app/core build ✖ fail
+
+Summary
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+@actual-app/web build:browser pending, took 0.00s, queued for 0.00s
+@actual-app/core build failed, took 2.23s, queued for 0.00s
+@actual-app/crdt build success, took 2.50s, queued for 0.00s
+plugins-service build success, took 1.57s, queued for 0.00s
+success: 2, skipped: 0, pending: 1, aborted: 0, failed: 1
+worker restarts: 0, max worker memory usage: 22.78 MB
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+[@actual-app/core build] ERROR DETECTED
+
+
+
+local cache fetch: 32c5b09b0da81850bf401f9e04a8f323d6642b4f false
+remote fallback fetch: 32c5b09b0da81850bf401f9e04a8f323d6642b4f false
+Running yarn run build, pid: 3538398
+src/platform/client/connection/bfcache.test.ts(25,23): error TS2345: Argument of type '{ onmessage: ((event: MessageEvent) => void) | null; postMessage: Mock<Procedure>; }' is not assignable to parameter of type 'MessagePort | Worker'.
+  Type '{ onmessage: ((event: MessageEvent) => void) | null; postMessage: Mock<Procedure>; }' is missing the following properties from type 'Worker': terminate, addEventListener, removeEventListener, onerror, and 2 more.
+
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+Took a total of 4.74s to complete. 

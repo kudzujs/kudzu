@@ -1,0 +1,124 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "hold": "request",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cases": [
+    {
+      "departing": "follower",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "055e5be8-17e1-4695-82ab-18197e713790"
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "055e5be8-17e1-4695-82ab-18197e713790"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "055e5be8-17e1-4695-82ab-18197e713790"
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "db890f1f-3101-4bad-ac1b-a4e8681c8405"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "b4258817-f404-41d9-9c98-d79a9917608a"
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "b4258817-f404-41d9-9c98-d79a9917608a"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:44929/",
+          "token": "b5b3ddbd-a027-4ef5-aefd-ed9860bdd922"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "db890f1f-3101-4bad-ac1b-a4e8681c8405"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:44929/",
+          "token": "b5b3ddbd-a027-4ef5-aefd-ed9860bdd922"
+        }
+      ],
+      "notRestored": [],
+      "pass": false,
+      "held": {
+        "id": "e7eb90c4-75d5-4327-b090-0afaccb03ea0",
+        "name": "account-create",
+        "args": {
+          "name": "BFCache Checking",
+          "balance": 10,
+          "offBudget": false
+        },
+        "undoTag": "70bce720-49fa-4fbc-8e3d-e8d84b7560ca",
+        "catchErrors": false
+      },
+      "before": {
+        "token": "b4258817-f404-41d9-9c98-d79a9917608a",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "b4258817-f404-41d9-9c98-d79a9917608a"
+          }
+        ],
+        "protocol": [],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [
+          "e7eb90c4-75d5-4327-b090-0afaccb03ea0"
+        ],
+        "terminal": [],
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "backendReply": {
+        "type": "push",
+        "name": "sync-event",
+        "args": {
+          "type": "success",
+          "tables": [],
+          "syncDisabled": true
+        }
+      },
+      "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- 'e7eb90c4-75d5-4327-b090-0afaccb03ea0'\n\n    at file:///home/kft/Documents/etc/kudzu/test/actual-bfcache.mjs:207:16"
+    }
+  ],
+  "pass": false,
+  "startSourceSha256": "af811ae137deb70888cb112d50e27d778679ced3009f743269161f26d9aece67",
+  "browser": "152.0.7977.64"
+}

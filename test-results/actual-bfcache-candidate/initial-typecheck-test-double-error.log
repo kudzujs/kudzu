@@ -1,0 +1,42 @@
+@actual-app/ci-actions typecheck … queued
+@actual-app/components typecheck … queued
+@actual-app/crdt typecheck … queued
+plugins-service typecheck … queued
+@actual-app/ci-actions typecheck ➔ start
+@actual-app/components typecheck ➔ start
+@actual-app/crdt typecheck ➔ start
+@actual-app/ci-actions typecheck ✓ done - 1.46s
+plugins-service typecheck ➔ start
+@actual-app/crdt typecheck ✓ done - 1.50s
+@actual-app/core typecheck … queued
+@actual-app/core typecheck ➔ start
+@actual-app/components typecheck ✓ done - 3.57s
+@actual-app/core typecheck ✖ fail
+
+Summary
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+@actual-app/api typecheck pending, took 0.00s, queued for 0.00s
+@actual-app/ci-actions typecheck success, took 1.46s, queued for 0.00s
+@actual-app/cli typecheck pending, took 0.00s, queued for 0.00s
+@actual-app/components typecheck success, took 3.57s, queued for 0.00s
+@actual-app/crdt typecheck success, took 1.50s, queued for 1.46s
+@actual-app/web typecheck pending, took 0.00s, queued for 0.00s
+desktop-electron typecheck pending, took 0.00s, queued for 0.00s
+@actual-app/core typecheck failed, took 1.28s, queued for 0.61s
+plugins-service typecheck running - incomplete, took 0.00s, queued for 2.97s
+@actual-app/sync-server typecheck pending, took 0.00s, queued for 0.00s
+success: 3, skipped: 0, pending: 5, aborted: 0, failed: 1
+worker restarts: 0, max worker memory usage: 40.70 MB
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+[@actual-app/core typecheck] ERROR DETECTED
+
+
+
+local cache fetch: 8fb5dd7b60d6e64aa7346393336ca0f93a91a139 false
+remote fallback fetch: 8fb5dd7b60d6e64aa7346393336ca0f93a91a139 false
+Running yarn run typecheck, pid: 3539033
+src/platform/client/connection/bfcache.test.ts(25,23): error TS2345: Argument of type '{ onmessage: ((event: MessageEvent) => void) | null; postMessage: Mock<Procedure>; }' is not assignable to parameter of type 'MessagePort | Worker'.
+  Type '{ onmessage: ((event: MessageEvent) => void) | null; postMessage: Mock<Procedure>; }' is missing the following properties from type 'Worker': terminate, addEventListener, removeEventListener, onerror, and 2 more.
+
+┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+Took a total of 4.86s to complete. 

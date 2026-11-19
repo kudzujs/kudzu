@@ -1,0 +1,58 @@
+
+ RUN  v4.1.10 /tmp/opencode/actual-bfcache-candidate/packages/desktop-client
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+stderr | src/queries/pagedQuery.test.ts > pagedQuery > reports a rejected count request without replaying it or losing page data
+REJECTION Error: The page was suspended
+    at /tmp/opencode/actual-bfcache-candidate/packages/desktop-client/src/queries/pagedQuery.test.ts:188:19
+    at file:///tmp/opencode/actual-bfcache-candidate/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11
+    at file:///tmp/opencode/actual-bfcache-candidate/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26
+    at file:///tmp/opencode/actual-bfcache-candidate/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20
+    at new Promise (<anonymous>)
+    at runWithCancel (file:///tmp/opencode/actual-bfcache-candidate/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)
+    at file:///tmp/opencode/actual-bfcache-candidate/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///tmp/opencode/actual-bfcache-candidate/node_modules/@vitest/runner/dist/chunk-artifact.js:2272:10)
+    at file:///tmp/opencode/actual-bfcache-candidate/node_modules/@vitest/runner/dist/chunk-artifact.js:2955:64
+
+ ❯ src/queries/pagedQuery.test.ts (14 tests | 1 failed) 3378ms
+     × reports a rejected count request without replaying it or losing page data 59ms
+     ✓ runs and subscribes to a query 3ms
+     ✓ runs but ignores applied events (onlySync: true) 102ms
+     ✓ runs and updates with sync events (onlySync: true) 1ms
+     ✓ cancels existing requests  505ms
+     ✓ cancels requests when server pushes 3ms
+     ✓ reruns if data changes in the middle of *any* request  1001ms
+     ✓ unsubscribes correctly 0ms
+     ✓ pagedQuery makes requests in pages 0ms
+     ✓ pagedQuery allows customizing page count 4ms
+     ✓ pagedQuery only runs `fetchNext` once at a time 1ms
+     ✓ pagedQuery refetches all paged data on update  607ms
+     ✓ pagedQuery reruns `fetchNext` if data changed underneath it 45ms
+     ✓ pagedQuery fetches up to a specific row  1045ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/queries/pagedQuery.test.ts > pagedQuery > reports a rejected count request without replaying it or losing page data
+AssertionError: expected "vi.fn()" to be called once with arguments: [ Error: The page was suspended ]
+
+Number of calls: 0
+
+ ❯ src/queries/pagedQuery.test.ts:203:21
+    201|     const query = pagedQuery(q('transactions'), { onData, onError });
+    202|     await vi.waitFor(() => expect(onData).toHaveBeenCalled());
+    203|     expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+       |                     ^
+    204|     expect(countRequests).toBe(1);
+    205|     expect(query.data).toEqual([{ id: 'saved' }]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 passed (14)
+   Start at  13:38:31
+   Duration  9.90s (transform 2.70s, setup 4.39s, import 244ms, tests 3.38s, environment 1.69s)
+

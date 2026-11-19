@@ -1,0 +1,90 @@
+vite v8.1.5 building client environment for production...
+[2Ktransforming...[plugin rolldown:vite-resolve] Module "vm" has been externalized for browser compatibility, imported by "/tmp/opencode/actual-bfcache-candidate/node_modules/asn1.js/lib/asn1/api.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+✓ 2077 modules transformed.
+rendering chunks...
+computing gzip size...
+../loot-core/lib-dist/browser/kcab.worker.C7Thu0FH.js  3,569.49 kB │ gzip: 780.53 kB │ map: 9,923.63 kB
+
+✓ built in 3.26s
+vite v8.1.5 building client environment for browser...
+[2Ktransforming...Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - vite:resolve-builtin:get-environment (51%)
+  - vite:css (26%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+
+✓ 5271 modules transformed.
+rendering chunks...
+computing gzip size...
+build/manifest.webmanifest                                                   0.17 kB
+build/static/media/redacted-script-latin-ext-400-normal.COdB0Snm.woff        2.71 kB
+build/static/js/browser-server.Bn9r7T7W.js                                   3.08 kB
+build/static/media/redacted-script-latin-400-normal.DH5Ip5Nv.woff            3.24 kB
+build/index.html                                                             3.89 kB │ gzip:   1.21 kB
+build/static/media/redacted-script-latin-ext-400-normal.BsF1F2G5.woff2       4.25 kB
+build/static/media/redacted-script-latin-400-normal.DO_NTpDN.woff2           4.75 kB
+build/static/media/inter-vietnamese-wght-normal.CBcvBZtf.woff2              10.25 kB
+build/static/media/inter-vietnamese-wght-italic.K3WlGtc8.woff2              10.59 kB
+build/static/shared-browser-server-C7q_DhZs.js                              10.85 kB
+build/static/media/inter-greek-ext-wght-normal.DlzME5K_.woff2               11.23 kB
+build/static/media/inter-greek-ext-wght-italic.DcOpz6Lw.woff2               12.09 kB
+build/.vite/manifest.json                                                   14.63 kB │ gzip:   1.68 kB
+build/static/media/inter-cyrillic-wght-normal.DqGufNeO.woff2                18.74 kB
+build/static/media/inter-greek-wght-normal.CkhJZR-_.woff2                   18.99 kB
+build/static/media/inter-cyrillic-wght-italic.DzZdc28x.woff2                19.98 kB
+build/static/media/inter-greek-wght-italic.CILZdfAp.woff2                   20.48 kB
+build/static/media/inter-cyrillic-ext-wght-normal.BOeWTOD4.woff2            25.96 kB
+build/static/media/inter-cyrillic-ext-wght-italic.B5xAaiFk.woff2            27.38 kB
+build/static/media/inter-latin-wght-normal.Dx4kXJAl.woff2                   48.25 kB
+build/static/media/inter-latin-wght-italic.DpCbqKDY.woff2                   51.83 kB
+build/static/media/inter-latin-ext-wght-normal.DO1Apj_S.woff2               85.06 kB
+build/static/media/inter-latin-ext-wght-italic.0pjOp8NU.woff2               91.90 kB
+build/static/css/ReportRouter.Dly3Bzm_.css                                   2.52 kB │ gzip:   0.60 kB
+build/static/css/index.DaMJyE_v.css                                          4.82 kB │ gzip:   0.82 kB
+build/static/js/bootstrapHyperFormula.Ncf-sNVA.chunk.js                      0.47 kB │ gzip:   0.25 kB │ map:     0.79 kB
+build/static/js/workbox-window.prod.es5.D5AzH0Wa.chunk.js                    5.72 kB │ gzip:   2.26 kB │ map:    13.16 kB
+build/static/js/useFormatList.DKFNwuN1.chunk.js                              8.79 kB │ gzip:   3.30 kB │ map:    20.84 kB
+build/static/js/useTransactionBatchActions.Bze6cuyz.chunk.js                 9.02 kB │ gzip:   2.75 kB │ map:    26.45 kB
+build/static/js/PayeeRuleCountLabel.DBYNGTUA.chunk.js                       10.35 kB │ gzip:   3.14 kB │ map:    23.96 kB
+build/static/js/indexeddb-main-thread-worker-e59fee74.B9D89_PE.chunk.js     13.62 kB │ gzip:   5.47 kB │ map:    14.89 kB
+build/static/js/AppliedFilters.Bpw7gD1Q.chunk.js                            26.98 kB │ gzip:   7.80 kB │ map:    68.23 kB
+build/static/js/theme.BTyknj3e.chunk.js                                     27.80 kB │ gzip:   6.40 kB │ map:    46.45 kB
+build/static/js/ManageRules.CMCRyfqY.chunk.js                               55.11 kB │ gzip:  14.21 kB │ map:   126.43 kB
+build/static/js/ScheduleEditForm.0EAFrvf0.chunk.js                          57.44 kB │ gzip:  15.92 kB │ map:   121.35 kB
+build/static/js/TransactionList.C9J1j50T.chunk.js                           65.71 kB │ gzip:  16.24 kB │ map:   180.48 kB
+build/static/js/BackgroundImage.tzJe3h4g.chunk.js                          121.85 kB │ gzip:  39.44 kB │ map:   125.31 kB
+build/static/js/SchedulesTable.BSKUrF9G.chunk.js                           125.77 kB │ gzip:  32.48 kB │ map:   287.92 kB
+build/static/js/TransactionEdit.BUiKVUV3.chunk.js                          176.29 kB │ gzip:  45.21 kB │ map:   449.04 kB
+build/static/js/wide.B_J4fn7j.chunk.js                                     211.97 kB │ gzip:  56.32 kB │ map:   485.55 kB
+build/static/js/narrow.2492Bx9-.chunk.js                                   220.43 kB │ gzip:  48.80 kB │ map:   489.45 kB
+build/static/js/en.CYqx38SX.chunk.js                                       234.77 kB │ gzip:  50.83 kB │ map:   254.92 kB
+build/static/js/client.dQG7UQWX.chunk.js                                   387.79 kB │ gzip:  79.09 kB │ map:   805.61 kB
+build/static/js/chart-theme.BFhe-cs0.chunk.js                              520.24 kB │ gzip: 117.85 kB │ map: 1,512.09 kB
+build/static/js/FormulaEditor.B5OCyFgV.chunk.js                            624.26 kB │ gzip: 170.38 kB │ map: 1,846.97 kB
+build/static/js/ReportRouter.BaACGOli.chunk.js                           1,091.38 kB │ gzip: 255.18 kB │ map: 2,481.30 kB
+build/static/js/index.C42bzPK8.js                                        1,199.04 kB │ gzip: 299.74 kB │ map: 2,473.29 kB
+build/static/js/Value.DczE-Jc7.chunk.js                                  1,626.86 kB │ gzip: 400.18 kB │ map: 5,030.95 kB
+build/static/js/useDateFormat.Clane1LD.chunk.js                          2,370.49 kB │ gzip: 479.07 kB │ map: 6,194.60 kB
+
+[33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+  - rolldown:vite-resolve (59%)
+  - @rolldown/plugin-babel (39%)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 1500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1m 20s
+
+PWA v1.3.0
+mode      generateSW
+precache  130 entries (14631.76 KiB)
+files generated
+  build/sw.js.map
+  build/sw.js
+  build/workbox-2fbc6a65.js.map
+  build/workbox-2fbc6a65.js

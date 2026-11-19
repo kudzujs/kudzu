@@ -1,0 +1,439 @@
+diff --git a/packages/desktop-client/src/accounts/mutations.ts b/packages/desktop-client/src/accounts/mutations.ts
+index 5448a3d..3739972 100644
+--- a/packages/desktop-client/src/accounts/mutations.ts
++++ b/packages/desktop-client/src/accounts/mutations.ts
+@@ -77,6 +77,7 @@ export function useCreateAccountMutation() {
+     },
+     onSuccess: () => invalidateQueries(queryClient),
+     onError: error => {
++      if (error.name === 'RequestOutcomeUnknownError') return;
+       console.error('Error creating account:', error);
+       dispatchErrorNotification(
+         dispatch,
+diff --git a/packages/desktop-client/src/components/modals/CreateLocalAccountModal.tsx b/packages/desktop-client/src/components/modals/CreateLocalAccountModal.tsx
+index 183ea86..837ecd3 100644
+--- a/packages/desktop-client/src/components/modals/CreateLocalAccountModal.tsx
++++ b/packages/desktop-client/src/components/modals/CreateLocalAccountModal.tsx
+@@ -57,9 +57,12 @@ export function CreateLocalAccountModal() {
+   };
+ 
+   const createAccount = useCreateAccountMutation();
++  const outcomeUnknown =
++    createAccount.error?.name === 'RequestOutcomeUnknownError';
+ 
+   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+     event.preventDefault();
++    if (outcomeUnknown) return;
+ 
+     const nameError = validateAccountName(name, '', accounts);
+ 
+@@ -120,6 +123,16 @@ export function CreateLocalAccountModal() {
+               </Text>
+             )}
+             <Form onSubmit={onSubmit}>
++              {outcomeUnknown && (
++                <FormError>
++                  <Text role="alert">
++                    <Trans>
++                      The account may have been created while this page was
++                      away. Reload and check saved accounts before trying again.
++                    </Trans>
++                  </Text>
++                </FormError>
++              )}
+               <InlineField label={t('Name')} width="100%">
+                 <InitialFocus>
+                   <Input
+@@ -230,6 +243,7 @@ export function CreateLocalAccountModal() {
+                 </Button>
+                 <Button
+                   type="submit"
++                  isDisabled={outcomeUnknown}
+                   variant="primary"
+                   style={{ marginLeft: 10 }}
+                 >
+diff --git a/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx b/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx
+new file mode 100644
+index 0000000..5c2b971
+--- /dev/null
++++ b/packages/desktop-client/src/hooks/useSpreadsheet.test.tsx
+@@ -0,0 +1,118 @@
++import type { Query } from '@actual-app/core/shared/query';
++import { renderHook, waitFor } from '@testing-library/react';
++import { afterEach, beforeEach, expect, it, vi } from 'vitest';
++
++import { SpreadsheetProvider, useSpreadsheet } from './useSpreadsheet';
++
++const { send, dispatch, translate } = vi.hoisted(() => ({
++  send: vi.fn(),
++  dispatch: vi.fn(),
++  translate: (message: string) => message,
++}));
++vi.mock('@actual-app/core/platform/client/connection', () => ({
++  send,
++  listen: () => () => {},
++}));
++vi.mock('#redux', () => ({ useDispatch: () => dispatch }));
++vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
++vi.mock('#notifications/notificationsSlice', () => ({
++  addNotification: (payload: unknown) => ({ type: 'notification', payload }),
++}));
++
++beforeEach(() => vi.clearAllMocks());
++afterEach(() => vi.restoreAllMocks());
++
++function pending() {
++  let resolve!: (value: { name: string; value: number }) => void;
++  let reject!: (error: Error) => void;
++  const promise = new Promise<{ name: string; value: number }>((yes, no) => {
++    resolve = yes;
++    reject = no;
++  });
++  return { promise, resolve, reject };
++}
++
++it('reports query and shared read failures without replay or unhandled rejection', async () => {
++  const query = pending();
++  const read = pending();
++  send.mockImplementation(name =>
++    name === 'create-query' ? query.promise : read.promise,
++  );
++  const { result, unmount } = renderHook(useSpreadsheet, {
++    wrapper: SpreadsheetProvider,
++  });
++  const callback = vi.fn();
++  const binding = {
++    name: 'balance',
++    query: { serialize: () => ({}) } as Query,
++  };
++  const first = result.current.bind('__global', binding, callback);
++  const second = result.current.bind('__global', 'balance', callback);
++  const error = new Error(
++    'The backend leader changed. Reload and check your data.',
++  );
++  query.reject(error);
++  read.reject(error);
++  await waitFor(() => expect(dispatch).toHaveBeenCalledTimes(3));
++  expect(callback).not.toHaveBeenCalled();
++  expect(send).toHaveBeenCalledTimes(2);
++  for (const [action] of dispatch.mock.calls) {
++    expect(action.payload.notification).toMatchObject({
++      id: 'spreadsheet-read-error',
++      type: 'error',
++      sticky: true,
++      pre: error.message,
++    });
++    expect(action.payload.notification.message).toContain('Reload');
++  }
++  first();
++  second();
++  unmount();
++});
++
++it('clears a failed read so a later explicit binding can read fresh data', async () => {
++  const first = pending();
++  const fresh = pending();
++  send.mockReturnValueOnce(first.promise).mockReturnValueOnce(fresh.promise);
++  const { result, unmount } = renderHook(useSpreadsheet, {
++    wrapper: SpreadsheetProvider,
++  });
++  const oldCallback = vi.fn();
++  const callback = vi.fn();
++  result.current.bind('__global', 'balance', oldCallback);
++  first.reject(new Error('read failed'));
++  await waitFor(() => expect(dispatch).toHaveBeenCalled());
++  result.current.bind('__global', 'balance', callback);
++  fresh.resolve({ name: '__global!balance', value: 1000 });
++  await waitFor(() =>
++    expect(callback).toHaveBeenCalledWith({
++      name: '__global!balance',
++      value: 1000,
++    }),
++  );
++  expect(oldCallback).not.toHaveBeenCalled();
++  expect(send).toHaveBeenCalledTimes(2);
++  unmount();
++});
++
++it('does not clear a replacement read when an old read rejects', async () => {
++  const old = pending();
++  const fresh = pending();
++  send.mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
++  const { result, unmount } = renderHook(useSpreadsheet, {
++    wrapper: SpreadsheetProvider,
++  });
++  const release = result.current.bind('__global', 'balance', vi.fn());
++  release();
++  const callback = vi.fn();
++  result.current.bind('__global', 'balance', callback);
++  old.reject(new Error('old read failed'));
++  await waitFor(() => expect(dispatch).toHaveBeenCalled());
++  const other = vi.fn();
++  result.current.bind('__global', 'balance', other);
++  fresh.resolve({ name: '__global!balance', value: 1000 });
++  await waitFor(() => expect(other).toHaveBeenCalledTimes(1));
++  expect(callback).toHaveBeenCalledTimes(1);
++  expect(send).toHaveBeenCalledTimes(2);
++  unmount();
++});
+diff --git a/packages/desktop-client/src/hooks/useSpreadsheet.tsx b/packages/desktop-client/src/hooks/useSpreadsheet.tsx
+index 63096ce..e0a9ffc 100644
+--- a/packages/desktop-client/src/hooks/useSpreadsheet.tsx
++++ b/packages/desktop-client/src/hooks/useSpreadsheet.tsx
+@@ -1,10 +1,14 @@
+ import { createContext, useContext, useEffect, useMemo } from 'react';
+ import type { ReactNode } from 'react';
++import { useTranslation } from 'react-i18next';
+ 
+ import { listen, send } from '@actual-app/core/platform/client/connection';
+ import type { Query } from '@actual-app/core/shared/query';
+ import { LRUCache } from 'lru-cache';
+ 
++import { addNotification } from '#notifications/notificationsSlice';
++import { useDispatch } from '#redux';
++
+ type SpreadsheetContextValue = ReturnType<typeof makeSpreadsheet>;
+ const SpreadsheetContext = createContext<SpreadsheetContextValue | undefined>(
+   undefined,
+@@ -28,7 +32,7 @@ type CellObservers = { [name: string]: CellObserverCallback[] };
+ 
+ const GLOBAL_SHEET_NAME = '__global';
+ 
+-function makeSpreadsheet() {
++function makeSpreadsheet(onError: (error: unknown) => void) {
+   const cellObservers: CellObservers = {};
+   const LRUValueCache = new LRUCache<string, CellCacheValue>({ max: 1200 });
+   const cellCache: CellCache = {};
+@@ -86,7 +90,9 @@ function makeSpreadsheet() {
+       binding = typeof binding === 'string' ? { name: binding } : binding;
+ 
+       if (binding.query) {
+-        void this.createQuery(sheetName, binding.name, binding.query);
++        void this.createQuery(sheetName, binding.name, binding.query).catch(
++          onError,
++        );
+       }
+ 
+       const resolvedName = `${sheetName}!${binding.name}`;
+@@ -103,22 +109,29 @@ function makeSpreadsheet() {
+       }
+ 
+       if (cellCache[resolvedName] != null) {
+-        void cellCache[resolvedName].then(callback);
++        void cellCache[resolvedName].then(callback).catch(onError);
+       } else {
+         const req = this.get(sheetName, binding.name);
+         cellCache[resolvedName] = req;
+ 
+-        void req.then(result => {
+-          // We only want to call the callback if it's still waiting on
+-          // the same request. If we've received a `cells-changed` event
+-          // for this already then it's already been called and we don't
+-          // need to call it again (and potentially could be calling it
+-          // with an old value depending on the order of messages)
+-          if (cellCache[resolvedName] === req) {
+-            LRUValueCache.set(resolvedName, result);
+-            callback(result);
+-          }
+-        });
++        void req
++          .then(result => {
++            // We only want to call the callback if it's still waiting on
++            // the same request. If we've received a `cells-changed` event
++            // for this already then it's already been called and we don't
++            // need to call it again (and potentially could be calling it
++            // with an old value depending on the order of messages)
++            if (cellCache[resolvedName] === req) {
++              LRUValueCache.set(resolvedName, result);
++              callback(result);
++            }
++          })
++          .catch(error => {
++            if (cellCache[resolvedName] === req) {
++              cellCache[resolvedName] = null;
++            }
++            onError(error);
++          });
+       }
+ 
+       return cleanup;
+@@ -149,7 +162,27 @@ type SpreadsheetProviderProps = {
+ };
+ 
+ export function SpreadsheetProvider({ children }: SpreadsheetProviderProps) {
+-  const spreadsheet = useMemo(() => makeSpreadsheet(), []);
++  const dispatch = useDispatch();
++  const { t } = useTranslation();
++  const spreadsheet = useMemo(
++    () =>
++      makeSpreadsheet(error => {
++        dispatch(
++          addNotification({
++            notification: {
++              id: 'spreadsheet-read-error',
++              type: 'error',
++              sticky: true,
++              message: t(
++                'Unable to refresh balances. Reload and check your data before making changes.',
++              ),
++              pre: error instanceof Error ? error.message : String(error),
++            },
++          }),
++        );
++      }),
++    [dispatch, t],
++  );
+ 
+   useEffect(() => {
+     return spreadsheet.listen();
+diff --git a/packages/loot-core/src/platform/client/connection/bfcache.test.ts b/packages/loot-core/src/platform/client/connection/bfcache.test.ts
+new file mode 100644
+index 0000000..6f246e6
+--- /dev/null
++++ b/packages/loot-core/src/platform/client/connection/bfcache.test.ts
+@@ -0,0 +1,106 @@
++import { afterEach, expect, it, vi } from 'vitest';
++
++import type * as Connection from './index';
++
++vi.mock('#platform/client/undo', () => ({
++  snapshot: () => 'undo',
++  gc: vi.fn(),
++}));
++vi.mock('#platform/exceptions', () => ({
++  captureException: vi.fn(),
++  captureBreadcrumb: vi.fn(),
++}));
++
++const ports: MessagePort[] = [];
++afterEach(() => {
++  for (const port of ports.splice(0)) port.close();
++  vi.unstubAllGlobals();
++  vi.resetModules();
++});
++
++async function connection() {
++  const window = new EventTarget();
++  vi.stubGlobal('window', window);
++  const { port1, port2 } = new MessageChannel();
++  ports.push(port1, port2);
++  const socket = Object.assign(port1, { postMessage: vi.fn() });
++  const { init, send } = await vi.importActual<typeof Connection>('./index');
++  const opened = init(socket);
++  const receive = (data: unknown) =>
++    socket.onmessage?.call(socket, new MessageEvent('message', { data }));
++  const lifecycle = (type: string, persisted = true) =>
++    window.dispatchEvent(Object.assign(new Event(type), { persisted }));
++  return { socket, send, receive, lifecycle, opened };
++}
++
++it('settles suspended requests once, ignores late replies and never replays writes', async () => {
++  const { socket, send, receive, lifecycle, opened } = await connection();
++  receive({ type: 'connect' });
++  await opened;
++  const outcome = vi.fn();
++  const request = send('account-create', {
++    name: 'Checking',
++    balance: 1000,
++    offBudget: false,
++  }).then(outcome, outcome);
++  const message = socket.postMessage.mock.calls.at(-1)?.[0];
++  lifecycle('pagehide');
++  await Promise.resolve();
++  expect(outcome).not.toHaveBeenCalled();
++  lifecycle('pageshow');
++  await request;
++  expect(outcome).toHaveBeenCalledExactlyOnceWith(
++    expect.objectContaining({ name: 'RequestOutcomeUnknownError' }),
++  );
++  receive({ type: 'reply', id: message.id, result: 'committed-id' });
++  lifecycle('pageshow');
++  expect(outcome).toHaveBeenCalledTimes(1);
++  expect(
++    socket.postMessage.mock.calls.filter(
++      ([msg]) => msg.name === 'account-create',
++    ),
++  ).toHaveLength(1);
++  const fresh = send('accounts-get');
++  receive({
++    type: 'reply',
++    id: socket.postMessage.mock.calls.at(-1)?.[0].id,
++    result: [],
++  });
++  await expect(fresh).resolves.toEqual([]);
++});
++
++it('preserves completed requests and ignores non-persisted lifecycle events', async () => {
++  const { socket, send, receive, lifecycle, opened } = await connection();
++  receive({ type: 'connect' });
++  await opened;
++  const completed = send('accounts-get');
++  receive({
++    type: 'reply',
++    id: socket.postMessage.mock.calls.at(-1)?.[0].id,
++    result: [],
++  });
++  lifecycle('pagehide');
++  lifecycle('pageshow');
++  await expect(completed).resolves.toEqual([]);
++  const pending = send('accounts-get');
++  const id = socket.postMessage.mock.calls.at(-1)?.[0].id;
++  lifecycle('pagehide', false);
++  lifecycle('pageshow', false);
++  receive({ type: 'reply', id, result: ['fresh'] });
++  await expect(pending).resolves.toEqual(['fresh']);
++});
++
++it('does not send suspended queued requests and identifies them as unexecuted', async () => {
++  const { socket, send, receive, lifecycle, opened } = await connection();
++  const pending = send('accounts-get').catch(error => error);
++  lifecycle('pagehide');
++  lifecycle('pageshow');
++  expect(await pending).toMatchObject({ name: 'RequestNotSentError' });
++  receive({ type: 'connect' });
++  await opened;
++  expect(
++    socket.postMessage.mock.calls.filter(
++      ([msg]) => msg.name === 'accounts-get',
++    ),
++  ).toHaveLength(0);
++});
+diff --git a/packages/loot-core/src/platform/client/connection/index.ts b/packages/loot-core/src/platform/client/connection/index.ts
+index c1093f7..076172b 100644
+--- a/packages/loot-core/src/platform/client/connection/index.ts
++++ b/packages/loot-core/src/platform/client/connection/index.ts
+@@ -12,6 +12,34 @@ let messageQueue = [];
+ 
+ let globalWorker = null;
+ 
++if (typeof window !== 'undefined') {
++  window.addEventListener('pagehide', event => {
++    if (!event.persisted) return;
++    for (const handler of replyHandlers.values()) {
++      handler.suspended = messageQueue ? 'queued' : 'sent';
++    }
++    // Queued requests have not executed and must not drain on reconnection.
++    if (messageQueue) messageQueue = [];
++  });
++  window.addEventListener('pageshow', event => {
++    if (!event.persisted) return;
++    for (const [id, handler] of replyHandlers) {
++      if (!handler.suspended) continue;
++      replyHandlers.delete(id);
++      const error = new Error(
++        handler.suspended === 'queued'
++          ? 'The request was not sent before the page was suspended.'
++          : 'The page was suspended before the result arrived. Reload and check saved data before trying again.',
++      );
++      error.name =
++        handler.suspended === 'queued'
++          ? 'RequestNotSentError'
++          : 'RequestOutcomeUnknownError';
++      handler.reject(error);
++    }
++  });
++}
++
+ class ReconstructedError extends Error {
+   url: string;
+   line: string;

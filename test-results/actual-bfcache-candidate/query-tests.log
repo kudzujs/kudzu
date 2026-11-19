@@ -1,0 +1,21 @@
+
+ RUN  v4.1.10 /tmp/opencode/actual-bfcache-candidate/packages/desktop-client
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ src/queries/liveQuery.test.ts (7 tests) 1628ms
+     ✓ cancels existing requests  506ms
+     ✓ reruns if data changes in the middle of *any* request  1001ms
+ ✓ src/queries/pagedQuery.test.ts (14 tests) 3372ms
+     ✓ cancels existing requests  505ms
+     ✓ reruns if data changes in the middle of *any* request  1001ms
+     ✓ pagedQuery refetches all paged data on update  605ms
+     ✓ pagedQuery fetches up to a specific row  1045ms
+ ✓ src/hooks/useSpreadsheet.test.tsx (3 tests) 285ms
+
+ Test Files  3 passed (3)
+      Tests  24 passed (24)
+   Start at  13:39:01
+   Duration  7.91s (transform 2.74s, setup 7.01s, import 465ms, tests 5.29s, environment 1.93s)
+

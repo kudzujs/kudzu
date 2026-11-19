@@ -1,0 +1,647 @@
+{
+  "revision": "87e33e49eb4d666c33e0c0f172faf340d1b7aa0a",
+  "hold": "",
+  "candidate": true,
+  "sourcePatchSha256": "4b8199de80fa461e58a39ec7a7c68c4a0ef7486ba52fe9c6c163c9901488c7a7",
+  "node": "v24.14.0",
+  "platform": "linux",
+  "cases": [
+    {
+      "departing": "control",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:42959/",
+          "token": "603c8de4-d29c-424b-af59-9da2309b85fd",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/__bfcache-control",
+          "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+          "pending": {}
+        }
+      ],
+      "notRestored": [],
+      "pass": true,
+      "before": {
+        "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": null,
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {},
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "after": {
+        "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+            "pending": {}
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+            "pending": {}
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/__bfcache-control",
+            "token": "9855e8cc-129b-4a5b-9e96-a6b6cc82e2ca",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": null,
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {},
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "restored": true
+    },
+    {
+      "departing": "leader",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "78d8511e-3350-4954-b071-53528aac9c81",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "78d8511e-3350-4954-b071-53528aac9c81"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "78d8511e-3350-4954-b071-53528aac9c81",
+          "pending": {
+            "5b3b3098-8725-4468-af12-14fc762ca59a": "query"
+          }
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "5ba56446-fb7a-47fc-889b-4d018b3d9638",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58"
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:42959/",
+          "token": "7671ba0b-491a-4018-9e4c-5a9298d7ff71",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "__resume-tab",
+          "budgetId": "My-Finances-fb5b042",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58"
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+          "pending": {
+            "69880b8a-e6d7-4944-8ad8-4a43215dc7d2": "sync",
+            "588ca56b-3925-4903-8b3f-55c65d0c9cf8": "report/get",
+            "2616c935-cdde-48e1-a532-6022fbd92c95": "query",
+            "f5508ee9-20c8-4e42-bb40-86e909ee12b1": "query"
+          }
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts/e51a9bfd-5c37-4414-bb89-2b8b1987ee70",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/e51a9bfd-5c37-4414-bb89-2b8b1987ee70",
+          "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/e51a9bfd-5c37-4414-bb89-2b8b1987ee70",
+          "token": "e9d5aca8-3371-4674-8c6c-42fc098fed39",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/e51a9bfd-5c37-4414-bb89-2b8b1987ee70",
+          "token": "e9d5aca8-3371-4674-8c6c-42fc098fed39",
+          "pending": {
+            "f443ab06-b8d0-4698-8de8-da7a98519c97": "query",
+            "a2982674-0f58-44f3-9e97-845b85cc03e5": "query",
+            "cd775d7a-48c1-413c-87bb-48467051e34f": "query",
+            "3a22b81e-c2fd-4d37-aab9-cdd30f7ed7e9": "query",
+            "49a22124-6b73-444f-ac1d-586bcba1395b": "query",
+            "55e98d39-d997-433d-9fd9-73ec06347f2c": "query",
+            "b82d5646-505f-4092-a26a-a3a92030f30d": "query",
+            "d77efde8-f17f-46a1-a12e-df4459ad4b28": "query",
+            "322d914f-0944-443f-9127-081388d3e9ce": "query",
+            "4bd6eba9-24d0-4dcd-98b6-72c330110010": "query",
+            "db3e4e70-d96a-4174-92a4-ea16ba39808a": "query",
+            "dfe36e6f-0cfe-4208-8dd0-5168c77b164a": "query",
+            "d8e1ec3e-bb55-40af-a47b-418b71b90635": "query",
+            "a25334cd-77ac-44b1-8eaf-e35747be69fe": "load-prefs"
+          }
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "5ba56446-fb7a-47fc-889b-4d018b3d9638",
+          "pending": {}
+        }
+      ],
+      "notRestored": [],
+      "pass": true,
+      "before": {
+        "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": "LEADER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {},
+        "navigation": [
+          {
+            "type": "reload"
+          }
+        ]
+      },
+      "after": {
+        "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+            "pending": {}
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+            "pending": {}
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c6f4d785-362d-451e-845a-f3abc3516e58",
+            "pending": {
+              "69880b8a-e6d7-4944-8ad8-4a43215dc7d2": "sync",
+              "588ca56b-3925-4903-8b3f-55c65d0c9cf8": "report/get",
+              "2616c935-cdde-48e1-a532-6022fbd92c95": "query",
+              "f5508ee9-20c8-4e42-bb40-86e909ee12b1": "query"
+            }
+          }
+        ],
+        "protocol": [
+          {
+            "type": "tab-closing",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c6f4d785-362d-451e-845a-f3abc3516e58"
+          },
+          {
+            "type": "__resume-tab",
+            "budgetId": "My-Finances-fb5b042",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "c6f4d785-362d-451e-845a-f3abc3516e58"
+          }
+        ],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {
+          "588ca56b-3925-4903-8b3f-55c65d0c9cf8": "report/get",
+          "2616c935-cdde-48e1-a532-6022fbd92c95": "query",
+          "f5508ee9-20c8-4e42-bb40-86e909ee12b1": "query",
+          "651ca485-9e08-4285-b1b8-58d3a60fc1ff": "load-prefs"
+        },
+        "navigation": [
+          {
+            "type": "reload"
+          }
+        ]
+      },
+      "restored": true,
+      "returnedRole": "FOLLOWER",
+      "readback": "0.00",
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-fb5b042",
+        "url": "http://127.0.0.1:3158/accounts",
+        "token": "c6f4d785-362d-451e-845a-f3abc3516e58"
+      },
+      "createdAccountHref": "/accounts/e51a9bfd-5c37-4414-bb89-2b8b1987ee70",
+      "postReturnMutation": {
+        "persisted": true,
+        "count": 1,
+        "balance": "10.00"
+      }
+    },
+    {
+      "departing": "follower",
+      "errors": [],
+      "lifecycle": [
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "7e05523a-40e7-452c-9a3d-979bb67155f4",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "7e05523a-40e7-452c-9a3d-979bb67155f4"
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "7e05523a-40e7-452c-9a3d-979bb67155f4",
+          "pending": {
+            "b0a617f7-b5f1-4827-832a-3dc80d1649ec": "create-query",
+            "98b8abc1-6cd2-4b12-bc18-4f78b9abdd91": "get-cell",
+            "53cfe6e6-ed77-48f6-aae1-c832b42b43d2": "create-query",
+            "23f571c9-db78-4e66-93ed-694485cd28b8": "query",
+            "a7265ac3-3d4c-40e5-9cc9-52b3a6bf1049": "query",
+            "4df0b56f-9fee-4355-be27-7a6c4b813957": "query",
+            "714ea432-fd5a-4c7b-b552-a5f3be1d3bea": "query",
+            "e01205db-441c-4481-8827-9eabd2921f04": "query",
+            "d3a79586-7f78-4831-ba55-52552861473f": "query",
+            "4b75b5a5-3962-4e2c-a638-37a0a43b7a7b": "payees-get",
+            "fc4105de-09e7-4830-ab83-2a47d34de9e9": "query",
+            "35606e60-4caf-4cc8-8a44-efdeb669c52b": "get-categories",
+            "95815a4a-a3ac-4612-8657-79d56a71acd1": "query",
+            "94130d23-3b42-4bda-bcbd-90bb58f6a965": "query",
+            "e23ee126-9689-4ec0-91ad-73df6606aca1": "query"
+          }
+        },
+        {
+          "tab": 0,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "8b0d6f0e-5ca0-4bfe-9ad0-9b375eb42d82",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:42959/",
+          "token": "6227c9f8-8bbf-413e-a1e4-8d7ea6b42570",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "__resume-tab",
+          "budgetId": "My-Finances-b0fe31b",
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1"
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": true,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+          "pending": {
+            "c93bdc5c-a52e-4630-9c21-7166ec4b9e93": "sync",
+            "beb499fe-dc28-4a55-9508-8daed34b6352": "report/get",
+            "a5e686d3-518e-4b9e-8659-a916be91bc50": "query",
+            "21caa904-ca32-43bd-92ca-e173c410ec1f": "query"
+          }
+        },
+        {
+          "tab": 1,
+          "type": "tab-closing",
+          "url": "http://127.0.0.1:3158/accounts/b5fb62c7-b089-49d4-b642-8f4af080a13b",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1"
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/b5fb62c7-b089-49d4-b642-8f4af080a13b",
+          "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+          "pending": {
+            "56bc2f38-4513-472f-aa2b-d5488379bf08": "get-cell",
+            "be4b1da0-524b-4879-84e3-23950a7865a7": "create-query",
+            "2a4793c1-0c61-4eb6-bede-c4b3b9ae35f1": "query",
+            "87f425c0-9dbb-4b77-aa6b-731c9e783936": "query",
+            "a88f75bf-7492-4774-9ddc-2ee11de802c6": "query",
+            "66046b2d-59f4-4769-8097-7e6de9b4ca68": "query",
+            "b4759ad1-9d29-4f18-bcc8-de4aadff0bc0": "query",
+            "2772435c-03c6-40cc-b465-f15e74b877f1": "query",
+            "cc0e2187-3b4e-41bc-bffc-07f312bbb2b0": "query",
+            "dcff84ef-63dc-46cb-b2cb-65263c9d9d10": "query"
+          }
+        },
+        {
+          "tab": 1,
+          "type": "pageshow",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/b5fb62c7-b089-49d4-b642-8f4af080a13b",
+          "token": "aead98df-b779-4efb-8f9e-4f0e3af5a667",
+          "pending": {}
+        },
+        {
+          "tab": 0,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts",
+          "token": "8b0d6f0e-5ca0-4bfe-9ad0-9b375eb42d82",
+          "pending": {}
+        },
+        {
+          "tab": 1,
+          "type": "pagehide",
+          "persisted": false,
+          "url": "http://127.0.0.1:3158/accounts/b5fb62c7-b089-49d4-b642-8f4af080a13b",
+          "token": "aead98df-b779-4efb-8f9e-4f0e3af5a667",
+          "pending": {}
+        }
+      ],
+      "notRestored": [],
+      "pass": true,
+      "before": {
+        "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+            "pending": {}
+          }
+        ],
+        "protocol": [],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {},
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "after": {
+        "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+        "events": [
+          {
+            "type": "pageshow",
+            "persisted": false,
+            "url": "http://127.0.0.1:3158/",
+            "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+            "pending": {}
+          },
+          {
+            "type": "pagehide",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+            "pending": {}
+          },
+          {
+            "type": "pageshow",
+            "persisted": true,
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "bd058bb8-da5c-4d19-9901-721a91b892f1",
+            "pending": {
+              "c93bdc5c-a52e-4630-9c21-7166ec4b9e93": "sync",
+              "beb499fe-dc28-4a55-9508-8daed34b6352": "report/get",
+              "a5e686d3-518e-4b9e-8659-a916be91bc50": "query",
+              "21caa904-ca32-43bd-92ca-e173c410ec1f": "query"
+            }
+          }
+        ],
+        "protocol": [
+          {
+            "type": "tab-closing",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "bd058bb8-da5c-4d19-9901-721a91b892f1"
+          },
+          {
+            "type": "__resume-tab",
+            "budgetId": "My-Finances-b0fe31b",
+            "url": "http://127.0.0.1:3158/accounts",
+            "token": "bd058bb8-da5c-4d19-9901-721a91b892f1"
+          }
+        ],
+        "role": "FOLLOWER",
+        "pings": 0,
+        "mutations": [],
+        "terminal": [],
+        "pending": {
+          "a5e686d3-518e-4b9e-8659-a916be91bc50": "query",
+          "21caa904-ca32-43bd-92ca-e173c410ec1f": "query",
+          "227d3117-5222-4b6f-a569-876e1ab75a03": "load-prefs"
+        },
+        "navigation": [
+          {
+            "type": "navigate"
+          }
+        ]
+      },
+      "restored": true,
+      "returnedRole": "FOLLOWER",
+      "readback": "0.00",
+      "resume": {
+        "type": "__resume-tab",
+        "budgetId": "My-Finances-b0fe31b",
+        "url": "http://127.0.0.1:3158/accounts",
+        "token": "bd058bb8-da5c-4d19-9901-721a91b892f1"
+      },
+      "createdAccountHref": "/accounts/b5fb62c7-b089-49d4-b642-8f4af080a13b",
+      "postReturnMutation": {
+        "persisted": true,
+        "count": 1,
+        "balance": "10.00"
+      }
+    }
+  ],
+  "pass": true,
+  "startSourceSha256": "af811ae137deb70888cb112d50e27d778679ced3009f743269161f26d9aece67",
+  "browser": "152.0.7977.64"
+}
